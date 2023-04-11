@@ -1,0 +1,46 @@
+name: Create and publish a Docker image
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v3
+      
+      - name: "Get Previous tag"
+        id: previoustag
+        uses: actions-ecosystem/action-get-latest-tag@v1
+        with:
+          fallback: latest # Optional fallback tag to use when no tag can be found
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/threefoldtech/gridproxy
+          tags: |
+            type=semver,pattern={{raw}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            version=${{ steps.previoustag.outputs.tag }}
