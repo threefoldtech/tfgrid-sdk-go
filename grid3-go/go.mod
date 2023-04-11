@@ -59,3 +59,5 @@ require (
 )
 
 replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20230102154731-7c633b7d3c71
+replace github.com/threefoldtech/grid_proxy_server v1.7.0 => ../tfgridclient_proxy
+replace github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server v1.7.0 => ../tfgridclient_proxy
