@@ -23,12 +23,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/tfgrid_monitoring_bot/internal"
+	"github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/internal"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "tfgrid_monitoring_bot",
+	Use:   "monitoring-bot",
 	Short: "monitor bot for tfgrid wallets",
 	// Uncomment the following line if your bare application
 	// has an action associated with it:

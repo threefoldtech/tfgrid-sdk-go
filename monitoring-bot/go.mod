@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid_monitoring_bot
+module github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot
 
 go 1.19
 
