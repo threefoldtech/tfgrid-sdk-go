@@ -8,16 +8,16 @@ import (
 )
 
 // set at build time
-var Commit string
-var Version string
+var commit string
+var version string
 
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get latest build tag",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(Version)
-		fmt.Println(Commit)
+		fmt.Println(version)
+		fmt.Println(commit)
 	},
 }
 

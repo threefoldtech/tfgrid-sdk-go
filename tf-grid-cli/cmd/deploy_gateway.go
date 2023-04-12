@@ -2,8 +2,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -21,7 +19,6 @@ func init() {
 	deployGatewayCmd.PersistentFlags().StringP("name", "n", "", "name of the gateway")
 	err := deployGatewayCmd.MarkPersistentFlagRequired("name")
 	if err != nil {
-		fmt.Println("hi")
 		log.Fatal().Err(err).Send()
 	}
 	deployGatewayCmd.PersistentFlags().Uint32("node", 0, "node id gateway should be deployed on")

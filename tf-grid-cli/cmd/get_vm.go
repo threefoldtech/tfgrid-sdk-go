@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
+	command "github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/cmd"
 	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
 )
 
@@ -20,11 +21,12 @@ var getVMCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", true, false)
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, true, false)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		vm, err := t.GetVM(args[0])
+
+		vm, err := command.GetVM(t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
