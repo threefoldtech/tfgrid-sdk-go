@@ -2,6 +2,10 @@ name: Testing
 
 on: [push]
 
+defaults:
+  run:
+    working-directory: grid3-go
+
 jobs:
   test:
     runs-on: ubuntu-latest

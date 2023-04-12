@@ -1,5 +1,9 @@
 name: Integration tests
 
+
+defaults:
+  run:
+    working-directory: gridproxy
 on:
   push:
     branches: [ main, development ]

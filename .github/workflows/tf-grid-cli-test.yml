@@ -1,5 +1,9 @@
 name: Testing
 
+defaults:
+  run:
+    working-directory: tf-grid-cli
+
 on: [push]
 
 jobs:

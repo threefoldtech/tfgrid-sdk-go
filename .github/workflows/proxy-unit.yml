@@ -1,5 +1,10 @@
 name: Unit tests
 
+
+defaults:
+  run:
+    working-directory: monitoring-bot
+
 on:
   push:
     branches: [ main, development ]

@@ -1,5 +1,8 @@
 name: Integration tests
 
+defaults:
+  run:
+    working-directory: grid3-go
 on:
   schedule:
     - cron: "0 6 * * *"

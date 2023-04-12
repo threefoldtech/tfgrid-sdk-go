@@ -1,5 +1,11 @@
 name: Create and publish a Docker image
 
+
+
+defaults:
+  run:
+    working-directory: grid-proxy
+
 on:
   release:
     types: [published]

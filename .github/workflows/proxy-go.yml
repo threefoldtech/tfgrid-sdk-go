@@ -1,5 +1,10 @@
 name: Build and lint the source code
 
+
+defaults:
+  run:
+    working-directory: gridproxy
+
 on:
   push:
     branches: [ main, development ]

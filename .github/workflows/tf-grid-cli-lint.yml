@@ -1,6 +1,11 @@
 name: lint
 on: [push]
 
+
+defaults:
+  run:
+    working-directory: tf-grid-cli
+
 jobs:
   lint:
     name: lint

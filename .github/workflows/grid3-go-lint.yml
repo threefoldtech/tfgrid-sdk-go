@@ -1,6 +1,11 @@
 name: lint
 on: [push]
 
+
+defaults:
+  run:
+    working-directory: grid3-go
+
 jobs:
   lint:
     name: lint

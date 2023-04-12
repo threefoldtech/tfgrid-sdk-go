@@ -1,4 +1,9 @@
 name: release
+
+defaults:
+  run:
+    working-directory: monitoring-bot
+
 on:
   push:
     tags:
