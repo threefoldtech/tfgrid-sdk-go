@@ -1,11 +1,11 @@
 # Gateway FQDN
 
-This document explains Gateway FQDN related commands using tf-grid cli.
+This document explains Gateway FQDN related commands using tf-grid-cli.
 
 ## Deploy
 
 ```bash
-tf-grid deploy gateway fqdn [flags]
+tf-grid-cli deploy gateway fqdn [flags]
 ```
 
 ### Required Flags
@@ -21,13 +21,8 @@ tf-grid deploy gateway fqdn [flags]
 
 Example:
 
-```bash
-./tf-grid deploy gateway name -n gatewaytest --node 14 --backends http://93.184.216.34:80 --fqdn example.com
-```
-
-You should see an output like this:
-
-```bash
+```console
+$ tf-grid-cli deploy gateway fqdn -n gatewaytest --node 14 --backends http://93.184.216.34:80 --fqdn example.com
 3:34PM INF deploying gateway fqdn
 3:34PM INF gateway fqdn deployed
 ```
@@ -35,20 +30,15 @@ You should see an output like this:
 ## Get
 
 ```bash
-tf-grid get gateway fqdn <gateway>
+tf-grid-cli get gateway fqdn <gateway>
 ```
 
-gateway is the name used when deploying gateway-fqdn using tf-grid.
+gateway is the name used when deploying gateway-fqdn using tf-grid-cli.
 
 Example:
 
-```bash
-tf-grid get gateway gatewaytest
-```
-
-You should see an output like this:
-
-```bash
+```console
+$ tf-grid-cli get gateway fqdn gatewaytest
 2:05PM INF gateway fqdn:
 {
         "NodeID": 14,
@@ -70,20 +60,15 @@ You should see an output like this:
 ## Cancel
 
 ```bash
-tf-grid cancel <deployment-name>
+tf-grid-cli cancel <deployment-name>
 ```
 
-deployment-name is the name of the deployment specified in while deploying using tf-grid.
+deployment-name is the name of the deployment specified in while deploying using tf-grid-cli.
 
 Example:
 
-```bash
-tf-grid cancel gatewaytest
-```
-
-You should see an output like this:
-
-```bash
+```console
+$ tf-grid-cli cancel gatewaytest
 3:37PM INF canceling contracts for project gatewaytest
 3:37PM INF gatewaytest canceled
 ```

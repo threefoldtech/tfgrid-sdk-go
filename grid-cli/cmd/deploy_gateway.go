@@ -21,9 +21,6 @@ func init() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	deployGatewayCmd.PersistentFlags().Uint32("node", 0, "node id gateway should be deployed on")
-	deployGatewayCmd.PersistentFlags().Uint64("farm", 1, "farm id gateway should be deployed on")
-	deployGatewayCmd.MarkFlagsMutuallyExclusive("node", "farm")
 
 	deployGatewayCmd.PersistentFlags().StringSlice("backends", []string{}, "backends for the gateway")
 	err = deployGatewayCmd.MarkPersistentFlagRequired("backends")
@@ -39,7 +36,6 @@ func parseCommonGatewayFlags(cmd *cobra.Command) (
 	tls bool,
 	zosBackends []zos.Backend,
 	node uint32,
-	farm uint64,
 	err error,
 ) {
 	name, err = cmd.Flags().GetString("name")
@@ -58,10 +54,6 @@ func parseCommonGatewayFlags(cmd *cobra.Command) (
 		zosBackends = append(zosBackends, zos.Backend(backend))
 	}
 	node, err = cmd.Flags().GetUint32("node")
-	if err != nil {
-		return
-	}
-	farm, err = cmd.Flags().GetUint64("farm")
 	if err != nil {
 		return
 	}

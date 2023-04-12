@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/filters"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
@@ -16,7 +15,7 @@ var deployGatewayFQDNCmd = &cobra.Command{
 	Use:   "fqdn",
 	Short: "Deploy a gateway FQDN proxy",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name, tls, zosBackends, node, farm, err := parseCommonGatewayFlags(cmd)
+		name, tls, zosBackends, node, err := parseCommonGatewayFlags(cmd)
 		if err != nil {
 			return err
 		}
@@ -30,6 +29,7 @@ var deployGatewayFQDNCmd = &cobra.Command{
 			TLSPassthrough: tls,
 			SolutionType:   name,
 			FQDN:           fqdn,
+			NodeID:         node,
 		}
 		cfg, err := config.GetUserConfig()
 		if err != nil {
@@ -39,16 +39,6 @@ var deployGatewayFQDNCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		if node == 0 {
-			node, err = filters.GetAvailableNode(
-				t.GridProxyClient,
-				filters.BuildGatewayFilter(farm),
-			)
-			if err != nil {
-				log.Fatal().Err(err).Send()
-			}
-		}
-		gateway.NodeID = node
 		err = command.DeployGatewayFQDN(t, gateway)
 		if err != nil {
 			log.Fatal().Err(err).Send()
@@ -63,6 +53,11 @@ func init() {
 
 	deployGatewayFQDNCmd.Flags().String("fqdn", "", "fqdn pointing to the specified node")
 	err := deployGatewayFQDNCmd.MarkFlagRequired("fqdn")
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+	deployGatewayFQDNCmd.Flags().Uint32("node", 0, "node id gateway should be deployed on")
+	err = deployGatewayFQDNCmd.MarkFlagRequired("node")
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}

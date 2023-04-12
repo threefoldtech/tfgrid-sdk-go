@@ -6,6 +6,7 @@ before:
     - go mod tidy
     # you may remove this if you don't need go generate
     - go generate ./...
+project_name: tf-grid-cli
 builds:
   - env:
       - CGO_ENABLED=0
@@ -13,12 +14,15 @@ builds:
       - linux
       - windows
       - darwin
+    binary: tf-grid-cli
+    id: tf-grid-cli
+
     ignore:
     - goos: windows 
       goarch: 'arm64'
     ldflags:
-      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.Version={{.Tag}}
-      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.Commit={{.Commit}}
+      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version={{.Tag}}
+      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit={{.Commit}}
 
 archives:
   - format: tar.gz

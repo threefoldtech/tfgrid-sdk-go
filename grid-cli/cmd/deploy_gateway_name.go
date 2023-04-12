@@ -16,7 +16,7 @@ var deployGatewayNameCmd = &cobra.Command{
 	Use:   "name",
 	Short: "Deploy a gateway name proxy",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name, tls, zosBackends, node, farm, err := parseCommonGatewayFlags(cmd)
+		name, tls, zosBackends, node, err := parseCommonGatewayFlags(cmd)
 		if err != nil {
 			return err
 		}
@@ -25,6 +25,10 @@ var deployGatewayNameCmd = &cobra.Command{
 			Backends:       zosBackends,
 			TLSPassthrough: tls,
 			SolutionType:   name,
+		}
+		farm, err := cmd.Flags().GetUint64("farm")
+		if err != nil {
+			return err
 		}
 		cfg, err := config.GetUserConfig()
 		if err != nil {
@@ -56,4 +60,7 @@ var deployGatewayNameCmd = &cobra.Command{
 func init() {
 	deployGatewayCmd.AddCommand(deployGatewayNameCmd)
 
+	deployGatewayNameCmd.Flags().Uint32("node", 0, "node id gateway should be deployed on")
+	deployGatewayNameCmd.Flags().Uint64("farm", 1, "farm id gateway should be deployed on")
+	deployGatewayNameCmd.MarkFlagsMutuallyExclusive("node", "farm")
 }
