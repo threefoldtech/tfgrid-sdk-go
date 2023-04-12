@@ -5,10 +5,10 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/grid_proxy_server/pkg/types"
 	gridDeployer "github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 

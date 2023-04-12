@@ -6,8 +6,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/threefoldtech/grid_proxy_server/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/tfplugin"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
