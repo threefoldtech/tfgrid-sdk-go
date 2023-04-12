@@ -7,14 +7,14 @@ on:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
-  
+
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        network: ['dev','qa','test','main']
+        network: ["dev", "qa", "test", "main"]
 
     steps:
       - name: Set up Go
@@ -30,7 +30,7 @@ jobs:
 
       - name: Get dependencies
         run: |
-          go mod download
+          cd grid3-go && go mod download
 
       - name: install curl, wg and yggdrasil and add peers
         run: |
@@ -52,4 +52,4 @@ jobs:
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
-        run: go test -v ./integration_tests -tags integration
+        run: cd grid3-go && go test -v ./integration_tests -tags integration
