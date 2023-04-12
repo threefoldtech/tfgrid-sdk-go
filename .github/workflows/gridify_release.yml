@@ -1,8 +1,14 @@
 name: release
+
+defaults:
+  run:
+    working-directory: gridify
+
 on:
   push:
     tags:
       - "v*"
+
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
