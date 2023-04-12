@@ -1,18 +1,18 @@
-# grid-cli
+# tf-grid-cli
 
 Threefold CLI to manage deployments on Threefold Grid.
 
 ## Usage
 
-First [download](#download) grid-cli binaries.
+First [download](#download) tf-grid-cli binaries.
 
 Login using your [mnemonics](https://threefoldtech.github.io/info_grid/dashboard/portal/dashboard_portal_polkadot_create_account.html) and specify which grid network (mainnet/testnet) to deploy on by running:
 
 ```bash
-grid-cli login
+tf-grid-cli login
 ```
 
-For examples and description of grid-cli commands check out:
+For examples and description of tf-grid-cli commands check out:
 
 - [vm](docs/vm.md)
 - [gateway-fqdn](docs/gateway-fqdn.md)
@@ -26,7 +26,7 @@ For examples and description of grid-cli commands check out:
 - Move the binary to any of `$PATH` directories, for example:
 
 ```bash
-mv grid-cli /usr/local/bin
+mv tf-grid-cli /usr/local/bin
 ```
 
 ## Configuration

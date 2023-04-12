@@ -13,6 +13,10 @@ builds:
       - linux
       - windows
       - darwin
+      
+    binary: tf-grid-cli
+    id: tf-grid-cli
+
     ignore:
     - goos: windows 
       goarch: 'arm64'
