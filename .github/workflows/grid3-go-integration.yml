@@ -30,7 +30,7 @@ jobs:
 
       - name: Get dependencies
         run: |
-          cd grid3-go && go mod download
+          go mod download
 
       - name: install curl, wg and yggdrasil and add peers
         run: |
@@ -52,4 +52,4 @@ jobs:
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
-        run: cd grid3-go && go test -v ./integration_tests -tags integration
+        run: go test -v ./integration_tests -tags integration

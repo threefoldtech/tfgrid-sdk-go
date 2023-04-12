@@ -9,8 +9,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	subi "github.com/threefoldtech/tfgrid-sdk-go/grid3-go/subi"
 	"github.com/threefoldtech/substrate-client"
+	subi "github.com/threefoldtech/tfgrid-sdk-go/grid3-go/subi"
 )
 
 // MockManagerInterface is a mock of ManagerInterface interface.

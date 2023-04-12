@@ -27,10 +27,10 @@ jobs:
 
       - name: Get dependencies
         run: |
-          cd grid3-go && go mod download
+          go mod download
 
       - name: Test
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: dev
-        run: cd grid3-go && go test -v `go list ./... | grep -v integration_tests`
+        run: go test -v `go list ./... | grep -v integration_tests`
