@@ -38,7 +38,7 @@ gateway is the name used when deploying gateway-name using tf-grid-cli.
 Example:
 
 ```console
-$ tf-grid-cli get gateway gatewaytest
+$ tf-grid-cli get gateway name gatewaytest
 1:56PM INF gateway name:
 {
         "NodeID": 14,

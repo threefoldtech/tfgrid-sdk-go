@@ -22,7 +22,7 @@ tf-grid-cli deploy gateway fqdn [flags]
 Example:
 
 ```console
-$ tf-grid-cli deploy gateway name -n gatewaytest --node 14 --backends http://93.184.216.34:80 --fqdn example.com
+$ tf-grid-cli deploy gateway fqdn -n gatewaytest --node 14 --backends http://93.184.216.34:80 --fqdn example.com
 3:34PM INF deploying gateway fqdn
 3:34PM INF gateway fqdn deployed
 ```
@@ -38,7 +38,7 @@ gateway is the name used when deploying gateway-fqdn using tf-grid-cli.
 Example:
 
 ```console
-$ tf-grid-cli get gateway gatewaytest
+$ tf-grid-cli get gateway fqdn gatewaytest
 2:05PM INF gateway fqdn:
 {
         "NodeID": 14,
