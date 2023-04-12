@@ -21,7 +21,7 @@ For examples and description of tf-grid-cli commands check out:
 
 ## Download
 
-- Download the binaries from [releases](https://github.com/threefoldtech/tf-grid-cli/releases)
+- Download the binaries from [releases](https://github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/releases)
 - Extract the downloaded files
 - Move the binary to any of `$PATH` directories, for example:
 

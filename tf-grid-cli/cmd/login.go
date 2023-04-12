@@ -4,7 +4,7 @@ package cmd
 import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	command "github.com/threefoldtech/tf-grid-cli/internal/cmd"
+	command "github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/cmd"
 )
 
 // loginCmd represents the login command

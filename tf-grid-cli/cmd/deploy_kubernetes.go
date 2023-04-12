@@ -7,10 +7,10 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/grid3-go/deployer"
-	"github.com/threefoldtech/grid3-go/workloads"
-	"github.com/threefoldtech/tf-grid-cli/internal/config"
-	"github.com/threefoldtech/tf-grid-cli/internal/filters"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
+	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/filters"
 )
 
 var k8sFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"

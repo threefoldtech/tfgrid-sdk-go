@@ -4,8 +4,8 @@ package cmd
 import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/grid3-go/deployer"
-	"github.com/threefoldtech/tf-grid-cli/internal/config"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
 )
 
 // cancelCmd represents the cancel command
