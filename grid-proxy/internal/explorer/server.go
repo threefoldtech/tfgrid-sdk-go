@@ -13,11 +13,11 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 
 	// swagger configuration
-	"github.com/threefoldtech/rmb-sdk-go"
 	_ "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/docs"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/mw"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 )
 
 const (

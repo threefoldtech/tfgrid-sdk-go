@@ -14,8 +14,8 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.8.12
-	github.com/threefoldtech/rmb-sdk-go v1.0.0
 	github.com/threefoldtech/substrate-client v0.1.5
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.0.0-20230412150013-56a61d5dcabf
 	github.com/threefoldtech/zos v0.5.6-0.20220823125932-7df5043ab018
 	gorm.io/driver/postgres v1.5.0
 	gorm.io/gorm v1.25.0
