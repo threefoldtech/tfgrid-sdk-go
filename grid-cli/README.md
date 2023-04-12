@@ -1,5 +1,8 @@
 # tf-grid-cli
 
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/cd6e18aac6be404ab89ec160b4b36671)](https://www.codacy.com/gh/threefoldtech/tfgrid-sdk-go/grid-cli/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=threefoldtech/tfgrid-sdk-go/grid-cli&amp;utm_campaign=Badge_Grade) <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-53%25-brightgreen.svg?longCache=true&style=flat)</a>
+
+
 Threefold CLI to manage deployments on Threefold Grid.
 
 ## Usage
