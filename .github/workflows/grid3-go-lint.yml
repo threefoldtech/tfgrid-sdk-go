@@ -1,6 +1,10 @@
 name: Grid3 Go lint
-on: [push]
 
+on:
+  push:
+    paths:
+      - grid3-go/**
+  workflow_dispatch:
 
 defaults:
   run:
@@ -27,6 +31,7 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           args: --timeout 3m --verbose
+          working-directory: grid3-go
 
       - name: gofmt
         uses: Jerome1337/gofmt-action@v1.0.5
