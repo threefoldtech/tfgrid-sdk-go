@@ -1,4 +1,4 @@
-name: lint
+name: Grid3 Go lint
 on: [push]
 
 

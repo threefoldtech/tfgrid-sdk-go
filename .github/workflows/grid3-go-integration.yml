@@ -1,4 +1,4 @@
-name: Integration tests
+name: Grid3 Go Integration tests
 
 defaults:
   run:

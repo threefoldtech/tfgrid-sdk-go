@@ -1,4 +1,4 @@
-name: Build and lint the source code
+name: proxy Build and lint the source code
 
 
 defaults:
