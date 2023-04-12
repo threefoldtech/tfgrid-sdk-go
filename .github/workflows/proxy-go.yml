@@ -1,9 +1,5 @@
 name: proxy Build and lint the source code
 
-defaults:
-  run:
-    working-directory: gridproxy
-
 on:
   push:
     paths:
@@ -13,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gridproxy
     steps:
       - uses: actions/checkout@v2
 

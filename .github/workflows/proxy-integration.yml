@@ -1,8 +1,5 @@
 name: proxy Integration tests
 
-defaults:
-  run:
-    working-directory: gridproxy
 
 on:
   push:
@@ -13,6 +10,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gridproxy
     services:
       postgres:
         image: postgres
