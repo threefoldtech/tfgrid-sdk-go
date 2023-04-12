@@ -12,13 +12,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/grid_proxy_server/internal/certmanager"
-	"github.com/threefoldtech/grid_proxy_server/internal/explorer"
-	"github.com/threefoldtech/grid_proxy_server/internal/explorer/db"
-	logging "github.com/threefoldtech/grid_proxy_server/pkg"
 	"github.com/threefoldtech/rmb-sdk-go"
 	"github.com/threefoldtech/rmb-sdk-go/direct"
 	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/internal/certmanager"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/internal/explorer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/internal/explorer/db"
+	logging "github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg"
 )
 
 const (

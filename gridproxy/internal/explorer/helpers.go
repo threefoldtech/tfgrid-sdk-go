@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/grid_proxy_server/internal/explorer/db"
-	"github.com/threefoldtech/grid_proxy_server/internal/explorer/mw"
-	"github.com/threefoldtech/grid_proxy_server/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/internal/explorer/db"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/internal/explorer/mw"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/types"
 )
 
 func errorReply(err error) mw.Response {

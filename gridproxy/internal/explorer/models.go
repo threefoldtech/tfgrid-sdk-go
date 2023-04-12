@@ -5,9 +5,9 @@ import (
 
 	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/grid_proxy_server/internal/explorer/db"
-	"github.com/threefoldtech/grid_proxy_server/pkg/types"
 	"github.com/threefoldtech/rmb-sdk-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/internal/explorer/db"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/types"
 )
 
 // ErrNodeNotFound creates new error type to define node existence or server problem

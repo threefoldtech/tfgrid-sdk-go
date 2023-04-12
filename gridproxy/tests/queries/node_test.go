@@ -10,8 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	proxyclient "github.com/threefoldtech/grid_proxy_server/pkg/client"
-	proxytypes "github.com/threefoldtech/grid_proxy_server/pkg/types"
+	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/client"
+	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/types"
 )
 
 type NodesAggregate struct {

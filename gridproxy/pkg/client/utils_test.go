@@ -3,7 +3,7 @@ package client
 import (
 	"testing"
 
-	"github.com/threefoldtech/grid_proxy_server/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/types"
 )
 
 func nodesFilterValues() (types.NodeFilter, types.Limit, string) {

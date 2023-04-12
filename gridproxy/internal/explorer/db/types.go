@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/threefoldtech/grid_proxy_server/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/types"
 )
 
 // Database interface for storing and fetching grid info
