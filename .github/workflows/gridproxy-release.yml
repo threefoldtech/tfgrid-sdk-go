@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: gridproxy
+        working-directory: grid-proxy
     permissions:
       contents: read
       packages: write
@@ -35,7 +35,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/threefoldtech/gridproxy
+          images: ghcr.io/threefoldtech/grid-proxy
           tags: |
             type=semver,pattern={{raw}}
 

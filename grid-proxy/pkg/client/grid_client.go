@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 // Client a client to communicate with the grid proxy

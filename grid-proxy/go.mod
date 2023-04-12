@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server
+module github.com/threefoldtech/tfgrid-sdk-go/grid-proxy
 
 go 1.19
 

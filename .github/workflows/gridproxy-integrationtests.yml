@@ -1,10 +1,9 @@
 name: proxy Integration tests
 
-
 on:
   push:
     paths:
-      - gridproxy/**
+      - grid-proxy/**
   workflow_dispatch:
 
 jobs:
@@ -12,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: gridproxy
+        working-directory: grid-proxy
     services:
       postgres:
         image: postgres

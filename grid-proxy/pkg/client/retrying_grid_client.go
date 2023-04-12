@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v3"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 // RetryingClient wraps the given client and does the actions with retrying

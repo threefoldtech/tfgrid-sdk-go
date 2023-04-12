@@ -2,12 +2,12 @@ name: proxy Unit tests
 
 defaults:
   run:
-    working-directory: gridproxy
+    working-directory: grid-proxy
 
 on:
   push:
     paths:
-      - gridproxy/**
+      - grid-proxy/**
   workflow_dispatch:
 
 jobs:

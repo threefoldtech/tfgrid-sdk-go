@@ -4,8 +4,8 @@ import (
 	"sort"
 	"strings"
 
-	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/client"
-	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/types"
+	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 

@@ -3,7 +3,7 @@ name: proxy Build and lint the source code
 on:
   push:
     paths:
-      - gridproxy/**
+      - grid-proxy/**
   workflow_dispatch:
 
 jobs:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: gridproxy
+        working-directory: grid-proxy
     steps:
       - uses: actions/checkout@v3.5.0
 
@@ -31,7 +31,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          working-directory: gridproxy
+          working-directory: grid-proxy
 
       - name: Test version
         run: ./main -v
