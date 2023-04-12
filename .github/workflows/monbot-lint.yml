@@ -26,7 +26,7 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           args: --timeout 3m --verbose
-          working-directory: grid3-go
+          working-directory: monitoring-bot
 
       - name: staticcheck
         uses: dominikh/staticcheck-action@v1.3.0
