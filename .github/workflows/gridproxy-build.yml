@@ -1,9 +1,5 @@
 name: proxy Build and lint the source code
 
-defaults:
-  run:
-    working-directory: gridproxy
-
 on:
   push:
     paths:
@@ -13,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gridproxy
     steps:
       - uses: actions/checkout@v2
 
@@ -31,13 +30,8 @@ jobs:
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
-
-      - name: staticcheck
-        uses: dominikh/staticcheck-action@v1.3.0
         with:
-          version: "2022.1.3"
-        env:
-          GO111MODULE: on
+          working-directory: gridproxy
 
       - name: Test version
         run: ./main -v

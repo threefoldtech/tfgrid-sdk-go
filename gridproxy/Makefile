@@ -12,7 +12,7 @@ docs: install-swag ## Create the swagger docs
 	@rm -rf vendor;
 
 build: ## Bulil the project
-	@cd cmds/proxy_server && CGO_ENABLED=0 GOOS=linux go build -ldflags "-w -s -X main.GitCommit=$(shell git describe --tags --abbrev=0) -extldflags '-static'"  -o server
+	@cd cmds/proxy_server && CGO_ENABLED=0 GOOS=linux go build -ldflags "-w -s -X main.GitCommit=$(shell git describe --always --abbrev=0) -extldflags '-static'"  -o server
 
 db-start: ## Start postgres server on a docker container
 	@docker run --rm --name $(PQ_CONTAINER) \
