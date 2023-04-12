@@ -2,7 +2,7 @@ name: proxy release Create and publish a Docker image
 
 defaults:
   run:
-    working-directory: grid-proxy
+    working-directory: gridproxy
 
 on:
   release:

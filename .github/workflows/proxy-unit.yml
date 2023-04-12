@@ -2,7 +2,7 @@ name: proxy Unit tests
 
 defaults:
   run:
-    working-directory: monitoring-bot
+    working-directory: gridproxy
 
 on:
   push:
