@@ -7,8 +7,6 @@ on:
   push:
     paths:
       - monitoring-bot/**
-    paths-ignore:
-      - "README.md"
   workflow_dispatch:
 
 defaults:
