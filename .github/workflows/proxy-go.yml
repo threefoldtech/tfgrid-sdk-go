@@ -31,7 +31,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          args: --out-format=github-actions -- $(go work edit -json | jq -c -r '[.Use[].DiskPath | select(. != "syncx" and . != "process")] | map_values(. + "/...")[]')
+          args: -- $(go work edit -json | jq -c -r '[.Use[].DiskPath | select(. != "syncx" and . != "process")] | map_values(. + "/...")[]')
 
       - name: staticcheck
         uses: dominikh/staticcheck-action@v1.3.0
