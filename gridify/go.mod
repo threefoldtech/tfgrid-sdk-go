@@ -10,8 +10,8 @@ require (
 	github.com/rs/zerolog v1.29.0
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.2
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.0.0-20230412143003-ef7321058840
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.0.0-20230412141347-0aa6b571f6b4
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.0.0-20230412151452-fab5808f0b60
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.0.0-20230412151452-fab5808f0b60
 	github.com/threefoldtech/zos v0.5.6-0.20230321103809-44426c1a69c7
 )
 
@@ -56,8 +56,8 @@ require (
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/threefoldtech/rmb-sdk-go v1.0.1-0.20230316162347-255e7faa0006 // indirect
 	github.com/threefoldtech/substrate-client v0.1.5 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.0.0-20230412150800-2145c15be142 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
