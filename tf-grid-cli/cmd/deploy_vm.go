@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
+	command "github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/cmd"
 	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
 	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/filters"
 )
@@ -99,7 +100,7 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", true, false)
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, true, false)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -112,7 +113,7 @@ var deployVMCmd = &cobra.Command{
 				log.Fatal().Err(err).Send()
 			}
 		}
-		resVM, err := t.DeployVM(vm, mount, node)
+		resVM, err := command.DeployVM(t, vm, mount, node)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

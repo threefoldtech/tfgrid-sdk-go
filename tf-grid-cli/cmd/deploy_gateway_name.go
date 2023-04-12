@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
+	command "github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/cmd"
 	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
 	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/filters"
 )
@@ -29,7 +30,7 @@ var deployGatewayNameCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", true, false)
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, true, false)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -43,7 +44,7 @@ var deployGatewayNameCmd = &cobra.Command{
 			}
 		}
 		gateway.NodeID = node
-		resGateway, err := t.DeployGatewayName(gateway)
+		resGateway, err := command.DeployGatewayName(t, gateway)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

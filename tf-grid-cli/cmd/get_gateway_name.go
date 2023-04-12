@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
+	command "github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/cmd"
 	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
 )
 
@@ -19,11 +20,12 @@ var getGatewayNameCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", true, false)
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, true, false)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		gateway, err := t.GetGatewayName(args[0])
+
+		gateway, err := command.GetGatewayName(t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
