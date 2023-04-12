@@ -101,15 +101,30 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		workersIPV4, err := cmd.Flags().GetBool("workers-ipv4")
+		if err != nil {
+			return err
+		}
+		workersIPV6, err := cmd.Flags().GetBool("workers-ipv6")
+		if err != nil {
+			return err
+		}
+		workersYgg, err := cmd.Flags().GetBool("workers-ygg")
+		if err != nil {
+			return err
+		}
 		var workers []workloads.K8sNode
 		for i := 0; i < workerNumber; i++ {
 			workerName := fmt.Sprintf("worker%d", i)
 			worker := workloads.K8sNode{
-				Name:     workerName,
-				Flist:    k8sFlist,
-				CPU:      workersCPU,
-				Memory:   workersMemory * 1024,
-				DiskSize: workersDisk,
+				Name:      workerName,
+				Flist:     k8sFlist,
+				CPU:       workersCPU,
+				Memory:    workersMemory * 1024,
+				DiskSize:  workersDisk,
+				PublicIP:  workersIPV4,
+				PublicIP6: workersIPV6,
+				Planetary: workersYgg,
 			}
 			workers = append(workers, worker)
 		}
@@ -198,6 +213,9 @@ func init() {
 	deployKubernetesCmd.Flags().Uint32("workers-node", 0, "node id workers should be deployed on")
 	deployKubernetesCmd.Flags().Uint64("workers-farm", 1, "farm id workers should be deployed on")
 	deployKubernetesCmd.MarkFlagsMutuallyExclusive("workers-node", "workers-farm")
+	deployKubernetesCmd.Flags().Bool("workers-ipv4", false, "assign public ipv4 for workers")
+	deployKubernetesCmd.Flags().Bool("workers-ipv6", false, "assign public ipv6 for workers")
+	deployKubernetesCmd.Flags().Bool("workers-ygg", true, "assign yggdrasil ip for workers")
 
 	deployKubernetesCmd.Flags().Bool("ipv4", false, "assign public ipv4 for master")
 	deployKubernetesCmd.Flags().Bool("ipv6", false, "assign public ipv6 for master")
