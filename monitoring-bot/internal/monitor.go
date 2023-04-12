@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/rmb-sdk-go"
-	"github.com/threefoldtech/rmb-sdk-go/direct"
 	client "github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
 )
 
 type address string

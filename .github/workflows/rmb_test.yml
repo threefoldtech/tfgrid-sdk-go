@@ -6,7 +6,7 @@ name: RMB lint and test
 on:
   push:
     paths:
-      - monitoring-bot/**
+      - rmb-sdk-go/**
   workflow_dispatch:
 
 defaults:
