@@ -3,6 +3,7 @@ name: proxy Integration tests
 defaults:
   run:
     working-directory: gridproxy
+
 on:
   push:
     paths:

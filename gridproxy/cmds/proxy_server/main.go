@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -159,16 +158,9 @@ func app(s *http.Server, f flags) error {
 }
 
 func createRMBClient(ctx context.Context, relayURL, mnemonics string, sub *substrate.Substrate) (rmb.Client, error) {
-	client, err := direct.NewClient(ctx, direct.KeyTypeSr25519, mnemonics, relayURL, "tfgrid_proxy", sub, false)
+	client, err := direct.NewClient(direct.KeyTypeSr25519, mnemonics, relayURL, "tfgrid_proxy", sub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create direct RMB client: %w", err)
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	if err := client.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("failed to ping Relay server: %s", err)
 	}
 	return client, nil
 }

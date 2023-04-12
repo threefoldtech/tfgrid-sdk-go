@@ -1,7 +1,5 @@
 name: proxy release Create and publish a Docker image
 
-
-
 defaults:
   run:
     working-directory: grid-proxy
@@ -20,7 +18,7 @@ jobs:
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v3
-      
+
       - name: "Get Previous tag"
         id: previoustag
         uses: actions-ecosystem/action-get-latest-tag@v1
