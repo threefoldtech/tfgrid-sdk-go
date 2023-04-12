@@ -1,4 +1,4 @@
-name: release
+name: gridify release
 
 defaults:
   run:
