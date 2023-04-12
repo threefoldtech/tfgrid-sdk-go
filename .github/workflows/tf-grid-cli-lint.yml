@@ -1,11 +1,16 @@
 name: cli lint
 on: [push]
 
+defaults:
+  run:
+    working-directory: ./tf-grid-cli
+
 jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
     timeout-minutes: 5
+
     steps:
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -19,13 +24,10 @@ jobs:
           submodules: "true"
 
       - name: golangci-lint
-        working-directory: tf-grid-cli
         uses: golangci/golangci-lint-action@v3
         with:
           args: --timeout 3m --verbose
       - name: gofmt
-        working-directory: tf-grid-cli
         uses: Jerome1337/gofmt-action@v1.0.5
         with:
           gofmt-flags: "-l -d"
-        working-directory: tf-grid-cli
