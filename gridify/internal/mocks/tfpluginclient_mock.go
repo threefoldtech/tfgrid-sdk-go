@@ -9,9 +9,9 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
 	types "github.com/threefoldtech/grid_proxy_server/pkg/types"
 	graphql "github.com/threefoldtech/tfgrid-sdk-go/grid3-go/graphql"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
 	gridtypes "github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
