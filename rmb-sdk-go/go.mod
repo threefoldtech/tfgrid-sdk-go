@@ -15,7 +15,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.28.0
 	github.com/stretchr/testify v1.7.0
-	github.com/threefoldtech/substrate-client v0.0.0-20230203145052-45be626d311b
+	github.com/threefoldtech/substrate-client v0.1.5
 	github.com/tyler-smith/go-bip39 v1.1.0
 	google.golang.org/protobuf v1.23.0
 )
