@@ -1,15 +1,14 @@
 name: monbot test
 
-
 defaults:
   run:
     working-directory: monitoring-bot
 
 on:
   push:
-    branches: ["main", "development"]
-  pull_request:
-    branches: ["main", "development"]
+    paths:
+      - monitoring-bot/**
+  workflow_dispatch:
 
 jobs:
   Explore-Package:
