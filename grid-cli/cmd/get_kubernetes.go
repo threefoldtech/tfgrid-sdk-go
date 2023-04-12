@@ -6,15 +6,16 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
-	command "github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/cmd"
-	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
 )
 
-// getGatewayFQDNCmd represents the get gateway fqdn command
-var getGatewayFQDNCmd = &cobra.Command{
-	Use:   "fqdn",
-	Short: "Get deployed gateway FQDN",
+// getKubernetesCmd represents the get kubernetes command
+var getKubernetesCmd = &cobra.Command{
+	Use:   "kubernetes",
+	Short: "Get deployed kubernetes",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.GetUserConfig()
 		if err != nil {
@@ -25,18 +26,19 @@ var getGatewayFQDNCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		gateway, err := command.GetGatewayFQDN(t, args[0])
+		cluster, err := command.GetK8sCluster(t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		s, err := json.MarshalIndent(gateway, "", "\t")
+		s, err := json.MarshalIndent(cluster, "", "\t")
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		log.Info().Msg("gateway fqdn:\n" + string(s))
+		log.Info().Msg("k8s cluster:\n" + string(s))
+
 	},
 }
 
 func init() {
-	getGatewayCmd.AddCommand(getGatewayFQDNCmd)
+	getCmd.AddCommand(getKubernetesCmd)
 }

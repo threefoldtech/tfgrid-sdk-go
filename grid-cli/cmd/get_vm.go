@@ -6,15 +6,16 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
-	command "github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/cmd"
-	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
 )
 
-// getGatewayNameCmd represents the get gateway name command
-var getGatewayNameCmd = &cobra.Command{
-	Use:   "name",
-	Short: "Get deployed gateway name",
+// getVMCmd represents the get vm command
+var getVMCmd = &cobra.Command{
+	Use:   "vm",
+	Short: "Get deployed vm",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.GetUserConfig()
 		if err != nil {
@@ -25,18 +26,19 @@ var getGatewayNameCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		gateway, err := command.GetGatewayName(t, args[0])
+		vm, err := command.GetVM(t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		s, err := json.MarshalIndent(gateway, "", "\t")
+		s, err := json.MarshalIndent(vm, "", "\t")
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		log.Info().Msg("gateway name:\n" + string(s))
+		log.Info().Msg("vm:\n" + string(s))
+
 	},
 }
 
 func init() {
-	getGatewayCmd.AddCommand(getGatewayNameCmd)
+	getCmd.AddCommand(getVMCmd)
 }

@@ -2,7 +2,7 @@ name: cli release
 
 defaults:
   run:
-    working-directory: tf-grid-cli
+    working-directory: grid-cli
 
 on:
   push:

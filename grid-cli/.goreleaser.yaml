@@ -17,8 +17,8 @@ builds:
     - goos: windows 
       goarch: 'arm64'
     ldflags:
-      - -X github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/cmd.Version={{.Tag}}
-      - -X github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/cmd.Commit={{.Commit}}
+      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.Version={{.Tag}}
+      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.Commit={{.Commit}}
 
 archives:
   - format: tar.gz

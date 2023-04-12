@@ -2,12 +2,12 @@ name: cli Testing
 
 defaults:
   run:
-    working-directory: tf-grid-cli
+    working-directory: grid-cli
 
 on:
   push:
     paths:
-      - tf-grid-cli/**
+      - grid-cli/**
   workflow_dispatch:
 
 jobs:

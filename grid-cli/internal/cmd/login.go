@@ -10,7 +10,7 @@ import (
 	bip39 "github.com/cosmos/go-bip39"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
 )
 
 // Login handles login command logic

@@ -4,32 +4,27 @@ package cmd
 import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/filters"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
-	command "github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/cmd"
-	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/filters"
 )
 
-// deployGatewayFQDNCmd represents the deploy gateway fqdn command
-var deployGatewayFQDNCmd = &cobra.Command{
-	Use:   "fqdn",
-	Short: "Deploy a gateway FQDN proxy",
+// deployGatewayNameCmd represents the deploy gateway name command
+var deployGatewayNameCmd = &cobra.Command{
+	Use:   "name",
+	Short: "Deploy a gateway name proxy",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, tls, zosBackends, node, farm, err := parseCommonGatewayFlags(cmd)
 		if err != nil {
 			return err
 		}
-		fqdn, err := cmd.Flags().GetString("fqdn")
-		if err != nil {
-			return err
-		}
-		gateway := workloads.GatewayFQDNProxy{
+		gateway := workloads.GatewayNameProxy{
 			Name:           name,
 			Backends:       zosBackends,
 			TLSPassthrough: tls,
 			SolutionType:   name,
-			FQDN:           fqdn,
 		}
 		cfg, err := config.GetUserConfig()
 		if err != nil {
@@ -49,22 +44,16 @@ var deployGatewayFQDNCmd = &cobra.Command{
 			}
 		}
 		gateway.NodeID = node
-		err = command.DeployGatewayFQDN(t, gateway)
+		resGateway, err := command.DeployGatewayName(t, gateway)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		log.Info().Msg("gateway fqdn deployed")
+		log.Info().Msgf("fqdn: %s", resGateway.FQDN)
 		return nil
 	},
 }
 
 func init() {
-	deployGatewayCmd.AddCommand(deployGatewayFQDNCmd)
-
-	deployGatewayFQDNCmd.Flags().String("fqdn", "", "fqdn pointing to the specified node")
-	err := deployGatewayFQDNCmd.MarkFlagRequired("fqdn")
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
+	deployGatewayCmd.AddCommand(deployGatewayNameCmd)
 
 }

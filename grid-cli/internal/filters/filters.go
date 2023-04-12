@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/client"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid_proxy_server/pkg/types"
 )
 
 func GetAvailableNode(client client.Client, filter types.NodeFilter) (uint32, error) {

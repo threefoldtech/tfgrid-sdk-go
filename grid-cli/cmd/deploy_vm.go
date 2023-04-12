@@ -7,11 +7,11 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/filters"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
-	command "github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/cmd"
-	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/filters"
 )
 
 var ubuntuFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"

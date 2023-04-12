@@ -2,19 +2,20 @@
 package cmd
 
 import (
+	"encoding/json"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/tf-grid-cli/internal/config"
 )
 
-// cancelCmd represents the cancel command
-var cancelCmd = &cobra.Command{
-	Use:   "cancel",
-	Short: "Cancel resources on Threefold grid",
-	Args:  cobra.ExactArgs(1),
+// getGatewayFQDNCmd represents the get gateway fqdn command
+var getGatewayFQDNCmd = &cobra.Command{
+	Use:   "fqdn",
+	Short: "Get deployed gateway FQDN",
 	Run: func(cmd *cobra.Command, args []string) {
-
 		cfg, err := config.GetUserConfig()
 		if err != nil {
 			log.Fatal().Err(err).Send()
@@ -23,14 +24,19 @@ var cancelCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		err = t.CancelByProjectName(args[0])
+
+		gateway, err := command.GetGatewayFQDN(t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
+		s, err := json.MarshalIndent(gateway, "", "\t")
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+		log.Info().Msg("gateway fqdn:\n" + string(s))
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(cancelCmd)
-
+	getGatewayCmd.AddCommand(getGatewayFQDNCmd)
 }
