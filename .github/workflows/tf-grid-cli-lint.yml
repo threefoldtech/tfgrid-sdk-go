@@ -1,9 +1,14 @@
 name: cli lint
-on: [push]
 
 defaults:
   run:
     working-directory: ./tf-grid-cli
+
+on:
+  push:
+    paths:
+      - tf-grid-cli/**
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -27,6 +32,8 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           args: --timeout 3m --verbose
+          working-directory: tf-grid-cli
+
       - name: gofmt
         uses: Jerome1337/gofmt-action@v1.0.5
         with:

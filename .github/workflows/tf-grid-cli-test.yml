@@ -4,7 +4,11 @@ defaults:
   run:
     working-directory: tf-grid-cli
 
-on: [push]
+on:
+  push:
+    paths:
+      - tf-grid-cli/**
+  workflow_dispatch:
 
 jobs:
   test:
