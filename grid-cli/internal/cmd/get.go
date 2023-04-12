@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
 var (

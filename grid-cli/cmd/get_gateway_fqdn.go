@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
 // getGatewayFQDNCmd represents the get gateway fqdn command

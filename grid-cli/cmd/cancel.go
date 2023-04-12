@@ -5,7 +5,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
 // cancelCmd represents the cancel command

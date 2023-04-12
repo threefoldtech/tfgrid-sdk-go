@@ -11,8 +11,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/grid_proxy_server/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/graphql"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/mocks"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )

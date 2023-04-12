@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/tfplugin"
 )
 

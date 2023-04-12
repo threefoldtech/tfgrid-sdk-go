@@ -10,8 +10,8 @@ import (
 	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/filters"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
 var k8sFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"

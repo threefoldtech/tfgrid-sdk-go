@@ -3,12 +3,12 @@ name: Grid3 Go lint
 on:
   push:
     paths:
-      - grid3-go/**
+      - grid-client/**
   workflow_dispatch:
 
 defaults:
   run:
-    working-directory: grid3-go
+    working-directory: grid-client
 
 jobs:
   lint:
@@ -31,13 +31,13 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           args: --timeout 3m --verbose
-          working-directory: grid3-go
+          working-directory: grid-client
 
       - name: staticcheck
         uses: dominikh/staticcheck-action@v1.3.0
         with:
           version: "2022.1.3"
-          working-directory: grid3-go
+          working-directory: grid-client
         env:
           GO111MODULE: on
 

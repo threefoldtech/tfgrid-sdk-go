@@ -438,8 +438,8 @@ github.com/threefoldtech/rmb-sdk-go v1.0.1-0.20230316162347-255e7faa0006 h1:FcO0
 github.com/threefoldtech/rmb-sdk-go v1.0.1-0.20230316162347-255e7faa0006/go.mod h1:OFb7TpYhHa6YpWBJjsh6r7CX7uVbSPIJrk1QxlTT1jU=
 github.com/threefoldtech/substrate-client v0.1.5 h1:yYmWaJCMoJO0ieaO6eu3vIK0agehSw4OhSXlGydmv/E=
 github.com/threefoldtech/substrate-client v0.1.5/go.mod h1:ys/GJLeLmNX8E36UFMeR0yZC5Lo4PufYtfwsVX8H/AM=
-github.com/threefoldtech/tfgrid-sdk-go/grid3-go v0.0.0-20230412120312-e3083ea90471 h1:BP1nPwePd+x1OvEDtDC75CbVpUq8P0qAuGzJCPAb/7k=
-github.com/threefoldtech/tfgrid-sdk-go/grid3-go v0.0.0-20230412120312-e3083ea90471/go.mod h1:CglbVbSLdIZcNVY/s4sJziykDEZhP8XPBXswcgglsjI=
+github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.0.0-20230412120312-e3083ea90471 h1:BP1nPwePd+x1OvEDtDC75CbVpUq8P0qAuGzJCPAb/7k=
+github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.0.0-20230412120312-e3083ea90471/go.mod h1:CglbVbSLdIZcNVY/s4sJziykDEZhP8XPBXswcgglsjI=
 github.com/threefoldtech/zos v0.5.6-0.20230321103809-44426c1a69c7 h1:L6L9Nxwl5yqoLM956FQ+NGxBLLTgFMWlw5xIFXb2k/Y=
 github.com/threefoldtech/zos v0.5.6-0.20230321103809-44426c1a69c7/go.mod h1:l+VG8dujgdsmqQlfmgTtev8n7as5FImMbYZHQN9TtXU=
 github.com/tinylib/msgp v1.0.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=

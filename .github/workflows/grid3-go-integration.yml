@@ -2,7 +2,7 @@ name: Grid3 Go Integration tests
 
 defaults:
   run:
-    working-directory: grid3-go
+    working-directory: grid-client
 on:
   schedule:
     - cron: "0 6 * * *"

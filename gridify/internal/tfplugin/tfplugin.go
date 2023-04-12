@@ -6,9 +6,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/grid_proxy_server/pkg/types"
-	gridDeployer "github.com/threefoldtech/tfgrid-sdk-go/grid3-go/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/graphql"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
+	gridDeployer "github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -37,7 +37,7 @@ func NewTFPluginClient(mnemonics, network string) (TFPluginClient, error) {
 	}, nil
 }
 
-// tfPluginClient wraps grid3-go tfPluginClient
+// tfPluginClient wraps grid-client tfPluginClient
 type TFPluginClient struct {
 	tfPluginClient *gridDeployer.TFPluginClient
 }

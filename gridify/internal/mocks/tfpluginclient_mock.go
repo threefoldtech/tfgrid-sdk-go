@@ -10,8 +10,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	types "github.com/threefoldtech/grid_proxy_server/pkg/types"
-	graphql "github.com/threefoldtech/tfgrid-sdk-go/grid3-go/graphql"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid3-go/workloads"
+	graphql "github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	gridtypes "github.com/threefoldtech/zos/pkg/gridtypes"
 )
 

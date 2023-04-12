@@ -3,12 +3,12 @@ name: Grid3 Go Testing
 on:
   push:
     paths:
-      - grid3-go/**
+      - grid-client/**
   workflow_dispatch:
 
 defaults:
   run:
-    working-directory: grid3-go
+    working-directory: grid-client
 
 jobs:
   test:
