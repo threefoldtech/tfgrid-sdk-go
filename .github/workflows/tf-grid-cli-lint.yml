@@ -19,11 +19,12 @@ jobs:
           submodules: "true"
 
       - name: golangci-lint
+        working-directory: tf-grid-cli
         uses: golangci/golangci-lint-action@v3
         with:
           args: --timeout 3m --verbose
-        working-directory: tf-grid-cli
       - name: gofmt
+        working-directory: tf-grid-cli
         uses: Jerome1337/gofmt-action@v1.0.5
         with:
           gofmt-flags: "-l -d"
