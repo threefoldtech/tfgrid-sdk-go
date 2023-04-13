@@ -8,7 +8,7 @@ require (
 	github.com/rs/zerolog v1.29.0
 	github.com/spf13/cobra v1.6.1
 	github.com/threefoldtech/substrate-client v0.1.5
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.0.0-20230412150800-2145c15be142
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0
 )
 
 require (
@@ -46,5 +46,7 @@ require (
 	google.golang.org/protobuf v1.23.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
+
+replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0 => ../rmb-sdk-go
 
 replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20230102154731-7c633b7d3c71
