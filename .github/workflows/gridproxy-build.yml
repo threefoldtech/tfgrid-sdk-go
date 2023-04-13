@@ -13,7 +13,7 @@ jobs:
       run:
         working-directory: grid-proxy
     steps:
-      - uses: actions/checkout@v3.5.1
+      - uses: actions/checkout@v3.5.2
 
       - name: Set up Go
         uses: actions/setup-go@v4
