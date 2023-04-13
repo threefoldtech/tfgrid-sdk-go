@@ -1,4 +1,4 @@
-// direct package provides the functionality to create a direct websocket connection to rmb relays without the need to rmb peers.
+// Package direct package provides the functionality to create a direct websocket connection to rmb relays without the need to rmb peers.
 package direct
 
 import (
