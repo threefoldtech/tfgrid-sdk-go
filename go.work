@@ -1,0 +1,10 @@
+go 1.19
+
+use (
+	./grid-cli
+	./grid-client
+	./grid-proxy
+	./gridify
+	./monitoring-bot
+	./rmb-sdk-go
+)
