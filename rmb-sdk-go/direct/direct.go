@@ -1,3 +1,4 @@
+// direct package provides the functionality to create a direct websocket connection to rmb relays without the need to rmb peers.
 package direct
 
 import (
@@ -33,6 +34,7 @@ var (
 	_ rmb.Client = (*DirectClient)(nil)
 )
 
+// DirectClient exposes the functionality to talk directly to an rmb relay
 type DirectClient struct {
 	source    *types.Address
 	signer    substrate.Identity
@@ -321,6 +323,7 @@ func (d *DirectClient) request(ctx context.Context, request *types.Envelope) (*t
 	return response, nil
 }
 
+// Call sends an rmb call to the relay
 func (d *DirectClient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
 
 	payload, err := json.Marshal(data)

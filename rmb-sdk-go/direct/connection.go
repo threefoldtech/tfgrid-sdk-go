@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	PongWait     = 40 * time.Second
-	PingInterval = 20 * time.Second
+	pongWait     = 40 * time.Second
+	pingInterval = 20 * time.Second
 )
 
+// InnerConnection holds the required state to create a self healing websocket connection to the rmb relay.
 type InnerConnection struct {
 	twinID   uint32
 	session  string
@@ -25,18 +26,21 @@ type InnerConnection struct {
 	url      string
 }
 
+// Writer is a channel that sends outgoing messages
 type Writer chan<- []byte
 
 func (w Writer) Write(data []byte) {
 	w <- data
 }
 
+// Reader is a channel that receives incoming messages
 type Reader <-chan []byte
 
 func (r Reader) Read() []byte {
 	return <-r
 }
 
+// NewConnection creates a new InnerConnection instance
 func NewConnection(identity substrate.Identity, url string, session string, twinID uint32) InnerConnection {
 	return InnerConnection{
 		twinID:   twinID,
@@ -97,18 +101,19 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output,
 			}
 		case <-pong:
 			lastPong = time.Now()
-		case <-time.After(PingInterval):
+		case <-time.After(pingInterval):
 			if err := con.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
 				return err
 			}
 
-			if time.Since(lastPong) > PongWait {
+			if time.Since(lastPong) > pongWait {
 				return fmt.Errorf("connection stalling")
 			}
 		}
 	}
 }
 
+// Start initiates the websocket connection
 func (c *InnerConnection) Start(ctx context.Context) (Reader, Writer) {
 	output := make(chan []byte)
 	input := make(chan []byte)
@@ -141,9 +146,9 @@ func (c *InnerConnection) connect() (*websocket.Conn, error) {
 		return nil, errors.Wrap(err, "could not create new jwt")
 	}
 
-	relayUrl := fmt.Sprintf("%s?%s", c.url, token)
+	relayURL := fmt.Sprintf("%s?%s", c.url, token)
 
-	con, resp, err := websocket.DefaultDialer.Dial(relayUrl, nil)
+	con, resp, err := websocket.DefaultDialer.Dial(relayURL, nil)
 	if err != nil {
 		var body []byte
 		var status string
