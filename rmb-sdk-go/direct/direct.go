@@ -1,3 +1,4 @@
+// Package direct package provides the functionality to create a direct websocket connection to rmb relays without the need to rmb peers.
 package direct
 
 import (
@@ -9,15 +10,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"sync"
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/substrate-client"
@@ -32,14 +30,20 @@ const (
 	KeyTypeSr25519 = "sr25519"
 )
 
-type directClient struct {
+var (
+	_ rmb.Client = (*DirectClient)(nil)
+)
+
+// DirectClient exposes the functionality to talk directly to an rmb relay
+type DirectClient struct {
 	source    *types.Address
 	signer    substrate.Identity
-	con       *websocket.Conn
 	responses map[string]chan *types.Envelope
-	m         sync.Mutex
+	respM     sync.Mutex
 	twinDB    TwinDB
 	privKey   *secp256k1.PrivateKey
+	reader    Reader
+	writer    Writer
 }
 
 func generateSecureKey(mnemonics string) (*secp256k1.PrivateKey, error) {
@@ -71,17 +75,16 @@ func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 	return identity, nil
 }
 
-// id is the twin id that is associated with the given identity.
-func NewClient(keytype string, mnemonics string, relayUrl string, session string, sub *substrate.Substrate) (rmb.Client, error) {
-
+// NewClient creates a new RMB direct client. It connects directly to the RMB-Relay, and peridically tries to reconnect if the connection broke.
+//
+// You can close the connection by canceling the passed context.
+//
+// Make sure the context passed to Call() does not outlive the directClient's context.
+// Call() will panic if called while the directClient's context is canceled.
+func NewClient(ctx context.Context, keytype string, mnemonics string, relayURL string, session string, sub *substrate.Substrate, enableEncryption bool) (*DirectClient, error) {
 	identity, err := getIdentity(keytype, mnemonics)
 	if err != nil {
 		return nil, err
-	}
-
-	privKey, err := generateSecureKey(mnemonics)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not generate secure key")
 	}
 
 	twinDB := NewTwinDB(sub)
@@ -95,84 +98,64 @@ func NewClient(keytype string, mnemonics string, relayUrl string, session string
 		return nil, errors.Wrapf(err, "failed to get twin id: %d", id)
 	}
 
-	url, err := url.Parse(relayUrl)
+	url, err := url.Parse(relayURL)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse url: %s", relayUrl)
+		return nil, errors.Wrapf(err, "failed to parse url: %s", relayURL)
 	}
 
-	if !bytes.Equal(twin.E2EKey, privKey.PubKey().SerializeCompressed()) || twin.Relay == nil || url.Hostname() != *twin.Relay {
-		log.Info().Msg("twin relay/public key didn't match, updating on chain ...")
-		_, err := sub.UpdateTwin(identity, url.Hostname(), privKey.PubKey().SerializeCompressed())
+	var publicKey []byte
+	var privKey *secp256k1.PrivateKey
+	if enableEncryption {
+		privKey, err = generateSecureKey(mnemonics)
 		if err != nil {
-			log.Error().Err(err)
+			return nil, errors.Wrapf(err, "could not generate secure key")
+
+		}
+		publicKey = privKey.PubKey().SerializeCompressed()
+	}
+
+	if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || url.Hostname() != *twin.Relay {
+		log.Info().Msg("twin relay/public key didn't match, updating on chain ...")
+		if _, err = sub.UpdateTwin(identity, url.Hostname(), publicKey); err != nil {
+			return nil, errors.Wrap(err, "could not update twin relay information")
 		}
 	}
+	conn := NewConnection(identity, relayURL, session, twin.ID)
 
-	token, err := NewJWT(identity, id, session, 60) // use 1 min token ttl
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build authentication token")
-	}
-	// wss://relay.dev.grid.tf/?<JWT>
-	relayUrl = fmt.Sprintf("%s?%s", relayUrl, token)
+	reader, writer := conn.Start(ctx)
 	source := types.Address{
 		Twin:       id,
 		Connection: &session,
 	}
 
-	con, resp, err := websocket.DefaultDialer.Dial(relayUrl, nil)
-	if err != nil {
-		var body []byte
-		var status string
-		if resp != nil {
-			status = resp.Status
-			body, _ = io.ReadAll(resp.Body)
-		}
-		return nil, errors.Wrapf(err, "failed to connect (%s): %s", status, string(body))
-	}
-
-	if resp.StatusCode != http.StatusSwitchingProtocols {
-		return nil, fmt.Errorf("invalid response %s", resp.Status)
-	}
-
-	cl := &directClient{
+	cl := &DirectClient{
 		source:    &source,
 		signer:    identity,
-		con:       con,
 		responses: make(map[string]chan *types.Envelope),
 		twinDB:    twinDB,
 		privKey:   privKey,
+		reader:    reader,
+		writer:    writer,
 	}
-
 	go cl.process()
+
 	return cl, nil
 }
 
-func (d *directClient) process() {
-	defer d.con.Close()
-	// todo: set error on connection here
-	for {
-		typ, msg, err := d.con.ReadMessage()
-		if err != nil {
-			log.Error().Err(err).Msg("websocket error connection closed")
-			return
-		}
-		if typ != websocket.BinaryMessage {
-			continue
-		}
-
+func (d *DirectClient) process() {
+	for incoming := range d.reader {
 		var env types.Envelope
-		if err := proto.Unmarshal(msg, &env); err != nil {
+		if err := proto.Unmarshal(incoming, &env); err != nil {
 			log.Error().Err(err).Msg("invalid message payload")
 			return
 		}
-
 		d.router(&env)
 	}
 }
 
-func (d *directClient) router(env *types.Envelope) {
-	d.m.Lock()
-	defer d.m.Unlock()
+func (d *DirectClient) router(env *types.Envelope) {
+	d.respM.Lock()
+	defer d.respM.Unlock()
 
 	ch, ok := d.responses[env.Uid]
 	if !ok {
@@ -194,20 +177,22 @@ func newAEAD(key []byte) (cipher.AEAD, error) {
 	return cipher.NewGCM(block)
 }
 
-func generateNonce(size int) []byte {
+func generateNonce(size int) ([]byte, error) {
 	nonce := make([]byte, size)
 	_, err := rand.Read(nonce)
 	if err != nil {
-		log.Error().Err(err)
+		return nil, err
 	}
-	return nonce
+
+	return nonce, nil
 }
 
-func (d *directClient) generateSharedSect(pubkey *secp256k1.PublicKey) [32]byte {
+func (d *DirectClient) generateSharedSect(pubkey *secp256k1.PublicKey) [32]byte {
 	point := secp256k1.GenerateSharedSecret(d.privKey, pubkey)
 	return sha256.Sum256(point)
 }
-func (d *directClient) encrypt(data []byte, pubKey []byte) ([]byte, error) {
+
+func (d *DirectClient) encrypt(data []byte, pubKey []byte) ([]byte, error) {
 	secPubKey, err := secp256k1.ParsePubKey(pubKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not parse dest public key")
@@ -219,14 +204,17 @@ func (d *directClient) encrypt(data []byte, pubKey []byte) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed to create AEAD {}")
 	}
 
-	nonce := generateNonce(aead.NonceSize())
+	nonce, err := generateNonce(aead.NonceSize())
+	if err != nil {
+		return nil, errors.Wrap(err, "could not generate nonce")
+	}
 	cipherText := make([]byte, len(nonce))
 	copy(cipherText, nonce)
 	cipherText = aead.Seal(cipherText, nonce, data, nil)
 	return cipherText, nil
 }
 
-func (d *directClient) decrypt(data []byte, pubKey []byte) ([]byte, error) {
+func (d *DirectClient) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	secPubKey, err := secp256k1.ParsePubKey(pubKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not parse dest public key")
@@ -234,7 +222,7 @@ func (d *directClient) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	sharedSecret := d.generateSharedSect(secPubKey)
 	aead, err := newAEAD(sharedSecret[:])
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create AEAD {}")
+		return nil, errors.Wrap(err, "failed to create AEAD")
 	}
 	if len(data) < aead.NonceSize() {
 		return nil, errors.Errorf("Invalid cipher")
@@ -248,7 +236,7 @@ func (d *directClient) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	return decrypted, nil
 }
 
-func (d *directClient) makeRequest(dest uint32, cmd string, data []byte, ttl uint64) (*types.Envelope, error) {
+func (d *DirectClient) makeRequest(dest uint32, cmd string, data []byte, ttl uint64) (*types.Envelope, error) {
 	schema := rmb.DefaultSchema
 
 	env := types.Envelope{
@@ -271,7 +259,7 @@ func (d *directClient) makeRequest(dest uint32, cmd string, data []byte, ttl uin
 		return nil, errors.Wrapf(err, "failed to get twin for %d", dest)
 	}
 
-	if len(destTwin.E2EKey) > 0 {
+	if len(destTwin.E2EKey) > 0 && d.privKey != nil {
 		// destination public key is set, use e2e
 		cipher, err := d.encrypt(data, destTwin.E2EKey)
 		if err != nil {
@@ -303,7 +291,40 @@ func (d *directClient) makeRequest(dest uint32, cmd string, data []byte, ttl uin
 
 }
 
-func (d *directClient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
+func (d *DirectClient) request(ctx context.Context, request *types.Envelope) (*types.Envelope, error) {
+
+	ch := make(chan *types.Envelope)
+	d.respM.Lock()
+	d.responses[request.Uid] = ch
+	d.respM.Unlock()
+
+	bytes, err := proto.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case d.writer <- bytes:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	var response *types.Envelope
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case response = <-ch:
+	}
+	if response == nil {
+		// shouldn't happen but just in case
+		return nil, fmt.Errorf("no response received")
+	}
+
+	return response, nil
+}
+
+// Call sends an rmb call to the relay
+func (d *DirectClient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
 
 	payload, err := json.Marshal(data)
 	if err != nil {
@@ -321,29 +342,9 @@ func (d *directClient) Call(ctx context.Context, twin uint32, fn string, data in
 		return errors.Wrap(err, "failed to build request")
 	}
 
-	ch := make(chan *types.Envelope)
-	d.m.Lock()
-	d.responses[request.Uid] = ch
-	d.m.Unlock()
-
-	bytes, err := proto.Marshal(request)
+	response, err := d.request(ctx, request)
 	if err != nil {
 		return err
-	}
-
-	if err := d.con.WriteMessage(websocket.BinaryMessage, bytes); err != nil {
-		return err
-	}
-
-	var response *types.Envelope
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case response = <-ch:
-	}
-	if response == nil {
-		// shouldn't happen but just in case
-		return fmt.Errorf("no response received")
 	}
 
 	errResp := response.GetError()
@@ -387,12 +388,11 @@ func (d *directClient) Call(ctx context.Context, twin uint32, fn string, data in
 	case *types.Envelope_Cipher:
 		twin, err := d.twinDB.Get(response.Source.Twin)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get twin object for {%d}", response.Source.Twin)
+			return errors.Wrapf(err, "failed to get twin object for %d", response.Source.Twin)
 		}
 		if len(twin.E2EKey) == 0 {
 			return errors.Wrap(err, "bad twin pk")
 		}
-		fmt.Println(twin.E2EKey)
 		output, err = d.decrypt(payload.Cipher, twin.E2EKey)
 		if err != nil {
 			return errors.Wrap(err, "could not decrypt payload")
@@ -402,4 +402,31 @@ func (d *directClient) Call(ctx context.Context, twin uint32, fn string, data in
 	}
 
 	return json.Unmarshal(output, &result)
+}
+
+// Ping sends an application level ping. You normally do not ever need to call this
+// yourself because this rmb client takes care of automatic pinging of the server
+// and reconnecting if needed. But in case you want to test if a connection is active
+// and established you can call this Ping method yourself.
+// If no error is returned then ping has succeeded.
+// Make sure to always provide a ctx with a timeout or a deadline otherwise the call
+// will block forever waiting for a response.
+func (d *DirectClient) Ping(ctx context.Context) error {
+	uid := uuid.NewString()
+	request := types.Envelope{
+		Uid:     uid,
+		Source:  d.source,
+		Message: &types.Envelope_Ping{},
+	}
+
+	response, err := d.request(ctx, &request)
+	if err != nil {
+		return err
+	}
+	_, ok := response.Message.(*types.Envelope_Pong)
+	if !ok {
+		return fmt.Errorf("expected a pong response got %T", response.Message)
+	}
+
+	return nil
 }
