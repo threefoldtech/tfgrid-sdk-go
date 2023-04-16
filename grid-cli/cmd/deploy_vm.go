@@ -106,7 +106,7 @@ var deployVMCmd = &cobra.Command{
 		}
 		if node == 0 {
 			node, err = filters.GetAvailableNode(
-				t.GridProxyClient,
+				&t,
 				filters.BuildVMFilter(vm, mount, farm),
 			)
 			if err != nil {

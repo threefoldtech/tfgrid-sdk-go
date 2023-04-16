@@ -140,7 +140,7 @@ var deployKubernetesCmd = &cobra.Command{
 
 		if masterNode == 0 {
 			masterNode, err = filters.GetAvailableNode(
-				t.GridProxyClient,
+				&t,
 				filters.BuildK8sFilter(
 					master,
 					masterFarm,
@@ -155,7 +155,7 @@ var deployKubernetesCmd = &cobra.Command{
 
 		if workersNode == 0 && len(workers) > 0 {
 			workersNode, err = filters.GetAvailableNode(
-				t.GridProxyClient,
+				&t,
 				filters.BuildK8sFilter(
 					workers[0],
 					workersFarm,

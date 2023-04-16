@@ -40,7 +40,7 @@ var deployGatewayNameCmd = &cobra.Command{
 		}
 		if node == 0 {
 			node, err = filters.GetAvailableNode(
-				t.GridProxyClient,
+				&t,
 				filters.BuildGatewayFilter(farm),
 			)
 			if err != nil {
