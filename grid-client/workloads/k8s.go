@@ -31,6 +31,9 @@ type K8sNode struct {
 	IP            string
 	CPU           int
 	Memory        int
+	NetworkName   string
+	Token         string
+	SSHKey        string
 }
 
 // K8sCluster struct for k8s cluster
@@ -90,6 +93,7 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, 
 	if err != nil {
 		return k, err
 	}
+
 	return K8sNode{
 		Name:          string(wl.Name),
 		Node:          nodeID,
@@ -105,6 +109,9 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, 
 		IP:            d.Network.Interfaces[0].IP.String(),
 		CPU:           int(d.ComputeCapacity.CPU),
 		Memory:        int(d.ComputeCapacity.Memory / gridtypes.Megabyte),
+		NetworkName:   string(d.Network.Interfaces[0].Network),
+		Token:         d.Env["K3S_TOKEN"],
+		SSHKey:        d.Env["SSH_KEY"],
 	}, nil
 }
 

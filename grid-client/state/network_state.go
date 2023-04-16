@@ -1,5 +1,5 @@
-// Package deployer for grid deployer
-package deployer
+// Package state for grid state
+package state
 
 import "github.com/threefoldtech/zos/pkg/gridtypes"
 
@@ -50,7 +50,7 @@ func (nm NetworkState) DeleteNetwork(networkName string) {
 }
 
 // GetNodeSubnet gets a node subnet using its ID
-func (n *Network) getNodeSubnet(nodeID uint32) string {
+func (n *Network) GetNodeSubnet(nodeID uint32) string {
 	return n.Subnets[nodeID]
 }
 
@@ -65,7 +65,7 @@ func (n *Network) deleteNodeSubnet(nodeID uint32) {
 }
 
 // GetUsedNetworkHostIDs gets the used host IDs on the overlay Network
-func (n *Network) getUsedNetworkHostIDs(nodeID uint32) []byte {
+func (n *Network) GetUsedNetworkHostIDs(nodeID uint32) []byte {
 	ips := []byte{}
 	for _, v := range n.NodeDeploymentHostIDs[nodeID] {
 		ips = append(ips, v...)

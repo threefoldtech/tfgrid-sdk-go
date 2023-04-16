@@ -37,7 +37,7 @@ func NewK8sDeployer(tfPluginClient *TFPluginClient) K8sDeployer {
 func (d *K8sDeployer) Validate(ctx context.Context, k8sCluster *workloads.K8sCluster) error {
 	sub := d.tfPluginClient.SubstrateConn
 
-	if err := d.assignNodeIPRange(k8sCluster); err != nil {
+	if err := d.tfPluginClient.State.AssignNodesIPRange(k8sCluster); err != nil {
 		return err
 	}
 
@@ -102,7 +102,7 @@ func (d *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context, k8sClu
 
 // Deploy deploys a k8s cluster deployment
 func (d *K8sDeployer) Deploy(ctx context.Context, k8sCluster *workloads.K8sCluster) error {
-	if err := d.assignNodeIPRange(k8sCluster); err != nil {
+	if err := d.tfPluginClient.State.AssignNodesIPRange(k8sCluster); err != nil {
 		return err
 	}
 
@@ -345,16 +345,16 @@ func (d *K8sDeployer) removeDeletedContracts(ctx context.Context, k8sCluster *wo
 
 func (d *K8sDeployer) getK8sUsedIPs(k8s *workloads.K8sCluster) map[uint32][]byte {
 	usedIPs := make(map[uint32][]byte)
-	network := d.tfPluginClient.State.networks.GetNetwork(k8s.NetworkName)
+	network := d.tfPluginClient.State.Networks.GetNetwork(k8s.NetworkName)
 
 	if k8s.Master.IP != "" {
 		usedIPs[k8s.Master.Node] = append(usedIPs[k8s.Master.Node], net.ParseIP(k8s.Master.IP)[3])
 	}
-	usedIPs[k8s.Master.Node] = append(usedIPs[k8s.Master.Node], network.getUsedNetworkHostIDs(k8s.Master.Node)...)
+	usedIPs[k8s.Master.Node] = append(usedIPs[k8s.Master.Node], network.GetUsedNetworkHostIDs(k8s.Master.Node)...)
 	for _, w := range k8s.Workers {
 		if w.IP != "" {
 			usedIPs[w.Node] = append(usedIPs[w.Node], net.ParseIP(w.IP)[3])
-			usedIPs[w.Node] = append(usedIPs[w.Node], network.getUsedNetworkHostIDs(w.Node)...)
+			usedIPs[w.Node] = append(usedIPs[w.Node], network.GetUsedNetworkHostIDs(w.Node)...)
 		}
 	}
 
@@ -400,23 +400,5 @@ func (d *K8sDeployer) assignNodesIPs(k8sCluster *workloads.K8sCluster) error {
 		}
 		k8sCluster.Workers[idx].IP = ip
 	}
-	return nil
-}
-
-func (d *K8sDeployer) assignNodeIPRange(k8sCluster *workloads.K8sCluster) (err error) {
-	network := d.tfPluginClient.State.networks.GetNetwork(k8sCluster.NetworkName)
-	nodesIPRange := make(map[uint32]gridtypes.IPNet)
-	nodesIPRange[k8sCluster.Master.Node], err = gridtypes.ParseIPNet(network.getNodeSubnet(k8sCluster.Master.Node))
-	if err != nil {
-		return errors.Wrap(err, "could not parse master node ip range")
-	}
-	for _, worker := range k8sCluster.Workers {
-		nodesIPRange[worker.Node], err = gridtypes.ParseIPNet(network.getNodeSubnet(worker.Node))
-		if err != nil {
-			return errors.Wrapf(err, "could not parse worker node (%d) ip range", worker.Node)
-		}
-	}
-	k8sCluster.NodesIPRange = nodesIPRange
-
 	return nil
 }
