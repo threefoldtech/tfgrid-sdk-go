@@ -64,7 +64,7 @@ func BuildK8sFilter(k8sNode workloads.K8sNode, farmID uint64, k8sNodesNum uint) 
 	return buildGenericFilter(&freeMRUs, &freeSRUs, &freeIPs, []uint64{farmID}, nil)
 }
 
-// BuildK8sFilter build a filter for a vm
+// BuildVMFilter build a filter for a vm
 func BuildVMFilter(vm workloads.VM, disk workloads.Disk, farmID uint64) types.NodeFilter {
 	freeMRUs := uint64(vm.Memory) / 1024
 	freeSRUs := uint64(vm.RootfsSize) / 1024
@@ -76,7 +76,7 @@ func BuildVMFilter(vm workloads.VM, disk workloads.Disk, farmID uint64) types.No
 	return buildGenericFilter(&freeMRUs, &freeSRUs, &freeIPs, []uint64{farmID}, nil)
 }
 
-// BuildK8sFilter build a filter for a gateway
+// BuildGatewayFilter build a filter for a gateway
 func BuildGatewayFilter(farmID uint64) types.NodeFilter {
 	domain := true
 	return buildGenericFilter(nil, nil, nil, []uint64{farmID}, &domain)
