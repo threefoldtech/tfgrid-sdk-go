@@ -185,7 +185,10 @@ func (st *State) LoadK8sFromGrid(nodeIDs []uint32, deploymentName string) (workl
 	cluster.Token = cluster.Master.Token
 
 	// get cluster IP ranges
-	st.AssignNodesIPRange(&cluster)
+	err := st.AssignNodesIPRange(&cluster)
+	if err != nil {
+		return workloads.K8sCluster{}, fmt.Errorf("failed to assign ip ranges for k8s cluster %s", deploymentName)
+	}
 
 	return cluster, nil
 }
