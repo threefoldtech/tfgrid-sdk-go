@@ -143,6 +143,15 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 	log.Debug().Msgf("non accessible ip ranges: %v", nonAccessibleIPRanges)
 
 	if znet.AddWGAccess {
+		// if no wg private key, it should be generated
+		if znet.ExternalSK.String() == "" {
+			wgSK, err := wgtypes.GeneratePrivateKey()
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to generate wireguard secret key for network: %s", znet.Name)
+			}
+			znet.ExternalSK = wgSK
+		}
+
 		znet.AccessWGConfig = workloads.GenerateWGConfig(
 			workloads.WgIP(*znet.ExternalIP).IP.String(),
 			znet.ExternalSK.String(),

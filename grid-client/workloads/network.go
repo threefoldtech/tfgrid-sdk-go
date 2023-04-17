@@ -57,12 +57,28 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		return ZNet{}, fmt.Errorf("could not create network workload from data %v", dataI)
 	}
 
+	wgKey, err := wgtypes.ParseKey(data.WGPrivateKey)
+	if err != nil {
+		return ZNet{}, fmt.Errorf("could not parse wg private key: %s", data.WGPrivateKey)
+	}
+
+	var addWGAccess bool
+	// this will fail when hidden node is supported
+	for _, peer := range data.Peers {
+		if peer.Endpoint == "" {
+			addWGAccess = true
+		}
+	}
+
 	return ZNet{
-		Name:        wl.Name.String(),
-		Description: wl.Description,
-		Nodes:       []uint32{nodeID},
-		IPRange:     data.NetworkIPRange,
-		AddWGAccess: data.WGPrivateKey != "",
+		Name:         wl.Name.String(),
+		Description:  wl.Description,
+		Nodes:        []uint32{nodeID},
+		IPRange:      data.NetworkIPRange,
+		AddWGAccess:  addWGAccess,
+		NodesIPRange: map[uint32]gridtypes.IPNet{nodeID: data.Subnet},
+		WGPort:       map[uint32]int{nodeID: int(data.WGListenPort)},
+		Keys:         map[uint32]wgtypes.Key{nodeID: wgKey},
 	}, nil
 }
 

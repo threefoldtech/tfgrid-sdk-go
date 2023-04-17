@@ -13,6 +13,8 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"golang.org/x/exp/maps"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // ContractIDs represents a slice of contract IDs
@@ -258,6 +260,9 @@ func (st *State) computeK8sDeploymentResources(nodeID uint32, dl gridtypes.Deplo
 
 // LoadNetworkFromGrid loads a network from grid
 func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err error) {
+	var zNets []workloads.ZNet
+	nodeDeploymentsIDs := map[uint32]uint64{}
+
 	sub := st.Substrate
 	for nodeID := range st.CurrentNodeNetworks {
 		nodeClient, err := st.NcPool.GetNodeClient(sub, nodeID)
@@ -271,9 +276,17 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 				return znet, errors.Wrapf(err, "could not get network deployment %d from node %d", contractID, nodeID)
 			}
 
+			deploymentData, err := workloads.ParseDeploymentData(dl.Metadata)
+			if err != nil {
+				return znet, errors.Wrapf(err, "could not generate deployment metadata for %s", name)
+			}
+
 			for _, wl := range dl.Workloads {
 				if wl.Type == zos.NetworkType && wl.Name == gridtypes.Name(name) {
 					znet, err = workloads.NewNetworkFromWorkload(wl, nodeID)
+					znet.SolutionType = deploymentData.ProjectName
+					zNets = append(zNets, znet)
+					nodeDeploymentsIDs[nodeID] = dl.ContractID
 					if err != nil {
 						return workloads.ZNet{}, errors.Wrapf(err, "failed to get network from workload %s", name)
 					}
@@ -282,6 +295,24 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 			}
 		}
 	}
+
+	// merge networks
+	var nodes []uint32
+	nodesIPRange := map[uint32]gridtypes.IPNet{}
+	wgPort := map[uint32]int{}
+	keys := map[uint32]wgtypes.Key{}
+	for _, net := range zNets {
+		maps.Copy(nodesIPRange, net.NodesIPRange)
+		maps.Copy(wgPort, net.WGPort)
+		maps.Copy(keys, net.Keys)
+		nodes = append(nodes, net.Nodes...)
+	}
+
+	znet.NodeDeploymentID = nodeDeploymentsIDs
+	znet.Nodes = nodes
+	znet.NodesIPRange = nodesIPRange
+	znet.Keys = keys
+	znet.WGPort = wgPort
 
 	if reflect.DeepEqual(znet, workloads.ZNet{}) {
 		return znet, errors.Errorf("failed to get network %s", name)
