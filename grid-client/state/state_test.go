@@ -1,5 +1,5 @@
-// Package deployer for grid deployer
-package deployer
+// Package state for grid state
+package state
 
 import (
 	"context"
@@ -244,6 +244,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		Memory:        8,
 		YggIP:         "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 		IP:            "1.1.1.1",
+		NetworkName:   "test_network",
 	}
 
 	var Workers []workloads.K8sNode
@@ -252,8 +253,11 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		Workers:          Workers,
 		Token:            "",
 		SSHKey:           "",
-		NetworkName:      "",
+		NetworkName:      "test_network",
 		NodeDeploymentID: map[uint32]uint64{1: 10},
+		NodesIPRange: map[uint32]gridtypes.IPNet{
+			1: {},
+		},
 	}
 
 	k8sWorkload := gridtypes.Workload{

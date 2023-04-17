@@ -1,5 +1,5 @@
-// Package deployer for grid deployer
-package deployer
+// Package state for grid state
+package state
 
 import (
 	"context"
@@ -24,10 +24,10 @@ type State struct {
 	// TODO: remove it and merge with deployments
 	CurrentNodeNetworks map[uint32]ContractIDs
 
-	networks NetworkState
+	Networks NetworkState
 
-	ncPool    client.NodeClientGetter
-	substrate subi.SubstrateExt
+	NcPool    client.NodeClientGetter
+	Substrate subi.SubstrateExt
 }
 
 // NewState generates a new state
@@ -35,9 +35,9 @@ func NewState(ncPool client.NodeClientGetter, substrate subi.SubstrateExt) *Stat
 	return &State{
 		CurrentNodeDeployments: make(map[uint32]ContractIDs),
 		CurrentNodeNetworks:    make(map[uint32]ContractIDs),
-		networks:               NetworkState{},
-		ncPool:                 ncPool,
-		substrate:              substrate,
+		Networks:               NetworkState{},
+		NcPool:                 ncPool,
+		Substrate:              substrate,
 	}
 }
 
@@ -90,7 +90,7 @@ func (st *State) LoadGatewayNameFromGrid(nodeID uint32, name string, deploymentN
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "could not get workload from node %d within deployment %v", nodeID, dl)
 	}
 
-	nameContractID, err := st.substrate.GetContractIDByNameRegistration(wl.Name.String())
+	nameContractID, err := st.Substrate.GetContractIDByNameRegistration(wl.Name.String())
 	if err != nil {
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "failed to get gateway name contract %s", name)
 	}
@@ -132,7 +132,6 @@ func (st *State) LoadVMFromGrid(nodeID uint32, name string, deploymentName strin
 
 // LoadK8sFromGrid loads k8s from grid
 func (st *State) LoadK8sFromGrid(nodeIDs []uint32, deploymentName string) (workloads.K8sCluster, error) {
-
 	clusterDeployments := make(map[uint32]gridtypes.Deployment)
 	nodeDeploymentID := map[uint32]uint64{}
 	for _, nodeID := range nodeIDs {
@@ -181,6 +180,16 @@ func (st *State) LoadK8sFromGrid(nodeIDs []uint32, deploymentName string) (workl
 		return workloads.K8sCluster{}, fmt.Errorf("failed to get master node for k8s cluster %s", deploymentName)
 	}
 	cluster.NodeDeploymentID = nodeDeploymentID
+	cluster.NetworkName = cluster.Master.NetworkName
+	cluster.SSHKey = cluster.Master.SSHKey
+	cluster.Token = cluster.Master.Token
+
+	// get cluster IP ranges
+	err := st.AssignNodesIPRange(&cluster)
+	if err != nil {
+		return workloads.K8sCluster{}, fmt.Errorf("failed to assign ip ranges for k8s cluster %s", deploymentName)
+	}
+
 	return cluster, nil
 }
 
@@ -249,9 +258,9 @@ func (st *State) computeK8sDeploymentResources(nodeID uint32, dl gridtypes.Deplo
 
 // LoadNetworkFromGrid loads a network from grid
 func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err error) {
-	sub := st.substrate
+	sub := st.Substrate
 	for nodeID := range st.CurrentNodeNetworks {
-		nodeClient, err := st.ncPool.GetNodeClient(sub, nodeID)
+		nodeClient, err := st.NcPool.GetNodeClient(sub, nodeID)
 		if err != nil {
 			return znet, errors.Wrapf(err, "could not get node client: %d", nodeID)
 		}
@@ -293,9 +302,9 @@ func (st *State) LoadDeploymentFromGrid(nodeID uint32, name string) (workloads.D
 // GetWorkloadInDeployment return a workload in a deployment using their names and node ID
 // if name is empty it returns a deployment with name equal to deploymentName and empty workload
 func (st *State) GetWorkloadInDeployment(nodeID uint32, name string, deploymentName string) (gridtypes.Workload, gridtypes.Deployment, error) {
-	sub := st.substrate
+	sub := st.Substrate
 	if contractIDs, ok := st.CurrentNodeDeployments[nodeID]; ok {
-		nodeClient, err := st.ncPool.GetNodeClient(sub, nodeID)
+		nodeClient, err := st.NcPool.GetNodeClient(sub, nodeID)
 		if err != nil {
 			return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get node client: %d", nodeID)
 		}
@@ -330,12 +339,21 @@ func (st *State) GetWorkloadInDeployment(nodeID uint32, name string, deploymentN
 	return gridtypes.Workload{}, gridtypes.Deployment{}, fmt.Errorf("could not get workload '%s' with node ID %d", name, nodeID)
 }
 
-// GetNetworks gets state networks
-func (st *State) GetNetworks() NetworkState {
-	return st.networks
-}
+// AssignNodesIPRange to assign ip range of k8s cluster nodes
+func (st *State) AssignNodesIPRange(k *workloads.K8sCluster) (err error) {
+	network := st.Networks.GetNetwork(k.NetworkName)
+	nodesIPRange := make(map[uint32]gridtypes.IPNet)
+	nodesIPRange[k.Master.Node], err = gridtypes.ParseIPNet(network.GetNodeSubnet(k.Master.Node))
+	if err != nil {
+		return errors.Wrap(err, "could not parse master node ip range")
+	}
+	for _, worker := range k.Workers {
+		nodesIPRange[worker.Node], err = gridtypes.ParseIPNet(network.GetNodeSubnet(worker.Node))
+		if err != nil {
+			return errors.Wrapf(err, "could not parse worker node (%d) ip range", worker.Node)
+		}
+	}
+	k.NodesIPRange = nodesIPRange
 
-// SetNetworks sets state networks
-func (st *State) SetNetworks(networks NetworkState) {
-	st.networks = networks
+	return nil
 }

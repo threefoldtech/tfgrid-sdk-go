@@ -15,6 +15,7 @@ import (
 	"github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/mocks"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -254,8 +255,8 @@ func constructTestDeployer(t *testing.T, tfPluginClient TFPluginClient, mock boo
 		tfPluginClient.NcPool = ncPool
 		tfPluginClient.RMB = cl
 
-		tfPluginClient.State.ncPool = ncPool
-		tfPluginClient.State.substrate = sub
+		tfPluginClient.State.NcPool = ncPool
+		tfPluginClient.State.Substrate = sub
 
 		tfPluginClient.DeploymentDeployer.tfPluginClient = &tfPluginClient
 		tfPluginClient.DeploymentDeployer.deployer = deployer
@@ -306,9 +307,9 @@ func TestDeploymentDeployer(t *testing.T) {
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
 		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)
-		d.tfPluginClient.State.networks = NetworkState{net.Name: Network{
+		d.tfPluginClient.State.Networks = state.NetworkState{net.Name: state.Network{
 			Subnets:               map[uint32]string{nodeID: net.IPRange.String()},
-			NodeDeploymentHostIDs: map[uint32]DeploymentHostIDs{nodeID: map[uint64][]byte{contractID: {}}},
+			NodeDeploymentHostIDs: map[uint32]state.DeploymentHostIDs{nodeID: map[uint64][]byte{contractID: {}}},
 		}}
 
 		ncPool.EXPECT().
@@ -334,12 +335,12 @@ func TestDeploymentDeployer(t *testing.T) {
 		net := constructTestNetwork()
 
 		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)
-		d.tfPluginClient.State.networks = NetworkState{
-			net.Name: Network{
+		d.tfPluginClient.State.Networks = state.NetworkState{
+			net.Name: state.Network{
 				Subnets: map[uint32]string{
 					nodeID: net.IPRange.String(),
 				},
-				NodeDeploymentHostIDs: make(NodeDeploymentHostIDs),
+				NodeDeploymentHostIDs: make(state.NodeDeploymentHostIDs),
 			},
 		}
 		dls, err := d.GenerateVersionlessDeployments(context.Background(), &dl)
@@ -408,7 +409,7 @@ func TestDeploymentDeployer(t *testing.T) {
 			// should reflect on deployment and state
 			assert.Equal(t, dl.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
 			assert.Equal(t, dl.ContractID, contractID)
-			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]ContractIDs{nodeID: {contractID}})
+			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {contractID}})
 		})
 
 	})
@@ -417,7 +418,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		dl.ContractID = contractID
 		dl.NodeDeploymentID = map[uint32]uint64{nodeID: contractID}
 
-		d.tfPluginClient.State.CurrentNodeDeployments = map[uint32]ContractIDs{nodeID: {contractID}}
+		d.tfPluginClient.State.CurrentNodeDeployments = map[uint32]state.ContractIDs{nodeID: {contractID}}
 
 		t.Run("Validation failed", func(t *testing.T) {
 			sub.EXPECT().
@@ -432,7 +433,7 @@ func TestDeploymentDeployer(t *testing.T) {
 
 			// nothing should change
 			assert.Equal(t, dl.ContractID, contractID)
-			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]ContractIDs{nodeID: {contractID}})
+			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {contractID}})
 			assert.Equal(t, dl.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
 
 		})
@@ -453,7 +454,7 @@ func TestDeploymentDeployer(t *testing.T) {
 
 			// nothing should change
 			assert.Equal(t, dl.ContractID, contractID)
-			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]ContractIDs{nodeID: {contractID}})
+			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {contractID}})
 			assert.Equal(t, dl.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
 
 		})
@@ -489,12 +490,12 @@ func TestDeploymentDeployer(t *testing.T) {
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
 		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)
-		d.tfPluginClient.State.networks = NetworkState{
-			net.Name: Network{
+		d.tfPluginClient.State.Networks = state.NetworkState{
+			net.Name: state.Network{
 				Subnets: map[uint32]string{
 					nodeID: net.IPRange.String(),
 				},
-				NodeDeploymentHostIDs: make(NodeDeploymentHostIDs),
+				NodeDeploymentHostIDs: make(state.NodeDeploymentHostIDs),
 			},
 		}
 

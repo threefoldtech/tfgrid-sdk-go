@@ -41,8 +41,8 @@ func constructTestNetworkDeployer(t *testing.T, tfPluginClient TFPluginClient, m
 		tfPluginClient.NcPool = ncPool
 		tfPluginClient.RMB = cl
 
-		tfPluginClient.State.ncPool = ncPool
-		tfPluginClient.State.substrate = sub
+		tfPluginClient.State.NcPool = ncPool
+		tfPluginClient.State.Substrate = sub
 
 		tfPluginClient.TwinID = twinID
 

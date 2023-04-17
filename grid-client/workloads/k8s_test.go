@@ -71,6 +71,7 @@ func TestK8sNodeData(t *testing.T) {
 		k8sFromWorkload, err := NewK8sNodeFromWorkload(k8s, 0, 5, "", "")
 		assert.NoError(t, err)
 
+		K8sWorkload.Token = "testToken"
 		k8sFromWorkload.IP = ""
 		assert.Equal(t, k8sFromWorkload, K8sWorkload)
 	})

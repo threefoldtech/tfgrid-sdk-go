@@ -16,6 +16,7 @@ import (
 	"github.com/threefoldtech/substrate-client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
@@ -81,7 +82,7 @@ type TFPluginClient struct {
 	K8sDeployer         K8sDeployer
 
 	// state
-	State *State
+	State *state.State
 
 	// contracts
 	graphQl         graphql.GraphQl
@@ -218,7 +219,7 @@ func NewTFPluginClient(
 	tfPluginClient.K8sDeployer = NewK8sDeployer(&tfPluginClient)
 	tfPluginClient.GatewayNameDeployer = NewGatewayNameDeployer(&tfPluginClient)
 
-	tfPluginClient.State = NewState(tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
+	tfPluginClient.State = state.NewState(tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 
 	graphqlURL := GraphQlURLs[network]
 	tfPluginClient.graphQl, err = graphql.NewGraphQl(graphqlURL)
