@@ -18,6 +18,8 @@ getdeps:
 
 verifiers: fmt lint cyclo deadcode spelling staticcheck
 
+checks: verifiers
+
 fmt:
 	@echo "Running $@"
 	@gofmt -d .

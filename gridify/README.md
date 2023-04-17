@@ -2,7 +2,6 @@
 
 <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-92%25-brightgreen.svg?longCache=true&style=flat)</a> [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/gridify-test.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/gridify-test.yml) [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/gridify-lint.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/gridify-lint.yml)
 
-
 A tool used to deploy projects on [Threefold grid](https://threefold.io/).
 
 ## Usage
@@ -91,10 +90,3 @@ Clone the repo and run the following command inside the repo directory:
 ```bash
 make build
 ```
-
-## Release
-
-- Check: `goreleaser check`
-- Create a tag: `git tag -a v1.0.1 -m "release v1.0.1"`
-- Push the tag: `git push origin v1.0.1`
-- A goreleaser workflow will release the created tag.
