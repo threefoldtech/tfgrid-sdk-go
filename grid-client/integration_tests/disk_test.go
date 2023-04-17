@@ -15,7 +15,10 @@ func TestDiskDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
-	nodes, err := deployer.FilterNodes(tfPluginClient.GridProxyClient, nodeFilter)
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+	defer cancel()
+
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
 	assert.NoError(t, err)
 
 	nodeID := uint32(nodes[0].NodeID)
@@ -25,9 +28,6 @@ func TestDiskDeployment(t *testing.T) {
 		SizeGB:      1,
 		Description: "disk test",
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
-	defer cancel()
 
 	dl := workloads.NewDeployment("disk", nodeID, "", nil, "", []workloads.Disk{disk}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)

@@ -39,7 +39,7 @@ var deployGatewayFQDNCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		err = command.DeployGatewayFQDN(t, gateway)
+		err = command.DeployGatewayFQDN(cmd.Context(), t, gateway)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

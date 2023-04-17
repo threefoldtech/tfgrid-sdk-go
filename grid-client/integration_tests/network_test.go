@@ -17,7 +17,10 @@ func TestNetworkDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
-	nodes, err := deployer.FilterNodes(tfPluginClient.GridProxyClient, nodeFilter)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
 	assert.NoError(t, err)
 
 	nodeID1 := uint32(nodes[0].NodeID)
@@ -35,9 +38,6 @@ func TestNetworkDeployment(t *testing.T) {
 	}
 
 	networkCp := network
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
 
 	t.Run("deploy network with wireguard access", func(t *testing.T) {
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
@@ -81,8 +81,8 @@ func TestNetworkDeployment(t *testing.T) {
 
 	t.Run("test get public node", func(t *testing.T) {
 		publicNodeID, err := deployer.GetPublicNode(
-			context.Background(),
-			tfPluginClient.GridProxyClient,
+			ctx,
+			tfPluginClient,
 			[]uint32{},
 		)
 		assert.NoError(t, err)

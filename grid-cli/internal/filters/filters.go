@@ -1,44 +1,12 @@
+// Package filters for filtering nodes for needed resources
 package filters
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-func GetAvailableNode(client client.Client, filter types.NodeFilter) (uint32, error) {
-	nodes, _, err := client.Nodes(filter, types.Limit{})
-	if err != nil {
-		return 0, err
-	}
-	if len(nodes) == 0 {
-		var filterStringBuilder strings.Builder
-		if filter.FarmIDs != nil {
-			fmt.Fprintf(&filterStringBuilder, "farmIDs: %v, ", filter.FarmIDs)
-		}
-		if filter.FreeMRU != nil {
-			fmt.Fprintf(&filterStringBuilder, "mru: %d, ", *filter.FreeMRU)
-		}
-		if filter.FreeSRU != nil {
-			fmt.Fprintf(&filterStringBuilder, "sru: %d, ", *filter.FreeSRU)
-		}
-		if filter.FreeIPs != nil {
-			fmt.Fprintf(&filterStringBuilder, "freeips: %d, ", *filter.FreeIPs)
-		}
-		if filter.Domain != nil {
-			fmt.Fprintf(&filterStringBuilder, "domain: %t, ", *filter.Domain)
-		}
-		filterString := filterStringBuilder.String()
-		return 0, fmt.Errorf("no node with free resources available using node filter: %s", filterString[:len(filterString)-2])
-	}
-
-	node := uint32(nodes[0].NodeID)
-	return node, nil
-}
-
+// BuildK8sFilter build a filter for a k8s node
 func BuildK8sFilter(k8sNode workloads.K8sNode, farmID uint64, k8sNodesNum uint) types.NodeFilter {
 	freeMRUs := uint64(k8sNode.Memory*int(k8sNodesNum)) / 1024
 	freeSRUs := uint64(k8sNode.DiskSize * int(k8sNodesNum))
@@ -50,6 +18,7 @@ func BuildK8sFilter(k8sNode workloads.K8sNode, farmID uint64, k8sNodesNum uint) 
 	return buildGenericFilter(&freeMRUs, &freeSRUs, &freeIPs, []uint64{farmID}, nil)
 }
 
+// BuildVMFilter build a filter for a vm
 func BuildVMFilter(vm workloads.VM, disk workloads.Disk, farmID uint64) types.NodeFilter {
 	freeMRUs := uint64(vm.Memory) / 1024
 	freeSRUs := uint64(vm.RootfsSize) / 1024
@@ -61,6 +30,7 @@ func BuildVMFilter(vm workloads.VM, disk workloads.Disk, farmID uint64) types.No
 	return buildGenericFilter(&freeMRUs, &freeSRUs, &freeIPs, []uint64{farmID}, nil)
 }
 
+// BuildGatewayFilter build a filter for a gateway
 func BuildGatewayFilter(farmID uint64) types.NodeFilter {
 	domain := true
 	return buildGenericFilter(nil, nil, nil, []uint64{farmID}, &domain)
@@ -70,10 +40,15 @@ func buildGenericFilter(mrus, srus, ips *uint64, farmIDs []uint64, domain *bool)
 	status := "up"
 	return types.NodeFilter{
 		Status:  &status,
-		FreeMRU: mrus,
-		FreeSRU: srus,
+		FreeMRU: convertGBToBytes(mrus),
+		FreeSRU: convertGBToBytes(srus),
 		FreeIPs: ips,
 		FarmIDs: farmIDs,
 		Domain:  domain,
 	}
+}
+
+func convertGBToBytes(gb *uint64) *uint64 {
+	bytes := (*gb) * 1024 * 1024 * 1024
+	return &bytes
 }

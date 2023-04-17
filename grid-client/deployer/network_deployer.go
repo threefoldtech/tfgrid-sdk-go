@@ -93,7 +93,7 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 		} else if ipv4Node != 0 { // there's one in the network original nodes
 			znet.PublicNodeID = ipv4Node
 		} else {
-			publicNode, err := GetPublicNode(ctx, d.tfPluginClient.GridProxyClient, []uint32{})
+			publicNode, err := GetPublicNode(ctx, *d.tfPluginClient, []uint32{})
 			if err != nil {
 				return nil, errors.Wrap(err, "public node needed because you requested adding wg access or a hidden node is added to the network")
 			}

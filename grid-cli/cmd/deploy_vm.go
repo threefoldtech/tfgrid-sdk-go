@@ -105,15 +105,18 @@ var deployVMCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 		if node == 0 {
-			node, err = filters.GetAvailableNode(
-				t.GridProxyClient,
+			nodes, err := deployer.FilterNodes(
+				cmd.Context(),
+				t,
 				filters.BuildVMFilter(vm, mount, farm),
 			)
 			if err != nil {
 				log.Fatal().Err(err).Send()
 			}
+
+			node = uint32(nodes[0].NodeID)
 		}
-		resVM, err := command.DeployVM(t, vm, mount, node)
+		resVM, err := command.DeployVM(cmd.Context(), t, vm, mount, node)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

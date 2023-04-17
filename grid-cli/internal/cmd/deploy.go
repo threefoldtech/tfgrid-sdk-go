@@ -14,7 +14,7 @@ import (
 )
 
 // DeployVM deploys a vm with mounts
-func DeployVM(t deployer.TFPluginClient, vm workloads.VM, mount workloads.Disk, node uint32) (workloads.VM, error) {
+func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, mount workloads.Disk, node uint32) (workloads.VM, error) {
 	networkName := fmt.Sprintf("%snetwork", vm.Name)
 	network := buildNetwork(networkName, vm.Name, []uint32{node})
 
@@ -26,12 +26,12 @@ func DeployVM(t deployer.TFPluginClient, vm workloads.VM, mount workloads.Disk, 
 	dl := workloads.NewDeployment(vm.Name, node, vm.Name, nil, networkName, mounts, nil, []workloads.VM{vm}, nil)
 
 	log.Info().Msg("deploying network")
-	err := t.NetworkDeployer.Deploy(context.Background(), &network)
+	err := t.NetworkDeployer.Deploy(ctx, &network)
 	if err != nil {
 		return workloads.VM{}, errors.Wrapf(err, "failed to deploy network on node %d", node)
 	}
 	log.Info().Msg("deploying vm")
-	err = t.DeploymentDeployer.Deploy(context.Background(), &dl)
+	err = t.DeploymentDeployer.Deploy(ctx, &dl)
 	if err != nil {
 		return workloads.VM{}, errors.Wrapf(err, "failed to deploy vm on node %d", node)
 	}
@@ -43,7 +43,7 @@ func DeployVM(t deployer.TFPluginClient, vm workloads.VM, mount workloads.Disk, 
 }
 
 // DeployKubernetesCluster deploys a kubernetes cluster
-func DeployKubernetesCluster(t deployer.TFPluginClient, master workloads.K8sNode, workers []workloads.K8sNode, sshKey string) (workloads.K8sCluster, error) {
+func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, master workloads.K8sNode, workers []workloads.K8sNode, sshKey string) (workloads.K8sCluster, error) {
 
 	networkName := fmt.Sprintf("%snetwork", master.Name)
 	networkNodes := []uint32{master.Node}
@@ -62,12 +62,12 @@ func DeployKubernetesCluster(t deployer.TFPluginClient, master workloads.K8sNode
 		NetworkName:  networkName,
 	}
 	log.Info().Msg("deploying network")
-	err := t.NetworkDeployer.Deploy(context.Background(), &network)
+	err := t.NetworkDeployer.Deploy(ctx, &network)
 	if err != nil {
 		return workloads.K8sCluster{}, errors.Wrapf(err, "failed to deploy network on nodes %v", network.Nodes)
 	}
 	log.Info().Msg("deploying cluster")
-	err = t.K8sDeployer.Deploy(context.Background(), &cluster)
+	err = t.K8sDeployer.Deploy(ctx, &cluster)
 	if err != nil {
 		return workloads.K8sCluster{}, errors.Wrap(err, "failed to deploy kubernetes cluster")
 	}
@@ -82,9 +82,9 @@ func DeployKubernetesCluster(t deployer.TFPluginClient, master workloads.K8sNode
 }
 
 // DeployGatewayName deploys a gateway name
-func DeployGatewayName(t deployer.TFPluginClient, gateway workloads.GatewayNameProxy) (workloads.GatewayNameProxy, error) {
+func DeployGatewayName(ctx context.Context, t deployer.TFPluginClient, gateway workloads.GatewayNameProxy) (workloads.GatewayNameProxy, error) {
 	log.Info().Msg("deploying gateway name")
-	err := t.GatewayNameDeployer.Deploy(context.Background(), &gateway)
+	err := t.GatewayNameDeployer.Deploy(ctx, &gateway)
 	if err != nil {
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "failed to deploy gateway on node %d", gateway.NodeID)
 	}
@@ -92,10 +92,10 @@ func DeployGatewayName(t deployer.TFPluginClient, gateway workloads.GatewayNameP
 }
 
 // DeployGatewayFQDN deploys a gateway fqdn
-func DeployGatewayFQDN(t deployer.TFPluginClient, gateway workloads.GatewayFQDNProxy) error {
+func DeployGatewayFQDN(ctx context.Context, t deployer.TFPluginClient, gateway workloads.GatewayFQDNProxy) error {
 
 	log.Info().Msg("deploying gateway fqdn")
-	err := t.GatewayFQDNDeployer.Deploy(context.Background(), &gateway)
+	err := t.GatewayFQDNDeployer.Deploy(ctx, &gateway)
 	if err != nil {
 		return errors.Wrapf(err, "failed to deploy gateway on node %d", gateway.NodeID)
 	}

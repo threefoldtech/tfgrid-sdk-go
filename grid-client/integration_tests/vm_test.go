@@ -18,14 +18,18 @@ func TestVMDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	assert.NoError(t, err)
 
 	nodeFilter.IPv4 = &trueVal
 	nodeFilter.FreeIPs = &value1
-	nodes, err := deployer.FilterNodes(tfPluginClient.GridProxyClient, nodeFilter)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
 	assert.NoError(t, err)
 
+	// no public ips found case
 	if err != nil {
 		return
 	}
@@ -57,9 +61,6 @@ func TestVMDeployment(t *testing.T) {
 		IP:          "10.20.2.5",
 		NetworkName: network.Name,
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 
 	t.Run("check single vm with public ip", func(t *testing.T) {
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
