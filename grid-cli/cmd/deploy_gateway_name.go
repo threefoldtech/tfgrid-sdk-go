@@ -39,16 +39,19 @@ var deployGatewayNameCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 		if node == 0 {
-			node, err = filters.GetAvailableNode(
-				&t,
+			nodes, err := deployer.FilterNodes(
+				cmd.Context(),
+				t,
 				filters.BuildGatewayFilter(farm),
 			)
 			if err != nil {
 				log.Fatal().Err(err).Send()
 			}
+
+			node = uint32(nodes[0].NodeID)
 		}
 		gateway.NodeID = node
-		resGateway, err := command.DeployGatewayName(t, gateway)
+		resGateway, err := command.DeployGatewayName(cmd.Context(), t, gateway)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

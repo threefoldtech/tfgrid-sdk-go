@@ -26,10 +26,13 @@ func TestQSFSDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	assert.NoError(t, err)
 
-	nodes, err := deployer.FilterNodes(tfPluginClient.GridProxyClient, nodeFilter)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
 	assert.NoError(t, err)
 
 	nodeID := uint32(nodes[0].NodeID)
@@ -70,9 +73,6 @@ func TestQSFSDeployment(t *testing.T) {
 		}
 		metaZDBs = append(metaZDBs, zdb)
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
-	defer cancel()
 
 	dl1 := workloads.NewDeployment("qsfs", nodeID, "", nil, "", nil, append(dataZDBs, metaZDBs...), nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl1)

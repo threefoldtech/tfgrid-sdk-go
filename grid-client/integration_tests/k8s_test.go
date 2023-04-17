@@ -22,7 +22,7 @@ func AssertNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, private
 	assert.NotEmpty(t, masterYggIP)
 
 	// Check that the outputs not empty
-	time.Sleep(5 * time.Second)
+	time.Sleep(30 * time.Second)
 	output, err := RemoteRun("root", masterYggIP, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
 	output = strings.TrimSpace(output)
 	assert.Empty(t, err)
@@ -36,10 +36,13 @@ func TestK8sDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	assert.NoError(t, err)
 
-	nodes, err := deployer.FilterNodes(tfPluginClient.GridProxyClient, nodeFilter)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
 	assert.NoError(t, err)
 
 	masterNodeID := uint32(nodes[0].NodeID)
@@ -55,9 +58,6 @@ func TestK8sDeployment(t *testing.T) {
 		}),
 		AddWGAccess: true,
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 18*time.Minute)
-	defer cancel()
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)

@@ -5,25 +5,53 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
-	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
 // FilterNodes filters nodes using proxy
-func FilterNodes(gridClient proxy.Client, options proxyTypes.NodeFilter) ([]proxyTypes.Node, error) {
-	nodes, _, err := gridClient.Nodes(options, proxyTypes.Limit{})
+func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter) ([]types.Node, error) {
+	nodes, _, err := tfPlugin.GridProxyClient.Nodes(options, types.Limit{})
 	if err != nil {
-		return []proxyTypes.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
+		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
 	}
 
 	if len(nodes) == 0 {
-		return nodes, fmt.Errorf("could not find any node with options: %+v", options)
+		return []types.Node{}, fmt.Errorf("could not find any node with options: %+v", serializeOptions(options))
 	}
 
-	return nodes, nil
+	// if no sru needed
+	if options.FreeSRU == nil {
+		return nodes, nil
+	}
+
+	// check pools
+	var nodePools []types.Node
+	for _, node := range nodes {
+		client, err := tfPlugin.NcPool.GetNodeClient(tfPlugin.SubstrateConn, uint32(node.NodeID))
+		if err != nil {
+			return []types.Node{}, errors.Wrapf(err, "failed to get node '%d' client", node.NodeID)
+		}
+		pools, err := client.Pools(ctx)
+		if err != nil {
+			return []types.Node{}, errors.Wrapf(err, "failed to get node '%d' pools", node.NodeID)
+		}
+		if hasEnoughStorage(pools, *options.FreeSRU) {
+			nodePools = append(nodePools, node)
+		}
+	}
+
+	if len(nodePools) == 0 {
+		return []types.Node{}, fmt.Errorf("could not find any node with free ssd pools: %d GB", convertBytesToGB(*options.FreeSRU))
+	}
+
+	return nodePools, nil
 }
 
 var (
@@ -32,13 +60,13 @@ var (
 )
 
 // GetPublicNode return public node ID
-func GetPublicNode(ctx context.Context, gridClient proxy.Client, preferredNodes []uint32) (uint32, error) {
+func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes []uint32) (uint32, error) {
 	preferredNodesSet := make(map[int]struct{})
 	for _, node := range preferredNodes {
 		preferredNodesSet[int(node)] = struct{}{}
 	}
 
-	nodes, err := FilterNodes(gridClient, proxyTypes.NodeFilter{
+	nodes, err := FilterNodes(ctx, tfPlugin, types.NodeFilter{
 		IPv4:   &trueVal,
 		Status: &statusUp,
 	})
@@ -56,7 +84,7 @@ func GetPublicNode(ctx context.Context, gridClient proxy.Client, preferredNodes 
 		if _, ok := nodeMap[int(node)]; ok {
 			continue
 		}
-		nodeInfo, err := gridClient.Node(node)
+		nodeInfo, err := tfPlugin.GridProxyClient.Node(node)
 		if err != nil {
 			log.Error().Msgf("failed to get node %d from the grid proxy", node)
 			continue
@@ -67,7 +95,7 @@ func GetPublicNode(ctx context.Context, gridClient proxy.Client, preferredNodes 
 		if nodeInfo.Status != "up" {
 			continue
 		}
-		nodes = append(nodes, proxyTypes.Node{
+		nodes = append(nodes, types.Node{
 			PublicConfig: nodeInfo.PublicConfig,
 		})
 	}
@@ -95,4 +123,51 @@ func GetPublicNode(ctx context.Context, gridClient proxy.Client, preferredNodes 
 	}
 
 	return 0, errors.New("no nodes with public ipv4")
+}
+
+func hasEnoughStorage(pools []client.PoolMetrics, storage uint64) bool {
+	for _, pool := range pools {
+		if pool.Type != zos.SSDDevice {
+			continue
+		}
+		if pool.Size-pool.Used > gridtypes.Unit(storage) {
+			return true
+		}
+	}
+	return false
+}
+
+func serializeOptions(options types.NodeFilter) string {
+	var filterStringBuilder strings.Builder
+	if options.FarmIDs != nil {
+		fmt.Fprintf(&filterStringBuilder, "farm ids: %v, ", options.FarmIDs)
+	}
+	if options.FarmName != nil {
+		fmt.Fprintf(&filterStringBuilder, "farm name: %v, ", options.FarmName)
+	}
+	if options.FreeMRU != nil {
+		fmt.Fprintf(&filterStringBuilder, "mru: %d GB, ", convertBytesToGB(*options.FreeMRU))
+	}
+	if options.FreeSRU != nil {
+		fmt.Fprintf(&filterStringBuilder, "sru: %d GB, ", convertBytesToGB(*options.FreeSRU))
+	}
+	if options.FreeHRU != nil {
+		fmt.Fprintf(&filterStringBuilder, "hru: %d GB, ", convertBytesToGB(*options.FreeHRU))
+	}
+	if options.FreeIPs != nil {
+		fmt.Fprintf(&filterStringBuilder, "free ips: %d, ", *options.FreeIPs)
+	}
+	if options.Domain != nil {
+		fmt.Fprintf(&filterStringBuilder, "domain: %t, ", *options.Domain)
+	}
+	if options.IPv4 != nil {
+		fmt.Fprintf(&filterStringBuilder, "ipv4: %t, ", *options.IPv4)
+	}
+	filterString := filterStringBuilder.String()
+	return filterString[:len(filterString)-2]
+}
+
+func convertBytesToGB(bytes uint64) uint64 {
+	gb := bytes / (1024 * 1024 * 1024)
+	return gb
 }

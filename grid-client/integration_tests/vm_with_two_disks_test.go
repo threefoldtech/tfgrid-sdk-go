@@ -19,10 +19,13 @@ func TestVMWithTwoDisk(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	assert.NoError(t, err)
 
-	nodes, err := deployer.FilterNodes(tfPluginClient.GridProxyClient, nodeFilter)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
 	assert.NoError(t, err)
 
 	nodeID := uint32(nodes[0].NodeID)
@@ -64,9 +67,6 @@ func TestVMWithTwoDisk(t *testing.T) {
 		IP:          "10.20.2.5",
 		NetworkName: network.Name,
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)
-	defer cancel()
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)

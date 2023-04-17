@@ -16,7 +16,10 @@ func TestZDBDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
-	nodes, err := deployer.FilterNodes(tfPluginClient.GridProxyClient, nodeFilter)
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+	defer cancel()
+
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
 	assert.NoError(t, err)
 
 	nodeID := uint32(nodes[0].NodeID)
@@ -29,9 +32,6 @@ func TestZDBDeployment(t *testing.T) {
 		Description: "test des",
 		Mode:        zos.ZDBModeUser,
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
-	defer cancel()
 
 	dl := workloads.NewDeployment("zdb", nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
