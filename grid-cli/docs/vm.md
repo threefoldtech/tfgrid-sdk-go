@@ -30,7 +30,7 @@ tf-grid-cli deploy vm [flags]
 Example:
 
 ```console
-$ tf-grid-cli deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 70
+$ tf-grid-cli deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10
 12:06PM INF deploying network
 12:06PM INF deploying vm
 12:07PM INF vm yggdrasil ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
