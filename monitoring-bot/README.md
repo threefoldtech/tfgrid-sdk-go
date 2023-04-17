@@ -90,10 +90,3 @@ Where
 ```bash
 make test
 ```
-
-## Release
-
--   Check `goreleaser check`
--   Create a tag `git tag -a v1.0.6 -m "release v1.0.6"`
--   Push the tag `git push origin v1.0.6`
--   the release workflow will release the tag automatically
