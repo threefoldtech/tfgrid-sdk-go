@@ -23,7 +23,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
-	if tfPluginClient.Network == "dev" {
+	if tfPluginClient.Network != "dev" {
 		return
 	}
 
