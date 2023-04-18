@@ -24,7 +24,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	if tfPluginClient.Network != "dev" {
-		return
+		t.Skip("network is not dev")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -34,7 +34,9 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Skip("no available nodes found")
+	}
 
 	nodeID := uint32(nodes[0].NodeID)
 

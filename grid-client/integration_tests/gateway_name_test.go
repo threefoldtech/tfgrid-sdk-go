@@ -31,7 +31,9 @@ func TestGatewayNameDeployment(t *testing.T) {
 
 	nodeFilter.Domain = &trueVal
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Skip("no available nodes found")
+	}
 
 	nodeID := uint32(nodes[0].NodeID)
 	gwNodeID := uint32(nodes[1].NodeID)
