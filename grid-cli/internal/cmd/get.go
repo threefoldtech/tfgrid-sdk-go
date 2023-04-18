@@ -24,6 +24,16 @@ func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error)
 	if err != nil {
 		return workloads.Deployment{}, err
 	}
+
+	networkContractIDs, err := getContractsByTypeAndName(t, name, networkType, fmt.Sprintf("%snetwork", name))
+	if err != nil {
+		return workloads.Deployment{}, err
+	}
+
+	for node, contractID := range networkContractIDs {
+		t.State.CurrentNodeNetworks[node] = []uint64{contractID}
+	}
+
 	var nodeID uint32
 	for node, contractID := range nodeContractIDs {
 		t.State.CurrentNodeDeployments[node] = []uint64{contractID}

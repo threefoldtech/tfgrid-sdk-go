@@ -34,6 +34,7 @@ type Deployment struct {
 	// computed
 	NodeDeploymentID map[uint32]uint64
 	ContractID       uint64
+	IPrange          string
 }
 
 // NewDeployment generates a new deployment
