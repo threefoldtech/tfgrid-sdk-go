@@ -23,6 +23,10 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
+	if tfPluginClient.Network != "dev" {
+		t.Skip("network is not dev")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
@@ -30,7 +34,9 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Skip("no available nodes found")
+	}
 
 	nodeID := uint32(nodes[0].NodeID)
 
@@ -89,8 +95,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	time.Sleep(3 * time.Second)
-
-	response, err := http.Get(fmt.Sprintf("http://%s", gw.FQDN))
+	response, err := http.Get(fmt.Sprintf("https://%s", gw.FQDN))
 	assert.NoError(t, err)
 
 	body, err := io.ReadAll(response.Body)

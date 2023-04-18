@@ -19,7 +19,9 @@ func TestDiskDeployment(t *testing.T) {
 	defer cancel()
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Skip("no available nodes found")
+	}
 
 	nodeID := uint32(nodes[0].NodeID)
 

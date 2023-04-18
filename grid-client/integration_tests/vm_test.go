@@ -27,11 +27,8 @@ func TestVMDeployment(t *testing.T) {
 	nodeFilter.IPv4 = &trueVal
 	nodeFilter.FreeIPs = &value1
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
-	assert.NoError(t, err)
-
-	// no public ips found case
 	if err != nil {
-		return
+		t.Skip("no available nodes found")
 	}
 
 	nodeID := uint32(nodes[0].NodeID)

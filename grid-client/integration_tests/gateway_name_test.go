@@ -31,7 +31,9 @@ func TestGatewayNameDeployment(t *testing.T) {
 
 	nodeFilter.Domain = &trueVal
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Skip("no available nodes found")
+	}
 
 	nodeID := uint32(nodes[0].NodeID)
 	gwNodeID := uint32(nodes[1].NodeID)
@@ -90,8 +92,7 @@ func TestGatewayNameDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	time.Sleep(3 * time.Second)
-
-	response, err := http.Get(fmt.Sprintf("http://%s", result.FQDN))
+	response, err := http.Get(fmt.Sprintf("https://%s", result.FQDN))
 	assert.NoError(t, err)
 
 	body, err := io.ReadAll(response.Body)
