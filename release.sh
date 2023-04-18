@@ -8,6 +8,8 @@ fi
 
 echo $VERSION
 
+goreleaser check
+
 # grid client
 git tag -a grid-client/$VERSION -m "release grid-client/$VERSION"
 git push origin grid-client/$VERSION
@@ -21,6 +23,5 @@ git tag -a rmb-sdk-go/$VERSION -m "release rmb-sdk-go/$VERSION"
 git push origin rmb-sdk-go/$VERSION
 
 # main
-goreleaser check
 git tag -a $VERSION -m "release $VERSION"
 git push origin $VERSION
