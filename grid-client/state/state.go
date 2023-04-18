@@ -187,11 +187,10 @@ func (st *State) LoadK8sFromGrid(nodeIDs []uint32, deploymentName string) (workl
 	cluster.Token = cluster.Master.Token
 
 	// get cluster IP ranges
-	znet, err := st.LoadNetworkFromGrid(cluster.NetworkName)
+	_, err := st.LoadNetworkFromGrid(cluster.NetworkName)
 	if err != nil {
 		return workloads.K8sCluster{}, errors.Wrapf(err, "failed to load network %s", cluster.NetworkName)
 	}
-	st.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
 
 	err = st.AssignNodesIPRange(&cluster)
 	if err != nil {
@@ -324,6 +323,7 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 	znet.Keys = keys
 	znet.WGPort = wgPort
 
+	st.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
 	return znet, nil
 }
 
