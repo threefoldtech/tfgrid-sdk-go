@@ -333,7 +333,21 @@ func (st *State) LoadDeploymentFromGrid(nodeID uint32, name string) (workloads.D
 	if err != nil {
 		return workloads.Deployment{}, err
 	}
-	return workloads.NewDeploymentFromZosDeployment(deployment, nodeID)
+	d, err := workloads.NewDeploymentFromZosDeployment(deployment, nodeID)
+	if err != nil {
+		return workloads.Deployment{}, err
+	}
+	if d.NetworkName == "" {
+		return d, nil
+	}
+
+	_, err = st.LoadNetworkFromGrid(d.NetworkName)
+	if err != nil {
+		return workloads.Deployment{}, errors.Wrapf(err, "failed to load network %s", d.NetworkName)
+	}
+	d.IPrange = st.Networks.GetNetwork(d.NetworkName).Subnets[nodeID]
+
+	return d, nil
 }
 
 // GetWorkloadInDeployment return a workload in a deployment using their names and node ID
