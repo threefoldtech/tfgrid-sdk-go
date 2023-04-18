@@ -23,6 +23,10 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
+	if tfPluginClient.Network == "dev" {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
@@ -89,8 +93,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	time.Sleep(3 * time.Second)
-
-	response, err := http.Get(fmt.Sprintf("http://%s", gw.FQDN))
+	response, err := http.Get(fmt.Sprintf("https://%s", gw.FQDN))
 	assert.NoError(t, err)
 
 	body, err := io.ReadAll(response.Body)

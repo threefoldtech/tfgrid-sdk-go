@@ -9,7 +9,7 @@ test:
 
 integration:
 	@echo "Running integration tests"
-	go test -v ./integration_tests -tags integration
+	go test -v ./integration_tests
 
 coverage: clean 
 	@echo "Installing gopherbadger" && go get -u github.com/jpoles1/gopherbadger && go install github.com/jpoles1/gopherbadger

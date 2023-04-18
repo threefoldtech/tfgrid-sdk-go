@@ -15,7 +15,7 @@ require (
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.8.12
 	github.com/threefoldtech/substrate-client v0.1.5
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.1-0.20230418085700-4fc5cc08e136
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0
 	github.com/threefoldtech/zos v0.5.6-0.20220823125932-7df5043ab018
 	gorm.io/driver/postgres v1.5.0
 	gorm.io/gorm v1.25.0
@@ -73,5 +73,7 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0 => ../rmb-sdk-go
 
 replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20230102154731-7c633b7d3c71
