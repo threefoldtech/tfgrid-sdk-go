@@ -243,6 +243,7 @@ func (d *DeploymentDeployer) assignNodesIPs(dl *workloads.Deployment) error {
 		vmIP[3] = curHostID
 		dl.Vms[idx].IP = vmIP.String()
 	}
+	dl.IPrange = ipRange
 	return nil
 }
 
