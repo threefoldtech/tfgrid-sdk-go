@@ -15,7 +15,7 @@ var (
 	gatewayNameType = "Gateway Name"
 	gatewayFQDNType = "Gateway Fqdn"
 	k8sType         = "kubernetes"
-	// networkType     = "network"
+	networkType     = "network"
 )
 
 // GetVM gets a vm with its project name
@@ -39,9 +39,20 @@ func GetK8sCluster(t deployer.TFPluginClient, name string) (workloads.K8sCluster
 	if err != nil {
 		return workloads.K8sCluster{}, err
 	}
+
+	networkContractIDs, err := getContractsByTypeAndName(t, name, networkType, fmt.Sprintf("%snetwork", name))
+	if err != nil {
+		return workloads.K8sCluster{}, err
+	}
+
 	var nodeIDs []uint32
 	for node, contractID := range nodeContractIDs {
 		t.State.CurrentNodeDeployments[node] = []uint64{contractID}
+		nodeIDs = append(nodeIDs, node)
+	}
+
+	for node, contractID := range networkContractIDs {
+		t.State.CurrentNodeNetworks[node] = []uint64{contractID}
 		nodeIDs = append(nodeIDs, node)
 	}
 
