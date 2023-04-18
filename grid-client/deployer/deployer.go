@@ -81,12 +81,12 @@ func (d *Deployer) Deploy(ctx context.Context,
 
 	if err != nil && d.revertOnFailure {
 		if oldErr != nil {
-			return currentDeployments, fmt.Errorf("failed to deploy deployments: %w; failed to fetch deployment objects to revert deployments: %s; try again", err, oldErr)
+			return currentDeployments, errors.Wrapf(err, "failed to fetch deployment objects to revert deployments: %s; try again", oldErr)
 		}
 
 		currentDls, rerr := d.deploy(ctx, currentDeployments, oldDeployments, newDeploymentSolutionProvider, false)
 		if rerr != nil {
-			return currentDls, fmt.Errorf("failed to deploy deployments: %w; failed to revert deployments: %s; try again", err, rerr)
+			return currentDls, errors.Wrapf(err, "failed to revert deployments: %s; try again", rerr)
 		}
 		return currentDls, err
 	}
@@ -161,7 +161,7 @@ func (d *Deployer) deploy(
 			if err != nil {
 				rerr := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
 				if rerr != nil {
-					return currentDeployments, fmt.Errorf("error sending deployment to the node: %w, error cancelling contract: %s; you must cancel it manually (id: %d)", err, rerr, contractID)
+					return currentDeployments, errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, contractID)
 				}
 				return currentDeployments, errors.Wrap(err, "error sending deployment to the node")
 
@@ -372,7 +372,7 @@ func (d *Deployer) Wait(
 		if lastProgress.stateOk < currentProgress.stateOk {
 			lastProgress = currentProgress
 		} else if currentProgress.time.Sub(lastProgress.time) > 4*time.Minute {
-			timeoutError := fmt.Errorf("waiting for deployment %d timed out", deploymentID)
+			timeoutError := errors.Errorf("waiting for deployment %d timed out", deploymentID)
 			return backoff.Permanent(timeoutError)
 		}
 
@@ -430,7 +430,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]gridt
 			return errors.Wrapf(err, "could not get farm %d data from the grid proxy", farm)
 		}
 		if len(farmInfo) == 0 {
-			return fmt.Errorf("farm %d not returned from the proxy", farm)
+			return errors.Errorf("farm %d not returned from the proxy", farm)
 		}
 		for _, ip := range farmInfo[0].PublicIps {
 			if ip.ContractID == 0 {
@@ -442,7 +442,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]gridt
 	for node, dl := range oldDeployments {
 		nodeData, ok := nodeMap[node]
 		if !ok {
-			return fmt.Errorf("node %d not returned from the grid proxy", node)
+			return errors.Errorf("node %d not returned from the grid proxy", node)
 		}
 
 		publicIPCount, err := CountDeploymentPublicIPs(dl)
@@ -482,7 +482,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]gridt
 			}
 			current := int(contract.PublicIPCount())
 			if requiredIPs > current {
-				return fmt.Errorf(
+				return errors.Errorf(
 					"currently, it's not possible to increase the number of reserved public ips in a deployment, node: %d, current: %d, requested: %d",
 					node,
 					current,
@@ -493,13 +493,13 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]gridt
 
 		farmIPs[nodeInfo.FarmID] -= requiredIPs
 		if farmIPs[nodeInfo.FarmID] < 0 {
-			return fmt.Errorf("farm %d does not have enough public ips", nodeInfo.FarmID)
+			return errors.Errorf("farm %d does not have enough public ips", nodeInfo.FarmID)
 		}
 		if HasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeInfo.PublicConfig.Ipv4 == "" {
-			return fmt.Errorf("node %d cannot deploy a fqdn workload as it does not have a public ipv4 configured", node)
+			return errors.Errorf("node %d cannot deploy a fqdn workload as it does not have a public ipv4 configured", node)
 		}
 		if HasWorkload(&dl, zos.GatewayNameProxyType) && nodeInfo.PublicConfig.Domain == "" {
-			return fmt.Errorf("node %d cannot deploy a gateway name workload as it does not have a domain configured", node)
+			return errors.Errorf("node %d cannot deploy a gateway name workload as it does not have a domain configured", node)
 		}
 		mru := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
 		hru := nodeInfo.Capacity.Total.HRU - nodeInfo.Capacity.Used.HRU
@@ -512,7 +512,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]gridt
 				MRU: mru,
 				SRU: sru,
 			}
-			return fmt.Errorf("node %d does not have enough resources. needed: %v, free: %v", node, capacityPrettyPrint(needed), capacityPrettyPrint(free))
+			return errors.Errorf("node %d does not have enough resources. needed: %v, free: %v", node, capacityPrettyPrint(needed), capacityPrettyPrint(free))
 		}
 	}
 	return nil

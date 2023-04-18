@@ -104,7 +104,7 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, er
 
 	data, ok := dataI.(*zos.ZMachine)
 	if !ok {
-		return VM{}, fmt.Errorf("could not create vm workload from data %v", dataI)
+		return VM{}, errors.Errorf("could not create vm workload from data %v", dataI)
 	}
 
 	var result zos.ZMachineResult
@@ -283,7 +283,7 @@ func (vm *VM) Validate() error {
 			return errors.Wrap(err, "failed to get flist checksum")
 		}
 		if vm.FlistChecksum != checksum {
-			return fmt.Errorf(
+			return errors.Errorf(
 				"passed checksum %s of %s does not match %s returned from %s",
 				vm.FlistChecksum,
 				vm.Name,

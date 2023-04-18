@@ -2,7 +2,6 @@
 package deployer
 
 import (
-	"fmt"
 	"math/big"
 	"regexp"
 	"strings"
@@ -32,7 +31,7 @@ func validateAccount(sub subi.SubstrateExt, identity substrate.Identity, mnemoni
 			}
 			_, err2 = sub.GetAccount(ident)
 			if err2 == nil { // found an identity with key type other than the provided
-				return fmt.Errorf("found an account with %s key type and the same mnemonics, make sure you provided the correct key type", keyType)
+				return errors.Errorf("found an account with %s key type and the same mnemonics, make sure you provided the correct key type", keyType)
 			}
 		}
 		// didn't find an account with any key type
@@ -56,7 +55,7 @@ func validateWssURL(url string) error {
 
 	alphaOnly := regexp.MustCompile(`^wss:\/\/[a-z0-9]+\.[a-z0-9]\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]]+)?$`)
 	if !alphaOnly.MatchString(url) {
-		return fmt.Errorf("wss url '%s' is invalid", url)
+		return errors.Errorf("wss url '%s' is invalid", url)
 	}
 
 	return nil
@@ -82,7 +81,7 @@ func validateAccountBalanceForExtrinsics(sub subi.SubstrateExt, identity substra
 	}
 
 	if balance.Free.Cmp(big.NewInt(20000)) == -1 {
-		return fmt.Errorf("account contains %s, min fee is 20000", balance.Free)
+		return errors.Errorf("account contains %s, min fee is 20000", balance.Free)
 	}
 
 	return nil

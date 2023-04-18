@@ -3,7 +3,6 @@ package workloads
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -43,7 +42,7 @@ func NewGatewayFQDNProxyFromZosWorkload(wl gridtypes.Workload) (GatewayFQDNProxy
 
 	data, ok := dataI.(*zos.GatewayFQDNProxy)
 	if !ok {
-		return GatewayFQDNProxy{}, fmt.Errorf("could not create gateway fqdn proxy workload from data %v", dataI)
+		return GatewayFQDNProxy{}, errors.Errorf("could not create gateway fqdn proxy workload from data %v", dataI)
 	}
 	network := ""
 	if data.Network != nil {

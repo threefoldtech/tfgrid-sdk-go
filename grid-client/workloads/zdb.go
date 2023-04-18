@@ -3,7 +3,6 @@ package workloads
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -53,7 +52,7 @@ func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 
 	data, ok := dataI.(*zos.ZDB)
 	if !ok {
-		return ZDB{}, fmt.Errorf("could not create zdb workload from data %v", dataI)
+		return ZDB{}, errors.Errorf("could not create zdb workload from data %v", dataI)
 	}
 
 	var result zos.ZDBResult

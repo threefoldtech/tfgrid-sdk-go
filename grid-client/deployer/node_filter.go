@@ -23,7 +23,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	}
 
 	if len(nodes) == 0 {
-		return []types.Node{}, fmt.Errorf("could not find any node with options: %+v", serializeOptions(options))
+		return []types.Node{}, errors.Errorf("could not find any node with options: %+v", serializeOptions(options))
 	}
 
 	// if no sru needed
@@ -48,7 +48,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	}
 
 	if len(nodePools) == 0 {
-		return []types.Node{}, fmt.Errorf("could not find any node with free ssd pools: %d GB", convertBytesToGB(*options.FreeSRU))
+		return []types.Node{}, errors.Errorf("could not find any node with free ssd pools: %d GB", convertBytesToGB(*options.FreeSRU))
 	}
 
 	return nodePools, nil

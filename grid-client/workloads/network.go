@@ -54,12 +54,21 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 
 	data, ok := dataI.(*zos.Network)
 	if !ok {
-		return ZNet{}, fmt.Errorf("could not create network workload from data %v", dataI)
+		return ZNet{}, errors.Errorf("could not create network workload from data %v", dataI)
 	}
 
-	wgKey, err := wgtypes.ParseKey(data.WGPrivateKey)
-	if err != nil {
-		return ZNet{}, fmt.Errorf("could not parse wg private key: %s", data.WGPrivateKey)
+	keys := map[uint32]wgtypes.Key{}
+	if data.WGPrivateKey != "" {
+		wgKey, err := wgtypes.ParseKey(data.WGPrivateKey)
+		if err != nil {
+			return ZNet{}, errors.Errorf("could not parse wg private key: %s", data.WGPrivateKey)
+		}
+		keys[nodeID] = wgKey
+	}
+
+	wgPort := map[uint32]int{}
+	if data.WGListenPort != 0 {
+		wgPort[nodeID] = int(data.WGListenPort)
 	}
 
 	var addWGAccess bool
@@ -77,8 +86,8 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		IPRange:      data.NetworkIPRange,
 		AddWGAccess:  addWGAccess,
 		NodesIPRange: map[uint32]gridtypes.IPNet{nodeID: data.Subnet},
-		WGPort:       map[uint32]int{nodeID: int(data.WGListenPort)},
-		Keys:         map[uint32]wgtypes.Key{nodeID: wgKey},
+		WGPort:       wgPort,
+		Keys:         keys,
 	}, nil
 }
 
@@ -86,7 +95,7 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 func (znet *ZNet) Validate() error {
 	mask := znet.IPRange.Mask
 	if ones, _ := mask.Size(); ones != 16 {
-		return fmt.Errorf("subnet in ip range %s should be 16", znet.IPRange.String())
+		return errors.Errorf("subnet in ip range %s should be 16", znet.IPRange.String())
 	}
 
 	return nil

@@ -179,7 +179,7 @@ func (st *State) LoadK8sFromGrid(nodeIDs []uint32, deploymentName string) (workl
 		}
 	}
 	if cluster.Master == nil {
-		return workloads.K8sCluster{}, fmt.Errorf("failed to get master node for k8s cluster %s", deploymentName)
+		return workloads.K8sCluster{}, errors.Errorf("failed to get master node for k8s cluster %s", deploymentName)
 	}
 	cluster.NodeDeploymentID = nodeDeploymentID
 	cluster.NetworkName = cluster.Master.NetworkName
@@ -187,9 +187,15 @@ func (st *State) LoadK8sFromGrid(nodeIDs []uint32, deploymentName string) (workl
 	cluster.Token = cluster.Master.Token
 
 	// get cluster IP ranges
-	err := st.AssignNodesIPRange(&cluster)
+	znet, err := st.LoadNetworkFromGrid(cluster.NetworkName)
 	if err != nil {
-		return workloads.K8sCluster{}, fmt.Errorf("failed to assign ip ranges for k8s cluster %s", deploymentName)
+		return workloads.K8sCluster{}, errors.Wrapf(err, "failed to load network %s", cluster.NetworkName)
+	}
+	st.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
+
+	err = st.AssignNodesIPRange(&cluster)
+	if err != nil {
+		return workloads.K8sCluster{}, errors.Errorf("failed to assign ip ranges for k8s cluster %s", deploymentName)
 	}
 
 	return cluster, nil
@@ -296,6 +302,10 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 		}
 	}
 
+	if reflect.DeepEqual(znet, workloads.ZNet{}) {
+		return znet, errors.Errorf("failed to get network %s", name)
+	}
+
 	// merge networks
 	var nodes []uint32
 	nodesIPRange := map[uint32]gridtypes.IPNet{}
@@ -313,10 +323,6 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 	znet.NodesIPRange = nodesIPRange
 	znet.Keys = keys
 	znet.WGPort = wgPort
-
-	if reflect.DeepEqual(znet, workloads.ZNet{}) {
-		return znet, errors.Errorf("failed to get network %s", name)
-	}
 
 	return znet, nil
 }
@@ -365,9 +371,9 @@ func (st *State) GetWorkloadInDeployment(nodeID uint32, name string, deploymentN
 				}
 			}
 		}
-		return gridtypes.Workload{}, gridtypes.Deployment{}, fmt.Errorf("could not get workload with name %s", name)
+		return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Errorf("could not get workload with name %s", name)
 	}
-	return gridtypes.Workload{}, gridtypes.Deployment{}, fmt.Errorf("could not get workload '%s' with node ID %d", name, nodeID)
+	return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Errorf("could not get workload '%s' with node ID %d", name, nodeID)
 }
 
 // AssignNodesIPRange to assign ip range of k8s cluster nodes

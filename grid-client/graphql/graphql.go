@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
 // GraphQl for tf graphql
@@ -89,7 +91,7 @@ func parseHTTPResponse(resp *http.Response) (map[string]interface{}, error) {
 	}
 
 	if resp.StatusCode >= 400 {
-		return map[string]interface{}{}, fmt.Errorf("request failed with status code: %d with error %v", resp.StatusCode, data)
+		return map[string]interface{}{}, errors.Errorf("request failed with status code: %d with error %v", resp.StatusCode, data)
 	}
 
 	return data, nil

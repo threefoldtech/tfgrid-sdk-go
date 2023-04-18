@@ -197,11 +197,11 @@ func (k *K8sCluster) ValidateToken() error {
 // ValidateIPranges validates NodesIPRange of master && workers of k8s cluster
 func (k *K8sCluster) ValidateIPranges() error {
 	if _, ok := k.NodesIPRange[k.Master.Node]; !ok {
-		return fmt.Errorf("the master node %d does not exist in the network's ip ranges", k.Master.Node)
+		return errors.Errorf("the master node %d does not exist in the network's ip ranges", k.Master.Node)
 	}
 	for _, w := range k.Workers {
 		if _, ok := k.NodesIPRange[w.Node]; !ok {
-			return fmt.Errorf("the node with id %d in worker %s does not exist in the network's ip ranges", w.Node, w.Name)
+			return errors.Errorf("the node with id %d in worker %s does not exist in the network's ip ranges", w.Node, w.Name)
 		}
 	}
 	return nil
@@ -214,7 +214,7 @@ func (k *K8sCluster) ValidateNames() error {
 
 	for _, w := range k.Workers {
 		if _, ok := names[w.Name]; ok {
-			return fmt.Errorf("k8s workers and master must have unique names: %s occurred more than once", w.Name)
+			return errors.Errorf("k8s workers and master must have unique names: %s occurred more than once", w.Name)
 		}
 		names[w.Name] = true
 	}
@@ -233,7 +233,7 @@ func (k *K8sCluster) ValidateChecksums() error {
 			return errors.Wrapf(err, "could not get flist %s hash", vm.Flist)
 		}
 		if vm.FlistChecksum != checksum {
-			return fmt.Errorf("passed checksum %s of %s does not match %s returned from %s",
+			return errors.Errorf("passed checksum %s of %s does not match %s returned from %s",
 				vm.FlistChecksum,
 				vm.Name,
 				checksum,

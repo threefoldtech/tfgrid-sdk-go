@@ -2,8 +2,6 @@
 package workloads
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -34,7 +32,7 @@ func NewDiskFromWorkload(wl *gridtypes.Workload) (Disk, error) {
 
 	data, ok := dataI.(*zos.ZMount)
 	if !ok {
-		return Disk{}, fmt.Errorf("could not create disk workload from data %v", dataI)
+		return Disk{}, errors.Errorf("could not create disk workload from data %v", dataI)
 	}
 
 	return Disk{
