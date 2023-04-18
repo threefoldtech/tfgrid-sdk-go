@@ -366,7 +366,7 @@ func (d *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32, k8s *
 
 	ip := ipRange.IP.To4()
 	if ip == nil {
-		return "", fmt.Errorf("the provided ip range (%s) is not a valid ipv4", ipRange.String())
+		return "", errors.Errorf("the provided ip range (%s) is not a valid ipv4", ipRange.String())
 	}
 
 	for i := 2; i < 255; i++ {

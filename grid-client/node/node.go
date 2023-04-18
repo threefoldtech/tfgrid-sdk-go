@@ -74,7 +74,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"net"
 	"time"
@@ -89,7 +88,7 @@ import (
 )
 
 // ErrNoAccessibleInterfaceFound no accessible interface found
-var ErrNoAccessibleInterfaceFound = fmt.Errorf("could not find a publicly accessible ipv4 or ipv6")
+var ErrNoAccessibleInterfaceFound = errors.Errorf("could not find a publicly accessible ipv4 or ipv6")
 
 // IfaceType define the different public interface supported
 type IfaceType string

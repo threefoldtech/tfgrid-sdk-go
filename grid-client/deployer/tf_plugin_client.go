@@ -114,7 +114,7 @@ func NewTFPluginClient(
 	tfPluginClient := TFPluginClient{}
 
 	if valid := validateMnemonics(mnemonics); !valid {
-		return TFPluginClient{}, fmt.Errorf("mnemonics %s is invalid", mnemonics)
+		return TFPluginClient{}, errors.Errorf("mnemonics %s is invalid", mnemonics)
 	}
 	tfPluginClient.mnemonics = mnemonics
 
@@ -125,7 +125,7 @@ func NewTFPluginClient(
 	case "sr25519":
 		identity, err = substrate.NewIdentityFromSr25519Phrase(string(tfPluginClient.mnemonics))
 	default:
-		err = fmt.Errorf("key type must be one of ed25519 and sr25519 not %s", keyType)
+		err = errors.Errorf("key type must be one of ed25519 and sr25519 not %s", keyType)
 	}
 
 	if err != nil {
@@ -139,7 +139,7 @@ func NewTFPluginClient(
 	}
 
 	if network != "dev" && network != "qa" && network != "test" && network != "main" {
-		return TFPluginClient{}, fmt.Errorf("network must be one of dev, qa, test, and main not %s", network)
+		return TFPluginClient{}, errors.Errorf("network must be one of dev, qa, test, and main not %s", network)
 	}
 	tfPluginClient.Network = network
 

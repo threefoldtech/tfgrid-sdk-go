@@ -3,7 +3,6 @@ package workloads
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"sort"
 	"strings"
@@ -207,7 +206,7 @@ func GetUsedIPs(dl gridtypes.Deployment) ([]byte, error) {
 	usedIPs := []byte{}
 	for _, w := range dl.Workloads {
 		if !w.Result.State.IsOkay() {
-			return usedIPs, fmt.Errorf("workload %s state failed", w.Name)
+			return usedIPs, errors.Errorf("workload %s state failed", w.Name)
 		}
 		if w.Type == zos.ZMachineType {
 			vm, err := NewVMFromWorkload(&w, &dl)

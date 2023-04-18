@@ -15,6 +15,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 const deploymentName = "testName"
@@ -28,8 +29,8 @@ func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
 	ncPool := mocks.NewMockNodeClientGetter(ctrl)
 
 	state := NewState(ncPool, sub)
-	state.CurrentNodeDeployments = map[uint32]ContractIDs{1: []uint64{1}}
-	state.CurrentNodeNetworks = map[uint32]ContractIDs{1: []uint64{1}}
+	state.CurrentNodeDeployments = map[uint32]ContractIDs{1: []uint64{10}}
+	state.CurrentNodeNetworks = map[uint32]ContractIDs{1: []uint64{10}}
 
 	dl1 := workloads.NewGridDeployment(13, wls)
 	dl1.ContractID = 10
@@ -244,19 +245,23 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		Memory:        8,
 		YggIP:         "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 		IP:            "1.1.1.1",
-		NetworkName:   "test_network",
+		NetworkName:   "test",
 	}
 
 	var Workers []workloads.K8sNode
+
+	ipRange, err := gridtypes.ParseIPNet("1.1.1.1/24")
+	assert.NoError(t, err)
+
 	cluster := workloads.K8sCluster{
 		Master:           &master,
 		Workers:          Workers,
 		Token:            "",
 		SSHKey:           "",
-		NetworkName:      "test_network",
+		NetworkName:      "test",
 		NodeDeploymentID: map[uint32]uint64{1: 10},
 		NodesIPRange: map[uint32]gridtypes.IPNet{
-			1: {},
+			1: ipRange,
 		},
 	}
 
@@ -269,7 +274,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 			Network: zos.MachineNetwork{
 				Interfaces: []zos.MachineInterface{
 					{
-						Network: gridtypes.Name("test_network"),
+						Network: gridtypes.Name("test"),
 						IP:      net.ParseIP("1.1.1.1"),
 					},
 				},
@@ -292,8 +297,24 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		},
 	}
 
+	networkWl := gridtypes.Workload{
+		Version: 0,
+		Name:    gridtypes.Name("test"),
+		Type:    zos.NetworkType,
+		Data: gridtypes.MustMarshal(zos.Network{
+			NetworkIPRange: gridtypes.MustParseIPNet(ipRange.String()),
+			Subnet:         ipRange,
+			WGPrivateKey:   "",
+			WGListenPort:   0,
+			Peers:          []zos.Peer{},
+		}),
+		Metadata:    "",
+		Description: "test description",
+		Result:      gridtypes.Result{},
+	}
+
 	t.Run("success", func(t *testing.T) {
-		state := SetupLoaderTests(t, []gridtypes.Workload{k8sWorkload})
+		state := SetupLoaderTests(t, []gridtypes.Workload{networkWl, k8sWorkload})
 
 		got, err := state.LoadK8sFromGrid([]uint32{1}, deploymentName)
 		assert.NoError(t, err)
@@ -329,11 +350,15 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 	assert.NoError(t, err)
 
 	znet := workloads.ZNet{
-		Name:        "test",
-		Description: "test description",
-		Nodes:       []uint32{1},
-		IPRange:     ipRange,
-		AddWGAccess: false,
+		Name:             "test",
+		Description:      "test description",
+		Nodes:            []uint32{1},
+		IPRange:          ipRange,
+		AddWGAccess:      false,
+		NodeDeploymentID: map[uint32]uint64{1: 10},
+		WGPort:           map[uint32]int{},
+		Keys:             map[uint32]wgtypes.Key{},
+		NodesIPRange:     map[uint32]gridtypes.IPNet{1: ipRange},
 	}
 
 	networkWl := gridtypes.Workload{

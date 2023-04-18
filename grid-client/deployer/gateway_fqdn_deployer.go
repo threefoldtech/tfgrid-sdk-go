@@ -3,7 +3,6 @@ package deployer
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
@@ -49,7 +48,7 @@ func (d *GatewayFQDNDeployer) Validate(ctx context.Context, gw *workloads.Gatewa
 	}
 
 	if cfg.IPv4.IP == nil {
-		return fmt.Errorf("node %d doesn't contain a public IP in its public config", gw.NodeID)
+		return errors.Errorf("node %d doesn't contain a public IP in its public config", gw.NodeID)
 	}
 
 	return client.AreNodesUp(ctx, sub, []uint32{gw.NodeID}, d.tfPluginClient.NcPool)
