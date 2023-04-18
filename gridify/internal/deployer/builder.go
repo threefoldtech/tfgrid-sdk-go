@@ -4,7 +4,6 @@ package deployer
 import (
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -13,22 +12,36 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+// VMSpec struct to hold vm specs
+type VMSpec struct {
+	CPU     int
+	Memory  int
+	Storage int
+	Public  bool
+}
+
 var (
-	vmFlist      = "https://hub.grid.tf/aelawady.3bot/abdulrahmanelawady-gridify-test-latest.flist"
-	vmCPU        = 2
-	vmMemory     = 2 // GB
-	vmRootfsSize = 5 // GB
+	// Eco spec
+	Eco = VMSpec{1, 2, 5, false}
+	// Standard spec
+	Standard = VMSpec{2, 4, 10, false}
+	// Performance spec
+	Performance = VMSpec{4, 8, 15, true}
+)
+
+var (
+	vmFlist = "https://hub.grid.tf/aelawady.3bot/abdulrahmanelawady-gridify-test-latest.flist"
+
 	vmEntrypoint = "/init.sh"
-	vmPublicIP   = true
 	vmPlanetary  = true
 )
 
-func buildNodeFilter() types.NodeFilter {
+func buildNodeFilter(vmSpec VMSpec) types.NodeFilter {
 	nodeStatus := "up"
-	freeMRU := uint64(vmMemory)
-	freeHRU := uint64(vmRootfsSize)
+	freeMRU := uint64(vmSpec.Memory)
+	freeSRU := uint64(vmSpec.Storage)
 	freeIPs := uint64(0)
-	if vmPublicIP {
+	if vmSpec.Public {
 		freeIPs = 1
 	}
 	domain := true
@@ -37,25 +50,25 @@ func buildNodeFilter() types.NodeFilter {
 		FarmIDs: []uint64{1},
 		Status:  &nodeStatus,
 		FreeMRU: &freeMRU,
-		FreeHRU: &freeHRU,
+		FreeSRU: &freeSRU,
 		FreeIPs: &freeIPs,
 		Domain:  &domain,
 	}
 	return filter
 }
 
-func findNode(tfPluginClient tfplugin.TFPluginClientInterface) (uint32, error) {
-	filter := buildNodeFilter()
+func findNode(vmSpec VMSpec, tfPluginClient tfplugin.TFPluginClientInterface) (uint32, error) {
+	filter := buildNodeFilter(vmSpec)
 	nodes, _, err := tfPluginClient.FilterNodes(filter, types.Limit{})
 	if err != nil {
 		return 0, err
 	}
 	if len(nodes) == 0 {
 		return 0, fmt.Errorf(
-			"no node with free resources available using node filter: farmIDs: %v, mru: %d, hru: %d, freeips: %d, domain: %t",
+			"no node with free resources available using node filter: farmIDs: %v, mru: %d, sru: %d, freeips: %d, domain: %t",
 			filter.FarmIDs,
 			*filter.FreeMRU,
-			*filter.FreeHRU,
+			*filter.FreeSRU,
 			*filter.FreeIPs,
 			*filter.Domain,
 		)
@@ -79,16 +92,16 @@ func buildNetwork(projectName string, node uint32) workloads.ZNet {
 	return network
 }
 
-func buildDeployment(networkName, projectName, repoURL string, node uint32) workloads.Deployment {
+func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL string, node uint32) workloads.Deployment {
 	vmName := randName(10)
 	vm := workloads.VM{
 		Name:       vmName,
 		Flist:      vmFlist,
-		CPU:        vmCPU,
-		PublicIP:   vmPublicIP,
+		CPU:        vmSpec.CPU,
+		Memory:     vmSpec.Memory * 1024,
+		RootfsSize: vmSpec.Storage * 1024,
+		PublicIP:   vmSpec.Public,
 		Planetary:  vmPlanetary,
-		Memory:     vmMemory * 1024,
-		RootfsSize: vmRootfsSize * 1024,
 		Entrypoint: vmEntrypoint,
 		EnvVars: map[string]string{
 			"REPO_URL": repoURL,
@@ -100,19 +113,14 @@ func buildDeployment(networkName, projectName, repoURL string, node uint32) work
 	return dl
 }
 
-func buildGateway(backend, projectName string, node uint32) workloads.GatewayNameProxy {
+func buildGateway(network, backend, projectName string, node uint32) workloads.GatewayNameProxy {
 	subdomain := randName(10)
 	gateway := workloads.GatewayNameProxy{
 		NodeID:       node,
 		Name:         subdomain,
 		Backends:     []zos.Backend{zos.Backend(backend)},
 		SolutionType: projectName,
+		Network:      network,
 	}
 	return gateway
-}
-
-func buildPortlessBackend(ip string) string {
-	publicIP := strings.Split(ip, "/")[0]
-	backend := fmt.Sprintf("http://%s", publicIP)
-	return backend
 }

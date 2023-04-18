@@ -2,11 +2,10 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	command "github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/cmd"
+	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/deployer"
 )
 
 // deployCmd represents the deploy command
@@ -23,8 +22,40 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		vmSpec, err := cmd.Flags().GetString("spec")
+		if err != nil {
+			return err
+		}
+		spec := deployer.VMSpec{}
+		switch vmSpec {
+		case "eco":
+			spec = deployer.Eco
+		case "standard":
+			spec = deployer.Standard
+		case "performance":
+			spec = deployer.Performance
+		}
+		cpu, err := cmd.Flags().GetInt("cpu")
+		if err != nil {
+			return err
+		}
+		memory, err := cmd.Flags().GetInt("memory")
+		if err != nil {
+			return err
+		}
+		storage, err := cmd.Flags().GetInt("storage")
+		if err != nil {
+			return err
+		}
+		public, err := cmd.Flags().GetBool("public")
+		if err != nil {
+			return err
+		}
+		if spec == (deployer.VMSpec{}) {
+			spec = deployer.VMSpec{CPU: cpu, Memory: memory, Storage: storage, Public: public}
+		}
 
-		err = command.Deploy(ports, debug)
+		err = command.Deploy(spec, ports, debug)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -38,7 +69,12 @@ func init() {
 	deployCmd.Flags().UintSliceP("ports", "p", []uint{}, "ports to forward the FQDNs to")
 	err := deployCmd.MarkFlagRequired("ports")
 	if err != nil {
-		log.Error().Err(err).Send()
-		os.Exit(1)
+		log.Fatal().Err(err).Send()
 	}
+	deployCmd.Flags().StringP("spec", "s", "", "vm spec can be (eco, standard, performance)")
+	deployCmd.Flags().Int("cpu", 1, "vm cpu, will be ignored if --spec is used")
+	deployCmd.Flags().Int("memory", 2, "vm memory, will be ignored if --spec is used")
+	deployCmd.Flags().Int("storage", 5, "vm storage, will be ignored if --spec is used")
+	deployCmd.Flags().Bool("public", false, "vm public ip, will be ignored if --spec is used")
+
 }

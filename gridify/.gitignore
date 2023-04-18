@@ -4,7 +4,6 @@
 *.dll
 *.so
 *.dylib
-gridify
 
 # Test binary, built with `go test -c`
 *.test
@@ -15,3 +14,5 @@ gridify
 coverage
 
 dist/
+
+bin/
