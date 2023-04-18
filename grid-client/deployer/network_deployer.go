@@ -300,14 +300,12 @@ func (d *NetworkDeployer) Cancel(ctx context.Context, znet *workloads.ZNet) erro
 	}
 
 	for nodeID, contractID := range znet.NodeDeploymentID {
-		if workloads.Contains(znet.Nodes, nodeID) {
-			err = d.deployer.Cancel(ctx, contractID)
-			if err != nil {
-				return errors.Wrapf(err, "could not cancel network %s, contract %d", znet.Name, contractID)
-			}
-			delete(znet.NodeDeploymentID, nodeID)
-			d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
+		err = d.deployer.Cancel(ctx, contractID)
+		if err != nil {
+			return errors.Wrapf(err, "could not cancel network %s, contract %d", znet.Name, contractID)
 		}
+		delete(znet.NodeDeploymentID, nodeID)
+		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
 	}
 
 	// delete network from state if all contracts was deleted
