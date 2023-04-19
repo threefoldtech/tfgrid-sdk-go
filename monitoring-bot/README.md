@@ -1,6 +1,6 @@
 # tfgrid monitoring bot
 
-<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-42%25-brightgreen.svg?longCache=true&style=flat)</a>
+<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-48%25-brightgreen.svg?longCache=true&style=flat)</a>
 [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/monbot-test.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/monbot-test.yml) [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/monbot-lint.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/monbot-lint.yml)
 
 This is a bot to monitor the balance in accounts and send warnings if it is under some threshold.
