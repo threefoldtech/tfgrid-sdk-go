@@ -63,7 +63,7 @@ Gridify saves user configuration in `.gridifyconfig` under default configuration
 
 ## Gridify Demo Project
 
-See [gridify-demo](https://github.com/threefoldtech/tfgrid-sdk-go/tree/development/gridify/demo)
+See [gridify-demo](https://github.com/AbdelrahmanElawady/gridify-demo)
 
 In this demo gridify deploys a VM with [flist](https://hub.grid.tf/aelawady.3bot/abdulrahmanelawady-gridify-test-latest.flist.md) that clones the demo project and run each service defined in Procfile. Then, gridify assign a domain for each service.
 
