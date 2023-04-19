@@ -28,7 +28,7 @@ type TFPluginClientInterface interface {
 
 // NewTFPluginClient returns new tfPluginClient given mnemonics and grid network
 func NewTFPluginClient(mnemonics, network string) (TFPluginClient, error) {
-	t, err := gridDeployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, true, false)
+	t, err := gridDeployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 100, true, false)
 	if err != nil {
 		return TFPluginClient{}, err
 	}
@@ -77,7 +77,7 @@ func (t *TFPluginClient) CancelContract(contractID uint64) error {
 	return t.tfPluginClient.SubstrateConn.CancelContract(t.tfPluginClient.Identity, contractID)
 }
 
-// FilterNodes retruns nodes that match the given filter
+// FilterNodes returns nodes that match the given filter
 func (t *TFPluginClient) FilterNodes(filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error) {
 	return t.tfPluginClient.GridProxyClient.Nodes(filter, pagination)
 }

@@ -57,7 +57,7 @@ require (
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/threefoldtech/substrate-client v0.1.5 // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.1-0.20230418085700-4fc5cc08e136 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect

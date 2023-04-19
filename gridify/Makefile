@@ -58,4 +58,4 @@ staticcheck:
 
 build:
 	@echo "Running $@"
-	@go build -o gridify main.go
+	@go build -o bin/gridify main.go

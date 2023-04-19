@@ -14,7 +14,7 @@ import (
 )
 
 // Deploy handles deploy command logic
-func Deploy(ports []uint, debug bool) error {
+func Deploy(vmSpec deployer.VMSpec, ports []uint, debug bool) error {
 
 	path, err := config.GetConfigPath()
 	if err != nil {
@@ -54,12 +54,12 @@ func Deploy(ports []uint, debug bool) error {
 		return err
 	}
 
-	fqdns, err := deployer.Deploy(context.Background(), ports)
+	fqdns, err := deployer.Deploy(context.Background(), vmSpec, ports)
 	if err != nil {
 		return err
 	}
 	for port, fqdn := range fqdns {
-		logger.Info().Msgf("%d: %s\n", port, fqdn)
+		logger.Info().Msgf("%d: %s", port, fqdn)
 	}
 	return nil
 }
