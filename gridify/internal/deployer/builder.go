@@ -2,7 +2,9 @@
 package deployer
 
 import (
+	"fmt"
 	"net"
+	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -20,9 +22,9 @@ type VMSpec struct {
 
 var (
 	// Eco spec
-	Eco = VMSpec{1, 2, 5, false}
+	Eco = VMSpec{1, 2, 5, true}
 	// Standard spec
-	Standard = VMSpec{2, 4, 10, false}
+	Standard = VMSpec{2, 4, 10, true}
 	// Performance spec
 	Performance = VMSpec{4, 8, 15, true}
 )
@@ -90,14 +92,19 @@ func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL string, no
 	return dl
 }
 
-func buildGateway(network, backend, projectName string, node uint32) workloads.GatewayNameProxy {
+func buildGateway(backend, projectName string, node uint32) workloads.GatewayNameProxy {
 	subdomain := randName(10)
 	gateway := workloads.GatewayNameProxy{
 		NodeID:       node,
 		Name:         subdomain,
 		Backends:     []zos.Backend{zos.Backend(backend)},
 		SolutionType: projectName,
-		Network:      network,
 	}
 	return gateway
+}
+
+func buildPortlessBackend(ip string) string {
+	publicIP := strings.Split(ip, "/")[0]
+	backend := fmt.Sprintf("http://%s", publicIP)
+	return backend
 }

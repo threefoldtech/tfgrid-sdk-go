@@ -88,12 +88,14 @@ func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint) (map
 		return map[uint]string{}, errors.Wrapf(err, "could not load vm %s on node %d", dl.Name, node)
 	}
 
+	portlessBackend := buildPortlessBackend(resVM.ComputedIP)
+
 	FQDNs := make(map[uint]string)
 	// TODO: deploy each gateway in a separate goroutine
 	for _, port := range ports {
-		backend := fmt.Sprintf("http://%s:%d", resVM.IP, port)
+		backend := fmt.Sprintf("%s:%d", portlessBackend, port)
 		d.logger.Info().Msgf("deploying a gateway for port %d", port)
-		gateway := buildGateway(network.Name, backend, d.projectName, node)
+		gateway := buildGateway(backend, d.projectName, node)
 		err := d.tfPluginClient.DeployGatewayName(ctx, &gateway)
 		if err != nil {
 			return map[uint]string{}, errors.Wrapf(err, "could not deploy gateway %s on node %d", gateway.Name, node)

@@ -27,9 +27,9 @@ func TestDeploy(t *testing.T) {
 	filter := buildNodeFilter(Eco)
 	network := buildNetwork(projectName, 1)
 	deployment := buildDeployment(Eco, network.Name, projectName, repoURL, 1)
-	vmIP := "10.10.10.10"
-	gateway1 := buildGateway(network.Name, "http://10.10.10.10:80", projectName, 1)
-	gateway2 := buildGateway(network.Name, "http://10.10.10.10:8080", projectName, 1)
+	vmIP := "10.10.10.10/24"
+	gateway1 := buildGateway("http://10.10.10.10:80", projectName, 1)
+	gateway2 := buildGateway("http://10.10.10.10:8080", projectName, 1)
 
 	clientMock := mocks.NewMockTFPluginClientInterface(ctrl)
 
@@ -173,7 +173,7 @@ func TestDeploy(t *testing.T) {
 		clientMock.
 			EXPECT().
 			LoadVMFromGrid(gomock.Any(), deployment.Name, deployment.Name).
-			Return(workloads.VM{IP: vmIP}, nil)
+			Return(workloads.VM{ComputedIP: vmIP}, nil)
 
 		clientMock.
 			EXPECT().
@@ -208,7 +208,7 @@ func TestDeploy(t *testing.T) {
 		clientMock.
 			EXPECT().
 			LoadVMFromGrid(gomock.Any(), deployment.Name, deployment.Name).
-			Return(workloads.VM{IP: vmIP}, nil)
+			Return(workloads.VM{ComputedIP: vmIP}, nil)
 
 		clientMock.
 			EXPECT().
@@ -248,7 +248,7 @@ func TestDeploy(t *testing.T) {
 		clientMock.
 			EXPECT().
 			LoadVMFromGrid(gomock.Any(), deployment.Name, deployment.Name).
-			Return(workloads.VM{IP: vmIP}, nil)
+			Return(workloads.VM{ComputedIP: vmIP}, nil)
 
 		clientMock.
 			EXPECT().
@@ -289,7 +289,7 @@ func TestDeploy(t *testing.T) {
 		clientMock.
 			EXPECT().
 			LoadVMFromGrid(gomock.Any(), deployment.Name, deployment.Name).
-			Return(workloads.VM{IP: vmIP}, nil)
+			Return(workloads.VM{ComputedIP: vmIP}, nil)
 
 		clientMock.
 			EXPECT().
