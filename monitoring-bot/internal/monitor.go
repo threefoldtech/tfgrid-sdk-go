@@ -162,7 +162,7 @@ func (m *Monitor) sendMessage(manager client.Manager, wallet wallet) error {
 	url := fmt.Sprintf("%s/sendMessage", m.getTelegramURL())
 	body, _ := json.Marshal(map[string]string{
 		"chat_id": m.env.chatID,
-		"text":    fmt.Sprintf("wallet %v with address:\n%v\nhas balance = %v", wallet.Name, wallet.Address, balance),
+		"text":    fmt.Sprintf("wallet %v with address:\n%v\nhas balance = %v ⚠️", wallet.Name, wallet.Address, balance),
 	})
 	response, err := http.Post(
 		url,
@@ -196,11 +196,13 @@ func (m *Monitor) monitorNetworks() error {
 	}
 
 	message := ""
+	var failure bool
 
 	for _, network := range networks {
 
 		if _, ok := gridProxyHealthCheck[network]; !ok {
 			message += fmt.Sprintf("Proxy for %v is not working ❌\n", network)
+			failure = true
 		} else {
 			message += fmt.Sprintf("Proxy for %v is working ✅\n", network)
 		}
@@ -208,11 +210,16 @@ func (m *Monitor) monitorNetworks() error {
 		if _, ok := versions[network]; !ok {
 			notWorkingTestedNodes := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(m.notWorkingNodesPerNetwork[network])), ", "), "[]")
 			message += fmt.Sprintf("Nodes tested but failed (relay): %v ❌\n\n", notWorkingTestedNodes)
+			failure = true
 			continue
 		}
 		workingTestedNodes := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(m.workingNodesPerNetwork[network])), ", "), "[]")
 		message += fmt.Sprintf("Nodes successfully tested (relay): %v ✅\n\n", workingTestedNodes)
 
+	}
+
+	if !failure {
+		return nil
 	}
 
 	url := fmt.Sprintf("%s/sendMessage", m.getTelegramURL())

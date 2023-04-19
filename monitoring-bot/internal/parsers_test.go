@@ -168,6 +168,10 @@ func TestParsers(t *testing.T) {
 			MAINNET_MNEMONIC=mnemonic
 			DEVNET_MNEMONIC=mnemonic
 			QANET_MNEMONIC=mnemonic
+			DEV_FARM_NAME=Freefarm
+			QA_FARM_NAME=Freefarm
+			MAIN_FARM_NAME=Freefarm
+			TEST_FARM_NAME=FreeFarm
 			BOT_TOKEN=token
 			CHAT_ID=id
 			MINS=10
