@@ -21,7 +21,7 @@ func TestNetworkDeployment(t *testing.T) {
 	defer cancel()
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
-	if err != nil {
+	if err != nil || len(nodes) < 2 {
 		t.Skip("no available nodes found")
 	}
 

@@ -43,7 +43,7 @@ func TestK8sDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
-	if err != nil {
+	if err != nil || len(nodes) < 2 {
 		t.Skip("no available nodes found")
 	}
 
