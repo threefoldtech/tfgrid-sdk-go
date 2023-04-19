@@ -2,6 +2,8 @@
 package cmd
 
 import (
+	"errors"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	command "github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/cmd"
@@ -61,6 +63,13 @@ var deployCmd = &cobra.Command{
 		}
 		return nil
 	},
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if cmd.Flag("spec").Changed &&
+			(cmd.Flag("cpu").Changed || cmd.Flag("memory").Changed || cmd.Flag("storage").Changed || cmd.Flag("public").Changed) {
+			return errors.New("spec flag cant't be set with cpu, memory, storage or public flags")
+		}
+		return nil
+	},
 }
 
 func init() {
@@ -72,9 +81,8 @@ func init() {
 		log.Fatal().Err(err).Send()
 	}
 	deployCmd.Flags().StringP("spec", "s", "", "vm spec can be (eco, standard, performance)")
-	deployCmd.Flags().Int("cpu", 1, "vm cpu, will be ignored if --spec is used")
-	deployCmd.Flags().Int("memory", 2, "vm memory, will be ignored if --spec is used")
-	deployCmd.Flags().Int("storage", 5, "vm storage, will be ignored if --spec is used")
-	deployCmd.Flags().Bool("public", false, "vm public ip, will be ignored if --spec is used")
-
+	deployCmd.Flags().Int("cpu", 1, "vm cpu")
+	deployCmd.Flags().Int("memory", 2, "vm memory")
+	deployCmd.Flags().Int("storage", 5, "vm storage")
+	deployCmd.Flags().Bool("public", false, "vm public ip")
 }
