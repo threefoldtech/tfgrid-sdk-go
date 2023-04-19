@@ -2,7 +2,9 @@
 package cmd
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -57,7 +59,9 @@ var deployCmd = &cobra.Command{
 			spec = deployer.VMSpec{CPU: cpu, Memory: memory, Storage: storage, Public: public}
 		}
 
-		err = command.Deploy(spec, ports, debug)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		err = command.Deploy(ctx, spec, ports, debug)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
