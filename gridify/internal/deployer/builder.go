@@ -4,10 +4,10 @@ package deployer
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/tfplugin"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -22,9 +22,9 @@ type VMSpec struct {
 
 var (
 	// Eco spec
-	Eco = VMSpec{1, 2, 5, false}
+	Eco = VMSpec{1, 2, 5, true}
 	// Standard spec
-	Standard = VMSpec{2, 4, 10, false}
+	Standard = VMSpec{2, 4, 10, true}
 	// Performance spec
 	Performance = VMSpec{4, 8, 15, true}
 )
@@ -38,8 +38,8 @@ var (
 
 func buildNodeFilter(vmSpec VMSpec) types.NodeFilter {
 	nodeStatus := "up"
-	freeMRU := uint64(vmSpec.Memory)
-	freeSRU := uint64(vmSpec.Storage)
+	freeMRU := uint64(vmSpec.Memory * 1024 * 1024 * 1024)
+	freeSRU := uint64(vmSpec.Storage * 1024 * 1024 * 1024)
 	freeIPs := uint64(0)
 	if vmSpec.Public {
 		freeIPs = 1
@@ -55,27 +55,6 @@ func buildNodeFilter(vmSpec VMSpec) types.NodeFilter {
 		Domain:  &domain,
 	}
 	return filter
-}
-
-func findNode(vmSpec VMSpec, tfPluginClient tfplugin.TFPluginClientInterface) (uint32, error) {
-	filter := buildNodeFilter(vmSpec)
-	nodes, _, err := tfPluginClient.FilterNodes(filter, types.Limit{})
-	if err != nil {
-		return 0, err
-	}
-	if len(nodes) == 0 {
-		return 0, fmt.Errorf(
-			"no node with free resources available using node filter: farmIDs: %v, mru: %d, sru: %d, freeips: %d, domain: %t",
-			filter.FarmIDs,
-			*filter.FreeMRU,
-			*filter.FreeSRU,
-			*filter.FreeIPs,
-			*filter.Domain,
-		)
-	}
-
-	node := uint32(nodes[0].NodeID)
-	return node, nil
 }
 
 func buildNetwork(projectName string, node uint32) workloads.ZNet {
@@ -113,14 +92,19 @@ func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL string, no
 	return dl
 }
 
-func buildGateway(network, backend, projectName string, node uint32) workloads.GatewayNameProxy {
+func buildGateway(backend, projectName string, node uint32) workloads.GatewayNameProxy {
 	subdomain := randName(10)
 	gateway := workloads.GatewayNameProxy{
 		NodeID:       node,
 		Name:         subdomain,
 		Backends:     []zos.Backend{zos.Backend(backend)},
 		SolutionType: projectName,
-		Network:      network,
 	}
 	return gateway
+}
+
+func buildPortlessBackend(ip string) string {
+	publicIP := strings.Split(ip, "/")[0]
+	backend := fmt.Sprintf("http://%s", publicIP)
+	return backend
 }

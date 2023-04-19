@@ -4,12 +4,11 @@ package tfplugin
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	gridDeployer "github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 // TFPluginClientInterface interface for tfPluginClient
@@ -20,10 +19,10 @@ type TFPluginClientInterface interface {
 	LoadVMFromGrid(nodeID uint32, name string, deploymentName string) (workloads.VM, error)
 	LoadGatewayNameFromGrid(nodeID uint32, name string, deploymentName string) (workloads.GatewayNameProxy, error)
 	ListContractsOfProjectName(projectName string) (graphql.Contracts, error)
-	CancelContract(contractID uint64) error
-	FilterNodes(filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error)
+	CancelByProjectName(projectName string) error
+	GetAvailableNode(ctx context.Context, options types.NodeFilter) (uint32, error)
 	GetGridNetwork() string
-	GetDeployment(nodeID uint32, contractID uint64) (gridtypes.Deployment, error)
+	SetState(nodeID uint32, contractIDs []uint64)
 }
 
 // NewTFPluginClient returns new tfPluginClient given mnemonics and grid network
@@ -72,14 +71,18 @@ func (t *TFPluginClient) ListContractsOfProjectName(projectName string) (graphql
 	return t.tfPluginClient.ContractsGetter.ListContractsOfProjectName(projectName)
 }
 
-// CancelContract cancels a contract on Threefold grid
-func (t *TFPluginClient) CancelContract(contractID uint64) error {
-	return t.tfPluginClient.SubstrateConn.CancelContract(t.tfPluginClient.Identity, contractID)
+// CancelByProjectName cancels a contract on Threefold grid
+func (t *TFPluginClient) CancelByProjectName(projectName string) error {
+	return t.tfPluginClient.CancelByProjectName(projectName)
 }
 
-// FilterNodes returns nodes that match the given filter
-func (t *TFPluginClient) FilterNodes(filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error) {
-	return t.tfPluginClient.GridProxyClient.Nodes(filter, pagination)
+// GetAvailableNode returns nodes that match the given filter
+func (t *TFPluginClient) GetAvailableNode(ctx context.Context, options types.NodeFilter) (uint32, error) {
+	nodes, err := deployer.FilterNodes(ctx, *t.tfPluginClient, options)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(nodes[0].NodeID), nil
 }
 
 // GetGridNetwork returns the current grid network
@@ -87,15 +90,7 @@ func (t *TFPluginClient) GetGridNetwork() string {
 	return t.tfPluginClient.Network
 }
 
-// GetDeployment returns a deployment using node ID and it's contract ID
-func (t *TFPluginClient) GetDeployment(nodeID uint32, contractID uint64) (gridtypes.Deployment, error) {
-	nodeClient, err := t.tfPluginClient.NcPool.GetNodeClient(t.tfPluginClient.SubstrateConn, nodeID)
-	if err != nil {
-		return gridtypes.Deployment{}, errors.Wrapf(err, "failed to get node client for node %d", nodeID)
-	}
-	dl, err := nodeClient.DeploymentGet(context.Background(), contractID)
-	if err != nil {
-		return gridtypes.Deployment{}, errors.Wrapf(err, "failed to get deployment %d from node %d", contractID, nodeID)
-	}
-	return dl, err
+// SetState set the state of tf plugin client
+func (t *TFPluginClient) SetState(nodeID uint32, contractIDs []uint64) {
+	t.tfPluginClient.State.CurrentNodeDeployments[nodeID] = contractIDs
 }

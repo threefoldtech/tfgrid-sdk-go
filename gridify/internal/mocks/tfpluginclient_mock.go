@@ -10,9 +10,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	graphql "github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	workloads "github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	types "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	gridtypes "github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 // MockTFPluginClientInterface is a mock of TFPluginClientInterface interface.
@@ -38,18 +37,18 @@ func (m *MockTFPluginClientInterface) EXPECT() *MockTFPluginClientInterfaceMockR
 	return m.recorder
 }
 
-// CancelContract mocks base method.
-func (m *MockTFPluginClientInterface) CancelContract(contractID uint64) error {
+// CancelByProjectName mocks base method.
+func (m *MockTFPluginClientInterface) CancelByProjectName(projectName string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CancelContract", contractID)
+	ret := m.ctrl.Call(m, "CancelByProjectName", projectName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// CancelContract indicates an expected call of CancelContract.
-func (mr *MockTFPluginClientInterfaceMockRecorder) CancelContract(contractID interface{}) *gomock.Call {
+// CancelByProjectName indicates an expected call of CancelByProjectName.
+func (mr *MockTFPluginClientInterfaceMockRecorder) CancelByProjectName(projectName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelContract", reflect.TypeOf((*MockTFPluginClientInterface)(nil).CancelContract), contractID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelByProjectName", reflect.TypeOf((*MockTFPluginClientInterface)(nil).CancelByProjectName), projectName)
 }
 
 // DeployDeployment mocks base method.
@@ -94,35 +93,19 @@ func (mr *MockTFPluginClientInterfaceMockRecorder) DeployNetwork(ctx, znet inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeployNetwork", reflect.TypeOf((*MockTFPluginClientInterface)(nil).DeployNetwork), ctx, znet)
 }
 
-// FilterNodes mocks base method.
-func (m *MockTFPluginClientInterface) FilterNodes(filter types.NodeFilter, pagination types.Limit) ([]types.Node, int, error) {
+// GetAvailableNode mocks base method.
+func (m *MockTFPluginClientInterface) GetAvailableNode(ctx context.Context, options types.NodeFilter) (uint32, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FilterNodes", filter, pagination)
-	ret0, _ := ret[0].([]types.Node)
-	ret1, _ := ret[1].(int)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// FilterNodes indicates an expected call of FilterNodes.
-func (mr *MockTFPluginClientInterfaceMockRecorder) FilterNodes(filter, pagination interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilterNodes", reflect.TypeOf((*MockTFPluginClientInterface)(nil).FilterNodes), filter, pagination)
-}
-
-// GetDeployment mocks base method.
-func (m *MockTFPluginClientInterface) GetDeployment(nodeID uint32, contractID uint64) (gridtypes.Deployment, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDeployment", nodeID, contractID)
-	ret0, _ := ret[0].(gridtypes.Deployment)
+	ret := m.ctrl.Call(m, "GetAvailableNode", ctx, options)
+	ret0, _ := ret[0].(uint32)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetDeployment indicates an expected call of GetDeployment.
-func (mr *MockTFPluginClientInterfaceMockRecorder) GetDeployment(nodeID, contractID interface{}) *gomock.Call {
+// GetAvailableNode indicates an expected call of GetAvailableNode.
+func (mr *MockTFPluginClientInterfaceMockRecorder) GetAvailableNode(ctx, options interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeployment", reflect.TypeOf((*MockTFPluginClientInterface)(nil).GetDeployment), nodeID, contractID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableNode", reflect.TypeOf((*MockTFPluginClientInterface)(nil).GetAvailableNode), ctx, options)
 }
 
 // GetGridNetwork mocks base method.
@@ -182,4 +165,16 @@ func (m *MockTFPluginClientInterface) LoadVMFromGrid(nodeID uint32, name, deploy
 func (mr *MockTFPluginClientInterfaceMockRecorder) LoadVMFromGrid(nodeID, name, deploymentName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadVMFromGrid", reflect.TypeOf((*MockTFPluginClientInterface)(nil).LoadVMFromGrid), nodeID, name, deploymentName)
+}
+
+// SetState mocks base method.
+func (m *MockTFPluginClientInterface) SetState(nodeID uint32, contractIDs []uint64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetState", nodeID, contractIDs)
+}
+
+// SetState indicates an expected call of SetState.
+func (mr *MockTFPluginClientInterfaceMockRecorder) SetState(nodeID, contractIDs interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockTFPluginClientInterface)(nil).SetState), nodeID, contractIDs)
 }

@@ -59,7 +59,7 @@ func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint) (map
 
 	d.logger.Debug().Msg("getting nodes with free resources")
 
-	node, err := findNode(vmSpec, d.tfPluginClient)
+	node, err := d.tfPluginClient.GetAvailableNode(ctx, buildNodeFilter(vmSpec))
 	if err != nil {
 		return map[uint]string{}, errors.Wrapf(
 			err,
@@ -88,12 +88,14 @@ func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint) (map
 		return map[uint]string{}, errors.Wrapf(err, "could not load vm %s on node %d", dl.Name, node)
 	}
 
+	portlessBackend := buildPortlessBackend(resVM.ComputedIP)
+
 	FQDNs := make(map[uint]string)
 	// TODO: deploy each gateway in a separate goroutine
 	for _, port := range ports {
-		backend := fmt.Sprintf("http://%s:%d", resVM.IP, port)
+		backend := fmt.Sprintf("%s:%d", portlessBackend, port)
 		d.logger.Info().Msgf("deploying a gateway for port %d", port)
-		gateway := buildGateway(network.Name, backend, d.projectName, node)
+		gateway := buildGateway(backend, d.projectName, node)
 		err := d.tfPluginClient.DeployGatewayName(ctx, &gateway)
 		if err != nil {
 			return map[uint]string{}, errors.Wrapf(err, "could not deploy gateway %s on node %d", gateway.Name, node)
@@ -112,26 +114,7 @@ func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint) (map
 
 // Destroy destroys all the contracts of a project
 func (d *Deployer) Destroy() error {
-	d.logger.Info().Msgf("canceling contracts for project %s", d.projectName)
-	contracts, err := d.tfPluginClient.ListContractsOfProjectName(d.projectName)
-	if err != nil {
-		return errors.Wrapf(err, "could not load contracts for project %s", d.projectName)
-	}
-	contractsSlice := append(contracts.NameContracts, contracts.NodeContracts...)
-	for _, contract := range contractsSlice {
-		contractID, err := strconv.ParseUint(contract.ContractID, 0, 64)
-		if err != nil {
-			return errors.Wrapf(err, "could not parse contract %s into uint64", contract.ContractID)
-		}
-		d.logger.Debug().Msgf("canceling contract %d", contractID)
-
-		err = d.tfPluginClient.CancelContract(contractID)
-		if err != nil {
-			return errors.Wrapf(err, "could not cancel contract %d", contractID)
-		}
-	}
-	d.logger.Info().Msg("project destroyed")
-	return nil
+	return d.tfPluginClient.CancelByProjectName(d.projectName)
 }
 
 // Get returns deployed project domains
@@ -143,10 +126,6 @@ func (d *Deployer) Get() (map[string]string, error) {
 	}
 	fqdns := make(map[string]string)
 	for _, contract := range contracts.NodeContracts {
-		contractID, err := strconv.ParseUint(contract.ContractID, 0, 64)
-		if err != nil {
-			return map[string]string{}, errors.Wrapf(err, "could not parse contract %s into uint64", contract.ContractID)
-		}
 		var deploymentData workloads.DeploymentData
 		err = json.Unmarshal([]byte(contract.DeploymentData), &deploymentData)
 		if err != nil {
@@ -155,15 +134,12 @@ func (d *Deployer) Get() (map[string]string, error) {
 		if deploymentData.Type != "Gateway Name" {
 			continue
 		}
-		dl, err := d.tfPluginClient.GetDeployment(contract.NodeID, contractID)
+		contractID, err := strconv.ParseUint(contract.ContractID, 0, 64)
 		if err != nil {
-			return map[string]string{}, err
+			return map[string]string{}, errors.Wrapf(err, "could not parse contract %s into uint64", contract.ContractID)
 		}
-		if len(dl.Workloads) == 0 {
-			d.logger.Debug().Msgf("no workloads found in deployment with contract %d", contractID)
-			continue
-		}
-		gateway, err := workloads.NewGatewayNameProxyFromZosWorkload(dl.Workloads[0])
+		d.tfPluginClient.SetState(contract.NodeID, []uint64{contractID})
+		gateway, err := d.tfPluginClient.LoadGatewayNameFromGrid(contract.NodeID, deploymentData.Name, deploymentData.Name)
 		if err != nil {
 			return map[string]string{}, err
 		}

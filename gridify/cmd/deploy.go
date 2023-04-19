@@ -2,7 +2,9 @@
 package cmd
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -49,15 +51,14 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		public, err := cmd.Flags().GetBool("public")
-		if err != nil {
-			return err
-		}
+
 		if spec == (deployer.VMSpec{}) {
-			spec = deployer.VMSpec{CPU: cpu, Memory: memory, Storage: storage, Public: public}
+			spec = deployer.VMSpec{CPU: cpu, Memory: memory, Storage: storage, Public: true}
 		}
 
-		err = command.Deploy(spec, ports, debug)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		err = command.Deploy(ctx, spec, ports, debug)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -65,8 +66,8 @@ var deployCmd = &cobra.Command{
 	},
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if cmd.Flag("spec").Changed &&
-			(cmd.Flag("cpu").Changed || cmd.Flag("memory").Changed || cmd.Flag("storage").Changed || cmd.Flag("public").Changed) {
-			return errors.New("spec flag cant't be set with cpu, memory, storage or public flags")
+			(cmd.Flag("cpu").Changed || cmd.Flag("memory").Changed || cmd.Flag("storage").Changed) {
+			return errors.New("spec flag cant't be set with cpu, memory or storage flags")
 		}
 		return nil
 	},
@@ -84,5 +85,4 @@ func init() {
 	deployCmd.Flags().Int("cpu", 1, "vm cpu")
 	deployCmd.Flags().Int("memory", 2, "vm memory")
 	deployCmd.Flags().Int("storage", 5, "vm storage")
-	deployCmd.Flags().Bool("public", false, "vm public ip")
 }
