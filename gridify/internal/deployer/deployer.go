@@ -114,11 +114,7 @@ func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint) (map
 
 // Destroy destroys all the contracts of a project
 func (d *Deployer) Destroy() error {
-	err := d.tfPluginClient.CancelByProjectName(d.projectName)
-	if err != nil {
-		return err
-	}
-	return nil
+	return d.tfPluginClient.CancelByProjectName(d.projectName)
 }
 
 // Get returns deployed project domains
