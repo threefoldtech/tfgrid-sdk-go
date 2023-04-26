@@ -83,7 +83,7 @@ To start the services for development or testing make sure first you have all th
 - For a quick test explorer server.
   
   ```bash
-   make restart
+   make all-start e=<MNEMONICS>
   ```
 
   Now you can access the server at [:8080](http://loaclhost:8080)
