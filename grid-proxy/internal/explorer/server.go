@@ -447,7 +447,7 @@ func Setup(router *mux.Router, gitCommit string, database db.Database, relayClie
 	router.HandleFunc("/", mw.AsHandlerFunc(a.indexPage(router)))
 	router.HandleFunc("/version", mw.AsHandlerFunc(a.version))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/statistics", mw.AsHandlerFunc(a.getNodeStatistics))
-	router.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
+	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	return nil
 }
