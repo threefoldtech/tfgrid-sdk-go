@@ -2,7 +2,7 @@
 package internal
 
 import (
-	substrate "github.com/threefoldtech/substrate-client"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
 // Identity is the user identity to be used in substrate

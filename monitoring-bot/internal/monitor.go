@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	client "github.com/threefoldtech/substrate-client"
+	client "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
 )

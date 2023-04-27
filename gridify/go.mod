@@ -8,11 +8,10 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
-	github.com/spf13/cobra v1.6.1
+	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.2
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.1.0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0
-	github.com/threefoldtech/zos v0.5.6-0.20230321103809-44426c1a69c7
 )
 
 require (
@@ -41,7 +40,7 @@ require (
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
-	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
@@ -56,8 +55,9 @@ require (
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/threefoldtech/substrate-client v0.1.5 // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.1-0.20230418085700-4fc5cc08e136 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230425112357-f35e342c2193 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0 // indirect
+	github.com/threefoldtech/zos v0.5.6-0.20230426125942-0ea2f91b21f5 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
