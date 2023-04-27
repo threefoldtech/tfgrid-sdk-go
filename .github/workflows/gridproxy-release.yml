@@ -35,7 +35,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/threefoldtech/grid-proxy
+          images: ghcr.io/threefoldtech/tfgridproxy
           tags: |
             type=semver,pattern={{raw}}
 
