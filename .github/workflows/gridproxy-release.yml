@@ -41,4 +41,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            version=${{ steps.meta.outputs.tags }}
+            version=${{ steps.meta.outputs.tags[0] }}
+      - name: Debugging
+        run: echo ${{ steps.meta.outputs.tags[0] }}
