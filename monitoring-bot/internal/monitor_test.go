@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	client "github.com/threefoldtech/substrate-client"
+	client "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
 func TestMonitor(t *testing.T) {

@@ -8,8 +8,6 @@ import (
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
 // VMSpec struct to hold vm specs
@@ -62,7 +60,7 @@ func buildNetwork(projectName string, node uint32) workloads.ZNet {
 	network := workloads.ZNet{
 		Name:  networkName,
 		Nodes: []uint32{node},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: workloads.NewIPRange(net.IPNet{
 			IP:   net.IPv4(10, 20, 0, 0),
 			Mask: net.CIDRMask(16, 32),
 		}),
@@ -97,7 +95,7 @@ func buildGateway(backend, projectName string, node uint32) workloads.GatewayNam
 	gateway := workloads.GatewayNameProxy{
 		NodeID:       node,
 		Name:         subdomain,
-		Backends:     []zos.Backend{zos.Backend(backend)},
+		Backends:     workloads.NewZosBackends([]string{backend}),
 		SolutionType: projectName,
 	}
 	return gateway

@@ -1,9 +1,7 @@
 // Package subi for substrate client
 package subi
 
-import (
-	"github.com/threefoldtech/substrate-client"
-)
+import substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 
 // Contract is for contract implementation
 type Contract struct {

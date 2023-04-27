@@ -13,7 +13,6 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/mocks"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
 func TestDeploy(t *testing.T) {
@@ -364,11 +363,11 @@ func TestGet(t *testing.T) {
 	}
 
 	gatewayWorkload := workloads.GatewayNameProxy{
-		Backends: []zos.Backend{`http://10.10.10.10:8080`},
+		Backends: workloads.NewZosBackends([]string{`http://10.10.10.10:8080`}),
 		FQDN:     "http://example.com",
 	}
 	badBackendGateway := workloads.GatewayNameProxy{
-		Backends: []zos.Backend{`"http://example.com`},
+		Backends: workloads.NewZosBackends([]string{`"http://example.com`}),
 	}
 
 	clientMock := mocks.NewMockTFPluginClientInterface(ctrl)

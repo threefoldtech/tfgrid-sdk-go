@@ -100,3 +100,11 @@ func (g *GatewayFQDNProxy) GenerateMetadata() (string, error) {
 
 	return string(deploymentDataBytes), nil
 }
+
+// NewZosBackends generates new zos backends for the given string backends
+func NewZosBackends(bks []string) (backends []zos.Backend) {
+	for _, b := range bks {
+		backends = append(backends, zos.Backend(b))
+	}
+	return backends
+}

@@ -10,7 +10,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.1.0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0
-	github.com/threefoldtech/zos v0.5.6-0.20230321103809-44426c1a69c7
+	github.com/threefoldtech/zos v0.5.6-0.20230426125942-0ea2f91b21f5
 )
 
 require (
@@ -41,7 +41,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/threefoldtech/substrate-client v0.1.5 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230425112357-f35e342c2193 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect

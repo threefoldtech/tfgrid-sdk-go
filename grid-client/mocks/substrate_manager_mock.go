@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	"github.com/threefoldtech/substrate-client"
+	"github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	subi "github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 )
 

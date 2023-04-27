@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/threefoldtech/substrate-client"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
 )
 

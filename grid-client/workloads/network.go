@@ -91,6 +91,11 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 	}, nil
 }
 
+// NewIPRange generates a new IPRange from the given network IP
+func NewIPRange(n net.IPNet) gridtypes.IPNet {
+	return gridtypes.NewIPNet(n)
+}
+
 // Validate validates a network mask to be 16
 func (znet *ZNet) Validate() error {
 	mask := znet.IPRange.Mask
