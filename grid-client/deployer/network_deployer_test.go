@@ -3,6 +3,7 @@ package deployer
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"testing"
 
@@ -97,7 +98,19 @@ func TestNetworkDeployer(t *testing.T) {
 		dls, err := d.GenerateVersionlessDeployments(context.Background(), &znet)
 		assert.NoError(t, err)
 
-		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), []zos.Peer{})
+		externalIP := ""
+		if znet.ExternalIP != nil {
+			externalIP = znet.ExternalIP.String()
+		}
+
+		metadata, err := json.Marshal(workloads.NetworkMetaData{
+			UserAcessIP:  externalIP,
+			PrivateKey:   znet.ExternalSK.String(),
+			PublicNodeID: znet.PublicNodeID,
+		})
+		assert.NoError(t, err)
+
+		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), []zos.Peer{}, string(metadata))
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
 		networkDl.Metadata = "{\"type\":\"network\",\"name\":\"network\",\"projectName\":\"Network\"}"

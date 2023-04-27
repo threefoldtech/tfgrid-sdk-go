@@ -24,6 +24,13 @@ type UserAccess struct {
 	PublicNodeEndpoint string
 }
 
+// NetworkMetaData is added to network workloads to help rebuilding networks when retreived from the grid
+type NetworkMetaData struct {
+	UserAcessIP  string `json:"ip"`
+	PrivateKey   string `json:"priv_key"`
+	PublicNodeID uint32 `json:"node_id"`
+}
+
 // ZNet is zos network workload
 type ZNet struct {
 	Name        string
@@ -71,20 +78,11 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		wgPort[nodeID] = int(data.WGListenPort)
 	}
 
-	var addWGAccess bool
-	// this will fail when hidden node is supported
-	for _, peer := range data.Peers {
-		if peer.Endpoint == "" {
-			addWGAccess = true
-		}
-	}
-
 	return ZNet{
 		Name:         wl.Name.String(),
 		Description:  wl.Description,
 		Nodes:        []uint32{nodeID},
 		IPRange:      data.NetworkIPRange,
-		AddWGAccess:  addWGAccess,
 		NodesIPRange: map[uint32]gridtypes.IPNet{nodeID: data.Subnet},
 		WGPort:       wgPort,
 		Keys:         keys,
@@ -102,7 +100,7 @@ func (znet *ZNet) Validate() error {
 }
 
 // ZosWorkload generates a zos workload from a network
-func (znet *ZNet) ZosWorkload(subnet gridtypes.IPNet, wgPrivateKey string, wgListenPort uint16, peers []zos.Peer) gridtypes.Workload {
+func (znet *ZNet) ZosWorkload(subnet gridtypes.IPNet, wgPrivateKey string, wgListenPort uint16, peers []zos.Peer, metadata string) gridtypes.Workload {
 	return gridtypes.Workload{
 		Version:     0,
 		Type:        zos.NetworkType,
@@ -115,6 +113,7 @@ func (znet *ZNet) ZosWorkload(subnet gridtypes.IPNet, wgPrivateKey string, wgLis
 			WGListenPort:   wgListenPort,
 			Peers:          peers,
 		}),
+		Metadata: metadata,
 	}
 }
 
