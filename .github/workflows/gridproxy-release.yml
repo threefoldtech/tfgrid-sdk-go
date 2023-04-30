@@ -1,6 +1,7 @@
 name: proxy release Create and publish a Docker image
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
 
@@ -36,11 +37,11 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
-          context: "grid-proxy"
+          context: .
+          file: ./grid-proxy/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
           build-args: |
-            version=${{ steps.meta.outputs.tags[0] }}
-      - name: Debugging
-        run: echo ${{ steps.meta.outputs.tags[0] }}
+            version=${{ github.ref_name	 }}
