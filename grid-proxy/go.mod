@@ -3,6 +3,7 @@ module github.com/threefoldtech/tfgrid-sdk-go/grid-proxy
 go 1.19
 
 require (
+	github.com/alexflint/go-arg v1.4.3
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/go-acme/lego/v4 v4.10.2
 	github.com/google/uuid v1.3.0
@@ -24,6 +25,7 @@ require (
 require (
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
+	github.com/alexflint/go-scalar v1.1.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 // indirect

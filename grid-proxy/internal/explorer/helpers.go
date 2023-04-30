@@ -14,9 +14,9 @@ import (
 
 func errorReply(err error) mw.Response {
 	if errors.Is(err, ErrNodeNotFound) {
-		return mw.NotFound(err)
+		return mw.BadRequest(err)
 	} else if errors.Is(err, ErrGatewayNotFound) {
-		return mw.NotFound(err)
+		return mw.BadRequest(err)
 	} else if errors.Is(err, ErrBadGateway) {
 		return mw.BadGateway(err)
 	} else {

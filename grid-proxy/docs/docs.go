@@ -184,12 +184,6 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "farm version",
-                        "name": "version",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
                         "description": "farm id",
                         "name": "farm_id",
                         "in": "query"

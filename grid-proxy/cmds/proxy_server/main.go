@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"net/http"
 	"os"
 
+	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -20,83 +20,52 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
 )
 
-const (
-	// CertDefaultCacheDir directory to keep the genreated certificates
-	CertDefaultCacheDir = "/tmp/certs"
-	DefaultTFChainURL   = "wss://tfchain.dev.grid.tf/ws"
-	DefaultRelayURL     = "wss://relay.dev.grid.tf"
-)
-
 // GitCommit holds the commit version
 var GitCommit string
 
 type flags struct {
-	debug            string
-	postgresHost     string
-	postgresPort     int
-	postgresDB       string
-	postgresUser     string
-	postgresPassword string
-	address          string
-	version          bool
-	nocert           bool
-	domain           string
-	TLSEmail         string
-	CA               string
-	certCacheDir     string
-	tfChainURL       string
-	relayURL         string
-	mnemonics        string
+	LogLevel         string `arg:"--log-level,env" help:"log level [debug|info|warn|error|fatal|panic]" default:"info"`
+	PostgresHost     string `arg:"--postgres-host,env:POSTGRES_HOST" help:"postgres host"`
+	PostgresPort     int    `arg:"--postgres-port,env:POSTGRES_PORT" help:"postgres port" default:"5432"`
+	PostgresDB       string `arg:"--postgres-db,env:POSTGRES_DB" help:"postgres database"`
+	PostgresUser     string `arg:"--postgres-user,env:POSTGRES_USER" help:"postgres username"`
+	PostgresPassword string `arg:"--postgres-password,env:POSTGRES_PASSWORD" help:"postgres password"`
+	Address          string `arg:"env:SERVER_PORT" help:"explorer running ip address" default:":443"`
+	Version          bool   `arg:"-v,env" help:"shows the package version" default:"false"`
+	Nocert           bool   `arg:"--no-cert,env" help:"start the server without certificate" default:"false"`
+	Domain           string `arg:"env" help:"domain on which the server will be served"`
+	TLSEmail         string `arg:"--email,env" help:"email address to generate certificate with"`
+	CA               string `arg:"env" help:"ertificate authority used to generate certificate" default:"https://acme-v02.api.letsencrypt.org/directory"`
+	CertCacheDir     string `arg:"--cert-cache-dir,env" help:"path to store generated certs in" default:"/tmp/certs"`
+	TfChainURL       string `arg:"--tfchain-url,env" help:"TF chain url" default:"wss://tfchain.dev.grid.tf/ws"`
+	RelayURL         string `arg:"--relay-url,env" help:"RMB relay url" default:"wss://relay.dev.grid.tf"`
+	Mnemonics        string `arg:"env,required" help:"Dummy user mnemonics for relay calls"`
 }
 
 func main() {
 	f := flags{}
-	flag.StringVar(&f.debug, "log-level", "info", "log level [debug|info|warn|error|fatal|panic]")
-	flag.StringVar(&f.address, "address", ":443", "explorer running ip address")
-	flag.StringVar(&f.postgresHost, "postgres-host", "", "postgres host")
-	flag.IntVar(&f.postgresPort, "postgres-port", 5432, "postgres port")
-	flag.StringVar(&f.postgresDB, "postgres-db", "", "postgres database")
-	flag.StringVar(&f.postgresUser, "postgres-user", "", "postgres username")
-	flag.StringVar(&f.postgresPassword, "postgres-password", "", "postgres password")
-	flag.BoolVar(&f.version, "v", false, "shows the package version")
-	flag.BoolVar(&f.nocert, "no-cert", false, "start the server without certificate")
-	flag.StringVar(&f.domain, "domain", "", "domain on which the server will be served")
-	flag.StringVar(&f.TLSEmail, "email", "", "tmail address to generate certificate with")
-	flag.StringVar(&f.CA, "ca", "https://acme-v02.api.letsencrypt.org/directory", "certificate authority used to generate certificate")
-	flag.StringVar(&f.certCacheDir, "cert-cache-dir", CertDefaultCacheDir, "path to store generated certs in")
-	flag.StringVar(&f.tfChainURL, "tfchain-url", DefaultTFChainURL, "TF chain url")
-	flag.StringVar(&f.relayURL, "relay-url", DefaultRelayURL, "RMB relay url")
-	flag.StringVar(&f.mnemonics, "mnemonics", "", "Dummy user mnemonics for relay calls")
-	flag.Parse()
+	arg.MustParse(&f)
+
+	fmt.Printf("%+v", f)
 
 	// shows version and exit
-	if f.version {
+	if f.Version {
 		fmt.Printf("git rev: %s\n", GitCommit)
 		os.Exit(0)
 	}
-
-	if f.domain == "" {
-		log.Fatal().Err(errors.New("domain is required"))
-	}
-	if f.TLSEmail == "" {
-		log.Fatal().Err(errors.New("email is required"))
-	}
-	if f.mnemonics == "" {
-		log.Fatal().Msg("mnemonics are required")
-	}
-	logging.SetupLogging(f.debug)
+	logging.SetupLogging(f.LogLevel)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	subManager := substrate.NewManager(f.tfChainURL)
+	subManager := substrate.NewManager(f.TfChainURL)
 	sub, err := subManager.Substrate()
 	if err != nil {
 		log.Fatal().Err(err).Msg(fmt.Sprintf("failed to connect to TF chain URL: %s", err))
 	}
 	defer sub.Close()
 
-	relayClient, err := createRMBClient(ctx, f.relayURL, f.mnemonics, sub)
+	relayClient, err := createRMBClient(ctx, f.RelayURL, f.Mnemonics, sub)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create realy client")
 	}
@@ -114,8 +83,8 @@ func main() {
 
 func app(s *http.Server, f flags) error {
 
-	if f.nocert {
-		log.Info().Str("listening on", f.address).Msg("Server started ...")
+	if f.Nocert {
+		log.Info().Str("listening on", f.Address).Msg("Server started ...")
 		if err := s.ListenAndServe(); err != nil {
 			if err == http.ErrServerClosed {
 				log.Info().Msg("server stopped gracefully")
@@ -127,10 +96,10 @@ func app(s *http.Server, f flags) error {
 	}
 
 	config := certmanager.CertificateConfig{
-		Domain:   f.domain,
+		Domain:   f.Domain,
 		Email:    f.TLSEmail,
 		CA:       f.CA,
-		CacheDir: f.certCacheDir,
+		CacheDir: f.CertCacheDir,
 	}
 	cm := certmanager.NewCertificateManager(config)
 	go func() {
@@ -146,7 +115,7 @@ func app(s *http.Server, f flags) error {
 		GetCertificate: kpr.GetCertificateFunc(),
 	}
 
-	log.Info().Str("listening on", f.address).Msg("Server started ...")
+	log.Info().Str("listening on", f.Address).Msg("Server started ...")
 	if err := s.ListenAndServeTLS("", ""); err != nil {
 		if err == http.ErrServerClosed {
 			log.Info().Msg("server stopped gracefully")
@@ -169,7 +138,7 @@ func createServer(f flags, gitCommit string, relayClient rmb.Client) (*http.Serv
 	log.Info().Msg("Creating server")
 
 	router := mux.NewRouter().StrictSlash(true)
-	db, err := db.NewPostgresDatabase(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB)
+	db, err := db.NewPostgresDatabase(f.PostgresHost, f.PostgresPort, f.PostgresUser, f.PostgresPassword, f.PostgresDB)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get postgres client")
 	}
@@ -181,6 +150,6 @@ func createServer(f flags, gitCommit string, relayClient rmb.Client) (*http.Serv
 
 	return &http.Server{
 		Handler: router,
-		Addr:    f.address,
+		Addr:    f.Address,
 	}, nil
 }

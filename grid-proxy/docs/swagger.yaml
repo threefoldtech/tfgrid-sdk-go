@@ -368,10 +368,6 @@ paths:
         in: query
         name: pricing_policy_id
         type: integer
-      - description: farm version
-        in: query
-        name: version
-        type: integer
       - description: farm id
         in: query
         name: farm_id
