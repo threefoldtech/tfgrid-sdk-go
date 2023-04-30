@@ -4,8 +4,8 @@ ENV CGO_ENABLED=0
 
 WORKDIR /src
 
-ADD . /src
-
+ADD grid-proxy /src
+ADD rmb-sdk-go /rmb-sdk-go
 ARG version
 
 RUN cd /src/cmds/proxy_server &&\
@@ -19,7 +19,7 @@ COPY --from=builder /src/cmds/proxy_server/gridrest /usr/bin/gridrest
 RUN wget https://github.com/threefoldtech/zinit/releases/download/v0.2.10/zinit -O /sbin/zinit \
     && chmod +x /sbin/zinit
 
-COPY rootfs /
+COPY grid-proxy/rootfs /
 
 ENV SERVER_PORT=":443"
 ENV POSTGRES_HOST="postgres"
