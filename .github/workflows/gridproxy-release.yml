@@ -1,6 +1,7 @@
 name: proxy release Create and publish a Docker image
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
 
