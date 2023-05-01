@@ -32,7 +32,8 @@ builds:
       - goos: windows
         goarch: "arm64"
     ldflags:
-      - -w -s -X main.GitCommit=$(shell git describe --always --abbrev=0) -extldflags '-static'
+      - -w -s -X github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/cmd.version={{.Tag}} -extldflags '-static'
+      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/cmd.commit={{.Commit}}
 
   - dir: ./gridify
     env:
