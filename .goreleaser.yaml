@@ -18,6 +18,22 @@ builds:
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit={{.Commit}}
 
+  - dir: ./grid-proxy/cmds/proxy_server
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    binary: tfgridproxy
+    id: tfgridproxy
+
+    ignore:
+      - goos: windows
+        goarch: "arm64"
+    ldflags:
+      - -w -s -X main.GitCommit=$(shell git describe --always --abbrev=0) -extldflags '-static'
+
   - dir: ./gridify
     env:
       - CGO_ENABLED=0
