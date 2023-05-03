@@ -267,7 +267,6 @@ func (st *State) computeK8sDeploymentResources(nodeID uint32, dl gridtypes.Deplo
 func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err error) {
 	var zNets []workloads.ZNet
 	nodeDeploymentsIDs := map[uint32]uint64{}
-	metdata := workloads.NetworkMetaData{}
 
 	sub := st.Substrate
 	for nodeID := range st.CurrentNodeNetworks {
@@ -297,12 +296,6 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 						return workloads.ZNet{}, errors.Wrapf(err, "failed to get network from workload %s", name)
 					}
 
-					if metdata.PublicNodeID == 0 {
-						if err := json.Unmarshal([]byte(wl.Metadata), &metdata); err != nil {
-							return workloads.ZNet{}, errors.Wrapf(err, "failed to parse network metadata from workload %s", name)
-						}
-					}
-
 					break
 				}
 			}
@@ -323,6 +316,10 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 		maps.Copy(wgPort, net.WGPort)
 		maps.Copy(keys, net.Keys)
 		nodes = append(nodes, net.Nodes...)
+		znet.AccessWGConfig = net.AccessWGConfig
+		znet.ExternalIP = net.ExternalIP
+		znet.ExternalSK = net.ExternalSK
+		znet.PublicNodeID = net.PublicNodeID
 	}
 
 	znet.NodeDeploymentID = nodeDeploymentsIDs
@@ -330,24 +327,6 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 	znet.NodesIPRange = nodesIPRange
 	znet.Keys = keys
 	znet.WGPort = wgPort
-	if metdata.UserAcessIP != "" {
-		ip, err := gridtypes.ParseIPNet(metdata.UserAcessIP)
-		if err != nil {
-			return znet, errors.Wrapf(err, "failed to parse user access ip from metadata string %s", metdata.UserAcessIP)
-		}
-		znet.ExternalIP = &ip
-	}
-
-	if metdata.PrivateKey != "" {
-		key, err := wgtypes.ParseKey(metdata.PrivateKey)
-		if err != nil {
-			return znet, errors.Wrapf(err, "failed to parse user access private key from metadata string %s", metdata.PrivateKey)
-		}
-		znet.ExternalSK = key
-	}
-
-	znet.PublicNodeID = metdata.PublicNodeID
-	znet.AddWGAccess = (metdata.PrivateKey != "")
 
 	st.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
 	return znet, nil

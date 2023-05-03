@@ -78,6 +78,31 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		wgPort[nodeID] = int(data.WGListenPort)
 	}
 
+	metadata := NetworkMetaData{}
+	if err := json.Unmarshal([]byte(wl.Metadata), &metadata); err != nil {
+		return ZNet{}, errors.Wrapf(err, "failed to parse network metadata from workload %s", wl.Name)
+	}
+
+	var externalIP *gridtypes.IPNet
+	if metadata.UserAcessIP != "" {
+
+		ipnet, err := gridtypes.ParseIPNet(metadata.UserAcessIP)
+		if err != nil {
+			return ZNet{}, err
+		}
+
+		externalIP = &ipnet
+	}
+
+	var externalSK wgtypes.Key
+	if metadata.PrivateKey != "" {
+		key, err := wgtypes.ParseKey(metadata.PrivateKey)
+		if err != nil {
+			return ZNet{}, errors.Wrap(err, "failed to parse user access private key")
+		}
+		externalSK = key
+	}
+
 	return ZNet{
 		Name:         wl.Name.String(),
 		Description:  wl.Description,
@@ -86,6 +111,10 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		NodesIPRange: map[uint32]gridtypes.IPNet{nodeID: data.Subnet},
 		WGPort:       wgPort,
 		Keys:         keys,
+		AddWGAccess:  metadata.PrivateKey != "",
+		PublicNodeID: metadata.PublicNodeID,
+		ExternalIP:   externalIP,
+		ExternalSK:   externalSK,
 	}, nil
 }
 
