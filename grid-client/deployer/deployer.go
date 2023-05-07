@@ -35,6 +35,7 @@ type MockDeployer interface { //TODO: Change Name && separate them
 	BatchDeploy(ctx context.Context, deployments map[uint32][]gridtypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error)
 }
 
+// BatchDeploy to be used for deploying multiple deployments
 func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gridtypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error) {
 	return map[uint32][]gridtypes.Deployment{}, nil
 }

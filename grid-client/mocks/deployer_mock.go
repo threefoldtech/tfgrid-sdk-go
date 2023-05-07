@@ -64,7 +64,6 @@ func (mr *MockDeployerMockRecorder) Deploy(ctx, oldDeploymentIDs, newDeployments
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeployer)(nil).Deploy), ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider)
 }
 
-
 // BatchDeploy mocks base method.
 func (m *MockDeployer) BatchDeploy(ctx context.Context, newDeployments map[uint32][]gridtypes.Deployment, newDeploymentSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error) {
 	m.ctrl.T.Helper()
