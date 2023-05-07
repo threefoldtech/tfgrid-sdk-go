@@ -201,12 +201,17 @@ func (s *SubstrateImpl) IsValidContract(contractID uint64) (bool, error) {
 	return true, nil
 }
 
+// BatchCreateContract creates a batch of contracts non-atomically
 func (s *SubstrateImpl) BatchCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, *int, error) {
 	return s.Substrate.BatchCreateContract(identity, contractsData)
 }
+
+// BatchAllCreateContract creates a batch of contracts atomically
 func (s *SubstrateImpl) BatchAllCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, error) {
 	return s.Substrate.BatchAllCreateContract(identity, contractsData)
 }
+
+// BatchCancelContract cancels a batch of contracts
 func (s *SubstrateImpl) BatchCancelContract(identity substrate.Identity, contracts []uint64) error {
 	return s.Substrate.BatchCancelContract(identity, contracts)
 }

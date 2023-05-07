@@ -390,22 +390,20 @@ func (d *Deployer) Wait(
 	return deploymentError
 }
 
-// BatchDeploy deploys a batch of deployments
+// BatchDeploy deploys a batch of deployments, successful deployments should have ContractID fields set
 func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gridtypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error) {
 	deploymentsSlice := make([]gridtypes.Deployment, 0)
-	nodes := make([]uint32, 0)
 	contractsData := make([]substrate.BatchCreateContractData, 0)
-	nodeClients := make(map[uint32]*client.NodeClient)
 
 	mu := sync.Mutex{}
 
 	group, ctx2 := errgroup.WithContext(ctx)
 	for node, dls := range deployments {
-		client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
+		// loading node clients first before creating any contract and caching the clients
+		_, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 		if err != nil {
 			return map[uint32][]gridtypes.Deployment{}, errors.Wrap(err, "failed to get node client")
 		}
-		nodeClients[node] = client
 		for i, dl := range dls {
 			i := i
 			dl := dl
@@ -454,7 +452,6 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 					SolutionProviderID: solutionProviderID,
 				})
 				deploymentsSlice = append(deploymentsSlice, dl)
-				nodes = append(nodes, node)
 				mu.Unlock()
 				return nil
 			})
@@ -476,12 +473,19 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 		if index != nil && *index == i {
 			break
 		}
+		node := contractsData[i].Node
+		client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to get node %d client", node))
+			failedContracts = append(failedContracts, dl.ContractID)
+			continue
+		}
 		dl.ContractID = contracts[i]
 
-		err = nodeClients[nodes[i]].DeploymentDeploy(ctx, dl)
+		err = client.DeploymentDeploy(ctx, dl)
 
 		if err != nil {
-			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error sending deployment with contract id %d to node %d", dl.ContractID, nodes[i]))
+			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error sending deployment with contract id %d to node %d", dl.ContractID, node))
 			failedContracts = append(failedContracts, dl.ContractID)
 			continue
 		}
@@ -489,7 +493,7 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 		for _, w := range dl.Workloads {
 			newWorkloadVersions[w.Name.String()] = 0
 		}
-		err = d.Wait(ctx, nodeClients[nodes[i]], dl.ContractID, newWorkloadVersions)
+		err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, errors.Wrap(err, "error waiting deployment"))
 			failedContracts = append(failedContracts, dl.ContractID)
@@ -500,7 +504,7 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 
 	resDeployments := make(map[uint32][]gridtypes.Deployment, len(deployments))
 	for i, dl := range deploymentsSlice {
-		resDeployments[nodes[i]] = append(resDeployments[nodes[i]], dl)
+		resDeployments[contractsData[i].Node] = append(resDeployments[contractsData[i].Node], dl)
 	}
 
 	if len(failedContracts) != 0 {
