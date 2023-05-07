@@ -141,6 +141,55 @@ func (d *K8sDeployer) Deploy(ctx context.Context, k8sCluster *workloads.K8sClust
 	return err
 }
 
+// BatchDeploy deploys multiple clusters using the deployer
+func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.K8sCluster) error {
+	newDeployments := make(map[uint32][]gridtypes.Deployment)
+	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
+
+	for _, k8sCluster := range k8sClusters {
+		if err := d.tfPluginClient.State.AssignNodesIPRange(k8sCluster); err != nil {
+			return err
+		}
+
+		err := k8sCluster.InvalidateBrokenAttributes(d.tfPluginClient.SubstrateConn)
+		if err != nil {
+			return err
+		}
+
+		if err := d.Validate(ctx, k8sCluster); err != nil {
+			return err
+		}
+
+		dls, err := d.GenerateVersionlessDeployments(ctx, k8sCluster)
+		if err != nil {
+			return errors.Wrap(err, "could not generate k8s grid deployments")
+		}
+
+		for nodeID, dl := range dls {
+			// solution providers
+			newDeploymentsSolutionProvider[nodeID] = nil
+
+			if _, ok := newDeployments[nodeID]; !ok {
+				newDeployments[nodeID] = []gridtypes.Deployment{dl}
+				continue
+			}
+			newDeployments[nodeID] = append(newDeployments[nodeID], dl)
+		}
+	}
+
+	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
+
+	// update deployments state
+	// error is not returned immediately before updating state because of untracked failed deployments
+	for _, k8sCluster := range k8sClusters {
+		if err := d.updateStateFromDeployments(ctx, k8sCluster, newDls); err != nil {
+			return errors.Wrapf(err, "failed to update cluster with master name '%s' state", k8sCluster.Master.Name)
+		}
+	}
+
+	return err
+}
+
 // Cancel cancels a k8s cluster deployment
 func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sCluster) (err error) {
 	if err := d.Validate(ctx, k8sCluster); err != nil {
@@ -173,6 +222,39 @@ func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sClust
 	return nil
 }
 
+func (d *K8sDeployer) updateStateFromDeployments(ctx context.Context, k8sCluster *workloads.K8sCluster, newDl map[uint32][]gridtypes.Deployment) error {
+	k8sNodes := []uint32{k8sCluster.Master.Node}
+	for _, w := range k8sCluster.Workers {
+		k8sNodes = append(k8sNodes, w.Node)
+	}
+
+	for _, k8sNode := range k8sNodes {
+		for _, newDl := range newDl[k8sNode] {
+			dlData, err := workloads.ParseDeploymentData(newDl.Metadata)
+			if err != nil {
+				return errors.Wrapf(err, "could not get deployment %d data", newDl.ContractID)
+			}
+
+			if dlData.Name == k8sCluster.Master.Name {
+				k8sCluster.NodeDeploymentID[k8sCluster.Master.Node] = newDl.ContractID
+			}
+		}
+	}
+
+	if contractID, ok := k8sCluster.NodeDeploymentID[k8sCluster.Master.Node]; ok && contractID != 0 {
+		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.Node], contractID) {
+			d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.Node] = append(d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.Node], contractID)
+		}
+		for _, w := range k8sCluster.Workers {
+			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[w.Node], k8sCluster.NodeDeploymentID[w.Node]) {
+				d.tfPluginClient.State.CurrentNodeDeployments[w.Node] = append(d.tfPluginClient.State.CurrentNodeDeployments[w.Node], k8sCluster.NodeDeploymentID[w.Node])
+			}
+		}
+	}
+
+	return nil
+}
+
 // UpdateFromRemote update a k8s cluster
 func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workloads.K8sCluster) error {
 	if err := d.removeDeletedContracts(ctx, k8sCluster); err != nil {
@@ -183,10 +265,6 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 		return errors.Wrap(err, "failed to fetch remote deployments")
 	}
 	zerolog.Debug().Msg("calling updateFromRemote")
-	err = PrintDeployments(currentDeployments)
-	if err != nil {
-		return errors.Wrap(err, "could not print deployments data")
-	}
 
 	keyUpdated, tokenUpdated, networkUpdated := false, false, false
 	// calculate k's properties from the currently deployed deployments

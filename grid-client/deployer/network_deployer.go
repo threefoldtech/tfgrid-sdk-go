@@ -265,12 +265,6 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 		return errors.Wrap(err, "could not generate deployments data")
 	}
 
-	log.Debug().Msg("new deployments")
-	err = PrintDeployments(newDeployments)
-	if err != nil {
-		return errors.Wrap(err, "could not print deployments data")
-	}
-
 	newDeploymentsSolutionProvider := make(map[uint32]*uint64)
 	for _, nodeID := range znet.Nodes {
 		// solution providers
@@ -301,6 +295,47 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 	return nil
 }
 
+// BatchDeploy deploys multiple network deployments using the deployer
+func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZNet) error {
+	newDeployments := make(map[uint32][]gridtypes.Deployment)
+	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
+
+	for _, znet := range znets {
+		err := d.Validate(ctx, znet)
+		if err != nil {
+			return err
+		}
+
+		dls, err := d.GenerateVersionlessDeployments(ctx, znet)
+		if err != nil {
+			return errors.Wrap(err, "could not generate deployments data")
+		}
+
+		for nodeID, dl := range dls {
+			// solution providers
+			newDeploymentsSolutionProvider[nodeID] = nil
+
+			if _, ok := newDeployments[nodeID]; !ok {
+				newDeployments[nodeID] = []gridtypes.Deployment{dl}
+				continue
+			}
+			newDeployments[nodeID] = append(newDeployments[nodeID], dl)
+		}
+	}
+
+	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
+
+	// update deployment and plugin state
+	// error is not returned immediately before updating state because of untracked failed deployments
+	for _, znet := range znets {
+		if err := d.updateStateFromDeployments(ctx, znet, newDls); err != nil {
+			return errors.Wrapf(err, "failed to update network '%s' state", znet.Name)
+		}
+	}
+
+	return err
+}
+
 // Cancel cancels all the deployments
 func (d *NetworkDeployer) Cancel(ctx context.Context, znet *workloads.ZNet) error {
 	err := d.Validate(ctx, znet)
@@ -322,6 +357,36 @@ func (d *NetworkDeployer) Cancel(ctx context.Context, znet *workloads.ZNet) erro
 
 	if err := d.ReadNodesConfig(ctx, znet); err != nil {
 		return errors.Wrap(err, "could not read node's data")
+	}
+
+	return nil
+}
+
+func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *workloads.ZNet, dls map[uint32][]gridtypes.Deployment) error {
+	for _, nodeID := range znet.Nodes {
+
+		// assign NodeDeploymentIDs
+		for _, dl := range dls[nodeID] {
+			dlData, err := workloads.ParseDeploymentData(dl.Metadata)
+			if err != nil {
+				return errors.Wrapf(err, "could not get deployment %d data", dl.ContractID)
+			}
+
+			if dlData.Name == znet.Name {
+				znet.NodeDeploymentID[nodeID] = dl.ContractID
+			}
+		}
+
+		if contractID, ok := znet.NodeDeploymentID[nodeID]; ok && contractID != 0 {
+			d.tfPluginClient.State.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
+			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID]) {
+				d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], znet.NodeDeploymentID[nodeID])
+			}
+		}
+	}
+
+	if err := d.ReadNodesConfig(ctx, znet); err != nil {
+		return errors.Wrapf(err, "could not read node's data for network %s", znet.Name)
 	}
 
 	return nil
@@ -375,10 +440,6 @@ func (d *NetworkDeployer) ReadNodesConfig(ctx context.Context, znet *workloads.Z
 	nodeDeployments, err := d.deployer.GetDeployments(ctx, znet.NodeDeploymentID)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deployment objects")
-	}
-	err = PrintDeployments(nodeDeployments)
-	if err != nil {
-		return errors.Wrap(err, "failed to print deployments")
 	}
 
 	WGAccess := false

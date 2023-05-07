@@ -32,6 +32,11 @@ type MockDeployer interface { //TODO: Change Name && separate them
 	) error
 
 	GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error)
+	BatchDeploy(ctx context.Context, deployments map[uint32][]gridtypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error)
+}
+
+func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gridtypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error) {
+	return map[uint32][]gridtypes.Deployment{}, nil
 }
 
 // Deployer to be used for any deployer

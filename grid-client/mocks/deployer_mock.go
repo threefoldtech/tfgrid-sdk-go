@@ -64,6 +64,22 @@ func (mr *MockDeployerMockRecorder) Deploy(ctx, oldDeploymentIDs, newDeployments
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeployer)(nil).Deploy), ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider)
 }
 
+
+// BatchDeploy mocks base method.
+func (m *MockDeployer) BatchDeploy(ctx context.Context, newDeployments map[uint32][]gridtypes.Deployment, newDeploymentSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchDeploy", ctx, newDeployments, newDeploymentSolutionProvider)
+	ret0, _ := ret[0].(map[uint32][]gridtypes.Deployment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BatchDeploy indicates an expected call of BatchDeploy.
+func (mr *MockDeployerMockRecorder) BatchDeploy(ctx, newDeployments, newDeploymentSolutionProvider interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchDeploy", reflect.TypeOf((*MockDeployer)(nil).BatchDeploy), ctx, newDeployments, newDeploymentSolutionProvider)
+}
+
 // GetDeployments mocks base method.
 func (m *MockDeployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 	m.ctrl.T.Helper()

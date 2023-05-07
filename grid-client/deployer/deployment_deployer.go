@@ -88,6 +88,45 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 	return err
 }
 
+// BatchDeploy deploys multiple deployments using the deployer
+func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.Deployment) error {
+	newDeployments := make(map[uint32][]gridtypes.Deployment)
+	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
+
+	for _, dl := range dls {
+		if err := d.Validate(ctx, dl); err != nil {
+			return err
+		}
+
+		generatedDls, err := d.GenerateVersionlessDeployments(ctx, dl)
+		if err != nil {
+			return errors.Wrap(err, "could not generate deployments data")
+		}
+
+		for nodeID, generatedDl := range generatedDls {
+			if _, ok := newDeployments[nodeID]; !ok {
+				newDeploymentsSolutionProvider[nodeID] = []*uint64{dl.SolutionProvider}
+				newDeployments[nodeID] = []gridtypes.Deployment{generatedDl}
+				continue
+			}
+			newDeployments[nodeID] = append(newDeployments[nodeID], generatedDl)
+			newDeploymentsSolutionProvider[nodeID] = append(newDeploymentsSolutionProvider[nodeID], dl.SolutionProvider)
+		}
+	}
+
+	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
+
+	// update deployment and plugin state
+	// error is not returned immediately before updating state because of untracked failed deployments
+	for _, dl := range dls {
+		if err := d.updateStateFromDeployments(ctx, dl, newDls); err != nil {
+			return errors.Wrapf(err, "failed to update deployment '%s' state", dl.Name)
+		}
+	}
+
+	return err
+}
+
 // Cancel cancels deployments
 func (d *DeploymentDeployer) Cancel(ctx context.Context, dl *workloads.Deployment) error {
 	if err := d.Validate(ctx, dl); err != nil {
@@ -103,6 +142,28 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, dl *workloads.Deploymen
 	delete(dl.NodeDeploymentID, dl.NodeID)
 	d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID)
 	dl.ContractID = 0
+
+	return nil
+}
+
+func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl *workloads.Deployment, newDls map[uint32][]gridtypes.Deployment) error {
+	for _, newDl := range newDls[dl.NodeID] {
+		dlData, err := workloads.ParseDeploymentData(newDl.Metadata)
+		if err != nil {
+			return errors.Wrapf(err, "could not get deployment %d data", newDl.ContractID)
+		}
+
+		if dlData.Name == dl.Name {
+			dl.NodeDeploymentID[dl.NodeID] = newDl.ContractID
+		}
+	}
+
+	if contractID, ok := dl.NodeDeploymentID[dl.NodeID]; ok && contractID != 0 {
+		dl.ContractID = contractID
+		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID) {
+			d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID)
+		}
+	}
 
 	return nil
 }
