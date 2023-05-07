@@ -12,7 +12,7 @@ import (
 	gridtypes "github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-// MockDeployer is a mock of Deployer interface.
+// MockDeployer is a mock of MockDeployer interface.
 type MockDeployer struct {
 	ctrl     *gomock.Controller
 	recorder *MockDeployerMockRecorder
@@ -33,6 +33,21 @@ func NewMockDeployer(ctrl *gomock.Controller) *MockDeployer {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockDeployer) EXPECT() *MockDeployerMockRecorder {
 	return m.recorder
+}
+
+// BatchDeploy mocks base method.
+func (m *MockDeployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gridtypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchDeploy", ctx, deployments, deploymentsSolutionProvider)
+	ret0, _ := ret[0].(map[uint32][]gridtypes.Deployment)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BatchDeploy indicates an expected call of BatchDeploy.
+func (mr *MockDeployerMockRecorder) BatchDeploy(ctx, deployments, deploymentsSolutionProvider interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchDeploy", reflect.TypeOf((*MockDeployer)(nil).BatchDeploy), ctx, deployments, deploymentsSolutionProvider)
 }
 
 // Cancel mocks base method.

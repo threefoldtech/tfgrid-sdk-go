@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -17,6 +19,7 @@ import (
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"golang.org/x/sync/errgroup"
 )
 
 // MockDeployer to be used for any deployer in mock testing
@@ -32,6 +35,10 @@ type MockDeployer interface { //TODO: Change Name && separate them
 	) error
 
 	GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error)
+	BatchDeploy(ctx context.Context,
+		deployments map[uint32][]gridtypes.Deployment,
+		deploymentsSolutionProvider map[uint32][]*uint64,
+	) (map[uint32][]gridtypes.Deployment, error)
 }
 
 // Deployer to be used for any deployer
@@ -381,6 +388,133 @@ func (d *Deployer) Wait(
 		backoff.WithContext(getExponentialBackoff(3*time.Second, 1.25, 40*time.Second, 50*time.Minute), ctx))
 
 	return deploymentError
+}
+
+// BatchDeploy deploys a batch of deployments, successful deployments should have ContractID fields set
+func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gridtypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error) {
+	deploymentsSlice := make([]gridtypes.Deployment, 0)
+	contractsData := make([]substrate.BatchCreateContractData, 0)
+
+	mu := sync.Mutex{}
+
+	group, ctx2 := errgroup.WithContext(ctx)
+	for node, dls := range deployments {
+		// loading node clients first before creating any contract and caching the clients
+		_, err := d.ncPool.GetNodeClient(d.substrateConn, node)
+		if err != nil {
+			return map[uint32][]gridtypes.Deployment{}, errors.Wrap(err, "failed to get node client")
+		}
+		for i, dl := range dls {
+			i := i
+			dl := dl
+			node := node
+
+			group.Go(func() error {
+				select {
+				case <-ctx2.Done():
+					return nil
+				default:
+				}
+
+				if err := dl.Sign(d.twinID, d.identity); err != nil {
+					return errors.Wrap(err, "error signing deployment")
+				}
+
+				if err := dl.Valid(); err != nil {
+					return errors.Wrap(err, "deployment is invalid")
+				}
+
+				hash, err := dl.ChallengeHash()
+				log.Debug().Bytes("HASH", hash)
+
+				if err != nil {
+					return errors.Wrap(err, "failed to create hash")
+				}
+
+				hashHex := hex.EncodeToString(hash)
+
+				publicIPCount, err := CountDeploymentPublicIPs(dl)
+				if err != nil {
+					return errors.Wrap(err, "failed to count deployment public IPs")
+				}
+				log.Debug().Uint32("Number of public ips", publicIPCount)
+
+				var solutionProviderID *uint64
+				if deploymentsSolutionProvider[node] != nil && len(deploymentsSolutionProvider[node]) > i {
+					solutionProviderID = deploymentsSolutionProvider[node][i]
+				}
+				mu.Lock()
+				contractsData = append(contractsData, substrate.BatchCreateContractData{
+					Node:               node,
+					Body:               dl.Metadata,
+					Hash:               hashHex,
+					PublicIPs:          publicIPCount,
+					SolutionProviderID: solutionProviderID,
+				})
+				deploymentsSlice = append(deploymentsSlice, dl)
+				mu.Unlock()
+				return nil
+			})
+		}
+	}
+
+	if err := group.Wait(); err != nil {
+		return map[uint32][]gridtypes.Deployment{}, err
+	}
+
+	contracts, index, err := d.substrateConn.BatchCreateContract(d.identity, contractsData)
+	if err != nil && index == nil {
+		return map[uint32][]gridtypes.Deployment{}, errors.Wrap(err, "failed to create contracts")
+	}
+
+	var multiErr error
+	failedContracts := make([]uint64, 0)
+	for i, dl := range deploymentsSlice {
+		if index != nil && *index == i {
+			break
+		}
+		node := contractsData[i].Node
+		client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to get node %d client", node))
+			failedContracts = append(failedContracts, dl.ContractID)
+			continue
+		}
+		dl.ContractID = contracts[i]
+
+		err = client.DeploymentDeploy(ctx, dl)
+
+		if err != nil {
+			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error sending deployment with contract id %d to node %d", dl.ContractID, node))
+			failedContracts = append(failedContracts, dl.ContractID)
+			continue
+		}
+		newWorkloadVersions := make(map[string]uint32)
+		for _, w := range dl.Workloads {
+			newWorkloadVersions[w.Name.String()] = 0
+		}
+		err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, errors.Wrap(err, "error waiting deployment"))
+			failedContracts = append(failedContracts, dl.ContractID)
+			continue
+		}
+		deploymentsSlice[i].ContractID = contracts[i]
+	}
+
+	resDeployments := make(map[uint32][]gridtypes.Deployment, len(deployments))
+	for i, dl := range deploymentsSlice {
+		resDeployments[contractsData[i].Node] = append(resDeployments[contractsData[i].Node], dl)
+	}
+
+	if len(failedContracts) != 0 {
+		err := d.substrateConn.BatchCancelContract(d.identity, failedContracts)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to cancel failed contracts %v", failedContracts))
+		}
+	}
+
+	return resDeployments, multiErr
 }
 
 // Validate is a best effort validation. it returns an error if it's very sure there's a problem
