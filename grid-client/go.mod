@@ -10,7 +10,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
 	github.com/stretchr/testify v1.8.2
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230425112357-f35e342c2193
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230503122438-c996fa19c9e6
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0
 	github.com/threefoldtech/zos v0.5.6-0.20230426125942-0ea2f91b21f5
@@ -18,6 +18,8 @@ require (
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b
 )
+
+require github.com/hashicorp/errwrap v1.0.0 // indirect
 
 require (
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
@@ -35,6 +37,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.18 // indirect
@@ -45,6 +48,7 @@ require (
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
+	golang.org/x/sync v0.2.0
 	golang.org/x/sys v0.7.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
