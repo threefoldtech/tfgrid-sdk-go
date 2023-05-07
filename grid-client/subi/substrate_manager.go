@@ -56,6 +56,9 @@ type SubstrateExt interface {
 	GetBalance(identity substrate.Identity) (balance substrate.Balance, err error)
 	GetTwinPK(twinID uint32) ([]byte, error)
 	GetContractIDByNameRegistration(name string) (uint64, error)
+	BatchCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, *int, error)
+	BatchAllCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, error)
+	BatchCancelContract(identity substrate.Identity, contracts []uint64) error
 }
 
 // SubstrateImpl struct to use dev substrate
@@ -196,6 +199,21 @@ func (s *SubstrateImpl) IsValidContract(contractID uint64) (bool, error) {
 		return true, errors.Wrapf(err, "could not get contract %d info", contractID)
 	}
 	return true, nil
+}
+
+// BatchCreateContract creates a batch of contracts non-atomically
+func (s *SubstrateImpl) BatchCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, *int, error) {
+	return s.Substrate.BatchCreateContract(identity, contractsData)
+}
+
+// BatchAllCreateContract creates a batch of contracts atomically
+func (s *SubstrateImpl) BatchAllCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, error) {
+	return s.Substrate.BatchAllCreateContract(identity, contractsData)
+}
+
+// BatchCancelContract cancels a batch of contracts
+func (s *SubstrateImpl) BatchCancelContract(identity substrate.Identity, contracts []uint64) error {
+	return s.Substrate.BatchCancelContract(identity, contracts)
 }
 
 // InvalidateNameContract invalidate a name contract
