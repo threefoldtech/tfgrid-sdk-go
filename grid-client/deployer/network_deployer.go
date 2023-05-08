@@ -363,8 +363,9 @@ func (d *NetworkDeployer) Cancel(ctx context.Context, znet *workloads.ZNet) erro
 }
 
 func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *workloads.ZNet, dls map[uint32][]gridtypes.Deployment) error {
-	for _, nodeID := range znet.Nodes {
+	znet.NodeDeploymentID = map[uint32]uint64{}
 
+	for _, nodeID := range znet.Nodes {
 		// assign NodeDeploymentIDs
 		for _, dl := range dls[nodeID] {
 			dlData, err := workloads.ParseDeploymentData(dl.Metadata)

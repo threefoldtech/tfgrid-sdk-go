@@ -147,6 +147,8 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, dl *workloads.Deploymen
 }
 
 func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl *workloads.Deployment, newDls map[uint32][]gridtypes.Deployment) error {
+	dl.NodeDeploymentID = map[uint32]uint64{}
+
 	for _, newDl := range newDls[dl.NodeID] {
 		dlData, err := workloads.ParseDeploymentData(newDl.Metadata)
 		if err != nil {

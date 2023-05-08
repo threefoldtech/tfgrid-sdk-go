@@ -228,6 +228,8 @@ func (d *K8sDeployer) updateStateFromDeployments(ctx context.Context, k8sCluster
 		k8sNodes = append(k8sNodes, w.Node)
 	}
 
+	k8sCluster.NodeDeploymentID = map[uint32]uint64{}
+
 	for _, k8sNode := range k8sNodes {
 		for _, newDl := range newDl[k8sNode] {
 			dlData, err := workloads.ParseDeploymentData(newDl.Metadata)

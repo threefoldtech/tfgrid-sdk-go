@@ -161,6 +161,8 @@ func (d *GatewayFQDNDeployer) Cancel(ctx context.Context, gw *workloads.GatewayF
 }
 
 func (d *GatewayFQDNDeployer) updateStateFromDeployments(ctx context.Context, gw *workloads.GatewayFQDNProxy, newDls map[uint32][]gridtypes.Deployment) error {
+	gw.NodeDeploymentID = map[uint32]uint64{}
+
 	for _, newDl := range newDls[gw.NodeID] {
 		dlData, err := workloads.ParseDeploymentData(newDl.Metadata)
 		if err != nil {

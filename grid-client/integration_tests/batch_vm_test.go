@@ -56,13 +56,21 @@ func TestBatchVMDeployment(t *testing.T) {
 		EnvVars: map[string]string{
 			"SSH_KEY": publicKey,
 		},
-		IP:          "10.20.2.5",
 		NetworkName: network1.Name,
 	}
 
-	vm2 := vm1
-	vm2.Name += "2"
-	vm2.NetworkName += network2.Name
+	vm2 := workloads.VM{
+		Name:       "vm",
+		Flist:      "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		CPU:        2,
+		Planetary:  true,
+		Memory:     1024,
+		Entrypoint: "/sbin/zinit init",
+		EnvVars: map[string]string{
+			"SSH_KEY": publicKey,
+		},
+		NetworkName: network2.Name,
+	}
 
 	err = tfPluginClient.NetworkDeployer.BatchDeploy(ctx, []*workloads.ZNet{&network1, &network2})
 	assert.NoError(t, err)
@@ -74,16 +82,14 @@ func TestBatchVMDeployment(t *testing.T) {
 
 	v1, err := tfPluginClient.State.LoadVMFromGrid(nodeID1, vm1.Name, dl1.Name)
 	assert.NoError(t, err)
-	assert.Equal(t, v1.IP, "10.20.2.5")
 	assert.NotEmpty(t, v1.YggIP)
 
 	output, err := RemoteRun("root", v1.YggIP, "ls /", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, string(output), "root")
 
-	v2, err := tfPluginClient.State.LoadVMFromGrid(nodeID1, vm1.Name, dl1.Name)
+	v2, err := tfPluginClient.State.LoadVMFromGrid(nodeID2, vm2.Name, dl2.Name)
 	assert.NoError(t, err)
-	assert.Equal(t, v2.IP, "10.20.2.5")
 	assert.NotEmpty(t, v2.YggIP)
 
 	output, err = RemoteRun("root", v2.YggIP, "ls /", privateKey)

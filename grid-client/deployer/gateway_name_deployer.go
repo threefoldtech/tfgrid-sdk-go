@@ -105,6 +105,16 @@ func (d *GatewayNameDeployer) BatchDeploy(ctx context.Context, gws []*workloads.
 			return errors.Wrap(err, "could not generate deployments data")
 		}
 
+		if err := d.InvalidateNameContract(ctx, gw); err != nil {
+			return err
+		}
+		if gw.NameContractID == 0 {
+			gw.NameContractID, err = d.tfPluginClient.SubstrateConn.CreateNameContract(d.tfPluginClient.Identity, gw.Name)
+			if err != nil {
+				return err
+			}
+		}
+
 		for nodeID, dl := range dls {
 			// solution providers
 			newDeploymentsSolutionProvider[nodeID] = nil
@@ -157,6 +167,8 @@ func (d *GatewayNameDeployer) Cancel(ctx context.Context, gw *workloads.GatewayN
 }
 
 func (d *GatewayNameDeployer) updateStateFromDeployments(ctx context.Context, gw *workloads.GatewayNameProxy, newDls map[uint32][]gridtypes.Deployment) error {
+	gw.NodeDeploymentID = map[uint32]uint64{}
+
 	for _, newDl := range newDls[gw.NodeID] {
 		dlData, err := workloads.ParseDeploymentData(newDl.Metadata)
 		if err != nil {
