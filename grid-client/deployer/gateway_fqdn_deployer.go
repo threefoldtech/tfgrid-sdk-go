@@ -100,6 +100,46 @@ func (d *GatewayFQDNDeployer) Deploy(ctx context.Context, gw *workloads.GatewayF
 	return err
 }
 
+// BatchDeploy deploys multiple deployments using the deployer
+func (d *GatewayFQDNDeployer) BatchDeploy(ctx context.Context, gws []*workloads.GatewayFQDNProxy) error {
+	newDeployments := make(map[uint32][]gridtypes.Deployment)
+	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
+
+	for _, gw := range gws {
+		if err := d.Validate(ctx, gw); err != nil {
+			return err
+		}
+
+		dls, err := d.GenerateVersionlessDeployments(ctx, gw)
+		if err != nil {
+			return errors.Wrap(err, "could not generate deployments data")
+		}
+
+		for nodeID, dl := range dls {
+			// solution providers
+			newDeploymentsSolutionProvider[nodeID] = nil
+
+			if _, ok := newDeployments[nodeID]; !ok {
+				newDeployments[nodeID] = []gridtypes.Deployment{dl}
+				continue
+			}
+			newDeployments[nodeID] = append(newDeployments[nodeID], dl)
+		}
+	}
+
+	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
+
+	// update state
+	// error is not returned immediately before updating state because of untracked failed deployments
+	for _, gw := range gws {
+		if err := d.updateStateFromDeployments(ctx, gw, newDls); err != nil {
+			return errors.Wrapf(err, "failed to update gateway fqdn '%s' state", gw.Name)
+		}
+	}
+
+	return err
+}
+
 // Cancel cancels a gateway deployment
 func (d *GatewayFQDNDeployer) Cancel(ctx context.Context, gw *workloads.GatewayFQDNProxy) (err error) {
 	if err := d.Validate(ctx, gw); err != nil {
@@ -116,6 +156,30 @@ func (d *GatewayFQDNDeployer) Cancel(ctx context.Context, gw *workloads.GatewayF
 	gw.ContractID = 0
 	delete(gw.NodeDeploymentID, gw.NodeID)
 	d.tfPluginClient.State.CurrentNodeDeployments[gw.NodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[gw.NodeID], contractID)
+
+	return nil
+}
+
+func (d *GatewayFQDNDeployer) updateStateFromDeployments(ctx context.Context, gw *workloads.GatewayFQDNProxy, newDls map[uint32][]gridtypes.Deployment) error {
+	gw.NodeDeploymentID = map[uint32]uint64{}
+
+	for _, newDl := range newDls[gw.NodeID] {
+		dlData, err := workloads.ParseDeploymentData(newDl.Metadata)
+		if err != nil {
+			return errors.Wrapf(err, "could not get deployment %d data", newDl.ContractID)
+		}
+
+		if dlData.Name == gw.Name {
+			gw.NodeDeploymentID[gw.NodeID] = newDl.ContractID
+		}
+	}
+
+	if contractID, ok := gw.NodeDeploymentID[gw.NodeID]; ok && contractID != 0 {
+		gw.ContractID = contractID
+		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[gw.NodeID], gw.ContractID) {
+			d.tfPluginClient.State.CurrentNodeDeployments[gw.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[gw.NodeID], gw.ContractID)
+		}
+	}
 
 	return nil
 }

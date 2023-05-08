@@ -10,7 +10,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
 	github.com/stretchr/testify v1.8.2
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230503122438-c996fa19c9e6
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230508100036-7ffdc0b74e74
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0
 	github.com/threefoldtech/zos v0.5.6-0.20230426125942-0ea2f91b21f5
