@@ -154,7 +154,7 @@ func decideNodeStatusCondition(status *string) string {
 				OR node.updated_at IS NULL
 				OR node.power->> 'target' = 'Up' AND node.power->> 'state' = 'Down'`, nodeUpInterval)
 		} else if *status == "standby" {
-			condition = fmt.Sprintf(`node.power->> 'target' = 'Down'`)
+			condition = fmt.Sprint(`node.power->> 'target' = 'Down'`)
 		}
 	}
 	return condition
