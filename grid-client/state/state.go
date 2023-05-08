@@ -316,10 +316,6 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 		maps.Copy(wgPort, net.WGPort)
 		maps.Copy(keys, net.Keys)
 		nodes = append(nodes, net.Nodes...)
-		znet.AccessWGConfig = net.AccessWGConfig
-		znet.ExternalIP = net.ExternalIP
-		znet.ExternalSK = net.ExternalSK
-		znet.PublicNodeID = net.PublicNodeID
 	}
 
 	znet.NodeDeploymentID = nodeDeploymentsIDs
