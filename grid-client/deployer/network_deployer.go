@@ -3,6 +3,7 @@ package deployer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -161,6 +162,21 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 		)
 	}
 
+	externalIP := ""
+	if znet.ExternalIP != nil {
+		externalIP = znet.ExternalIP.String()
+	}
+	metdata := workloads.NetworkMetaData{
+		UserAcessIP:  externalIP,
+		PrivateKey:   znet.ExternalSK.String(),
+		PublicNodeID: znet.PublicNodeID,
+	}
+
+	metadataBytes, err := json.Marshal(metdata)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal network metadata")
+	}
+
 	// accessible nodes deployments
 	for _, nodeID := range accessibleNodes {
 		peers := make([]zos.Peer, 0, len(znet.Nodes))
@@ -211,11 +227,10 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 			}
 		}
 
-		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), peers)
+		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), peers, string(metadataBytes))
 		deployment := workloads.NewGridDeployment(d.tfPluginClient.TwinID, []gridtypes.Workload{workload})
 
 		// add metadata
-		var err error
 		deployment.Metadata, err = znet.GenerateMetadata()
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to generate deployment %s metadata", znet.Name)
@@ -238,7 +253,7 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 				Endpoint: fmt.Sprintf("%s:%d", endpoints[znet.PublicNodeID], znet.WGPort[znet.PublicNodeID]),
 			})
 		}
-		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), peers)
+		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), peers, string(metadataBytes))
 		deployment := workloads.NewGridDeployment(d.tfPluginClient.TwinID, []gridtypes.Workload{workload})
 
 		// add metadata

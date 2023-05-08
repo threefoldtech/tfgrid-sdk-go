@@ -303,7 +303,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		assert.NoError(t, err)
 
 		net := constructTestNetwork()
-		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{})
+		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "")
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
 		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)
@@ -486,7 +486,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		dl.NodeDeploymentID = make(map[uint32]uint64)
 
 		net := constructTestNetwork()
-		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{})
+		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "")
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
 		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)

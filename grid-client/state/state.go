@@ -295,6 +295,7 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 					if err != nil {
 						return workloads.ZNet{}, errors.Wrapf(err, "failed to get network from workload %s", name)
 					}
+
 					break
 				}
 			}
