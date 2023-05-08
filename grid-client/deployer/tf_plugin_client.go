@@ -98,7 +98,6 @@ func NewTFPluginClient(
 	relayURL string,
 	rmbProxyURL string,
 	rmbTimeout int,
-	verifyReply bool,
 	showLogs bool,
 ) (TFPluginClient, error) {
 
