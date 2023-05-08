@@ -63,6 +63,12 @@ type Node struct {
 	SerialNumber    string
 	Longitude       *float64
 	Latitude        *float64
+	Power           NodePower `gorm:"column:power;type:jsonb"`
+}
+
+type NodePower struct {
+	State  string `json:"state"`
+	Target string `json:"target"`
 }
 
 // Farm data about a farm which is calculated from the chain

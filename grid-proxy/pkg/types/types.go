@@ -156,6 +156,11 @@ type Location struct {
 	Latitude  *float64 `json:"latitude"`
 }
 
+type NodePower struct {
+	State  string `json:"state"`
+	Target string `json:"target"`
+}
+
 // Node is a struct holding the data for a Node for the nodes view
 type Node struct {
 	ID                string       `json:"id"`
@@ -179,6 +184,7 @@ type Node struct {
 	RentContractID    uint         `json:"rentContractId"`
 	RentedByTwinID    uint         `json:"rentedByTwinId"`
 	SerialNumber      string       `json:"serialNumber"`
+	Power             NodePower    `json:"power"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -209,6 +215,7 @@ type NodeWithNestedCapacity struct {
 	RentContractID    uint           `json:"rentContractId"`
 	RentedByTwinID    uint           `json:"rentedByTwinId"`
 	SerialNumber      string         `json:"serialNumber"`
+	Power             NodePower      `json:"power"`
 }
 
 type Twin struct {
