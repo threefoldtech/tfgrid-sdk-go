@@ -61,10 +61,7 @@ func (t *twinDB) Get(id uint32) (Twin, error) {
 		E2EKey:    PK,
 	}
 
-	err = t.cache.Add(fmt.Sprint(id), twin, cache.DefaultExpiration)
-	if err != nil {
-		return Twin{}, errors.Wrapf(err, "could not set cache for twin with id %d", id)
-	}
+	t.cache.Set(fmt.Sprint(id), twin, cache.DefaultExpiration)
 
 	return twin, nil
 }
