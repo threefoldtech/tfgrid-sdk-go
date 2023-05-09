@@ -31,7 +31,7 @@ func setup() (TFPluginClient, error) {
 	network := os.Getenv("NETWORK")
 	log.Debug().Msgf("network: %s", network)
 
-	return NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, true, true)
+	return NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, true)
 }
 
 type gatewayWorkloadGenerator interface {
