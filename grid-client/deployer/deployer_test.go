@@ -386,11 +386,7 @@ func TestDeployer(t *testing.T) {
 				dl3Hash,
 			).Return(uint64(200), nil)
 
-		sub.EXPECT().
-			EnsureContractCanceled(
-				identity,
-				uint64(100),
-			).Return(nil)
+		sub.EXPECT().EnsureContractCanceled(identity, uint64(100)).Return(nil)
 
 		ncPool.EXPECT().
 			GetNodeClient(sub, uint32(10)).
@@ -496,13 +492,9 @@ func TestDeployer(t *testing.T) {
 		contracts, err := deployer.Deploy(context.Background(), oldDls, newDls, newDlsSolProvider)
 		assert.NoError(t, err)
 		assert.Equal(t, contracts, map[uint32]uint64{
-			10: 100,
 			20: 200,
 			30: 300,
 			40: 400,
 		})
-
-		err = deployer.Cancel(context.Background(), 100)
-		assert.NoError(t, err)
 	})
 }
