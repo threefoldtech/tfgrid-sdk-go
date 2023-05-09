@@ -41,12 +41,15 @@ func (s *RmbSigner) Alg() string {
 
 func NewJWT(identity substrate.Identity, id uint32, session string, ttl uint32) (string, error) {
 	now := time.Now().Unix()
-	token := jwt.NewWithClaims(&RmbSigner{}, jwt.MapClaims{
+	claims := jwt.MapClaims{
 		"sub": id,
-		"sid": session,
 		"iat": now,
 		"exp": now + int64(ttl),
-	})
+	}
+	if session != "" {
+		claims["sid"] = session
+	}
+	token := jwt.NewWithClaims(&RmbSigner{}, claims)
 
 	return token.SignedString(identity)
 }
