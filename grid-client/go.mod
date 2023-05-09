@@ -4,13 +4,13 @@ go 1.18
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5
+	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/golang/mock v1.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
 	github.com/stretchr/testify v1.8.2
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230508100036-7ffdc0b74e74
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230509101146-8e43c43597cd
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0
 	github.com/threefoldtech/zos v0.5.6-0.20230426125942-0ea2f91b21f5
@@ -59,4 +59,3 @@ replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0 => ../grid-prox
 
 replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0 => ../rmb-sdk-go
 
-replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20230102154731-7c633b7d3c71

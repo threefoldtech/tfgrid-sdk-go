@@ -17,7 +17,7 @@ require (
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
-	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 // indirect
+	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/base58 v1.0.4 // indirect
@@ -43,7 +43,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230508100036-7ffdc0b74e74 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230509101146-8e43c43597cd // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
@@ -62,5 +62,3 @@ replace github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.1.0 => ../grid-cli
 replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0 => ../grid-proxy
 
 replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0 => ../rmb-sdk-go
-
-replace github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.5 => github.com/threefoldtech/go-substrate-rpc-client/v4 v4.0.6-0.20230102154731-7c633b7d3c71

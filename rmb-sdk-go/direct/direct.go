@@ -123,9 +123,13 @@ func NewClient(ctx context.Context, keytype string, mnemonics string, relayURL s
 	conn := NewConnection(identity, relayURL, session, twin.ID)
 
 	reader, writer := conn.Start(ctx)
+	var sessionP *string
+	if session != "" {
+		sessionP = &session
+	}
 	source := types.Address{
 		Twin:       id,
-		Connection: &session,
+		Connection: sessionP,
 	}
 
 	cl := &DirectClient{
