@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -113,15 +114,15 @@ func (d *Deployer) deploy(
 		currentDeployments[nodeID] = contractID
 	}
 	// deletions
-	/*for node, contractID := range oldDeployments {
+	for node, contractID := range oldDeployments {
 		if _, ok := newDeployments[node]; !ok {
-			err = d.SubstrateConn.EnsureContractCanceled(d.identity, contractID)
+			err = d.substrateConn.EnsureContractCanceled(d.identity, contractID)
 			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
 			}
 			delete(currentDeployments, node)
 		}
-	}*/
+	}
 
 	// creations
 	for node, dl := range newDeployments {
