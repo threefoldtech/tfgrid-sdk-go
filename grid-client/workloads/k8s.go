@@ -250,7 +250,6 @@ func (k *K8sCluster) InvalidateBrokenAttributes(sub subi.SubstrateExt) error {
 		return nil
 	}
 
-	newWorkers := make([]K8sNode, 0)
 	validNodes := make(map[uint32]struct{})
 	for node, contractID := range k.NodeDeploymentID {
 		contract, err := sub.GetContract(contractID)
@@ -267,12 +266,6 @@ func (k *K8sCluster) InvalidateBrokenAttributes(sub subi.SubstrateExt) error {
 	if _, ok := validNodes[k.Master.Node]; !ok {
 		k.Master = &K8sNode{}
 	}
-	for _, worker := range k.Workers {
-		if _, ok := validNodes[worker.Node]; ok {
-			newWorkers = append(newWorkers, worker)
-		}
-	}
-	k.Workers = newWorkers
 	return nil
 }
 
