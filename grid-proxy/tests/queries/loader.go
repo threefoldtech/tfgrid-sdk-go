@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"math"
 
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -35,7 +34,7 @@ type DBData struct {
 func loadNodes(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 	SELECT
-		id,
+		COALESCE(id, ''),
 		COALESCE(grid_version, 0),
 		COALESCE(node_id, 0),
 		COALESCE(farm_id, 0),
@@ -82,15 +81,6 @@ func loadNodes(db *sql.DB, data *DBData) error {
 		); err != nil {
 			return err
 		}
-		if &node.id == nil {
-			node.id = ""
-		}
-		// if node.power == (nodePower{}) {
-		// 	node.power = nodePower{
-		// 		state: "Down",
-		// 		target: "Down",
-		// 	}
-		// }
 		data.nodes[node.node_id] = node
 		data.nodeIDMap[node.id] = node.node_id
 	}
@@ -502,7 +492,6 @@ func load(db *sql.DB) (DBData, error) {
 		db:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {
-		fmt.Println("Err loading nodes")
 		return data, err
 	}
 	if err := loadFarms(db, &data); err != nil {
