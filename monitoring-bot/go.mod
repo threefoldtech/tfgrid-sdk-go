@@ -50,4 +50,3 @@ require (
 )
 
 replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0 => ../rmb-sdk-go
-
