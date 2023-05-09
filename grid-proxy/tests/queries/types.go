@@ -1,6 +1,11 @@
 // nolint
 package main
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 // TODO: the one in tools/db/types.go is unexported but it's the same file
 
 var (
@@ -53,7 +58,25 @@ type node struct {
 	created_at        uint64
 	updated_at        uint64
 	location_id       string
+	power             nodePower `gorm:"column:power;type:json"`
 }
+
+type nodePower struct {
+	State  string `json:"state"`
+	Target string `json:"target"`
+}
+
+func (np *nodePower) Scan(value interface{}) error {
+	// custom decoding for jsonb filed. executed while scanning the node.
+	if value == nil {
+		return nil
+	}
+	if data, ok := value.([]byte); ok {
+		return json.Unmarshal(data, np)
+	}
+	return fmt.Errorf("failed to unmarshal NodePower")
+}
+
 type twin struct {
 	id           string
 	grid_version uint64

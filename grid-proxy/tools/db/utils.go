@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -64,6 +65,23 @@ func insertQuery(v interface{}) string {
 			}
 			if v != "NULL" && val.Field(i).Type().Name() == "string" {
 				v = fmt.Sprintf(`'%s'`, v)
+			}
+			if v != "NULL" && val.Field(i).Type().Name() == "nodePower" {
+				// Construct the nodePower object
+				val2 := val.Field(i)
+				power := make(map[string]string)
+				for j := 0; j < val2.NumField(); j++ {
+					fieldName := val2.Type().Field(j).Name
+					fieldValue := val2.Field(j).String()
+					power[fieldName] = fieldValue
+				}
+
+				// Marshal the power map to JSON and wrap it in quotes
+				powerJSON, err := json.Marshal(power)
+				if err != nil {
+					panic(err)
+				}
+				v = fmt.Sprintf("'%s'", string(powerJSON))
 			}
 			query = fmt.Sprintf("%s, %s", query, val.Type().Field(i).Name)
 			vals = fmt.Sprintf("%s, %s", vals, v)
