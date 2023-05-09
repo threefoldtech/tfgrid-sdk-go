@@ -58,4 +58,3 @@ require (
 replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0 => ../grid-proxy
 
 replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.1.0 => ../rmb-sdk-go
-
