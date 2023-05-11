@@ -30,7 +30,6 @@ func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
 
 	state := NewState(ncPool, sub)
 	state.CurrentNodeDeployments = map[uint32]ContractIDs{1: []uint64{10}}
-	state.CurrentNodeNetworks = map[uint32]ContractIDs{1: []uint64{10}}
 
 	dl1 := workloads.NewGridDeployment(13, wls)
 	dl1.ContractID = 10

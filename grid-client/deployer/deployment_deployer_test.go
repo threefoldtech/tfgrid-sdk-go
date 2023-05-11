@@ -306,7 +306,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "")
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
-		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)
+		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
 		d.tfPluginClient.State.Networks = state.NetworkState{net.Name: state.Network{
 			Subnets:               map[uint32]string{nodeID: net.IPRange.String()},
 			NodeDeploymentHostIDs: map[uint32]state.DeploymentHostIDs{nodeID: map[uint64][]byte{contractID: {}}},
@@ -334,7 +334,7 @@ func TestDeploymentDeployer(t *testing.T) {
 	t.Run("test sync", func(t *testing.T) {
 		net := constructTestNetwork()
 
-		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)
+		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
 		d.tfPluginClient.State.Networks = state.NetworkState{
 			net.Name: state.Network{
 				Subnets: map[uint32]string{
@@ -489,7 +489,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "")
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
-		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)
+		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
 		d.tfPluginClient.State.Networks = state.NetworkState{
 			net.Name: state.Network{
 				Subnets: map[uint32]string{

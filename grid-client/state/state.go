@@ -23,8 +23,6 @@ type ContractIDs []uint64
 // State struct
 type State struct {
 	CurrentNodeDeployments map[uint32]ContractIDs
-	// TODO: remove it and merge with deployments
-	CurrentNodeNetworks map[uint32]ContractIDs
 
 	Networks NetworkState
 
@@ -36,7 +34,6 @@ type State struct {
 func NewState(ncPool client.NodeClientGetter, substrate subi.SubstrateExt) *State {
 	return &State{
 		CurrentNodeDeployments: make(map[uint32]ContractIDs),
-		CurrentNodeNetworks:    make(map[uint32]ContractIDs),
 		Networks:               NetworkState{},
 		NcPool:                 ncPool,
 		Substrate:              substrate,
@@ -269,13 +266,13 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 	nodeDeploymentsIDs := map[uint32]uint64{}
 
 	sub := st.Substrate
-	for nodeID := range st.CurrentNodeNetworks {
+	for nodeID := range st.CurrentNodeDeployments {
 		nodeClient, err := st.NcPool.GetNodeClient(sub, nodeID)
 		if err != nil {
 			return znet, errors.Wrapf(err, "could not get node client: %d", nodeID)
 		}
 
-		for _, contractID := range st.CurrentNodeNetworks[nodeID] {
+		for _, contractID := range st.CurrentNodeDeployments[nodeID] {
 			dl, err := nodeClient.DeploymentGet(context.Background(), contractID)
 			if err != nil {
 				return znet, errors.Wrapf(err, "could not get network deployment %d from node %d", contractID, nodeID)

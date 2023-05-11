@@ -294,7 +294,7 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 		if contractID, ok := znet.NodeDeploymentID[nodeID]; ok && contractID != 0 {
 			d.tfPluginClient.State.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
 			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID]) {
-				d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], znet.NodeDeploymentID[nodeID])
+				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID])
 			}
 		}
 	}
@@ -396,7 +396,7 @@ func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *
 		if contractID, ok := znet.NodeDeploymentID[nodeID]; ok && contractID != 0 {
 			d.tfPluginClient.State.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
 			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID]) {
-				d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], znet.NodeDeploymentID[nodeID])
+				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID])
 			}
 		}
 	}
