@@ -264,6 +264,7 @@ func (st *State) computeK8sDeploymentResources(nodeID uint32, dl gridtypes.Deplo
 func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err error) {
 	var zNets []workloads.ZNet
 	nodeDeploymentsIDs := map[uint32]uint64{}
+	publicNodeEndpoint := ""
 
 	sub := st.Substrate
 	for nodeID := range st.CurrentNodeDeployments {
@@ -293,6 +294,15 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 						return workloads.ZNet{}, errors.Wrapf(err, "failed to get network from workload %s", name)
 					}
 
+					if znet.PublicNodeID == nodeID {
+						// this is the network's public node
+						endpoint, err := nodeClient.GetNodeEndpoint(context.Background())
+						if err != nil {
+							return znet, errors.Wrapf(err, "failed to get node %d endpoint", nodeID)
+						}
+						publicNodeEndpoint = endpoint.String()
+					}
+
 					break
 				}
 			}
@@ -320,6 +330,16 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 	znet.NodesIPRange = nodesIPRange
 	znet.Keys = keys
 	znet.WGPort = wgPort
+
+	if znet.AddWGAccess {
+		znet.AccessWGConfig = workloads.GenerateWGConfig(
+			workloads.WgIP(*znet.ExternalIP).IP.String(),
+			znet.ExternalSK.String(),
+			znet.Keys[znet.PublicNodeID].PublicKey().String(),
+			fmt.Sprintf("%s:%d", publicNodeEndpoint, znet.WGPort[znet.PublicNodeID]),
+			znet.IPRange.String(),
+		)
+	}
 
 	st.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
 	return znet, nil
