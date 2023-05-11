@@ -150,6 +150,40 @@ func (c *ContractsGetter) ListContractsOfProjectName(projectName string) (Contra
 	return contracts, nil
 }
 
+// GetNodeContractsByTypeAndName list node contracts for a given type, project name and deployment name
+func (c *ContractsGetter) GetNodeContractsByTypeAndName(projectName, deploymentType, deploymentName string) (map[uint32]uint64, error) {
+	contracts, err := c.ListContractsOfProjectName(projectName)
+	if err != nil {
+		return map[uint32]uint64{}, err
+	}
+	nodeContractIDs := make(map[uint32]uint64)
+	for _, contract := range contracts.NodeContracts {
+		var deploymentData workloads.DeploymentData
+		err := json.Unmarshal([]byte(contract.DeploymentData), &deploymentData)
+		if err != nil {
+			return map[uint32]uint64{}, err
+		}
+		if deploymentData.Type != deploymentType || deploymentData.Name != deploymentName {
+			continue
+		}
+		contractID, err := strconv.ParseUint(contract.ContractID, 0, 64)
+		if err != nil {
+			return map[uint32]uint64{}, err
+		}
+		nodeContractIDs[contract.NodeID] = contractID
+		// only k8s and network have multiple contracts
+		if deploymentType == workloads.VMType ||
+			deploymentType == workloads.GatewayFQDNType ||
+			deploymentType == workloads.GatewayNameType {
+			break
+		}
+	}
+	if len(nodeContractIDs) == 0 {
+		return map[uint32]uint64{}, fmt.Errorf("no %s with name %s found", deploymentType, deploymentName)
+	}
+	return nodeContractIDs, nil
+}
+
 // filterNameContracts returns the name contracts of the given name gateways
 func (c *ContractsGetter) filterNameContracts(nameContracts []Contract, nameGatewayWorkloads []gridtypes.Workload) ([]Contract, error) {
 	filteredNameContracts := make([]Contract, 0)
