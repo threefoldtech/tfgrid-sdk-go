@@ -166,13 +166,13 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 	if znet.ExternalIP != nil {
 		externalIP = znet.ExternalIP.String()
 	}
-	metdata := workloads.NetworkMetaData{
-		UserAcessIP:  externalIP,
+	metadata := workloads.NetworkMetaData{
+		UserAccessIP: externalIP,
 		PrivateKey:   znet.ExternalSK.String(),
 		PublicNodeID: znet.PublicNodeID,
 	}
 
-	metadataBytes, err := json.Marshal(metdata)
+	metadataBytes, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal network metadata")
 	}

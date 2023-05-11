@@ -296,8 +296,8 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		},
 	}
 
-	metdata, err := json.Marshal(workloads.NetworkMetaData{
-		UserAcessIP:  "",
+	metadata, err := json.Marshal(workloads.NetworkMetaData{
+		UserAccessIP: "",
 		PrivateKey:   "",
 		PublicNodeID: 0,
 	})
@@ -314,7 +314,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 			WGListenPort:   0,
 			Peers:          []zos.Peer{},
 		}),
-		Metadata:    string(metdata),
+		Metadata:    string(metadata),
 		Description: "test description",
 		Result:      gridtypes.Result{},
 	}
@@ -367,8 +367,8 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 		NodesIPRange:     map[uint32]gridtypes.IPNet{1: ipRange},
 	}
 
-	metdata, err := json.Marshal(workloads.NetworkMetaData{
-		UserAcessIP:  "",
+	metadata, err := json.Marshal(workloads.NetworkMetaData{
+		UserAccessIP: "",
 		PrivateKey:   "",
 		PublicNodeID: 0,
 	})
@@ -385,7 +385,7 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 			WGListenPort:   0,
 			Peers:          []zos.Peer{},
 		}),
-		Metadata:    string(metdata),
+		Metadata:    string(metadata),
 		Description: "test description",
 		Result:      gridtypes.Result{},
 	}
