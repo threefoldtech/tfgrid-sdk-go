@@ -190,11 +190,6 @@ func (d *Deployer) deploy(
 	// updates
 	for node, dl := range newDeployments {
 		if oldDeploymentID, ok := oldDeployments[node]; ok {
-			newDeploymentHash, err := HashDeployment(dl)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "could not get deployment hash")
-			}
-
 			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
@@ -205,38 +200,29 @@ func (d *Deployer) deploy(
 				return currentDeployments, errors.Wrap(err, "failed to get old deployment to update it")
 			}
 
+			matchOldVersions(&oldDl, &dl)
+
 			oldDeploymentHash, err := HashDeployment(oldDl)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "could not get deployment hash")
 			}
+
+			newDeploymentHash, err := HashDeployment(dl)
+			if err != nil {
+				return currentDeployments, errors.Wrap(err, "could not get deployment hash")
+			}
+
 			if oldDeploymentHash == newDeploymentHash && SameWorkloadsNames(dl, oldDl) {
 				continue
 			}
 
-			oldHashes, err := GetWorkloadHashes(oldDl)
+			newWorkloadsVersions, err := assignVersions(&oldDl, &dl)
 			if err != nil {
-				return currentDeployments, errors.Wrap(err, "could not get old workloads hashes")
+				return currentDeployments, errors.Wrapf(err, "failed to assign new versions to deployment with contract %d", oldDeploymentID)
 			}
 
-			newHashes, err := GetWorkloadHashes(dl)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "could not get new workloads hashes")
-			}
-
-			oldWorkloadsVersions := ConstructWorkloadVersions(oldDl)
-			newWorkloadsVersions := make(map[string]uint32)
-			dl.Version = oldDl.Version + 1
 			dl.ContractID = oldDl.ContractID
-			for idx, w := range dl.Workloads {
-				newHash := newHashes[string(w.Name)]
-				oldHash, ok := oldHashes[string(w.Name)]
-				if !ok || newHash != oldHash {
-					dl.Workloads[idx].Version = dl.Version
-				} else if ok && newHash == oldHash {
-					dl.Workloads[idx].Version = oldWorkloadsVersions[string(w.Name)]
-				}
-				newWorkloadsVersions[w.Name.String()] = dl.Workloads[idx].Version
-			}
+
 			if err := dl.Sign(d.twinID, d.identity); err != nil {
 				return currentDeployments, errors.Wrap(err, "error signing deployment")
 			}
@@ -530,6 +516,47 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 	}
 
 	return resDeployments, multiErr
+}
+
+// matchOldVersions assigns deployment and workloads versions of the new versionless deployment to the ones of the old deployment
+func matchOldVersions(oldDl *gridtypes.Deployment, newDl *gridtypes.Deployment) {
+	oldWlVersions := map[string]uint32{}
+	for _, wl := range oldDl.Workloads {
+		oldWlVersions[wl.Name.String()] = wl.Version
+	}
+
+	newDl.Version = oldDl.Version
+
+	for idx, wl := range newDl.Workloads {
+		newDl.Workloads[idx].Version = oldWlVersions[wl.Name.String()]
+	}
+}
+
+// assignVersions determines and assigns the versions of the new deployment and its workloads
+func assignVersions(oldDl *gridtypes.Deployment, newDl *gridtypes.Deployment) (map[string]uint32, error) {
+	oldHashes, err := GetWorkloadHashes(*oldDl)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get old workloads hashes")
+	}
+
+	newHashes, err := GetWorkloadHashes(*newDl)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get new workloads hashes")
+	}
+
+	newWorkloadsVersions := make(map[string]uint32)
+	newDl.Version = oldDl.Version + 1
+
+	for idx, w := range newDl.Workloads {
+		newHash := newHashes[string(w.Name)]
+		oldHash, ok := oldHashes[string(w.Name)]
+		if !ok || newHash != oldHash {
+			newDl.Workloads[idx].Version = newDl.Version
+		}
+		newWorkloadsVersions[w.Name.String()] = newDl.Workloads[idx].Version
+	}
+
+	return newWorkloadsVersions, nil
 }
 
 // Validate is a best effort validation. it returns an error if it's very sure there's a problem
