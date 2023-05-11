@@ -26,7 +26,7 @@ type UserAccess struct {
 
 // NetworkMetaData is added to network workloads to help rebuilding networks when retreived from the grid
 type NetworkMetaData struct {
-	UserAcessIP  string `json:"ip"`
+	UserAccessIP string `json:"ip"`
 	PrivateKey   string `json:"priv_key"`
 	PublicNodeID uint32 `json:"node_id"`
 }
@@ -84,14 +84,14 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 	}
 
 	var externalIP *gridtypes.IPNet
-	if metadata.UserAcessIP != "" {
+	if metadata.UserAccessIP != "" {
 
-		ipnet, err := gridtypes.ParseIPNet(metadata.UserAcessIP)
+		ipNet, err := gridtypes.ParseIPNet(metadata.UserAccessIP)
 		if err != nil {
 			return ZNet{}, err
 		}
 
-		externalIP = &ipnet
+		externalIP = &ipNet
 	}
 
 	var externalSK wgtypes.Key
@@ -111,7 +111,7 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		NodesIPRange: map[uint32]gridtypes.IPNet{nodeID: data.Subnet},
 		WGPort:       wgPort,
 		Keys:         keys,
-		AddWGAccess:  metadata.PrivateKey != "",
+		AddWGAccess:  externalIP != nil,
 		PublicNodeID: metadata.PublicNodeID,
 		ExternalIP:   externalIP,
 		ExternalSK:   externalSK,

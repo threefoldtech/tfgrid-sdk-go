@@ -12,13 +12,6 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-// DeploymentData for deployments meta data
-type DeploymentData struct {
-	Type        string `json:"type"`
-	Name        string `json:"name"`
-	ProjectName string `json:"projectName"`
-}
-
 // Deployment struct
 type Deployment struct {
 	Name             string

@@ -21,9 +21,12 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-var twinID uint32 = 13
-var contractID uint64 = 100
-var nodeID uint32 = 10
+var (
+	twinID        uint32 = 13
+	contractID    uint64 = 100
+	netContractID uint64 = 101
+	nodeID        uint32 = 10
+)
 
 func constructTestDeployment() workloads.Deployment {
 	disks := []workloads.Disk{
@@ -306,7 +309,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "")
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
-		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)
+		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], netContractID)
 		d.tfPluginClient.State.Networks = state.NetworkState{net.Name: state.Network{
 			Subnets:               map[uint32]string{nodeID: net.IPRange.String()},
 			NodeDeploymentHostIDs: map[uint32]state.DeploymentHostIDs{nodeID: map[uint64][]byte{contractID: {}}},
@@ -332,17 +335,6 @@ func TestDeploymentDeployer(t *testing.T) {
 	})
 
 	t.Run("test sync", func(t *testing.T) {
-		net := constructTestNetwork()
-
-		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)
-		d.tfPluginClient.State.Networks = state.NetworkState{
-			net.Name: state.Network{
-				Subnets: map[uint32]string{
-					nodeID: net.IPRange.String(),
-				},
-				NodeDeploymentHostIDs: make(state.NodeDeploymentHostIDs),
-			},
-		}
 		dls, err := d.GenerateVersionlessDeployments(context.Background(), &dl)
 		assert.NoError(t, err)
 
@@ -362,7 +354,7 @@ func TestDeploymentDeployer(t *testing.T) {
 			// nothing should change
 			assert.Empty(t, dl.NodeDeploymentID)
 			assert.Empty(t, dl.ContractID)
-			assert.Empty(t, d.tfPluginClient.State.CurrentNodeDeployments)
+			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {netContractID}})
 		})
 
 		t.Run("Deploying failed", func(t *testing.T) {
@@ -386,7 +378,7 @@ func TestDeploymentDeployer(t *testing.T) {
 			// nothing should change
 			assert.Empty(t, dl.NodeDeploymentID)
 			assert.Empty(t, dl.ContractID)
-			assert.Empty(t, d.tfPluginClient.State.CurrentNodeDeployments[nodeID])
+			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {netContractID}})
 		})
 		t.Run("Deploying succeeded", func(t *testing.T) {
 			dl.NodeDeploymentID = map[uint32]uint64{}
@@ -409,7 +401,7 @@ func TestDeploymentDeployer(t *testing.T) {
 			// should reflect on deployment and state
 			assert.Equal(t, dl.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
 			assert.Equal(t, dl.ContractID, contractID)
-			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {contractID}})
+			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {netContractID, contractID}})
 		})
 
 	})
@@ -489,7 +481,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "")
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
-		d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], contractID)
+		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
 		d.tfPluginClient.State.Networks = state.NetworkState{
 			net.Name: state.Network{
 				Subnets: map[uint32]string{

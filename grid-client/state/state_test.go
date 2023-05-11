@@ -30,7 +30,6 @@ func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
 
 	state := NewState(ncPool, sub)
 	state.CurrentNodeDeployments = map[uint32]ContractIDs{1: []uint64{10}}
-	state.CurrentNodeNetworks = map[uint32]ContractIDs{1: []uint64{10}}
 
 	dl1 := workloads.NewGridDeployment(13, wls)
 	dl1.ContractID = 10
@@ -297,8 +296,8 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		},
 	}
 
-	metdata, err := json.Marshal(workloads.NetworkMetaData{
-		UserAcessIP:  "",
+	metadata, err := json.Marshal(workloads.NetworkMetaData{
+		UserAccessIP: "",
 		PrivateKey:   "",
 		PublicNodeID: 0,
 	})
@@ -315,7 +314,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 			WGListenPort:   0,
 			Peers:          []zos.Peer{},
 		}),
-		Metadata:    string(metdata),
+		Metadata:    string(metadata),
 		Description: "test description",
 		Result:      gridtypes.Result{},
 	}
@@ -368,8 +367,8 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 		NodesIPRange:     map[uint32]gridtypes.IPNet{1: ipRange},
 	}
 
-	metdata, err := json.Marshal(workloads.NetworkMetaData{
-		UserAcessIP:  "",
+	metadata, err := json.Marshal(workloads.NetworkMetaData{
+		UserAccessIP: "",
 		PrivateKey:   "",
 		PublicNodeID: 0,
 	})
@@ -386,7 +385,7 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 			WGListenPort:   0,
 			Peers:          []zos.Peer{},
 		}),
-		Metadata:    string(metdata),
+		Metadata:    string(metadata),
 		Description: "test description",
 		Result:      gridtypes.Result{},
 	}

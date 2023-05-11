@@ -166,13 +166,13 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 	if znet.ExternalIP != nil {
 		externalIP = znet.ExternalIP.String()
 	}
-	metdata := workloads.NetworkMetaData{
-		UserAcessIP:  externalIP,
+	metadata := workloads.NetworkMetaData{
+		UserAccessIP: externalIP,
 		PrivateKey:   znet.ExternalSK.String(),
 		PublicNodeID: znet.PublicNodeID,
 	}
 
-	metadataBytes, err := json.Marshal(metdata)
+	metadataBytes, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal network metadata")
 	}
@@ -294,7 +294,7 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 		if contractID, ok := znet.NodeDeploymentID[nodeID]; ok && contractID != 0 {
 			d.tfPluginClient.State.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
 			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID]) {
-				d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], znet.NodeDeploymentID[nodeID])
+				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID])
 			}
 		}
 	}
@@ -396,7 +396,7 @@ func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *
 		if contractID, ok := znet.NodeDeploymentID[nodeID]; ok && contractID != 0 {
 			d.tfPluginClient.State.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
 			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID]) {
-				d.tfPluginClient.State.CurrentNodeNetworks[nodeID] = append(d.tfPluginClient.State.CurrentNodeNetworks[nodeID], znet.NodeDeploymentID[nodeID])
+				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID])
 			}
 		}
 	}
