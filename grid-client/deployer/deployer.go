@@ -124,6 +124,7 @@ func (d *Deployer) deploy(
 		}
 	}
 
+	errGroup := errgroup.Group{}
 	// creations
 	for node, dl := range newDeployments {
 		if _, ok := oldDeployments[node]; !ok {
@@ -155,35 +156,37 @@ func (d *Deployer) deploy(
 			}
 			log.Debug().Uint32("Number of public ips", publicIPCount)
 
-			contractID, err := d.substrateConn.CreateNodeContract(d.identity, node, dl.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[node])
-			log.Debug().Uint64("CreateNodeContract returned id", contractID)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to create contract")
-			}
-
-			dl.ContractID = contractID
-			ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
-			defer cancel()
-			err = client.DeploymentDeploy(ctx, dl)
-
-			if err != nil {
-				rerr := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
-				if rerr != nil {
-					return currentDeployments, errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, contractID)
+			nodeID := node
+			dep := dl
+			errGroup.Go(func() error {
+				contractID, err := d.substrateConn.CreateNodeContract(d.identity, nodeID, dep.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[nodeID])
+				log.Debug().Uint64("CreateNodeContract returned id", contractID)
+				if err != nil {
+					return errors.Wrap(err, "failed to create contract")
 				}
-				return currentDeployments, errors.Wrap(err, "error sending deployment to the node")
 
-			}
-			currentDeployments[node] = dl.ContractID
-			newWorkloadVersions := make(map[string]uint32)
-			for _, w := range dl.Workloads {
-				newWorkloadVersions[w.Name.String()] = 0
-			}
-			err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
+				dep.ContractID = contractID
+				ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
+				defer cancel()
+				err = client.DeploymentDeploy(ctx, dep)
 
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "error waiting deployment")
-			}
+				if err != nil {
+					rerr := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
+					if rerr != nil {
+						return errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, contractID)
+					}
+					return errors.Wrap(err, "error sending deployment to the node")
+				}
+
+				currentDeployments[nodeID] = dep.ContractID
+
+				newWorkloadVersions := make(map[string]uint32)
+				for _, w := range dep.Workloads {
+					newWorkloadVersions[w.Name.String()] = 0
+				}
+
+				return d.Wait(ctx, client, contractID, newWorkloadVersions)
+			})
 		}
 	}
 
@@ -241,25 +244,33 @@ func (d *Deployer) deploy(
 
 			// TODO: Destroy and create if publicIPCount is changed
 			// publicIPCount, err := countDeploymentPublicIPs(dl)
-			contractID, err := d.substrateConn.UpdateNodeContract(d.identity, dl.ContractID, "", hashHex)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to update deployment")
-			}
-			dl.ContractID = contractID
-			sub, cancel := context.WithTimeout(ctx, 4*time.Minute)
-			defer cancel()
-			err = client.DeploymentUpdate(sub, dl)
-			if err != nil {
-				// cancel previous contract
-				return currentDeployments, errors.Wrapf(err, "failed to send deployment update request to node %d", node)
-			}
-			currentDeployments[node] = dl.ContractID
+			nodeID := node
+			dep := dl
+			errGroup.Go(func() error {
+				contractID, err := d.substrateConn.UpdateNodeContract(d.identity, dep.ContractID, "", hashHex)
+				if err != nil {
+					return errors.Wrap(err, "failed to update deployment")
+				}
 
-			err = d.Wait(ctx, client, dl.ContractID, newWorkloadsVersions)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "error waiting deployment")
-			}
+				dep.ContractID = contractID
+
+				sub, cancel := context.WithTimeout(ctx, 4*time.Minute)
+				defer cancel()
+				err = client.DeploymentUpdate(sub, dep)
+				if err != nil {
+					// cancel previous contract
+					return errors.Wrapf(err, "failed to send deployment update request to node %d", nodeID)
+				}
+				currentDeployments[nodeID] = dep.ContractID
+
+				return d.Wait(ctx, client, contractID, newWorkloadsVersions)
+			})
+
 		}
+	}
+
+	if err := errGroup.Wait(); err != nil {
+		return currentDeployments, err
 	}
 
 	return currentDeployments, nil
