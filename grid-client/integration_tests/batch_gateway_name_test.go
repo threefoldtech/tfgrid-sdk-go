@@ -63,9 +63,19 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		assert.NoError(t, err)
+	}()
+
 	dl := workloads.NewDeployment("vm", nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	assert.NoError(t, err)
+
+	defer func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		assert.NoError(t, err)
+	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID1, vm.Name, dl.Name)
 	assert.NoError(t, err)
@@ -88,6 +98,14 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	err = tfPluginClient.GatewayNameDeployer.BatchDeploy(ctx, []*workloads.GatewayNameProxy{&gw1, &gw2})
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.GatewayNameDeployer.Cancel(ctx, &gw1)
+		assert.NoError(t, err)
+
+		err = tfPluginClient.GatewayNameDeployer.Cancel(ctx, &gw2)
+		assert.NoError(t, err)
+	}()
+
 	result, err := tfPluginClient.State.LoadGatewayNameFromGrid(nodeID1, gw1.Name, gw1.Name)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, result.FQDN)
@@ -95,17 +113,4 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	result, err = tfPluginClient.State.LoadGatewayNameFromGrid(nodeID2, gw2.Name, gw2.Name)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, result.FQDN)
-
-	// cancel all
-	err = tfPluginClient.GatewayNameDeployer.Cancel(ctx, &gw1)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.GatewayNameDeployer.Cancel(ctx, &gw2)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-	assert.NoError(t, err)
 }

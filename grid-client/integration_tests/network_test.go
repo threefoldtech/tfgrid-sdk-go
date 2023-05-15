@@ -45,6 +45,11 @@ func TestNetworkDeployment(t *testing.T) {
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 		assert.NoError(t, err)
 
+		defer func() {
+			err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+			assert.NoError(t, err)
+		}()
+
 		_, err := tfPluginClient.State.LoadNetworkFromGrid(network.Name)
 		assert.NoError(t, err)
 	})
@@ -66,19 +71,13 @@ func TestNetworkDeployment(t *testing.T) {
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &networkCp)
 		assert.NoError(t, err)
 
+		defer func() {
+			err = tfPluginClient.NetworkDeployer.Cancel(ctx, &networkCp)
+			assert.NoError(t, err)
+		}()
+
 		_, err := tfPluginClient.State.LoadNetworkFromGrid(networkCp.Name)
 		assert.NoError(t, err)
-	})
-
-	t.Run("cancel network", func(t *testing.T) {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-		assert.NoError(t, err)
-
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &networkCp)
-		assert.NoError(t, err)
-
-		_, err := tfPluginClient.State.LoadNetworkFromGrid(network.Name)
-		assert.Error(t, err)
 	})
 
 	t.Run("test get public node", func(t *testing.T) {

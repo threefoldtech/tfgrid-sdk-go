@@ -62,9 +62,19 @@ func TestWG(t *testing.T) {
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		assert.NoError(t, err)
+	}()
+
 	dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	assert.NoError(t, err)
+
+	defer func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		assert.NoError(t, err)
+	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
@@ -88,13 +98,6 @@ func TestWG(t *testing.T) {
 	assert.True(t, TestConnection(v.IP, "22"))
 
 	err = AreWgIPsReachable(wgConfig, []string{v.IP}, privateKey)
-	assert.NoError(t, err)
-
-	// cancel all
-	err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
 	assert.NoError(t, err)
 }
 

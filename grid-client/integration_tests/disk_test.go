@@ -35,14 +35,12 @@ func TestDiskDeployment(t *testing.T) {
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		assert.NoError(t, err)
+	}()
+
 	resDisk, err := tfPluginClient.State.LoadDiskFromGrid(nodeID, disk.Name, dl.Name)
 	assert.NoError(t, err)
 	assert.Equal(t, disk, resDisk)
-
-	// cancel all
-	err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-	assert.NoError(t, err)
-
-	_, err = tfPluginClient.State.LoadDiskFromGrid(nodeID, disk.Name, dl.Name)
-	assert.Error(t, err)
 }

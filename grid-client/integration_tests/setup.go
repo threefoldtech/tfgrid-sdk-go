@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -38,13 +37,13 @@ func convertGBToBytes(gb uint64) *uint64 {
 }
 
 func setup() (deployer.TFPluginClient, error) {
-	mnemonics := os.Getenv("MNEMONICS")
+	mnemonics := "winner giant reward damage expose pulse recipe manual brand volcano dry avoid"
 	log.Printf("mnemonics: %s", mnemonics)
 
-	network := os.Getenv("NETWORK")
+	network := "qa"
 	log.Printf("network: %s", network)
 
-	return deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, true)
+	return deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, false)
 }
 
 // TestConnection used to test connection

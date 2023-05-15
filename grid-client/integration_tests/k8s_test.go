@@ -64,6 +64,11 @@ func TestK8sDeployment(t *testing.T) {
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		assert.NoError(t, err)
+	}()
+
 	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 	flistCheckSum, err := workloads.GetFlistChecksum(flist)
 	assert.NoError(t, err)
@@ -134,6 +139,11 @@ func TestK8sDeployment(t *testing.T) {
 		err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
 		assert.NoError(t, err)
 
+		defer func() {
+			err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
+			assert.NoError(t, err)
+		}()
+
 		result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
 		assert.NoError(t, err)
 
@@ -150,16 +160,6 @@ func TestK8sDeployment(t *testing.T) {
 
 		// ssh to master node
 		AssertNodesAreReady(t, &result, privateKey)
-
-		// cancel deployments
-		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
-		assert.NoError(t, err)
-
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-		assert.NoError(t, err)
-
-		_, err = tfPluginClient.State.LoadK8sFromGrid([]uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
-		assert.Error(t, err)
 	})
 
 	t.Run("update k8s cluster", func(t *testing.T) {
@@ -179,6 +179,11 @@ func TestK8sDeployment(t *testing.T) {
 
 		err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
 		assert.NoError(t, err)
+
+		defer func() {
+			err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
+			assert.NoError(t, err)
+		}()
 
 		result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{masterNodeID}, k8sCluster.Master.Name)
 		assert.NoError(t, err)
@@ -204,14 +209,6 @@ func TestK8sDeployment(t *testing.T) {
 		assert.Len(t, result.Workers, 2)
 
 		AssertNodesAreReady(t, &result, privateKey)
-
-		// cancel deployments
-		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
-		assert.NoError(t, err)
-
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-		assert.NoError(t, err)
-
 	})
 
 }

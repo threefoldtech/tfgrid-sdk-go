@@ -75,10 +75,26 @@ func TestBatchVMDeployment(t *testing.T) {
 	err = tfPluginClient.NetworkDeployer.BatchDeploy(ctx, []*workloads.ZNet{&network1, &network2})
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network1)
+		assert.NoError(t, err)
+
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network2)
+		assert.NoError(t, err)
+	}()
+
 	dl1 := workloads.NewDeployment("vm1", nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil)
 	dl2 := workloads.NewDeployment("vm2", nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil)
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, []*workloads.Deployment{&dl1, &dl2})
 	assert.NoError(t, err)
+
+	defer func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl1)
+		assert.NoError(t, err)
+
+		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl2)
+		assert.NoError(t, err)
+	}()
 
 	v1, err := tfPluginClient.State.LoadVMFromGrid(nodeID1, vm1.Name, dl1.Name)
 	assert.NoError(t, err)
@@ -95,17 +111,4 @@ func TestBatchVMDeployment(t *testing.T) {
 	output, err = RemoteRun("root", v2.YggIP, "ls /", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, string(output), "root")
-
-	// cancel all
-	err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl1)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl2)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network1)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network2)
-	assert.NoError(t, err)
 }

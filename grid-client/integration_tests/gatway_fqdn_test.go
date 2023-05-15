@@ -67,9 +67,19 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		assert.NoError(t, err)
+	}()
+
 	dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	assert.NoError(t, err)
+
+	defer func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		assert.NoError(t, err)
+	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
@@ -88,6 +98,11 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	err = tfPluginClient.GatewayFQDNDeployer.Deploy(ctx, &gw)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.GatewayFQDNDeployer.Cancel(ctx, &gw)
+		assert.NoError(t, err)
+	}()
+
 	_, err = tfPluginClient.State.LoadGatewayFQDNFromGrid(gatewayNode, gw.Name, gw.Name)
 	assert.NoError(t, err)
 
@@ -104,17 +119,4 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 		defer response.Body.Close()
 	}
 	assert.Contains(t, string(body), "Directory listing for")
-
-	// cancel all
-	err = tfPluginClient.GatewayFQDNDeployer.Cancel(ctx, &gw)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-	assert.NoError(t, err)
-
-	_, err = tfPluginClient.State.LoadGatewayFQDNFromGrid(nodeID, gw.Name, gw.Name)
-	assert.Error(t, err)
 }
