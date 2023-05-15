@@ -292,7 +292,7 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 	// error is not returned immediately before updating state because of untracked failed deployments
 	for _, nodeID := range znet.Nodes {
 		if contractID, ok := znet.NodeDeploymentID[nodeID]; ok && contractID != 0 {
-			d.tfPluginClient.State.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
+			d.tfPluginClient.State.Networks.UpdateNetworkSubnets(znet.Name, znet.NodesIPRange)
 			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID]) {
 				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID])
 			}
@@ -394,7 +394,7 @@ func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *
 		}
 
 		if contractID, ok := znet.NodeDeploymentID[nodeID]; ok && contractID != 0 {
-			d.tfPluginClient.State.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
+			d.tfPluginClient.State.Networks.UpdateNetworkSubnets(znet.Name, znet.NodesIPRange)
 			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID]) {
 				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID])
 			}

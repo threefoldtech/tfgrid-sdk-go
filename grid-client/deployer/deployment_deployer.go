@@ -280,7 +280,7 @@ func (d *DeploymentDeployer) assignNodesIPs(dl *workloads.Deployment) error {
 		return errors.Wrapf(err, "invalid ip %s", ipRange)
 	}
 	for _, vm := range dl.Vms {
-		vmIP := net.ParseIP(vm.IP)
+		vmIP := net.ParseIP(vm.IP).To4()
 		if vmIP != nil {
 			vmHostID := vmIP[3]
 			if ipRangeCIDR.Contains(vmIP) && !workloads.Contains(usedHosts, vmHostID) {
