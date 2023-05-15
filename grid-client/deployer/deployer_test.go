@@ -216,24 +216,24 @@ func TestDeployer(t *testing.T) {
 	})
 
 	t.Run("test update", func(t *testing.T) {
-		dl1, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
+		oldDl, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
 		assert.NoError(t, err)
-		dl2, err := deploymentWithNameGateway(identity, twinID, true, 1, backendURLWithTLSPassthrough)
+		newVersionlessDl, err := deploymentWithNameGateway(identity, twinID, true, 0, "2.2.2.2:10")
 		assert.NoError(t, err)
+		versionedDl, err := deploymentWithNameGateway(identity, twinID, true, 1, "2.2.2.2:10")
+		assert.NoError(t, err)
+		versionedDl.SignatureRequirement = newVersionlessDl.SignatureRequirement
 
 		newDls := map[uint32]gridtypes.Deployment{
-			10: dl2,
+			10: newVersionlessDl,
 		}
 
 		newDlsSolProvider := map[uint32]*uint64{
 			10: nil,
 		}
 
-		dl1.ContractID = 100
-		dl2.ContractID = 100
-
-		dl2Hash, err := hash(&dl2)
-		assert.NoError(t, err)
+		oldDl.ContractID = 100
+		versionedDl.ContractID = 100
 
 		mockDeployerValidator(&deployer, ctrl, []uint32{10})
 		sub.EXPECT().GetContract(uint64(100)).Return(subi.Contract{
@@ -244,41 +244,42 @@ func TestDeployer(t *testing.T) {
 			}},
 		}, nil)
 
-		sub.EXPECT().
-			UpdateNodeContract(
-				identity,
-				uint64(100),
-				"",
-				dl2Hash,
-			).Return(uint64(100), nil)
-
 		ncPool.EXPECT().
 			GetNodeClient(sub, uint32(10)).
 			Return(client.NewNodeClient(13, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
 
 		cl.EXPECT().
-			Call(gomock.Any(), uint32(13), "zos.deployment.update", dl2, gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				dl1.Workloads[0].Result.State = gridtypes.StateOk
-				dl1.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
-				dl1.Version = 1
-				dl1.Workloads[0].Version = 1
-				return nil
-			})
-
-		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
 				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
-				*res = dl1
+				*res = oldDl
 				return nil
 			}).AnyTimes()
+
+		newDlHash, err := hash(&versionedDl)
+		assert.NoError(t, err)
+
+		sub.EXPECT().
+			UpdateNodeContract(
+				identity,
+				uint64(100),
+				"",
+				newDlHash,
+			).Return(uint64(100), nil)
+
+		cl.EXPECT().
+			Call(gomock.Any(), uint32(13), "zos.deployment.update", versionedDl, gomock.Any()).
+			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+				versionedDl.Workloads[0].Result.State = gridtypes.StateOk
+				versionedDl.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
+				return nil
+			})
 
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
 				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
-				*res = dl1.Workloads
+				*res = versionedDl.Workloads
 				return nil
 			}).AnyTimes()
 
@@ -286,9 +287,6 @@ func TestDeployer(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, contracts, map[uint32]uint64{10: 100})
-
-		assert.Equal(t, dl1.Version, dl2.Version)
-		assert.Equal(t, dl1.Workloads[0].Version, dl2.Workloads[0].Version)
 	})
 
 	t.Run("test cancel", func(t *testing.T) {
