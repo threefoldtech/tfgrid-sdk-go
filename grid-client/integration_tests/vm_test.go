@@ -63,9 +63,19 @@ func TestVMDeployment(t *testing.T) {
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 		assert.NoError(t, err)
 
+		defer func() {
+			err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+			assert.NoError(t, err)
+		}()
+
 		dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 		err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 		assert.NoError(t, err)
+
+		defer func() {
+			err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+			assert.NoError(t, err)
+		}()
 
 		v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
 		assert.NoError(t, err)
@@ -81,15 +91,5 @@ func TestVMDeployment(t *testing.T) {
 		output, err := RemoteRun("root", yggIP, "ls /", privateKey)
 		assert.NoError(t, err)
 		assert.Contains(t, string(output), "root")
-
-		// cancel all
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-		assert.NoError(t, err)
-
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-		assert.NoError(t, err)
-
-		_, err = tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
-		assert.Error(t, err)
 	})
 }

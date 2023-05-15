@@ -74,9 +74,19 @@ func TestPresearchDeployment(t *testing.T) {
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		assert.NoError(t, err)
+	}()
+
 	dl := workloads.NewDeployment("presearch", nodeID, "", nil, network.Name, []workloads.Disk{disk}, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	assert.NoError(t, err)
+
+	defer func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		assert.NoError(t, err)
+	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
@@ -105,12 +115,4 @@ func TestPresearchDeployment(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Contains(t, output, "prenode: Success")
-
-	// cancel all
-	err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-	assert.NoError(t, err)
-
 }

@@ -145,7 +145,7 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 
 	if znet.AddWGAccess {
 		// if no wg private key, it should be generated
-		if znet.ExternalSK.String() == "" {
+		if znet.ExternalSK.String() == workloads.ExternalSKZeroValue {
 			wgSK, err := wgtypes.GeneratePrivateKey()
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to generate wireguard secret key for network: %s", znet.Name)

@@ -75,10 +75,20 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		assert.NoError(t, err)
+	}()
+
 	t.Run("public ipv6 and yggdrasil", func(t *testing.T) {
 		dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm2}, nil)
 		err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 		assert.NoError(t, err)
+
+		defer func() {
+			err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+			assert.NoError(t, err)
+		}()
 
 		v1, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm1.Name, dl.Name)
 		assert.NoError(t, err)
@@ -126,13 +136,6 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 
 		// check publicIP61 from vm2
 		_, err = RemoteRun("root", yggIP2, "nc -z "+publicIP6_1+" 22", privateKey)
-		assert.NoError(t, err)
-
-		// cancel all
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-		assert.NoError(t, err)
-
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
 		assert.NoError(t, err)
 	})
 }

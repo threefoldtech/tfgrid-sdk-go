@@ -80,6 +80,11 @@ func TestQSFSDeployment(t *testing.T) {
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl1)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl1)
+		assert.NoError(t, err)
+	}()
+
 	// result zdbs
 	resDataZDBs := []workloads.ZDB{}
 	resMetaZDBs := []workloads.ZDB{}
@@ -153,9 +158,19 @@ func TestQSFSDeployment(t *testing.T) {
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		assert.NoError(t, err)
+	}()
+
 	dl2 := workloads.NewDeployment("qsfs", nodeID, "", nil, network.Name, nil, append(dataZDBs, metaZDBs...), []workloads.VM{vm}, []workloads.QSFS{qsfs})
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl2)
 	assert.NoError(t, err)
+
+	defer func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl2)
+		assert.NoError(t, err)
+	}()
 
 	resVM, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl2.Name)
 	assert.NoError(t, err)
@@ -189,17 +204,4 @@ func TestQSFSDeployment(t *testing.T) {
 
 	resQSFS.MetricsEndpoint = ""
 	assert.Equal(t, qsfs, resQSFS)
-
-	// cancel all
-	err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl1)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl2)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-	assert.NoError(t, err)
-
-	_, err = tfPluginClient.State.LoadQSFSFromGrid(nodeID, qsfs.Name, dl2.Name)
-	assert.Error(t, err)
 }

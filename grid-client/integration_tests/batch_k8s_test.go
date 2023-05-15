@@ -45,6 +45,11 @@ func TestBatchK8sDeployment(t *testing.T) {
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		assert.NoError(t, err)
+	}()
+
 	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 	flistCheckSum, err := workloads.GetFlistChecksum(flist)
 	assert.NoError(t, err)
@@ -136,6 +141,14 @@ func TestBatchK8sDeployment(t *testing.T) {
 	err = tfPluginClient.K8sDeployer.BatchDeploy(ctx, []*workloads.K8sCluster{&k8sCluster1, &k8sCluster2})
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster1)
+		assert.NoError(t, err)
+
+		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster2)
+		assert.NoError(t, err)
+	}()
+
 	// cluster 1
 	result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID1}, k8sCluster1.Master.Name)
 	assert.NoError(t, err)
@@ -171,14 +184,4 @@ func TestBatchK8sDeployment(t *testing.T) {
 
 	// ssh to master node
 	AssertNodesAreReady(t, &result, privateKey)
-
-	// cancel deployments
-	err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster1)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster2)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-	assert.NoError(t, err)
 }

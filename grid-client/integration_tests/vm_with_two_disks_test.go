@@ -73,9 +73,19 @@ func TestVMWithTwoDisk(t *testing.T) {
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	assert.NoError(t, err)
 
+	defer func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		assert.NoError(t, err)
+	}()
+
 	dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, []workloads.Disk{disk1, disk2}, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	assert.NoError(t, err)
+
+	defer func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		assert.NoError(t, err)
+	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
@@ -137,11 +147,4 @@ func TestVMWithTwoDisk(t *testing.T) {
 
 	_, err = RemoteRun("root", yggIP, "cp /disk2/test.txt /disk1/test2.txt", privateKey)
 	assert.Error(t, err)
-
-	// cancel all
-	err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-	assert.NoError(t, err)
-
-	err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-	assert.NoError(t, err)
 }
