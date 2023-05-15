@@ -53,4 +53,4 @@ jobs:
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
-        run: go test -v ./integration_tests -tags integration
+        run: go test -v ./grid-client/integration_tests -run TestWG

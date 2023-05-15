@@ -15,6 +15,9 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+// ExternalSKZeroValue as its not empty when it is zero
+var ExternalSKZeroValue = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
 // UserAccess struct
 type UserAccess struct {
 	UserAddress        string
