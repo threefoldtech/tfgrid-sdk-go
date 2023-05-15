@@ -35,13 +35,14 @@ func (nm NetworkState) GetNetwork(networkName string) Network {
 	return net
 }
 
-// UpdateNetwork updates a network subnets given its name
-func (nm NetworkState) UpdateNetwork(networkName string, ipRange map[uint32]gridtypes.IPNet) {
-	nm.DeleteNetwork(networkName)
-	Network := nm.GetNetwork(networkName)
+// UpdateNetworkSubnets updates a network subnets given its name
+func (nm NetworkState) UpdateNetworkSubnets(networkName string, ipRange map[uint32]gridtypes.IPNet) {
+	network := nm.GetNetwork(networkName)
+	network.Subnets = map[uint32]string{}
 	for nodeID, subnet := range ipRange {
-		Network.SetNodeSubnet(nodeID, subnet.String())
+		network.SetNodeSubnet(nodeID, subnet.String())
 	}
+	nm[networkName] = network
 }
 
 // DeleteNetwork deletes a Network using its name

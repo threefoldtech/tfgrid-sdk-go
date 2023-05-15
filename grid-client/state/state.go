@@ -341,7 +341,7 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 		)
 	}
 
-	st.Networks.UpdateNetwork(znet.Name, znet.NodesIPRange)
+	st.Networks.UpdateNetworkSubnets(znet.Name, znet.NodesIPRange)
 	return znet, nil
 }
 
