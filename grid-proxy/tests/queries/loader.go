@@ -50,7 +50,8 @@ func loadNodes(db *sql.DB, data *DBData) error {
 		COALESCE(serial_number, ''),
 		COALESCE(created_at, 0),
 		COALESCE(updated_at, 0),
-		COALESCE(location_id, '')
+		COALESCE(location_id, ''),
+		power
 	FROM
 		node;`)
 	if err != nil {
@@ -76,6 +77,7 @@ func loadNodes(db *sql.DB, data *DBData) error {
 			&node.created_at,
 			&node.updated_at,
 			&node.location_id,
+			&node.power,
 		); err != nil {
 			return err
 		}

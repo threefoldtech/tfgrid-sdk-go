@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 
@@ -303,6 +304,7 @@ func generateRentContracts(db *sql.DB) error {
 
 func generateNodes(db *sql.DB) error {
 	const NodeCount = 1000
+	powerState := []string{"Up", "Down"}
 	for i := uint64(1); i <= NodeCount; i++ {
 		mru := rnd(4, 256) * 1024 * 1024 * 1024
 		hru := rnd(100, 30*1024) * 1024 * 1024 * 1024 // 100GB -> 30TB
@@ -340,6 +342,10 @@ func generateNodes(db *sql.DB) error {
 			secure:            false,
 			virtualized:       false,
 			serial_number:     "",
+			power: nodePower{
+				State:  powerState[rand.Intn(len(powerState))],
+				Target: powerState[rand.Intn(len(powerState))],
+			},
 		}
 		total_resources := node_resources_total{
 			id:      fmt.Sprintf("total-resources-%d", i),

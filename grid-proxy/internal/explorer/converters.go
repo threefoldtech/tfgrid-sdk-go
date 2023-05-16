@@ -10,6 +10,22 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+const (
+	nodeUpInterval = -3 * time.Hour
+)
+
+func decideNodeStatus(power types.NodePower, updatedAt int64) string {
+	if power.Target == "Down" { // off or powering off
+		return "standby"
+	} else if power.Target == "Up" && power.State == "Down" { // powering on
+		return "down"
+	} else if updatedAt >= time.Now().Add(nodeUpInterval).Unix() {
+		return "up"
+	} else {
+		return "down"
+	}
+}
+
 func nodeFromDBNode(info db.Node) types.Node {
 	node := types.Node{
 		ID:              info.ID,
@@ -53,12 +69,9 @@ func nodeFromDBNode(info db.Node) types.Node {
 		RentContractID:    uint(info.RentContractID),
 		RentedByTwinID:    uint(info.RentedByTwinID),
 		SerialNumber:      info.SerialNumber,
+		Power:             types.NodePower(info.Power),
 	}
-	if node.UpdatedAt >= time.Now().Add(-3*time.Hour).Unix() {
-		node.Status = "up"
-	} else {
-		node.Status = "down"
-	}
+	node.Status = decideNodeStatus(node.Power, node.UpdatedAt)
 	return node
 }
 
@@ -125,12 +138,9 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		RentContractID:    uint(info.RentContractID),
 		RentedByTwinID:    uint(info.RentedByTwinID),
 		SerialNumber:      info.SerialNumber,
+		Power:             types.NodePower(info.Power),
 	}
-	if node.UpdatedAt >= time.Now().Add(-3*time.Hour).Unix() {
-		node.Status = "up"
-	} else {
-		node.Status = "down"
-	}
+	node.Status = decideNodeStatus(node.Power, node.UpdatedAt)
 	return node
 }
 

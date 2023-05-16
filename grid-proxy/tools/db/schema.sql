@@ -328,7 +328,8 @@ CREATE TABLE public.node (
     updated_at numeric NOT NULL,
     location_id character varying NOT NULL,
     certification character varying(9),
-    connection_price integer
+    connection_price integer,
+    power jsonb
 );
 
 

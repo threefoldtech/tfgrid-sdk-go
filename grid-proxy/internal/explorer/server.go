@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/patrickmn/go-cache"
+	cache "github.com/patrickmn/go-cache"
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
 
@@ -17,7 +17,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/mw"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 )
 
 const (

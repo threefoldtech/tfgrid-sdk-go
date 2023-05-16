@@ -3,11 +3,11 @@ package explorer
 import (
 	"encoding/json"
 
-	"github.com/patrickmn/go-cache"
+	cache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 )
 
 // ErrNodeNotFound creates new error type to define node existence or server problem

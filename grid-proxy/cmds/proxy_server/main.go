@@ -16,7 +16,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	logging "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
 )
 

@@ -38,6 +38,12 @@ type node struct {
 	created_at        uint64
 	updated_at        uint64
 	location_id       string
+	power             nodePower `gorm:"type:jsonb"`
+}
+
+type nodePower struct {
+	State  string `json:"state"`
+	Target string `json:"target"`
 }
 type twin struct {
 	id           string

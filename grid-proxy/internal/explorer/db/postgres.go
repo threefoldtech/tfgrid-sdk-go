@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -141,6 +142,23 @@ func (d *PostgresDatabase) initialize() error {
 	return res.Error
 }
 
+func decideNodeStatusCondition(status string) string {
+	condition := "TRUE"
+	nodeUpInterval := time.Now().Unix() - nodeStateFactor*int64(reportInterval.Seconds())
+
+	if status == "up" {
+		condition = fmt.Sprintf(`node.updated_at >= %d`, nodeUpInterval)
+	} else if status == "down" {
+		condition = fmt.Sprintf(`node.updated_at < %d 
+				OR node.updated_at IS NULL
+				OR node.power->> 'target' = 'Up' AND node.power->> 'state' = 'Down'`, nodeUpInterval)
+	} else if status == "standby" {
+		condition = `node.power->> 'target' = 'Down'`
+	}
+
+	return condition
+}
+
 // GetCounters returns aggregate info about the grid
 func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters, error) {
 	var counters types.Counters
@@ -169,12 +187,7 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		nodeUpInterval := time.Now().Unix() - nodeStateFactor*int64(reportInterval.Seconds())
-		if *filter.Status == "up" {
-			condition = fmt.Sprintf(`node.updated_at >= %d`, nodeUpInterval)
-		} else if *filter.Status == "down" {
-			condition = fmt.Sprintf(`node.updated_at < %d`, nodeUpInterval)
-		}
+		condition = decideNodeStatusCondition(*filter.Status)
 	}
 
 	if res := d.gormDB.
@@ -223,6 +236,17 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 	}
 	counters.NodesDistribution = nodesDistribution
 	return counters, nil
+}
+
+// Scan is a custom decoder for jsonb filed. executed while scanning the node.
+func (np *NodePower) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	if data, ok := value.([]byte); ok {
+		return json.Unmarshal(data, np)
+	}
+	return fmt.Errorf("failed to unmarshal NodePower")
 }
 
 // GetNode returns node info
@@ -342,6 +366,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"node.serial_number",
 			"convert_to_decimal(location.longitude) as longitude",
 			"convert_to_decimal(location.latitude) as latitude",
+			"node.power",
 		).
 		Joins(
 			"LEFT JOIN nodes_resources_view ON node.node_id = nodes_resources_view.node_id",
@@ -364,15 +389,14 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) ([]Node, uint, error) {
 	q := d.nodeTableQuery()
 	q = q.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
+
+	condition := "TRUE"
 	if filter.Status != nil {
-		// TODO: this shouldn't be in db
-		threshold := time.Now().Unix() - nodeStateFactor*int64(reportInterval.Seconds())
-		if *filter.Status == "down" {
-			q = q.Where("node.updated_at < ? OR node.updated_at IS NULL", threshold)
-		} else {
-			q = q.Where("node.updated_at >= ?", threshold)
-		}
+		condition = decideNodeStatusCondition(*filter.Status)
 	}
+
+	q = q.Where(condition)
+
 	if filter.FreeMRU != nil {
 		q = q.Where("nodes_resources_view.free_mru >= ?", *filter.FreeMRU)
 	}

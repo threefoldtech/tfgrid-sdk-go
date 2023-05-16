@@ -3,10 +3,15 @@ package main
 import (
 	"sort"
 	"strings"
+	"time"
 
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
+)
+
+const (
+	nodeUpInterval = -3 * time.Hour
 )
 
 // GridProxyClientimpl client that returns data directly from the db
@@ -25,6 +30,18 @@ func (g *GridProxyClientimpl) Ping() error {
 	return nil
 }
 
+func decideNodeStatus(power nodePower, updatedAt uint64) string {
+	if power.Target == "Down" { // off or powering off
+		return "standby"
+	} else if power.Target == "Up" && power.State == "Down" { // powering on
+		return "down"
+	} else if int64(updatedAt) >= time.Now().Add(nodeUpInterval).Unix() {
+		return "up"
+	} else {
+		return "down"
+	}
+}
+
 // Nodes returns nodes with the given filters and pagination parameters
 func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytypes.Limit) (res []proxytypes.Node, totalCount int, err error) {
 	if limit.Page == 0 {
@@ -35,10 +52,7 @@ func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytyp
 	}
 	for _, node := range g.data.nodes {
 		if nodeSatisfies(&g.data, node, filter) {
-			status := STATUS_DOWN
-			if isUp(node.updated_at) {
-				status = STATUS_UP
-			}
+			status := decideNodeStatus(node.power, node.updated_at)
 			res = append(res, proxytypes.Node{
 				ID:              node.id,
 				NodeID:          int(node.node_id),
@@ -80,6 +94,10 @@ func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytyp
 				RentedByTwinID:    uint(g.data.nodeRentedBy[node.node_id]),
 				RentContractID:    uint(g.data.nodeRentContractID[node.node_id]),
 				SerialNumber:      node.serial_number,
+				Power: proxytypes.NodePower{
+					State:  node.power.State,
+					Target: node.power.Target,
+				},
 			})
 		}
 	}
@@ -277,10 +295,7 @@ func (g *GridProxyClientimpl) Twins(filter proxytypes.TwinFilter, limit proxytyp
 }
 func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNestedCapacity, err error) {
 	node := g.data.nodes[uint64(nodeID)]
-	status := STATUS_DOWN
-	if isUp(node.updated_at) {
-		status = STATUS_UP
-	}
+	status := decideNodeStatus(node.power, node.updated_at)
 	res = proxytypes.NodeWithNestedCapacity{
 		ID:              node.id,
 		NodeID:          int(node.node_id),
@@ -324,16 +339,17 @@ func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNested
 		RentedByTwinID:    uint(g.data.nodeRentedBy[node.node_id]),
 		RentContractID:    uint(g.data.nodeRentContractID[node.node_id]),
 		SerialNumber:      node.serial_number,
+		Power: proxytypes.NodePower{
+			State:  node.power.State,
+			Target: node.power.Target,
+		},
 	}
 	return
 }
 
 func (g *GridProxyClientimpl) NodeStatus(nodeID uint32) (res proxytypes.NodeStatus, err error) {
 	node := g.data.nodes[uint64(nodeID)]
-	res.Status = STATUS_DOWN
-	if isUp(node.updated_at) {
-		res.Status = STATUS_UP
-	}
+	res.Status = decideNodeStatus(node.power, node.updated_at)
 	return
 }
 
