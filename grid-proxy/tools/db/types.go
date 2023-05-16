@@ -38,7 +38,7 @@ type node struct {
 	created_at        uint64
 	updated_at        uint64
 	location_id       string
-	power             nodePower
+	power             nodePower `gorm:"type:jsonb"`
 }
 
 type nodePower struct {
