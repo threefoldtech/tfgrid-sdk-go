@@ -141,19 +141,24 @@ func NewClient(ctx context.Context, keytype string, mnemonics string, relayURL s
 		reader:    reader,
 		writer:    writer,
 	}
-	go cl.process()
+	go cl.process(ctx)
 
 	return cl, nil
 }
 
-func (d *DirectClient) process() {
-	for incoming := range d.reader {
-		var env types.Envelope
-		if err := proto.Unmarshal(incoming, &env); err != nil {
-			log.Error().Err(err).Msg("invalid message payload")
+func (d *DirectClient) process(ctx context.Context) {
+	for {
+		select {
+		case incoming := <-d.reader:
+			var env types.Envelope
+			if err := proto.Unmarshal(incoming, &env); err != nil {
+				log.Error().Err(err).Msg("invalid message payload")
+				return
+			}
+			d.router(&env)
+		case <-ctx.Done():
 			return
 		}
-		d.router(&env)
 	}
 }
 

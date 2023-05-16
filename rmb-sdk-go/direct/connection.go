@@ -93,8 +93,12 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output,
 	lastPong := time.Now()
 	for {
 		select {
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-local.Done():
-			return local.Err()
+			// error happened with the connection
+			// we return nil to try again
+			return nil
 		case data := <-input:
 			if err := con.WriteMessage(websocket.BinaryMessage, data); err != nil {
 				return err
