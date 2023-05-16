@@ -41,39 +41,48 @@ func GetWorkloadHashes(dl gridtypes.Deployment) (map[string]string, error) {
 	hashes := make(map[string]string)
 
 	for _, w := range dl.Workloads {
-		key := string(w.Name)
-		md5Hash := md5.New()
-		if err := w.Challenge(md5Hash); err != nil {
-			return nil, errors.Wrapf(err, "could not get a hash for a workload %s", key)
+		hash, err := ChallengeWorkloadHash(w)
+		if err != nil {
+			return nil, err
 		}
-		hash := string(md5Hash.Sum(nil))
-		hashes[key] = hash
+
+		hashes[w.Name.String()] = hash
 	}
 
 	return hashes, nil
 }
 
-// SameWorkloadsNames compares names of 2 deployments' workloads
-func SameWorkloadsNames(d1 gridtypes.Deployment, d2 gridtypes.Deployment) bool {
-	if len(d1.Workloads) != len(d2.Workloads) {
+func ChallengeWorkloadHash(wl gridtypes.Workload) (string, error) {
+	md5Hash := md5.New()
+	if err := wl.Challenge(md5Hash); err != nil {
+		return "", errors.Wrapf(err, "could not get a hash for a workload %s", wl.Name)
+	}
+
+	return string(md5Hash.Sum(nil)), nil
+}
+
+// SameWorkloadsNames compares names of 2 workload lists
+func SameWorkloadsNames(w1 []gridtypes.Workload, w2 []gridtypes.Workload) bool {
+	if len(w1) != len(w2) {
 		return false
 	}
 
 	names := make(map[string]bool)
-	for _, w := range d1.Workloads {
+	for _, w := range w1 {
 		names[string(w.Name)] = true
 	}
 
-	for _, w := range d2.Workloads {
+	for _, w := range w2 {
 		if _, ok := names[string(w.Name)]; !ok {
 			return false
 		}
 	}
+
 	return true
 }
 
 // ConstructWorkloadVersions returns a mapping between workload name to the workload version
-func ConstructWorkloadVersions(dl gridtypes.Deployment) map[string]uint32 {
+func ConstructWorkloadVersions(dl *gridtypes.Deployment) map[string]uint32 {
 	versions := make(map[string]uint32)
 
 	for _, w := range dl.Workloads {
