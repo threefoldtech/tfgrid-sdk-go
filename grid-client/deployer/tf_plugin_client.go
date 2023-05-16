@@ -231,6 +231,11 @@ func NewTFPluginClient(
 	return tfPluginClient, nil
 }
 
+// BatchCancelContract to cancel a batch of contracts
+func (t *TFPluginClient) BatchCancelContract(contracts []uint64) error {
+	return t.SubstrateConn.BatchCancelContract(t.Identity, contracts)
+}
+
 func generateSessionID() string {
 	return fmt.Sprintf("tf-%d", os.Getpid())
 }
