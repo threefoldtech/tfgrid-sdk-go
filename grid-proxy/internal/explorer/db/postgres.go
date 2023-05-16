@@ -238,7 +238,7 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 	return counters, nil
 }
 
-// custom decoding for jsonb filed. executed while scanning the node.
+// Scan is a custom decoder for jsonb filed. executed while scanning the node.
 func (np *NodePower) Scan(value interface{}) error {
 	if value == nil {
 		return nil

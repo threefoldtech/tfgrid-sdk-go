@@ -66,7 +66,7 @@ type nodePower struct {
 	Target string `json:"target"`
 }
 
-// custom decoding for jsonb filed. executed while scanning the node.
+// Scan is a custom decoder for jsonb filed. executed while scanning the node.
 func (np *nodePower) Scan(value interface{}) error {
 	if value == nil {
 		return nil
