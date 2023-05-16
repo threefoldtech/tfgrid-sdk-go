@@ -63,9 +63,10 @@ type Node struct {
 	SerialNumber    string
 	Longitude       *float64
 	Latitude        *float64
-	Power           NodePower `gorm:"column:power;type:jsonb"`
+	Power           NodePower
 }
 
+// NodePower is the farmerbot status for the node
 type NodePower struct {
 	State  string `json:"state"`
 	Target string `json:"target"`

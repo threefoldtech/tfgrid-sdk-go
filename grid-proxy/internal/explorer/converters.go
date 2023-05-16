@@ -10,12 +10,16 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+const (
+	nodeUpInterval = -3 * time.Hour
+)
+
 func decideNodeStatus(power types.NodePower, updatedAt int64) string {
 	if power.Target == "Down" { // off or powering off
 		return "standby"
 	} else if power.Target == "Up" && power.State == "Down" { // powering on
 		return "down"
-	} else if updatedAt >= time.Now().Add(-3*time.Hour).Unix() {
+	} else if updatedAt >= time.Now().Add(nodeUpInterval).Unix() {
 		return "up"
 	} else {
 		return "down"

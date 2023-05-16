@@ -156,6 +156,7 @@ type Location struct {
 	Latitude  *float64 `json:"latitude"`
 }
 
+// NodePower is the farmerbot status for the node
 type NodePower struct {
 	State  string `json:"state"`
 	Target string `json:"target"`

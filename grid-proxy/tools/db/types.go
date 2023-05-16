@@ -38,7 +38,7 @@ type node struct {
 	created_at        uint64
 	updated_at        uint64
 	location_id       string
-	power             nodePower `gorm:"column:power;type:json"`
+	power             nodePower
 }
 
 type nodePower struct {

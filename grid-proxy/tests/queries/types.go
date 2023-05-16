@@ -58,7 +58,7 @@ type node struct {
 	created_at        uint64
 	updated_at        uint64
 	location_id       string
-	power             nodePower `gorm:"column:power;type:json"`
+	power             nodePower
 }
 
 type nodePower struct {
@@ -66,8 +66,8 @@ type nodePower struct {
 	Target string `json:"target"`
 }
 
+// custom decoding for jsonb filed. executed while scanning the node.
 func (np *nodePower) Scan(value interface{}) error {
-	// custom decoding for jsonb filed. executed while scanning the node.
 	if value == nil {
 		return nil
 	}

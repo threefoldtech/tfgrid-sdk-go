@@ -142,21 +142,20 @@ func (d *PostgresDatabase) initialize() error {
 	return res.Error
 }
 
-func decideNodeStatusCondition(status *string) string {
+func decideNodeStatusCondition(status string) string {
 	condition := "TRUE"
-	if status != nil {
-		nodeUpInterval := time.Now().Unix() - nodeStateFactor*int64(reportInterval.Seconds())
+	nodeUpInterval := time.Now().Unix() - nodeStateFactor*int64(reportInterval.Seconds())
 
-		if *status == "up" {
-			condition = fmt.Sprintf(`node.updated_at >= %d`, nodeUpInterval)
-		} else if *status == "down" {
-			condition = fmt.Sprintf(`node.updated_at < %d 
+	if status == "up" {
+		condition = fmt.Sprintf(`node.updated_at >= %d`, nodeUpInterval)
+	} else if status == "down" {
+		condition = fmt.Sprintf(`node.updated_at < %d 
 				OR node.updated_at IS NULL
 				OR node.power->> 'target' = 'Up' AND node.power->> 'state' = 'Down'`, nodeUpInterval)
-		} else if *status == "standby" {
-			condition = `node.power->> 'target' = 'Down'`
-		}
+	} else if status == "standby" {
+		condition = `node.power->> 'target' = 'Down'`
 	}
+
 	return condition
 }
 
@@ -186,7 +185,10 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 		return counters, errors.Wrap(res.Error, "couldn't get farm count")
 	}
 
-	condition := decideNodeStatusCondition(filter.Status)
+	condition := "TRUE"
+	if filter.Status != nil {
+		condition = decideNodeStatusCondition(*filter.Status)
+	}
 
 	if res := d.gormDB.
 		Table("node").
@@ -236,8 +238,8 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 	return counters, nil
 }
 
+// custom decoding for jsonb filed. executed while scanning the node.
 func (np *NodePower) Scan(value interface{}) error {
-	// custom decoding for jsonb filed. executed while scanning the node.
 	if value == nil {
 		return nil
 	}
@@ -388,7 +390,11 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 	q := d.nodeTableQuery()
 	q = q.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
 
-	condition := decideNodeStatusCondition(filter.Status)
+	condition := "TRUE"
+	if filter.Status != nil {
+		condition = decideNodeStatusCondition(*filter.Status)
+	}
+
 	q = q.Where(condition)
 
 	if filter.FreeMRU != nil {

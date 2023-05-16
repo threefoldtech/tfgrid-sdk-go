@@ -10,6 +10,10 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+const (
+	nodeUpInterval = -3 * time.Hour
+)
+
 // GridProxyClientimpl client that returns data directly from the db
 type GridProxyClientimpl struct {
 	data DBData
@@ -31,7 +35,7 @@ func decideNodeStatus(power nodePower, updatedAt uint64) string {
 		return "standby"
 	} else if power.Target == "Up" && power.State == "Down" { // powering on
 		return "down"
-	} else if int64(updatedAt) >= time.Now().Add(-3*time.Hour).Unix() {
+	} else if int64(updatedAt) >= time.Now().Add(nodeUpInterval).Unix() {
 		return "up"
 	} else {
 		return "down"
