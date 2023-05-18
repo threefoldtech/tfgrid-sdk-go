@@ -237,6 +237,7 @@ func NewTFPluginClient(
 	return tfPluginClient, nil
 }
 
+// Close closes the relay connection and the substrate connection
 func (t *TFPluginClient) Close() {
 	// close substrate connection
 	t.SubstrateConn.Close()
