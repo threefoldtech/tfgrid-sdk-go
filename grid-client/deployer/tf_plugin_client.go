@@ -246,11 +246,8 @@ func (t *TFPluginClient) Close() {
 }
 
 func watchRelayConnectionClose(ch <-chan struct{}, cancel context.CancelFunc) {
-	select {
-	case <-ch:
-		cancel()
-		return
-	}
+	<-ch
+	cancel()
 }
 
 // BatchCancelContract to cancel a batch of contracts
