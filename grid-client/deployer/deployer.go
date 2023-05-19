@@ -139,6 +139,10 @@ func (d *Deployer) deleteHandler(ctx context.Context, oldDls map[uint32]uint64, 
 		}
 	}
 
+	if len(contractsToDelete) == 0 {
+		return nil
+	}
+
 	if err := d.substrateConn.BatchCancelContract(d.identity, contractsToDelete); err != nil {
 		return err
 	}
@@ -315,6 +319,7 @@ func udpateDeploymentVersions(oldDl *gridtypes.Deployment, newDl *gridtypes.Depl
 
 		if oldHashes[w.Name.String()] == newHash {
 			newDl.Workloads[idx].Version = oldVersions[w.Name.String()]
+			continue
 		}
 
 		newDl.Workloads[idx].Version = newDl.Version
