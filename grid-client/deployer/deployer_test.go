@@ -150,33 +150,32 @@ func TestDeployer(t *testing.T) {
 
 		mockDeployerValidator(&deployer, ctrl, []uint32{10, 20})
 
-		sub.EXPECT().
-			CreateNodeContract(
-				identity,
-				uint32(10),
-				``,
-				dl1Hash,
-				uint32(0),
-				nil,
-			).Return(uint64(100), nil)
+		contractsData := []substrate.BatchCreateContractData{
+			{
+				Node:               20,
+				Body:               "",
+				Hash:               dl2Hash,
+				PublicIPs:          0,
+				SolutionProviderID: nil,
+			},
+			{
+				Node:               10,
+				Body:               "",
+				Hash:               dl1Hash,
+				PublicIPs:          0,
+				SolutionProviderID: nil,
+			},
+		}
 
-		sub.EXPECT().
-			CreateNodeContract(
-				identity,
-				uint32(20),
-				``,
-				dl2Hash,
-				uint32(0),
-				nil,
-			).Return(uint64(200), nil)
+		sub.EXPECT().BatchCreateContract(identity, contractsData).Return([]uint64{100, 200}, nil, nil)
 
 		ncPool.EXPECT().
 			GetNodeClient(sub, uint32(10)).
-			Return(client.NewNodeClient(13, cl, tfPluginClient.RMBTimeout), nil)
+			Return(client.NewNodeClient(13, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
 
 		ncPool.EXPECT().
 			GetNodeClient(sub, uint32(20)).
-			Return(client.NewNodeClient(23, cl, tfPluginClient.RMBTimeout), nil)
+			Return(client.NewNodeClient(23, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
 
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.deploy", dl1, gomock.Any()).
