@@ -100,11 +100,3 @@ docker run --name gridproxy -e POSTGRES_HOST="127.0.0.1" -e POSTGRES_PORT="5432"
   ```bash
   helm install gridproxy/gridproxy
   ```
-
-## Release
-
-- Update the `appVersion` in `charts/Chart.yaml`. (push, open PR, merge)
-- Draft new release with [Github UI Releaser](https://github.com/threefoldtech/tfgridclient_proxy/releases/new)
-  - In the tags dropdown menu write the new tag `appVersion` and create it.
-  - Generate release notes
-  - Mark as release or pre-release and publish

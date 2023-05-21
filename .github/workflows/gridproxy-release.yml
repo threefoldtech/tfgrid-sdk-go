@@ -32,7 +32,7 @@ jobs:
         with:
           images: ghcr.io/threefoldtech/tfgridproxy
           tags: |
-            type=semver,pattern={{raw}}
+            type=semver,pattern={{version}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
