@@ -194,7 +194,7 @@ func (d *Deployer) updateHandler(ctx context.Context, oldDls map[uint32]uint64, 
 				}
 
 				if err != nil {
-					return errors.Wrap(err, "failed to validate to deployment for update")
+					return errors.Wrap(err, "failed to validate deployment for update")
 				}
 
 				hash, err := dl.ChallengeHash()
@@ -576,47 +576,6 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 	}
 
 	return resDeployments, multiErr
-}
-
-// matchOldVersions assigns deployment and workloads versions of the new versionless deployment to the ones of the old deployment
-func matchOldVersions(oldDl *gridtypes.Deployment, newDl *gridtypes.Deployment) {
-	oldWlVersions := map[string]uint32{}
-	for _, wl := range oldDl.Workloads {
-		oldWlVersions[wl.Name.String()] = wl.Version
-	}
-
-	newDl.Version = oldDl.Version
-
-	for idx, wl := range newDl.Workloads {
-		newDl.Workloads[idx].Version = oldWlVersions[wl.Name.String()]
-	}
-}
-
-// assignVersions determines and assigns the versions of the new deployment and its workloads
-func assignVersions(oldDl *gridtypes.Deployment, newDl *gridtypes.Deployment) (map[string]uint32, error) {
-	oldHashes, err := GetWorkloadHashes(*oldDl)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get old workloads hashes")
-	}
-
-	newHashes, err := GetWorkloadHashes(*newDl)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get new workloads hashes")
-	}
-
-	newWorkloadsVersions := make(map[string]uint32)
-	newDl.Version = oldDl.Version + 1
-
-	for idx, w := range newDl.Workloads {
-		newHash := newHashes[string(w.Name)]
-		oldHash, ok := oldHashes[string(w.Name)]
-		if !ok || newHash != oldHash {
-			newDl.Workloads[idx].Version = newDl.Version
-		}
-		newWorkloadsVersions[w.Name.String()] = newDl.Workloads[idx].Version
-	}
-
-	return newWorkloadsVersions, nil
 }
 
 // Validate is a best effort validation. it returns an error if it's very sure there's a problem
