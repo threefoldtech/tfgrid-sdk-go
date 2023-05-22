@@ -88,7 +88,7 @@ type TFPluginClient struct {
 	graphQl         graphql.GraphQl
 	ContractsGetter graphql.ContractsGetter
 
-	close chan struct{}
+	cancelRelayContext context.CancelFunc
 }
 
 // NewTFPluginClient generates a new tf plugin client
@@ -198,9 +198,8 @@ func NewTFPluginClient(
 	}
 	tfPluginClient.RMBTimeout = time.Second * time.Duration(rmbTimeout)
 
-	tfPluginClient.close = make(chan struct{})
 	ctx, cancel := context.WithCancel(context.Background())
-	go watchRelayConnectionClose(tfPluginClient.close, cancel)
+	tfPluginClient.cancelRelayContext = cancel
 
 	rmbClient, err := direct.NewClient(ctx, keyType, tfPluginClient.mnemonics, tfPluginClient.relayURL, sessionID, sub.Substrate, true)
 	if err != nil {
@@ -243,12 +242,7 @@ func (t *TFPluginClient) Close() {
 	t.SubstrateConn.Close()
 
 	// close relay connection
-	t.close <- struct{}{}
-}
-
-func watchRelayConnectionClose(ch <-chan struct{}, cancel context.CancelFunc) {
-	<-ch
-	cancel()
+	t.cancelRelayContext()
 }
 
 // BatchCancelContract to cancel a batch of contracts
