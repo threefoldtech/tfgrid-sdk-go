@@ -332,7 +332,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Node status filter, 'up': for only up nodes \u0026 'down': for only down nodes.",
+                        "description": "Node status filter, 'up': for only up nodes, 'down': for only down nodes \u0026 'standby' for powered-off nodes by farmerbot.s",
                         "name": "status",
                         "in": "query"
                     },
@@ -547,7 +547,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Node status filter, 'up': for only up nodes \u0026 'down': for only down nodes.",
+                        "description": "Node status filter, 'up': for only up nodes, 'down': for only down nodes \u0026 'standby' for powered-off nodes by farmerbot.",
                         "name": "status",
                         "in": "query"
                     },
@@ -792,7 +792,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Node status filter, 'up': for only up nodes \u0026 'down': for only down nodes.",
+                        "description": "Node status filter, 'up': for only up nodes, 'down': for only down nodes \u0026 'standby' for powered-off nodes by farmerbot.",
                         "name": "status",
                         "in": "query"
                     }
@@ -1119,6 +1119,9 @@ const docTemplate = `{
                 "nodeId": {
                     "type": "integer"
                 },
+                "power": {
+                    "$ref": "#/definitions/types.NodePower"
+                },
                 "publicConfig": {
                     "$ref": "#/definitions/types.PublicConfig"
                 },
@@ -1149,6 +1152,17 @@ const docTemplate = `{
                 },
                 "used_resources": {
                     "$ref": "#/definitions/types.Capacity"
+                }
+            }
+        },
+        "types.NodePower": {
+            "type": "object",
+            "properties": {
+                "state": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
                 }
             }
         },
@@ -1190,6 +1204,9 @@ const docTemplate = `{
                 },
                 "nodeId": {
                     "type": "integer"
+                },
+                "power": {
+                    "$ref": "#/definitions/types.NodePower"
                 },
                 "publicConfig": {
                     "$ref": "#/definitions/types.PublicConfig"
