@@ -332,7 +332,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Node status filter, 'up': for only up nodes, 'down': for only down nodes \u0026 'standby' for powered-off nodes by farmerbot.s",
+                        "description": "Node status filter, 'up': for only up nodes, 'down': for only down nodes \u0026 'standby' for powered-off nodes by farmerbot.",
                         "name": "status",
                         "in": "query"
                     },
