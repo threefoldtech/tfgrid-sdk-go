@@ -65,7 +65,8 @@ func (c *redisClient) Close() error {
 	return c.pool.Close()
 }
 
-// Call calls the twin with given function and message.
+// Call calls the twin with given function and message. Can return a RemoteError if error originated by remote peer
+// in that case it should also include extra Code
 func (c *redisClient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
 	bytes, err := json.Marshal(data)
 	if err != nil {
@@ -132,7 +133,10 @@ func (c *redisClient) Call(ctx context.Context, twin uint32, fn string, data int
 	}
 	// errorred ?
 	if ret.Error != nil {
-		return errors.New(ret.Error.Message)
+		return RemoteError{
+			Code:    ret.Error.Code,
+			Message: ret.Error.Message,
+		}
 	}
 
 	// not expecting a result
@@ -158,4 +162,13 @@ func (c *redisClient) Call(ctx context.Context, twin uint32, fn string, data int
 	}
 
 	return nil
+}
+
+type RemoteError struct {
+	Code    uint32
+	Message string
+}
+
+func (e RemoteError) Error() string {
+	return e.Message
 }
