@@ -255,6 +255,7 @@ func (m *DefaultRouter) worker(ctx context.Context, jobs chan Incoming) {
 					Msg("error while handling job")
 				// TODO: create an error object
 				response.Error = &Error{
+					// TODO: allow handler to return custom error codes
 					Code:    255, //client error
 					Message: err.Error(),
 				}
