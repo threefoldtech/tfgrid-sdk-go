@@ -87,6 +87,8 @@ type TFPluginClient struct {
 	// contracts
 	graphQl         graphql.GraphQl
 	ContractsGetter graphql.ContractsGetter
+
+	cancelRelayContext context.CancelFunc
 }
 
 // NewTFPluginClient generates a new tf plugin client
@@ -100,7 +102,6 @@ func NewTFPluginClient(
 	rmbTimeout int,
 	showLogs bool,
 ) (TFPluginClient, error) {
-
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	if showLogs {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -197,10 +198,14 @@ func NewTFPluginClient(
 	}
 	tfPluginClient.RMBTimeout = time.Second * time.Duration(rmbTimeout)
 
-	rmbClient, err := direct.NewClient(context.Background(), keyType, tfPluginClient.mnemonics, tfPluginClient.relayURL, sessionID, sub.Substrate, true)
+	ctx, cancel := context.WithCancel(context.Background())
+	tfPluginClient.cancelRelayContext = cancel
+
+	rmbClient, err := direct.NewClient(ctx, keyType, tfPluginClient.mnemonics, tfPluginClient.relayURL, sessionID, sub.Substrate, true)
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not create rmb client")
 	}
+
 	tfPluginClient.RMB = rmbClient
 
 	gridProxyClient := proxy.NewClient(tfPluginClient.rmbProxyURL)
@@ -229,6 +234,15 @@ func NewTFPluginClient(
 	tfPluginClient.ContractsGetter = graphql.NewContractsGetter(tfPluginClient.TwinID, tfPluginClient.graphQl, tfPluginClient.SubstrateConn, tfPluginClient.NcPool)
 
 	return tfPluginClient, nil
+}
+
+// Close closes the relay connection and the substrate connection
+func (t *TFPluginClient) Close() {
+	// close substrate connection
+	t.SubstrateConn.Close()
+
+	// close relay connection
+	t.cancelRelayContext()
 }
 
 // BatchCancelContract to cancel a batch of contracts
