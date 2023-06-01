@@ -3,7 +3,6 @@ package subi
 
 import (
 	"context"
-	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -150,7 +149,7 @@ func (s *SubstrateImpl) CancelContract(identity substrate.Identity, contractID u
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	if err := s.Substrate.CancelContract(identity, contractID); err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
+	if err := s.Substrate.CancelContract(identity, contractID); err != nil {
 		return normalizeNotFoundErrors(err)
 	}
 	return nil
@@ -165,7 +164,7 @@ func (s *SubstrateImpl) EnsureContractCanceled(identity substrate.Identity, cont
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	if err := s.Substrate.CancelContract(identity, contractID); err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
+	if err := s.Substrate.CancelContract(identity, contractID); err != nil {
 		return normalizeNotFoundErrors(err)
 	}
 	return nil
