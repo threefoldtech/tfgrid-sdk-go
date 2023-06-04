@@ -45,7 +45,7 @@ MINS=<number of minutes between each message>
 
 -   Get the binary
 
-> Download the latest from the [releases page](https://github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/releases)
+> Download the latest from the [releases page](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
 
 -   Run the bot
 
