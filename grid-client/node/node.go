@@ -82,6 +82,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -455,6 +456,13 @@ func (n *NodeClient) GetNodeEndpoint(ctx context.Context) (net.IP, error) {
 func (n *NodeClient) Pools(ctx context.Context) (pools []PoolMetrics, err error) {
 	const cmd = "zos.storage.pools"
 	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &pools)
+	return
+}
+
+// GPUs returns statistics of separate gpus
+func (n *NodeClient) GPUs(ctx context.Context) (gpus []client.GPU, err error) {
+	const cmd = "zos.gpu.list"
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &gpus)
 	return
 }
 
