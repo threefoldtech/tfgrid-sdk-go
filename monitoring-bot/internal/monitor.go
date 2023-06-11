@@ -141,7 +141,7 @@ func validateMnemonic(mnemonic string, network string) error {
 	// Create a regular expression object
 	regex := regexp.MustCompile(pattern)
 
-	if regex.MatchString(mnemonic) {
+	if !regex.MatchString(mnemonic) {
 		return fmt.Errorf("invalid mnemonic for the %s", network)
 
 	}
