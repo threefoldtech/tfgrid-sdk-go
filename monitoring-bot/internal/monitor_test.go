@@ -37,10 +37,10 @@ func TestMonitor(t *testing.T) {
 	defer envFile.Close()
 	defer os.Remove(envFile.Name())
 
-	data = []byte(`TESTNET_MNEMONIC=mnemonic
-	MAINNET_MNEMONIC=mnemonic
-	DEVNET_MNEMONIC=mnemonic
-	QANET_MNEMONIC=mnemonic
+	data = []byte(`TESTNET_MNEMONIC=crouch kangaroo bubble riot fetch spoil chest wisdom inquiry dry toe hawk
+	MAINNET_MNEMONIC=crouch kangaroo bubble riot fetch spoil chest wisdom inquiry dry toe hawk
+	DEVNET_MNEMONIC=crouch kangaroo bubble riot fetch spoil chest wisdom inquiry dry toe hawk
+	QANET_MNEMONIC=crouch kangaroo bubble riot fetch spoil chest wisdom inquiry dry toe hawk
 	BOT_TOKEN=token
 	CHAT_ID=id
 	MINS=10`)
@@ -239,10 +239,10 @@ func TestZosVersion(t *testing.T) {
 	defer envFile.Close()
 	defer os.Remove(envFile.Name())
 
-	data = []byte(`TESTNET_MNEMONIC=mnemonic
-	MAINNET_MNEMONIC=mnemonic
-	DEVNET_MNEMONIC=mnemonic
-	QANET_MNEMONIC=mnemonic
+	data = []byte(`TESTNET_MNEMONIC=crouch kangaroo bubble riot fetch spoil chest wisdom inquiry dry toe hawk
+	MAINNET_MNEMONIC=crouch kangaroo bubble riot fetch spoil chest wisdom inquiry dry toe hawk
+	DEVNET_MNEMONIC=crouch kangaroo bubble riot fetch spoil chest wisdom inquiry dry toe hawk
+	QANET_MNEMONIC=crouch kangaroo bubble riot fetch spoil chest wisdom inquiry dry toe hawk
 	BOT_TOKEN=token
 	CHAT_ID=id
 	MINS=10`)

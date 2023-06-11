@@ -11,10 +11,10 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
+	"github.com/cosmos/go-bip39"
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
@@ -94,35 +94,25 @@ func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 	}
 
 	mon.mnemonics = map[network]string{}
-	err = validateMnemonic(mon.env.devMnemonic, "devNetwork")
-	if err != nil {
-		return mon, err
-	} else {
-		mon.mnemonics[devNetwork] = mon.env.devMnemonic
-
+	if !bip39.IsMnemonicValid(mon.env.devMnemonic) {
+		return mon, errors.New("invalid mnemonic for devNetwork")
 	}
 
-	err = validateMnemonic(mon.env.testMnemonic, "testNetwork")
-	if err != nil {
-		return mon, err
-	} else {
-		mon.mnemonics[testNetwork] = mon.env.testMnemonic
-
+	if !bip39.IsMnemonicValid(mon.env.testMnemonic) {
+		return mon, errors.New("invalid mnemonic for testNetwork")
 	}
-	err = validateMnemonic(mon.env.qaMnemonic, "qaNetwork")
-	if err != nil {
-		return mon, err
-	} else {
-		mon.mnemonics[qaNetwork] = mon.env.qaMnemonic
 
+	if !bip39.IsMnemonicValid(mon.env.qaMnemonic) {
+		return mon, errors.New("invalid mnemonic for qaNetwork")
 	}
-	err = validateMnemonic(mon.env.mainMnemonic, "mainNetwork")
-	if err != nil {
-		return mon, err
-	} else {
-		mon.mnemonics[mainNetwork] = mon.env.mainMnemonic
 
+	if !bip39.IsMnemonicValid(mon.env.mainMnemonic) {
+		return mon, errors.New("invalid mnemonic for mainNetwork")
 	}
+	mon.mnemonics[devNetwork] = mon.env.devMnemonic
+	mon.mnemonics[testNetwork] = mon.env.testMnemonic
+	mon.mnemonics[qaNetwork] = mon.env.qaMnemonic
+	mon.mnemonics[mainNetwork] = mon.env.mainMnemonic
 
 	mon.farms = map[network]string{}
 	mon.farms[devNetwork] = mon.env.devFarmName
@@ -134,19 +124,6 @@ func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 	mon.notWorkingNodesPerNetwork = map[network][]uint32{}
 
 	return mon, nil
-}
-func validateMnemonic(mnemonic string, network string) error {
-	pattern := `^[a-zA-Z ]+$`
-
-	// Create a regular expression object
-	regex := regexp.MustCompile(pattern)
-
-	if !regex.MatchString(mnemonic) {
-		return fmt.Errorf("invalid mnemonic for the %s", network)
-
-	}
-
-	return nil
 }
 
 // Start starting the monitoring service
