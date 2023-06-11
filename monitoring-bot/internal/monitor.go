@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -93,10 +94,35 @@ func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 	}
 
 	mon.mnemonics = map[network]string{}
-	mon.mnemonics[devNetwork] = mon.env.devMnemonic
-	mon.mnemonics[testNetwork] = mon.env.testMnemonic
-	mon.mnemonics[qaNetwork] = mon.env.qaMnemonic
-	mon.mnemonics[mainNetwork] = mon.env.mainMnemonic
+	err = validateMnemonic(mon.env.devMnemonic, "devNetwork")
+	if err != nil {
+		return mon, err
+	} else {
+		mon.mnemonics[devNetwork] = mon.env.devMnemonic
+
+	}
+
+	err = validateMnemonic(mon.env.testMnemonic, "testNetwork")
+	if err != nil {
+		return mon, err
+	} else {
+		mon.mnemonics[testNetwork] = mon.env.testMnemonic
+
+	}
+	err = validateMnemonic(mon.env.qaMnemonic, "qaNetwork")
+	if err != nil {
+		return mon, err
+	} else {
+		mon.mnemonics[qaNetwork] = mon.env.qaMnemonic
+
+	}
+	err = validateMnemonic(mon.env.mainMnemonic, "mainNetwork")
+	if err != nil {
+		return mon, err
+	} else {
+		mon.mnemonics[mainNetwork] = mon.env.mainMnemonic
+
+	}
 
 	mon.farms = map[network]string{}
 	mon.farms[devNetwork] = mon.env.devFarmName
@@ -108,6 +134,19 @@ func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 	mon.notWorkingNodesPerNetwork = map[network][]uint32{}
 
 	return mon, nil
+}
+func validateMnemonic(mnemonic string, network string) error {
+	pattern := `^[a-zA-Z ]+$`
+
+	// Create a regular expression object
+	regex := regexp.MustCompile(pattern)
+
+	if regex.MatchString(mnemonic) {
+		return fmt.Errorf("Invalid mnemonic for the %s", network)
+
+	}
+
+	return nil
 }
 
 // Start starting the monitoring service
