@@ -26,7 +26,7 @@ func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error)
 
 	var nodeID uint32
 	for node, contractID := range nodeContractIDs {
-		t.State.CurrentNodeDeployments[node] = []uint64{contractID}
+		t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
 		nodeID = node
 	}
 
@@ -52,7 +52,7 @@ func GetK8sCluster(t deployer.TFPluginClient, name string) (workloads.K8sCluster
 	}
 
 	for node, contractID := range networkContractIDs {
-		t.State.CurrentNodeDeployments[node] = []uint64{contractID}
+		t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
 		nodeIDs = append(nodeIDs, node)
 	}
 
