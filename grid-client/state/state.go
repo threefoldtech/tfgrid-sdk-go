@@ -30,12 +30,7 @@ type State struct {
 	Substrate subi.SubstrateExt
 }
 
-var (
-	WorkloadNotFoundErr   = errors.New("workload not found")
-	DeploymentNotFoundErr = errors.New("deployment not found")
-	K8sClusterNotFoundErr = errors.New("kubernetes cluster not found")
-	NetworkNotFoundErr    = errors.New("network not found")
-)
+var NotFoundErr = errors.New("not found")
 
 // NewState generates a new state
 func NewState(ncPool client.NodeClientGetter, substrate subi.SubstrateExt) *State {
@@ -183,7 +178,7 @@ func (st *State) LoadK8sFromGrid(nodeIDs []uint32, deploymentName string) (workl
 		}
 	}
 	if cluster.Master == nil {
-		return workloads.K8sCluster{}, errors.Wrapf(K8sClusterNotFoundErr, "failed to get master node for k8s cluster %s", deploymentName)
+		return workloads.K8sCluster{}, errors.Wrapf(NotFoundErr, "failed to get master node for k8s cluster %s", deploymentName)
 	}
 	cluster.NodeDeploymentID = nodeDeploymentID
 	cluster.NetworkName = cluster.Master.NetworkName
@@ -317,7 +312,7 @@ func (st *State) LoadNetworkFromGrid(name string) (znet workloads.ZNet, err erro
 	}
 
 	if reflect.DeepEqual(znet, workloads.ZNet{}) {
-		return znet, errors.Wrapf(NetworkNotFoundErr, "failed to get network %s", name)
+		return znet, errors.Wrapf(NotFoundErr, "failed to get network %s", name)
 	}
 
 	// merge networks
@@ -410,9 +405,9 @@ func (st *State) GetWorkloadInDeployment(nodeID uint32, name string, deploymentN
 				}
 			}
 		}
-		return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(WorkloadNotFoundErr, "failed to find workload '%s'", name)
+		return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(NotFoundErr, "failed to find workload '%s'", name)
 	}
-	return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(DeploymentNotFoundErr, "failed to find deployment %s on node %d", name, nodeID)
+	return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(NotFoundErr, "failed to find deployment %s on node %d", name, nodeID)
 }
 
 // AssignNodesIPRange to assign ip range of k8s cluster nodes
