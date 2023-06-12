@@ -6,8 +6,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cosmos/go-bip39"
 	client "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
+
+var entropy, _ = bip39.NewEntropy(256)
+var mnemonic, _ = bip39.NewMnemonic(entropy)
 
 func TestMonitor(t *testing.T) {
 	//json
@@ -37,13 +41,13 @@ func TestMonitor(t *testing.T) {
 	defer envFile.Close()
 	defer os.Remove(envFile.Name())
 
-	data = []byte(`TESTNET_MNEMONIC=mnemonic
-	MAINNET_MNEMONIC=mnemonic
-	DEVNET_MNEMONIC=mnemonic
-	QANET_MNEMONIC=mnemonic
+	data = []byte(fmt.Sprintf(`TESTNET_MNEMONIC=%s
+	MAINNET_MNEMONIC=%s
+	DEVNET_MNEMONIC=%s
+	QANET_MNEMONIC=%s
 	BOT_TOKEN=token
 	CHAT_ID=id
-	MINS=10`)
+	MINS=10`, mnemonic, mnemonic, mnemonic, mnemonic))
 	if _, err := envFile.Write(data); err != nil {
 		t.Error(err)
 	}
@@ -239,13 +243,13 @@ func TestZosVersion(t *testing.T) {
 	defer envFile.Close()
 	defer os.Remove(envFile.Name())
 
-	data = []byte(`TESTNET_MNEMONIC=mnemonic
-	MAINNET_MNEMONIC=mnemonic
-	DEVNET_MNEMONIC=mnemonic
-	QANET_MNEMONIC=mnemonic
+	data = []byte(fmt.Sprintf(`TESTNET_MNEMONIC=%s
+	MAINNET_MNEMONIC=%s
+	DEVNET_MNEMONIC=%s
+	QANET_MNEMONIC=%s
 	BOT_TOKEN=token
 	CHAT_ID=id
-	MINS=10`)
+	MINS=10`, mnemonic, mnemonic, mnemonic, mnemonic))
 	if _, err := envFile.Write(data); err != nil {
 		t.Error(err)
 	}

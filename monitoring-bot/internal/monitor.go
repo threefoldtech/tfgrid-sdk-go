@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cosmos/go-bip39"
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
@@ -93,6 +94,21 @@ func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 	}
 
 	mon.mnemonics = map[network]string{}
+	if !bip39.IsMnemonicValid(mon.env.devMnemonic) {
+		return mon, errors.New("invalid mnemonic for devNetwork")
+	}
+
+	if !bip39.IsMnemonicValid(mon.env.testMnemonic) {
+		return mon, errors.New("invalid mnemonic for testNetwork")
+	}
+
+	if !bip39.IsMnemonicValid(mon.env.qaMnemonic) {
+		return mon, errors.New("invalid mnemonic for qaNetwork")
+	}
+
+	if !bip39.IsMnemonicValid(mon.env.mainMnemonic) {
+		return mon, errors.New("invalid mnemonic for mainNetwork")
+	}
 	mon.mnemonics[devNetwork] = mon.env.devMnemonic
 	mon.mnemonics[testNetwork] = mon.env.testMnemonic
 	mon.mnemonics[qaNetwork] = mon.env.qaMnemonic
