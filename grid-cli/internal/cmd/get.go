@@ -8,14 +8,22 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
-func SetOrAppend(t deployer.TFPluginClient, contractIDs map[uint32]uint64, node uint32, contractID uint64) {
-	if len(contractIDs) == 0 {
-		t.State.CurrentNodeDeployments[node] = []uint64{contractID}
+func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID uint64) {
+
+	if len(t.State.CurrentNodeDeployments[node]) != 0 {
+
+		for _, n := range t.State.CurrentNodeDeployments[node] {
+
+			if n != contractID {
+				t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
+			}
+
+		}
 
 	} else {
 		t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
-
 	}
+
 }
 
 // GetVM gets a vm with its project name
@@ -31,12 +39,12 @@ func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error)
 	}
 
 	for node, contractID := range networkContractIDs {
-		SetOrAppend(t, networkContractIDs, node, contractID)
+		checkIfExistAndAppend(t, node, contractID)
 	}
 
 	var nodeID uint32
 	for node, contractID := range nodeContractIDs {
-		SetOrAppend(t, nodeContractIDs, node, contractID)
+		checkIfExistAndAppend(t, node, contractID)
 		nodeID = node
 	}
 
