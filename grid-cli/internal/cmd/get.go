@@ -10,19 +10,15 @@ import (
 
 func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID uint64) {
 
-	if len(t.State.CurrentNodeDeployments[node]) != 0 {
+	for _, n := range t.State.CurrentNodeDeployments[node] {
 
-		for _, n := range t.State.CurrentNodeDeployments[node] {
-
-			if n != contractID {
-				t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
-			}
-
+		if n == contractID {
+			return
 		}
 
-	} else {
-		t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
 	}
+
+	t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
 
 }
 
