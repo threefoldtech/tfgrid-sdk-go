@@ -40,8 +40,6 @@ func TestMonitor(t *testing.T) {
 
 	defer envFile.Close()
 	defer os.Remove(envFile.Name())
-	entropy, _ := bip39.NewEntropy(256)
-	mnemonic, _ := bip39.NewMnemonic(entropy)
 
 	data = []byte(fmt.Sprintf(`TESTNET_MNEMONIC=%s
 	MAINNET_MNEMONIC=%s
