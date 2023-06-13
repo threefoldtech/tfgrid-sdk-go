@@ -205,7 +205,9 @@ func TestNameDeployer(t *testing.T) {
 		sub.EXPECT().
 			InvalidateNameContract(gomock.Any(), d.tfPluginClient.Identity, nameContractID, gw.Name).
 			Return(nameContractID, nil)
-
+		sub.EXPECT().
+			CancelContract(d.tfPluginClient.Identity, nameContractID).
+			Return(nil)
 		err = d.Deploy(context.Background(), &gw)
 		assert.Error(t, err)
 		assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
