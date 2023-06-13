@@ -98,7 +98,7 @@ func main() {
 
 	relayClient, err := createRMBClient(ctx, f.relayURL, f.mnemonics, sub)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create realy client")
+		log.Fatal().Err(err).Msg("failed to create relay client")
 	}
 
 	s, err := createServer(f, GitCommit, relayClient)
