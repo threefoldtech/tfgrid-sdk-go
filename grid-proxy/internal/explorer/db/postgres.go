@@ -332,6 +332,10 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 		)
 }
 func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
+	subquery := d.gormDB.Table("node_contract").
+		Select("DISTINCT ON (node_id) node_id, contract_id").
+		Where("state IN ('Created', 'GracePeriod')")
+
 	return d.gormDB.
 		Table("node").
 		Select(
@@ -363,7 +367,6 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"farm.dedicated_farm as dedicated",
 			"rent_contract.contract_id as rent_contract_id",
 			"rent_contract.twin_id as rented_by_twin_id",
-			"node_contract.contract_id as node_contract_id",
 			"node.serial_number",
 			"convert_to_decimal(location.longitude) as longitude",
 			"convert_to_decimal(location.latitude) as latitude",
@@ -379,7 +382,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
 		).
 		Joins(
-			"LEFT JOIN node_contract ON node_contract.state IN ('Created', 'GracePeriod') AND node_contract.node_id = node.node_id",
+			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", subquery,
 		).
 		Joins(
 			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
@@ -465,7 +468,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)
 	}
 	if filter.Rentable != nil {
-		q = q.Where(`(farm.dedicated_farm = true OR (COALESCE(rent_contract.contract_id, 0) = 0 AND COALESCE(node_contract.contract_id, 0) = 0)) = ?`, *filter.Rentable)
+		q = q.Where(`? = ((farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0) AND COALESCE(rent_contract.contract_id, 0) = 0)`, *filter.Rentable)
 	}
 	if filter.RentedBy != nil {
 		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
