@@ -1,8 +1,12 @@
 
 # Release
 
+- Update the helm app version for the grid proxy as described [here](../grid-proxy/docs/release.md)
 - Export `$VERSION` env variable to the version you want
 - Run `make release`
+
+After all the release workflows are finished you should create an issue on <https://github.com/threefoldtech/tf_operations> with type of `Update Request` to use the new images/binaries.
+Make sure to speicfy the new release version in the issue name and to include any changes in the usual release(like new configuration, etc,..)
 
 ## Release without script
 
