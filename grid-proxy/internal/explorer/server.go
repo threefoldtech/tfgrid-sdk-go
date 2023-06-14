@@ -408,6 +408,10 @@ func (a *App) getNodeStatistics(r *http.Request) (interface{}, mw.Response) {
 		return nil, errorReply(err)
 	}
 
+	if node.Status == "down" || node.Status == "standby" {
+		return nil, mw.Error(fmt.Errorf("cannot fetch statistics from node %d with status: %s", node.NodeID, node.Status))
+	}
+
 	var res types.NodeStatistics
 	err = a.relayClient.Call(r.Context(), uint32(node.TwinID), "zos.statistics.get", nil, &res)
 	if err != nil {
