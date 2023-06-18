@@ -59,7 +59,7 @@ type Monitor struct {
 	substrate                 map[network]client.Manager
 }
 
-func getAddBalance(manager client.Manager, address address) (float64, error) {
+func getAddressBalance(manager client.Manager, address address) (float64, error) {
 	con, err := manager.Substrate()
 	if err != nil {
 		return 0, err
@@ -111,7 +111,7 @@ func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 		switch network {
 		case mainNetwork:
 			for _, wallet := range addresses.Mainnet {
-				_, err := getAddBalance(mon.substrate[network], wallet.Address)
+				_, err := getAddressBalance(mon.substrate[network], wallet.Address)
 				if err != nil {
 					return mon, err
 				}
@@ -119,7 +119,7 @@ func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 			}
 		case testNetwork:
 			for _, wallet := range addresses.Testnet {
-				_, err := getAddBalance(mon.substrate[network], wallet.Address)
+				_, err := getAddressBalance(mon.substrate[network], wallet.Address)
 				if err != nil {
 					return mon, err
 				}
