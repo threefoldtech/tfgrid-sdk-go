@@ -49,8 +49,7 @@ const (
 		COALESCE(node_resources_total.cru, 0) as total_cru,
 		COALESCE(node_resources_total.mru, 0) as total_mru,
 		COALESCE(node_resources_total.hru, 0) as total_hru,
-		COALESCE(node_resources_total.sru, 0) as total_sru,
-		COALESCE(COUNT(DISTINCT state), 0) as states
+		COALESCE(node_resources_total.sru, 0) as total_sru
 	FROM contract_resources
 	JOIN node_contract as node_contract
 	ON node_contract.resources_used_id = contract_resources.id AND node_contract.state IN ('Created', 'GracePeriod')
@@ -62,7 +61,7 @@ const (
 
 	DROP FUNCTION IF EXISTS node_resources(query_node_id INTEGER);
 	CREATE OR REPLACE function node_resources(query_node_id INTEGER)
-	returns table (node_id INTEGER, used_cru NUMERIC, used_mru NUMERIC, used_hru NUMERIC, used_sru NUMERIC, free_mru NUMERIC, free_hru NUMERIC, free_sru NUMERIC, total_cru NUMERIC, total_mru NUMERIC, total_hru NUMERIC, total_sru NUMERIC, states BIGINT)
+	returns table (node_id INTEGER, used_cru NUMERIC, used_mru NUMERIC, used_hru NUMERIC, used_sru NUMERIC, free_mru NUMERIC, free_hru NUMERIC, free_sru NUMERIC, total_cru NUMERIC, total_mru NUMERIC, total_hru NUMERIC, total_sru NUMERIC)
 	as
 	$body$
 	SELECT
@@ -77,8 +76,7 @@ const (
 		COALESCE(node_resources_total.cru, 0) as total_cru,
 		COALESCE(node_resources_total.mru, 0) as total_mru,
 		COALESCE(node_resources_total.hru, 0) as total_hru,
-		COALESCE(node_resources_total.sru, 0) as total_sru,
-		COALESCE(COUNT(DISTINCT state), 0) as states
+		COALESCE(node_resources_total.sru, 0) as total_sru
 	FROM contract_resources
 	JOIN node_contract as node_contract
 	ON node_contract.resources_used_id = contract_resources.id AND node_contract.state IN ('Created', 'GracePeriod')
@@ -332,6 +330,10 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 		)
 }
 func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
+	subquery := d.gormDB.Table("node_contract").
+		Select("DISTINCT ON (node_id) node_id, contract_id").
+		Where("state IN ('Created', 'GracePeriod')")
+
 	return d.gormDB.
 		Table("node").
 		Select(
@@ -376,6 +378,9 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 		).
 		Joins(
 			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
+		).
+		Joins(
+			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", subquery,
 		).
 		Joins(
 			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
@@ -461,7 +466,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)
 	}
 	if filter.Rentable != nil {
-		q = q.Where(`? = ((farm.dedicated_farm = true OR nodes_resources_view.states = 0) AND COALESCE(rent_contract.contract_id, 0) = 0)`, *filter.Rentable)
+		q = q.Where(`? = ((farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0) AND COALESCE(rent_contract.contract_id, 0) = 0)`, *filter.Rentable)
 	}
 	if filter.RentedBy != nil {
 		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
