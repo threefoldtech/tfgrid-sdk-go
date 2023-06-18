@@ -25,8 +25,8 @@ func TestMonitor(t *testing.T) {
 	defer os.Remove(jsonFile.Name())
 
 	data := []byte(`{ 
-		"mainnet": [ { "name": "name", "address": "address", "threshold": 1} ],
-		"testnet": [ { "name": "name-test", "address": "address", "threshold": 1} ] 
+		"mainnet": [ { "name": "name", "address": "5ECu6QxQ8eQmAjDtKQE6UVgzRFrdmYH1VvUiiK4UyxhkJ469", "threshold": 1} ],
+		"testnet": [ { "name": "name-test", "address": "5GLQdUZ3tyeashZteV2nYYiJ6TdXKxEPhiBtoyWcb8jFuwVq", "threshold": 1} ] 
 	}`)
 	if _, err := jsonFile.Write(data); err != nil {
 		t.Error(err)
@@ -227,8 +227,8 @@ func TestZosVersion(t *testing.T) {
 	defer os.Remove(jsonFile.Name())
 
 	data := []byte(`{ 
-		"mainnet": [ { "name": "name", "address": "address", "threshold": 1} ],
-		"testnet": [ { "name": "name-test", "address": "address", "threshold": 1} ] 
+		"mainnet": [ { "name": "name", "address": "5ECu6QxQ8eQmAjDtKQE6UVgzRFrdmYH1VvUiiK4UyxhkJ469", "threshold": 1} ],
+		"testnet": [ { "name": "name-test", "address": "5GLQdUZ3tyeashZteV2nYYiJ6TdXKxEPhiBtoyWcb8jFuwVq", "threshold": 1} ] 
 	}`)
 	if _, err := jsonFile.Write(data); err != nil {
 		t.Error(err)

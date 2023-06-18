@@ -59,6 +59,26 @@ type Monitor struct {
 	substrate                 map[network]client.Manager
 }
 
+func getAddressBalance(manager client.Manager, address address) (float64, error) {
+	con, err := manager.Substrate()
+	if err != nil {
+		return 0, err
+	}
+	defer con.Close()
+
+	account, err := client.FromAddress(string(address))
+	if err != nil {
+		return 0, err
+	}
+
+	balance, err := con.GetBalance(account)
+	if err != nil {
+		return 0, err
+	}
+
+	return float64(balance.Free.Int64()) / math.Pow(10, 7), nil
+}
+
 // NewMonitor creates a new instance of monitor
 func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 	mon := Monitor{}
@@ -83,15 +103,34 @@ func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 		return mon, err
 	}
 
-	mon.wallets = addresses
-	mon.env = env
-
 	mon.substrate = map[network]client.Manager{}
 
 	// all needed for proxy
 	for _, network := range networks {
 		mon.substrate[network] = client.NewManager(SubstrateURLs[network]...)
+		switch network {
+		case mainNetwork:
+			for _, wallet := range addresses.Mainnet {
+				_, err := getAddressBalance(mon.substrate[network], wallet.Address)
+				if err != nil {
+					return mon, err
+				}
+
+			}
+		case testNetwork:
+			for _, wallet := range addresses.Testnet {
+				_, err := getAddressBalance(mon.substrate[network], wallet.Address)
+				if err != nil {
+					return mon, err
+				}
+
+			}
+
+		}
+
 	}
+	mon.wallets = addresses
+	mon.env = env
 
 	mon.mnemonics = map[network]string{}
 	if !bip39.IsMnemonicValid(mon.env.devMnemonic) {
