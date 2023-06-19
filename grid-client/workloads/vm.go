@@ -254,6 +254,12 @@ func (vm *VM) ToMap() map[string]interface{} {
 	for _, zlog := range vm.Zlogs {
 		zlogs = append(zlogs, zlog.Output)
 	}
+
+	var gpus []interface{}
+	for _, gpu := range vm.GPUs {
+		gpus = append(gpus, gpu)
+	}
+
 	res := make(map[string]interface{})
 	res["name"] = vm.Name
 	res["description"] = vm.Description
@@ -269,7 +275,7 @@ func (vm *VM) ToMap() map[string]interface{} {
 	res["ip"] = vm.IP
 	res["mounts"] = mounts
 	res["cpu"] = vm.CPU
-	res["gpu"] = vm.GPUs
+	res["gpus"] = gpus
 	res["memory"] = vm.Memory
 	res["rootfs_size"] = vm.RootfsSize
 	res["env_vars"] = envVars

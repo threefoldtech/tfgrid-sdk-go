@@ -10,10 +10,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.1
 	github.com/stretchr/testify v1.8.2
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230530114457-e57ee9560f79
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230616110830-e0aae0ad6d60
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.4.0
-	github.com/threefoldtech/zos v0.5.6-0.20230602153943-9168c20d48c1
+	github.com/threefoldtech/zos v0.5.6-0.20230619090727-df9b1fd2fbed
 	golang.org/x/crypto v0.8.0
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b

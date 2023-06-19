@@ -459,7 +459,7 @@ func (n *NodeClient) Pools(ctx context.Context) (pools []PoolMetrics, err error)
 	return
 }
 
-// GPUs returns statistics of separate gpus
+// GPUs returns a list of gpus
 func (n *NodeClient) GPUs(ctx context.Context) (gpus []client.GPU, err error) {
 	const cmd = "zos.gpu.list"
 	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &gpus)
