@@ -371,6 +371,8 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"convert_to_decimal(location.longitude) as longitude",
 			"convert_to_decimal(location.latitude) as latitude",
 			"node.power",
+			"node.has_gpu",
+			"node.extra_fee",
 		).
 		Joins(
 			"LEFT JOIN nodes_resources_view ON node.node_id = nodes_resources_view.node_id",
@@ -481,6 +483,9 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 	}
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
+	}
+	if filter.HasGPU != nil {
+		q = q.Where("node.has_gpu = ?", *filter.HasGPU)
 	}
 
 	var count int64

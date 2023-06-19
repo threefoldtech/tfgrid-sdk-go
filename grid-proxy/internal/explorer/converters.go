@@ -70,6 +70,8 @@ func nodeFromDBNode(info db.Node) types.Node {
 		RentedByTwinID:    uint(info.RentedByTwinID),
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
+		HasGPU:            info.HasGPU,
+		ExtraFee:          info.ExtraFee,
 	}
 	node.Status = decideNodeStatus(node.Power, node.UpdatedAt)
 	return node
@@ -139,6 +141,8 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		RentedByTwinID:    uint(info.RentedByTwinID),
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
+		HasGPU:            info.HasGPU,
+		ExtraFee:          info.ExtraFee,
 	}
 	node.Status = decideNodeStatus(node.Power, node.UpdatedAt)
 	return node

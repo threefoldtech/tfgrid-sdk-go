@@ -64,6 +64,8 @@ type Node struct {
 	Longitude       *float64
 	Latitude        *float64
 	Power           NodePower `gorm:"type:jsonb"`
+	HasGPU          bool
+	ExtraFee        uint64
 }
 
 // NodePower struct is the farmerbot report for node status

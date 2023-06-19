@@ -628,6 +628,12 @@ const docTemplate = `{
                         "description": "certificate type Diy or Certified",
                         "name": "certification_type",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "filter nodes on whether they have GPU support or not",
+                        "name": "has_gpu",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -681,6 +687,58 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/types.NodeWithNestedCapacity"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/nodes/{node_id}/gpu": {
+            "get": {
+                "description": "Get node GPUs through the RMB relay",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NodeGPUs"
+                ],
+                "summary": "Show node GPUs information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Node ID",
+                        "name": "node_id",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.NodeGPU"
+                            }
                         }
                     },
                     "400": {
@@ -1101,6 +1159,9 @@ const docTemplate = `{
                 "dedicated": {
                     "type": "boolean"
                 },
+                "extraFee": {
+                    "type": "integer"
+                },
                 "farmId": {
                     "type": "integer"
                 },
@@ -1109,6 +1170,9 @@ const docTemplate = `{
                 },
                 "gridVersion": {
                     "type": "integer"
+                },
+                "hasGpu": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "string"
@@ -1155,6 +1219,20 @@ const docTemplate = `{
                 }
             }
         },
+        "types.NodeGPU": {
+            "type": "object",
+            "properties": {
+                "device": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "vendor": {
+                    "type": "string"
+                }
+            }
+        },
         "types.NodePower": {
             "type": "object",
             "properties": {
@@ -1187,6 +1265,9 @@ const docTemplate = `{
                 "dedicated": {
                     "type": "boolean"
                 },
+                "extraFee": {
+                    "type": "integer"
+                },
                 "farmId": {
                     "type": "integer"
                 },
@@ -1195,6 +1276,9 @@ const docTemplate = `{
                 },
                 "gridVersion": {
                     "type": "integer"
+                },
+                "hasGpu": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "string"

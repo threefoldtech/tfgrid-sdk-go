@@ -109,6 +109,7 @@ type NodeFilter struct {
 	NodeID            *uint64
 	TwinID            *uint64
 	CertificationType *string
+	HasGPU            *bool
 }
 
 // FarmFilter farm filters
@@ -186,6 +187,8 @@ type Node struct {
 	RentedByTwinID    uint         `json:"rentedByTwinId"`
 	SerialNumber      string       `json:"serialNumber"`
 	Power             NodePower    `json:"power"`
+	HasGPU            bool         `json:"hasGpu"`
+	ExtraFee          uint64       `json:"extraFee"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -217,6 +220,8 @@ type NodeWithNestedCapacity struct {
 	RentedByTwinID    uint           `json:"rentedByTwinId"`
 	SerialNumber      string         `json:"serialNumber"`
 	Power             NodePower      `json:"power"`
+	HasGPU            bool           `json:"hasGpu"`
+	ExtraFee          uint64         `json:"extraFee"`
 }
 
 type Twin struct {
@@ -278,6 +283,12 @@ type NodeStatistics struct {
 // NodeStatus is used for status endpoint to decode json in
 type NodeStatus struct {
 	Status string `json:"status"`
+}
+
+type NodeGPU struct {
+	ID     string `json:"id"`
+	Vendor string `json:"vendor"`
+	Device string `json:"device"`
 }
 
 // Serialize is the serializer for node status struct

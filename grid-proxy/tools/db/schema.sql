@@ -329,7 +329,9 @@ CREATE TABLE public.node (
     location_id character varying NOT NULL,
     certification character varying(9),
     connection_price integer,
-    power jsonb
+    power jsonb,
+    has_gpu boolean,
+    extra_fee numeric
 );
 
 

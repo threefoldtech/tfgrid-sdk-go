@@ -138,12 +138,16 @@ definitions:
         type: integer
       dedicated:
         type: boolean
+      extraFee:
+        type: integer
       farmId:
         type: integer
       farmingPolicyId:
         type: integer
       gridVersion:
         type: integer
+      hasGpu:
+        type: boolean
       id:
         type: string
       location:
@@ -174,6 +178,15 @@ definitions:
       used_resources:
         $ref: '#/definitions/types.Capacity'
     type: object
+  types.NodeGPU:
+    properties:
+      device:
+        type: string
+      id:
+        type: string
+      vendor:
+        type: string
+    type: object
   types.NodePower:
     properties:
       state:
@@ -195,12 +208,16 @@ definitions:
         type: integer
       dedicated:
         type: boolean
+      extraFee:
+        type: integer
       farmId:
         type: integer
       farmingPolicyId:
         type: integer
       gridVersion:
         type: integer
+      hasGpu:
+        type: boolean
       id:
         type: string
       location:
@@ -680,6 +697,10 @@ paths:
         in: query
         name: certification_type
         type: string
+      - description: filter nodes on whether they have GPU support or not
+        in: query
+        name: has_gpu
+        type: boolean
       produces:
       - application/json
       responses:
@@ -732,6 +753,40 @@ paths:
       summary: Show the details for specific node
       tags:
       - GridProxy
+  /nodes/{node_id}/gpu:
+    get:
+      consumes:
+      - application/json
+      description: Get node GPUs through the RMB relay
+      parameters:
+      - description: Node ID
+        in: path
+        name: node_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.NodeGPU'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Show node GPUs information
+      tags:
+      - NodeGPUs
   /nodes/{node_id}/statistics:
     get:
       consumes:
