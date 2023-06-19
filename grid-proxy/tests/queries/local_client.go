@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	nodeUpInterval = -3 * time.Hour
+	nodeUpInterval = -80 * time.Minute
 )
 
 // GridProxyClientimpl client that returns data directly from the db
