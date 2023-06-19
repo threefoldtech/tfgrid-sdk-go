@@ -86,6 +86,10 @@ Where
 2. In the json returned, you will find it in section message -> chat -> id
 ```
 
+### Build
+```bash
+make build
+```
 ## Test
 
 ```bash
