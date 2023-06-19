@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	nodeUpInterval = -3 * time.Hour
+	nodeUpInterval = -80 * time.Minute
 )
 
 func decideNodeStatus(power types.NodePower, updatedAt int64) string {
