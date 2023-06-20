@@ -8,6 +8,20 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
+func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID uint64) {
+
+	for _, n := range t.State.CurrentNodeDeployments[node] {
+
+		if n == contractID {
+			return
+		}
+
+	}
+
+	t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
+
+}
+
 // GetVM gets a vm with its project name
 func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
 	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
@@ -21,12 +35,12 @@ func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error)
 	}
 
 	for node, contractID := range networkContractIDs {
-		t.State.CurrentNodeDeployments[node] = []uint64{contractID}
+		checkIfExistAndAppend(t, node, contractID)
 	}
 
 	var nodeID uint32
 	for node, contractID := range nodeContractIDs {
-		t.State.CurrentNodeDeployments[node] = []uint64{contractID}
+		checkIfExistAndAppend(t, node, contractID)
 		nodeID = node
 	}
 
@@ -52,7 +66,7 @@ func GetK8sCluster(t deployer.TFPluginClient, name string) (workloads.K8sCluster
 	}
 
 	for node, contractID := range networkContractIDs {
-		t.State.CurrentNodeDeployments[node] = []uint64{contractID}
+		t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
 		nodeIDs = append(nodeIDs, node)
 	}
 

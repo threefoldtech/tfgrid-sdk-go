@@ -150,6 +150,16 @@ func TestNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, nodes)
 	})
+
+	t.Run("nodes test has_gpu filter", func(t *testing.T) {
+		hasGPU := true
+		nodes, _, err := proxyClient.Nodes(proxytypes.NodeFilter{HasGPU: &hasGPU}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		for _, node := range nodes {
+			assert.Equal(t, node.HasGPU, hasGPU, "has_gpu filter did not work")
+		}
+	})
 }
 
 func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {

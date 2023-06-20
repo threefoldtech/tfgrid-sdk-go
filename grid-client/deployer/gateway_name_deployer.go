@@ -3,6 +3,7 @@ package deployer
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
@@ -77,7 +78,13 @@ func (d *GatewayNameDeployer) Deploy(ctx context.Context, gw *workloads.GatewayN
 	}
 
 	gw.NodeDeploymentID, err = d.deployer.Deploy(ctx, gw.NodeDeploymentID, newDeployments, newDeploymentsSolutionProvider)
-
+	if err != nil {
+		cancelErr := d.tfPluginClient.SubstrateConn.CancelContract(d.tfPluginClient.Identity, gw.NameContractID)
+		if cancelErr != nil {
+			return fmt.Errorf("failed to deploy gateway name %v, failed to cancel gateway name contract %v", err, cancelErr)
+		}
+		return errors.Wrapf(err, "failed to deploy gateway name Id: %d", gw.NodeDeploymentID)
+	}
 	// update state
 	// error is not returned immediately before updating state because of untracked failed deployments
 	if contractID, ok := gw.NodeDeploymentID[gw.NodeID]; ok && contractID != 0 {

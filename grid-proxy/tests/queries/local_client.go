@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	nodeUpInterval = -3 * time.Hour
+	nodeUpInterval = -80 * time.Minute
 )
 
 // GridProxyClientimpl client that returns data directly from the db
@@ -343,6 +343,8 @@ func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNested
 			State:  node.power.State,
 			Target: node.power.Target,
 		},
+		HasGPU:   node.HasGPU,
+		ExtraFee: node.ExtraFee,
 	}
 	return
 }

@@ -113,6 +113,9 @@ func nodeParams(filter types.NodeFilter, limit types.Limit) string {
 	if filter.CertificationType != nil && *filter.CertificationType != "" {
 		fmt.Fprintf(&builder, "certification_type=%s&", url.QueryEscape(*filter.CertificationType))
 	}
+	if filter.HasGPU != nil {
+		fmt.Fprintf(&builder, "has_gpu=%t&", *filter.HasGPU)
+	}
 
 	res := builder.String()
 	// pop the extra ? or &
