@@ -347,6 +347,8 @@ func generateNodes(db *sql.DB) error {
 				State:  powerState[rand.Intn(len(powerState))],
 				Target: powerState[rand.Intn(len(powerState))],
 			},
+			has_gpu:   i%2 == 0,
+			extra_fee: 0,
 		}
 		total_resources := node_resources_total{
 			id:      fmt.Sprintf("total-resources-%d", i),

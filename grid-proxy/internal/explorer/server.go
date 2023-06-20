@@ -132,6 +132,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param available_for query int false "available for twin id"
 // @Param farm_ids query string false "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')"
 // @Param certification_type query string false "certificate type Diy or Certified"
+// @Param has_gpu query bool false "filter nodes on whether they have GPU support or not"
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -420,6 +421,41 @@ func (a *App) getNodeStatistics(r *http.Request) (interface{}, mw.Response) {
 	return res, mw.Ok()
 }
 
+// getNodeGpus godoc
+// @Summary Show node GPUs information
+// @Description Get node GPUs through the RMB relay
+// @Tags NodeGPUs
+// @Param node_id path int yes "Node ID"
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} []types.NodeGPU
+// @Failure 400 {object} string
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /nodes/{node_id}/gpu  [get]
+func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
+	nodeID := mux.Vars(r)["node_id"]
+	node, err := a.getNodeData(nodeID)
+	if err != nil {
+		return nil, errorReply(err)
+	}
+
+	if !node.HasGPU {
+		return nil, mw.Error(fmt.Errorf("node %d has no GPU support", node.NodeID))
+	}
+
+	if node.Status == "down" || node.Status == "standby" {
+		return nil, mw.Error(fmt.Errorf("cannot fetch GPU information from node %d with status: %s", node.NodeID, node.Status))
+	}
+
+	var res []types.NodeGPU
+	err = a.relayClient.Call(r.Context(), uint32(node.TwinID), "zos.gpu.list", nil, &res)
+	if err != nil {
+		return nil, mw.Error(fmt.Errorf("failed to get get node GPU information from relay: %w", err))
+	}
+	return res, mw.Ok()
+}
+
 // Setup is the server and do initial configurations
 // @title Grid Proxy Server API
 // @version 1.0
@@ -451,6 +487,7 @@ func Setup(router *mux.Router, gitCommit string, database db.Database, relayClie
 	router.HandleFunc("/", mw.AsHandlerFunc(a.indexPage(router)))
 	router.HandleFunc("/version", mw.AsHandlerFunc(a.version))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/statistics", mw.AsHandlerFunc(a.getNodeStatistics))
+	router.HandleFunc("/nodes/{node_id:[0-9]+}/gpu", mw.AsHandlerFunc(a.getNodeGpus))
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	return nil
