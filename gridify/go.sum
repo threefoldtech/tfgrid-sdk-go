@@ -182,6 +182,8 @@ github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230509101146
 github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230509101146-8e43c43597cd/go.mod h1:dtDKAPiUDxAwIkfHV7xcAFZcOm+xwNIuOI1MLFS+MeQ=
 github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230530114457-e57ee9560f79 h1:raL62fseJwRAQoaUn5h1M5RLPCjLWLvyDOhpW9E1TNI=
 github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230530114457-e57ee9560f79/go.mod h1:dtDKAPiUDxAwIkfHV7xcAFZcOm+xwNIuOI1MLFS+MeQ=
+github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230531065231-67659b57138c h1:FMHjo5ACxOKJhRXr0CV24XDUqYG2xAS7Qogh2P38KGQ=
+github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230531065231-67659b57138c/go.mod h1:dtDKAPiUDxAwIkfHV7xcAFZcOm+xwNIuOI1MLFS+MeQ=
 github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.4.0/go.mod h1:tttnc/l4F2lx1SyETTiLrMaiQEgMeGCvlVEIW6nUeJA=
 github.com/threefoldtech/zos v0.5.6-0.20230426125942-0ea2f91b21f5 h1:kNLqwauywJ1/LHRKdLDm7pOxYPoZDRpHlphml+7iE6U=
 github.com/threefoldtech/zos v0.5.6-0.20230426125942-0ea2f91b21f5/go.mod h1:kRN5recs7whJAT5oahalNvUkdJB4xBBWSI5vWLjVik8=
