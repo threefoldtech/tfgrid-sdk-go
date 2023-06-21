@@ -170,6 +170,11 @@ func (d *Deployer) createHandler(
 		}
 	}
 
+	if len(dls) == 0 {
+		// no creations are required
+		return nil
+	}
+
 	ret, err := d.BatchDeploy(ctx, dls, dlsSolProviders)
 
 	updateCurrentDeployments(ret, currentDeployments)
@@ -203,7 +208,7 @@ func (d *Deployer) updateHandler(ctx context.Context, oldDls map[uint32]uint64, 
 				}
 				hashHex := hex.EncodeToString(hash)
 
-				if _, err = d.substrateConn.UpdateNodeContract(d.identity, dl.ContractID, "", hashHex); err != nil {
+				if _, err = d.substrateConn.UpdateNodeContract(d.identity, contractID, "", hashHex); err != nil {
 					return errors.Wrap(err, "failed to update deployment")
 				}
 
@@ -424,7 +429,7 @@ func (d *Deployer) Wait(
 			return nil
 		}
 
-		if time.Now().Sub(timestamp) > 4*time.Minute {
+		if time.Since(timestamp) > 4*time.Minute {
 			return backoff.Permanent(errors.Errorf("deployment %d has timed out", dl.ContractID))
 		}
 
@@ -524,42 +529,40 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 		if index != nil && *index == i {
 			break
 		}
-		node := contractsData[i].Node
-		dl := dl
-		i := i
+
 		wg.Add(1)
-		go func() {
+		go func(index int, nodeID uint32, deployment gridtypes.Deployment) {
 			defer wg.Done()
-			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
+
+			client, err := d.ncPool.GetNodeClient(d.substrateConn, nodeID)
 			if err != nil {
 				mu.Lock()
-				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to get node %d client", node))
-				failedContracts = append(failedContracts, dl.ContractID)
+				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to get node %d client", nodeID))
+				failedContracts = append(failedContracts, deployment.ContractID)
 				mu.Unlock()
 				return
 			}
-			dl.ContractID = contracts[i]
+			deployment.ContractID = contracts[index]
 
-			err = client.DeploymentDeploy(ctx, dl)
-
+			err = client.DeploymentDeploy(ctx, deployment)
 			if err != nil {
 				mu.Lock()
-				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error sending deployment with contract id %d to node %d", dl.ContractID, node))
-				failedContracts = append(failedContracts, dl.ContractID)
+				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error sending deployment with contract id %d to node %d", deployment.ContractID, nodeID))
+				failedContracts = append(failedContracts, deployment.ContractID)
 				mu.Unlock()
 				return
 			}
 
-			err = d.Wait(ctx, client, &dl)
+			err = d.Wait(ctx, client, &deployment)
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
 				multiErr = multierror.Append(multiErr, errors.Wrap(err, "error waiting deployment"))
-				failedContracts = append(failedContracts, dl.ContractID)
+				failedContracts = append(failedContracts, deployment.ContractID)
 				return
 			}
-			deploymentsSlice[i].ContractID = contracts[i]
-		}()
+			deploymentsSlice[index].ContractID = contracts[index]
+		}(i, contractsData[i].Node, dl)
 	}
 	wg.Wait()
 
