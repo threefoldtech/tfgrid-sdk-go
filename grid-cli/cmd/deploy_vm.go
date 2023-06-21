@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -12,10 +13,18 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/filters"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
 var ubuntuFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"
 var ubuntuFlistEntrypoint = "/sbin/zinit init"
+
+func convertGPUsToZosGPUs(gpus []string) (zosGPUs []zos.GPU) {
+	for _, g := range gpus {
+		zosGPUs = append(zosGPUs, zos.GPU(g))
+	}
+	return
+}
 
 // deployVMCmd represents the deploy vm command
 var deployVMCmd = &cobra.Command{
@@ -66,6 +75,11 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		gpus, err := cmd.Flags().GetStringSlice("gpus")
+		if err != nil {
+			return err
+		}
+
 		ipv4, err := cmd.Flags().GetBool("ipv4")
 		if err != nil {
 			return err
@@ -83,6 +97,7 @@ var deployVMCmd = &cobra.Command{
 			EnvVars:    map[string]string{"SSH_KEY": string(sshKey)},
 			CPU:        cpu,
 			Memory:     memory * 1024,
+			GPUs:       convertGPUsToZosGPUs(gpus),
 			RootfsSize: rootfs * 1024,
 			Flist:      flist,
 			Entrypoint: entrypoint,
@@ -103,6 +118,12 @@ var deployVMCmd = &cobra.Command{
 		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false)
 		if err != nil {
 			log.Fatal().Err(err).Send()
+		}
+		// if gpu then should enter node id
+		if len(gpus) != 0 {
+			if node == 0 {
+				log.Fatal().Err(errors.New("Node is required incase of GPUs")).Send()
+			}
 		}
 		if node == 0 {
 			nodes, err := deployer.FilterNodes(
@@ -158,6 +179,8 @@ func init() {
 	deployVMCmd.Flags().Int("rootfs", 2, "root filesystem size in gb")
 	deployVMCmd.Flags().Int("disk", 0, "disk size in gb mounted on /data")
 	deployVMCmd.Flags().String("flist", ubuntuFlist, "flist for vm")
+	deployVMCmd.Flags().StringSlice("gpus", []string{}, "gpus for vm")
+
 	deployVMCmd.Flags().String("entrypoint", ubuntuFlistEntrypoint, "entrypoint for vm")
 	// to ensure entrypoint is provided for custom flist
 	deployVMCmd.MarkFlagsRequiredTogether("flist", "entrypoint")
