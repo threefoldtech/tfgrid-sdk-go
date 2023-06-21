@@ -230,6 +230,9 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 		Select("country, count(node_id) as nodes").Where(condition).Group("country").Scan(&distribution); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get nodes distribution")
 	}
+	if res := d.gormDB.Table("node").Where(condition).Where("node.has_gpu = true").Count(&counters.GPUs); res.Error != nil {
+		return counters, errors.Wrap(res.Error, "couldn't get node with GPU count")
+	}
 	nodesDistribution := map[string]int64{}
 	for _, d := range distribution {
 		nodesDistribution[d.Country] = d.Nodes

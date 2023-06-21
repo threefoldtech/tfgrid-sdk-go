@@ -440,10 +440,6 @@ func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 		return nil, errorReply(err)
 	}
 
-	if !node.HasGPU {
-		return nil, mw.Error(fmt.Errorf("node %d has no GPU support", node.NodeID))
-	}
-
 	if node.Status == "down" || node.Status == "standby" {
 		return nil, mw.Error(fmt.Errorf("cannot fetch GPU information from node %d with status: %s", node.NodeID, node.Status))
 	}
