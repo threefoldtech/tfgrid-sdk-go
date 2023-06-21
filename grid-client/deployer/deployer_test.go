@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
@@ -19,6 +20,7 @@ import (
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"golang.org/x/exp/slices"
 )
 
 var backendURLWithTLSPassthrough = "1.1.1.1:10"
@@ -111,20 +113,20 @@ func TestDeployer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	cl := mocks.NewRMBMockClient(ctrl)
-	sub := mocks.NewMockSubstrateExt(ctrl)
-	ncPool := mocks.NewMockNodeClientGetter(ctrl)
-
-	tfPluginClient.SubstrateConn = sub
-	tfPluginClient.NcPool = ncPool
-	tfPluginClient.RMB = cl
-
-	deployer := NewDeployer(
-		tfPluginClient,
-		true,
-	)
-
 	t.Run("test create", func(t *testing.T) {
+		cl := mocks.NewRMBMockClient(ctrl)
+		sub := mocks.NewMockSubstrateExt(ctrl)
+		ncPool := mocks.NewMockNodeClientGetter(ctrl)
+
+		tfPluginClient.SubstrateConn = sub
+		tfPluginClient.NcPool = ncPool
+		tfPluginClient.RMB = cl
+
+		deployer := NewDeployer(
+			tfPluginClient,
+			true,
+		)
+
 		dl1, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
 		assert.NoError(t, err)
 		dl2, err := deploymentWithFQDN(identity, twinID, 0)
@@ -152,62 +154,74 @@ func TestDeployer(t *testing.T) {
 
 		contractsData := []substrate.BatchCreateContractData{
 			{
-				Node:               20,
-				Body:               "",
-				Hash:               dl2Hash,
-				PublicIPs:          0,
-				SolutionProviderID: nil,
-			},
-			{
 				Node:               10,
 				Body:               "",
 				Hash:               dl1Hash,
 				PublicIPs:          0,
 				SolutionProviderID: nil,
 			},
+			{
+				Node:               20,
+				Body:               "",
+				Hash:               dl2Hash,
+				PublicIPs:          0,
+				SolutionProviderID: nil,
+			},
 		}
 
-		sub.EXPECT().BatchCreateContract(identity, contractsData).Return([]uint64{100, 200}, nil, nil)
+		sub.EXPECT().BatchCreateContract(identity, gomock.Any()).
+			DoAndReturn(func(identity substrate.Identity, data []substrate.BatchCreateContractData) ([]uint64, *int, error) {
+				if !slices.Contains(data, contractsData[0]) || !slices.Contains(data, contractsData[1]) {
+					return nil, nil, fmt.Errorf("unexpected call to BatchCreateContract with contracts data %+v", data)
+				}
+
+				if data[0] == contractsData[0] {
+					return []uint64{100, 200}, nil, nil
+				}
+
+				return []uint64{200, 100}, nil, nil
+			})
 
 		ncPool.EXPECT().
-			GetNodeClient(sub, uint32(10)).
-			Return(client.NewNodeClient(13, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
+			GetNodeClient(sub, gomock.Any()).
+			DoAndReturn(func(sub subi.SubstrateExt, nodeID uint32) (*client.NodeClient, error) {
+				if nodeID == 10 {
+					return client.NewNodeClient(13, cl, tfPluginClient.RMBTimeout), nil
+				}
 
-		ncPool.EXPECT().
-			GetNodeClient(sub, uint32(20)).
-			Return(client.NewNodeClient(23, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
+				return client.NewNodeClient(23, cl, tfPluginClient.RMBTimeout), nil
+			}).Times(4)
 
 		cl.EXPECT().
-			Call(gomock.Any(), uint32(13), "zos.deployment.deploy", dl1, gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				dl1.Workloads[0].Result.State = gridtypes.StateOk
-				dl1.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
+			Call(gomock.Any(), gomock.Any(), "zos.deployment.deploy", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, nodeTwinID uint32, fn string, data, result interface{}) error {
+				switch nodeTwinID {
+				case 13:
+					dl1.Workloads[0].Result.State = gridtypes.StateOk
+				case 23:
+					dl2.Workloads[0].Result.State = gridtypes.StateOk
+				default:
+					return fmt.Errorf("unexpected rmb call with node id %d", nodeID)
+				}
+
 				return nil
-			})
+			}).Times(2)
 
 		cl.EXPECT().
-			Call(gomock.Any(), uint32(23), "zos.deployment.deploy", dl2, gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				dl2.Workloads[0].Result.State = gridtypes.StateOk
-				dl2.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayFQDNResult{})
-				return nil
-			})
-
-		cl.EXPECT().
-			Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			Call(gomock.Any(), gomock.Any(), "zos.deployment.changes", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, nodeTwinID uint32, fn string, data, result interface{}) error {
 				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
-				*res = dl1.Workloads
-				return nil
-			})
+				switch nodeTwinID {
+				case 13:
+					*res = dl1.Workloads
+				case 23:
+					*res = dl2.Workloads
+				default:
+					return fmt.Errorf("unexpected rmb call with node id %d", nodeID)
+				}
 
-		cl.EXPECT().
-			Call(gomock.Any(), uint32(23), "zos.deployment.changes", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
-				*res = dl2.Workloads
 				return nil
-			})
+			}).AnyTimes()
 
 		contracts, err := deployer.Deploy(context.Background(), nil, newDls, newDlsSolProvider)
 		assert.NoError(t, err)
@@ -215,13 +229,31 @@ func TestDeployer(t *testing.T) {
 	})
 
 	t.Run("test update", func(t *testing.T) {
+		cl := mocks.NewRMBMockClient(ctrl)
+		sub := mocks.NewMockSubstrateExt(ctrl)
+		ncPool := mocks.NewMockNodeClientGetter(ctrl)
+
+		tfPluginClient.SubstrateConn = sub
+		tfPluginClient.NcPool = ncPool
+		tfPluginClient.RMB = cl
+
+		deployer := NewDeployer(
+			tfPluginClient,
+			true,
+		)
+
 		oldDl, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
 		assert.NoError(t, err)
+		oldDl.ContractID = 100
+
 		newVersionlessDl, err := deploymentWithNameGateway(identity, twinID, true, 0, "2.2.2.2:10")
 		assert.NoError(t, err)
+		newVersionlessDl.ContractID = 100
+
 		versionedDl, err := deploymentWithNameGateway(identity, twinID, true, 1, "2.2.2.2:10")
 		assert.NoError(t, err)
 		versionedDl.SignatureRequirement = newVersionlessDl.SignatureRequirement
+		versionedDl.ContractID = 100
 
 		newDls := map[uint32]gridtypes.Deployment{
 			10: newVersionlessDl,
@@ -230,9 +262,6 @@ func TestDeployer(t *testing.T) {
 		newDlsSolProvider := map[uint32]*uint64{
 			10: nil,
 		}
-
-		oldDl.ContractID = 100
-		versionedDl.ContractID = 100
 
 		mockDeployerValidator(&deployer, ctrl, []uint32{10})
 		sub.EXPECT().GetContract(uint64(100)).Return(subi.Contract{
@@ -289,6 +318,19 @@ func TestDeployer(t *testing.T) {
 	})
 
 	t.Run("test cancel", func(t *testing.T) {
+		cl := mocks.NewRMBMockClient(ctrl)
+		sub := mocks.NewMockSubstrateExt(ctrl)
+		ncPool := mocks.NewMockNodeClientGetter(ctrl)
+
+		tfPluginClient.SubstrateConn = sub
+		tfPluginClient.NcPool = ncPool
+		tfPluginClient.RMB = cl
+
+		deployer := NewDeployer(
+			tfPluginClient,
+			true,
+		)
+
 		dl1, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
 		assert.NoError(t, err)
 
@@ -309,6 +351,19 @@ func TestDeployer(t *testing.T) {
 	})
 
 	t.Run("test cocktail", func(t *testing.T) {
+		cl := mocks.NewRMBMockClient(ctrl)
+		sub := mocks.NewMockSubstrateExt(ctrl)
+		ncPool := mocks.NewMockNodeClientGetter(ctrl)
+
+		tfPluginClient.SubstrateConn = sub
+		tfPluginClient.NcPool = ncPool
+		tfPluginClient.RMB = cl
+
+		deployer := NewDeployer(
+			tfPluginClient,
+			true,
+		)
+
 		g := workloads.GatewayFQDNProxy{Name: "f", FQDN: "test.com", Backends: []zos.Backend{zos.Backend(backendURLWithoutTLSPassthrough)}}
 
 		dl1, err := deploymentWithNameGateway(identity, twinID, false, 0, backendURLWithoutTLSPassthrough)
@@ -321,7 +376,7 @@ func TestDeployer(t *testing.T) {
 		assert.NoError(t, err)
 		dl5, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
 		assert.NoError(t, err)
-		dl6, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
+		dl6, err := deploymentWithNameGateway(identity, twinID, true, 1, backendURLWithTLSPassthrough)
 		assert.NoError(t, err)
 
 		dl2.Workloads = append(dl2.Workloads, g.ZosWorkload())
@@ -333,10 +388,14 @@ func TestDeployer(t *testing.T) {
 		dl2.ContractID = 200
 		dl3.ContractID = 200
 		dl4.ContractID = 300
+		dl5.ContractID = 400
+		dl6.ContractID = 400
 
 		dl3Hash, err := hash(&dl3)
 		assert.NoError(t, err)
 		dl4Hash, err := hash(&dl4)
+		assert.NoError(t, err)
+		dl6Hash, err := hash(&dl6)
 		assert.NoError(t, err)
 
 		oldDls := map[uint32]uint64{
@@ -365,124 +424,113 @@ func TestDeployer(t *testing.T) {
 			}},
 		}, nil).AnyTimes()
 
-		sub.EXPECT().
-			CreateNodeContract(
-				identity,
-				uint32(30),
-				``,
-				dl4Hash,
-				uint32(0),
-				nil,
-			).Return(uint64(300), nil)
+		contractsData := []substrate.BatchCreateContractData{
+			{
+				Node:               30,
+				Body:               "",
+				Hash:               dl4Hash,
+				PublicIPs:          0,
+				SolutionProviderID: nil,
+			},
+		}
+
+		sub.EXPECT().BatchCreateContract(identity, contractsData).Return([]uint64{300}, nil, nil)
 
 		sub.EXPECT().
 			UpdateNodeContract(
 				identity,
-				uint64(200),
+				gomock.Any(),
 				"",
-				dl3Hash,
-			).Return(uint64(200), nil)
+				gomock.Any(),
+			).DoAndReturn(func(identity substrate.Identity, contractID uint64, body string, hash string) (uint64, error) {
+			if !slices.Contains([]string{dl3Hash, dl6Hash}, hash) {
+				return 0, fmt.Errorf("unexpected call to UpdateNodeContract with hash %s", hash)
+			}
 
-		sub.EXPECT().EnsureContractCanceled(identity, uint64(100)).Return(nil)
+			return contractID, nil
+		}).Times(2)
 
-		ncPool.EXPECT().
-			GetNodeClient(sub, uint32(10)).
-			Return(client.NewNodeClient(13, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
+		sub.EXPECT().BatchCancelContract(identity, []uint64{100}).Return(nil)
 
-		ncPool.EXPECT().
-			GetNodeClient(sub, uint32(20)).
-			Return(client.NewNodeClient(23, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
-
-		ncPool.EXPECT().
-			GetNodeClient(sub, uint32(30)).
-			Return(client.NewNodeClient(33, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
-
-		ncPool.EXPECT().
-			GetNodeClient(sub, uint32(40)).
-			Return(client.NewNodeClient(43, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
+		ncPool.EXPECT().GetNodeClient(sub, gomock.Any()).DoAndReturn(func(sub subi.SubstrateExt, nodeID uint32) (*client.NodeClient, error) {
+			switch nodeID {
+			case 10:
+				return client.NewNodeClient(13, cl, tfPluginClient.RMBTimeout), nil
+			case 20:
+				return client.NewNodeClient(23, cl, tfPluginClient.RMBTimeout), nil
+			case 30:
+				return client.NewNodeClient(33, cl, tfPluginClient.RMBTimeout), nil
+			case 40:
+				return client.NewNodeClient(43, cl, tfPluginClient.RMBTimeout), nil
+			default:
+				return nil, fmt.Errorf("unexpected call to GetNodeClient with node id %d", nodeID)
+			}
+		}).AnyTimes()
 
 		cl.EXPECT().
-			Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			Call(gomock.Any(), gomock.Any(), "zos.deployment.changes", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, nodeTwinID uint32, fn string, data, result interface{}) error {
 				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
-				*res = dl1.Workloads
+				switch nodeTwinID {
+				case 23:
+					*res = dl2.Workloads
+				case 33:
+					*res = dl4.Workloads
+				case 43:
+					*res = dl5.Workloads
+				default:
+					return fmt.Errorf("unexpected rmb call to node with twin %d", nodeTwinID)
+				}
+
 				return nil
-			}).AnyTimes()
+			}).Times(3) // for each wait call
 
 		cl.EXPECT().
-			Call(gomock.Any(), uint32(23), "zos.deployment.changes", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
-				*res = dl2.Workloads
-				return nil
-			}).AnyTimes()
-
-		cl.EXPECT().
-			Call(gomock.Any(), uint32(33), "zos.deployment.changes", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
-				*res = dl4.Workloads
-				return nil
-			}).AnyTimes()
-
-		cl.EXPECT().
-			Call(gomock.Any(), uint32(43), "zos.deployment.changes", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
-				*res = dl5.Workloads
-				return nil
-			}).AnyTimes()
-
-		cl.EXPECT().
-			Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			Call(gomock.Any(), gomock.Any(), "zos.deployment.get", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, nodeTwinID uint32, fn string, data, result interface{}) error {
 				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
-				*res = dl1
+				switch nodeTwinID {
+				case 13:
+					*res = dl1
+				case 23:
+					*res = dl2
+				case 33:
+					*res = dl4
+				case 43:
+					*res = dl5
+				default:
+					return fmt.Errorf("unexpected rmb call to node with twin %d", nodeTwinID)
+				}
+
 				return nil
-			}).AnyTimes()
+			}).Times(5) // 3 calls for getting old deployments, 2 calls for getting hashes of to-be-updated deployments
 
 		cl.EXPECT().
-			Call(gomock.Any(), uint32(23), "zos.deployment.get", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
-				*res = dl2
-				return nil
-			}).AnyTimes()
+			Call(gomock.Any(), gomock.Any(), "zos.deployment.update", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, nodeTwinID uint32, fn string, data, result interface{}) error {
+				switch nodeTwinID {
+				case 23:
+					dl2.Workloads = dl3.Workloads
+					dl2.Version = 1
+					dl2.Workloads[0].Version = 1
+					dl2.Workloads[0].Result.State = gridtypes.StateOk
+					dl2.Workloads[1].Result.State = gridtypes.StateOk
+				case 43:
+					dl5.Workloads = dl6.Workloads
+					dl5.Version = 1
+					dl5.Workloads[0].Version = 1
+					dl5.Workloads[0].Result.State = gridtypes.StateOk
+				default:
+					return fmt.Errorf("undexpected rmb call with node twin id %d", nodeTwinID)
+				}
 
-		cl.EXPECT().
-			Call(gomock.Any(), uint32(33), "zos.deployment.get", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
-				*res = dl4
 				return nil
-			}).AnyTimes()
-
-		cl.EXPECT().
-			Call(gomock.Any(), uint32(43), "zos.deployment.get", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
-				*res = dl5
-				return nil
-			}).AnyTimes()
-
-		cl.EXPECT().
-			Call(gomock.Any(), uint32(23), "zos.deployment.update", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				dl2.Workloads = dl3.Workloads
-				dl2.Version = 1
-				dl2.Workloads[0].Version = 1
-				dl2.Workloads[0].Result.State = gridtypes.StateOk
-				dl2.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
-				dl2.Workloads[1].Result.State = gridtypes.StateOk
-				dl2.Workloads[1].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
-				return nil
-			})
+			}).Times(2)
 
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(33), "zos.deployment.deploy", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
 				dl4.Workloads[0].Result.State = gridtypes.StateOk
-				dl4.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
 				return nil
 			})
 
