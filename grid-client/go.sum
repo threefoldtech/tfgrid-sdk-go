@@ -116,6 +116,8 @@ github.com/threefoldtech/zos v0.5.6-0.20230602153943-9168c20d48c1 h1:mpLaJvl5XjZ
 github.com/threefoldtech/zos v0.5.6-0.20230602153943-9168c20d48c1/go.mod h1:l6bANbmYn3y2Oi6WuoA/MeKrsHweRBflwk0DY8/jmao=
 github.com/threefoldtech/zos v0.5.6-0.20230619090727-df9b1fd2fbed h1:qSP41hNr2mCwArV64J84jFAwoddSpB/EHT7I9jBYulc=
 github.com/threefoldtech/zos v0.5.6-0.20230619090727-df9b1fd2fbed/go.mod h1:KDLYu7igkUy1d2E+9rKFBeLY1iUs0zb2aj17ggue26c=
+github.com/threefoldtech/zos v0.5.6-0.20230621094643-c1c26774b2a8 h1:1x+o9l/uFS8vCGcdkxB3WrM3xYtogOsM3cvHGn7c3fo=
+github.com/threefoldtech/zos v0.5.6-0.20230621094643-c1c26774b2a8/go.mod h1:KDLYu7igkUy1d2E+9rKFBeLY1iUs0zb2aj17ggue26c=
 github.com/tklauser/go-sysconf v0.3.9 h1:JeUVdAOWhhxVcU6Eqr/ATFHgXk/mmiItdKeJPev3vTo=
 github.com/tklauser/go-sysconf v0.3.9/go.mod h1:11DU/5sG7UexIrp/O6g35hrWzu0JxlwQ3LSFUzyeuhs=
 github.com/tklauser/numcpus v0.3.0/go.mod h1:yFGUr7TUHQRAhyqBcEg0Ge34zDBAsIvJJcyE6boqnA8=
