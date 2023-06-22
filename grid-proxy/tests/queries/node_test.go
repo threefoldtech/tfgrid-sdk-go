@@ -157,7 +157,7 @@ func TestNode(t *testing.T) {
 		assert.NoError(t, err)
 
 		for _, node := range nodes {
-			assert.Equal(t, node.HasGPU, hasGPU, "has_gpu filter did not work")
+			assert.Equal(t, node.NumGPU, 1, "has_gpu filter did not work")
 		}
 	})
 }

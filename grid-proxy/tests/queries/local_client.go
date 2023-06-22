@@ -343,10 +343,18 @@ func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNested
 			State:  node.power.State,
 			Target: node.power.Target,
 		},
-		HasGPU:   node.HasGPU,
+		NumGPU:   getNumGPUs(node.HasGPU),
 		ExtraFee: node.ExtraFee,
 	}
 	return
+}
+
+// getNumGPUs should be deleted after removing hasGPU
+func getNumGPUs(hasGPU bool) int {
+	if hasGPU {
+		return 1
+	}
+	return 0
 }
 
 func (g *GridProxyClientimpl) NodeStatus(nodeID uint32) (res proxytypes.NodeStatus, err error) {
@@ -363,6 +371,7 @@ func (g *GridProxyClientimpl) Counters(filter proxytypes.StatsFilter) (res proxy
 	res.Contracts += int64(len(g.data.nodeContracts))
 	res.Contracts += int64(len(g.data.nameContracts))
 	distribution := map[string]int64{}
+	var gpus int64
 	for _, node := range g.data.nodes {
 		if filter.Status == nil || (*filter.Status == STATUS_UP && isUp(node.updated_at)) {
 			res.Nodes++
@@ -377,10 +386,14 @@ func (g *GridProxyClientimpl) Counters(filter proxytypes.StatsFilter) (res proxy
 					res.Gateways++
 				}
 			}
+			if node.HasGPU {
+				gpus++
+			}
 		}
 	}
 	res.Countries = int64(len(distribution))
 	res.NodesDistribution = distribution
+	res.GPUs = gpus
 
 	return
 }

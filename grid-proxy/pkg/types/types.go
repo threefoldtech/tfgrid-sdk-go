@@ -29,6 +29,7 @@ type Counters struct {
 	Twins             int64            `json:"twins"`
 	Contracts         int64            `json:"contracts"`
 	NodesDistribution map[string]int64 `json:"nodesDistribution" gorm:"-:all"`
+	GPUs              int64            `json:"gpus"`
 }
 
 // PublicConfig node public config
@@ -187,7 +188,7 @@ type Node struct {
 	RentedByTwinID    uint         `json:"rentedByTwinId"`
 	SerialNumber      string       `json:"serialNumber"`
 	Power             NodePower    `json:"power"`
-	HasGPU            bool         `json:"hasGpu"`
+	NumGPU            int          `json:"num_gpu"`
 	ExtraFee          uint64       `json:"extraFee"`
 }
 
@@ -220,7 +221,7 @@ type NodeWithNestedCapacity struct {
 	RentedByTwinID    uint           `json:"rentedByTwinId"`
 	SerialNumber      string         `json:"serialNumber"`
 	Power             NodePower      `json:"power"`
-	HasGPU            bool           `json:"hasGpu"`
+	NumGPU            int            `json:"num_gpu"`
 	ExtraFee          uint64         `json:"extraFee"`
 }
 
