@@ -133,7 +133,7 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, dl *workloads.Deploymen
 		return err
 	}
 
-	err := d.deployer.Cancel(ctx, dl.ContractID)
+	err := d.deployer.Cancel(ctx, []uint64{dl.ContractID})
 	if err != nil {
 		return err
 	}

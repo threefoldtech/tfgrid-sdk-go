@@ -337,16 +337,16 @@ func TestDeployer(t *testing.T) {
 		dl1.ContractID = 100
 
 		sub.EXPECT().
-			EnsureContractCanceled(
+			BatchCancelContract(
 				identity,
-				uint64(100),
+				[]uint64{100},
 			).Return(nil)
 
 		ncPool.EXPECT().
 			GetNodeClient(sub, uint32(10)).
 			Return(client.NewNodeClient(13, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
 
-		err = deployer.Cancel(context.Background(), 100)
+		err = deployer.Cancel(context.Background(), []uint64{100})
 		assert.NoError(t, err)
 	})
 

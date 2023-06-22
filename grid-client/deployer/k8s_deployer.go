@@ -196,27 +196,18 @@ func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sClust
 		return err
 	}
 
+	contracts := []uint64{}
+	for _, contract := range k8sCluster.NodeDeploymentID {
+		contracts = append(contracts, contract)
+	}
+
+	if err := d.deployer.Cancel(ctx, contracts); err != nil {
+		return err
+	}
+
 	for nodeID, contractID := range k8sCluster.NodeDeploymentID {
-		if k8sCluster.Master.Node == nodeID {
-			err = d.deployer.Cancel(ctx, contractID)
-			if err != nil {
-				return errors.Wrapf(err, "could not cancel master %s, contract %d", k8sCluster.Master.Name, contractID)
-			}
-			d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
-			delete(k8sCluster.NodeDeploymentID, nodeID)
-			continue
-		}
-		for _, worker := range k8sCluster.Workers {
-			if worker.Node == nodeID {
-				err = d.deployer.Cancel(ctx, contractID)
-				if err != nil {
-					return errors.Wrapf(err, "could not cancel worker %s, contract %d", worker.Name, contractID)
-				}
-				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
-				delete(k8sCluster.NodeDeploymentID, nodeID)
-				break
-			}
-		}
+		delete(k8sCluster.NodeDeploymentID, nodeID)
+		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
 	}
 
 	return nil

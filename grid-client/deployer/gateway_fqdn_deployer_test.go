@@ -26,7 +26,7 @@ func constructTestFQDNDeployer(t *testing.T, mock bool) (
 	*mocks.RMBMockClient,
 	*mocks.MockSubstrateExt,
 	*mocks.MockNodeClientGetter,
-	*mocks.MockDeployer,
+	*mocks.MockMockDeployer,
 	*mocks.MockClient,
 ) {
 	ctrl := gomock.NewController(t)
@@ -38,7 +38,7 @@ func constructTestFQDNDeployer(t *testing.T, mock bool) (
 	cl := mocks.NewRMBMockClient(ctrl)
 	sub := mocks.NewMockSubstrateExt(ctrl)
 	ncPool := mocks.NewMockNodeClientGetter(ctrl)
-	deployer := mocks.NewMockDeployer(ctrl)
+	deployer := mocks.NewMockMockDeployer(ctrl)
 	gridProxyCl := mocks.NewMockClient(ctrl)
 
 	if mock {
@@ -223,7 +223,7 @@ func TestFQDNDeployer(t *testing.T) {
 
 		deployer.EXPECT().Cancel(
 			gomock.Any(),
-			contractID,
+			[]uint64{contractID},
 		).Return(nil)
 
 		err := d.Cancel(context.Background(), &gw)
@@ -242,7 +242,7 @@ func TestFQDNDeployer(t *testing.T) {
 
 		deployer.EXPECT().Cancel(
 			gomock.Any(),
-			contractID,
+			[]uint64{contractID},
 		).Return(errors.New("error"))
 
 		err := d.Cancel(context.Background(), &gw)

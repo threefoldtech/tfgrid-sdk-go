@@ -52,6 +52,7 @@ func GetWorkloadHashes(dl gridtypes.Deployment) (map[string]string, error) {
 	return hashes, nil
 }
 
+// ChallengeWorkloadHash returns the string representation of the md5hash of the workload
 func ChallengeWorkloadHash(wl gridtypes.Workload) (string, error) {
 	md5Hash := md5.New()
 	if err := wl.Challenge(md5Hash); err != nil {
