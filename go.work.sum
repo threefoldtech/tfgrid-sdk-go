@@ -744,6 +744,7 @@ github.com/threefoldtech/rmb-sdk-go v1.0.0/go.mod h1:OFb7TpYhHa6YpWBJjsh6r7CX7uV
 github.com/threefoldtech/rmb-sdk-go v1.0.1 h1:dyjPfLqOa9xhQjg1a3+pmTpJrflqCd/rreblUPGb2wU=
 github.com/threefoldtech/rmb-sdk-go v1.0.1/go.mod h1:DKMNAkL2+lc4iI+wemPx3z5q5Z9ww2uY7D25yIKpZH4=
 github.com/threefoldtech/substrate-client v0.1.5/go.mod h1:ys/GJLeLmNX8E36UFMeR0yZC5Lo4PufYtfwsVX8H/AM=
+github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230616110830-e0aae0ad6d60/go.mod h1:dtDKAPiUDxAwIkfHV7xcAFZcOm+xwNIuOI1MLFS+MeQ=
 github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.4.0/go.mod h1:tttnc/l4F2lx1SyETTiLrMaiQEgMeGCvlVEIW6nUeJA=
 github.com/threefoldtech/zbus v1.0.1/go.mod h1:E/v/xEvG/l6z/Oj0aDkuSUXFm/1RVJkhKBwDTAIdsHo=
 github.com/tinylib/msgp v1.0.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=

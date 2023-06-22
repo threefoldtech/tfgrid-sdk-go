@@ -61,7 +61,7 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230616110830-e0aae0ad6d60 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230619085748-dd2f8ad00fe5 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.4.0 // indirect
 	github.com/threefoldtech/zos v0.5.6-0.20230621094643-c1c26774b2a8 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect

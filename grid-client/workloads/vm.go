@@ -74,7 +74,7 @@ func NewVMFromMap(vm map[string]interface{}) *VM {
 
 	var gpus []zos.GPU
 	for _, v := range vm["gpus"].([]interface{}) {
-		gpus = append(gpus, v.(zos.GPU))
+		gpus = append(gpus, zos.GPU(v.(string)))
 	}
 
 	return &VM{
