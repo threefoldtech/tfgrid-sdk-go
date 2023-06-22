@@ -26,12 +26,22 @@ tf-grid-cli deploy vm [flags]
 - memory: memory size in GB (default 1).
 - rootfs: root filesystem size in GB (default 2).
 - ygg: assign yggdrasil ip for VM (default true).
-- gpus: assign a list of gpus to VM. note: setting this without the node option will fail.
+- gpus: assign a list of gpus' ids to the VM. note: setting this without the node option will fail.
 
 Example:
 
+- Deploying VM without GPU
+
 ```console
 $ tf-grid-cli deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10
+12:06PM INF deploying network
+12:06PM INF deploying vm
+12:07PM INF vm yggdrasil ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
+```
+- Deploying VM with GPU
+
+```console
+$ tf-grid-cli deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10 --gpus '0000:0e:00.0/1882/543f' --gpus '0000:0e:00.0/1887/593f' --node 12
 12:06PM INF deploying network
 12:06PM INF deploying vm
 12:07PM INF vm yggdrasil ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
