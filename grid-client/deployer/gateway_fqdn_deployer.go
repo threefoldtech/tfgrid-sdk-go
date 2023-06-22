@@ -147,7 +147,7 @@ func (d *GatewayFQDNDeployer) Cancel(ctx context.Context, gw *workloads.GatewayF
 	}
 
 	contractID := gw.NodeDeploymentID[gw.NodeID]
-	err = d.deployer.Cancel(ctx, contractID)
+	err = d.deployer.Cancel(ctx, []uint64{contractID})
 	if err != nil {
 		return err
 	}

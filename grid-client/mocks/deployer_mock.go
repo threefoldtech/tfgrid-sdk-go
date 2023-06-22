@@ -12,31 +12,31 @@ import (
 	gridtypes "github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-// MockDeployer is a mock of MockDeployer interface.
-type MockDeployer struct {
+// MockMockDeployer is a mock of MockDeployer interface.
+type MockMockDeployer struct {
 	ctrl     *gomock.Controller
-	recorder *MockDeployerMockRecorder
+	recorder *MockMockDeployerMockRecorder
 }
 
-// MockDeployerMockRecorder is the mock recorder for MockDeployer.
-type MockDeployerMockRecorder struct {
-	mock *MockDeployer
+// MockMockDeployerMockRecorder is the mock recorder for MockMockDeployer.
+type MockMockDeployerMockRecorder struct {
+	mock *MockMockDeployer
 }
 
-// NewMockDeployer creates a new mock instance.
-func NewMockDeployer(ctrl *gomock.Controller) *MockDeployer {
-	mock := &MockDeployer{ctrl: ctrl}
-	mock.recorder = &MockDeployerMockRecorder{mock}
+// NewMockMockDeployer creates a new mock instance.
+func NewMockMockDeployer(ctrl *gomock.Controller) *MockMockDeployer {
+	mock := &MockMockDeployer{ctrl: ctrl}
+	mock.recorder = &MockMockDeployerMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockDeployer) EXPECT() *MockDeployerMockRecorder {
+func (m *MockMockDeployer) EXPECT() *MockMockDeployerMockRecorder {
 	return m.recorder
 }
 
 // BatchDeploy mocks base method.
-func (m *MockDeployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gridtypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error) {
+func (m *MockMockDeployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gridtypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BatchDeploy", ctx, deployments, deploymentsSolutionProvider)
 	ret0, _ := ret[0].(map[uint32][]gridtypes.Deployment)
@@ -45,13 +45,13 @@ func (m *MockDeployer) BatchDeploy(ctx context.Context, deployments map[uint32][
 }
 
 // BatchDeploy indicates an expected call of BatchDeploy.
-func (mr *MockDeployerMockRecorder) BatchDeploy(ctx, deployments, deploymentsSolutionProvider interface{}) *gomock.Call {
+func (mr *MockMockDeployerMockRecorder) BatchDeploy(ctx, deployments, deploymentsSolutionProvider interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchDeploy", reflect.TypeOf((*MockDeployer)(nil).BatchDeploy), ctx, deployments, deploymentsSolutionProvider)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchDeploy", reflect.TypeOf((*MockMockDeployer)(nil).BatchDeploy), ctx, deployments, deploymentsSolutionProvider)
 }
 
 // Cancel mocks base method.
-func (m *MockDeployer) Cancel(ctx context.Context, contractID uint64) error {
+func (m *MockMockDeployer) Cancel(ctx context.Context, contractID []uint64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Cancel", ctx, contractID)
 	ret0, _ := ret[0].(error)
@@ -59,13 +59,13 @@ func (m *MockDeployer) Cancel(ctx context.Context, contractID uint64) error {
 }
 
 // Cancel indicates an expected call of Cancel.
-func (mr *MockDeployerMockRecorder) Cancel(ctx, contractID interface{}) *gomock.Call {
+func (mr *MockMockDeployerMockRecorder) Cancel(ctx, contractID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockDeployer)(nil).Cancel), ctx, contractID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockMockDeployer)(nil).Cancel), ctx, contractID)
 }
 
 // Deploy mocks base method.
-func (m *MockDeployer) Deploy(ctx context.Context, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, newDeploymentSolutionProvider map[uint32]*uint64) (map[uint32]uint64, error) {
+func (m *MockMockDeployer) Deploy(ctx context.Context, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, newDeploymentSolutionProvider map[uint32]*uint64) (map[uint32]uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider)
 	ret0, _ := ret[0].(map[uint32]uint64)
@@ -74,13 +74,13 @@ func (m *MockDeployer) Deploy(ctx context.Context, oldDeploymentIDs map[uint32]u
 }
 
 // Deploy indicates an expected call of Deploy.
-func (mr *MockDeployerMockRecorder) Deploy(ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider interface{}) *gomock.Call {
+func (mr *MockMockDeployerMockRecorder) Deploy(ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeployer)(nil).Deploy), ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockMockDeployer)(nil).Deploy), ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider)
 }
 
 // GetDeployments mocks base method.
-func (m *MockDeployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
+func (m *MockMockDeployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDeployments", ctx, dls)
 	ret0, _ := ret[0].(map[uint32]gridtypes.Deployment)
@@ -89,7 +89,7 @@ func (m *MockDeployer) GetDeployments(ctx context.Context, dls map[uint32]uint64
 }
 
 // GetDeployments indicates an expected call of GetDeployments.
-func (mr *MockDeployerMockRecorder) GetDeployments(ctx, dls interface{}) *gomock.Call {
+func (mr *MockMockDeployerMockRecorder) GetDeployments(ctx, dls interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeployments", reflect.TypeOf((*MockDeployer)(nil).GetDeployments), ctx, dls)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeployments", reflect.TypeOf((*MockMockDeployer)(nil).GetDeployments), ctx, dls)
 }

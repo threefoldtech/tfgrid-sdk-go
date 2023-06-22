@@ -33,7 +33,7 @@ type MockDeployer interface { //TODO: Change Name && separate them
 	) (map[uint32]uint64, error)
 
 	Cancel(ctx context.Context,
-		contractID uint64,
+		contractID []uint64,
 	) error
 
 	GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error)
@@ -222,7 +222,7 @@ func (d *Deployer) updateHandler(ctx context.Context, oldDls map[uint32]uint64, 
 					return errors.Wrapf(err, "failed to send deployment update request to node %d", node)
 				}
 
-				return d.Wait(ctx, client, &dl)
+				return d.wait(ctx, client, &dl)
 			})
 
 		}
@@ -347,12 +347,10 @@ func updateCurrentDeployments(dls map[uint32][]gridtypes.Deployment, currentDepl
 
 // Cancel cancels an old deployment not given in the new deployments
 func (d *Deployer) Cancel(ctx context.Context,
-	contractID uint64,
+	contracts []uint64,
 ) error {
-
-	err := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
-	if err != nil {
-		return errors.Wrapf(err, "failed to delete deployment: %d", contractID)
+	if err := d.substrateConn.BatchCancelContract(d.identity, contracts); err != nil {
+		return errors.Wrap(err, "failed to cancel deployment contracts")
 	}
 
 	return nil
@@ -391,8 +389,8 @@ func getExponentialBackoff(initialInterval time.Duration, multiplier float64, ma
 	return b
 }
 
-// Wait waits for a deployment to be deployed on node
-func (d *Deployer) Wait(
+// wait waits for a deployment to be deployed on node
+func (d *Deployer) wait(
 	ctx context.Context,
 	nodeClient *client.NodeClient,
 	dl *gridtypes.Deployment,
@@ -553,7 +551,7 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 				return
 			}
 
-			err = d.Wait(ctx, client, &deployment)
+			err = d.wait(ctx, client, &deployment)
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
