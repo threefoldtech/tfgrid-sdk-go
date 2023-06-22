@@ -29,6 +29,7 @@ type VM struct {
 	YggIP         string
 	IP            string
 	Description   string
+	GPUs          []zos.GPU
 	CPU           int
 	Memory        int
 	RootfsSize    int
@@ -71,6 +72,11 @@ func NewVMFromMap(vm map[string]interface{}) *VM {
 		})
 	}
 
+	var gpus []zos.GPU
+	for _, v := range vm["gpus"].([]interface{}) {
+		gpus = append(gpus, v.(zos.GPU))
+	}
+
 	return &VM{
 		Name:          vm["name"].(string),
 		PublicIP:      vm["publicip"].(bool),
@@ -83,6 +89,7 @@ func NewVMFromMap(vm map[string]interface{}) *VM {
 		Planetary:     vm["planetary"].(bool),
 		IP:            vm["ip"].(string),
 		CPU:           vm["cpu"].(int),
+		GPUs:          gpus,
 		Memory:        vm["memory"].(int),
 		RootfsSize:    vm["rootfs_size"].(int),
 		Entrypoint:    vm["entrypoint"].(string),
@@ -137,6 +144,7 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, er
 		YggIP:         result.YggIP,
 		IP:            data.Network.Interfaces[0].IP.String(),
 		CPU:           int(data.ComputeCapacity.CPU),
+		GPUs:          data.GPU,
 		Memory:        int(data.ComputeCapacity.Memory / gridtypes.Megabyte),
 		RootfsSize:    int(data.Size / gridtypes.Megabyte),
 		Entrypoint:    data.Entrypoint,
@@ -214,6 +222,7 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 				Memory: gridtypes.Unit(uint(vm.Memory)) * gridtypes.Megabyte,
 			},
 			Size:       gridtypes.Unit(vm.RootfsSize) * gridtypes.Megabyte,
+			GPU:        vm.GPUs,
 			Entrypoint: vm.Entrypoint,
 			Corex:      vm.Corex,
 			Mounts:     mounts,
@@ -245,6 +254,12 @@ func (vm *VM) ToMap() map[string]interface{} {
 	for _, zlog := range vm.Zlogs {
 		zlogs = append(zlogs, zlog.Output)
 	}
+
+	var gpus []interface{}
+	for _, gpu := range vm.GPUs {
+		gpus = append(gpus, gpu)
+	}
+
 	res := make(map[string]interface{})
 	res["name"] = vm.Name
 	res["description"] = vm.Description
@@ -260,6 +275,7 @@ func (vm *VM) ToMap() map[string]interface{} {
 	res["ip"] = vm.IP
 	res["mounts"] = mounts
 	res["cpu"] = vm.CPU
+	res["gpus"] = gpus
 	res["memory"] = vm.Memory
 	res["rootfs_size"] = vm.RootfsSize
 	res["env_vars"] = envVars
@@ -275,6 +291,13 @@ func (vm *VM) ToMap() map[string]interface{} {
 func (vm *VM) Validate() error {
 	if vm.CPU < 1 || vm.CPU > 32 {
 		return errors.Wrap(ErrInvalidInput, "CPUs must be more than or equal to 1 and less than or equal to 32")
+	}
+
+	for _, g := range vm.GPUs {
+		_, _, _, err := g.Parts()
+		if err != nil {
+			return errors.Wrap(ErrInvalidInput, "failed to validate GPUs")
+		}
 	}
 
 	if vm.FlistChecksum != "" {
