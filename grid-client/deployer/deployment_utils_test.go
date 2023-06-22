@@ -44,13 +44,13 @@ func TestDeploymentUtils(t *testing.T) {
 	})
 
 	t.Run("deployments workloads same names", func(t *testing.T) {
-		same := SameWorkloadsNames(dl, dlName)
+		same := SameWorkloadsNames(dl.Workloads, dlName.Workloads)
 		assert.NoError(t, err)
 		assert.Equal(t, same, false)
 	})
 
 	t.Run("deployments workloads versions", func(t *testing.T) {
-		versions := ConstructWorkloadVersions(dlName)
+		versions := ConstructWorkloadVersions(&dlName)
 		assert.Equal(t, versions["name"], uint32(0))
 	})
 

@@ -244,14 +244,14 @@ func constructTestDeployment() workloads.Deployment {
 	}
 }
 
-func constructTestDeployer(t *testing.T, tfPluginClient TFPluginClient, mock bool) (DeploymentDeployer, *mocks.RMBMockClient, *mocks.MockSubstrateExt, *mocks.MockNodeClientGetter, *mocks.MockDeployer) {
+func constructTestDeployer(t *testing.T, tfPluginClient TFPluginClient, mock bool) (DeploymentDeployer, *mocks.RMBMockClient, *mocks.MockSubstrateExt, *mocks.MockNodeClientGetter, *mocks.MockMockDeployer) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	cl := mocks.NewRMBMockClient(ctrl)
 	sub := mocks.NewMockSubstrateExt(ctrl)
 	ncPool := mocks.NewMockNodeClientGetter(ctrl)
-	deployer := mocks.NewMockDeployer(ctrl)
+	deployer := mocks.NewMockMockDeployer(ctrl)
 
 	if mock {
 		tfPluginClient.SubstrateConn = sub
@@ -439,7 +439,7 @@ func TestDeploymentDeployer(t *testing.T) {
 				}, nil)
 
 			deployer.EXPECT().
-				Cancel(gomock.Any(), contractID).
+				Cancel(gomock.Any(), []uint64{contractID}).
 				Return(errors.New("error"))
 
 			assert.Error(t, d.Cancel(context.Background(), &dl))
@@ -460,7 +460,7 @@ func TestDeploymentDeployer(t *testing.T) {
 				}, nil)
 
 			deployer.EXPECT().
-				Cancel(gomock.Any(), contractID).
+				Cancel(gomock.Any(), []uint64{contractID}).
 				Return(nil)
 			assert.NoError(t, d.Cancel(context.Background(), &dl))
 

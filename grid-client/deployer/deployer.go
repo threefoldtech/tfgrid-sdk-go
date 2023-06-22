@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +22,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var DeploymentHasNoUpdatesErr = errors.New("deployment has no updates")
+
 // MockDeployer to be used for any deployer in mock testing
 type MockDeployer interface { //TODO: Change Name && separate them
 	Deploy(ctx context.Context,
@@ -32,7 +33,7 @@ type MockDeployer interface { //TODO: Change Name && separate them
 	) (map[uint32]uint64, error)
 
 	Cancel(ctx context.Context,
-		contractID uint64,
+		contractID []uint64,
 	) error
 
 	GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error)
@@ -85,14 +86,14 @@ func (d *Deployer) Deploy(ctx context.Context,
 	}
 
 	// ignore oldErr until we need oldDeployments
-	currentDeployments, err := d.deploy(ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider, d.revertOnFailure)
+	currentDeployments, err := d.deploy(ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider)
 
 	if err != nil && d.revertOnFailure {
 		if oldErr != nil {
 			return currentDeployments, errors.Wrapf(err, "failed to fetch deployment objects to revert deployments: %s; try again", oldErr)
 		}
 
-		currentDls, rerr := d.deploy(ctx, currentDeployments, oldDeployments, newDeploymentSolutionProvider, false)
+		currentDls, rerr := d.deploy(ctx, currentDeployments, oldDeployments, newDeploymentSolutionProvider)
 		if rerr != nil {
 			return currentDls, errors.Wrapf(err, "failed to revert deployments: %s; try again", rerr)
 		}
@@ -107,172 +108,249 @@ func (d *Deployer) deploy(
 	oldDeployments map[uint32]uint64,
 	newDeployments map[uint32]gridtypes.Deployment,
 	newDeploymentSolutionProvider map[uint32]*uint64,
-	revertOnFailure bool,
 ) (currentDeployments map[uint32]uint64, err error) {
 	currentDeployments = make(map[uint32]uint64)
 	for nodeID, contractID := range oldDeployments {
 		currentDeployments[nodeID] = contractID
 	}
-	// deletions
-	for node, contractID := range oldDeployments {
-		if _, ok := newDeployments[node]; !ok {
-			err = d.substrateConn.EnsureContractCanceled(d.identity, contractID)
-			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
-				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
-			}
-			delete(currentDeployments, node)
-		}
+
+	if err := d.deleteHandler(ctx, oldDeployments, newDeployments, currentDeployments); err != nil {
+		return currentDeployments, errors.Wrap(err, "failed to delete deployment")
 	}
 
-	// creations
-	for node, dl := range newDeployments {
-		if _, ok := oldDeployments[node]; !ok {
-			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to get node client")
-			}
-
-			if err := dl.Sign(d.twinID, d.identity); err != nil {
-				return currentDeployments, errors.Wrap(err, "error signing deployment")
-			}
-
-			if err := dl.Valid(); err != nil {
-				return currentDeployments, errors.Wrap(err, "deployment is invalid")
-			}
-
-			hash, err := dl.ChallengeHash()
-			log.Debug().Bytes("HASH", hash)
-
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to create hash")
-			}
-
-			hashHex := hex.EncodeToString(hash)
-
-			publicIPCount, err := CountDeploymentPublicIPs(dl)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to count deployment public IPs")
-			}
-			log.Debug().Uint32("Number of public ips", publicIPCount)
-
-			contractID, err := d.substrateConn.CreateNodeContract(d.identity, node, dl.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[node])
-			log.Debug().Uint64("CreateNodeContract returned id", contractID)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to create contract")
-			}
-
-			dl.ContractID = contractID
-			ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
-			defer cancel()
-			err = client.DeploymentDeploy(ctx, dl)
-
-			if err != nil {
-				rerr := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
-				if rerr != nil {
-					return currentDeployments, errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, contractID)
-				}
-				return currentDeployments, errors.Wrap(err, "error sending deployment to the node")
-
-			}
-			currentDeployments[node] = dl.ContractID
-			newWorkloadVersions := make(map[string]uint32)
-			for _, w := range dl.Workloads {
-				newWorkloadVersions[w.Name.String()] = 0
-			}
-			err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
-
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "error waiting deployment")
-			}
-		}
+	if err := d.createHandler(ctx, oldDeployments, newDeployments, newDeploymentSolutionProvider, currentDeployments); err != nil {
+		return currentDeployments, errors.Wrap(err, "failed to create deployments")
 	}
 
-	// updates
-	for node, dl := range newDeployments {
-		if oldDeploymentID, ok := oldDeployments[node]; ok {
-			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to get node client")
-			}
-
-			oldDl, err := client.DeploymentGet(ctx, oldDeploymentID)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to get old deployment to update it")
-			}
-
-			matchOldVersions(&oldDl, &dl)
-
-			oldDeploymentHash, err := HashDeployment(oldDl)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "could not get deployment hash")
-			}
-
-			newDeploymentHash, err := HashDeployment(dl)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "could not get deployment hash")
-			}
-
-			if oldDeploymentHash == newDeploymentHash && SameWorkloadsNames(dl, oldDl) {
-				continue
-			}
-
-			newWorkloadsVersions, err := assignVersions(&oldDl, &dl)
-			if err != nil {
-				return currentDeployments, errors.Wrapf(err, "failed to assign new versions to deployment with contract %d", oldDeploymentID)
-			}
-
-			dl.ContractID = oldDl.ContractID
-
-			if err := dl.Sign(d.twinID, d.identity); err != nil {
-				return currentDeployments, errors.Wrap(err, "error signing deployment")
-			}
-
-			if err := dl.Valid(); err != nil {
-				return currentDeployments, errors.Wrap(err, "deployment is invalid")
-			}
-
-			log.Debug().Interface("deployment", dl)
-			hash, err := dl.ChallengeHash()
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to create hash")
-			}
-			hashHex := hex.EncodeToString(hash)
-			log.Debug().Str("HASH", hashHex)
-
-			// TODO: Destroy and create if publicIPCount is changed
-			// publicIPCount, err := countDeploymentPublicIPs(dl)
-			contractID, err := d.substrateConn.UpdateNodeContract(d.identity, dl.ContractID, "", hashHex)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to update deployment")
-			}
-			dl.ContractID = contractID
-			sub, cancel := context.WithTimeout(ctx, 4*time.Minute)
-			defer cancel()
-			err = client.DeploymentUpdate(sub, dl)
-			if err != nil {
-				// cancel previous contract
-				return currentDeployments, errors.Wrapf(err, "failed to send deployment update request to node %d", node)
-			}
-			currentDeployments[node] = dl.ContractID
-
-			err = d.Wait(ctx, client, dl.ContractID, newWorkloadsVersions)
-			if err != nil {
-				return currentDeployments, errors.Wrap(err, "error waiting deployment")
-			}
-		}
+	if err := d.updateHandler(ctx, oldDeployments, newDeployments); err != nil {
+		return currentDeployments, errors.Wrap(err, "failed to update deployments")
 	}
 
 	return currentDeployments, nil
 }
 
+func (d *Deployer) deleteHandler(ctx context.Context, oldDls map[uint32]uint64, newDls map[uint32]gridtypes.Deployment, currentDeployments map[uint32]uint64) error {
+	contractsToDelete := []uint64{}
+	nodeIDs := []uint32{}
+	for nodeID, contractID := range oldDls {
+		if _, ok := newDls[nodeID]; !ok {
+			contractsToDelete = append(contractsToDelete, contractID)
+			nodeIDs = append(nodeIDs, nodeID)
+		}
+	}
+
+	if len(contractsToDelete) == 0 {
+		return nil
+	}
+
+	if err := d.substrateConn.BatchCancelContract(d.identity, contractsToDelete); err != nil {
+		return err
+	}
+
+	for _, nodeID := range nodeIDs {
+		delete(currentDeployments, nodeID)
+	}
+
+	return nil
+}
+
+func (d *Deployer) createHandler(
+	ctx context.Context,
+	oldDls map[uint32]uint64,
+	newDls map[uint32]gridtypes.Deployment,
+	solutionProviders map[uint32]*uint64,
+	currentDeployments map[uint32]uint64,
+) error {
+	dls := map[uint32][]gridtypes.Deployment{}
+	dlsSolProviders := map[uint32][]*uint64{}
+	for node, dl := range newDls {
+		if _, ok := oldDls[node]; !ok {
+			dls[node] = []gridtypes.Deployment{dl}
+			dlsSolProviders[node] = []*uint64{solutionProviders[node]}
+		}
+	}
+
+	if len(dls) == 0 {
+		// no creations are required
+		return nil
+	}
+
+	ret, err := d.BatchDeploy(ctx, dls, dlsSolProviders)
+
+	updateCurrentDeployments(ret, currentDeployments)
+
+	return err
+}
+
+func (d *Deployer) updateHandler(ctx context.Context, oldDls map[uint32]uint64, newDls map[uint32]gridtypes.Deployment) error {
+	errGroup := errgroup.Group{}
+
+	for nodeID, deployment := range newDls {
+		if oldDeploymentContractID, ok := oldDls[nodeID]; ok {
+			// make copies for variables captured by the go routine
+			node := nodeID
+			dl := deployment
+			contractID := oldDeploymentContractID
+
+			errGroup.Go(func() error {
+				err := d.preprocessDeploymentUpdate(ctx, &dl, node, contractID)
+				if errors.Is(err, DeploymentHasNoUpdatesErr) {
+					return nil
+				}
+
+				if err != nil {
+					return errors.Wrap(err, "failed to validate deployment for update")
+				}
+
+				hash, err := dl.ChallengeHash()
+				if err != nil {
+					return errors.Wrap(err, "failed to create hash")
+				}
+				hashHex := hex.EncodeToString(hash)
+
+				if _, err = d.substrateConn.UpdateNodeContract(d.identity, contractID, "", hashHex); err != nil {
+					return errors.Wrap(err, "failed to update deployment")
+				}
+
+				client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
+				if err != nil {
+					return errors.Wrap(err, "failed to get node client")
+				}
+
+				err = client.DeploymentUpdate(ctx, dl)
+				if err != nil {
+					return errors.Wrapf(err, "failed to send deployment update request to node %d", node)
+				}
+
+				return d.wait(ctx, client, &dl)
+			})
+
+		}
+	}
+
+	return errGroup.Wait()
+}
+
+// preprocessDeploymentUpdate first validates that the deployment has any updates to begin with,
+// then assigns versions to the deployment and its workloads,
+// then signs and validates the deployment
+func (d *Deployer) preprocessDeploymentUpdate(ctx context.Context, dl *gridtypes.Deployment, node uint32, contractID uint64) error {
+	client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
+	if err != nil {
+		return errors.Wrap(err, "failed to get node client")
+	}
+
+	oldDl, err := client.DeploymentGet(ctx, contractID)
+	if err != nil {
+		return errors.Wrap(err, "failed to get old deployment to update it")
+	}
+
+	hasUpdates, err := doesDeploymentHaveUpdates(&oldDl, dl)
+	if err != nil {
+		return errors.Wrap(err, "failed to determine if deployment has an update")
+	}
+
+	if !hasUpdates {
+		return DeploymentHasNoUpdatesErr
+	}
+
+	if err := d.prepareDeploymentForUpdate(&oldDl, dl); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *Deployer) prepareDeploymentForUpdate(oldDl *gridtypes.Deployment, dl *gridtypes.Deployment) error {
+	if err := udpateDeploymentVersions(oldDl, dl); err != nil {
+		return errors.Wrap(err, "failed to udpate deployment versions")
+	}
+
+	if err := dl.Sign(d.twinID, d.identity); err != nil {
+		return errors.Wrap(err, "error signing deployment")
+	}
+
+	if err := dl.Valid(); err != nil {
+		return errors.Wrap(err, "deployment is invalid")
+	}
+
+	dl.ContractID = oldDl.ContractID
+
+	return nil
+}
+
+func doesDeploymentHaveUpdates(oldDl *gridtypes.Deployment, newDl *gridtypes.Deployment) (bool, error) {
+	// TODO: new deployment should have the same order of old deployment to be able to compare hashes
+	// if two deployments have the same workloads with no updates, but only the workloads have different order on each deployment,
+	// the hashes would differ
+
+	oldDeploymentHash, err := oldDl.ChallengeHash()
+	if err != nil {
+		return false, errors.Wrap(err, "could not get deployment hash")
+	}
+
+	newDeploymentHash, err := newDl.ChallengeHash()
+	if err != nil {
+		return false, errors.Wrap(err, "could not get deployment hash")
+	}
+
+	if string(oldDeploymentHash) != string(newDeploymentHash) {
+		return true, nil
+	}
+
+	// workload names are not included in deployment hashes, so a separete check should be done
+	if !SameWorkloadsNames(oldDl.Workloads, newDl.Workloads) {
+		return true, nil
+	}
+
+	return true, nil
+}
+
+func udpateDeploymentVersions(oldDl *gridtypes.Deployment, newDl *gridtypes.Deployment) error {
+	oldHashes, err := GetWorkloadHashes(*oldDl)
+	if err != nil {
+		return errors.Wrap(err, "could not get old workloads hashes")
+	}
+
+	oldVersions := ConstructWorkloadVersions(oldDl)
+
+	newDl.Version = oldDl.Version + 1
+
+	for idx, w := range newDl.Workloads {
+		newHash, err := ChallengeWorkloadHash(w)
+		if err != nil {
+			return err
+		}
+
+		if oldHashes[w.Name.String()] == newHash {
+			newDl.Workloads[idx].Version = oldVersions[w.Name.String()]
+			continue
+		}
+
+		newDl.Workloads[idx].Version = newDl.Version
+	}
+
+	return nil
+}
+
+func updateCurrentDeployments(dls map[uint32][]gridtypes.Deployment, currentDeployments map[uint32]uint64) {
+	// TODO: current deloyments should handle more than one deployment per node
+	for node, dls := range dls {
+		for _, dl := range dls {
+			if dl.ContractID != 0 {
+				currentDeployments[node] = dl.ContractID
+				break
+			}
+		}
+	}
+}
+
 // Cancel cancels an old deployment not given in the new deployments
 func (d *Deployer) Cancel(ctx context.Context,
-	contractID uint64,
+	contracts []uint64,
 ) error {
-
-	err := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
-	if err != nil {
-		return errors.Wrapf(err, "failed to delete deployment: %d", contractID)
+	if err := d.substrateConn.BatchCancelContract(d.identity, contracts); err != nil {
+		return errors.Wrap(err, "failed to cancel deployment contracts")
 	}
 
 	return nil
@@ -302,12 +380,6 @@ func (d *Deployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (m
 	return res, nil
 }
 
-// Progress struct for checking progress
-type Progress struct {
-	time    time.Time
-	stateOk int
-}
-
 func getExponentialBackoff(initialInterval time.Duration, multiplier float64, maxInterval time.Duration, maxElapsedTime time.Duration) *backoff.ExponentialBackOff {
 	b := backoff.NewExponentialBackOff()
 	b.InitialInterval = initialInterval
@@ -317,57 +389,51 @@ func getExponentialBackoff(initialInterval time.Duration, multiplier float64, ma
 	return b
 }
 
-// Wait waits for a deployment to be deployed on node
-func (d *Deployer) Wait(
+// wait waits for a deployment to be deployed on node
+func (d *Deployer) wait(
 	ctx context.Context,
 	nodeClient *client.NodeClient,
-	deploymentID uint64,
-	workloadVersions map[string]uint32,
+	dl *gridtypes.Deployment,
 ) error {
-	lastProgress := Progress{time.Now(), 0}
-	numberOfWorkloads := len(workloadVersions)
+	timestamp := time.Now()
+	lastStateOkCount := 0
 
+	workloadVersions := ConstructWorkloadVersions(dl)
 	deploymentError := backoff.Retry(func() error {
 		stateOk := 0
 		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		deploymentChanges, err := nodeClient.DeploymentChanges(sub, deploymentID)
+		deploymentChanges, err := nodeClient.DeploymentChanges(sub, dl.ContractID)
 		if err != nil {
 			return backoff.Permanent(err)
 		}
 
 		for _, wl := range deploymentChanges {
 			if _, ok := workloadVersions[wl.Name.String()]; ok && wl.Version == workloadVersions[wl.Name.String()] {
-				var errString string
-				switch wl.Result.State {
-				case gridtypes.StateOk:
+				if wl.Result.State == gridtypes.StateOk {
 					stateOk++
-				case gridtypes.StateError:
-					errString = fmt.Sprintf("workload %s within deployment %d failed with error: %s", wl.Name, deploymentID, wl.Result.Error)
-				case gridtypes.StateDeleted:
-					errString = fmt.Sprintf("workload %s state within deployment %d is deleted: %s", wl.Name, deploymentID, wl.Result.Error)
-				case gridtypes.StatePaused:
-					errString = fmt.Sprintf("workload %s state within deployment %d is paused: %s", wl.Name, deploymentID, wl.Result.Error)
-				case gridtypes.StateUnChanged:
-					errString = fmt.Sprintf("workload %s within deployment %d was not updated: %s", wl.Name, deploymentID, wl.Result.Error)
+					continue
 				}
-				if errString != "" {
-					return backoff.Permanent(errors.New(errString))
+
+				// if state is neither ok nor init, some error has ocurred
+				if wl.Result.State != gridtypes.StateInit {
+					return backoff.Permanent(fmt.Errorf("workload failure: workload %s state is %s: %s", wl.Name, wl.Result.State, wl.Result.Error))
 				}
 			}
 		}
 
-		if stateOk == numberOfWorkloads {
+		if stateOk == len(dl.Workloads) {
 			return nil
 		}
 
-		currentProgress := Progress{time.Now(), stateOk}
-		if lastProgress.stateOk < currentProgress.stateOk {
-			lastProgress = currentProgress
-		} else if currentProgress.time.Sub(lastProgress.time) > 4*time.Minute {
-			timeoutError := errors.Errorf("waiting for deployment %d timed out", deploymentID)
-			return backoff.Permanent(timeoutError)
+		if time.Since(timestamp) > 4*time.Minute {
+			return backoff.Permanent(errors.Errorf("deployment %d has timed out", dl.ContractID))
+		}
+
+		if lastStateOkCount < stateOk {
+			lastStateOkCount = stateOk
+			timestamp = time.Now()
 		}
 
 		return errors.New("deployment in progress")
@@ -461,45 +527,40 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 		if index != nil && *index == i {
 			break
 		}
-		node := contractsData[i].Node
-		dl := dl
-		i := i
+
 		wg.Add(1)
-		go func() {
+		go func(index int, nodeID uint32, deployment gridtypes.Deployment) {
 			defer wg.Done()
-			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
+
+			client, err := d.ncPool.GetNodeClient(d.substrateConn, nodeID)
 			if err != nil {
 				mu.Lock()
-				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to get node %d client", node))
-				failedContracts = append(failedContracts, dl.ContractID)
+				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to get node %d client", nodeID))
+				failedContracts = append(failedContracts, deployment.ContractID)
 				mu.Unlock()
 				return
 			}
-			dl.ContractID = contracts[i]
+			deployment.ContractID = contracts[index]
 
-			err = client.DeploymentDeploy(ctx, dl)
-
+			err = client.DeploymentDeploy(ctx, deployment)
 			if err != nil {
 				mu.Lock()
-				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error sending deployment with contract id %d to node %d", dl.ContractID, node))
-				failedContracts = append(failedContracts, dl.ContractID)
+				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error sending deployment with contract id %d to node %d", deployment.ContractID, nodeID))
+				failedContracts = append(failedContracts, deployment.ContractID)
 				mu.Unlock()
 				return
 			}
-			newWorkloadVersions := make(map[string]uint32)
-			for _, w := range dl.Workloads {
-				newWorkloadVersions[w.Name.String()] = 0
-			}
-			err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
+
+			err = d.wait(ctx, client, &deployment)
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
 				multiErr = multierror.Append(multiErr, errors.Wrap(err, "error waiting deployment"))
-				failedContracts = append(failedContracts, dl.ContractID)
+				failedContracts = append(failedContracts, deployment.ContractID)
 				return
 			}
-			deploymentsSlice[i].ContractID = contracts[i]
-		}()
+			deploymentsSlice[index].ContractID = contracts[index]
+		}(i, contractsData[i].Node, dl)
 	}
 	wg.Wait()
 
@@ -516,47 +577,6 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 	}
 
 	return resDeployments, multiErr
-}
-
-// matchOldVersions assigns deployment and workloads versions of the new versionless deployment to the ones of the old deployment
-func matchOldVersions(oldDl *gridtypes.Deployment, newDl *gridtypes.Deployment) {
-	oldWlVersions := map[string]uint32{}
-	for _, wl := range oldDl.Workloads {
-		oldWlVersions[wl.Name.String()] = wl.Version
-	}
-
-	newDl.Version = oldDl.Version
-
-	for idx, wl := range newDl.Workloads {
-		newDl.Workloads[idx].Version = oldWlVersions[wl.Name.String()]
-	}
-}
-
-// assignVersions determines and assigns the versions of the new deployment and its workloads
-func assignVersions(oldDl *gridtypes.Deployment, newDl *gridtypes.Deployment) (map[string]uint32, error) {
-	oldHashes, err := GetWorkloadHashes(*oldDl)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get old workloads hashes")
-	}
-
-	newHashes, err := GetWorkloadHashes(*newDl)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get new workloads hashes")
-	}
-
-	newWorkloadsVersions := make(map[string]uint32)
-	newDl.Version = oldDl.Version + 1
-
-	for idx, w := range newDl.Workloads {
-		newHash := newHashes[string(w.Name)]
-		oldHash, ok := oldHashes[string(w.Name)]
-		if !ok || newHash != oldHash {
-			newDl.Workloads[idx].Version = newDl.Version
-		}
-		newWorkloadsVersions[w.Name.String()] = newDl.Workloads[idx].Version
-	}
-
-	return newWorkloadsVersions, nil
 }
 
 // Validate is a best effort validation. it returns an error if it's very sure there's a problem

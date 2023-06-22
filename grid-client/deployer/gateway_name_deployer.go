@@ -153,22 +153,24 @@ func (d *GatewayNameDeployer) Cancel(ctx context.Context, gw *workloads.GatewayN
 		return err
 	}
 
-	contractID := gw.NodeDeploymentID[gw.NodeID]
-	err = d.deployer.Cancel(ctx, contractID)
+	contracts := []uint64{}
+	if gw.ContractID != 0 {
+		contracts = append(contracts, gw.ContractID)
+	}
+
+	if gw.NameContractID != 0 {
+		contracts = append(contracts, gw.NameContractID)
+	}
+
+	err = d.deployer.Cancel(ctx, contracts)
 	if err != nil {
 		return err
 	}
 
+	d.tfPluginClient.State.CurrentNodeDeployments[gw.NodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[gw.NodeID], gw.ContractID)
 	gw.ContractID = 0
 	delete(gw.NodeDeploymentID, gw.NodeID)
-	d.tfPluginClient.State.CurrentNodeDeployments[gw.NodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[gw.NodeID], contractID)
-
-	if gw.NameContractID != 0 {
-		if err := d.tfPluginClient.SubstrateConn.EnsureContractCanceled(d.tfPluginClient.Identity, gw.NameContractID); err != nil {
-			return err
-		}
-		gw.NameContractID = 0
-	}
+	gw.NameContractID = 0
 
 	return nil
 }
