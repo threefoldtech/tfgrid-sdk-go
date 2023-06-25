@@ -397,7 +397,7 @@ func (a *App) version(r *http.Request) (interface{}, mw.Response) {
 // @Param node_id path int yes "Node ID"
 // @Accept  json
 // @Produce  json
-// @Success 200 {object} types.NodeWithNestedCapacity
+// @Success 200 {object} types.NodeStatistics
 // @Failure 400 {object} string
 // @Failure 404 {object} string
 // @Failure 500 {object} string
