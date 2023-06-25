@@ -570,7 +570,7 @@ func assignVersions(oldDl *gridtypes.Deployment, newDl *gridtypes.Deployment) (m
 // errors that may arise because of dead nodes are ignored.
 // if a real error dodges the validation, it'll be fail anyway in the deploying phase
 func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]gridtypes.Deployment, newDeployments map[uint32]gridtypes.Deployment) error {
-	farmIPs := make(map[int]int)
+	farmIPs := make(map[uint32]int)
 	nodeMap := make(map[uint32]proxyTypes.NodeWithNestedCapacity)
 
 	for node := range oldDeployments {
@@ -595,9 +595,8 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]gridt
 	}
 
 	for farm := range farmIPs {
-		farmUint64 := uint64(farm)
 		farmInfo, _, err := d.gridProxyClient.Farms(proxyTypes.FarmFilter{
-			FarmID: &farmUint64,
+			FarmID: &farm,
 		}, proxyTypes.Limit{
 			Page: 1,
 			Size: 1,

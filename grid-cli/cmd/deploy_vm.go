@@ -38,7 +38,7 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		farm, err := cmd.Flags().GetUint64("farm")
+		farm, err := cmd.Flags().GetUint32("farm")
 		if err != nil {
 			return err
 		}

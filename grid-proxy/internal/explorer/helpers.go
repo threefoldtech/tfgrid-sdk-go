@@ -3,6 +3,7 @@ package explorer
 import (
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -65,57 +66,82 @@ func getLimit(r *http.Request) (types.Limit, error) {
 	// }
 	return limit, nil
 }
-func parseParams(
-	r *http.Request,
-	ints map[string]**uint64,
-	strs map[string]**string,
-	bools map[string]**bool,
-	listOfInts map[string]*[]uint64,
-) error {
-	for param, prop := range ints {
-		value := r.URL.Query().Get(param)
+
+func extractRequestParams(r *http.Request, filter interface{}) error {
+	v := reflect.Indirect(reflect.ValueOf(filter))
+
+	for i := 0; i < v.NumField(); i++ {
+		name := v.Type().Field(i).Tag.Get("json")
+		fieldType := v.Field(i).Type().String()
+
+		value := r.URL.Query().Get(name)
 		if value != "" {
-			parsed, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return errors.Wrap(ErrBadRequest, fmt.Sprintf("couldn't parse %s %s", param, err.Error()))
+			switch fieldType {
+			case "*uint64":
+				parsed, err := strconv.ParseUint(value, 10, 64)
+				if err != nil {
+					return errors.Wrap(ErrBadRequest, fmt.Sprintf("couldn't parse %s %s", name, err.Error()))
+				}
+
+				v.Field(i).Set(reflect.ValueOf(&parsed))
+
+			case "*uint32":
+				parsed, err := strconv.ParseUint(value, 10, 32)
+				if err != nil {
+					return errors.Wrap(ErrBadRequest, fmt.Sprintf("couldn't parse %s %s", name, err.Error()))
+				}
+
+				castUint32 := uint32(parsed)
+				v.Field(i).Set(reflect.ValueOf(&castUint32))
+
+			case "*string":
+				v.Field(i).Set(reflect.ValueOf(&value))
+
+			case "*bool":
+				trueVal := true
+				falseVal := false
+
+				if value == "true" {
+					v.Field(i).Set(reflect.ValueOf(&trueVal))
+				}
+
+				if value == "false" {
+					v.Field(i).Set(reflect.ValueOf(&falseVal))
+				}
+
+			case "[]uint64":
+				strList := strings.Split(value, ",")
+				var list []uint64
+				for _, str := range strList {
+					parsed, err := strconv.ParseUint(str, 10, 64)
+					if err != nil {
+						return errors.Wrap(ErrBadRequest, fmt.Sprintf("couldn't parse %s %s", name, err.Error()))
+					}
+
+					list = append(list, parsed)
+				}
+
+				v.Field(i).Set(reflect.ValueOf(list))
+			case "[]uint32":
+				strList := strings.Split(value, ",")
+				var list []uint32
+				for _, str := range strList {
+					parsed, err := strconv.ParseUint(str, 10, 32)
+					if err != nil {
+						return errors.Wrap(ErrBadRequest, fmt.Sprintf("couldn't parse %s %s", name, err.Error()))
+					}
+
+					list = append(list, uint32(parsed))
+				}
+
+				v.Field(i).Set(reflect.ValueOf(list))
+			default:
+				return errors.Wrapf(ErrBadGateway, "failed to parse type %s for field %s", fieldType, name)
 			}
-			*prop = &parsed
+
 		}
 	}
 
-	for param, prop := range strs {
-		value := r.URL.Query().Get(param)
-		if value != "" {
-			*prop = &value
-		}
-	}
-	trueVal := true
-	falseVal := false
-	for param, prop := range bools {
-		value := r.URL.Query().Get(param)
-		if value == "true" {
-			*prop = &trueVal
-		}
-		if value == "false" {
-			*prop = &falseVal
-		}
-	}
-	for param, prop := range listOfInts {
-		value := r.URL.Query().Get(param)
-		if value == "" {
-			continue
-		} else {
-			split := strings.Split(value, ",")
-			*prop = make([]uint64, 0)
-			for _, item := range split {
-				parsed, err := strconv.ParseUint(item, 10, 64)
-				if err != nil {
-					return errors.Wrap(ErrBadRequest, fmt.Sprintf("couldn't parse %s %s", param, err.Error()))
-				}
-				*prop = append(*prop, parsed)
-			}
-		}
-	}
 	return nil
 }
 
@@ -124,45 +150,11 @@ func parseParams(
 func (a *App) handleNodeRequestsQueryParams(r *http.Request) (types.NodeFilter, types.Limit, error) {
 	var filter types.NodeFilter
 	var limit types.Limit
-	ints := map[string]**uint64{
-		"free_mru":      &filter.FreeMRU,
-		"free_hru":      &filter.FreeHRU,
-		"free_sru":      &filter.FreeSRU,
-		"free_ips":      &filter.FreeIPs,
-		"total_mru":     &filter.TotalMRU,
-		"total_cru":     &filter.TotalCRU,
-		"total_sru":     &filter.TotalSRU,
-		"total_hru":     &filter.TotalHRU,
-		"rented_by":     &filter.RentedBy,
-		"available_for": &filter.AvailableFor,
-		"node_id":       &filter.NodeID,
-		"twin_id":       &filter.TwinID,
-	}
-	strs := map[string]**string{
-		"status":             &filter.Status,
-		"city":               &filter.City,
-		"city_contains":      &filter.CityContains,
-		"country":            &filter.Country,
-		"country_contains":   &filter.CountryContains,
-		"farm_name":          &filter.FarmName,
-		"farm_name_contains": &filter.FarmNameContains,
-		"certification_type": &filter.CertificationType,
-	}
-	bools := map[string]**bool{
-		"ipv4":      &filter.IPv4,
-		"ipv6":      &filter.IPv6,
-		"domain":    &filter.Domain,
-		"dedicated": &filter.Dedicated,
-		"rentable":  &filter.Rentable,
-		"rented":    &filter.Rented,
-		"has_gpu":   &filter.HasGPU,
-	}
-	listOfInts := map[string]*[]uint64{
-		"farm_ids": &filter.FarmIDs,
-	}
-	if err := parseParams(r, ints, strs, bools, listOfInts); err != nil {
+
+	if err := extractRequestParams(r, &filter); err != nil {
 		return filter, limit, err
 	}
+
 	limit, err := getLimit(r)
 	if err != nil {
 		return filter, limit, err
@@ -181,26 +173,7 @@ func (a *App) handleFarmRequestsQueryParams(r *http.Request) (types.FarmFilter, 
 	var filter types.FarmFilter
 	var limit types.Limit
 
-	ints := map[string]**uint64{
-		"free_ips":          &filter.FreeIPs,
-		"total_ips":         &filter.TotalIPs,
-		"pricing_policy_id": &filter.PricingPolicyID,
-		"farm_id":           &filter.FarmID,
-		"twin_id":           &filter.TwinID,
-		"node_free_mru":     &filter.NodeFreeMRU,
-		"node_free_hru":     &filter.NodeFreeHRU,
-		"node_free_sru":     &filter.NodeFreeSRU,
-	}
-	strs := map[string]**string{
-		"name":               &filter.Name,
-		"name_contains":      &filter.NameContains,
-		"certification_type": &filter.CertificationType,
-		"stellar_address":    &filter.StellarAddress,
-	}
-	bools := map[string]**bool{
-		"dedicated": &filter.Dedicated,
-	}
-	if err := parseParams(r, ints, strs, bools, nil); err != nil {
+	if err := extractRequestParams(r, &filter); err != nil {
 		return filter, limit, err
 	}
 
@@ -216,18 +189,11 @@ func (a *App) handleFarmRequestsQueryParams(r *http.Request) (types.FarmFilter, 
 func (a *App) handleTwinRequestsQueryParams(r *http.Request) (types.TwinFilter, types.Limit, error) {
 	var filter types.TwinFilter
 	var limit types.Limit
-	ints := map[string]**uint64{
-		"twin_id": &filter.TwinID,
-	}
-	strs := map[string]**string{
-		"account_id": &filter.AccountID,
-		"relay":      &filter.Relay,
-		"public_key": &filter.PublicKey,
-	}
 
-	if err := parseParams(r, ints, strs, nil, nil); err != nil {
+	if err := extractRequestParams(r, &filter); err != nil {
 		return filter, limit, err
 	}
+
 	limit, err := getLimit(r)
 	if err != nil {
 		return filter, limit, err
@@ -240,23 +206,11 @@ func (a *App) handleTwinRequestsQueryParams(r *http.Request) (types.TwinFilter, 
 func (a *App) handleContractRequestsQueryParams(r *http.Request) (types.ContractFilter, types.Limit, error) {
 	var filter types.ContractFilter
 	var limit types.Limit
-	ints := map[string]**uint64{
-		"contract_id":          &filter.ContractID,
-		"twin_id":              &filter.TwinID,
-		"node_id":              &filter.NodeID,
-		"number_of_public_ips": &filter.NumberOfPublicIps,
-	}
-	strs := map[string]**string{
-		"name":            &filter.Name,
-		"deployment_data": &filter.DeploymentData,
-		"deployment_hash": &filter.DeploymentHash,
-		"type":            &filter.Type,
-		"state":           &filter.State,
-	}
 
-	if err := parseParams(r, ints, strs, nil, nil); err != nil {
+	if err := extractRequestParams(r, &filter); err != nil {
 		return filter, limit, err
 	}
+
 	limit, err := getLimit(r)
 	if err != nil {
 		return filter, limit, err
@@ -268,12 +222,11 @@ func (a *App) handleContractRequestsQueryParams(r *http.Request) (types.Contract
 // HandleNodeRequestsQueryParams takes the request and restore the query paramas, handle errors and set default values if not available
 func (a *App) handleStatsRequestsQueryParams(r *http.Request) (types.StatsFilter, error) {
 	var filter types.StatsFilter
-	strs := map[string]**string{
-		"status": &filter.Status,
-	}
-	if err := parseParams(r, nil, strs, nil, nil); err != nil {
+
+	if err := extractRequestParams(r, &filter); err != nil {
 		return filter, err
 	}
+
 	return filter, nil
 }
 

@@ -30,11 +30,11 @@ type contract_resources struct {
 }
 type farm struct {
 	id                string
-	grid_version      uint64
-	farm_id           uint64
+	grid_version      uint32
+	farm_id           uint32
 	name              string
-	twin_id           uint64
-	pricing_policy_id uint64
+	twin_id           uint32
+	pricing_policy_id uint32
 	certification     string
 	stellar_address   string
 	dedicated_farm    bool
@@ -42,15 +42,15 @@ type farm struct {
 
 type node struct {
 	id                string
-	grid_version      uint64
-	node_id           uint64
-	farm_id           uint64
-	twin_id           uint64
+	grid_version      uint32
+	node_id           uint32
+	farm_id           uint32
+	twin_id           uint32
 	country           string
 	city              string
 	uptime            uint64
 	created           uint64
-	farming_policy_id uint64
+	farming_policy_id uint32
 	certification     string
 	secure            bool
 	virtualized       bool
@@ -81,8 +81,8 @@ func (np *nodePower) Scan(value interface{}) error {
 
 type twin struct {
 	id           string
-	grid_version uint64
-	twin_id      uint64
+	grid_version uint32
+	twin_id      uint32
 	account_id   string
 	relay        string
 	public_key   string
@@ -96,10 +96,10 @@ type public_ip struct {
 }
 type node_contract struct {
 	id                    string
-	grid_version          uint64
+	grid_version          uint32
 	contract_id           uint64
-	twin_id               uint64
-	node_id               uint64
+	twin_id               uint32
+	node_id               uint32
 	deployment_data       string
 	deployment_hash       string
 	number_of_public_i_ps uint64
@@ -126,10 +126,10 @@ type public_config struct {
 }
 type rent_contract struct {
 	id           string
-	grid_version uint64
+	grid_version uint32
 	contract_id  uint64
-	twin_id      uint64
-	node_id      uint64
+	twin_id      uint32
+	node_id      uint32
 	state        string
 	created_at   uint64
 }
@@ -144,9 +144,9 @@ type contract_bill_report struct {
 
 type name_contract struct {
 	id           string
-	grid_version uint64
+	grid_version uint32
 	contract_id  uint64
-	twin_id      uint64
+	twin_id      uint32
 	name         string
 	state        string
 	created_at   uint64

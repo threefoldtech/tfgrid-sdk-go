@@ -17,15 +17,15 @@ type Database interface {
 
 // DBContract is contract info
 type DBContract struct {
-	ContractID        uint
-	TwinID            uint
+	ContractID        uint64
+	TwinID            uint32
 	State             string
-	CreatedAt         uint
+	CreatedAt         uint64
 	Name              string
-	NodeID            uint
+	NodeID            uint32
 	DeploymentData    string
 	DeploymentHash    string
-	NumberOfPublicIps uint
+	NumberOfPublicIps uint64
 	Type              string
 	ContractBillings  string
 }
@@ -33,24 +33,24 @@ type DBContract struct {
 // Node data about a node which is calculated from the chain
 type Node struct {
 	ID              string
-	NodeID          int64
-	FarmID          int64
-	TwinID          int64
+	NodeID          uint32
+	FarmID          uint32
+	TwinID          uint32
 	Country         string
-	GridVersion     int64
+	GridVersion     uint32
 	City            string
-	Uptime          int64
-	Created         int64
-	FarmingPolicyID int64
-	UpdatedAt       int64
-	TotalCru        int64
-	TotalMru        int64
-	TotalSru        int64
-	TotalHru        int64
-	UsedCru         int64
-	UsedMru         int64
-	UsedSru         int64
-	UsedHru         int64
+	Uptime          uint64
+	Created         uint64
+	FarmingPolicyID uint32
+	UpdatedAt       uint64
+	TotalCru        uint64
+	TotalMru        uint64
+	TotalSru        uint64
+	TotalHru        uint64
+	UsedCru         uint64
+	UsedMru         uint64
+	UsedSru         uint64
+	UsedHru         uint64
 	Domain          string
 	Gw4             string
 	Gw6             string
@@ -58,8 +58,8 @@ type Node struct {
 	Ipv6            string
 	Certification   string
 	Dedicated       bool
-	RentContractID  int64
-	RentedByTwinID  int64
+	RentContractID  uint64
+	RentedByTwinID  uint32
 	SerialNumber    string
 	Longitude       *float64
 	Latitude        *float64
@@ -77,9 +77,9 @@ type NodePower struct {
 // Farm data about a farm which is calculated from the chain
 type Farm struct {
 	Name            string
-	FarmID          int
-	TwinID          int
-	PricingPolicyID int
+	FarmID          uint32
+	TwinID          uint32
+	PricingPolicyID uint32
 	Certification   string
 	StellarAddress  string
 	Dedicated       bool
@@ -89,5 +89,5 @@ type Farm struct {
 // NodesDistribution is the number of nodes per each country
 type NodesDistribution struct {
 	Country string `json:"country"`
-	Nodes   int64  `json:"nodes"`
+	Nodes   uint64 `json:"nodes"`
 }

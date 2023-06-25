@@ -16,8 +16,8 @@ import (
 
 type ContractsAggregate struct {
 	contractIDs      []uint64
-	TwinIDs          []uint64
-	NodeIDs          []uint64
+	TwinIDs          []uint32
+	NodeIDs          []uint32
 	Types            []string
 	States           []string
 	Names            []string
@@ -106,9 +106,9 @@ func calcContractsAggregates(data *DBData) (res ContractsAggregate) {
 		res.maxNumberOfPublicIPs = max(res.maxNumberOfPublicIPs, contract.number_of_public_i_ps)
 		res.DeploymentDatas = append(res.DeploymentDatas, contract.deployment_data)
 		res.DeploymentHashes = append(res.DeploymentHashes, contract.deployment_hash)
-		res.NodeIDs = append(res.NodeIDs, contract.node_id)
+		res.NodeIDs = append(res.NodeIDs, uint32(contract.node_id))
 		res.States = append(res.States, contract.state)
-		res.TwinIDs = append(res.TwinIDs, contract.twin_id)
+		res.TwinIDs = append(res.TwinIDs, uint32(contract.twin_id))
 		types["node"] = struct{}{}
 	}
 

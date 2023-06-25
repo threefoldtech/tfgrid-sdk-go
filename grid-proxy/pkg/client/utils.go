@@ -9,10 +9,10 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-func stringifyList(l []uint64) string {
+func stringifyList(l []uint32) string {
 	var ls []string
 	for _, v := range l {
-		ls = append(ls, strconv.FormatUint(v, 10))
+		ls = append(ls, strconv.FormatUint(uint64(v), 10))
 	}
 	return strings.Join(ls, ",")
 }

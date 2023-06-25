@@ -8,6 +8,7 @@ import (
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -55,15 +56,15 @@ func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytyp
 			status := decideNodeStatus(node.power, node.updated_at)
 			res = append(res, proxytypes.Node{
 				ID:              node.id,
-				NodeID:          int(node.node_id),
-				FarmID:          int(node.farm_id),
-				TwinID:          int(node.twin_id),
+				NodeID:          node.node_id,
+				FarmID:          node.farm_id,
+				TwinID:          node.twin_id,
 				Country:         node.country,
 				City:            node.city,
-				GridVersion:     int(node.grid_version),
-				Uptime:          int64(node.uptime),
-				Created:         int64(node.created),
-				FarmingPolicyID: int(node.farming_policy_id),
+				GridVersion:     node.grid_version,
+				Uptime:          node.uptime,
+				Created:         node.created,
+				FarmingPolicyID: node.farming_policy_id,
 				TotalResources: proxytypes.Capacity{
 					CRU: g.data.nodeTotalResources[node.node_id].cru,
 					HRU: gridtypes.Unit(g.data.nodeTotalResources[node.node_id].hru),
@@ -89,10 +90,10 @@ func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytyp
 				},
 				Status:            status,
 				CertificationType: node.certification,
-				UpdatedAt:         int64(node.updated_at),
+				UpdatedAt:         node.updated_at,
 				Dedicated:         g.data.farms[node.farm_id].dedicated_farm,
-				RentedByTwinID:    uint(g.data.nodeRentedBy[node.node_id]),
-				RentContractID:    uint(g.data.nodeRentContractID[node.node_id]),
+				RentedByTwinID:    g.data.nodeRentedBy[node.node_id],
+				RentContractID:    g.data.nodeRentContractID[node.node_id],
 				SerialNumber:      node.serial_number,
 				Power: proxytypes.NodePower{
 					State:  node.power.State,
@@ -127,12 +128,12 @@ func (g *GridProxyClientimpl) Farms(filter proxytypes.FarmFilter, limit proxytyp
 	if limit.Size == 0 {
 		limit.Size = 50
 	}
-	publicIPs := make(map[uint64][]proxytypes.PublicIP)
+	publicIPs := make(map[uint32][]proxytypes.PublicIP)
 	for _, publicIP := range g.data.publicIPs {
 		publicIPs[g.data.farmIDMap[publicIP.farm_id]] = append(publicIPs[g.data.farmIDMap[publicIP.farm_id]], proxytypes.PublicIP{
 			ID:         publicIP.id,
 			IP:         publicIP.ip,
-			ContractID: int(publicIP.contract_id),
+			ContractID: publicIP.contract_id,
 			Gateway:    publicIP.gateway,
 		})
 	}
@@ -140,9 +141,9 @@ func (g *GridProxyClientimpl) Farms(filter proxytypes.FarmFilter, limit proxytyp
 		if farmSatisfies(&g.data, farm, filter) {
 			res = append(res, proxytypes.Farm{
 				Name:              farm.name,
-				FarmID:            int(farm.farm_id),
-				TwinID:            int(farm.twin_id),
-				PricingPolicyID:   int(farm.pricing_policy_id),
+				FarmID:            farm.farm_id,
+				TwinID:            farm.twin_id,
+				PricingPolicyID:   farm.pricing_policy_id,
 				StellarAddress:    farm.stellar_address,
 				PublicIps:         publicIPs[farm.farm_id],
 				Dedicated:         farm.dedicated_farm,
@@ -192,16 +193,16 @@ func (g *GridProxyClientimpl) Contracts(filter proxytypes.ContractFilter, limit 
 	for _, contract := range g.data.nodeContracts {
 		if nodeContractsSatisfies(contract, filter) {
 			contract := proxytypes.Contract{
-				ContractID: uint(contract.contract_id),
-				TwinID:     uint(contract.twin_id),
+				ContractID: contract.contract_id,
+				TwinID:     contract.twin_id,
 				State:      contract.state,
-				CreatedAt:  uint(contract.created_at),
+				CreatedAt:  contract.created_at,
 				Type:       "node",
 				Details: proxytypes.NodeContractDetails{
-					NodeID:            uint(contract.node_id),
+					NodeID:            contract.node_id,
 					DeploymentData:    contract.deployment_data,
 					DeploymentHash:    contract.deployment_hash,
-					NumberOfPublicIps: uint(contract.number_of_public_i_ps),
+					NumberOfPublicIps: contract.number_of_public_i_ps,
 				},
 				Billing: billings[contract.contract_id],
 			}
@@ -211,13 +212,13 @@ func (g *GridProxyClientimpl) Contracts(filter proxytypes.ContractFilter, limit 
 	for _, contract := range g.data.rentContracts {
 		if rentContractsSatisfies(contract, filter) {
 			contract := proxytypes.Contract{
-				ContractID: uint(contract.contract_id),
-				TwinID:     uint(contract.twin_id),
+				ContractID: contract.contract_id,
+				TwinID:     contract.twin_id,
 				State:      contract.state,
-				CreatedAt:  uint(contract.created_at),
+				CreatedAt:  contract.created_at,
 				Type:       "rent",
 				Details: proxytypes.RentContractDetails{
-					NodeID: uint(contract.node_id),
+					NodeID: contract.node_id,
 				},
 				Billing: billings[contract.contract_id],
 			}
@@ -227,10 +228,10 @@ func (g *GridProxyClientimpl) Contracts(filter proxytypes.ContractFilter, limit 
 	for _, contract := range g.data.nameContracts {
 		if nameContractsSatisfies(contract, filter) {
 			contract := proxytypes.Contract{
-				ContractID: uint(contract.contract_id),
-				TwinID:     uint(contract.twin_id),
+				ContractID: contract.contract_id,
+				TwinID:     contract.twin_id,
 				State:      contract.state,
-				CreatedAt:  uint(contract.created_at),
+				CreatedAt:  contract.created_at,
 				Type:       "name",
 				Details: proxytypes.NameContractDetails{
 					Name: contract.name,
@@ -269,7 +270,7 @@ func (g *GridProxyClientimpl) Twins(filter proxytypes.TwinFilter, limit proxytyp
 	for _, twin := range g.data.twins {
 		if twinSatisfies(twin, filter) {
 			res = append(res, proxytypes.Twin{
-				TwinID:    uint(twin.twin_id),
+				TwinID:    twin.twin_id,
 				AccountID: twin.account_id,
 				Relay:     twin.relay,
 				PublicKey: twin.public_key,
@@ -294,19 +295,19 @@ func (g *GridProxyClientimpl) Twins(filter proxytypes.TwinFilter, limit proxytyp
 	return
 }
 func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNestedCapacity, err error) {
-	node := g.data.nodes[uint64(nodeID)]
+	node := g.data.nodes[nodeID]
 	status := decideNodeStatus(node.power, node.updated_at)
 	res = proxytypes.NodeWithNestedCapacity{
 		ID:              node.id,
-		NodeID:          int(node.node_id),
-		FarmID:          int(node.farm_id),
-		TwinID:          int(node.twin_id),
+		NodeID:          node.node_id,
+		FarmID:          node.farm_id,
+		TwinID:          node.twin_id,
 		Country:         node.country,
 		City:            node.city,
-		GridVersion:     int(node.grid_version),
-		Uptime:          int64(node.uptime),
-		Created:         int64(node.created),
-		FarmingPolicyID: int(node.farming_policy_id),
+		GridVersion:     node.grid_version,
+		Uptime:          node.uptime,
+		Created:         node.created,
+		FarmingPolicyID: node.farming_policy_id,
 		Capacity: proxytypes.CapacityResult{
 			Total: proxytypes.Capacity{
 				CRU: g.data.nodeTotalResources[node.node_id].cru,
@@ -334,10 +335,10 @@ func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNested
 		},
 		Status:            status,
 		CertificationType: node.certification,
-		UpdatedAt:         int64(node.updated_at),
+		UpdatedAt:         node.updated_at,
 		Dedicated:         g.data.farms[node.farm_id].dedicated_farm,
-		RentedByTwinID:    uint(g.data.nodeRentedBy[node.node_id]),
-		RentContractID:    uint(g.data.nodeRentContractID[node.node_id]),
+		RentedByTwinID:    g.data.nodeRentedBy[node.node_id],
+		RentContractID:    g.data.nodeRentContractID[node.node_id],
 		SerialNumber:      node.serial_number,
 		Power: proxytypes.NodePower{
 			State:  node.power.State,
@@ -350,7 +351,7 @@ func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNested
 }
 
 // getNumGPUs should be deleted after removing hasGPU
-func getNumGPUs(hasGPU bool) int {
+func getNumGPUs(hasGPU bool) uint8 {
 	if hasGPU {
 		return 1
 	}
@@ -358,28 +359,28 @@ func getNumGPUs(hasGPU bool) int {
 }
 
 func (g *GridProxyClientimpl) NodeStatus(nodeID uint32) (res proxytypes.NodeStatus, err error) {
-	node := g.data.nodes[uint64(nodeID)]
+	node := g.data.nodes[nodeID]
 	res.Status = decideNodeStatus(node.power, node.updated_at)
 	return
 }
 
 func (g *GridProxyClientimpl) Counters(filter proxytypes.StatsFilter) (res proxytypes.Counters, err error) {
-	res.Farms = int64(len(g.data.farms))
-	res.Twins = int64(len(g.data.twins))
-	res.PublicIPs = int64(len(g.data.publicIPs))
-	res.Contracts = int64(len(g.data.rentContracts))
-	res.Contracts += int64(len(g.data.nodeContracts))
-	res.Contracts += int64(len(g.data.nameContracts))
-	distribution := map[string]int64{}
+	res.Farms = uint64(len(g.data.farms))
+	res.Twins = uint64(len(g.data.twins))
+	res.PublicIPs = uint64(len(g.data.publicIPs))
+	res.Contracts = uint64(len(g.data.rentContracts))
+	res.Contracts += uint64(len(g.data.nodeContracts))
+	res.Contracts += uint64(len(g.data.nameContracts))
+	distribution := map[string]uint64{}
 	var gpus int64
 	for _, node := range g.data.nodes {
 		if filter.Status == nil || (*filter.Status == STATUS_UP && isUp(node.updated_at)) {
 			res.Nodes++
 			distribution[node.country] += 1
-			res.TotalCRU += int64(g.data.nodeTotalResources[node.node_id].cru)
-			res.TotalMRU += int64(g.data.nodeTotalResources[node.node_id].mru)
-			res.TotalSRU += int64(g.data.nodeTotalResources[node.node_id].sru)
-			res.TotalHRU += int64(g.data.nodeTotalResources[node.node_id].hru)
+			res.TotalCRU += g.data.nodeTotalResources[node.node_id].cru
+			res.TotalMRU += g.data.nodeTotalResources[node.node_id].mru
+			res.TotalSRU += g.data.nodeTotalResources[node.node_id].sru
+			res.TotalHRU += g.data.nodeTotalResources[node.node_id].hru
 			if g.data.publicConfigs[node.node_id].ipv4 != "" || g.data.publicConfigs[node.node_id].ipv6 != "" {
 				res.AccessNodes++
 				if g.data.publicConfigs[node.node_id].domain != "" {
@@ -391,9 +392,9 @@ func (g *GridProxyClientimpl) Counters(filter proxytypes.StatsFilter) (res proxy
 			}
 		}
 	}
-	res.Countries = int64(len(distribution))
+	res.Countries = uint64(len(distribution))
 	res.NodesDistribution = distribution
-	res.GPUs = gpus
+	res.GPUs = uint64(gpus)
 
 	return
 }
@@ -450,7 +451,7 @@ func nodeSatisfies(data *DBData, node node, f proxytypes.NodeFilter) bool {
 	if f.FarmName != nil && !strings.EqualFold(*f.FarmName, data.farms[node.farm_id].name) {
 		return false
 	}
-	if f.FarmIDs != nil && !isIn(f.FarmIDs, node.farm_id) {
+	if f.FarmIDs != nil && !slices.Contains(f.FarmIDs, node.farm_id) {
 		return false
 	}
 	if f.FreeIPs != nil && *f.FreeIPs > data.FreeIPs[node.farm_id] {

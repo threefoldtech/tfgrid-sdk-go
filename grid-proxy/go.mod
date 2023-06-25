@@ -17,6 +17,7 @@ require (
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230530114457-e57ee9560f79
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.4.0
 	github.com/threefoldtech/zos v0.5.6-0.20230526112430-f620733482d7
+	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	gorm.io/driver/postgres v1.5.0
 	gorm.io/gorm v1.25.0
 )

@@ -61,9 +61,9 @@ var (
 
 // GetPublicNode return public node ID
 func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes []uint32) (uint32, error) {
-	preferredNodesSet := make(map[int]struct{})
+	preferredNodesSet := make(map[uint32]struct{})
 	for _, node := range preferredNodes {
-		preferredNodesSet[int(node)] = struct{}{}
+		preferredNodesSet[node] = struct{}{}
 	}
 
 	nodes, err := FilterNodes(ctx, tfPlugin, types.NodeFilter{
@@ -75,13 +75,13 @@ func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes 
 	}
 
 	// force add preferred nodes
-	nodeMap := make(map[int]struct{})
+	nodeMap := make(map[uint32]struct{})
 	for _, node := range nodes {
 		nodeMap[node.NodeID] = struct{}{}
 	}
 
 	for _, node := range preferredNodes {
-		if _, ok := nodeMap[int(node)]; ok {
+		if _, ok := nodeMap[node]; ok {
 			continue
 		}
 		nodeInfo, err := tfPlugin.GridProxyClient.Node(node)

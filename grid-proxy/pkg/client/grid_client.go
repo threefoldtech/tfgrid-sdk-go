@@ -164,14 +164,14 @@ func (g *Clientimpl) Contracts(filter types.ContractFilter, limit types.Limit) (
 	for idx := range res {
 		if res[idx].Type == "node" {
 			res[idx].Details = types.NodeContractDetails{
-				NodeID:            uint(res[idx].Details.(map[string]interface{})["nodeId"].(float64)),
+				NodeID:            uint32(res[idx].Details.(map[string]interface{})["node_id"].(float64)),
 				DeploymentData:    res[idx].Details.(map[string]interface{})["deployment_data"].(string),
 				DeploymentHash:    res[idx].Details.(map[string]interface{})["deployment_hash"].(string),
-				NumberOfPublicIps: uint(res[idx].Details.(map[string]interface{})["number_of_public_ips"].(float64)),
+				NumberOfPublicIps: uint64(res[idx].Details.(map[string]interface{})["number_of_public_ips"].(float64)),
 			}
 		} else if res[idx].Type == "rent" {
 			res[idx].Details = types.RentContractDetails{
-				NodeID: uint(res[idx].Details.(map[string]interface{})["nodeId"].(float64)),
+				NodeID: uint32(res[idx].Details.(map[string]interface{})["node_id"].(float64)),
 			}
 		} else if res[idx].Type == "name" {
 			res[idx].Details = types.NameContractDetails{

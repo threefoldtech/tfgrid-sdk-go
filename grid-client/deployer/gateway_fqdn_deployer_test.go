@@ -80,7 +80,7 @@ func mockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub *m
 
 	proxyCl.EXPECT().Node(nodeID).
 		Return(proxyTypes.NodeWithNestedCapacity{
-			NodeID:       int(nodeID),
+			NodeID:       nodeID,
 			FarmID:       1,
 			PublicConfig: proxyTypes.PublicConfig{Ipv4: "1.1.1.1/16"},
 		}, nil)

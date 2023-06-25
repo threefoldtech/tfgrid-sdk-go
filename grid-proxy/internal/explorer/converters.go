@@ -14,12 +14,12 @@ const (
 	nodeUpInterval = -80 * time.Minute
 )
 
-func decideNodeStatus(power types.NodePower, updatedAt int64) string {
+func decideNodeStatus(power types.NodePower, updatedAt uint64) string {
 	if power.Target == "Down" { // off or powering off
 		return "standby"
 	} else if power.Target == "Up" && power.State == "Down" { // powering on
 		return "down"
-	} else if updatedAt >= time.Now().Add(nodeUpInterval).Unix() {
+	} else if int64(updatedAt) >= time.Now().Add(nodeUpInterval).Unix() {
 		return "up"
 	} else {
 		return "down"
@@ -27,7 +27,7 @@ func decideNodeStatus(power types.NodePower, updatedAt int64) string {
 }
 
 // getNumGPUs should be deleted after removing hasGPU
-func getNumGPUs(hasGPU bool) int {
+func getNumGPUs(hasGPU bool) uint8 {
 	if hasGPU {
 		return 1
 	}
@@ -37,15 +37,15 @@ func getNumGPUs(hasGPU bool) int {
 func nodeFromDBNode(info db.Node) types.Node {
 	node := types.Node{
 		ID:              info.ID,
-		NodeID:          int(info.NodeID),
-		FarmID:          int(info.FarmID),
-		TwinID:          int(info.TwinID),
+		NodeID:          info.NodeID,
+		FarmID:          info.FarmID,
+		TwinID:          info.TwinID,
 		Country:         info.Country,
-		GridVersion:     int(info.GridVersion),
+		GridVersion:     info.GridVersion,
 		City:            info.City,
 		Uptime:          info.Uptime,
 		Created:         info.Created,
-		FarmingPolicyID: int(info.FarmingPolicyID),
+		FarmingPolicyID: info.FarmingPolicyID,
 		UpdatedAt:       info.UpdatedAt,
 		TotalResources: types.Capacity{
 			CRU: uint64(info.TotalCru),
@@ -74,8 +74,8 @@ func nodeFromDBNode(info db.Node) types.Node {
 		},
 		CertificationType: info.Certification,
 		Dedicated:         info.Dedicated,
-		RentContractID:    uint(info.RentContractID),
-		RentedByTwinID:    uint(info.RentedByTwinID),
+		RentContractID:    info.RentContractID,
+		RentedByTwinID:    info.RentedByTwinID,
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
 		NumGPU:            getNumGPUs(info.HasGPU),
@@ -105,15 +105,15 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 
 	node := types.NodeWithNestedCapacity{
 		ID:              info.ID,
-		NodeID:          int(info.NodeID),
-		FarmID:          int(info.FarmID),
-		TwinID:          int(info.TwinID),
+		NodeID:          info.NodeID,
+		FarmID:          info.FarmID,
+		TwinID:          info.TwinID,
 		Country:         info.Country,
-		GridVersion:     int(info.GridVersion),
+		GridVersion:     info.GridVersion,
 		City:            info.City,
 		Uptime:          info.Uptime,
 		Created:         info.Created,
-		FarmingPolicyID: int(info.FarmingPolicyID),
+		FarmingPolicyID: info.FarmingPolicyID,
 		UpdatedAt:       info.UpdatedAt,
 		Capacity: types.CapacityResult{
 
@@ -145,8 +145,8 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		},
 		CertificationType: info.Certification,
 		Dedicated:         info.Dedicated,
-		RentContractID:    uint(info.RentContractID),
-		RentedByTwinID:    uint(info.RentedByTwinID),
+		RentContractID:    info.RentContractID,
+		RentedByTwinID:    info.RentedByTwinID,
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
 		NumGPU:            getNumGPUs(info.HasGPU),

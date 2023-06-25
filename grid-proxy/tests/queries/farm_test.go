@@ -20,10 +20,10 @@ const (
 
 type FarmsAggregate struct {
 	stellarAddresses []string
-	pricingPolicyIDs []uint64
+	pricingPolicyIDs []uint32
 	farmNames        []string
-	farmIDs          []uint64
-	twinIDs          []uint64
+	farmIDs          []uint32
+	twinIDs          []uint32
 	certifications   []string
 
 	maxFreeIPs  uint64
@@ -132,14 +132,14 @@ func calcFarmsAggregates(data *DBData) (res FarmsAggregate) {
 	for _, farm := range data.farms {
 		res.farmNames = append(res.farmNames, farm.name)
 		res.stellarAddresses = append(res.stellarAddresses, farm.stellar_address)
-		res.pricingPolicyIDs = append(res.pricingPolicyIDs, farm.pricing_policy_id)
+		res.pricingPolicyIDs = append(res.pricingPolicyIDs, uint32(farm.pricing_policy_id))
 		res.certifications = append(res.certifications, farm.certification)
-		res.farmIDs = append(res.farmIDs, farm.farm_id)
-		res.twinIDs = append(res.twinIDs, farm.twin_id)
+		res.farmIDs = append(res.farmIDs, uint32(farm.farm_id))
+		res.twinIDs = append(res.twinIDs, uint32(farm.twin_id))
 	}
 
-	farmIPs := make(map[uint64]uint64)
-	farmTotalIPs := make(map[uint64]uint64)
+	farmIPs := make(map[uint32]uint64)
+	farmTotalIPs := make(map[uint32]uint64)
 	for _, publicIP := range data.publicIPs {
 		if publicIP.contract_id == 0 {
 			farmIPs[data.farmIDMap[publicIP.farm_id]] += 1

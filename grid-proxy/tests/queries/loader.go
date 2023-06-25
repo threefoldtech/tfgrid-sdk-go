@@ -8,26 +8,26 @@ import (
 )
 
 type DBData struct {
-	nodeIDMap          map[string]uint64
-	farmIDMap          map[string]uint64
-	FreeIPs            map[uint64]uint64
-	TotalIPs           map[uint64]uint64
-	nodeUsedResources  map[uint64]node_resources_total
-	nodeRentedBy       map[uint64]uint64
-	nodeRentContractID map[uint64]uint64
+	nodeIDMap          map[string]uint32
+	farmIDMap          map[string]uint32
+	FreeIPs            map[uint32]uint64
+	TotalIPs           map[uint32]uint64
+	nodeUsedResources  map[uint32]node_resources_total
+	nodeRentedBy       map[uint32]uint32
+	nodeRentContractID map[uint32]uint64
 
-	nodes               map[uint64]node
-	nodeTotalResources  map[uint64]node_resources_total
-	farms               map[uint64]farm
-	twins               map[uint64]twin
+	nodes               map[uint32]node
+	nodeTotalResources  map[uint32]node_resources_total
+	farms               map[uint32]farm
+	twins               map[uint32]twin
 	publicIPs           map[string]public_ip
-	publicConfigs       map[uint64]public_config
+	publicConfigs       map[uint32]public_config
 	nodeContracts       map[uint64]node_contract
 	rentContracts       map[uint64]rent_contract
 	nameContracts       map[uint64]name_contract
 	billings            map[uint64][]contract_bill_report
 	contractResources   map[string]contract_resources
-	nonDeletedContracts map[uint64][]uint64
+	nonDeletedContracts map[uint32][]uint64
 	db                  *sql.DB
 }
 
@@ -474,25 +474,25 @@ func loadContractBillingReports(db *sql.DB, data *DBData) error {
 
 func load(db *sql.DB) (DBData, error) {
 	data := DBData{
-		nodeIDMap:           make(map[string]uint64),
-		farmIDMap:           make(map[string]uint64),
-		FreeIPs:             make(map[uint64]uint64),
-		TotalIPs:            make(map[uint64]uint64),
-		nodes:               make(map[uint64]node),
-		farms:               make(map[uint64]farm),
-		twins:               make(map[uint64]twin),
+		nodeIDMap:           make(map[string]uint32),
+		farmIDMap:           make(map[string]uint32),
+		FreeIPs:             make(map[uint32]uint64),
+		TotalIPs:            make(map[uint32]uint64),
+		nodes:               make(map[uint32]node),
+		farms:               make(map[uint32]farm),
+		twins:               make(map[uint32]twin),
 		publicIPs:           make(map[string]public_ip),
-		publicConfigs:       make(map[uint64]public_config),
+		publicConfigs:       make(map[uint32]public_config),
 		nodeContracts:       make(map[uint64]node_contract),
 		rentContracts:       make(map[uint64]rent_contract),
 		nameContracts:       make(map[uint64]name_contract),
-		nodeRentedBy:        make(map[uint64]uint64),
-		nodeRentContractID:  make(map[uint64]uint64),
+		nodeRentedBy:        make(map[uint32]uint32),
+		nodeRentContractID:  make(map[uint32]uint64),
 		billings:            make(map[uint64][]contract_bill_report),
 		contractResources:   make(map[string]contract_resources),
-		nodeTotalResources:  make(map[uint64]node_resources_total),
-		nodeUsedResources:   make(map[uint64]node_resources_total),
-		nonDeletedContracts: make(map[uint64][]uint64),
+		nodeTotalResources:  make(map[uint32]node_resources_total),
+		nodeUsedResources:   make(map[uint32]node_resources_total),
+		nonDeletedContracts: make(map[uint32][]uint64),
 		db:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {

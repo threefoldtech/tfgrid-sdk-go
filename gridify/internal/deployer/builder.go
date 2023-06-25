@@ -45,7 +45,7 @@ func buildNodeFilter(vmSpec VMSpec) types.NodeFilter {
 	domain := true
 
 	filter := types.NodeFilter{
-		FarmIDs: []uint64{1},
+		FarmIDs: []uint32{1},
 		Status:  &nodeStatus,
 		FreeMRU: &freeMRU,
 		FreeSRU: &freeSRU,

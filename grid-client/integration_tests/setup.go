@@ -28,7 +28,7 @@ var nodeFilter = types.NodeFilter{
 	FreeSRU: convertGBToBytes(10),
 	FreeHRU: convertGBToBytes(2),
 	FreeMRU: convertGBToBytes(2),
-	FarmIDs: []uint64{1},
+	FarmIDs: []uint32{1},
 	IPv6:    &trueVal,
 }
 

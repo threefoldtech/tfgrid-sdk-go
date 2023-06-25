@@ -13,23 +13,24 @@ func nodesFilterValues() (types.NodeFilter, types.Limit, string) {
 	Freefarm := "Freefarm"
 	trueVal := true
 	falseVal := false
-	ints := []uint64{0, 1, 2, 3, 4, 5, 6}
+	uints32 := []uint32{0, 1, 2, 3, 4, 5, 6}
+	uints64 := []uint64{0, 1, 2, 3, 4, 5, 6}
 	f := types.NodeFilter{
 		Status:       &Up,
-		FreeMRU:      &ints[1],
-		FreeHRU:      &ints[2],
-		FreeSRU:      &ints[3],
+		FreeMRU:      &uints64[1],
+		FreeHRU:      &uints64[2],
+		FreeSRU:      &uints64[3],
 		Country:      &Egypt,
 		City:         &Mansoura,
 		FarmName:     &Freefarm,
-		FarmIDs:      []uint64{1, 2},
-		FreeIPs:      &ints[4],
+		FarmIDs:      []uint32{1, 2},
+		FreeIPs:      &uints64[4],
 		IPv4:         &trueVal,
 		IPv6:         &falseVal,
 		Domain:       &trueVal,
 		Rentable:     &falseVal,
-		RentedBy:     &ints[5],
-		AvailableFor: &ints[6],
+		RentedBy:     &uints32[5],
+		AvailableFor: &uints32[6],
 	}
 	l := types.Limit{
 		Page: 12,
@@ -44,14 +45,15 @@ func farmsFilterValues() (types.FarmFilter, types.Limit, string) {
 	FreeFar := "freefar"
 	DYI := "DYI"
 	Dedicated := false
-	ints := []uint64{0, 1, 2, 3, 4, 5, 6}
+	uints32 := []uint32{0, 1, 2, 3, 4, 5, 6}
+	uints64 := []uint64{0, 1, 2, 3, 4, 5, 6}
 	f := types.FarmFilter{
-		FreeIPs:           &ints[1],
-		TotalIPs:          &ints[2],
+		FreeIPs:           &uints64[1],
+		TotalIPs:          &uints64[2],
 		StellarAddress:    &StellarAddress,
-		PricingPolicyID:   &ints[3],
-		FarmID:            &ints[5],
-		TwinID:            &ints[6],
+		PricingPolicyID:   &uints32[3],
+		FarmID:            &uints32[5],
+		TwinID:            &uints32[6],
 		Name:              &FreeFarm,
 		NameContains:      &FreeFar,
 		CertificationType: &DYI,

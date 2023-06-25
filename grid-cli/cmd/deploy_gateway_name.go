@@ -26,7 +26,7 @@ var deployGatewayNameCmd = &cobra.Command{
 			TLSPassthrough: tls,
 			SolutionType:   name,
 		}
-		farm, err := cmd.Flags().GetUint64("farm")
+		farm, err := cmd.Flags().GetUint32("farm")
 		if err != nil {
 			return err
 		}

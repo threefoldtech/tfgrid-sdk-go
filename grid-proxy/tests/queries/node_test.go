@@ -18,7 +18,7 @@ type NodesAggregate struct {
 	countries []string
 	cities    []string
 	farmNames []string
-	farmIDs   []uint64
+	farmIDs   []uint32
 	freeMRUs  []uint64
 	freeSRUs  []uint64
 	freeHRUs  []uint64
@@ -27,8 +27,8 @@ type NodesAggregate struct {
 	maxFreeSRU  uint64
 	maxFreeHRU  uint64
 	maxFreeIPs  uint64
-	nodeRenters []uint64
-	twins       []uint64
+	nodeRenters []uint32
+	twins       []uint32
 
 	totalCRUs   []uint64
 	maxTotalCRU uint64
@@ -157,7 +157,7 @@ func TestNode(t *testing.T) {
 		assert.NoError(t, err)
 
 		for _, node := range nodes {
-			assert.Equal(t, node.NumGPU, 1, "has_gpu filter did not work")
+			assert.Equal(t, node.NumGPU, uint8(1), "has_gpu filter did not work")
 		}
 	})
 }
@@ -175,11 +175,13 @@ func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClie
 	f := proxytypes.NodeFilter{
 		Status: &STATUS_DOWN,
 	}
+
 	l := proxytypes.Limit{
 		Size:     5,
 		Page:     1,
 		RetCount: true,
 	}
+
 	for ; ; l.Page++ {
 		localNodes, localCount, err := localClient.Nodes(f, l)
 		assert.NoError(t, err)
@@ -304,7 +306,7 @@ func randomNodeFilter(agg *NodesAggregate) proxytypes.NodeFilter {
 	if flip(.05) {
 		for _, id := range agg.farmIDs {
 			if flip(float32(min(3, uint64(len(agg.farmIDs)))) / float32(len(agg.farmIDs))) {
-				f.FarmIDs = append(f.FarmIDs, id)
+				f.FarmIDs = append(f.FarmIDs, uint32(id))
 			}
 		}
 	}
@@ -334,11 +336,11 @@ func randomNodeFilter(agg *NodesAggregate) proxytypes.NodeFilter {
 		f.Domain = &v
 	}
 	if flip(.5) {
-		v := uint64(rand.Intn(1100)) // 1000 is the total nodes + 100 for non-existed cases
+		v := uint32(rand.Intn(1100)) // 1000 is the total nodes + 100 for non-existed cases
 		f.NodeID = &v
 	}
 	if flip(.5) {
-		v := uint64(rand.Intn(3500))
+		v := uint32(rand.Intn(3500))
 		f.TwinID = &v
 	}
 	if flip(.05) {
@@ -400,7 +402,7 @@ func calcNodesAggregates(data *DBData) (res NodesAggregate) {
 		if contract.state == "Deleted" {
 			continue
 		}
-		res.nodeRenters = append(res.nodeRenters, contract.twin_id)
+		res.nodeRenters = append(res.nodeRenters, uint32(contract.twin_id))
 	}
 	for _, twin := range data.twins {
 		res.twins = append(res.twins, twin.twin_id)
@@ -416,7 +418,7 @@ func calcNodesAggregates(data *DBData) (res NodesAggregate) {
 		res.farmIDs = append(res.farmIDs, farm.farm_id)
 	}
 
-	farmIPs := make(map[uint64]uint64)
+	farmIPs := make(map[uint32]uint64)
 	for _, publicIP := range data.publicIPs {
 		if publicIP.contract_id == 0 {
 			farmIPs[data.farmIDMap[publicIP.farm_id]] += 1

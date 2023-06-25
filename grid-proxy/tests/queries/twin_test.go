@@ -15,11 +15,11 @@ import (
 )
 
 type TwinsAggregate struct {
-	twinIDs    []uint64
+	twinIDs    []uint32
 	accountIDs []string
 	relays     []string
 	publicKeys []string
-	twins      map[uint64]twin
+	twins      map[uint32]twin
 }
 
 const (
@@ -144,7 +144,7 @@ func validateTwinsResults(local, remote []proxytypes.Twin) error {
 
 func calcTwinsAggregates(data *DBData) (res TwinsAggregate) {
 	for _, twin := range data.twins {
-		res.twinIDs = append(res.twinIDs, twin.twin_id)
+		res.twinIDs = append(res.twinIDs, uint32(twin.twin_id))
 		res.accountIDs = append(res.accountIDs, twin.account_id)
 		res.relays = append(res.relays, twin.relay)
 		res.publicKeys = append(res.publicKeys, twin.public_key)

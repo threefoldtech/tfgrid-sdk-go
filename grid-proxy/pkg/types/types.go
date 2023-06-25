@@ -9,27 +9,27 @@ import (
 
 // ContractBilling is contract billing info
 type ContractBilling struct {
-	AmountBilled     uint64 `json:"amountBilled"`
-	DiscountReceived string `json:"discountReceived"`
+	AmountBilled     uint64 `json:"amount_billed"`
+	DiscountReceived string `json:"discount_received"`
 	Timestamp        uint64 `json:"timestamp"`
 }
 
 // Counters contains aggregate info about the grid
 type Counters struct {
-	Nodes             int64            `json:"nodes"`
-	Farms             int64            `json:"farms"`
-	Countries         int64            `json:"countries"`
-	TotalCRU          int64            `json:"totalCru"`
-	TotalSRU          int64            `json:"totalSru"`
-	TotalMRU          int64            `json:"totalMru"`
-	TotalHRU          int64            `json:"totalHru"`
-	PublicIPs         int64            `json:"publicIps"`
-	AccessNodes       int64            `json:"accessNodes"`
-	Gateways          int64            `json:"gateways"`
-	Twins             int64            `json:"twins"`
-	Contracts         int64            `json:"contracts"`
-	NodesDistribution map[string]int64 `json:"nodesDistribution" gorm:"-:all"`
-	GPUs              int64            `json:"gpus"`
+	Nodes             uint64            `json:"nodes"`
+	Farms             uint64            `json:"farms"`
+	Countries         uint64            `json:"countries"`
+	TotalCRU          uint64            `json:"total_cru"`
+	TotalSRU          uint64            `json:"total_sru"`
+	TotalMRU          uint64            `json:"total_mru"`
+	TotalHRU          uint64            `json:"total_hru"`
+	PublicIPs         uint64            `json:"public_ips"`
+	AccessNodes       uint64            `json:"access_nodes"`
+	Gateways          uint64            `json:"gateways"`
+	Twins             uint64            `json:"twins"`
+	Contracts         uint64            `json:"contracts"`
+	NodesDistribution map[string]uint64 `json:"nodes_distribution" gorm:"-:all"`
+	GPUs              uint64            `json:"gpus"`
 }
 
 // PublicConfig node public config
@@ -50,105 +50,105 @@ type Capacity struct {
 }
 type Farm struct {
 	Name              string     `json:"name"`
-	FarmID            int        `json:"farmId"`
-	TwinID            int        `json:"twinId"`
-	PricingPolicyID   int        `json:"pricingPolicyId"`
-	CertificationType string     `json:"certificationType"`
-	StellarAddress    string     `json:"stellarAddress"`
+	FarmID            uint32     `json:"farm_id"`
+	TwinID            uint32     `json:"twin_id"`
+	PricingPolicyID   uint32     `json:"pricing_policy_id"`
+	CertificationType string     `json:"certification_type"`
+	StellarAddress    string     `json:"stellar_address"`
 	Dedicated         bool       `json:"dedicated"`
-	PublicIps         []PublicIP `json:"publicIps"`
+	PublicIps         []PublicIP `json:"public_ips"`
 }
 
 // PublicIP info about public ip in the farm
 type PublicIP struct {
 	ID         string `json:"id"`
 	IP         string `json:"ip"`
-	FarmID     string `json:"farmId"`
-	ContractID int    `json:"contractId"`
+	FarmID     string `json:"farm_id"`
+	ContractID uint64 `json:"contract_id"`
 	Gateway    string `json:"gateway"`
 }
 
 // StatsFilter statistics filters
 type StatsFilter struct {
-	Status *string
+	Status *string `json:"status"`
 }
 
 // Limit used for pagination
 type Limit struct {
-	Size      uint64
-	Page      uint64
-	RetCount  bool
-	Randomize bool
+	Size      uint64 `json:"size"`
+	Page      uint64 `json:"page"`
+	RetCount  bool   `json:"ret_count"`
+	Randomize bool   `json:"randomize"`
 }
 
 // NodeFilter node filters
 type NodeFilter struct {
-	Status            *string
-	FreeMRU           *uint64
-	FreeHRU           *uint64
-	FreeSRU           *uint64
-	TotalMRU          *uint64
-	TotalHRU          *uint64
-	TotalSRU          *uint64
-	TotalCRU          *uint64
-	Country           *string
-	CountryContains   *string
-	City              *string
-	CityContains      *string
-	FarmName          *string
-	FarmNameContains  *string
-	FarmIDs           []uint64
-	FreeIPs           *uint64
-	IPv4              *bool
-	IPv6              *bool
-	Domain            *bool
-	Dedicated         *bool
-	Rentable          *bool
-	Rented            *bool
-	RentedBy          *uint64
-	AvailableFor      *uint64
-	NodeID            *uint64
-	TwinID            *uint64
-	CertificationType *string
-	HasGPU            *bool
+	Status            *string  `json:"status"`
+	FreeMRU           *uint64  `json:"free_mru"`
+	FreeHRU           *uint64  `json:"free_hru"`
+	FreeSRU           *uint64  `json:"free_sru"`
+	TotalMRU          *uint64  `json:"total_mru"`
+	TotalHRU          *uint64  `json:"total_hru"`
+	TotalSRU          *uint64  `json:"total_sru"`
+	TotalCRU          *uint64  `json:"total_cru"`
+	Country           *string  `json:"country"`
+	CountryContains   *string  `json:"country_contains"`
+	City              *string  `json:"city"`
+	CityContains      *string  `json:"city_contains"`
+	FarmName          *string  `json:"farm_name"`
+	FarmNameContains  *string  `json:"farm_name_contains"`
+	FarmIDs           []uint32 `json:"farm_ids"`
+	FreeIPs           *uint64  `json:"free_ips"`
+	IPv4              *bool    `json:"ipv4"`
+	IPv6              *bool    `json:"ipv6"`
+	Domain            *bool    `json:"domain"`
+	Dedicated         *bool    `json:"dedicated"`
+	Rentable          *bool    `json:"rentable"`
+	Rented            *bool    `json:"rented"`
+	RentedBy          *uint32  `json:"rented_by"`
+	AvailableFor      *uint32  `json:"available_for"`
+	NodeID            *uint32  `json:"node_id"`
+	TwinID            *uint32  `json:"twin_id"`
+	CertificationType *string  `json:"certification_type"`
+	HasGPU            *bool    `json:"has_gpu"`
 }
 
 // FarmFilter farm filters
 type FarmFilter struct {
-	FreeIPs           *uint64
-	TotalIPs          *uint64
-	StellarAddress    *string
-	PricingPolicyID   *uint64
-	FarmID            *uint64
-	TwinID            *uint64
-	Name              *string
-	NameContains      *string
-	CertificationType *string
-	Dedicated         *bool
-	NodeFreeMRU       *uint64
-	NodeFreeHRU       *uint64
-	NodeFreeSRU       *uint64
+	FreeIPs           *uint64 `json:"free_ips"`
+	TotalIPs          *uint64 `json:"total_ips"`
+	StellarAddress    *string `json:"stellar_address"`
+	PricingPolicyID   *uint32 `json:"pricing_policy_id"`
+	FarmID            *uint32 `json:"farm_id"`
+	TwinID            *uint32 `json:"twin_id"`
+	Name              *string `json:"name"`
+	NameContains      *string `json:"name_contains"`
+	CertificationType *string `json:"certification_type"`
+	Dedicated         *bool   `json:"dedicated"`
+	NodeFreeMRU       *uint64 `json:"node_free_mru"`
+	NodeFreeHRU       *uint64 `json:"node_free_hru"`
+	NodeFreeSRU       *uint64 `json:"node_free_sru"`
 }
 
 // TwinFilter twin filters
 type TwinFilter struct {
-	TwinID    *uint64
-	AccountID *string
-	Relay     *string
-	PublicKey *string
+	TwinID    *uint32 `json:"twin_id"`
+	AccountID *string `json:"account_id"`
+	Relay     *string `json:"relay"`
+	PublicKey *string `json:"public_key"`
 }
 
 // ContractFilter contract filters
 type ContractFilter struct {
-	ContractID        *uint64
-	TwinID            *uint64
-	NodeID            *uint64
-	Type              *string
-	State             *string
-	Name              *string
-	NumberOfPublicIps *uint64
-	DeploymentData    *string
-	DeploymentHash    *string
+	ContractID        *uint64 `json:"contract_id"`
+	TwinID            *uint32 `json:"twin_id"`
+	NodeID            *uint32 `json:"node_id"`
+	Type              *string `json:"type"`
+	State             *string `json:"state"`
+	Name              *string `json:"name"`
+	NumberOfPublicIps *uint64 `json:"number_of_public_ips"`
+	DeploymentData    *string `json:"deployment_data"`
+	DeploymentHash    *string `json:"deployment_hash"`
 }
 
 type Location struct {
@@ -167,29 +167,29 @@ type NodePower struct {
 // Node is a struct holding the data for a Node for the nodes view
 type Node struct {
 	ID                string       `json:"id"`
-	NodeID            int          `json:"nodeId"`
-	FarmID            int          `json:"farmId"`
-	TwinID            int          `json:"twinId"`
+	NodeID            uint32       `json:"node_id"`
+	FarmID            uint32       `json:"farm_id"`
+	TwinID            uint32       `json:"twin_id"`
 	Country           string       `json:"country"`
-	GridVersion       int          `json:"gridVersion"`
+	GridVersion       uint32       `json:"grid_version"`
 	City              string       `json:"city"`
-	Uptime            int64        `json:"uptime"`
-	Created           int64        `json:"created"`
-	FarmingPolicyID   int          `json:"farmingPolicyId"`
-	UpdatedAt         int64        `json:"updatedAt"`
+	Uptime            uint64       `json:"uptime"`
+	Created           uint64       `json:"created"`
+	FarmingPolicyID   uint32       `json:"farmin_policy_id"`
+	UpdatedAt         uint64       `json:"updated_at"`
 	TotalResources    Capacity     `json:"total_resources"`
 	UsedResources     Capacity     `json:"used_resources"`
 	Location          Location     `json:"location"`
-	PublicConfig      PublicConfig `json:"publicConfig"`
+	PublicConfig      PublicConfig `json:"public_config"`
 	Status            string       `json:"status"` // added node status field for up or down
-	CertificationType string       `json:"certificationType"`
+	CertificationType string       `json:"certification_type"`
 	Dedicated         bool         `json:"dedicated"`
-	RentContractID    uint         `json:"rentContractId"`
-	RentedByTwinID    uint         `json:"rentedByTwinId"`
-	SerialNumber      string       `json:"serialNumber"`
+	RentContractID    uint64       `json:"rent_contract_id"`
+	RentedByTwinID    uint32       `json:"rented_by_twin_id"`
+	SerialNumber      string       `json:"serial_number"`
 	Power             NodePower    `json:"power"`
-	NumGPU            int          `json:"num_gpu"`
-	ExtraFee          uint64       `json:"extraFee"`
+	NumGPU            uint8        `json:"num_gpu"`
+	ExtraFee          uint64       `json:"extra_fee"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -201,42 +201,42 @@ type CapacityResult struct {
 // Node to be compatible with old view
 type NodeWithNestedCapacity struct {
 	ID                string         `json:"id"`
-	NodeID            int            `json:"nodeId"`
-	FarmID            int            `json:"farmId"`
-	TwinID            int            `json:"twinId"`
+	NodeID            uint32         `json:"node_id"`
+	FarmID            uint32         `json:"farm_id"`
+	TwinID            uint32         `json:"twin_id"`
 	Country           string         `json:"country"`
-	GridVersion       int            `json:"gridVersion"`
+	GridVersion       uint32         `json:"grid_version"`
 	City              string         `json:"city"`
-	Uptime            int64          `json:"uptime"`
-	Created           int64          `json:"created"`
-	FarmingPolicyID   int            `json:"farmingPolicyId"`
-	UpdatedAt         int64          `json:"updatedAt"`
+	Uptime            uint64         `json:"uptime"`
+	Created           uint64         `json:"created"`
+	FarmingPolicyID   uint32         `json:"farmin_policy_id"`
+	UpdatedAt         uint64         `json:"updated_at"`
 	Capacity          CapacityResult `json:"capacity"`
 	Location          Location       `json:"location"`
-	PublicConfig      PublicConfig   `json:"publicConfig"`
+	PublicConfig      PublicConfig   `json:"public_config"`
 	Status            string         `json:"status"` // added node status field for up or down
-	CertificationType string         `json:"certificationType"`
+	CertificationType string         `json:"certification_type"`
 	Dedicated         bool           `json:"dedicated"`
-	RentContractID    uint           `json:"rentContractId"`
-	RentedByTwinID    uint           `json:"rentedByTwinId"`
-	SerialNumber      string         `json:"serialNumber"`
+	RentContractID    uint64         `json:"rent_contract_id"`
+	RentedByTwinID    uint32         `json:"rented_by_twin_id"`
+	SerialNumber      string         `json:"serial_number"`
 	Power             NodePower      `json:"power"`
-	NumGPU            int            `json:"num_gpu"`
-	ExtraFee          uint64         `json:"extraFee"`
+	NumGPU            uint8          `json:"num_gpu"`
+	ExtraFee          uint64         `json:"extra_fee"`
 }
 
 type Twin struct {
-	TwinID    uint   `json:"twinId"`
-	AccountID string `json:"accountId"`
+	TwinID    uint32 `json:"twin_id"`
+	AccountID string `json:"account_id"`
 	Relay     string `json:"relay"`
-	PublicKey string `json:"publicKey"`
+	PublicKey string `json:"public_key"`
 }
 
 type NodeContractDetails struct {
-	NodeID            uint   `json:"nodeId"`
+	NodeID            uint32 `json:"node_id"`
 	DeploymentData    string `json:"deployment_data"`
 	DeploymentHash    string `json:"deployment_hash"`
-	NumberOfPublicIps uint   `json:"number_of_public_ips"`
+	NumberOfPublicIps uint64 `json:"number_of_public_ips"`
 }
 
 type NameContractDetails struct {
@@ -244,14 +244,14 @@ type NameContractDetails struct {
 }
 
 type RentContractDetails struct {
-	NodeID uint `json:"nodeId"`
+	NodeID uint32 `json:"node_id"`
 }
 
 type Contract struct {
-	ContractID uint              `json:"contractId"`
-	TwinID     uint              `json:"twinId"`
+	ContractID uint64            `json:"contract_id"`
+	TwinID     uint32            `json:"twin_id"`
 	State      string            `json:"state"`
-	CreatedAt  uint              `json:"created_at"`
+	CreatedAt  uint64            `json:"created_at"`
 	Type       string            `json:"type"`
 	Details    interface{}       `json:"details"`
 	Billing    []ContractBilling `json:"billing"`
@@ -262,16 +262,16 @@ type Version struct {
 }
 
 type NodeStatisticsResources struct {
-	CRU   int `json:"cru"`
-	HRU   int `json:"hru"`
-	IPV4U int `json:"ipv4u"`
-	MRU   int `json:"mru"`
-	SRU   int `json:"sru"`
+	CRU   uint64 `json:"cru"`
+	HRU   uint64 `json:"hru"`
+	IPV4U uint64 `json:"ipv4u"`
+	MRU   uint64 `json:"mru"`
+	SRU   uint64 `json:"sru"`
 }
 
 type NodeStatisticsUsers struct {
-	Deployments int `json:"deployments"`
-	Workloads   int `json:"workloads"`
+	Deployments uint64 `json:"deployments"`
+	Workloads   uint64 `json:"workloads"`
 }
 
 type NodeStatistics struct {

@@ -37,7 +37,7 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		masterFarm, err := cmd.Flags().GetUint64("master-farm")
+		masterFarm, err := cmd.Flags().GetUint32("master-farm")
 		if err != nil {
 			return err
 		}
@@ -85,7 +85,7 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		workersFarm, err := cmd.Flags().GetUint64("workers-farm")
+		workersFarm, err := cmd.Flags().GetUint32("workers-farm")
 		if err != nil {
 			return err
 		}
