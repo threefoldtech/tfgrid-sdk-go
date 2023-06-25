@@ -779,7 +779,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/types.NodeWithNestedCapacity"
+                            "$ref": "#/definitions/types.NodeStatistics"
                         }
                     },
                     "400": {
@@ -1055,6 +1055,9 @@
                 "gateways": {
                     "type": "integer"
                 },
+                "gpus": {
+                    "type": "integer"
+                },
                 "nodes": {
                     "type": "integer"
                 },
@@ -1163,9 +1166,6 @@
                 "gridVersion": {
                     "type": "integer"
                 },
-                "hasGpu": {
-                    "type": "boolean"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -1173,6 +1173,9 @@
                     "$ref": "#/definitions/types.Location"
                 },
                 "nodeId": {
+                    "type": "integer"
+                },
+                "num_gpu": {
                     "type": "integer"
                 },
                 "power": {
@@ -1236,6 +1239,54 @@
                 }
             }
         },
+        "types.NodeStatistics": {
+            "type": "object",
+            "properties": {
+                "system": {
+                    "$ref": "#/definitions/types.NodeStatisticsResources"
+                },
+                "total": {
+                    "$ref": "#/definitions/types.NodeStatisticsResources"
+                },
+                "used": {
+                    "$ref": "#/definitions/types.NodeStatisticsResources"
+                },
+                "users": {
+                    "$ref": "#/definitions/types.NodeStatisticsUsers"
+                }
+            }
+        },
+        "types.NodeStatisticsResources": {
+            "type": "object",
+            "properties": {
+                "cru": {
+                    "type": "integer"
+                },
+                "hru": {
+                    "type": "integer"
+                },
+                "ipv4u": {
+                    "type": "integer"
+                },
+                "mru": {
+                    "type": "integer"
+                },
+                "sru": {
+                    "type": "integer"
+                }
+            }
+        },
+        "types.NodeStatisticsUsers": {
+            "type": "object",
+            "properties": {
+                "deployments": {
+                    "type": "integer"
+                },
+                "workloads": {
+                    "type": "integer"
+                }
+            }
+        },
         "types.NodeWithNestedCapacity": {
             "type": "object",
             "properties": {
@@ -1269,9 +1320,6 @@
                 "gridVersion": {
                     "type": "integer"
                 },
-                "hasGpu": {
-                    "type": "boolean"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -1279,6 +1327,9 @@
                     "$ref": "#/definitions/types.Location"
                 },
                 "nodeId": {
+                    "type": "integer"
+                },
+                "num_gpu": {
                     "type": "integer"
                 },
                 "power": {
