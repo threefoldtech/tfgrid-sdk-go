@@ -205,8 +205,13 @@
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "NotCertified",
+                            "Silver",
+                            "Gold"
+                        ],
                         "type": "string",
-                        "description": "certificate type Diy or Certified",
+                        "description": "certificate type NotCertified, Silver or Gold",
                         "name": "certification_type",
                         "in": "query"
                     },
@@ -401,8 +406,13 @@
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "NotCertified",
+                            "Silver",
+                            "Gold"
+                        ],
                         "type": "string",
-                        "description": "certificate type Diy or Certified",
+                        "description": "certificate type NotCertified, Silver or Gold",
                         "name": "certification_type",
                         "in": "query"
                     }
@@ -616,8 +626,13 @@
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "NotCertified",
+                            "Silver",
+                            "Gold"
+                        ],
                         "type": "string",
-                        "description": "certificate type Diy or Certified",
+                        "description": "certificate type NotCertified, Silver or Gold",
                         "name": "certification_type",
                         "in": "query"
                     },
@@ -1055,6 +1070,9 @@
                 "gateways": {
                     "type": "integer"
                 },
+                "gpus": {
+                    "type": "integer"
+                },
                 "nodes": {
                     "type": "integer"
                 },
@@ -1163,9 +1181,6 @@
                 "gridVersion": {
                     "type": "integer"
                 },
-                "hasGpu": {
-                    "type": "boolean"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -1173,6 +1188,9 @@
                     "$ref": "#/definitions/types.Location"
                 },
                 "nodeId": {
+                    "type": "integer"
+                },
+                "num_gpu": {
                     "type": "integer"
                 },
                 "power": {
@@ -1269,9 +1287,6 @@
                 "gridVersion": {
                     "type": "integer"
                 },
-                "hasGpu": {
-                    "type": "boolean"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -1279,6 +1294,9 @@
                     "$ref": "#/definitions/types.Location"
                 },
                 "nodeId": {
+                    "type": "integer"
+                },
+                "num_gpu": {
                     "type": "integer"
                 },
                 "power": {

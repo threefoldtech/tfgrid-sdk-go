@@ -213,8 +213,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "NotCertified",
+                            "Silver",
+                            "Gold"
+                        ],
                         "type": "string",
-                        "description": "certificate type Diy or Certified",
+                        "description": "certificate type NotCertified, Silver or Gold",
                         "name": "certification_type",
                         "in": "query"
                     },
@@ -409,8 +414,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "NotCertified",
+                            "Silver",
+                            "Gold"
+                        ],
                         "type": "string",
-                        "description": "certificate type Diy or Certified",
+                        "description": "certificate type NotCertified, Silver or Gold",
                         "name": "certification_type",
                         "in": "query"
                     }
@@ -624,8 +634,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "NotCertified",
+                            "Silver",
+                            "Gold"
+                        ],
                         "type": "string",
-                        "description": "certificate type Diy or Certified",
+                        "description": "certificate type NotCertified, Silver or Gold",
                         "name": "certification_type",
                         "in": "query"
                     },
@@ -1063,6 +1078,9 @@ const docTemplate = `{
                 "gateways": {
                     "type": "integer"
                 },
+                "gpus": {
+                    "type": "integer"
+                },
                 "nodes": {
                     "type": "integer"
                 },
@@ -1171,9 +1189,6 @@ const docTemplate = `{
                 "gridVersion": {
                     "type": "integer"
                 },
-                "hasGpu": {
-                    "type": "boolean"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -1181,6 +1196,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/types.Location"
                 },
                 "nodeId": {
+                    "type": "integer"
+                },
+                "num_gpu": {
                     "type": "integer"
                 },
                 "power": {
@@ -1277,9 +1295,6 @@ const docTemplate = `{
                 "gridVersion": {
                     "type": "integer"
                 },
-                "hasGpu": {
-                    "type": "boolean"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -1287,6 +1302,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/types.Location"
                 },
                 "nodeId": {
+                    "type": "integer"
+                },
+                "num_gpu": {
                     "type": "integer"
                 },
                 "power": {
