@@ -82,7 +82,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -459,8 +458,15 @@ func (n *NodeClient) Pools(ctx context.Context) (pools []PoolMetrics, err error)
 	return
 }
 
+type GPU struct {
+	ID       string `json:"id"`
+	Vendor   string `json:"vendor"`
+	Device   string `json:"device"`
+	Contract uint64 `json:"contract"`
+}
+
 // GPUs returns a list of gpus
-func (n *NodeClient) GPUs(ctx context.Context) (gpus []client.GPU, err error) {
+func (n *NodeClient) GPUs(ctx context.Context) (gpus []GPU, err error) {
 	const cmd = "zos.gpu.list"
 	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &gpus)
 	return

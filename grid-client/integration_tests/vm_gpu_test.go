@@ -9,14 +9,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	node "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func ConvertGPUsToStr(gpus []client.GPU) (zosGPUs []zos.GPU) {
+func ConvertGPUsToStr(gpus []node.GPU) (zosGPUs []zos.GPU) {
 	for _, g := range gpus {
 		zosGPUs = append(zosGPUs, zos.GPU(g.ID))
 	}
