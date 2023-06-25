@@ -1,17 +1,16 @@
-package main
+package test
 
 import (
-	"database/sql"
-	"fmt"
 	"math/rand"
 	"reflect"
 	"sort"
 	"testing"
 
-	"github.com/pkg/errors"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
-	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/stretchr/testify/require"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/mock_client"
 )
 
 type ContractsAggregate struct {
@@ -32,84 +31,92 @@ const (
 )
 
 func TestContracts(t *testing.T) {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB)
-	db, err := sql.Open("postgres", psqlInfo)
-	if err != nil {
-		panic(errors.Wrap(err, "failed to open db"))
-	}
-	defer db.Close()
-
-	data, err := load(db)
-	if err != nil {
-		panic(err)
-	}
-	proxyClient := proxyclient.NewClient(ENDPOINT)
-	localClient := NewGridProxyClient(data)
 
 	t.Run("contracts pagination test", func(t *testing.T) {
 		node := "node"
 		f := proxytypes.ContractFilter{
 			Type: &node,
 		}
+
 		l := proxytypes.Limit{
 			Size:     5,
 			Page:     1,
 			RetCount: true,
 		}
+
 		for {
-			localContracts, localCount, err := localClient.Contracts(f, l)
+			localContracts, localCount, err := mockClient.Contracts(f, l)
 			assert.NoError(t, err)
 
 			remoteContracts, remoteCount, err := proxyClient.Contracts(f, l)
 			assert.NoError(t, err)
 
-			assert.Equal(t, localCount, remoteCount)
+			require.Equal(t, localCount, remoteCount, serializeFilter(f))
+			require.Equal(t, len(localContracts), len(remoteContracts), serializeFilter(f))
 
-			err = validateContractsResults(localContracts, remoteContracts)
-			assert.NoError(t, err, serializeContractsFilter(f))
+			require.True(t, reflect.DeepEqual(localContracts, remoteContracts), serializeFilter(f), cmp.Diff(localContracts, remoteContracts))
 
 			if l.Page*l.Size >= uint64(localCount) {
 				break
 			}
+
 			l.Page++
 		}
 	})
 
 	t.Run("contracts stress test", func(t *testing.T) {
-		agg := calcContractsAggregates(&data)
+		agg := calcContractsAggregates(&dbData)
 		for i := 0; i < CONTRACTS_TESTS; i++ {
 			l := proxytypes.Limit{
 				Size:     999999999999,
 				Page:     1,
-				RetCount: false,
+				RetCount: true,
 			}
+
 			f := randomContractsFilter(&agg)
 
-			localContracts, _, err := localClient.Contracts(f, l)
-			assert.NoError(t, err)
-			remoteContracts, _, err := proxyClient.Contracts(f, l)
+			localContracts, localCount, err := mockClient.Contracts(f, l)
 			assert.NoError(t, err)
 
-			err = validateContractsResults(localContracts, remoteContracts)
-			assert.NoError(t, err, serializeContractsFilter(f))
+			remoteContracts, remoteCount, err := proxyClient.Contracts(f, l)
+			assert.NoError(t, err)
 
+			require.Equal(t, localCount, remoteCount, serializeFilter(f))
+			require.Equal(t, len(localContracts), len(remoteContracts), serializeFilter(f))
+
+			require.True(t, reflect.DeepEqual(localContracts, remoteContracts), serializeFilter(f), cmp.Diff(localContracts, remoteContracts))
 		}
 	})
 }
 
-func calcContractsAggregates(data *DBData) (res ContractsAggregate) {
+func calcContractsAggregates(data *mock.DBData) (res ContractsAggregate) {
 	types := make(map[string]struct{})
-	for _, contract := range data.nodeContracts {
-		res.contractIDs = append(res.contractIDs, contract.contract_id)
-		res.maxNumberOfPublicIPs = max(res.maxNumberOfPublicIPs, contract.number_of_public_i_ps)
-		res.DeploymentDatas = append(res.DeploymentDatas, contract.deployment_data)
-		res.DeploymentHashes = append(res.DeploymentHashes, contract.deployment_hash)
-		res.NodeIDs = append(res.NodeIDs, uint32(contract.node_id))
-		res.States = append(res.States, contract.state)
-		res.TwinIDs = append(res.TwinIDs, uint32(contract.twin_id))
+
+	for _, contract := range data.NodeContracts {
+		res.contractIDs = append(res.contractIDs, contract.ContractID)
+		res.maxNumberOfPublicIPs = max(res.maxNumberOfPublicIPs, contract.NumberOfPublicIPs)
+		res.DeploymentDatas = append(res.DeploymentDatas, contract.DeploymentData)
+		res.DeploymentHashes = append(res.DeploymentHashes, contract.DeploymentHash)
+		res.NodeIDs = append(res.NodeIDs, contract.NodeID)
+		res.States = append(res.States, contract.State)
+		res.TwinIDs = append(res.TwinIDs, contract.TwinID)
 		types["node"] = struct{}{}
+	}
+
+	for _, contract := range data.NameContracts {
+		res.contractIDs = append(res.contractIDs, contract.ContractID)
+		res.States = append(res.States, contract.State)
+		res.TwinIDs = append(res.TwinIDs, contract.TwinID)
+		res.Names = append(res.Names, contract.Name)
+		types["name"] = struct{}{}
+	}
+
+	for _, contract := range data.RentContracts {
+		res.contractIDs = append(res.contractIDs, contract.ContractID)
+		res.NodeIDs = append(res.NodeIDs, contract.NodeID)
+		res.States = append(res.States, contract.State)
+		res.TwinIDs = append(res.TwinIDs, contract.TwinID)
+		types["rent"] = struct{}{}
 	}
 
 	for typ := range types {
@@ -144,137 +151,96 @@ func calcContractsAggregates(data *DBData) (res ContractsAggregate) {
 
 func randomContractsFilter(agg *ContractsAggregate) proxytypes.ContractFilter {
 	var f proxytypes.ContractFilter
-	if flip(.05) {
-		c := agg.contractIDs[rand.Intn(len(agg.contractIDs))]
-		f.ContractID = &c
-	}
-	if flip(.25) {
-		c := agg.TwinIDs[rand.Intn(len(agg.TwinIDs))]
-		f.TwinID = &c
-	}
-	if flip(.25) {
-		c := agg.NodeIDs[rand.Intn(len(agg.NodeIDs))]
-		f.NodeID = &c
-	}
-	if flip(.5) {
-		c := agg.Types[rand.Intn(len(agg.Types))]
-		f.Type = &c
-	}
-	if flip(.5) {
-		c := agg.States[rand.Intn(len(agg.States))]
-		f.State = &c
-	}
-	if flip(.25) && len(agg.Names) != 0 {
-		c := agg.Names[rand.Intn(len(agg.Names))]
-		f.Name = &c
-	}
-	if flip(.25) {
-		f.NumberOfPublicIps = rndref(0, agg.maxNumberOfPublicIPs)
-	}
-	if flip(.25) && len(agg.DeploymentDatas) != 0 {
-		c := agg.DeploymentDatas[rand.Intn(len(agg.DeploymentDatas))]
-		f.DeploymentData = &c
-	}
-	if flip(.25) && len(agg.DeploymentHashes) != 0 {
-		c := agg.DeploymentHashes[rand.Intn(len(agg.DeploymentHashes))]
-		f.DeploymentHash = &c
-	}
+
+	f.ContractID = contractRandContractID(agg)
+	f.TwinID = contractRandTwinID(agg)
+	f.NodeID = contractRandNodeID(agg)
+	f.Type = contractRandContractType(agg)
+	f.State = contractRandContractState(agg)
+	f.Name = contractRandContractName(agg)
+	f.NumberOfPublicIps = contractRandNumberOfPublicIPs(agg)
+	f.DeploymentData = contractRandDeploymentData(agg)
+	f.DeploymentHash = contractRandDeploymentHash(agg)
+
 	return f
 }
 
-func validateContractsResults(local, remote []proxytypes.Contract) error {
-	iter := local
-	if len(remote) < len(local) {
-		iter = remote
-	}
-	for i := range iter {
-		localBillings := local[i].Billing
-		remoteBillings := remote[i].Billing
-		local[i].Billing = nil
-		remote[i].Billing = nil
-		if !reflect.DeepEqual(local[i], remote[i]) {
-			local[i].Billing = localBillings
-			remote[i].Billing = remoteBillings
-			return fmt.Errorf("contract %d mismatch: local: %+v, remote: %+v", i, local[i], remote[i])
-		}
-		if err := validateContractBillings(localBillings, remoteBillings); err != nil {
-			panic(err)
-		}
-		local[i].Billing = localBillings
-		remote[i].Billing = remoteBillings
-	}
-
-	if len(local) < len(remote) {
-		if len(local) < len(remote) {
-			return fmt.Errorf("first in remote after local: %+v", remote[len(local)])
-		} else {
-			return fmt.Errorf("first in local after remote: %+v", local[len(remote)])
-		}
-	}
-	return nil
-}
-
-func validateContractBillings(local, remote []proxytypes.ContractBilling) error {
-	localCp := make([]proxytypes.ContractBilling, len(local))
-	remoteCp := make([]proxytypes.ContractBilling, len(remote))
-	copy(localCp, local)
-	copy(remoteCp, remote)
-	sort.Slice(localCp, func(i, j int) bool {
-		return localCp[i].Timestamp < localCp[j].Timestamp
-	})
-	sort.Slice(remoteCp, func(i, j int) bool {
-		return remoteCp[i].Timestamp < remoteCp[j].Timestamp
-	})
-	iter := localCp
-	if len(remote) < len(local) {
-		iter = remoteCp
-	}
-
-	for i := range iter {
-		if !reflect.DeepEqual(local[i], remote[i]) {
-			return fmt.Errorf("billing %d mismatch: local: %+v, remote: %+v", i, local[i], remote[i])
-		}
-	}
-
-	if len(local) < len(remote) {
-		if len(local) < len(remote) {
-			return fmt.Errorf("first in remote after local: %+v", remote[len(local)])
-		} else {
-			return fmt.Errorf("first in local after remote: %+v", local[len(remote)])
-		}
+func contractRandContractID(agg *ContractsAggregate) *uint64 {
+	if flip(.5) {
+		c := agg.contractIDs[rand.Intn(len(agg.contractIDs))]
+		return &c
 	}
 
 	return nil
 }
 
-func serializeContractsFilter(f proxytypes.ContractFilter) string {
-	res := ""
-	if f.ContractID != nil {
-		res = fmt.Sprintf("%sContractID: %d\n", res, *f.ContractID)
+func contractRandTwinID(agg *ContractsAggregate) *uint32 {
+	if flip(.5) {
+		c := agg.TwinIDs[rand.Intn(len(agg.TwinIDs))]
+		return &c
 	}
-	if f.TwinID != nil {
-		res = fmt.Sprintf("%sTwinID: %d\n", res, *f.TwinID)
+
+	return nil
+}
+
+func contractRandNodeID(agg *ContractsAggregate) *uint32 {
+	if flip(.5) {
+		c := agg.NodeIDs[rand.Intn(len(agg.NodeIDs))]
+		return &c
 	}
-	if f.NodeID != nil {
-		res = fmt.Sprintf("%sNodeID: %d\n", res, *f.NodeID)
+
+	return nil
+}
+
+func contractRandContractType(agg *ContractsAggregate) *string {
+	if flip(.5) {
+		c := agg.Types[rand.Intn(len(agg.Types))]
+		return &c
 	}
-	if f.Type != nil {
-		res = fmt.Sprintf("%sType: %s\n", res, *f.Type)
+
+	return nil
+}
+
+func contractRandContractState(agg *ContractsAggregate) *string {
+	if flip(.5) {
+		c := agg.States[rand.Intn(len(agg.States))]
+		return &c
 	}
-	if f.State != nil {
-		res = fmt.Sprintf("%sState: %s\n", res, *f.State)
+
+	return nil
+}
+
+func contractRandContractName(agg *ContractsAggregate) *string {
+	if flip(.5) {
+		c := agg.Names[rand.Intn(len(agg.Names))]
+		return &c
 	}
-	if f.Name != nil {
-		res = fmt.Sprintf("%sName: %s\n", res, *f.Name)
+
+	return nil
+}
+
+func contractRandNumberOfPublicIPs(agg *ContractsAggregate) *uint64 {
+	if flip(.5) {
+		return rndref(0, agg.maxNumberOfPublicIPs)
 	}
-	if f.NumberOfPublicIps != nil {
-		res = fmt.Sprintf("%sNumberOfPublicIps: %d\n", res, *f.NumberOfPublicIps)
+
+	return nil
+}
+
+func contractRandDeploymentData(agg *ContractsAggregate) *string {
+	if flip(.5) {
+		c := agg.DeploymentDatas[rand.Intn(len(agg.DeploymentDatas))]
+		return &c
 	}
-	if f.DeploymentData != nil {
-		res = fmt.Sprintf("%sDeploymentData: %s\n", res, *f.DeploymentData)
+
+	return nil
+}
+
+func contractRandDeploymentHash(agg *ContractsAggregate) *string {
+	if flip(.5) {
+		c := agg.DeploymentHashes[rand.Intn(len(agg.DeploymentHashes))]
+		return &c
 	}
-	if f.DeploymentHash != nil {
-		res = fmt.Sprintf("%sDeploymentHash: %s\n", res, *f.DeploymentHash)
-	}
-	return res
+
+	return nil
 }

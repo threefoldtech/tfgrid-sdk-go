@@ -1,17 +1,16 @@
-package main
+package test
 
 import (
-	"database/sql"
-	"fmt"
 	"math/rand"
 	"reflect"
 	"sort"
 	"testing"
 
-	"github.com/pkg/errors"
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
-	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/stretchr/testify/require"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/mock_client"
 )
 
 const (
@@ -31,23 +30,9 @@ type FarmsAggregate struct {
 }
 
 func TestFarm(t *testing.T) {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB)
-	db, err := sql.Open("postgres", psqlInfo)
-	if err != nil {
-		panic(errors.Wrap(err, "failed to open db"))
-	}
-	defer db.Close()
-
-	data, err := load(db)
-	if err != nil {
-		panic(err)
-	}
-	proxyClient := proxyclient.NewClient(ENDPOINT)
-	localClient := NewGridProxyClient(data)
-
 	t.Run("farms pagination test", func(t *testing.T) {
+		t.Parallel()
+
 		one := uint64(1)
 		f := proxytypes.FarmFilter{
 			TotalIPs: &one,
@@ -58,13 +43,17 @@ func TestFarm(t *testing.T) {
 			RetCount: true,
 		}
 		for ; ; l.Page++ {
-			localFarms, localCount, err := localClient.Farms(f, l)
+			localFarms, localCount, err := mockClient.Farms(f, l)
 			assert.NoError(t, err)
 			remoteFarms, remoteCount, err := proxyClient.Farms(f, l)
 			assert.NoError(t, err)
-			assert.Equal(t, localCount, remoteCount)
-			err = validateFarmsResults(localFarms, remoteFarms)
-			assert.NoError(t, err, serializeFarmsFilter(f))
+
+			require.Equal(t, localCount, remoteCount, serializeFilter(f))
+			require.Equal(t, len(localFarms), len(remoteFarms), serializeFilter(f))
+
+			sortPublicIPs(localFarms, remoteFarms)
+			require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(f), cmp.Diff(localFarms, remoteFarms))
+
 			if l.Page*l.Size >= uint64(localCount) {
 				break
 			}
@@ -72,7 +61,9 @@ func TestFarm(t *testing.T) {
 	})
 
 	t.Run("farms stress test", func(t *testing.T) {
-		agg := calcFarmsAggregates(&data)
+		t.Parallel()
+
+		agg := calcFarmsAggregates(&dbData)
 		for i := 0; i < FARM_TESTS; i++ {
 			l := proxytypes.Limit{
 				Size:     999999999999,
@@ -80,17 +71,23 @@ func TestFarm(t *testing.T) {
 				RetCount: false,
 			}
 			f := randomFarmsFilter(&agg)
-			localFarms, _, err := localClient.Farms(f, l)
+			localFarms, _, err := mockClient.Farms(f, l)
 			assert.NoError(t, err)
 			remoteFarms, _, err := proxyClient.Farms(f, l)
 			assert.NoError(t, err)
 
-			err = validateFarmsResults(localFarms, remoteFarms)
-			assert.NoError(t, err, serializeFarmsFilter(f))
+			require.Equal(t, len(localFarms), len(remoteFarms), serializeFilter(f))
+
+			sortPublicIPs(localFarms, remoteFarms)
+			require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(f), cmp.Diff(localFarms, remoteFarms))
 		}
 	})
 	t.Run("farms list node free hru", func(t *testing.T) {
-		aggNode := calcNodesAggregates(&data)
+		t.Parallel()
+
+		aggNode, err := calcNodesAggregates(&dbData)
+		assert.NoError(t, err)
+
 		l := proxytypes.Limit{
 			Size:     999999999999,
 			Page:     1,
@@ -99,16 +96,23 @@ func TestFarm(t *testing.T) {
 		filter := proxytypes.FarmFilter{
 			NodeFreeHRU: &aggNode.maxFreeHRU,
 		}
-		localFarms, _, err := localClient.Farms(filter, l)
+		localFarms, _, err := mockClient.Farms(filter, l)
 		assert.NoError(t, err)
 		remoteFarms, _, err := proxyClient.Farms(filter, l)
 		assert.NoError(t, err)
 
-		err = validateFarmsResults(localFarms, remoteFarms)
-		assert.NoError(t, err, serializeFarmsFilter(filter))
+		require.Equal(t, len(localFarms), len(remoteFarms), serializeFilter(filter))
+
+		sortPublicIPs(localFarms, remoteFarms)
+		require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(filter), cmp.Diff(localFarms, remoteFarms))
+
 	})
 	t.Run("farms list node free hru, mru", func(t *testing.T) {
-		aggNode := calcNodesAggregates(&data)
+		t.Parallel()
+
+		aggNode, err := calcNodesAggregates(&dbData)
+		assert.NoError(t, err)
+
 		l := proxytypes.Limit{
 			Size:     999999999999,
 			Page:     1,
@@ -118,33 +122,49 @@ func TestFarm(t *testing.T) {
 			NodeFreeHRU: &aggNode.maxFreeHRU,
 			NodeFreeMRU: &aggNode.maxFreeMRU,
 		}
-		localFarms, _, err := localClient.Farms(filter, l)
+		localFarms, _, err := mockClient.Farms(filter, l)
 		assert.NoError(t, err)
 		remoteFarms, _, err := proxyClient.Farms(filter, l)
 		assert.NoError(t, err)
 
-		err = validateFarmsResults(localFarms, remoteFarms)
-		assert.NoError(t, err, serializeFarmsFilter(filter))
+		require.Equal(t, len(localFarms), len(remoteFarms), serializeFilter(filter))
+
+		sortPublicIPs(localFarms, remoteFarms)
+		require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(filter), cmp.Diff(localFarms, remoteFarms))
+
 	})
 }
 
-func calcFarmsAggregates(data *DBData) (res FarmsAggregate) {
-	for _, farm := range data.farms {
-		res.farmNames = append(res.farmNames, farm.name)
-		res.stellarAddresses = append(res.stellarAddresses, farm.stellar_address)
-		res.pricingPolicyIDs = append(res.pricingPolicyIDs, uint32(farm.pricing_policy_id))
-		res.certifications = append(res.certifications, farm.certification)
-		res.farmIDs = append(res.farmIDs, uint32(farm.farm_id))
-		res.twinIDs = append(res.twinIDs, uint32(farm.twin_id))
+func sortPublicIPs(local, remote []proxytypes.Farm) {
+	for id := range local {
+
+		sort.Slice(local[id].PublicIps, func(i, j int) bool {
+			return local[id].PublicIps[i].ID < local[id].PublicIps[j].ID
+		})
+
+		sort.Slice(remote[id].PublicIps, func(i, j int) bool {
+			return remote[id].PublicIps[i].ID < remote[id].PublicIps[j].ID
+		})
+	}
+}
+
+func calcFarmsAggregates(data *mock.DBData) (res FarmsAggregate) {
+	for _, farm := range data.Farms {
+		res.farmNames = append(res.farmNames, farm.Name)
+		res.stellarAddresses = append(res.stellarAddresses, farm.StellarAddress)
+		res.pricingPolicyIDs = append(res.pricingPolicyIDs, farm.PricingPolicyID)
+		res.certifications = append(res.certifications, farm.Certification)
+		res.farmIDs = append(res.farmIDs, farm.FarmID)
+		res.twinIDs = append(res.twinIDs, farm.TwinID)
 	}
 
 	farmIPs := make(map[uint32]uint64)
 	farmTotalIPs := make(map[uint32]uint64)
-	for _, publicIP := range data.publicIPs {
-		if publicIP.contract_id == 0 {
-			farmIPs[data.farmIDMap[publicIP.farm_id]] += 1
+	for _, publicIP := range data.PublicIPs {
+		if publicIP.ContractID == 0 {
+			farmIPs[data.FarmIDMap[publicIP.FarmID]] += 1
 		}
-		farmTotalIPs[data.farmIDMap[publicIP.farm_id]] += 1
+		farmTotalIPs[data.FarmIDMap[publicIP.FarmID]] += 1
 	}
 	for _, cnt := range farmIPs {
 		res.maxFreeIPs = max(res.maxFreeIPs, cnt)
@@ -175,150 +195,117 @@ func calcFarmsAggregates(data *DBData) (res FarmsAggregate) {
 	return
 }
 
+// randomFarmsFilter should contain a random generator for each field to have more robust tests
 func randomFarmsFilter(agg *FarmsAggregate) proxytypes.FarmFilter {
 	var f proxytypes.FarmFilter
+
+	f.FreeIPs = farmRandFreeIPs(agg)
+	f.TotalIPs = farmRandTotalIPs(agg)
+	f.StellarAddress = farmRandStellarAddress(agg)
+	f.PricingPolicyID = farmRandPricingPolicyID(agg)
+	f.FarmID = farmRandFarmID(agg)
+	f.TwinID = farmRandTwinID(agg)
+	f.Name = farmRandName(agg)
+	f.NameContains = farmRandNameContains(agg)
+	f.CertificationType = farmRandCertificationType(agg)
+	f.Dedicated = farmRandDedicated(agg)
+
+	return f
+}
+
+func farmRandFreeIPs(agg *FarmsAggregate) *uint64 {
 	if flip(.5) {
-		f.FreeIPs = rndref(0, agg.maxFreeIPs)
+		return rndref(0, agg.maxFreeIPs)
 	}
+
+	return nil
+}
+
+func farmRandTotalIPs(agg *FarmsAggregate) *uint64 {
 	if flip(.5) {
-		f.TotalIPs = rndref(0, agg.maxTotalIPs)
+		return rndref(0, agg.maxTotalIPs)
 	}
-	if flip(.05) {
+
+	return nil
+}
+
+func farmRandStellarAddress(agg *FarmsAggregate) *string {
+	if flip(.5) {
 		c := agg.stellarAddresses[rand.Intn(len(agg.stellarAddresses))]
-		f.StellarAddress = &c
+		return &c
 	}
+
+	return nil
+}
+
+func farmRandPricingPolicyID(agg *FarmsAggregate) *uint32 {
 	if flip(.5) {
 		c := agg.pricingPolicyIDs[rand.Intn(len(agg.pricingPolicyIDs))]
-		f.PricingPolicyID = &c
+		return &c
 	}
-	if flip(.05) {
+
+	return nil
+}
+
+func farmRandFarmID(agg *FarmsAggregate) *uint32 {
+	if flip(.5) {
 		c := agg.farmIDs[rand.Intn(len(agg.farmIDs))]
-		f.FarmID = &c
+		return &c
 	}
-	if flip(.05) {
+
+	return nil
+}
+
+func farmRandTwinID(agg *FarmsAggregate) *uint32 {
+	if flip(.5) {
 		c := agg.twinIDs[rand.Intn(len(agg.twinIDs))]
-		f.TwinID = &c
+		return &c
 	}
-	if flip(.05) {
+
+	return nil
+}
+
+func farmRandName(agg *FarmsAggregate) *string {
+	if flip(.5) {
 		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
 		v := changeCase(c)
-		f.Name = &v
+		return &v
 	}
-	if flip(.05) {
+
+	return nil
+}
+
+func farmRandNameContains(agg *FarmsAggregate) *string {
+	if flip(.5) {
 		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
 		a, b := rand.Intn(len(c)), rand.Intn(len(c))
 		if a > b {
 			a, b = b, a
 		}
 		c = c[a : b+1]
-		f.NameContains = &c
+		return &c
 	}
+
+	return nil
+}
+
+func farmRandCertificationType(agg *FarmsAggregate) *string {
 	if flip(.5) {
 		c := agg.certifications[rand.Intn(len(agg.certifications))]
-		f.CertificationType = &c
+		return &c
 	}
+
+	return nil
+}
+
+func farmRandDedicated(agg *FarmsAggregate) *bool {
 	if flip(.5) {
 		v := true
 		if flip(.5) {
 			v = false
 		}
-		f.Dedicated = &v
+		return &v
 	}
 
-	return f
-}
-
-func validateFarmsResults(local, remote []proxytypes.Farm) error {
-	iter := local
-	if len(remote) < len(local) {
-		iter = remote
-	}
-	for i := range iter {
-		localIPs := local[i].PublicIps
-		remoteIPs := remote[i].PublicIps
-		local[i].PublicIps = nil
-		remote[i].PublicIps = nil
-		if !reflect.DeepEqual(local[i], remote[i]) {
-			local[i].PublicIps = localIPs
-			remote[i].PublicIps = remoteIPs
-			return fmt.Errorf("farm %d mismatch: local: %+v, remote: %+v", i, local[i], remote[i])
-		}
-		if err := validatePublicIPs(localIPs, remoteIPs); err != nil {
-			return err
-		}
-		local[i].PublicIps = localIPs
-		remote[i].PublicIps = remoteIPs
-	}
-
-	if len(local) < len(remote) {
-		if len(local) < len(remote) {
-			return fmt.Errorf("first in remote after local: %+v", remote[len(local)])
-		} else {
-			return fmt.Errorf("first in local after remote: %+v", local[len(remote)])
-		}
-	}
 	return nil
-}
-
-func validatePublicIPs(local, remote []proxytypes.PublicIP) error {
-	localIPs := make(map[string]proxytypes.PublicIP)
-	remoteIPs := make(map[string]proxytypes.PublicIP)
-	for _, ip := range local {
-		localIPs[ip.ID] = ip
-	}
-	for _, ip := range remote {
-		remoteIPs[ip.ID] = ip
-	}
-	for _, ip := range remote {
-		if _, ok := localIPs[ip.ID]; !ok {
-			return fmt.Errorf("ip %s exists in remote but not in local", ip.ID)
-		}
-		if !reflect.DeepEqual(localIPs[ip.ID], remoteIPs[ip.ID]) {
-			return fmt.Errorf("ip %s mismatch: local: %+v, remote: %+v", ip.ID, localIPs[ip.ID], remoteIPs[ip.ID])
-		}
-	}
-	for _, ip := range local {
-		if _, ok := localIPs[ip.ID]; !ok {
-			return fmt.Errorf("ip %s exists in local but not in remote", ip.ID)
-		}
-		if !reflect.DeepEqual(localIPs[ip.ID], remoteIPs[ip.ID]) {
-			return fmt.Errorf("ip %s mismatch: local: %+v, remote: %+v", ip.ID, localIPs[ip.ID], remoteIPs[ip.ID])
-		}
-	}
-	return nil
-}
-
-func serializeFarmsFilter(f proxytypes.FarmFilter) string {
-	res := ""
-	if f.FreeIPs != nil {
-		res = fmt.Sprintf("%sFreeIPs: %d\n", res, *f.FreeIPs)
-	}
-	if f.TotalIPs != nil {
-		res = fmt.Sprintf("%sTotalIPs: %d\n", res, *f.TotalIPs)
-	}
-	if f.StellarAddress != nil {
-		res = fmt.Sprintf("%sStellarAddress: %s\n", res, *f.StellarAddress)
-	}
-	if f.PricingPolicyID != nil {
-		res = fmt.Sprintf("%sPricingPolicyID: %d\n", res, *f.PricingPolicyID)
-	}
-	if f.FarmID != nil {
-		res = fmt.Sprintf("%sFarmID: %d\n", res, *f.FarmID)
-	}
-	if f.TwinID != nil {
-		res = fmt.Sprintf("%sTwinID: %d\n", res, *f.TwinID)
-	}
-	if f.Name != nil {
-		res = fmt.Sprintf("%sName: %s\n", res, *f.Name)
-	}
-	if f.NameContains != nil {
-		res = fmt.Sprintf("%sNameContains: %s\n", res, *f.NameContains)
-	}
-	if f.CertificationType != nil {
-		res = fmt.Sprintf("%sCertification: %s\n", res, *f.CertificationType)
-	}
-	if f.Dedicated != nil {
-		res = fmt.Sprintf("%sDedicated: %t\n", res, *f.Dedicated)
-	}
-	return res
 }

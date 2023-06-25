@@ -176,7 +176,7 @@ type Node struct {
 	Uptime            uint64       `json:"uptime"`
 	Created           uint64       `json:"created"`
 	FarmingPolicyID   uint32       `json:"farmin_policy_id"`
-	UpdatedAt         uint64       `json:"updated_at"`
+	UpdatedAt         int64        `json:"updated_at"`
 	TotalResources    Capacity     `json:"total_resources"`
 	UsedResources     Capacity     `json:"used_resources"`
 	Location          Location     `json:"location"`
@@ -210,7 +210,7 @@ type NodeWithNestedCapacity struct {
 	Uptime            uint64         `json:"uptime"`
 	Created           uint64         `json:"created"`
 	FarmingPolicyID   uint32         `json:"farmin_policy_id"`
-	UpdatedAt         uint64         `json:"updated_at"`
+	UpdatedAt         int64          `json:"updated_at"`
 	Capacity          CapacityResult `json:"capacity"`
 	Location          Location       `json:"location"`
 	PublicConfig      PublicConfig   `json:"public_config"`
@@ -251,7 +251,7 @@ type Contract struct {
 	ContractID uint64            `json:"contract_id"`
 	TwinID     uint32            `json:"twin_id"`
 	State      string            `json:"state"`
-	CreatedAt  uint64            `json:"created_at"`
+	CreatedAt  int64             `json:"created_at"`
 	Type       string            `json:"type"`
 	Details    interface{}       `json:"details"`
 	Billing    []ContractBilling `json:"billing"`

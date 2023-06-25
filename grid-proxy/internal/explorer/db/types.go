@@ -20,7 +20,7 @@ type DBContract struct {
 	ContractID        uint64
 	TwinID            uint32
 	State             string
-	CreatedAt         uint64
+	CreatedAt         int64
 	Name              string
 	NodeID            uint32
 	DeploymentData    string
@@ -42,7 +42,7 @@ type Node struct {
 	Uptime          uint64
 	Created         uint64
 	FarmingPolicyID uint32
-	UpdatedAt       uint64
+	UpdatedAt       int64
 	TotalCru        uint64
 	TotalMru        uint64
 	TotalSru        uint64

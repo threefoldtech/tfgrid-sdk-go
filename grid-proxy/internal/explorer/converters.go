@@ -14,12 +14,12 @@ const (
 	nodeUpInterval = -80 * time.Minute
 )
 
-func decideNodeStatus(power types.NodePower, updatedAt uint64) string {
+func decideNodeStatus(power types.NodePower, updatedAt int64) string {
 	if power.Target == "Down" { // off or powering off
 		return "standby"
 	} else if power.Target == "Up" && power.State == "Down" { // powering on
 		return "down"
-	} else if int64(updatedAt) >= time.Now().Add(nodeUpInterval).Unix() {
+	} else if updatedAt >= time.Now().Add(nodeUpInterval).Unix() {
 		return "up"
 	} else {
 		return "down"

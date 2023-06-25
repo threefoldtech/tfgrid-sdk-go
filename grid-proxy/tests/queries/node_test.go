@@ -1,17 +1,18 @@
-package main
+package test
 
 import (
-	"database/sql"
-	"fmt"
 	"math/rand"
 	"reflect"
 	"sort"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/mock_client"
 )
 
 type NodesAggregate struct {
@@ -47,61 +48,63 @@ var (
 )
 
 func TestNode(t *testing.T) {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB)
-	db, err := sql.Open("postgres", psqlInfo)
-	if err != nil {
-		panic(errors.Wrap(err, "failed to open db"))
-	}
-	defer db.Close()
-
-	data, err := load(db)
-	if err != nil {
-		panic(err)
-	}
-	proxyClient := proxyclient.NewClient(ENDPOINT)
-	localClient := NewGridProxyClient(data)
-
 	t.Run("node pagination test", func(t *testing.T) {
-		nodePaginationCheck(t, localClient, proxyClient)
+		t.Parallel()
+
+		nodePaginationCheck(t, mockClient, proxyClient)
 	})
 
 	t.Run("single node test", func(t *testing.T) {
-		singleNodeCheck(t, localClient, proxyClient)
+		t.Parallel()
+
+		singleNodeCheck(t, mockClient, proxyClient)
 	})
 
 	t.Run("node up test", func(t *testing.T) {
+		t.Parallel()
+
 		f := proxytypes.NodeFilter{
 			Status: &STATUS_UP,
 		}
+
 		l := proxytypes.Limit{
 			Size:     999999999,
 			Page:     1,
 			RetCount: true,
 		}
-		localNodes, _, err := localClient.Nodes(f, l)
+
+		localNodes, localCount, err := mockClient.Nodes(f, l)
 		assert.NoError(t, err)
-		remoteNodes, _, err := proxyClient.Nodes(f, l)
+		remoteNodes, remoteCount, err := proxyClient.Nodes(f, l)
 		assert.NoError(t, err)
-		err = validateResults(localNodes, remoteNodes, false)
-		assert.NoError(t, err, serializeFilter(f))
+
+		require.Equal(t, localCount, remoteCount, serializeFilter(f))
+		require.Equal(t, len(localNodes), len(remoteNodes), serializeFilter(f))
+
+		require.True(t, reflect.DeepEqual(localNodes, remoteNodes), serializeFilter(f), cmp.Diff(localNodes, remoteNodes))
 	})
 
 	t.Run("node status test", func(t *testing.T) {
+		t.Parallel()
+
 		for i := 1; i <= NODE_COUNT; i++ {
 			if flip(.3) {
-				localNodeStatus, err := localClient.NodeStatus(uint32(i))
+				localNodeStatus, err := mockClient.NodeStatus(uint32(i))
 				assert.NoError(t, err)
 				remoteNodeStatus, err := proxyClient.NodeStatus(uint32(i))
 				assert.NoError(t, err)
-				assert.True(t, reflect.DeepEqual(localNodeStatus, remoteNodeStatus))
+
+				require.True(t, reflect.DeepEqual(localNodeStatus, remoteNodeStatus), cmp.Diff(localNodeStatus, remoteNodeStatus))
 			}
 		}
 	})
 
 	t.Run("node stress test", func(t *testing.T) {
-		agg := calcNodesAggregates(&data)
+		t.Parallel()
+
+		agg, err := calcNodesAggregates(&dbData)
+		assert.NoError(t, err)
+
 		for i := 0; i < NODE_TESTS; i++ {
 			l := proxytypes.Limit{
 				Size:     999999999999,
@@ -109,66 +112,54 @@ func TestNode(t *testing.T) {
 				RetCount: false,
 			}
 			f := randomNodeFilter(&agg)
-			localNodes, _, err := localClient.Nodes(f, l)
+
+			localNodes, _, err := mockClient.Nodes(f, l)
 			assert.NoError(t, err)
+
 			remoteNodes, _, err := proxyClient.Nodes(f, l)
 			assert.NoError(t, err)
-			assert.Equal(t, len(localNodes), len(remoteNodes))
-			err = validateResults(localNodes, remoteNodes, f.AvailableFor != nil)
-			assert.NoError(t, err, serializeFilter(f))
+
+			assert.Equal(t, len(localNodes), len(remoteNodes), serializeFilter(f))
+
+			require.True(t, reflect.DeepEqual(localNodes, remoteNodes), serializeFilter(f), cmp.Diff(localNodes, remoteNodes))
 		}
 	})
 
 	t.Run("node not found test", func(t *testing.T) {
+		t.Parallel()
+
 		nodeID := 1000000000
 		_, err := proxyClient.Node(uint32(nodeID))
 		assert.Equal(t, err.Error(), ErrNodeNotFound.Error())
 	})
 
 	t.Run("nodes test without resources view", func(t *testing.T) {
-		db := data.db
+		// this can't be run in parallel because it deletes a view, hence will make other tests fail
+
+		db := dbData.DB
 		_, err := db.Exec("drop view nodes_resources_view ;")
 		assert.NoError(t, err)
-		singleNodeCheck(t, localClient, proxyClient)
-		assert.NoError(t, err)
+
+		singleNodeCheck(t, mockClient, proxyClient)
+
 		_, err = db.Exec("drop view nodes_resources_view ;")
 		assert.NoError(t, err)
-		nodePaginationCheck(t, localClient, proxyClient)
+
+		nodePaginationCheck(t, mockClient, proxyClient)
 	})
 
-	t.Run("nodes test certification_type filter", func(t *testing.T) {
-		certType := "Diy"
-		nodes, _, err := proxyClient.Nodes(proxytypes.NodeFilter{CertificationType: &certType}, proxytypes.Limit{})
-		assert.NoError(t, err)
-
-		for _, node := range nodes {
-			assert.Equal(t, node.CertificationType, certType, "certification_type filter did not work")
-		}
-
-		notExistCertType := "noCert"
-		nodes, _, err = proxyClient.Nodes(proxytypes.NodeFilter{CertificationType: &notExistCertType}, proxytypes.Limit{})
-		assert.NoError(t, err)
-		assert.Empty(t, nodes)
-	})
-
-	t.Run("nodes test has_gpu filter", func(t *testing.T) {
-		hasGPU := true
-		nodes, _, err := proxyClient.Nodes(proxytypes.NodeFilter{HasGPU: &hasGPU}, proxytypes.Limit{})
-		assert.NoError(t, err)
-
-		for _, node := range nodes {
-			assert.Equal(t, node.NumGPU, uint8(1), "has_gpu filter did not work")
-		}
-	})
 }
 
 func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
 	nodeID := rand.Intn(NODE_COUNT)
+
 	localNode, err := localClient.Node(uint32(nodeID))
 	assert.NoError(t, err)
+
 	remoteNode, err := proxyClient.Node(uint32(nodeID))
 	assert.NoError(t, err)
-	assert.True(t, reflect.DeepEqual(localNode, remoteNode))
+
+	assert.True(t, reflect.DeepEqual(localNode, remoteNode), cmp.Diff(localNode, remoteNode))
 }
 
 func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
@@ -185,227 +176,58 @@ func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClie
 	for ; ; l.Page++ {
 		localNodes, localCount, err := localClient.Nodes(f, l)
 		assert.NoError(t, err)
+
 		remoteNodes, remoteCount, err := proxyClient.Nodes(f, l)
 		assert.NoError(t, err)
-		assert.Equal(t, remoteCount, localCount, "local and remote counts are not equal")
-		err = validateResults(localNodes, remoteNodes, false)
-		assert.NoError(t, err, serializeFilter(f))
+
+		require.Equal(t, localCount, remoteCount, serializeFilter(f))
+		require.Equal(t, len(localNodes), len(remoteNodes), serializeFilter(f))
+
+		require.True(t, reflect.DeepEqual(localNodes, remoteNodes), serializeFilter(f), cmp.Diff(localNodes, remoteNodes))
+
 		if l.Page*l.Size >= uint64(localCount) {
 			break
 		}
 	}
 }
 
-func randomNodeFilter(agg *NodesAggregate) proxytypes.NodeFilter {
-	var f proxytypes.NodeFilter
-	if flip(.5) { // status
-		status := "down"
-		if flip(.5) {
-			status = "up"
-		}
-		f.Status = &status
-	}
-	if flip(.5) {
-		if flip(.1) {
-			c := agg.freeMRUs[rand.Intn(len(agg.freeMRUs))]
-			f.FreeMRU = &c
-		} else {
-			f.FreeMRU = rndref(0, agg.maxFreeMRU)
-		}
-	}
-	if flip(.5) {
-		if flip(.1) {
-			c := agg.freeHRUs[rand.Intn(len(agg.freeHRUs))]
-			f.FreeHRU = &c
-		} else {
-			f.FreeHRU = rndref(0, agg.maxFreeHRU)
-		}
-	}
-	if flip(.5) {
-		if flip(.1) {
-			c := agg.freeSRUs[rand.Intn(len(agg.freeSRUs))]
-			f.FreeSRU = &c
-		} else {
-			f.FreeSRU = rndref(0, agg.maxFreeSRU)
-		}
-	}
-	if flip(.5) {
-		if flip(.1) {
-			c := agg.totalCRUs[rand.Intn(len(agg.totalCRUs))]
-			f.TotalCRU = &c
-		} else {
-			f.TotalCRU = rndref(0, agg.maxTotalCRU)
-		}
-	}
-	if flip(.5) {
-		if flip(.1) {
-			c := agg.totalMRUs[rand.Intn(len(agg.totalMRUs))]
-			f.TotalMRU = &c
-		} else {
-			f.TotalMRU = rndref(0, agg.maxTotalMRU)
-		}
-	}
-	if flip(.5) {
-		if flip(.1) {
-			c := agg.totalSRUs[rand.Intn(len(agg.totalSRUs))]
-			f.TotalSRU = &c
-		} else {
-			f.TotalSRU = rndref(0, agg.maxTotalSRU)
-		}
-	}
-	if flip(.5) {
-		if flip(.1) {
-			c := agg.totalHRUs[rand.Intn(len(agg.totalHRUs))]
-			f.TotalHRU = &c
-		} else {
-			f.TotalHRU = rndref(0, agg.maxTotalHRU)
-		}
-	}
-	if flip(.05) {
-		c := agg.countries[rand.Intn(len(agg.countries))]
-		v := changeCase(c)
-		f.Country = &v
-	}
-	if flip(.05) {
-		c := agg.countries[rand.Intn(len(agg.countries))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
-		if a > b {
-			a, b = b, a
-		}
-		c = c[a : b+1]
-		f.CountryContains = &c
-	}
-	if flip(.05) {
-		c := agg.cities[rand.Intn(len(agg.cities))]
-		v := changeCase(c)
-		f.City = &v
-	}
-	if flip(.05) {
-		c := agg.cities[rand.Intn(len(agg.cities))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
-		if a > b {
-			a, b = b, a
-		}
-		c = c[a : b+1]
-		f.CityContains = &c
-	}
-	if flip(.05) {
-		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
-		v := changeCase(c)
-		f.FarmName = &v
-	}
-	if flip(.05) {
-		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
-		if a > b {
-			a, b = b, a
-		}
-		c = c[a : b+1]
-		f.FarmNameContains = &c
-	}
-	if flip(.05) {
-		for _, id := range agg.farmIDs {
-			if flip(float32(min(3, uint64(len(agg.farmIDs)))) / float32(len(agg.farmIDs))) {
-				f.FarmIDs = append(f.FarmIDs, uint32(id))
-			}
-		}
-	}
-	if flip(.05) {
-		f.FreeIPs = rndref(0, agg.maxFreeIPs)
-	}
-	if flip(.05) {
-		v := true
-		// if flip(.5) {
-		// 	v = false
-		// }
-		f.IPv4 = &v
-	}
-	if flip(.05) {
-		v := true
-		// if flip(.5) {
-		// 	v = false
-		// }
-		f.IPv6 = &v
-	}
-	if flip(.05) {
-		v := true
-		// currently, it's not checked against
-		// if flip(.5) {
-		// 	v = false
-		// }
-		f.Domain = &v
-	}
-	if flip(.5) {
-		v := uint32(rand.Intn(1100)) // 1000 is the total nodes + 100 for non-existed cases
-		f.NodeID = &v
-	}
-	if flip(.5) {
-		v := uint32(rand.Intn(3500))
-		f.TwinID = &v
-	}
-	if flip(.05) {
-		v := true
-		if flip(.5) {
-			v = false
-		}
-		f.Rentable = &v
-	}
-	if flip(.3) {
-		c := agg.twins[rand.Intn(len(agg.twins))]
-		if flip(.9) && len(agg.nodeRenters) != 0 {
-			c = agg.nodeRenters[rand.Intn(len(agg.nodeRenters))]
-		}
-		f.RentedBy = &c
-	}
-	if flip(.3) {
-		c := agg.twins[rand.Intn(len(agg.twins))]
-		if flip(.1) && len(agg.nodeRenters) != 0 {
-			c = agg.nodeRenters[rand.Intn(len(agg.nodeRenters))]
-		}
-		f.AvailableFor = &c
-	}
-	if flip(.1) {
-		v := true
-		if flip(.5) {
-			v = false
-		}
-		f.Rented = &v
-	}
-	return f
-}
-
-func calcNodesAggregates(data *DBData) (res NodesAggregate) {
+func calcNodesAggregates(data *mock.DBData) (NodesAggregate, error) {
+	res := NodesAggregate{}
 	cities := make(map[string]struct{})
 	countries := make(map[string]struct{})
-	for _, node := range data.nodes {
-		cities[node.city] = struct{}{}
-		countries[node.country] = struct{}{}
-		total := data.nodeTotalResources[node.node_id]
-		free := calcFreeResources(total, data.nodeUsedResources[node.node_id])
-		res.maxFreeHRU = max(res.maxFreeHRU, free.hru)
-		res.maxFreeSRU = max(res.maxFreeSRU, free.sru)
-		res.maxFreeMRU = max(res.maxFreeMRU, free.mru)
-		res.freeMRUs = append(res.freeMRUs, free.mru)
-		res.freeSRUs = append(res.freeSRUs, free.sru)
-		res.freeHRUs = append(res.freeHRUs, free.hru)
+	for _, node := range data.Nodes {
+		cities[node.City] = struct{}{}
+		countries[node.Country] = struct{}{}
+		total := data.NodeTotalResources[node.NodeID]
+		free, err := mock.CalculateFreeResources(total, data.NodeUsedResources[node.NodeID])
+		if err != nil {
+			return NodesAggregate{}, err
+		}
 
-		res.maxTotalMRU = max(res.maxTotalMRU, total.mru)
-		res.totalMRUs = append(res.totalMRUs, total.mru)
-		res.maxTotalCRU = max(res.maxTotalCRU, total.cru)
-		res.totalCRUs = append(res.totalCRUs, total.cru)
-		res.maxTotalSRU = max(res.maxTotalSRU, total.sru)
-		res.totalSRUs = append(res.totalSRUs, total.sru)
-		res.maxTotalHRU = max(res.maxTotalHRU, total.hru)
-		res.totalHRUs = append(res.totalHRUs, total.hru)
+		res.maxFreeHRU = max(res.maxFreeHRU, free.HRU)
+		res.maxFreeSRU = max(res.maxFreeSRU, free.SRU)
+		res.maxFreeMRU = max(res.maxFreeMRU, free.MRU)
+		res.freeMRUs = append(res.freeMRUs, free.MRU)
+		res.freeSRUs = append(res.freeSRUs, free.SRU)
+		res.freeHRUs = append(res.freeHRUs, free.HRU)
+
+		res.maxTotalMRU = max(res.maxTotalMRU, total.MRU)
+		res.totalMRUs = append(res.totalMRUs, total.MRU)
+		res.maxTotalCRU = max(res.maxTotalCRU, total.CRU)
+		res.totalCRUs = append(res.totalCRUs, total.CRU)
+		res.maxTotalSRU = max(res.maxTotalSRU, total.SRU)
+		res.totalSRUs = append(res.totalSRUs, total.SRU)
+		res.maxTotalHRU = max(res.maxTotalHRU, total.HRU)
+		res.totalHRUs = append(res.totalHRUs, total.HRU)
 	}
-	for _, contract := range data.rentContracts {
-		if contract.state == "Deleted" {
+	for _, contract := range data.RentContracts {
+		if contract.State == "Deleted" {
 			continue
 		}
-		res.nodeRenters = append(res.nodeRenters, uint32(contract.twin_id))
+		res.nodeRenters = append(res.nodeRenters, contract.TwinID)
 	}
-	for _, twin := range data.twins {
-		res.twins = append(res.twins, twin.twin_id)
+	for _, twin := range data.Twins {
+		res.twins = append(res.twins, twin.TwinID)
 	}
 	for city := range cities {
 		res.cities = append(res.cities, city)
@@ -413,147 +235,397 @@ func calcNodesAggregates(data *DBData) (res NodesAggregate) {
 	for country := range countries {
 		res.countries = append(res.cities, country)
 	}
-	for _, farm := range data.farms {
-		res.farmNames = append(res.farmNames, farm.name)
-		res.farmIDs = append(res.farmIDs, farm.farm_id)
+	for _, farm := range data.Farms {
+		res.farmNames = append(res.farmNames, farm.Name)
+		res.farmIDs = append(res.farmIDs, farm.FarmID)
 	}
 
 	farmIPs := make(map[uint32]uint64)
-	for _, publicIP := range data.publicIPs {
-		if publicIP.contract_id == 0 {
-			farmIPs[data.farmIDMap[publicIP.farm_id]] += 1
+	for _, publicIP := range data.PublicIPs {
+		if publicIP.ContractID == 0 {
+			farmIPs[data.FarmIDMap[publicIP.FarmID]] += 1
 		}
 	}
 	for _, cnt := range farmIPs {
 		res.maxFreeIPs = max(res.maxFreeIPs, cnt)
 	}
+
 	sort.Slice(res.countries, func(i, j int) bool {
 		return res.countries[i] < res.countries[j]
 	})
+
 	sort.Slice(res.cities, func(i, j int) bool {
 		return res.cities[i] < res.cities[j]
 	})
+
 	sort.Slice(res.farmNames, func(i, j int) bool {
 		return res.farmNames[i] < res.farmNames[j]
 	})
+
 	sort.Slice(res.farmIDs, func(i, j int) bool {
 		return res.farmIDs[i] < res.farmIDs[j]
 	})
+
 	sort.Slice(res.freeMRUs, func(i, j int) bool {
 		return res.freeMRUs[i] < res.freeMRUs[j]
 	})
+
 	sort.Slice(res.freeSRUs, func(i, j int) bool {
 		return res.freeSRUs[i] < res.freeSRUs[j]
 	})
+
 	sort.Slice(res.freeHRUs, func(i, j int) bool {
 		return res.freeHRUs[i] < res.freeHRUs[j]
 	})
+
 	sort.Slice(res.nodeRenters, func(i, j int) bool {
 		return res.nodeRenters[i] < res.nodeRenters[j]
 	})
+
 	sort.Slice(res.twins, func(i, j int) bool {
 		return res.twins[i] < res.twins[j]
 	})
-	return
+
+	return res, nil
 }
 
-func findValidateNodeResult(node proxytypes.Node, results []proxytypes.Node) proxytypes.Node {
-	for _, n := range results {
-		if n.NodeID == node.NodeID {
-			return n
-		}
-	}
-	return proxytypes.Node{}
+func randomNodeFilter(agg *NodesAggregate) proxytypes.NodeFilter {
+	var f proxytypes.NodeFilter
+
+	f.Status = nodeRandStatus(agg)
+	f.FreeMRU = nodeRandFreeMRU(agg)
+	f.FreeHRU = nodeRandFreeHRU(agg)
+	f.FreeSRU = nodeRandFreeSRU(agg)
+	f.TotalCRU = nodeRandTotalCRU(agg)
+	f.TotalMRU = nodeRandTotalMRU(agg)
+	f.TotalSRU = nodeRandTotalSRU(agg)
+	f.TotalHRU = nodeRandTotalHRU(agg)
+	f.Country = nodeRandCountry(agg)
+	f.CountryContains = nodeRandCountryContains(agg)
+	f.City = nodeRandCity(agg)
+	f.CityContains = nodeRandCityContains(agg)
+	f.FarmName = nodeRandFarmName(agg)
+	f.FarmNameContains = nodeRandFarmNameContains(agg)
+	f.FarmIDs = nodeRandFarmIDs(agg)
+	f.FreeIPs = nodeRandFreeIPs(agg)
+	f.IPv4 = nodeRandIPv4(agg)
+	f.IPv6 = nodeRandIPv6(agg)
+	f.Domain = nodeRandDomain(agg)
+	f.NodeID = nodeRandNodeID(agg)
+	f.TwinID = nodeRandTwinID(agg)
+	f.Rentable = nodeRandRentable(agg)
+	f.RentedBy = nodeRandRentedBy(agg)
+	f.AvailableFor = nodeRandAvailableFor(agg)
+	f.Rented = nodeRandRented(agg)
+	f.CertificationType = nodeRandCertificationType(agg)
+	f.HasGPU = nodeRandHasGPU(agg)
+
+	return f
 }
 
-func validateResults(local, remote []proxytypes.Node, unordered bool) error {
-	iter := local
-	if len(remote) < len(local) || unordered {
-		iter = remote
-	}
-	for i := range iter {
-		localNode := local[i]
-		remoteNode := local[i]
-		if unordered {
-			localNode = findValidateNodeResult(remoteNode, local)
+func nodeRandStatus(agg *NodesAggregate) *string {
+	if flip(.5) {
+		status := "down"
+		if flip(.5) {
+			status = "up"
 		}
-		if !reflect.DeepEqual(localNode, remoteNode) {
-			return fmt.Errorf("node %d mismatch: local: %+v, remote: %+v", i, local[i], remote[i])
-		}
+		return &status
 	}
 
-	if len(local) != len(remote) {
-		if len(local) == 0 {
-			return fmt.Errorf("local empty but remote returned: %+v", remote[0])
-		} else if len(remote) == 0 {
-			return fmt.Errorf("remote empty but local returned: %+v", local[0])
-		}
-		return errors.New("length mismatch")
-	}
 	return nil
 }
 
-func serializeFilter(f proxytypes.NodeFilter) string {
-	res := ""
-	if f.Status != nil {
-		res = fmt.Sprintf("%sstatus: %s\n", res, *f.Status)
+func nodeRandFreeMRU(agg *NodesAggregate) *uint64 {
+	if flip(.5) {
+		if flip(.1) {
+			c := agg.freeMRUs[rand.Intn(len(agg.freeMRUs))]
+			return &c
+		} else {
+			return rndref(0, agg.maxFreeMRU)
+		}
 	}
-	if f.FreeMRU != nil {
-		res = fmt.Sprintf("%sFreeMRU: %d\n", res, *f.FreeMRU)
+
+	return nil
+}
+
+func nodeRandFreeHRU(agg *NodesAggregate) *uint64 {
+	if flip(.5) {
+		if flip(.1) {
+			c := agg.freeHRUs[rand.Intn(len(agg.freeHRUs))]
+			return &c
+		} else {
+			return rndref(0, agg.maxFreeHRU)
+		}
 	}
-	if f.FreeSRU != nil {
-		res = fmt.Sprintf("%sFreeSRU: %d\n", res, *f.FreeSRU)
+
+	return nil
+}
+
+func nodeRandFreeSRU(agg *NodesAggregate) *uint64 {
+	if flip(.5) {
+		if flip(.1) {
+			c := agg.freeSRUs[rand.Intn(len(agg.freeSRUs))]
+			return &c
+		} else {
+			return rndref(0, agg.maxFreeSRU)
+		}
 	}
-	if f.FreeHRU != nil {
-		res = fmt.Sprintf("%sFreeHRU: %d\n", res, *f.FreeHRU)
+
+	return nil
+}
+
+func nodeRandTotalCRU(agg *NodesAggregate) *uint64 {
+	if flip(.5) {
+		if flip(.1) {
+			c := agg.totalCRUs[rand.Intn(len(agg.totalCRUs))]
+			return &c
+		} else {
+			return rndref(0, agg.maxTotalCRU)
+		}
 	}
-	if f.TotalCRU != nil {
-		res = fmt.Sprintf("%sTotalCRU: %d\n", res, *f.TotalCRU)
+
+	return nil
+}
+func nodeRandTotalMRU(agg *NodesAggregate) *uint64 {
+	if flip(.5) {
+		if flip(.1) {
+			c := agg.totalMRUs[rand.Intn(len(agg.totalMRUs))]
+			return &c
+		} else {
+			return rndref(0, agg.maxTotalMRU)
+		}
 	}
-	if f.TotalHRU != nil {
-		res = fmt.Sprintf("%sTotalHRU: %d\n", res, *f.TotalHRU)
+
+	return nil
+}
+func nodeRandTotalSRU(agg *NodesAggregate) *uint64 {
+	if flip(.5) {
+		if flip(.1) {
+			c := agg.totalSRUs[rand.Intn(len(agg.totalSRUs))]
+			return &c
+		} else {
+			return rndref(0, agg.maxTotalSRU)
+		}
 	}
-	if f.TotalMRU != nil {
-		res = fmt.Sprintf("%sTotalMRU: %d\n", res, *f.TotalMRU)
+
+	return nil
+}
+
+func nodeRandTotalHRU(agg *NodesAggregate) *uint64 {
+	if flip(.5) {
+		if flip(.1) {
+			c := agg.totalHRUs[rand.Intn(len(agg.totalHRUs))]
+			return &c
+		} else {
+			return rndref(0, agg.maxTotalHRU)
+		}
 	}
-	if f.TotalSRU != nil {
-		res = fmt.Sprintf("%sTotalSRU: %d\n", res, *f.TotalSRU)
+
+	return nil
+}
+
+func nodeRandCountry(agg *NodesAggregate) *string {
+	if flip(.5) {
+		c := agg.countries[rand.Intn(len(agg.countries))]
+		v := changeCase(c)
+		return &v
 	}
-	if f.Country != nil {
-		res = fmt.Sprintf("%sCountry: %s\n", res, *f.Country)
+
+	return nil
+}
+
+func nodeRandCountryContains(agg *NodesAggregate) *string {
+	if flip(.5) {
+		c := agg.countries[rand.Intn(len(agg.countries))]
+		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		if a > b {
+			a, b = b, a
+		}
+		c = c[a : b+1]
+
+		return &c
 	}
-	if f.City != nil {
-		res = fmt.Sprintf("%sCity: %s\n", res, *f.City)
+
+	return nil
+}
+
+func nodeRandCity(agg *NodesAggregate) *string {
+	if flip(.5) {
+		c := agg.cities[rand.Intn(len(agg.cities))]
+		v := changeCase(c)
+		return &v
 	}
-	if f.FarmName != nil {
-		res = fmt.Sprintf("%sFarmName: %s\n", res, *f.FarmName)
+
+	return nil
+}
+
+func nodeRandCityContains(agg *NodesAggregate) *string {
+	if flip(.5) {
+		c := agg.cities[rand.Intn(len(agg.cities))]
+		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		if a > b {
+			a, b = b, a
+		}
+		c = c[a : b+1]
+
+		return &c
 	}
-	if f.FarmIDs != nil {
-		res = fmt.Sprintf("%sFarmIDs: %v\n", res, f.FarmIDs)
+
+	return nil
+}
+
+func nodeRandFarmName(agg *NodesAggregate) *string {
+	if flip(.5) {
+		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
+		v := changeCase(c)
+		return &v
 	}
-	if f.FreeIPs != nil {
-		res = fmt.Sprintf("%sFreeIPs: %d\n", res, *f.FreeIPs)
+
+	return nil
+}
+
+func nodeRandFarmNameContains(agg *NodesAggregate) *string {
+	if flip(.5) {
+		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
+		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		if a > b {
+			a, b = b, a
+		}
+		c = c[a : b+1]
+
+		return &c
 	}
-	if f.IPv4 != nil {
-		res = fmt.Sprintf("%sIPv4: %t\n", res, *f.IPv4)
+
+	return nil
+}
+
+func nodeRandFarmIDs(agg *NodesAggregate) []uint32 {
+	if flip(.5) {
+		ids := []uint32{}
+		for _, id := range agg.farmIDs {
+			if flip(float32(min(3, uint64(len(agg.farmIDs)))) / float32(len(agg.farmIDs))) {
+				ids = append(ids, uint32(id))
+			}
+		}
+		return ids
 	}
-	if f.IPv6 != nil {
-		res = fmt.Sprintf("%sIPv6: %t\n", res, *f.IPv6)
+
+	return nil
+}
+
+func nodeRandFreeIPs(agg *NodesAggregate) *uint64 {
+	if flip(.5) {
+		return rndref(0, agg.maxFreeIPs)
 	}
-	if f.Domain != nil {
-		res = fmt.Sprintf("%sDomain: %t\n", res, *f.Domain)
+
+	return nil
+}
+
+func nodeRandIPv4(agg *NodesAggregate) *bool {
+	if flip(.5) {
+		v := true
+		return &v
 	}
-	if f.Rentable != nil {
-		res = fmt.Sprintf("%sRentable: %t\n", res, *f.Rentable)
+
+	return nil
+}
+
+func nodeRandIPv6(agg *NodesAggregate) *bool {
+	if flip(.5) {
+		v := true
+		return &v
 	}
-	if f.Rentable != nil {
-		res = fmt.Sprintf("%sRentable: %t\n", res, *f.Rentable)
+
+	return nil
+}
+
+func nodeRandDomain(agg *NodesAggregate) *bool {
+	if flip(.5) {
+		v := true
+		return &v
 	}
-	if f.AvailableFor != nil {
-		res = fmt.Sprintf("%sAvailableFor: %d\n", res, *f.AvailableFor)
+
+	return nil
+}
+
+func nodeRandNodeID(agg *NodesAggregate) *uint32 {
+	if flip(.5) {
+		v := uint32(rand.Intn(1100)) // 1000 is the total nodes + 100 for non-existed cases
+		return &v
 	}
-	if f.Rented != nil {
-		res = fmt.Sprintf("%sRented: %t\n", res, *f.Rented)
+
+	return nil
+}
+
+func nodeRandTwinID(agg *NodesAggregate) *uint32 {
+	if flip(.5) {
+		v := uint32(rand.Intn(3500))
+		return &v
 	}
-	return res
+
+	return nil
+}
+
+func nodeRandRentable(agg *NodesAggregate) *bool {
+	if flip(.5) {
+		v := true
+		return &v
+	}
+
+	return nil
+}
+
+func nodeRandRentedBy(agg *NodesAggregate) *uint32 {
+	if flip(.5) {
+		c := agg.twins[rand.Intn(len(agg.twins))]
+		if flip(.9) && len(agg.nodeRenters) != 0 {
+			c = agg.nodeRenters[rand.Intn(len(agg.nodeRenters))]
+		}
+		return &c
+	}
+
+	return nil
+}
+
+func nodeRandAvailableFor(agg *NodesAggregate) *uint32 {
+	if flip(.5) {
+		c := agg.twins[rand.Intn(len(agg.twins))]
+		if flip(.1) && len(agg.nodeRenters) != 0 {
+			c = agg.nodeRenters[rand.Intn(len(agg.nodeRenters))]
+		}
+		return &c
+	}
+
+	return nil
+}
+
+func nodeRandRented(agg *NodesAggregate) *bool {
+	if flip(.5) {
+		v := true
+		return &v
+	}
+
+	return nil
+}
+
+func nodeRandCertificationType(agg *NodesAggregate) *string {
+	if flip(.5) {
+		v := "Diy"
+		if flip(.5) {
+			v = "noCert"
+		}
+
+		return &v
+	}
+
+	return nil
+}
+
+func nodeRandHasGPU(agg *NodesAggregate) *bool {
+	if flip(.5) {
+		v := true
+		return &v
+	}
+
+	return nil
 }

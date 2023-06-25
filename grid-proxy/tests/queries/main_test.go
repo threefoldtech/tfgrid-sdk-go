@@ -1,7 +1,9 @@
-package main
+package test
 
 import (
+	"database/sql"
 	"flag"
+	"fmt"
 	"math/rand"
 	"os"
 	"testing"
@@ -9,6 +11,24 @@ import (
 	// used by the orm
 
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
+	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/mock_client"
+)
+
+var (
+	POSTGRES_HOST      string
+	POSTGRES_PORT      int
+	POSTGRES_USER      string
+	POSTGRES_PASSSWORD string
+	POSTGRES_DB        string
+	ENDPOINT           string
+	SEED               int
+	STATUS_DOWN        = "down"
+	STATUS_UP          = "up"
+	proxyClient        proxyclient.Client
+	mockClient         proxyclient.Client
+	dbData             mock.DBData
 )
 
 func parseCmdline() {
@@ -27,6 +47,23 @@ func TestMain(m *testing.M) {
 	if SEED != 0 {
 		rand.Seed(int64(SEED))
 	}
+
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB)
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(errors.Wrap(err, "failed to open db"))
+	}
+	defer db.Close()
+
+	dbData, err = mock.NewDBData(db)
+	if err != nil {
+		panic(err)
+	}
+
+	proxyClient = proxyclient.NewClient(ENDPOINT)
+	mockClient = mock.NewGridProxyMockClient(dbData)
 
 	exitcode := m.Run()
 	os.Exit(exitcode)
