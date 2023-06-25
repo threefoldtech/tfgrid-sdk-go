@@ -1,4 +1,4 @@
-package common
+package rmb
 
 import (
 	"bytes"
@@ -18,8 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/common/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/types"
 )
 
 const (
@@ -208,7 +207,7 @@ func (b *BaseClient) MakeRequest(ctx context.Context, twin uint32, fn string, da
 		ttl = uint64(time.Until(deadline).Seconds())
 	}
 
-	schema := rmb.DefaultSchema
+	schema := DefaultSchema
 
 	env := types.Envelope{
 		Uid:         uuid.NewString(),
@@ -290,8 +289,8 @@ func (b *BaseClient) HandleResponse(response *types.Envelope) ([]byte, error) {
 		return nil, fmt.Errorf("received a non response envelope")
 	}
 
-	if response.Schema == nil || *response.Schema != rmb.DefaultSchema {
-		return nil, fmt.Errorf("invalid schema received expected '%s'", rmb.DefaultSchema)
+	if response.Schema == nil || *response.Schema != DefaultSchema {
+		return nil, fmt.Errorf("invalid schema received expected '%s'", DefaultSchema)
 	}
 
 	var output []byte

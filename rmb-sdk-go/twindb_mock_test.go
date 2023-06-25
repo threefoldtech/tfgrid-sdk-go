@@ -2,7 +2,7 @@
 // Source: twindb.go
 
 // Package mock_direct is a generated GoMock package.
-package common
+package rmb
 
 import (
 	reflect "reflect"

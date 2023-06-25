@@ -6,20 +6,20 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/common"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/common/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/types"
 	"google.golang.org/protobuf/proto"
 )
 
 type AsyncClient struct {
-	baseClient       *common.BaseClient
+	baseClient       *rmb.BaseClient
 	responseListener RMBResponseListener
 }
 
 type RMBResponseListener func(result []byte) error
 
 func NewAsyncClient(ctx context.Context, responseListener RMBResponseListener, keytype string, mnemonics string, relayURL string, session string, sub *substrate.Substrate, enableEncryption bool) (*AsyncClient, error) {
-	baseClient, err := common.NewBaseClient(ctx, keytype, mnemonics, relayURL, session, sub, enableEncryption)
+	baseClient, err := rmb.NewBaseClient(ctx, keytype, mnemonics, relayURL, session, sub, enableEncryption)
 	if err != nil {
 		return nil, err
 	}

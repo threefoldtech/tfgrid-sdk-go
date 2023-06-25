@@ -12,8 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/common"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/common/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/types"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -23,7 +22,7 @@ var (
 
 // DirectClient exposes the functionality to talk directly to an rmb relay
 type DirectClient struct {
-	baseClient *common.BaseClient
+	baseClient *rmb.BaseClient
 	responses  map[string]chan *types.Envelope
 	respM      sync.Mutex
 }
@@ -35,7 +34,7 @@ type DirectClient struct {
 // Make sure the context passed to Call() does not outlive the directClient's context.
 // Call() will panic if called while the directClient's context is canceled.
 func NewClient(ctx context.Context, keytype string, mnemonics string, relayURL string, session string, sub *substrate.Substrate, enableEncryption bool) (*DirectClient, error) {
-	baseClient, err := common.NewBaseClient(ctx, keytype, mnemonics, relayURL, session, sub, enableEncryption)
+	baseClient, err := rmb.NewBaseClient(ctx, keytype, mnemonics, relayURL, session, sub, enableEncryption)
 	if err != nil {
 		return nil, err
 	}

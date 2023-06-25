@@ -53,3 +53,8 @@ y := 2
 var sum int
 err := client.Call(ctx, destinationTwinID, "calculator.add", []int{x, y}, &sum)
 ```
+
+## Types generation
+```bash
+protoc -I. --go_out=types types.proto
+```

@@ -1,4 +1,4 @@
-package common
+package rmb
 
 import (
 	"encoding/base64"

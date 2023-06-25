@@ -1,4 +1,4 @@
-package common
+package rmb
 
 import (
 	"crypto/ed25519"
@@ -7,7 +7,7 @@ import (
 
 	sr25519 "github.com/ChainSafe/go-schnorrkel"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/common/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/types"
 
 	"github.com/gtank/merlin"
 	"github.com/rs/zerolog/log"

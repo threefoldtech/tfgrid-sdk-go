@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/threefoldtech/zos/pkg/rmb/client/common/types";
+option go_package = "github.com/threefoldtech/zos/pkg/rmb/client/";
 
 // A Request annotate this message as a request message
 // with proper command

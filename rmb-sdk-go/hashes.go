@@ -1,11 +1,11 @@
-package common
+package rmb
 
 import (
 	"crypto/md5"
 	"fmt"
 	"io"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/common/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/types"
 )
 
 func Challenge(env *types.Envelope) ([]byte, error) {
