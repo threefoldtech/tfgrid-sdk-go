@@ -11,8 +11,3 @@ This means that the client need to take care of some more things this include:
 
 > The direct client is still a WIP. Although it works perfectly well, it yet need to verify
 received envelope signature.
-
-## Types generation
-```bash
-protoc -I. --go_out=types types.proto
-```

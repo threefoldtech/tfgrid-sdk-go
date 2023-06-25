@@ -1,4 +1,4 @@
-package direct
+package common
 
 import (
 	"context"

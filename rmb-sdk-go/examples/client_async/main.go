@@ -2,14 +2,27 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/async"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/common"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
 )
+
+// Change result to the expected response
+type Result struct {
+	ID string `json:"id"`
+}
+
+func listener(res []byte) error {
+	var output Result
+	json.Unmarshal(res, &output)
+	fmt.Printf("%+v", output)
+	return nil
+}
 
 func app() error {
 	mnemonics := "<mnemonics goes here>"
@@ -20,7 +33,7 @@ func app() error {
 	}
 
 	defer sub.Close()
-	client, err := direct.NewClient(context.Background(), common.KeyTypeSr25519, mnemonics, "wss://relay.dev.grid.tf", "test-client", sub, true)
+	client, err := async.NewAsyncClient(context.Background(), listener, common.KeyTypeSr25519, mnemonics, "wss://relay.dev.grid.tf", "test-client", sub, true)
 	if err != nil {
 		return fmt.Errorf("failed to create direct client: %w", err)
 	}
@@ -28,19 +41,16 @@ func app() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if err := client.Ping(ctx); err != nil {
-		return fmt.Errorf("failed to do high level ping: %s", err)
-	}
+	// if err := client.Ping(ctx); err != nil {
+	// 	return fmt.Errorf("failed to do high level ping: %s", err)
+	// }
 	const dst = 7 // <- replace this with the twin id of where the service is running
 	// it's okay to run both the server and the client behind the same rmb-peer
-	var output float64
-	for i := 0; i < 20; i++ {
-		if err := client.Call(ctx, dst, "calculator.add", []float64{output, float64(i)}, &output); err != nil {
-			return err
-		}
+	if err := client.Send(ctx, dst, "calculator.add", nil); err != nil {
+		return err
 	}
 
-	fmt.Printf("output: %f\n", output)
+	time.Sleep(3 * time.Second)
 
 	return nil
 }
