@@ -41,7 +41,18 @@ jobs:
     defaults:
       run:
         working-directory: grid-proxy
+    permissions:
+      contents: read
+      packages: write
+      
     steps:
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v4
