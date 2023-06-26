@@ -54,7 +54,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./grid-proxy/Dockerfile
+          file: ./Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
