@@ -20,19 +20,6 @@ require (
 )
 
 require (
-	github.com/blang/semver v3.5.1+incompatible // indirect
-	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/hashicorp/errwrap v1.0.0 // indirect
-	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
-	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/tklauser/go-sysconf v0.3.9 // indirect
-	github.com/tklauser/numcpus v0.6.0 // indirect
-	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852 // indirect
-	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
-	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-)
-
-require (
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -48,7 +35,9 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.18 // indirect

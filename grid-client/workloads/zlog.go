@@ -4,6 +4,7 @@ package workloads
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -11,8 +12,8 @@ import (
 
 // Zlog logger struct
 type Zlog struct {
-	Zmachine string
-	Output   string
+	Zmachine string `json:"zmachine"`
+	Output   string `json:"output"`
 }
 
 // ZosWorkload generates a zlog workload
@@ -29,6 +30,10 @@ func (zlog *Zlog) ZosWorkload() gridtypes.Workload {
 			Output:   zlog.Output,
 		}),
 	}
+}
+
+func (zlog *Zlog) MarshalJSON() ([]byte, error) {
+	return json.Marshal(zlog.Output)
 }
 
 func zlogs(dl *gridtypes.Deployment, name string) []Zlog {

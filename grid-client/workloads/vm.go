@@ -17,89 +17,56 @@ var ErrInvalidInput = errors.New("invalid input")
 
 // VM is a virtual machine struct
 type VM struct {
-	Name          string
-	Flist         string
-	FlistChecksum string
-	PublicIP      bool
-	PublicIP6     bool
-	Planetary     bool
-	Corex         bool //TODO: Is it works ??
-	ComputedIP    string
-	ComputedIP6   string
-	YggIP         string
-	IP            string
-	Description   string
-	GPUs          []zos.GPU
-	CPU           int
-	Memory        int
-	RootfsSize    int
-	Entrypoint    string
-	Mounts        []Mount
-	Zlogs         []Zlog
-	EnvVars       map[string]string
-
-	NetworkName string
+	Name          string            `json:"name"`
+	Flist         string            `json:"flist"`
+	FlistChecksum string            `json:"flist_checksum"`
+	PublicIP      bool              `json:"publicip"`
+	PublicIP6     bool              `json:"publicip6"`
+	Planetary     bool              `json:"planetary"`
+	Corex         bool              `json:"corex"` //TODO: Is it works ??
+	ComputedIP    string            `json:"computedip"`
+	ComputedIP6   string            `json:"computedip6"`
+	YggIP         string            `json:"ygg_ip"`
+	IP            string            `json:"ip"`
+	Description   string            `json:"description"`
+	GPUs          []zos.GPU         `json:"gpus"`
+	CPU           int               `json:"cpu"`
+	Memory        int               `json:"memory"`
+	RootfsSize    int               `json:"rootfs_size"`
+	Entrypoint    string            `json:"entrypoint"`
+	Mounts        []Mount           `json:"mounts"`
+	Zlogs         []Zlog            `json:"zlogs"`
+	EnvVars       map[string]string `json:"env_vars"`
+	NetworkName   string            `json:"network_name"`
 }
 
 // Mount disks struct
 type Mount struct {
-	DiskName   string
-	MountPoint string
+	DiskName   string `json:"disk_name"`
+	MountPoint string `json:"mount_point"`
 }
 
-// NewVMFromMap generates a new vm from a map of its data
-func NewVMFromMap(vm map[string]interface{}) *VM {
-	var mounts []Mount
-	mountPoints := vm["mounts"].([]interface{})
-
-	for _, mountPoint := range mountPoints {
-		point := mountPoint.(map[string]interface{})
-		mount := Mount{DiskName: point["disk_name"].(string), MountPoint: point["mount_point"].(string)}
-		mounts = append(mounts, mount)
-	}
-	envs := vm["env_vars"].(map[string]interface{})
-	envVars := make(map[string]string)
-
-	for k, v := range envs {
-		envVars[k] = v.(string)
+func NewVMFromMap(vm map[string]interface{}) (*VM, error) {
+	zlogs := vm["zlogs"].([]interface{})
+	for i, v := range zlogs {
+		newVal := map[string]interface{}{}
+		newVal["zmachine"] = vm["name"].(string)
+		newVal["output"] = v.(string)
+		zlogs[i] = newVal
 	}
 
-	var zlogs []Zlog
-	for _, v := range vm["zlogs"].([]interface{}) {
-		zlogs = append(zlogs, Zlog{
-			Zmachine: vm["name"].(string),
-			Output:   v.(string),
-		})
+	mapBytes, err := json.Marshal(vm)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal vm map")
 	}
 
-	var gpus []zos.GPU
-	for _, v := range vm["gpus"].([]interface{}) {
-		gpus = append(gpus, zos.GPU(v.(string)))
+	res := VM{}
+	err = json.Unmarshal(mapBytes, &res)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal vm data")
 	}
 
-	return &VM{
-		Name:          vm["name"].(string),
-		PublicIP:      vm["publicip"].(bool),
-		PublicIP6:     vm["publicip6"].(bool),
-		Flist:         vm["flist"].(string),
-		FlistChecksum: vm["flist_checksum"].(string),
-		ComputedIP:    vm["computedip"].(string),
-		ComputedIP6:   vm["computedip6"].(string),
-		YggIP:         vm["ygg_ip"].(string),
-		Planetary:     vm["planetary"].(bool),
-		IP:            vm["ip"].(string),
-		CPU:           vm["cpu"].(int),
-		GPUs:          gpus,
-		Memory:        vm["memory"].(int),
-		RootfsSize:    vm["rootfs_size"].(int),
-		Entrypoint:    vm["entrypoint"].(string),
-		Mounts:        mounts,
-		EnvVars:       envVars,
-		Corex:         vm["corex"].(bool),
-		Description:   vm["description"].(string),
-		Zlogs:         zlogs,
-		NetworkName:   vm["network_name"].(string),
-	}
+	return &res, nil
 }
 
 // NewVMFromWorkload generates a new vm from given workloads and deployment
@@ -236,53 +203,19 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 }
 
 // ToMap converts vm data to a map (dict)
-func (vm *VM) ToMap() map[string]interface{} {
-	envVars := make(map[string]interface{})
-	for key, value := range vm.EnvVars {
-		envVars[key] = value
+func (vm *VM) ToMap() (map[string]interface{}, error) {
+	var vmMap map[string]interface{}
+	vmBytes, err := json.Marshal(vm)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal vm data")
 	}
 
-	var mounts []interface{}
-	for _, mountPoint := range vm.Mounts {
-		mount := map[string]interface{}{
-			"disk_name": mountPoint.DiskName, "mount_point": mountPoint.MountPoint,
-		}
-		mounts = append(mounts, mount)
+	err = json.Unmarshal(vmBytes, &vmMap)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal vm bytes to map")
 	}
 
-	var zlogs []interface{}
-	for _, zlog := range vm.Zlogs {
-		zlogs = append(zlogs, zlog.Output)
-	}
-
-	var gpus []interface{}
-	for _, gpu := range vm.GPUs {
-		gpus = append(gpus, gpu)
-	}
-
-	res := make(map[string]interface{})
-	res["name"] = vm.Name
-	res["description"] = vm.Description
-	res["publicip"] = vm.PublicIP
-	res["publicip6"] = vm.PublicIP6
-	res["planetary"] = vm.Planetary
-	res["corex"] = vm.Corex
-	res["flist"] = vm.Flist
-	res["flist_checksum"] = vm.FlistChecksum
-	res["computedip"] = vm.ComputedIP
-	res["computedip6"] = vm.ComputedIP6
-	res["ygg_ip"] = vm.YggIP
-	res["ip"] = vm.IP
-	res["mounts"] = mounts
-	res["cpu"] = vm.CPU
-	res["gpus"] = gpus
-	res["memory"] = vm.Memory
-	res["rootfs_size"] = vm.RootfsSize
-	res["env_vars"] = envVars
-	res["entrypoint"] = vm.Entrypoint
-	res["zlogs"] = zlogs
-	res["network_name"] = vm.NetworkName
-	return res
+	return vmMap, nil
 }
 
 // Validate validates a virtual machine data
