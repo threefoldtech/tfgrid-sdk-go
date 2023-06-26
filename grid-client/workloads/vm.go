@@ -215,6 +215,12 @@ func (vm *VM) ToMap() (map[string]interface{}, error) {
 		return nil, errors.Wrap(err, "failed to unmarshal vm bytes to map")
 	}
 
+	var zlogs []interface{}
+	for _, zlog := range vm.Zlogs {
+		zlogs = append(zlogs, zlog.Output)
+	}
+	vmMap["zlogs"] = zlogs
+
 	return vmMap, nil
 }
 
