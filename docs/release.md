@@ -1,3 +1,9 @@
+# Branching
+
+- Each release is developed on a branch that is derived from the development branch (e.g. development_2.0).
+- All pull requests should be made to this release branch; no commits should be made directly to the development branch.
+- The development branch should always reflect the latest release.
+- the release branch should go to development then to master.
 
 # Release
 
@@ -21,7 +27,7 @@ let's say the next tag is `v1.0.0`, release will be:
 
 - Create a tag `git tag -a grid-proxy/v1.0.0 -m "release grid-proxy/v1.0.0"`
 - Push the tag `git push origin grid-proxy/v1.0.0`
-For Further info check Grid-proxy release [docs](../grid-proxy/docs/release.md).
+  For Further info check Grid-proxy release [docs](../grid-proxy/docs/release.md).
 
 ### RMB-sdk-go
 
@@ -36,6 +42,7 @@ For Further info check Grid-proxy release [docs](../grid-proxy/docs/release.md).
 - the release workflow will release the tag automatically
 
 ## Tags Convention
+
 The following convention should be followed for tagging in this project:
 
 Release Tags: For release names and GitHub tags, the tag format should be prefixed with v0.0.0. For example, a release tag could be v1.2.3, where 1.2.3 represents the version number of the release.
