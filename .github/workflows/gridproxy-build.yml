@@ -35,3 +35,31 @@ jobs:
 
       - name: Test version
         run: ./main -v
+  
+  build_docker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: grid-proxy
+    steps:
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/threefoldtech/tfgridproxy
+          tags: |
+            type=semver,pattern={{version}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./grid-proxy/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
+          build-args: |
+            version=${{ github.ref_name	 }}
+
+      
+
