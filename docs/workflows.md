@@ -42,7 +42,7 @@ Runs `integration tests` daily
   
 ### Build and lint workflow
 
-Runs `golangci-lint` and `build` with every push.
+Runs `golangci-lint` and builds gridproxy server and docker image with every push.
 
 ### Unit test workflow
 
