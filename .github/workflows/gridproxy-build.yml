@@ -36,7 +36,7 @@ jobs:
       - name: Test version
         run: ./main -v
   
-  build_docker:
+  build-docker:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,8 +44,11 @@ jobs:
     permissions:
       contents: read
       packages: write
-      
+
     steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v3.5.3
+
       - name: Log in to the Container registry
         uses: docker/login-action@v2.2.0
         with:
@@ -65,7 +68,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile
+          file: ./grid-proxy/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
