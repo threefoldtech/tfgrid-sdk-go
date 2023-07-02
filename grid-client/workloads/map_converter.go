@@ -24,17 +24,16 @@ func ToMap(workload interface{}) (map[string]interface{}, error) {
 }
 
 // NewWorkloadFromMap converts a map (dict) to a workload
-func NewWorkloadFromMap(wlMap map[string]interface{}) (interface{}, error) {
+func NewWorkloadFromMap(wlMap map[string]interface{}, result interface{}) (interface{}, error) {
 	mapBytes, err := json.Marshal(wlMap)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal map")
 	}
 
-	res := VM{}
-	err = json.Unmarshal(mapBytes, &res)
+	err = json.Unmarshal(mapBytes, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal data")
 	}
 
-	return &res, nil
+	return result, nil
 }

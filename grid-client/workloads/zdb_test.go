@@ -27,13 +27,13 @@ func TestZDB(t *testing.T) {
 	var zdbWorkload gridtypes.Workload
 
 	t.Run("test zdb to/from map", func(t *testing.T) {
-		zdbMap, err := ZDBWorkload.ToMap()
+		zdbMap, err := ToMap(ZDBWorkload)
 		assert.NoError(t, err)
 
-		zdbFromMap, err := NewZDBFromMap(zdbMap)
+		zdbFromMap, err := NewWorkloadFromMap(zdbMap, &ZDB{})
 		assert.NoError(t, err)
 
-		assert.Equal(t, ZDBWorkload, zdbFromMap)
+		assert.Equal(t, zdbFromMap, &ZDBWorkload)
 	})
 
 	t.Run("test_zdb_from_workload", func(t *testing.T) {

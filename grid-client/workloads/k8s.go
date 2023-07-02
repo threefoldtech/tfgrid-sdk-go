@@ -52,22 +52,6 @@ type K8sCluster struct {
 	NodeDeploymentID map[uint32]uint64
 }
 
-// NewK8sNodeFromMap generates new k8s node
-func NewK8sNodeFromMap(m map[string]interface{}) (K8sNode, error) {
-	bytes, err := json.Marshal(m)
-	if err != nil {
-		return K8sNode{}, errors.Wrap(err, "failed to marshal map")
-	}
-
-	res := K8sNode{}
-	err = json.Unmarshal(bytes, &res)
-	if err != nil {
-		return K8sNode{}, errors.Wrap(err, "failed to unmarshal data")
-	}
-
-	return res, nil
-}
-
 // NewK8sNodeFromWorkload generates a new k8s from a workload
 func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, computedIP string, computedIP6 string) (K8sNode, error) {
 	var k K8sNode
@@ -109,22 +93,6 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, 
 		Token:         d.Env["K3S_TOKEN"],
 		SSHKey:        d.Env["SSH_KEY"],
 	}, nil
-}
-
-// ToMap converts k8s node to a map (dict)
-func (k *K8sNode) ToMap() (map[string]interface{}, error) {
-	var k8sMap map[string]interface{}
-	bytes, err := json.Marshal(k)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal data")
-	}
-
-	err = json.Unmarshal(bytes, &k8sMap)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal bytes to map")
-	}
-
-	return k8sMap, nil
 }
 
 // MasterZosWorkload generates a k8s master workload from a k8s node

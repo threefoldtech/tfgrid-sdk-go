@@ -46,29 +46,6 @@ type Mount struct {
 	MountPoint string `json:"mount_point"`
 }
 
-func NewVMFromMap(vm map[string]interface{}) (*VM, error) {
-	zlogs := vm["zlogs"].([]interface{})
-	for i, v := range zlogs {
-		newVal := map[string]interface{}{}
-		newVal["zmachine"] = vm["name"].(string)
-		newVal["output"] = v.(string)
-		zlogs[i] = newVal
-	}
-
-	mapBytes, err := json.Marshal(vm)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal vm map")
-	}
-
-	res := VM{}
-	err = json.Unmarshal(mapBytes, &res)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal vm data")
-	}
-
-	return &res, nil
-}
-
 // NewVMFromWorkload generates a new vm from given workloads and deployment
 func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, error) {
 	dataI, err := wl.WorkloadData()
@@ -211,28 +188,6 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 	workloads = append(workloads, workload)
 
 	return workloads
-}
-
-// ToMap converts vm data to a map (dict)
-func (vm *VM) ToMap() (map[string]interface{}, error) {
-	var vmMap map[string]interface{}
-	vmBytes, err := json.Marshal(vm)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal vm data")
-	}
-
-	err = json.Unmarshal(vmBytes, &vmMap)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal vm bytes to map")
-	}
-
-	var zlogs []interface{}
-	for _, zlog := range vm.Zlogs {
-		zlogs = append(zlogs, zlog.Output)
-	}
-	vmMap["zlogs"] = zlogs
-
-	return vmMap, nil
 }
 
 // Validate validates a virtual machine data

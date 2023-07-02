@@ -39,12 +39,12 @@ func TestQSFSWorkload(t *testing.T) {
 	var qsfs gridtypes.Workload
 
 	t.Run("test qsfs from/to map", func(t *testing.T) {
-		qsfsMap, err := QSFSWorkload.ToMap()
+		qsfsMap, err := ToMap(QSFSWorkload)
 		assert.NoError(t, err)
 
-		qsfsFromMap, err := NewQSFSFromMap(qsfsMap)
+		qsfsFromMap, err := NewWorkloadFromMap(qsfsMap, &QSFS{})
 		assert.NoError(t, err)
-		assert.Equal(t, qsfsFromMap, QSFSWorkload)
+		assert.Equal(t, qsfsFromMap, &QSFSWorkload)
 	})
 
 	t.Run("test_new_QSFS_from_workload", func(t *testing.T) {

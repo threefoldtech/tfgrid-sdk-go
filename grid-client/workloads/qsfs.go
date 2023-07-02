@@ -3,7 +3,6 @@ package workloads
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -94,22 +93,6 @@ func GroupsFromZos(gs []zos.ZdbGroup) (groups Groups) {
 		})
 	}
 	return groups
-}
-
-// NewQSFSFromMap generates a new QSFS from a given map of its data
-func NewQSFSFromMap(qsfsMap map[string]interface{}) (QSFS, error) {
-	bytes, err := json.Marshal(qsfsMap)
-	if err != nil {
-		return QSFS{}, errors.Wrap(err, "failed to marshal map")
-	}
-
-	res := QSFS{}
-	err = json.Unmarshal(bytes, &res)
-	if err != nil {
-		return QSFS{}, errors.Wrap(err, "failed to unmarshal data")
-	}
-
-	return res, nil
 }
 
 // NewQSFSFromWorkload generates a new QSFS from a workload
@@ -224,20 +207,4 @@ func (q *QSFS) UpdateFromWorkload(wl *gridtypes.Workload) error {
 
 	q.MetricsEndpoint = res.MetricsEndpoint
 	return nil
-}
-
-// ToMap converts a QSFS data to a map
-func (q *QSFS) ToMap() (map[string]interface{}, error) {
-	var qsfsMap map[string]interface{}
-	qsfsBytes, err := json.Marshal(q)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal qsfs data")
-	}
-
-	err = json.Unmarshal(qsfsBytes, &qsfsMap)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal qsfs bytes to map")
-	}
-
-	return qsfsMap, nil
 }

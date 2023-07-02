@@ -14,15 +14,6 @@ type Disk struct {
 	Description string `json:"description"`
 }
 
-// NewDiskFromMap converts a disk data map to a struct
-func NewDiskFromMap(disk map[string]interface{}) Disk {
-	return Disk{
-		Name:        disk["name"].(string),
-		SizeGB:      disk["size"].(int),
-		Description: disk["description"].(string),
-	}
-}
-
 // NewDiskFromWorkload generates a new disk from a workload
 func NewDiskFromWorkload(wl *gridtypes.Workload) (Disk, error) {
 	dataI, err := wl.WorkloadData()
@@ -40,16 +31,6 @@ func NewDiskFromWorkload(wl *gridtypes.Workload) (Disk, error) {
 		Description: wl.Description,
 		SizeGB:      int(data.Size / gridtypes.Gigabyte),
 	}, nil
-}
-
-// ToMap converts a disk data to a map
-func (d *Disk) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"name":        d.Name,
-		"description": d.Description,
-		"size":        d.SizeGB,
-	}
-
 }
 
 // ZosWorkload generates a workload from a disk

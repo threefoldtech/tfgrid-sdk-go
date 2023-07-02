@@ -22,22 +22,6 @@ type ZDB struct {
 	Namespace   string   `json:"namespace"`
 }
 
-// NewZDBFromMap converts a map including zdb data to a zdb struct
-func NewZDBFromMap(zdb map[string]interface{}) (ZDB, error) {
-	bytes, err := json.Marshal(zdb)
-	if err != nil {
-		return ZDB{}, errors.Wrap(err, "failed to marshal zdb map")
-	}
-
-	res := ZDB{}
-	err = json.Unmarshal(bytes, &res)
-	if err != nil {
-		return ZDB{}, errors.Wrap(err, "failed to unmarshal zdb data")
-	}
-
-	return res, nil
-}
-
 // NewZDBFromWorkload generates a new zdb from a workload
 func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 	dataI, err := wl.WorkloadData()
@@ -67,22 +51,6 @@ func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 		Port:        uint32(result.Port),
 		Namespace:   result.Namespace,
 	}, nil
-}
-
-// ToMap converts a zdb to a map(dict) object
-func (z *ZDB) ToMap() (map[string]interface{}, error) {
-	var zdbMap map[string]interface{}
-	zdbBytes, err := json.Marshal(z)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal zdb data")
-	}
-
-	err = json.Unmarshal(zdbBytes, &zdbMap)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal zdb bytes to map")
-	}
-
-	return zdbMap, nil
 }
 
 // ZosWorkload generates a workload from a zdb

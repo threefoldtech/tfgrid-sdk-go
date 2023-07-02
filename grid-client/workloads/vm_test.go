@@ -47,12 +47,12 @@ func TestVMWorkload(t *testing.T) {
 	deployment := NewGridDeployment(1, []gridtypes.Workload{vmWorkload, pubIPWorkload})
 
 	t.Run("test vm from/to map", func(t *testing.T) {
-		vmMap, err := VMWorkload.ToMap()
+		vmMap, err := ToMap(VMWorkload)
 		assert.NoError(t, err)
 
-		vmFromMap, err := NewVMFromMap(vmMap)
+		vmFromMap, err := NewWorkloadFromMap(vmMap, &VM{})
 		assert.NoError(t, err)
-		assert.Equal(t, *vmFromMap, VMWorkload)
+		assert.Equal(t, vmFromMap, &VMWorkload)
 	})
 
 	t.Run("test_vm_from_workload", func(t *testing.T) {
