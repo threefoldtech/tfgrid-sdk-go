@@ -87,18 +87,21 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, er
 		return VM{}, errors.Wrap(err, "failed to get vm result")
 	}
 
-	pubIP, err := pubIP(dl, data.Network.PublicIP)
-	if err != nil {
-		return VM{}, errors.Wrap(err, "failed to get public ip workload")
+	var pubIPRes zos.PublicIPResult
+	if !data.Network.PublicIP.IsEmpty() {
+		pubIPRes, err = pubIP(dl, data.Network.PublicIP)
+		if err != nil {
+			return VM{}, errors.Wrap(err, "failed to get public ip workload")
+		}
 	}
 
 	var pubIP4, pubIP6 string
 
-	if !pubIP.IP.Nil() {
-		pubIP4 = pubIP.IP.String()
+	if !pubIPRes.IP.Nil() {
+		pubIP4 = pubIPRes.IP.String()
 	}
-	if !pubIP.IPv6.Nil() {
-		pubIP6 = pubIP.IPv6.String()
+	if !pubIPRes.IPv6.Nil() {
+		pubIP6 = pubIPRes.IPv6.String()
 	}
 
 	return VM{
@@ -106,9 +109,9 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, er
 		Description:   wl.Description,
 		Flist:         data.FList,
 		FlistChecksum: "",
-		PublicIP:      !pubIP.IP.Nil(),
+		PublicIP:      !pubIPRes.IP.Nil(),
 		ComputedIP:    pubIP4,
-		PublicIP6:     !pubIP.IPv6.Nil(),
+		PublicIP6:     !pubIPRes.IPv6.Nil(),
 		ComputedIP6:   pubIP6,
 		Planetary:     result.YggIP != "",
 		Corex:         data.Corex,
