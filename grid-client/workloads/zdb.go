@@ -11,36 +11,31 @@ import (
 
 // ZDB workload struct
 type ZDB struct {
-	Name        string
-	Password    string
-	Public      bool
-	Size        int
-	Description string
-	Mode        string
-	IPs         []string
-	Port        uint32
-	Namespace   string
+	Name        string   `json:"name"`
+	Password    string   `json:"password"`
+	Public      bool     `json:"public"`
+	Size        int      `json:"size"`
+	Description string   `json:"description"`
+	Mode        string   `json:"mode"`
+	IPs         []string `json:"ips"`
+	Port        uint32   `json:"port"`
+	Namespace   string   `json:"namespace"`
 }
 
 // NewZDBFromMap converts a map including zdb data to a zdb struct
-func NewZDBFromMap(zdb map[string]interface{}) ZDB {
-	ips := zdb["ips"].([]interface{})
-	var strIPs []string
-	for _, ip := range ips {
-		strIPs = append(strIPs, ip.(string))
+func NewZDBFromMap(zdb map[string]interface{}) (ZDB, error) {
+	bytes, err := json.Marshal(zdb)
+	if err != nil {
+		return ZDB{}, errors.Wrap(err, "failed to marshal zdb map")
 	}
 
-	return ZDB{
-		Name:        zdb["name"].(string),
-		Size:        zdb["size"].(int),
-		Description: zdb["description"].(string),
-		Password:    zdb["password"].(string),
-		Public:      zdb["public"].(bool),
-		Mode:        zdb["mode"].(string),
-		IPs:         strIPs,
-		Port:        uint32(zdb["port"].(int)),
-		Namespace:   zdb["namespace"].(string),
+	res := ZDB{}
+	err = json.Unmarshal(bytes, &res)
+	if err != nil {
+		return ZDB{}, errors.Wrap(err, "failed to unmarshal zdb data")
 	}
+
+	return res, nil
 }
 
 // NewZDBFromWorkload generates a new zdb from a workload
@@ -75,24 +70,19 @@ func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 }
 
 // ToMap converts a zdb to a map(dict) object
-func (z *ZDB) ToMap() map[string]interface{} {
-	res := make(map[string]interface{})
-	res["name"] = z.Name
-	res["description"] = z.Description
-	res["size"] = z.Size
-	res["mode"] = z.Mode
-
-	var ips []interface{}
-	for _, ip := range z.IPs {
-		ips = append(ips, ip)
+func (z *ZDB) ToMap() (map[string]interface{}, error) {
+	var zdbMap map[string]interface{}
+	zdbBytes, err := json.Marshal(z)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal zdb data")
 	}
 
-	res["ips"] = ips
-	res["namespace"] = z.Namespace
-	res["port"] = int(z.Port)
-	res["password"] = z.Password
-	res["public"] = z.Public
-	return res
+	err = json.Unmarshal(zdbBytes, &zdbMap)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal zdb bytes to map")
+	}
+
+	return zdbMap, nil
 }
 
 // ZosWorkload generates a workload from a zdb

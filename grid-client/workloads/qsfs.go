@@ -3,6 +3,7 @@ package workloads
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -13,35 +14,34 @@ import (
 
 // QSFS struct
 type QSFS struct {
-	Name                 string
-	Description          string
-	Cache                int
-	MinimalShards        uint32
-	ExpectedShards       uint32
-	RedundantGroups      uint32
-	RedundantNodes       uint32
-	MaxZDBDataDirSize    uint32
-	EncryptionAlgorithm  string
-	EncryptionKey        string
-	CompressionAlgorithm string
-	Metadata             Metadata
-	Groups               Groups
-
-	MetricsEndpoint string
+	Name                 string   `json:"name"`
+	Description          string   `json:"description"`
+	Cache                int      `json:"cache"`
+	MinimalShards        uint32   `json:"minimal_shards"`
+	ExpectedShards       uint32   `json:"expected_shards"`
+	RedundantGroups      uint32   `json:"redundant_groups"`
+	RedundantNodes       uint32   `json:"redundant_nodes"`
+	MaxZDBDataDirSize    uint32   `json:"max_zdb_data_dir_size"`
+	EncryptionAlgorithm  string   `json:"encryption_algorithm"`
+	EncryptionKey        string   `json:"encryption_key"`
+	CompressionAlgorithm string   `json:"compression_algorithm"`
+	Metadata             Metadata `json:"metadata"`
+	Groups               Groups   `json:"groups"`
+	MetricsEndpoint      string   `json:"merge_endpoint"`
 }
 
 // Metadata for QSFS
 type Metadata struct {
-	Type                string
-	Prefix              string
-	EncryptionAlgorithm string
-	EncryptionKey       string
-	Backends            Backends
+	Type                string   `json:"type"`
+	Prefix              string   `json:"prefix"`
+	EncryptionAlgorithm string   `json:"encryption_algorithm"`
+	EncryptionKey       string   `json:"encryption_key"`
+	Backends            Backends `json:"backends"`
 }
 
 // Group is a zos group
 type Group struct {
-	Backends Backends
+	Backends Backends `json:"backends"`
 }
 
 // Backend is a zos backend
@@ -96,96 +96,20 @@ func GroupsFromZos(gs []zos.ZdbGroup) (groups Groups) {
 	return groups
 }
 
-func getBackends(backendsIf []interface{}) (backends Backends) {
-	for _, b := range backendsIf {
-		backendMap := b.(map[string]interface{})
-		backends = append(backends, Backend{
-			Address:   backendMap["address"].(string),
-			Password:  backendMap["password"].(string),
-			Namespace: backendMap["namespace"].(string),
-		})
-	}
-	return backends
-}
-
-// ToMap converts a group data to a map
-func (g *Group) ToMap() map[string]interface{} {
-	res := make(map[string]interface{})
-	res["backends"] = g.Backends.Listify()
-	return res
-}
-
-// ToMap converts a backend data to a map
-func (b *Backend) ToMap() map[string]interface{} {
-	res := make(map[string]interface{})
-	res["address"] = b.Address
-	res["namespace"] = b.Namespace
-	res["password"] = b.Password
-	return res
-}
-
-// Listify lists the backends
-func (bs *Backends) Listify() (res []interface{}) {
-	for _, b := range *bs {
-		res = append(res, b.ToMap())
-	}
-	return res
-}
-
-// Listify lists the groups
-func (gs *Groups) Listify() (res []interface{}) {
-	for _, g := range *gs {
-		res = append(res, g.ToMap())
-	}
-	return res
-}
-
-// ToMap converts a metadata to a map
-func (m *Metadata) ToMap() map[string]interface{} {
-	res := make(map[string]interface{})
-	res["type"] = m.Type
-	res["prefix"] = m.Prefix
-	res["encryption_algorithm"] = m.EncryptionAlgorithm
-	res["encryption_key"] = m.EncryptionKey
-	res["backends"] = m.Backends.Listify()
-	return res
-}
-
 // NewQSFSFromMap generates a new QSFS from a given map of its data
-func NewQSFSFromMap(qsfsMap map[string]interface{}) QSFS {
-	metadataIf := qsfsMap["metadata"].([]interface{})
-	metadataMap := metadataIf[0].(map[string]interface{})
+func NewQSFSFromMap(qsfsMap map[string]interface{}) (QSFS, error) {
+	bytes, err := json.Marshal(qsfsMap)
+	if err != nil {
+		return QSFS{}, errors.Wrap(err, "failed to marshal map")
+	}
 
-	metadata := Metadata{
-		Type:                metadataMap["type"].(string),
-		Prefix:              metadataMap["prefix"].(string),
-		EncryptionAlgorithm: metadataMap["encryption_algorithm"].(string),
-		EncryptionKey:       metadataMap["encryption_key"].(string),
-		Backends:            getBackends(metadataMap["backends"].([]interface{})),
+	res := QSFS{}
+	err = json.Unmarshal(bytes, &res)
+	if err != nil {
+		return QSFS{}, errors.Wrap(err, "failed to unmarshal data")
 	}
-	groupsIf := qsfsMap["groups"].([]interface{})
-	groups := make([]Group, 0, len(groupsIf))
-	for _, gr := range groupsIf {
-		groupMap := gr.(map[string]interface{})
-		groups = append(groups, Group{
-			Backends: getBackends(groupMap["backends"].([]interface{})),
-		})
-	}
-	return QSFS{
-		Name:                 qsfsMap["name"].(string),
-		Description:          qsfsMap["description"].(string),
-		Cache:                qsfsMap["cache"].(int),
-		MinimalShards:        uint32(qsfsMap["minimal_shards"].(int)),
-		ExpectedShards:       uint32(qsfsMap["expected_shards"].(int)),
-		RedundantGroups:      uint32(qsfsMap["redundant_groups"].(int)),
-		RedundantNodes:       uint32(qsfsMap["redundant_nodes"].(int)),
-		MaxZDBDataDirSize:    uint32(qsfsMap["max_zdb_data_dir_size"].(int)),
-		EncryptionAlgorithm:  qsfsMap["encryption_algorithm"].(string),
-		EncryptionKey:        qsfsMap["encryption_key"].(string),
-		CompressionAlgorithm: qsfsMap["compression_algorithm"].(string),
-		Metadata:             metadata,
-		Groups:               groups,
-	}
+
+	return res, nil
 }
 
 // NewQSFSFromWorkload generates a new QSFS from a workload
@@ -303,21 +227,17 @@ func (q *QSFS) UpdateFromWorkload(wl *gridtypes.Workload) error {
 }
 
 // ToMap converts a QSFS data to a map
-func (q *QSFS) ToMap() map[string]interface{} {
-	res := make(map[string]interface{})
-	res["name"] = q.Name
-	res["description"] = q.Description
-	res["cache"] = q.Cache
-	res["minimal_shards"] = q.MinimalShards
-	res["expected_shards"] = q.ExpectedShards
-	res["redundant_groups"] = q.RedundantGroups
-	res["redundant_nodes"] = q.RedundantNodes
-	res["max_zdb_data_dir_size"] = q.MaxZDBDataDirSize
-	res["encryption_algorithm"] = q.EncryptionAlgorithm
-	res["encryption_key"] = q.EncryptionKey
-	res["compression_algorithm"] = q.CompressionAlgorithm
-	res["metrics_endpoint"] = q.MetricsEndpoint
-	res["metadata"] = []interface{}{q.Metadata.ToMap()}
-	res["groups"] = q.Groups.Listify()
-	return res
+func (q *QSFS) ToMap() (map[string]interface{}, error) {
+	var qsfsMap map[string]interface{}
+	qsfsBytes, err := json.Marshal(q)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal qsfs data")
+	}
+
+	err = json.Unmarshal(qsfsBytes, &qsfsMap)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal qsfs bytes to map")
+	}
+
+	return qsfsMap, nil
 }
