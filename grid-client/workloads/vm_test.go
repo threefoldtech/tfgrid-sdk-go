@@ -75,7 +75,8 @@ func TestVMWorkload(t *testing.T) {
 	})
 
 	t.Run("test_pubIP_from_deployment", func(t *testing.T) {
-		pubIP := pubIP(&deployment, "testip")
+		pubIP, err := pubIP(&deployment, "testip")
+		assert.NoError(t, err)
 		assert.Equal(t, pubIP.HasIPv6(), false)
 	})
 

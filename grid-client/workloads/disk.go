@@ -9,9 +9,9 @@ import (
 
 // Disk struct
 type Disk struct {
-	Name        string
-	SizeGB      int
-	Description string
+	Name        string `json:"name"`
+	SizeGB      int    `json:"size"`
+	Description string `json:"description"`
 }
 
 // NewDiskFromMap converts a disk data map to a struct

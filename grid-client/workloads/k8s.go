@@ -17,23 +17,23 @@ import (
 
 // K8sNode kubernetes data
 type K8sNode struct {
-	Name          string
-	Node          uint32
-	DiskSize      int
-	PublicIP      bool
-	PublicIP6     bool
-	Planetary     bool
-	Flist         string
-	FlistChecksum string
-	ComputedIP    string
-	ComputedIP6   string
-	YggIP         string
-	IP            string
-	CPU           int
-	Memory        int
-	NetworkName   string
-	Token         string
-	SSHKey        string
+	Name          string `json:"name"`
+	Node          uint32 `json:"node"`
+	DiskSize      int    `json:"disk_size"`
+	PublicIP      bool   `json:"publicip"`
+	PublicIP6     bool   `json:"publicip6"`
+	Planetary     bool   `json:"planetary"`
+	Flist         string `json:"flist"`
+	FlistChecksum string `json:"flist_checksum"`
+	ComputedIP    string `json:"computedip"`
+	ComputedIP6   string `json:"computedip6"`
+	YggIP         string `json:"ygg_ip"`
+	IP            string `json:"ip"`
+	CPU           int    `json:"cpu"`
+	Memory        int    `json:"memory"`
+	NetworkName   string `json:"network_name"`
+	Token         string `json:"token"`
+	SSHKey        string `json:"ssh_key"`
 }
 
 // K8sCluster struct for k8s cluster
@@ -53,23 +53,19 @@ type K8sCluster struct {
 }
 
 // NewK8sNodeFromMap generates new k8s node
-func NewK8sNodeFromMap(m map[string]interface{}) K8sNode {
-	return K8sNode{
-		Name:          m["name"].(string),
-		Node:          uint32(m["node"].(int)),
-		DiskSize:      m["disk_size"].(int),
-		PublicIP:      m["publicip"].(bool),
-		PublicIP6:     m["publicip6"].(bool),
-		Planetary:     m["planetary"].(bool),
-		Flist:         m["flist"].(string),
-		FlistChecksum: m["flist_checksum"].(string),
-		ComputedIP:    m["computedip"].(string),
-		ComputedIP6:   m["computedip6"].(string),
-		YggIP:         m["ygg_ip"].(string),
-		IP:            m["ip"].(string),
-		CPU:           m["cpu"].(int),
-		Memory:        m["memory"].(int),
+func NewK8sNodeFromMap(m map[string]interface{}) (K8sNode, error) {
+	bytes, err := json.Marshal(m)
+	if err != nil {
+		return K8sNode{}, errors.Wrap(err, "failed to marshal map")
 	}
+
+	res := K8sNode{}
+	err = json.Unmarshal(bytes, &res)
+	if err != nil {
+		return K8sNode{}, errors.Wrap(err, "failed to unmarshal data")
+	}
+
+	return res, nil
 }
 
 // NewK8sNodeFromWorkload generates a new k8s from a workload
@@ -116,23 +112,19 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, 
 }
 
 // ToMap converts k8s node to a map (dict)
-func (k *K8sNode) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"name":           k.Name,
-		"node":           int(k.Node),
-		"disk_size":      k.DiskSize,
-		"publicip":       k.PublicIP,
-		"publicip6":      k.PublicIP6,
-		"planetary":      k.Planetary,
-		"flist":          k.Flist,
-		"flist_checksum": k.FlistChecksum,
-		"computedip":     k.ComputedIP,
-		"computedip6":    k.ComputedIP6,
-		"ygg_ip":         k.YggIP,
-		"ip":             k.IP,
-		"cpu":            k.CPU,
-		"memory":         k.Memory,
+func (k *K8sNode) ToMap() (map[string]interface{}, error) {
+	var k8sMap map[string]interface{}
+	bytes, err := json.Marshal(k)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal data")
 	}
+
+	err = json.Unmarshal(bytes, &k8sMap)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal bytes to map")
+	}
+
+	return k8sMap, nil
 }
 
 // MasterZosWorkload generates a k8s master workload from a k8s node

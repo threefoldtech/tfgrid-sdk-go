@@ -34,7 +34,11 @@ func TestK8sNodeData(t *testing.T) {
 	var k8sWorkloads []gridtypes.Workload
 
 	t.Run("test k8s workload to/from map", func(t *testing.T) {
-		k8sFromMap := NewK8sNodeFromMap(K8sWorkload.ToMap())
+		k8sMap, err := K8sWorkload.ToMap()
+		assert.NoError(t, err)
+
+		k8sFromMap, err := NewK8sNodeFromMap(k8sMap)
+		assert.NoError(t, err)
 		assert.Equal(t, k8sFromMap, K8sWorkload)
 	})
 
