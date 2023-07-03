@@ -52,5 +52,5 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Flags().StringP("config", "c", "./.env", "Enter your env configurations path")
+	rootCmd.Flags().StringP("config", "c", ".env", "Enter your env configurations path")
 }

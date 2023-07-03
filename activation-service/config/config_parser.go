@@ -62,7 +62,7 @@ func ReadConfFile(path string) (Configuration, error) {
 	case config.KycPublicKey == "":
 		return Configuration{}, fmt.Errorf("KYC_PUBLIC_KEY is missing")
 	case config.ActivationAmount == 0:
-		config.ActivationAmount = 1000000
+		config.ActivationAmount = 1 // 1 TFT
 	}
 
 	return config, nil

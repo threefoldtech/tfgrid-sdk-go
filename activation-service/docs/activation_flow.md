@@ -11,7 +11,7 @@ Should look something like this:
 
 Once pressed you will see this:
 
-![image](account_create_1.png)
+![image](account_create.png)
 
 - Save you mnemonic somewhere save (analogue).  When done click ```"I have saved my mnemonics safely"``` and press next.
 - click on ```Advanced creation options``` and select ```"Edwards (ed25519, alternative)"```

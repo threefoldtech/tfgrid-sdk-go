@@ -1,7 +1,8 @@
 # Substrate funding service
 
 A TFChain Wallet account requires a minimum balance to exist and function. New TFChain users will not automatically have any tokens (also not on stellar).
- Therefore an activation service for new TFChain wallets is created. It activates new TFChain wallet addresses by depositing a minimal amount of TFT (currently 1 TFT).
+
+Therefore an activation service for new TFChain wallets is created. It activates new TFChain wallet addresses by depositing a minimal amount of TFT (currently 1 TFT).
 
 ## Installing and running
 
@@ -13,7 +14,7 @@ MNEMONIC=substrate ed25519 private words
 ACTIVATION_AMOUNT=1
 ```
 
-Run backend
+Run
 
 ```bash
 make run
@@ -38,4 +39,4 @@ curl --header "Content-Type: application/json" \
 
 ## Networks
 
-We will run an activation service for each TF Grid network (mainnet, testnet, devnet).
+We will run an activation service for each TF Grid network (mainnet, testnet, devnet, qanet).

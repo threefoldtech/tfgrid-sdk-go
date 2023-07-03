@@ -49,7 +49,7 @@ func (a *App) activateHandler(r *http.Request, w http.ResponseWriter) (interface
 	}
 
 	if balance.Free.Uint64() == 0 {
-		err = a.substrateConn.Transfer(a.identity, a.config.ActivationAmount, account)
+		err = a.substrateConn.Transfer(a.identity, a.config.ActivationAmount*1e7, account)
 		if err != nil {
 			return nil, InternalServerError(err)
 		}
