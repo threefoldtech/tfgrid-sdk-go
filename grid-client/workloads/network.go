@@ -27,7 +27,7 @@ type UserAccess struct {
 	PublicNodeEndpoint string
 }
 
-// NetworkMetaData is added to network workloads to help rebuilding networks when retreived from the grid
+// NetworkMetaData is added to network workloads to help rebuilding networks when retrieved from the grid
 type NetworkMetaData struct {
 	UserAccessIP string `json:"ip"`
 	PrivateKey   string `json:"priv_key"`

@@ -55,7 +55,6 @@
 //		panic("failed to create hash")
 //	}
 //
-// fmt.Printf("Hash: %x\n", hash)
 // ```
 // create the contract and ge the contract id
 // then

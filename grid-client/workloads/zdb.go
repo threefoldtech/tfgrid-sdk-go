@@ -11,36 +11,15 @@ import (
 
 // ZDB workload struct
 type ZDB struct {
-	Name        string
-	Password    string
-	Public      bool
-	Size        int
-	Description string
-	Mode        string
-	IPs         []string
-	Port        uint32
-	Namespace   string
-}
-
-// NewZDBFromMap converts a map including zdb data to a zdb struct
-func NewZDBFromMap(zdb map[string]interface{}) ZDB {
-	ips := zdb["ips"].([]interface{})
-	var strIPs []string
-	for _, ip := range ips {
-		strIPs = append(strIPs, ip.(string))
-	}
-
-	return ZDB{
-		Name:        zdb["name"].(string),
-		Size:        zdb["size"].(int),
-		Description: zdb["description"].(string),
-		Password:    zdb["password"].(string),
-		Public:      zdb["public"].(bool),
-		Mode:        zdb["mode"].(string),
-		IPs:         strIPs,
-		Port:        uint32(zdb["port"].(int)),
-		Namespace:   zdb["namespace"].(string),
-	}
+	Name        string   `json:"name"`
+	Password    string   `json:"password"`
+	Public      bool     `json:"public"`
+	Size        int      `json:"size"`
+	Description string   `json:"description"`
+	Mode        string   `json:"mode"`
+	IPs         []string `json:"ips"`
+	Port        uint32   `json:"port"`
+	Namespace   string   `json:"namespace"`
 }
 
 // NewZDBFromWorkload generates a new zdb from a workload
@@ -72,27 +51,6 @@ func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 		Port:        uint32(result.Port),
 		Namespace:   result.Namespace,
 	}, nil
-}
-
-// ToMap converts a zdb to a map(dict) object
-func (z *ZDB) ToMap() map[string]interface{} {
-	res := make(map[string]interface{})
-	res["name"] = z.Name
-	res["description"] = z.Description
-	res["size"] = z.Size
-	res["mode"] = z.Mode
-
-	var ips []interface{}
-	for _, ip := range z.IPs {
-		ips = append(ips, ip)
-	}
-
-	res["ips"] = ips
-	res["namespace"] = z.Namespace
-	res["port"] = int(z.Port)
-	res["password"] = z.Password
-	res["public"] = z.Public
-	return res
 }
 
 // ZosWorkload generates a workload from a zdb
