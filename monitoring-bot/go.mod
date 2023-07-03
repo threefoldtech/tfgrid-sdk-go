@@ -8,8 +8,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.1
 	github.com/spf13/cobra v1.7.0
-	github.com/stretchr/testify v1.8.2
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230619085748-dd2f8ad00fe5
+	github.com/stretchr/testify v1.8.4
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230703112955-abb8f79f2d7e
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.4.0
 )
 
