@@ -99,11 +99,6 @@ func (r genericResponse) WithHeader(k, v string) Response {
 	return r
 }
 
-// Created return a created response
-func Created() Response {
-	return genericResponse{status: http.StatusCreated}
-}
-
 // Ok return a ok response
 func Ok() Response {
 	return genericResponse{status: http.StatusOK}
@@ -136,19 +131,4 @@ func InternalServerError(err error) Response {
 // NotFound response
 func NotFound(err error) Response {
 	return Error(err, http.StatusNotFound)
-}
-
-// UnAuthorized response
-func UnAuthorized(err error) Response {
-	return Error(err, http.StatusUnauthorized)
-}
-
-// Forbidden response
-func Forbidden(err error) Response {
-	return Error(err, http.StatusForbidden)
-}
-
-// Accepted response
-func Accepted() Response {
-	return genericResponse{status: http.StatusAccepted}
 }

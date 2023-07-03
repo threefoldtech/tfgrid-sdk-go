@@ -14,7 +14,7 @@ import (
 type ActivationInput struct {
 	KYCSignature       string         `json:"kycSignature"`
 	Data               ActivationData `json:"data"`
-	SubstrateAccountID string         `json:"substrateAccountID" binding:"required"`
+	SubstrateAccountID string         `json:"substrateAccountID" binding:"required" validate:"nonzero"`
 }
 
 // ActivationData struct for data needed while activation
