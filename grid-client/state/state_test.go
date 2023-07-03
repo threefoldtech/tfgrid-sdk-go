@@ -579,6 +579,15 @@ func TestLoadVMFromGrid(t *testing.T) {
 		NetworkName: "test_network",
 	}
 
+	pubWl := gridtypes.Workload{
+		Version: 0,
+		Name:    gridtypes.Name("testip"),
+		Type:    zos.PublicIPType,
+		Data: gridtypes.MustMarshal(zos.PublicIP{
+			V4: true,
+		}),
+	}
+
 	vmWl := gridtypes.Workload{
 		Version: 0,
 		Name:    gridtypes.Name("test"),
@@ -592,7 +601,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 						IP:      net.ParseIP("1.1.1.1"),
 					},
 				},
-				PublicIP:  gridtypes.Name("testip"),
+				PublicIP:  pubWl.Name,
 				Planetary: true,
 			},
 			ComputeCapacity: zos.MachineCapacity{
@@ -616,7 +625,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		state := SetupLoaderTests(t, []gridtypes.Workload{vmWl})
+		state := SetupLoaderTests(t, []gridtypes.Workload{vmWl, pubWl})
 
 		got, err := state.LoadVMFromGrid(1, "test", deploymentName)
 		assert.NoError(t, err)
