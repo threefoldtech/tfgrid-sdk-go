@@ -31,6 +31,8 @@ func setUp(t testing.TB) *App {
 
 	app, err := NewApp(context.Background(), configPath)
 	assert.NoError(t, err)
+
+	app.registerHandlers()
 	return app
 }
 
