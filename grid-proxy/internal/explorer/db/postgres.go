@@ -13,6 +13,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 
 	"github.com/pkg/errors"
@@ -114,6 +115,17 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string) (
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create orm wrapper around db")
 	}
+	sql, err := gormDB.DB()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to configure DB connection")
+	}
+	sql.SetMaxIdleConns(3)
+
+	err = gormDB.AutoMigrate(&NodeGPU{})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to auto migrate DB")
+	}
+
 	res := PostgresDatabase{gormDB}
 	if err := res.initialize(); err != nil {
 		return nil, errors.Wrap(err, "failed to setup tables")
@@ -716,4 +728,17 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 		return contracts, uint(count), errors.Wrap(res.Error, "failed to scan returned contracts from database")
 	}
 	return contracts, uint(count), nil
+}
+
+func (p *PostgresDatabase) UpsertNodesGPU(nodesGPU []types.NodeGPU) error {
+	// For upsert operation
+	conflictClause := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"node_twin_id", "vendor", "device", "contract"}),
+	}
+	err := p.gormDB.Table("node_gpu").Clauses(conflictClause).Create(&nodesGPU).Error
+	if err != nil {
+		return fmt.Errorf("failed to upsert nodes GPU details: %w", err)
+	}
+	return nil
 }
