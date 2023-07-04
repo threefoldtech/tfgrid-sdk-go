@@ -11,7 +11,12 @@ import (
 )
 
 const (
-	nodeUpInterval = -80 * time.Minute
+	// node report its state every 40 mins, if didn't report for 2 cycles, it's marked down
+	// nodes powered by farmerbot report every 24 hours, if didn't report for 1 cycle, it's marked down
+	nodeUpStateFactor         = 2
+	nodeUpReportInterval      = time.Minute * 40
+	nodeStandbyStateFactor    = 1
+	nodeStandbyReportInterval = time.Hour * 24
 )
 
 // GridProxyClientimpl client that returns data directly from the db
@@ -31,12 +36,22 @@ func (g *GridProxyClientimpl) Ping() error {
 }
 
 func decideNodeStatus(power nodePower, updatedAt uint64) string {
-	if power.Target == "Down" { // off or powering off
-		return "standby"
-	} else if power.Target == "Up" && power.State == "Down" { // powering on
-		return "down"
-	} else if int64(updatedAt) >= time.Now().Add(nodeUpInterval).Unix() {
+	nilPower := power.State == "" && power.Target == ""
+	poweredOff := power.State == "Down" && power.Target == "Down"
+	poweredOn := power.State == "Up" && power.Target == "Up"
+	poweringOn := power.State == "Down" && power.Target == "Up"
+	poweringOff := power.State == "Up" && power.Target == "Down"
+
+	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
+	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
+
+	inUpInterval := updatedAt >= uint64(nodeUpInterval)
+	inStandbyInterval := updatedAt >= uint64(nodeStandbyInterval)
+
+	if inUpInterval && (nilPower || poweredOn) {
 		return "up"
+	} else if (poweredOff || poweringOff || poweringOn) && inStandbyInterval {
+		return "standby"
 	} else {
 		return "down"
 	}
@@ -373,7 +388,7 @@ func (g *GridProxyClientimpl) Counters(filter proxytypes.StatsFilter) (res proxy
 	distribution := map[string]int64{}
 	var gpus int64
 	for _, node := range g.data.nodes {
-		if filter.Status == nil || (*filter.Status == STATUS_UP && isUp(node.updated_at)) {
+		if filter.Status == nil || *filter.Status == decideNodeStatus(node.power, node.updated_at) {
 			res.Nodes++
 			distribution[node.country] += 1
 			res.TotalCRU += int64(g.data.nodeTotalResources[node.node_id].cru)
@@ -399,7 +414,7 @@ func (g *GridProxyClientimpl) Counters(filter proxytypes.StatsFilter) (res proxy
 }
 
 func nodeSatisfies(data *DBData, node node, f proxytypes.NodeFilter) bool {
-	if f.Status != nil && (*f.Status == STATUS_UP) != isUp(node.updated_at) {
+	if f.Status != nil && *f.Status != decideNodeStatus(node.power, node.updated_at) {
 		return false
 	}
 	total := data.nodeTotalResources[node.node_id]

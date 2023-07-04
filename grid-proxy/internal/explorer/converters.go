@@ -11,16 +11,31 @@ import (
 )
 
 const (
-	nodeUpInterval = -80 * time.Minute
+	// node report its state every 40 mins, if didn't report for 2 cycles, it's marked down
+	// nodes powered by farmerbot report every 24 hours, if didn't report for 1 cycle, it's marked down
+	nodeUpStateFactor         = 2
+	nodeUpReportInterval      = time.Minute * 40
+	nodeStandbyStateFactor    = 1
+	nodeStandbyReportInterval = time.Hour * 24
 )
 
 func decideNodeStatus(power types.NodePower, updatedAt int64) string {
-	if power.Target == "Down" { // off or powering off
-		return "standby"
-	} else if power.Target == "Up" && power.State == "Down" { // powering on
-		return "down"
-	} else if updatedAt >= time.Now().Add(nodeUpInterval).Unix() {
+	nilPower := power.State == "" && power.Target == ""
+	poweredOff := power.State == "Down" && power.Target == "Down"
+	poweredOn := power.State == "Up" && power.Target == "Up"
+	poweringOn := power.State == "Down" && power.Target == "Up"
+	poweringOff := power.State == "Up" && power.Target == "Down"
+
+	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
+	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
+
+	inUpInterval := updatedAt >= nodeUpInterval
+	inStandbyInterval := updatedAt >= nodeStandbyInterval
+
+	if inUpInterval && (nilPower || poweredOn) {
 		return "up"
+	} else if (poweredOff || poweringOff || poweringOn) && inStandbyInterval {
+		return "standby"
 	} else {
 		return "down"
 	}

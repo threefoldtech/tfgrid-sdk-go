@@ -29,10 +29,12 @@ var (
 )
 
 const (
-	nodeStateFactor = 3
-	reportInterval  = time.Hour
-	// the number of missed reports to mark the node down
-	// if node reports every 5 mins, it's marked down if the last report is more than 15 mins in the past
+	// node report every 40 mins, if didn't report for 2 cycles, it's marked down
+	// nodes powered by farmerbot report every 24 hours, if didn't report for 1 cycle, it's marked down
+	nodeUpStateFactor         = 2
+	nodeUpReportInterval      = time.Minute * 40
+	nodeStandbyStateFactor    = 1
+	nodeStandbyReportInterval = time.Hour * 24
 )
 
 const (
@@ -142,18 +144,37 @@ func (d *PostgresDatabase) initialize() error {
 	return res.Error
 }
 
+// decideNodeStatusCondition based on the provided filter it returns an sql condition to be used in the where clause of the query
+// node is consider as
+// - up: if its updated_at in the last 80 mins and its power state/target is up (or null which means doesn't have farmerbot data).
+// - standby: if its updated_at in the last 24 hours and one or both of its power state/target is down
+// - down:
+//   - if its updated_at is older than 80 mins and its power state/target is up (or null)
+//   - if its updated_at is older than a full day
 func decideNodeStatusCondition(status string) string {
 	condition := "TRUE"
-	nodeUpInterval := time.Now().Unix() - nodeStateFactor*int64(reportInterval.Seconds())
+
+	nilPower := "node.power IS NULL"
+
+	poweredOn := "node.power->> 'state' = 'Up' AND node.power->> 'target' = 'Up'"
+	poweredOff := "node.power->> 'state' = 'Down' AND node.power->> 'target' = 'Down'"
+	poweringOff := "node.power->> 'state' = 'Up' AND node.power->> 'target' = 'Down'"
+	poweringOn := "node.power->> 'state' = 'Down' AND node.power->> 'target' = 'Up'"
+
+	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
+	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
+
+	inUpInterval := fmt.Sprintf("node.updated_at >= %d", nodeUpInterval)
+	outUpInterval := fmt.Sprintf("node.updated_at < %d", nodeUpInterval)
+	inStandbyInterval := fmt.Sprintf("node.updated_at >= %d", nodeStandbyInterval)
+	outStandbyInterval := fmt.Sprintf("node.updated_at < %d", nodeStandbyInterval)
 
 	if status == "up" {
-		condition = fmt.Sprintf(`node.updated_at >= %d`, nodeUpInterval)
+		condition = fmt.Sprintf(`%s AND (%s OR (%s))`, inUpInterval, nilPower, poweredOn)
 	} else if status == "down" {
-		condition = fmt.Sprintf(`node.updated_at < %d 
-				OR node.updated_at IS NULL
-				OR node.power->> 'target' = 'Up' AND node.power->> 'state' = 'Down'`, nodeUpInterval)
+		condition = fmt.Sprintf(`(%s AND (%s OR (%s))) OR %s`, outUpInterval, nilPower, poweredOn, outStandbyInterval)
 	} else if status == "standby" {
-		condition = `node.power->> 'target' = 'Down'`
+		condition = fmt.Sprintf(`((%s) OR (%s) OR (%s)) AND %s`, poweredOff, poweringOff, poweringOn, inStandbyInterval)
 	}
 
 	return condition

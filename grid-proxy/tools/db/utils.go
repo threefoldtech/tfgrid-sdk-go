@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
+	"strings"
 )
 
 func rnd(min, max uint64) uint64 {
@@ -71,7 +72,7 @@ func insertQuery(v interface{}) string {
 				val2 := val.Field(i)
 				power := make(map[string]string)
 				for j := 0; j < val2.NumField(); j++ {
-					fieldName := val2.Type().Field(j).Name
+					fieldName := strings.ToLower(val2.Type().Field(j).Name)
 					fieldValue := val2.Field(j).String()
 					power[fieldName] = fieldValue
 				}
