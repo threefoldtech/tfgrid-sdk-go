@@ -15,6 +15,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/certmanager"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/gpuindexer"
 	logging "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg"
 	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
@@ -31,22 +32,24 @@ const (
 var GitCommit string
 
 type flags struct {
-	debug            string
-	postgresHost     string
-	postgresPort     int
-	postgresDB       string
-	postgresUser     string
-	postgresPassword string
-	address          string
-	version          bool
-	nocert           bool
-	domain           string
-	TLSEmail         string
-	CA               string
-	certCacheDir     string
-	tfChainURL       string
-	relayURL         string
-	mnemonics        string
+	debug                    string
+	postgresHost             string
+	postgresPort             int
+	postgresDB               string
+	postgresUser             string
+	postgresPassword         string
+	address                  string
+	version                  bool
+	nocert                   bool
+	domain                   string
+	TLSEmail                 string
+	CA                       string
+	certCacheDir             string
+	tfChainURL               string
+	relayURL                 string
+	mnemonics                string
+	indexerCheckIntervalMins int
+	workerBatchSize          int
 }
 
 func main() {
@@ -67,6 +70,8 @@ func main() {
 	flag.StringVar(&f.tfChainURL, "tfchain-url", DefaultTFChainURL, "TF chain url")
 	flag.StringVar(&f.relayURL, "relay-url", DefaultRelayURL, "RMB relay url")
 	flag.StringVar(&f.mnemonics, "mnemonics", "", "Dummy user mnemonics for relay calls")
+	flag.IntVar(&f.indexerCheckIntervalMins, "indexer-interval-min", 60, "the interval that the GPU indexer will run")
+	flag.IntVar(&f.workerBatchSize, "worker-batch-size", 20, "batch size for the GPU indexer worker batch")
 	flag.Parse()
 
 	// shows version and exit
@@ -96,12 +101,24 @@ func main() {
 	}
 	defer sub.Close()
 
-	relayClient, err := createRMBClient(ctx, f.relayURL, f.mnemonics, sub)
+	relayRPCClient, err := createRPCRMBClient(ctx, f.relayURL, f.mnemonics, sub)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create relay client")
 	}
 
-	s, err := createServer(f, GitCommit, relayClient)
+	db, err := db.NewPostgresDatabase(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB)
+	if err != nil {
+		log.Fatal().Err(err).Msg("couldn't get postgres client")
+	}
+
+	worker, err := gpuindexer.NewNodeGPUIndexer(ctx, f.relayURL, f.mnemonics, sub, db, f.indexerCheckIntervalMins, f.workerBatchSize)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create GPU indexer")
+	}
+
+	go worker.Start(ctx)
+
+	s, err := createServer(f, db, GitCommit, relayRPCClient)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create mux server")
 	}
@@ -157,23 +174,19 @@ func app(s *http.Server, f flags) error {
 	return nil
 }
 
-func createRMBClient(ctx context.Context, relayURL, mnemonics string, sub *substrate.Substrate) (rmb.Client, error) {
+func createRPCRMBClient(ctx context.Context, relayURL, mnemonics string, sub *substrate.Substrate) (rmb.Client, error) {
 	sessionId := fmt.Sprintf("tfgrid_proxy-%d", os.Getpid())
-	client, err := direct.NewRpcClient(ctx, direct.KeyTypeSr25519, mnemonics, relayURL, sessionId, sub, false)
+	client, err := direct.NewRpcClient(ctx, direct.KeyTypeSr25519, mnemonics, relayURL, sessionId, sub, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create direct RMB client: %w", err)
+		return nil, fmt.Errorf("failed to create direct RPC RMB client: %w", err)
 	}
 	return client, nil
 }
 
-func createServer(f flags, gitCommit string, relayClient rmb.Client) (*http.Server, error) {
+func createServer(f flags, db db.Database, gitCommit string, relayClient rmb.Client) (*http.Server, error) {
 	log.Info().Msg("Creating server")
 
 	router := mux.NewRouter().StrictSlash(true)
-	db, err := db.NewPostgresDatabase(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't get postgres client")
-	}
 
 	// setup explorer
 	if err := explorer.Setup(router, gitCommit, db, relayClient); err != nil {
