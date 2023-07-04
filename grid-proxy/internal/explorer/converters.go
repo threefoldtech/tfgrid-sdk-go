@@ -2,44 +2,14 @@ package explorer
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
-
-const (
-	// node report its state every 40 mins, if didn't report for 2 cycles, it's marked down
-	// nodes powered by farmerbot report every 24 hours, if didn't report for 1 cycle, it's marked down
-	nodeUpStateFactor         = 2
-	nodeUpReportInterval      = time.Minute * 40
-	nodeStandbyStateFactor    = 1
-	nodeStandbyReportInterval = time.Hour * 24
-)
-
-func decideNodeStatus(power types.NodePower, updatedAt int64) string {
-	nilPower := power.State == "" && power.Target == ""
-	poweredOff := power.State == "Down" && power.Target == "Down"
-	poweredOn := power.State == "Up" && power.Target == "Up"
-	poweringOn := power.State == "Down" && power.Target == "Up"
-	poweringOff := power.State == "Up" && power.Target == "Down"
-
-	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
-	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
-
-	inUpInterval := updatedAt >= nodeUpInterval
-	inStandbyInterval := updatedAt >= nodeStandbyInterval
-
-	if inUpInterval && (nilPower || poweredOn) {
-		return "up"
-	} else if (poweredOff || poweringOff || poweringOn) && inStandbyInterval {
-		return "standby"
-	} else {
-		return "down"
-	}
-}
 
 // getNumGPUs should be deleted after removing hasGPU
 func getNumGPUs(hasGPU bool) int {
@@ -96,7 +66,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 		NumGPU:            getNumGPUs(info.HasGPU),
 		ExtraFee:          info.ExtraFee,
 	}
-	node.Status = decideNodeStatus(node.Power, node.UpdatedAt)
+	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	return node
 }
 
@@ -167,7 +137,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		NumGPU:            getNumGPUs(info.HasGPU),
 		ExtraFee:          info.ExtraFee,
 	}
-	node.Status = decideNodeStatus(node.Power, node.UpdatedAt)
+	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	return node
 }
 

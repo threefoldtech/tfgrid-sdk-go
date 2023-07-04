@@ -3,20 +3,11 @@ package main
 import (
 	"sort"
 	"strings"
-	"time"
 
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
-)
-
-const (
-	// node report its state every 40 mins, if didn't report for 2 cycles, it's marked down
-	// nodes powered by farmerbot report every 24 hours, if didn't report for 1 cycle, it's marked down
-	nodeUpStateFactor         = 2
-	nodeUpReportInterval      = time.Minute * 40
-	nodeStandbyStateFactor    = 1
-	nodeStandbyReportInterval = time.Hour * 24
 )
 
 // GridProxyClientimpl client that returns data directly from the db
@@ -35,28 +26,6 @@ func (g *GridProxyClientimpl) Ping() error {
 	return nil
 }
 
-func decideNodeStatus(power nodePower, updatedAt uint64) string {
-	nilPower := power.State == "" && power.Target == ""
-	poweredOff := power.State == "Down" && power.Target == "Down"
-	poweredOn := power.State == "Up" && power.Target == "Up"
-	poweringOn := power.State == "Down" && power.Target == "Up"
-	poweringOff := power.State == "Up" && power.Target == "Down"
-
-	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
-	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
-
-	inUpInterval := updatedAt >= uint64(nodeUpInterval)
-	inStandbyInterval := updatedAt >= uint64(nodeStandbyInterval)
-
-	if inUpInterval && (nilPower || poweredOn) {
-		return "up"
-	} else if (poweredOff || poweringOff || poweringOn) && inStandbyInterval {
-		return "standby"
-	} else {
-		return "down"
-	}
-}
-
 // Nodes returns nodes with the given filters and pagination parameters
 func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytypes.Limit) (res []proxytypes.Node, totalCount int, err error) {
 	if limit.Page == 0 {
@@ -67,7 +36,11 @@ func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytyp
 	}
 	for _, node := range g.data.nodes {
 		if nodeSatisfies(&g.data, node, filter) {
-			status := decideNodeStatus(node.power, node.updated_at)
+			nodePower := proxytypes.NodePower{
+				State:  node.power.State,
+				Target: node.power.Target,
+			}
+			status := nodestatus.DecideNodeStatus(nodePower, int64(node.updated_at))
 			res = append(res, proxytypes.Node{
 				ID:              node.id,
 				NodeID:          int(node.node_id),
@@ -104,7 +77,7 @@ func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytyp
 				},
 				Status:            status,
 				CertificationType: node.certification,
-				UpdatedAt:         int64(node.updated_at),
+				UpdatedAt:         int64(int64(node.updated_at)),
 				Dedicated:         g.data.farms[node.farm_id].dedicated_farm,
 				RentedByTwinID:    uint(g.data.nodeRentedBy[node.node_id]),
 				RentContractID:    uint(g.data.nodeRentContractID[node.node_id]),
@@ -310,7 +283,11 @@ func (g *GridProxyClientimpl) Twins(filter proxytypes.TwinFilter, limit proxytyp
 }
 func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNestedCapacity, err error) {
 	node := g.data.nodes[uint64(nodeID)]
-	status := decideNodeStatus(node.power, node.updated_at)
+	nodePower := proxytypes.NodePower{
+		State:  node.power.State,
+		Target: node.power.Target,
+	}
+	status := nodestatus.DecideNodeStatus(nodePower, int64(node.updated_at))
 	res = proxytypes.NodeWithNestedCapacity{
 		ID:              node.id,
 		NodeID:          int(node.node_id),
@@ -349,7 +326,7 @@ func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNested
 		},
 		Status:            status,
 		CertificationType: node.certification,
-		UpdatedAt:         int64(node.updated_at),
+		UpdatedAt:         int64(int64(node.updated_at)),
 		Dedicated:         g.data.farms[node.farm_id].dedicated_farm,
 		RentedByTwinID:    uint(g.data.nodeRentedBy[node.node_id]),
 		RentContractID:    uint(g.data.nodeRentContractID[node.node_id]),
@@ -374,7 +351,11 @@ func getNumGPUs(hasGPU bool) int {
 
 func (g *GridProxyClientimpl) NodeStatus(nodeID uint32) (res proxytypes.NodeStatus, err error) {
 	node := g.data.nodes[uint64(nodeID)]
-	res.Status = decideNodeStatus(node.power, node.updated_at)
+	nodePower := proxytypes.NodePower{
+		State:  node.power.State,
+		Target: node.power.Target,
+	}
+	res.Status = nodestatus.DecideNodeStatus(nodePower, int64(node.updated_at))
 	return
 }
 
@@ -388,7 +369,11 @@ func (g *GridProxyClientimpl) Counters(filter proxytypes.StatsFilter) (res proxy
 	distribution := map[string]int64{}
 	var gpus int64
 	for _, node := range g.data.nodes {
-		if filter.Status == nil || *filter.Status == decideNodeStatus(node.power, node.updated_at) {
+		nodePower := proxytypes.NodePower{
+			State:  node.power.State,
+			Target: node.power.Target,
+		}
+		if filter.Status == nil || *filter.Status == nodestatus.DecideNodeStatus(nodePower, int64(node.updated_at)) {
 			res.Nodes++
 			distribution[node.country] += 1
 			res.TotalCRU += int64(g.data.nodeTotalResources[node.node_id].cru)
@@ -414,7 +399,11 @@ func (g *GridProxyClientimpl) Counters(filter proxytypes.StatsFilter) (res proxy
 }
 
 func nodeSatisfies(data *DBData, node node, f proxytypes.NodeFilter) bool {
-	if f.Status != nil && *f.Status != decideNodeStatus(node.power, node.updated_at) {
+	nodePower := proxytypes.NodePower{
+		State:  node.power.State,
+		Target: node.power.Target,
+	}
+	if f.Status != nil && *f.Status != nodestatus.DecideNodeStatus(nodePower, int64(node.updated_at)) {
 		return false
 	}
 	total := data.nodeTotalResources[node.node_id]
