@@ -3,12 +3,6 @@ package main
 import (
 	"math/rand"
 	"strings"
-	"time"
-)
-
-var (
-	nodeStateFactor int64 = 3
-	reportInterval        = time.Hour
 )
 
 func calcFreeResources(total node_resources_total, used node_resources_total) node_resources_total {
@@ -35,10 +29,6 @@ func isIn(l []uint64, v uint64) bool {
 		}
 	}
 	return false
-}
-
-func isUp(timestamp uint64) bool {
-	return int64(timestamp) > time.Now().Unix()-nodeStateFactor*int64(reportInterval.Seconds())
 }
 
 func flip(success float32) bool {
