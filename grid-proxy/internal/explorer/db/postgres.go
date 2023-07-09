@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"time"
 
 	// to use for database/sql
 	_ "github.com/lib/pq"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"gorm.io/driver/postgres"
@@ -26,13 +26,6 @@ var (
 	ErrFarmNotFound = errors.New("farm not found")
 	//ErrViewNotFound
 	ErrNodeResourcesViewNotFound = errors.New("ERROR: relation \"nodes_resources_view\" does not exist (SQLSTATE 42P01)")
-)
-
-const (
-	nodeStateFactor = 3
-	reportInterval  = time.Hour
-	// the number of missed reports to mark the node down
-	// if node reports every 5 mins, it's marked down if the last report is more than 15 mins in the past
 )
 
 const (
@@ -142,23 +135,6 @@ func (d *PostgresDatabase) initialize() error {
 	return res.Error
 }
 
-func decideNodeStatusCondition(status string) string {
-	condition := "TRUE"
-	nodeUpInterval := time.Now().Unix() - nodeStateFactor*int64(reportInterval.Seconds())
-
-	if status == "up" {
-		condition = fmt.Sprintf(`node.updated_at >= %d`, nodeUpInterval)
-	} else if status == "down" {
-		condition = fmt.Sprintf(`node.updated_at < %d 
-				OR node.updated_at IS NULL
-				OR node.power->> 'target' = 'Up' AND node.power->> 'state' = 'Down'`, nodeUpInterval)
-	} else if status == "standby" {
-		condition = `node.power->> 'target' = 'Down'`
-	}
-
-	return condition
-}
-
 // GetCounters returns aggregate info about the grid
 func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters, error) {
 	var counters types.Counters
@@ -187,7 +163,7 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = decideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
 	}
 
 	if res := d.gormDB.
@@ -404,7 +380,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = decideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
 	}
 
 	q = q.Where(condition)
