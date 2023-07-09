@@ -53,7 +53,7 @@ func NewNodeGPUIndexer(
 
 func (n *NodeGPUIndexer) worker(ctx context.Context) {
 	var nodesGPUBuffer []types.NodeGPU
-	timer := time.NewTimer(n.workerCleanupInterval)
+	ticker := time.NewTicker(n.workerCleanupInterval)
 	for {
 		select {
 		case nodesGPU := <-n.nodesGPUChan:
@@ -65,13 +65,13 @@ func (n *NodeGPUIndexer) worker(ctx context.Context) {
 					continue
 				}
 				// Push the periodic check for leftovers data backwards
-				timer.Reset(n.workerCleanupInterval)
+				ticker.Reset(n.workerCleanupInterval)
 				nodesGPUBuffer = nil
 			}
 		// This case should only be triggered when there leftovers data in the buffer, it stores them and exit
 		// It runs periodically according to the indexer interval, needs to be delayed as much as possible
 		// as to not intervene with the batch logic above
-		case <-timer.C:
+		case <-ticker.C:
 			if len(nodesGPUBuffer) != 0 {
 				err := n.db.UpsertNodesGPU(nodesGPUBuffer)
 				if err != nil {
@@ -79,7 +79,7 @@ func (n *NodeGPUIndexer) worker(ctx context.Context) {
 					continue
 				}
 			}
-			timer.Stop()
+			ticker.Stop()
 			return
 		case <-ctx.Done():
 			log.Error().Err(ctx.Err()).Msg("worker exited")

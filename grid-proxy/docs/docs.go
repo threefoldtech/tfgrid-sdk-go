@@ -634,6 +634,36 @@ const docTemplate = `{
                         "description": "filter nodes on whether they have GPU support or not",
                         "name": "has_gpu",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU device ID",
+                        "name": "gpu_device_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU device partial name",
+                        "name": "gpu_device_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU vendor ID",
+                        "name": "gpu_vendor_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU vendor partial name",
+                        "name": "gpu_vendor_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "filter nodes that have available GPU",
+                        "name": "gpu_available",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1225,6 +1255,9 @@ const docTemplate = `{
         "types.NodeGPU": {
             "type": "object",
             "properties": {
+                "contract": {
+                    "type": "integer"
+                },
                 "device": {
                     "type": "string"
                 },
