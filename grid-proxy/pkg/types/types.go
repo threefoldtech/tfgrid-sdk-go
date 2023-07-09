@@ -111,6 +111,11 @@ type NodeFilter struct {
 	TwinID            *uint64
 	CertificationType *string
 	HasGPU            *bool
+	GpuDeviceID       *string
+	GpuDeviceName     *string
+	GpuVendorID       *string
+	GpuVendorName     *string
+	GpuAvailable      *bool
 }
 
 // FarmFilter farm filters

@@ -94,7 +94,7 @@ type NodesDistribution struct {
 }
 
 type NodeGPU struct {
-	NodeTwinID int
+	NodeTwinID int    `gorm:"primaryKey;autoIncrement:false"`
 	ID         string `gorm:"primaryKey"`
 	Vendor     string
 	Device     string
