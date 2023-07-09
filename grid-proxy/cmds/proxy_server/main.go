@@ -158,7 +158,7 @@ func app(s *http.Server, f flags) error {
 }
 
 func createRMBClient(ctx context.Context, relayURL, mnemonics string, sub *substrate.Substrate) (rmb.Client, error) {
-	client, err := direct.NewClient(ctx, direct.KeyTypeSr25519, mnemonics, relayURL, "tfgrid_proxy", sub, false)
+	client, err := direct.NewRpcClient(ctx, direct.KeyTypeSr25519, mnemonics, relayURL, "tfgrid_proxy", sub, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create direct RMB client: %w", err)
 	}
