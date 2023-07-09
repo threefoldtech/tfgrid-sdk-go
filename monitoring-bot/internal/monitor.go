@@ -362,7 +362,7 @@ func (m *Monitor) systemVersion() (map[network]version, error) {
 		defer con.Close()
 
 		sessionID := generateSessionID()
-		rmbClient, err := direct.NewClient(context.Background(), "sr25519", m.mnemonics[network], RelayURLS[network], sessionID, con, true)
+		rmbClient, err := direct.NewRpcClient(context.Background(), "sr25519", m.mnemonics[network], RelayURLS[network], sessionID, con, true)
 		if err != nil {
 			log.Error().Err(err).Msgf("error getting relay for network %v", network)
 			continue
