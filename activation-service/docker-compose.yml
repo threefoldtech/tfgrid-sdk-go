@@ -1,0 +1,9 @@
+version: "3.9"
+services:
+  tfactivation:
+    image: "ghcr.io/threefoldtech/tfactivation"
+    working_dir: /opt/project
+    volumes:
+      - .:/opt/project
+    ports:
+      - 3000:3000
