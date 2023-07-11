@@ -182,6 +182,8 @@ definitions:
     type: object
   types.NodeGPU:
     properties:
+      contract:
+        type: integer
       device:
         type: string
       id:
@@ -733,6 +735,26 @@ paths:
       - description: filter nodes on whether they have GPU support or not
         in: query
         name: has_gpu
+        type: boolean
+      - description: filter nodes based on GPU device ID
+        in: query
+        name: gpu_device_id
+        type: string
+      - description: filter nodes based on GPU device partial name
+        in: query
+        name: gpu_device_name
+        type: string
+      - description: filter nodes based on GPU vendor ID
+        in: query
+        name: gpu_vendor_id
+        type: string
+      - description: filter nodes based on GPU vendor partial name
+        in: query
+        name: gpu_vendor_name
+        type: string
+      - description: filter nodes that have available GPU
+        in: query
+        name: gpu_available
         type: boolean
       produces:
       - application/json

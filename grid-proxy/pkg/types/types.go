@@ -111,6 +111,11 @@ type NodeFilter struct {
 	TwinID            *uint64
 	CertificationType *string
 	HasGPU            *bool
+	GpuDeviceID       *string
+	GpuDeviceName     *string
+	GpuVendorID       *string
+	GpuVendorName     *string
+	GpuAvailable      *bool
 }
 
 // FarmFilter farm filters
@@ -287,9 +292,11 @@ type NodeStatus struct {
 }
 
 type NodeGPU struct {
-	ID     string `json:"id"`
-	Vendor string `json:"vendor"`
-	Device string `json:"device"`
+	NodeTwinID uint32 `json:"-"`
+	ID         string `json:"id"`
+	Vendor     string `json:"vendor"`
+	Device     string `json:"device"`
+	Contract   int    `json:"contract"`
 }
 
 // Serialize is the serializer for node status struct
