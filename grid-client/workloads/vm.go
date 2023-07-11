@@ -38,6 +38,7 @@ type VM struct {
 	Zlogs         []Zlog            `json:"zlogs"`
 	EnvVars       map[string]string `json:"env_vars"`
 	NetworkName   string            `json:"network_name"`
+	ConsoleURL    string            `json:"console_url"`
 }
 
 // Mount disks struct
@@ -103,6 +104,7 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, er
 		Zlogs:         zlogs(dl, wl.Name.String()),
 		EnvVars:       data.Env,
 		NetworkName:   string(data.Network.Interfaces[0].Network),
+		ConsoleURL:    result.ConsoleURL,
 	}, nil
 }
 
