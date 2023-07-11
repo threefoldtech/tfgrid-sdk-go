@@ -1,4 +1,4 @@
-// Package app for c4s backend app
+// Package app for activation backend app
 package app
 
 import (
