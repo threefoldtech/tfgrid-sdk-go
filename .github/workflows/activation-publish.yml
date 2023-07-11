@@ -26,7 +26,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/threefoldtech/tfactivation
           tags: |
             type=semver,pattern={{version}}
 
@@ -34,5 +34,18 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
+          context: .
+          file: ./activation-service/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            version=${{ github.ref_name	 }}
+
+      - name: Push to grid hub
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: https://hub.grid.tf/api/flist/me/docker
+          method: 'POST'
+          bearerToken: ${{ secrets.HUB_TOKEN }}
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"image": "ghcr.io/threefoldtech/tfactivation"}'
