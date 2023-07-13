@@ -8,8 +8,10 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -80,22 +82,23 @@ func TestNode(t *testing.T) {
 			Page:     1,
 			RetCount: true,
 		}
-		localNodes, _, err := localClient.Nodes(f, l)
-		assert.NoError(t, err)
-		remoteNodes, _, err := proxyClient.Nodes(f, l)
-		assert.NoError(t, err)
-		err = validateResults(localNodes, remoteNodes, false)
-		assert.NoError(t, err, SerializeFilter(f))
+		localNodes, localCount, err := localClient.Nodes(f, l)
+		require.NoError(t, err)
+		remoteNodes, remoteCount, err := proxyClient.Nodes(f, l)
+		require.NoError(t, err)
+		assert.Equal(t, localCount, remoteCount, "mismatch between total count of local nodes %d and remote nodes %d ", localCount, remoteCount)
+		require.True(t, reflect.DeepEqual(localNodes, remoteNodes), cmp.Diff(localNodes, remoteNodes))
+
 	})
 
 	t.Run("node status test", func(t *testing.T) {
 		for i := 1; i <= NODE_COUNT; i++ {
 			if flip(.3) {
 				localNodeStatus, err := localClient.NodeStatus(uint32(i))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				remoteNodeStatus, err := proxyClient.NodeStatus(uint32(i))
-				assert.NoError(t, err)
-				assert.True(t, reflect.DeepEqual(localNodeStatus, remoteNodeStatus))
+				require.NoError(t, err)
+				require.True(t, reflect.DeepEqual(localNodeStatus, remoteNodeStatus), cmp.Diff(localNodeStatus, remoteNodeStatus))
 			}
 		}
 	})
@@ -106,16 +109,16 @@ func TestNode(t *testing.T) {
 			l := proxytypes.Limit{
 				Size:     999999999999,
 				Page:     1,
-				RetCount: false,
+				RetCount: true,
 			}
 			f := randomNodeFilter(&agg)
-			localNodes, _, err := localClient.Nodes(f, l)
-			assert.NoError(t, err)
-			remoteNodes, _, err := proxyClient.Nodes(f, l)
-			assert.NoError(t, err)
-			assert.Equal(t, len(localNodes), len(remoteNodes))
-			err = validateResults(localNodes, remoteNodes, f.AvailableFor != nil)
-			assert.NoError(t, err, SerializeFilter(f))
+			localNodes, localCount, err := localClient.Nodes(f, l)
+			require.NoError(t, err)
+			remoteNodes, remoteCount, err := proxyClient.Nodes(f, l)
+			require.NoError(t, err)
+			assert.Equal(t, localCount, remoteCount, serializeFilter(f), "local and remote counts are not equal")
+			require.True(t, reflect.DeepEqual(localNodes, remoteNodes), serializeFilter(f), cmp.Diff(localNodes, remoteNodes))
+
 		}
 	})
 
@@ -139,7 +142,7 @@ func TestNode(t *testing.T) {
 	t.Run("nodes test certification_type filter", func(t *testing.T) {
 		certType := "Diy"
 		nodes, _, err := proxyClient.Nodes(proxytypes.NodeFilter{CertificationType: &certType}, proxytypes.Limit{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		for _, node := range nodes {
 			assert.Equal(t, node.CertificationType, certType, "certification_type filter did not work")
@@ -200,10 +203,10 @@ func TestNode(t *testing.T) {
 func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
 	nodeID := rand.Intn(NODE_COUNT)
 	localNode, err := localClient.Node(uint32(nodeID))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	remoteNode, err := proxyClient.Node(uint32(nodeID))
-	assert.NoError(t, err)
-	assert.True(t, reflect.DeepEqual(localNode, remoteNode))
+	require.NoError(t, err)
+	require.True(t, reflect.DeepEqual(localNode, remoteNode), cmp.Diff(localNode, remoteNode))
 }
 
 func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
@@ -217,12 +220,11 @@ func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClie
 	}
 	for ; ; l.Page++ {
 		localNodes, localCount, err := localClient.Nodes(f, l)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		remoteNodes, remoteCount, err := proxyClient.Nodes(f, l)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, remoteCount, localCount, "local and remote counts are not equal")
-		err = validateResults(localNodes, remoteNodes, false)
-		assert.NoError(t, err, SerializeFilter(f))
+		require.True(t, reflect.DeepEqual(localNodes, remoteNodes), serializeFilter(f), cmp.Diff(localNodes, remoteNodes))
 		if l.Page*l.Size >= uint64(localCount) {
 			break
 		}
@@ -490,38 +492,15 @@ func calcNodesAggregates(data *DBData) (res NodesAggregate) {
 	return
 }
 
-func findValidateNodeResult(node proxytypes.Node, results []proxytypes.Node) proxytypes.Node {
-	for _, n := range results {
-		if n.NodeID == node.NodeID {
-			return n
+func serializeFilter(f proxytypes.NodeFilter) string {
+	res := ""
+	v := reflect.ValueOf(f)
+	for i := 0; i < v.NumField(); i++ {
+		if !v.Field(i).IsNil() {
+			res = fmt.Sprintf("%s%s : %+v\n", res, v.Type().Field(i).Name, reflect.Indirect(v.Field(i)))
 		}
-	}
-	return proxytypes.Node{}
-}
 
-func validateResults(local, remote []proxytypes.Node, unordered bool) error {
-	iter := local
-	if len(remote) < len(local) || unordered {
-		iter = remote
-	}
-	for i := range iter {
-		localNode := local[i]
-		remoteNode := local[i]
-		if unordered {
-			localNode = findValidateNodeResult(remoteNode, local)
-		}
-		if !reflect.DeepEqual(localNode, remoteNode) {
-			return fmt.Errorf("node %d mismatch: local: %+v, remote: %+v", i, local[i], remote[i])
-		}
 	}
 
-	if len(local) != len(remote) {
-		if len(local) == 0 {
-			return fmt.Errorf("local empty but remote returned: %+v", remote[0])
-		} else if len(remote) == 0 {
-			return fmt.Errorf("remote empty but local returned: %+v", local[0])
-		}
-		return errors.New("length mismatch")
-	}
-	return nil
+	return res
 }

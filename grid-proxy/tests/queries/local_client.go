@@ -28,6 +28,7 @@ func (g *GridProxyClientimpl) Ping() error {
 
 // Nodes returns nodes with the given filters and pagination parameters
 func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytypes.Limit) (res []proxytypes.Node, totalCount int, err error) {
+	res = []proxytypes.Node{}
 	if limit.Page == 0 {
 		limit.Page = 1
 	}
@@ -86,12 +87,22 @@ func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytyp
 					State:  node.power.State,
 					Target: node.power.Target,
 				},
+				NumGPU: getNumGPUs(node.has_gpu),
 			})
 		}
 	}
 	sort.Slice(res, func(i, j int) bool {
 		return res[i].NodeID < res[j].NodeID
 	})
+	if filter.AvailableFor != nil {
+		sort.Slice(res, func(i, j int) bool {
+
+			return g.data.nodeRentContractID[uint64(res[i].NodeID)] != 0
+
+			// return res[i].NodeID < res[j].NodeID
+		})
+	}
+
 	start, end := (limit.Page-1)*limit.Size, limit.Page*limit.Size
 	if len(res) == 0 {
 		return
