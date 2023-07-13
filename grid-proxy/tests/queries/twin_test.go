@@ -8,8 +8,10 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -56,8 +58,8 @@ func TestTwins(t *testing.T) {
 			remoteTwins, remoteCount, err := proxyClient.Twins(f, l)
 			assert.NoError(t, err)
 			assert.Equal(t, localCount, remoteCount)
-			err = validateTwinsResults(localTwins, remoteTwins)
-			assert.NoError(t, err)
+			require.True(t, reflect.DeepEqual(localTwins, remoteTwins), serializeFilter(f), cmp.Diff(localTwins, remoteTwins))
+
 			if l.Page*l.Size >= uint64(localCount) {
 				break
 			}
@@ -78,8 +80,8 @@ func TestTwins(t *testing.T) {
 			assert.NoError(t, err)
 			remoteTwins, _, err := proxyClient.Twins(f, l)
 			assert.NoError(t, err)
-			err = validateTwinsResults(localTwins, remoteTwins)
-			assert.NoError(t, err, serializeTwinsFilter(f))
+			require.True(t, reflect.DeepEqual(localTwins, remoteTwins), serializeFilter(f), cmp.Diff(localTwins, remoteTwins))
+
 		}
 	})
 }
@@ -121,27 +123,6 @@ func randomTwinsFilter(agg *TwinsAggregate) proxytypes.TwinFilter {
 	return f
 }
 
-func validateTwinsResults(local, remote []proxytypes.Twin) error {
-	iter := local
-	if len(remote) < len(local) {
-		iter = remote
-	}
-	for i := range iter {
-		if !reflect.DeepEqual(local[i], remote[i]) {
-			return fmt.Errorf("twin %d mismatch: local: %+v, remote: %+v", i, local[i], remote[i])
-		}
-	}
-
-	if len(local) < len(remote) {
-		if len(local) < len(remote) {
-			return fmt.Errorf("first in remote after local: %+v", remote[len(local)])
-		} else {
-			return fmt.Errorf("first in local after remote: %+v", local[len(remote)])
-		}
-	}
-	return nil
-}
-
 func calcTwinsAggregates(data *DBData) (res TwinsAggregate) {
 	for _, twin := range data.twins {
 		res.twinIDs = append(res.twinIDs, twin.twin_id)
@@ -163,15 +144,4 @@ func calcTwinsAggregates(data *DBData) (res TwinsAggregate) {
 		return res.publicKeys[i] < res.publicKeys[j]
 	})
 	return
-}
-
-func serializeTwinsFilter(f proxytypes.TwinFilter) string {
-	res := ""
-	if f.TwinID != nil {
-		res = fmt.Sprintf("%sTwinID: %d\n", res, *f.TwinID)
-	}
-	if f.AccountID != nil {
-		res = fmt.Sprintf("%sAccountID: %s\n", res, *f.AccountID)
-	}
-	return res
 }

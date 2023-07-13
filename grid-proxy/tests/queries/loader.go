@@ -79,7 +79,7 @@ func loadNodes(db *sql.DB, data *DBData) error {
 			&node.created_at,
 			&node.updated_at,
 			&node.location_id,
-			&node.HasGPU,
+			&node.has_gpu,
 			&node.ExtraFee,
 			&node.power,
 		); err != nil {

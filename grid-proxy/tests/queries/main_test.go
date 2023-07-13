@@ -25,7 +25,7 @@ func parseCmdline() {
 func TestMain(m *testing.M) {
 	parseCmdline()
 	if SEED != 0 {
-		rand.Seed(int64(SEED))
+		rand.New(rand.NewSource(int64(SEED)))
 	}
 
 	exitcode := m.Run()

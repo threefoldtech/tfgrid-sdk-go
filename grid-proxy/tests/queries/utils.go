@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
+	"reflect"
 	"strings"
 )
 
@@ -60,4 +62,17 @@ func changeCase(s string) string {
 
 func stringMatch(str string, sub_str string) bool {
 	return strings.Contains(strings.ToLower(str), strings.ToLower(sub_str))
+}
+
+func serializeFilter(f interface{}) string {
+	res := ""
+	v := reflect.ValueOf(f)
+	for i := 0; i < v.NumField(); i++ {
+		if !v.Field(i).IsNil() {
+			res = fmt.Sprintf("%s%s : %+v\n", res, v.Type().Field(i).Name, reflect.Indirect(v.Field(i)))
+		}
+
+	}
+
+	return res
 }
