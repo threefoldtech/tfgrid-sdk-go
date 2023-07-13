@@ -59,7 +59,7 @@ type node struct {
 	updated_at        uint64
 	location_id       string
 	power             nodePower `gorm:"type:jsonb"`
-	HasGPU            bool
+	has_gpu           bool
 	ExtraFee          uint64
 }
 
