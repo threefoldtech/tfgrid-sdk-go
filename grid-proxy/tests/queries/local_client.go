@@ -120,6 +120,7 @@ func (g *GridProxyClientimpl) Nodes(filter proxytypes.NodeFilter, limit proxytyp
 
 // Farms returns farms with the given filters and pagination parameters
 func (g *GridProxyClientimpl) Farms(filter proxytypes.FarmFilter, limit proxytypes.Limit) (res []proxytypes.Farm, totalCount int, err error) {
+	res = []proxytypes.Farm{}
 	if limit.Page == 0 {
 		limit.Page = 1
 	}
@@ -214,7 +215,7 @@ func (g *GridProxyClientimpl) Contracts(filter proxytypes.ContractFilter, limit 
 					DeploymentHash:    contract.deployment_hash,
 					NumberOfPublicIps: uint(contract.number_of_public_i_ps),
 				},
-				Billing: billings[contract.contract_id],
+				Billing: append([]proxytypes.ContractBilling{}, billings[contract.contract_id]...),
 			}
 			res = append(res, contract)
 		}
@@ -230,7 +231,7 @@ func (g *GridProxyClientimpl) Contracts(filter proxytypes.ContractFilter, limit 
 				Details: proxytypes.RentContractDetails{
 					NodeID: uint(contract.node_id),
 				},
-				Billing: billings[contract.contract_id],
+				Billing: append([]proxytypes.ContractBilling{}, billings[contract.contract_id]...),
 			}
 			res = append(res, contract)
 		}
@@ -246,7 +247,7 @@ func (g *GridProxyClientimpl) Contracts(filter proxytypes.ContractFilter, limit 
 				Details: proxytypes.NameContractDetails{
 					Name: contract.name,
 				},
-				Billing: billings[contract.contract_id],
+				Billing: append([]proxytypes.ContractBilling{}, billings[contract.contract_id]...),
 			}
 			res = append(res, contract)
 		}
@@ -271,6 +272,8 @@ func (g *GridProxyClientimpl) Contracts(filter proxytypes.ContractFilter, limit 
 
 // Twins returns twins with the given filters and pagination parameters
 func (g *GridProxyClientimpl) Twins(filter proxytypes.TwinFilter, limit proxytypes.Limit) (res []proxytypes.Twin, totalCount int, err error) {
+	res = []proxytypes.Twin{}
+
 	if limit.Page == 0 {
 		limit.Page = 1
 	}

@@ -6,8 +6,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -37,8 +39,8 @@ func TestCounters(t *testing.T) {
 		assert.NoError(t, err)
 		remote, err := proxyClient.Counters(f)
 		assert.NoError(t, err)
-		err = validateCountersResults(counters, remote)
-		assert.NoError(t, err)
+		require.True(t, reflect.DeepEqual(counters, remote), cmp.Diff(counters, remote))
+
 	})
 
 	t.Run("counters all test", func(t *testing.T) {
@@ -47,14 +49,14 @@ func TestCounters(t *testing.T) {
 		assert.NoError(t, err)
 		remote, err := proxyClient.Counters(f)
 		assert.NoError(t, err)
-		err = validateCountersResults(counters, remote)
-		assert.NoError(t, err)
+		require.True(t, reflect.DeepEqual(counters, remote), cmp.Diff(counters, remote))
+
 	})
 }
 
-func validateCountersResults(local, remote proxytypes.Counters) error {
-	if !reflect.DeepEqual(local, remote) {
-		return fmt.Errorf("counters mismatch: local: %+v, remote: %+v", local, remote)
-	}
-	return nil
-}
+// func validateCountersResults(local, remote proxytypes.Counters) error {
+// 	if !reflect.DeepEqual(local, remote) {
+// 		return fmt.Errorf("counters mismatch: local: %+v, remote: %+v", local, remote)
+// 	}
+// 	return nil
+// }

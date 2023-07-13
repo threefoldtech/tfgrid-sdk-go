@@ -8,8 +8,10 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -66,9 +68,7 @@ func TestContracts(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.Equal(t, localCount, remoteCount)
-
-			err = validateContractsResults(localContracts, remoteContracts)
-			assert.NoError(t, err, serializeContractsFilter(f))
+			require.True(t, reflect.DeepEqual(localContracts, remoteContracts), serializeFilter(f), cmp.Diff(localContracts, remoteContracts))
 
 			if l.Page*l.Size >= uint64(localCount) {
 				break
@@ -81,7 +81,7 @@ func TestContracts(t *testing.T) {
 		agg := calcContractsAggregates(&data)
 		for i := 0; i < CONTRACTS_TESTS; i++ {
 			l := proxytypes.Limit{
-				Size:     999999999999,
+				Size:     9999999,
 				Page:     1,
 				RetCount: false,
 			}
@@ -91,9 +91,7 @@ func TestContracts(t *testing.T) {
 			assert.NoError(t, err)
 			remoteContracts, _, err := proxyClient.Contracts(f, l)
 			assert.NoError(t, err)
-
-			err = validateContractsResults(localContracts, remoteContracts)
-			assert.NoError(t, err, serializeContractsFilter(f))
+			require.True(t, reflect.DeepEqual(localContracts, remoteContracts), serializeFilter(f), cmp.Diff(localContracts, remoteContracts))
 
 		}
 	})
@@ -180,101 +178,4 @@ func randomContractsFilter(agg *ContractsAggregate) proxytypes.ContractFilter {
 		f.DeploymentHash = &c
 	}
 	return f
-}
-
-func validateContractsResults(local, remote []proxytypes.Contract) error {
-	iter := local
-	if len(remote) < len(local) {
-		iter = remote
-	}
-	for i := range iter {
-		localBillings := local[i].Billing
-		remoteBillings := remote[i].Billing
-		local[i].Billing = nil
-		remote[i].Billing = nil
-		if !reflect.DeepEqual(local[i], remote[i]) {
-			local[i].Billing = localBillings
-			remote[i].Billing = remoteBillings
-			return fmt.Errorf("contract %d mismatch: local: %+v, remote: %+v", i, local[i], remote[i])
-		}
-		if err := validateContractBillings(localBillings, remoteBillings); err != nil {
-			panic(err)
-		}
-		local[i].Billing = localBillings
-		remote[i].Billing = remoteBillings
-	}
-
-	if len(local) < len(remote) {
-		if len(local) < len(remote) {
-			return fmt.Errorf("first in remote after local: %+v", remote[len(local)])
-		} else {
-			return fmt.Errorf("first in local after remote: %+v", local[len(remote)])
-		}
-	}
-	return nil
-}
-
-func validateContractBillings(local, remote []proxytypes.ContractBilling) error {
-	localCp := make([]proxytypes.ContractBilling, len(local))
-	remoteCp := make([]proxytypes.ContractBilling, len(remote))
-	copy(localCp, local)
-	copy(remoteCp, remote)
-	sort.Slice(localCp, func(i, j int) bool {
-		return localCp[i].Timestamp < localCp[j].Timestamp
-	})
-	sort.Slice(remoteCp, func(i, j int) bool {
-		return remoteCp[i].Timestamp < remoteCp[j].Timestamp
-	})
-	iter := localCp
-	if len(remote) < len(local) {
-		iter = remoteCp
-	}
-
-	for i := range iter {
-		if !reflect.DeepEqual(local[i], remote[i]) {
-			return fmt.Errorf("billing %d mismatch: local: %+v, remote: %+v", i, local[i], remote[i])
-		}
-	}
-
-	if len(local) < len(remote) {
-		if len(local) < len(remote) {
-			return fmt.Errorf("first in remote after local: %+v", remote[len(local)])
-		} else {
-			return fmt.Errorf("first in local after remote: %+v", local[len(remote)])
-		}
-	}
-
-	return nil
-}
-
-func serializeContractsFilter(f proxytypes.ContractFilter) string {
-	res := ""
-	if f.ContractID != nil {
-		res = fmt.Sprintf("%sContractID: %d\n", res, *f.ContractID)
-	}
-	if f.TwinID != nil {
-		res = fmt.Sprintf("%sTwinID: %d\n", res, *f.TwinID)
-	}
-	if f.NodeID != nil {
-		res = fmt.Sprintf("%sNodeID: %d\n", res, *f.NodeID)
-	}
-	if f.Type != nil {
-		res = fmt.Sprintf("%sType: %s\n", res, *f.Type)
-	}
-	if f.State != nil {
-		res = fmt.Sprintf("%sState: %s\n", res, *f.State)
-	}
-	if f.Name != nil {
-		res = fmt.Sprintf("%sName: %s\n", res, *f.Name)
-	}
-	if f.NumberOfPublicIps != nil {
-		res = fmt.Sprintf("%sNumberOfPublicIps: %d\n", res, *f.NumberOfPublicIps)
-	}
-	if f.DeploymentData != nil {
-		res = fmt.Sprintf("%sDeploymentData: %s\n", res, *f.DeploymentData)
-	}
-	if f.DeploymentHash != nil {
-		res = fmt.Sprintf("%sDeploymentHash: %s\n", res, *f.DeploymentHash)
-	}
-	return res
 }

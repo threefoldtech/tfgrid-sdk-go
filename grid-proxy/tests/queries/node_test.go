@@ -492,15 +492,15 @@ func calcNodesAggregates(data *DBData) (res NodesAggregate) {
 	return
 }
 
-func serializeFilter(f proxytypes.NodeFilter) string {
-	res := ""
-	v := reflect.ValueOf(f)
-	for i := 0; i < v.NumField(); i++ {
-		if !v.Field(i).IsNil() {
-			res = fmt.Sprintf("%s%s : %+v\n", res, v.Type().Field(i).Name, reflect.Indirect(v.Field(i)))
-		}
+// func serializeFilter(f proxytypes.NodeFilter) string {
+// 	res := ""
+// 	v := reflect.ValueOf(f)
+// 	for i := 0; i < v.NumField(); i++ {
+// 		if !v.Field(i).IsNil() {
+// 			res = fmt.Sprintf("%s%s : %+v\n", res, v.Type().Field(i).Name, reflect.Indirect(v.Field(i)))
+// 		}
 
-	}
+// 	}
 
-	return res
-}
+// 	return res
+// }

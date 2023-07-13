@@ -8,8 +8,10 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -64,8 +66,9 @@ func TestFarm(t *testing.T) {
 			remoteFarms, remoteCount, err := proxyClient.Farms(f, l)
 			assert.NoError(t, err)
 			assert.Equal(t, localCount, remoteCount)
-			err = validateFarmsResults(localFarms, remoteFarms)
-			assert.NoError(t, err, SerializeFilter(f))
+			sortPublicIPs(localFarms, remoteFarms)
+			require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(f), cmp.Diff(localFarms, remoteFarms))
+
 			if l.Page*l.Size >= uint64(localCount) {
 				break
 			}
@@ -85,9 +88,10 @@ func TestFarm(t *testing.T) {
 			assert.NoError(t, err)
 			remoteFarms, _, err := proxyClient.Farms(f, l)
 			assert.NoError(t, err)
+			sortPublicIPs(localFarms, remoteFarms)
 
-			err = validateFarmsResults(localFarms, remoteFarms)
-			assert.NoError(t, err, SerializeFilter(f))
+			require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(f), cmp.Diff(localFarms, remoteFarms))
+
 		}
 	})
 	t.Run("farms list node free hru", func(t *testing.T) {
@@ -104,9 +108,10 @@ func TestFarm(t *testing.T) {
 		assert.NoError(t, err)
 		remoteFarms, _, err := proxyClient.Farms(filter, l)
 		assert.NoError(t, err)
+		sortPublicIPs(localFarms, remoteFarms)
 
-		err = validateFarmsResults(localFarms, remoteFarms)
-		assert.NoError(t, err, SerializeFilter(filter))
+		require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(filter), cmp.Diff(localFarms, remoteFarms))
+
 	})
 	t.Run("farms list node free hru, mru", func(t *testing.T) {
 		aggNode := calcNodesAggregates(&data)
@@ -123,9 +128,10 @@ func TestFarm(t *testing.T) {
 		assert.NoError(t, err)
 		remoteFarms, _, err := proxyClient.Farms(filter, l)
 		assert.NoError(t, err)
+		sortPublicIPs(localFarms, remoteFarms)
 
-		err = validateFarmsResults(localFarms, remoteFarms)
-		assert.NoError(t, err, SerializeFilter(filter))
+		require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(filter), cmp.Diff(localFarms, remoteFarms))
+
 	})
 }
 
@@ -259,62 +265,16 @@ func randomFarmsFilter(agg *FarmsAggregate) proxytypes.FarmFilter {
 	return f
 }
 
-func validateFarmsResults(local, remote []proxytypes.Farm) error {
-	iter := local
-	if len(remote) < len(local) {
-		iter = remote
-	}
-	for i := range iter {
-		localIPs := local[i].PublicIps
-		remoteIPs := remote[i].PublicIps
-		local[i].PublicIps = nil
-		remote[i].PublicIps = nil
-		if !reflect.DeepEqual(local[i], remote[i]) {
-			local[i].PublicIps = localIPs
-			remote[i].PublicIps = remoteIPs
-			return fmt.Errorf("farm %d mismatch: local: %+v, remote: %+v", i, local[i], remote[i])
-		}
-		if err := validatePublicIPs(localIPs, remoteIPs); err != nil {
-			return err
-		}
-		local[i].PublicIps = localIPs
-		remote[i].PublicIps = remoteIPs
+func sortPublicIPs(local, remote []proxytypes.Farm) {
+	for id := range local {
+		sort.Slice(local[id].PublicIps, func(i, j int) bool {
+			return local[id].PublicIps[i].ID < local[id].PublicIps[j].ID
+		})
+
+		sort.Slice(remote[id].PublicIps, func(i, j int) bool {
+			return remote[id].PublicIps[i].ID < remote[id].PublicIps[j].ID
+		})
+
 	}
 
-	if len(local) != len(remote) {
-		if len(local) < len(remote) {
-			return fmt.Errorf("first in remote after local: %+v", remote[len(local)])
-		} else {
-			return fmt.Errorf("first in local after remote: %+v", local[len(remote)])
-		}
-	}
-	return nil
-}
-
-func validatePublicIPs(local, remote []proxytypes.PublicIP) error {
-	localIPs := make(map[string]proxytypes.PublicIP)
-	remoteIPs := make(map[string]proxytypes.PublicIP)
-	for _, ip := range local {
-		localIPs[ip.ID] = ip
-	}
-	for _, ip := range remote {
-		remoteIPs[ip.ID] = ip
-	}
-	for _, ip := range remote {
-		if _, ok := localIPs[ip.ID]; !ok {
-			return fmt.Errorf("ip %s exists in remote but not in local", ip.ID)
-		}
-		if !reflect.DeepEqual(localIPs[ip.ID], remoteIPs[ip.ID]) {
-			return fmt.Errorf("ip %s mismatch: local: %+v, remote: %+v", ip.ID, localIPs[ip.ID], remoteIPs[ip.ID])
-		}
-	}
-	for _, ip := range local {
-		if _, ok := localIPs[ip.ID]; !ok {
-			return fmt.Errorf("ip %s exists in local but not in remote", ip.ID)
-		}
-		if !reflect.DeepEqual(localIPs[ip.ID], remoteIPs[ip.ID]) {
-			return fmt.Errorf("ip %s mismatch: local: %+v, remote: %+v", ip.ID, localIPs[ip.ID], remoteIPs[ip.ID])
-		}
-	}
-	return nil
 }
