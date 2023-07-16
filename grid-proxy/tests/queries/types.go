@@ -151,3 +151,11 @@ type name_contract struct {
 	state        string
 	created_at   uint64
 }
+
+type node_gpu struct {
+	node_twin_id uint64
+	id           string
+	vendor       string
+	device       string
+	contract     int
+}

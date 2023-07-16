@@ -13,6 +13,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 
 	"github.com/pkg/errors"
@@ -114,6 +115,17 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string) (
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create orm wrapper around db")
 	}
+	sql, err := gormDB.DB()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to configure DB connection")
+	}
+	sql.SetMaxIdleConns(3)
+
+	err = gormDB.AutoMigrate(&NodeGPU{})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to auto migrate DB")
+	}
+
 	res := PostgresDatabase{gormDB}
 	if err := res.initialize(); err != nil {
 		return nil, errors.Wrap(err, "failed to setup tables")
@@ -133,6 +145,17 @@ func (d *PostgresDatabase) Close() error {
 func (d *PostgresDatabase) initialize() error {
 	res := d.gormDB.Exec(setupPostgresql)
 	return res.Error
+}
+
+func checkGPUFiltering(filter types.NodeFilter) bool {
+	if filter.GpuAvailable != nil ||
+		filter.GpuDeviceID != nil ||
+		filter.GpuDeviceName != nil ||
+		filter.GpuVendorID != nil ||
+		filter.GpuVendorName != nil {
+		return true
+	}
+	return false
 }
 
 // GetCounters returns aggregate info about the grid
@@ -466,6 +489,32 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 	if filter.HasGPU != nil {
 		q = q.Where("node.has_gpu = ?", *filter.HasGPU)
 	}
+	if checkGPUFiltering(filter) {
+		q = q.Joins(
+			"LEFT JOIN node_gpu on node_gpu.node_twin_id = node.twin_id",
+		)
+
+		if filter.GpuDeviceName != nil {
+			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.device ILIKE ? || '%')", *filter.GpuDeviceName)
+		}
+
+		if filter.GpuVendorName != nil {
+			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.vendor ILIKE ? || '%')", *filter.GpuVendorName)
+		}
+
+		if filter.GpuVendorID != nil {
+			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuVendorID)
+		}
+
+		if filter.GpuDeviceID != nil {
+			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuDeviceID)
+		}
+
+		if filter.GpuAvailable != nil {
+			q = q.Where("EXISTS( select node_gpu.id WHERE (node_gpu.contract = 0) = ?)", *filter.GpuAvailable)
+		}
+
+	}
 
 	var count int64
 	if limit.Randomize || limit.RetCount {
@@ -716,4 +765,17 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 		return contracts, uint(count), errors.Wrap(res.Error, "failed to scan returned contracts from database")
 	}
 	return contracts, uint(count), nil
+}
+
+func (p *PostgresDatabase) UpsertNodesGPU(nodesGPU []types.NodeGPU) error {
+	// For upsert operation
+	conflictClause := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}, {Name: "node_twin_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"vendor", "device", "contract"}),
+	}
+	err := p.gormDB.Table("node_gpu").Clauses(conflictClause).Create(&nodesGPU).Error
+	if err != nil {
+		return fmt.Errorf("failed to upsert nodes GPU details: %w", err)
+	}
+	return nil
 }

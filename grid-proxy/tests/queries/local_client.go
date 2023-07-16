@@ -398,6 +398,41 @@ func (g *GridProxyClientimpl) Counters(filter proxytypes.StatsFilter) (res proxy
 	return
 }
 
+func gpuSatisfies(data *DBData, node node, f proxytypes.NodeFilter) bool {
+	gpu := data.gpus[node.twin_id]
+
+	if f.GpuDeviceName != nil {
+		if !strings.Contains(strings.ToLower(gpu.device), *f.GpuDeviceName) {
+			return false
+		}
+	}
+
+	if f.GpuVendorName != nil {
+		if !strings.Contains(strings.ToLower(gpu.vendor), *f.GpuVendorName) {
+			return false
+		}
+	}
+
+	if f.GpuVendorID != nil {
+		if !strings.Contains(gpu.id, *f.GpuVendorID) {
+			return false
+		}
+	}
+
+	if f.GpuDeviceID != nil {
+		if !strings.Contains(gpu.id, *f.GpuDeviceID) {
+			return false
+		}
+	}
+
+	if f.GpuAvailable != nil {
+		if gpu.contract == 0 != *f.GpuAvailable {
+			return false
+		}
+	}
+	return true
+}
+
 func nodeSatisfies(data *DBData, node node, f proxytypes.NodeFilter) bool {
 	nodePower := proxytypes.NodePower{
 		State:  node.power.State,
@@ -485,6 +520,9 @@ func nodeSatisfies(data *DBData, node node, f proxytypes.NodeFilter) bool {
 	if f.Rented != nil {
 		_, ok := data.nodeRentedBy[node.node_id]
 		return ok == *f.Rented
+	}
+	if !gpuSatisfies(data, node, f) {
+		return false
 	}
 	return true
 }

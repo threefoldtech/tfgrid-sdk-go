@@ -389,6 +389,22 @@ func generateNodes(db *sql.DB) error {
 	return nil
 }
 
+func generateNodeGPUs(db *sql.DB) error {
+	for i := 0; i <= 10; i++ {
+		g := node_gpu{
+			node_twin_id: uint64(i + 100),
+			vendor:       "Advanced Micro Devices, Inc. [AMD/ATI]",
+			device:       "Navi 31 [Radeon RX 7900 XT/7900 XTX",
+			contract:     i % 2,
+			id:           "0000:0e:00.0/1002/744c",
+		}
+		if _, err := db.Exec(insertQuery(&g)); err != nil {
+			panic(err)
+		}
+	}
+	return nil
+}
+
 func generateData(db *sql.DB) error {
 	if err := generateTwins(db); err != nil {
 		panic(err)
@@ -409,6 +425,9 @@ func generateData(db *sql.DB) error {
 		panic(err)
 	}
 	if err := generatePublicIPs(db); err != nil {
+		panic(err)
+	}
+	if err := generateNodeGPUs(db); err != nil {
 		panic(err)
 	}
 	return nil

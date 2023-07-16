@@ -160,6 +160,41 @@ func TestNode(t *testing.T) {
 			assert.Equal(t, node.NumGPU, 1, "has_gpu filter did not work")
 		}
 	})
+
+	t.Run("nodes test gpu vendor, device name filter", func(t *testing.T) {
+		device := "navi"
+		vendor := "advanced"
+		nodes, _, err := proxyClient.Nodes(proxytypes.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		localNodes, _, err := localClient.Nodes(proxytypes.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(nodes), len(localNodes), "gpu_device_name, gpu_vendor_name filters did not work")
+	})
+
+	t.Run("nodes test gpu vendor, device id filter", func(t *testing.T) {
+		device := "744c"
+		vendor := "1002"
+		nodes, _, err := proxyClient.Nodes(proxytypes.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		localNodes, _, err := localClient.Nodes(proxytypes.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(nodes), len(localNodes), "gpu_device_id, gpu_vendor_id filters did not work")
+	})
+
+	t.Run("nodes test gpu available", func(t *testing.T) {
+		available := false
+		nodes, _, err := proxyClient.Nodes(proxytypes.NodeFilter{GpuAvailable: &available}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		localNodes, _, err := localClient.Nodes(proxytypes.NodeFilter{GpuAvailable: &available}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(nodes), len(localNodes), "gpu_available filter did not work")
+	})
 }
 
 func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
