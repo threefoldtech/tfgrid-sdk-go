@@ -49,7 +49,9 @@ type flags struct {
 	relayURL                 string
 	mnemonics                string
 	indexerCheckIntervalMins int
-	workerBatchSize          int
+	indexerBatchSize         int
+	indexerResultWorkers     int
+	indexerBatchWorkers      int
 }
 
 func main() {
@@ -71,7 +73,9 @@ func main() {
 	flag.StringVar(&f.relayURL, "relay-url", DefaultRelayURL, "RMB relay url")
 	flag.StringVar(&f.mnemonics, "mnemonics", "", "Dummy user mnemonics for relay calls")
 	flag.IntVar(&f.indexerCheckIntervalMins, "indexer-interval-min", 60, "the interval that the GPU indexer will run")
-	flag.IntVar(&f.workerBatchSize, "worker-batch-size", 20, "batch size for the GPU indexer worker batch")
+	flag.IntVar(&f.indexerBatchSize, "indexer-batch-size", 20, "batch size for the GPU indexer worker batch")
+	flag.IntVar(&f.indexerResultWorkers, "indexer-results-workers", 2, "number of workers to process indexer GPU info")
+	flag.IntVar(&f.indexerBatchWorkers, "indexer-batch-workers", 2, "number of workers to process batch GPU info")
 	flag.Parse()
 
 	// shows version and exit
@@ -111,12 +115,21 @@ func main() {
 		log.Fatal().Err(err).Msg("couldn't get postgres client")
 	}
 
-	worker, err := gpuindexer.NewNodeGPUIndexer(ctx, f.relayURL, f.mnemonics, sub, db, f.indexerCheckIntervalMins, f.workerBatchSize)
+	indexer, err := gpuindexer.NewNodeGPUIndexer(
+		ctx,
+		f.relayURL,
+		f.mnemonics,
+		sub, db,
+		f.indexerCheckIntervalMins,
+		f.indexerBatchSize,
+		f.indexerResultWorkers,
+		f.indexerBatchWorkers,
+	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create GPU indexer")
 	}
 
-	go worker.Start(ctx)
+	indexer.Start(ctx)
 
 	s, err := createServer(f, db, GitCommit, relayRPCClient)
 	if err != nil {
