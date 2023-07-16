@@ -25,7 +25,7 @@ type NodeGPUIndexer struct {
 	checkInterval          time.Duration
 	batchSize              int
 	nodesGPUResultsChan    chan []types.NodeGPU
-	nodesGPUBuBatchesChan  chan []types.NodeGPU
+	nodesGPUBatchesChan    chan []types.NodeGPU
 	nodesGPUResultsWorkers int
 	nodesGPUBufferWorkers  int
 }
@@ -43,7 +43,7 @@ func NewNodeGPUIndexer(
 	indexer := &NodeGPUIndexer{
 		db:                     db,
 		nodesGPUResultsChan:    make(chan []types.NodeGPU),
-		nodesGPUBuBatchesChan:  make(chan []types.NodeGPU),
+		nodesGPUBatchesChan:    make(chan []types.NodeGPU),
 		checkInterval:          time.Duration(indexerCheckIntervalMins) * time.Minute,
 		batchSize:              batchSize,
 		nodesGPUResultsWorkers: nodesGPUResultsWorkers,
@@ -111,8 +111,8 @@ func (n *NodeGPUIndexer) runQueryGridNodes(ctx context.Context) {
 func (n *NodeGPUIndexer) gpuBatchesDBUpserter(ctx context.Context) {
 	for {
 		select {
-		case gpuBtach := <-n.nodesGPUBuBatchesChan:
-			err := n.db.UpsertNodesGPU(gpuBtach)
+		case gpuBatch := <-n.nodesGPUBatchesChan:
+			err := n.db.UpsertNodesGPU(gpuBatch)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to update GPU info in GPU indexer")
 				continue
@@ -133,14 +133,14 @@ func (n *NodeGPUIndexer) gpuNodeResultsBatcher(ctx context.Context) {
 			nodesGPUBuffer = append(nodesGPUBuffer, nodesGPU...)
 			if len(nodesGPUBuffer) >= n.batchSize {
 				log.Debug().Msg("flushing gpu indexer buffer")
-				n.nodesGPUBuBatchesChan <- nodesGPUBuffer
+				n.nodesGPUBatchesChan <- nodesGPUBuffer
 				nodesGPUBuffer = nil
 			}
 		// This case covers flushing data when the limit for the batch wasn't met
 		case <-ticker.C:
 			if len(nodesGPUBuffer) != 0 {
 				log.Debug().Msg("cleaning up gpu indexer buffer")
-				n.nodesGPUBuBatchesChan <- nodesGPUBuffer
+				n.nodesGPUBatchesChan <- nodesGPUBuffer
 				nodesGPUBuffer = nil
 			}
 		case <-ctx.Done():
@@ -160,8 +160,6 @@ func (n *NodeGPUIndexer) Start(ctx context.Context) {
 	}
 
 	go n.queryGridNodes(ctx)
-	go n.gpuNodeResultsBatcher(ctx)
-	go n.gpuBatchesDBUpserter(ctx)
 
 	log.Info().Msg("GPU indexer started")
 
