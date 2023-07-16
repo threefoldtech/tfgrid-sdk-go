@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,13 +16,14 @@ import (
 	rmbTypes "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct/types"
 )
 
+const workerCleanupInterval = 10 * time.Second
+
 type NodeGPUIndexer struct {
-	db                    db.Database
-	relayClient           *direct.Client
-	nodesGPUChan          chan []types.NodeGPU
-	checkInterval         time.Duration
-	workerCleanupInterval time.Duration
-	workerBatchSize       int
+	db              db.Database
+	relayClient     *direct.Client
+	nodesGPUChan    chan []types.NodeGPU
+	checkInterval   time.Duration
+	workerBatchSize int
 }
 
 func NewNodeGPUIndexer(
@@ -35,11 +35,10 @@ func NewNodeGPUIndexer(
 	indexerCheckIntervalMins int,
 	workerBatchSize int) (*NodeGPUIndexer, error) {
 	indexer := &NodeGPUIndexer{
-		db:                    db,
-		nodesGPUChan:          make(chan []types.NodeGPU),
-		checkInterval:         time.Duration(indexerCheckIntervalMins) * time.Minute,
-		workerCleanupInterval: time.Duration(indexerCheckIntervalMins/4) * time.Minute,
-		workerBatchSize:       workerBatchSize,
+		db:              db,
+		nodesGPUChan:    make(chan []types.NodeGPU),
+		checkInterval:   time.Duration(indexerCheckIntervalMins) * time.Minute,
+		workerBatchSize: workerBatchSize,
 	}
 
 	client, err := direct.NewClient(ctx, direct.KeyTypeSr25519, mnemonics, relayURL, "tfgrid_proxy_indexer", sub, true, indexer.relayCallback)
@@ -53,34 +52,31 @@ func NewNodeGPUIndexer(
 
 func (n *NodeGPUIndexer) worker(ctx context.Context) {
 	var nodesGPUBuffer []types.NodeGPU
-	ticker := time.NewTicker(n.workerCleanupInterval)
+	ticker := time.NewTicker(workerCleanupInterval)
 	for {
 		select {
 		case nodesGPU := <-n.nodesGPUChan:
 			nodesGPUBuffer = append(nodesGPUBuffer, nodesGPU...)
 			if len(nodesGPUBuffer) >= n.workerBatchSize {
+				log.Debug().Msg("flushing gpu indexer buffer")
 				err := n.db.UpsertNodesGPU(nodesGPUBuffer)
 				if err != nil {
 					log.Error().Err(err).Msg("failed to update GPU info in GPU indexer")
 					continue
 				}
-				// Push the periodic check for leftovers data backwards
-				ticker.Reset(n.workerCleanupInterval)
 				nodesGPUBuffer = nil
 			}
-		// This case should only be triggered when there leftovers data in the buffer, it stores them and exit
-		// It runs periodically according to the indexer interval, needs to be delayed as much as possible
-		// as to not intervene with the batch logic above
+		// This case should only be triggered when there leftovers data in the buffer
 		case <-ticker.C:
 			if len(nodesGPUBuffer) != 0 {
+				log.Debug().Msg("cleaning up gpu indexer buffer")
 				err := n.db.UpsertNodesGPU(nodesGPUBuffer)
 				if err != nil {
 					log.Error().Err(err).Msg("failed to update GPU info in GPU indexer")
 					continue
 				}
+				nodesGPUBuffer = nil
 			}
-			ticker.Stop()
-			return
 		case <-ctx.Done():
 			log.Error().Err(ctx.Err()).Msg("worker exited")
 			return
@@ -90,6 +86,7 @@ func (n *NodeGPUIndexer) worker(ctx context.Context) {
 }
 
 func (n *NodeGPUIndexer) relayCallback(response *rmbTypes.Envelope, callBackErr error) {
+
 	errResp := response.GetError()
 
 	if errResp != nil {
@@ -129,6 +126,8 @@ func (n *NodeGPUIndexer) relayCallback(response *rmbTypes.Envelope, callBackErr 
 
 func (n *NodeGPUIndexer) Start(ctx context.Context) {
 	ticker := time.NewTicker(n.checkInterval)
+	log.Info().Msg("GPU indexer started")
+	go n.worker(ctx)
 	n.run(ctx)
 	for {
 		select {
@@ -141,7 +140,6 @@ func (n *NodeGPUIndexer) Start(ctx context.Context) {
 }
 
 func (n *NodeGPUIndexer) run(ctx context.Context) {
-	log.Info().Msg("GPU indexer started")
 	status := "up"
 	filter := types.NodeFilter{
 		Status: &status,
@@ -152,13 +150,6 @@ func (n *NodeGPUIndexer) run(ctx context.Context) {
 		RetCount: true,
 		Page:     1,
 	}
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		n.worker(ctx)
-	}()
 
 	hasNext := true
 	for hasNext {
@@ -181,7 +172,5 @@ func (n *NodeGPUIndexer) run(ctx context.Context) {
 
 		limit.Page++
 	}
-	wg.Wait()
 
-	log.Info().Msg("GPU indexer finished")
 }
