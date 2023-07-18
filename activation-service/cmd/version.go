@@ -12,14 +12,16 @@ import (
 )
 
 // Commit set at build time
-var Commit string
+var commit string
+var version string
 
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get current build commit",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(Commit)
+		fmt.Println(version)
+		fmt.Println(commit)
 	},
 }
 

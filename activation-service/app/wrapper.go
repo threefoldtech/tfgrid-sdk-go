@@ -21,17 +21,11 @@ type Response interface {
 	WithHeader(k, v string) Response
 }
 
-// ResponseMsg holds messages and needed data
-type ResponseMsg struct {
-	Message string      `json:"msg"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
 // Handler interface
 type Handler func(r *http.Request, w http.ResponseWriter) (interface{}, Response)
 
 // WrapFunc is a helper wrapper to make implementing handlers easier
-func WrapFunc(a Handler) http.HandlerFunc {
+func wrapFunc(a Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			_, _ = io.ReadAll(r.Body)
@@ -100,35 +94,30 @@ func (r genericResponse) WithHeader(k, v string) Response {
 }
 
 // Ok return a ok response
-func Ok() Response {
+func ok() Response {
 	return genericResponse{status: http.StatusOK}
 }
 
 // Error generic error response
-func Error(err error, code ...int) Response {
-	status := http.StatusInternalServerError
-	if len(code) > 0 {
-		status = code[0]
-	}
-
+func Error(err error, code int) Response {
 	if err == nil {
 		err = fmt.Errorf("no message")
 	}
 
-	return genericResponse{status: status, err: err}
+	return genericResponse{status: code, err: err}
 }
 
 // BadRequest result
-func BadRequest(err error) Response {
+func badRequest(err error) Response {
 	return Error(err, http.StatusBadRequest)
 }
 
 // InternalServerError result
-func InternalServerError(err error) Response {
+func internalServerError(err error) Response {
 	return Error(err, http.StatusInternalServerError)
 }
 
 // NotFound response
-func NotFound(err error) Response {
+func notFound(err error) Response {
 	return Error(err, http.StatusNotFound)
 }

@@ -87,7 +87,7 @@ func (a *App) Start(ctx context.Context) (err error) {
 func (a *App) registerHandlers() {
 	r := mux.NewRouter()
 
-	r.HandleFunc("/activation/activate", WrapFunc(a.activateHandler)).Methods("POST", "OPTIONS")
+	r.HandleFunc("/activation/activate", wrapFunc(a.activateHandler)).Methods("POST", "OPTIONS")
 
 	// middlewares
 	r.Use(middlewares.EnableCors)

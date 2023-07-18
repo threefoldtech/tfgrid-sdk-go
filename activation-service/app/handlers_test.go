@@ -46,7 +46,7 @@ func handler(req handlerConfig) (response *httptest.ResponseRecorder) {
 	request := httptest.NewRequest("GET", req.api, req.body)
 	response = httptest.NewRecorder()
 
-	WrapFunc(req.handlerFunc).ServeHTTP(response, request)
+	wrapFunc(req.handlerFunc).ServeHTTP(response, request)
 	return
 }
 
