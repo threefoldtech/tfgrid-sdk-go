@@ -38,7 +38,7 @@ func TestCalculator(t *testing.T) {
 
 	cost, err := calculator.CalculateCost(8, 32, 0, 50, true, true)
 	assert.NoError(t, err)
-	assert.Equal(t, cost, 0.00162)
+	assert.Equal(t, cost, 16.2)
 
 	sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 		Free: types.U128{
@@ -64,10 +64,10 @@ func TestSubstrateErrors(t *testing.T) {
 	t.Run("test tft price error", func(t *testing.T) {
 		sub.EXPECT().GetTFTPrice().Return(types.U32(1), errors.New("error")).AnyTimes()
 
-		cost, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
+		_, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
 		assert.Error(t, err)
 
-		_, _, err = calculator.CalculateDiscount(cost)
+		_, _, err = calculator.CalculateDiscount(200)
 		assert.Error(t, err)
 	})
 
@@ -75,10 +75,10 @@ func TestSubstrateErrors(t *testing.T) {
 		sub.EXPECT().GetTFTPrice().Return(types.U32(1), nil).AnyTimes()
 		sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{}, errors.New("error")).AnyTimes()
 
-		cost, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
+		_, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
 		assert.Error(t, err)
 
-		_, _, err = calculator.CalculateDiscount(cost)
+		_, _, err = calculator.CalculateDiscount(200)
 		assert.Error(t, err)
 	})
 

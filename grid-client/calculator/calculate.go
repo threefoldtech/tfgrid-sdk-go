@@ -20,7 +20,7 @@ func NewCalculator(substrateConn subi.SubstrateExt, identity substrate.Identity)
 	return Calculator{substrateConn: substrateConn, identity: identity}
 }
 
-// CalculateCost calculates the cost per month of the given resources without a discount
+// CalculateCost calculates the cost in $ per month of the given resources without a discount
 func (c *Calculator) CalculateCost(cru, mru, hru, sru int64, publicIP, certified bool) (float64, error) {
 	tftPrice, err := c.substrateConn.GetTFTPrice()
 	if err != nil {
@@ -46,11 +46,10 @@ func (c *Calculator) CalculateCost(cru, mru, hru, sru int64, publicIP, certified
 	}
 
 	costPerMonth := (cu*float64(pricingPolicy.CU.Value) + su*float64(pricingPolicy.SU.Value) + ipv4*float64(pricingPolicy.IPU.Value)) * certifiedFactor * 24 * 30
-
-	return costPerMonth / 1e7 / float64(tftPrice), nil
+	return costPerMonth / float64(tftPrice) / 1000, nil
 }
 
-// CalculateDiscount calculates the discount of a given cost (cost should be divided by 1e7)
+// CalculateDiscount calculates the discount of a given cost
 func (c *Calculator) CalculateDiscount(cost float64) (dedicatedPrice, sharedPrice float64, err error) {
 	tftPrice, err := c.substrateConn.GetTFTPrice()
 	if err != nil {
@@ -74,7 +73,7 @@ func (c *Calculator) CalculateDiscount(cost float64) (dedicatedPrice, sharedPric
 	if err != nil {
 		return
 	}
-	balance := float64(tftPrice) * float64(accountBalance.Free.Int64()) * 10000000
+	balance := float64(tftPrice) / 1000 * float64(accountBalance.Free.Int64()) * 10000000
 
 	discountPackages := map[string]map[string]float64{
 		"none": {
@@ -111,8 +110,8 @@ func (c *Calculator) CalculateDiscount(cost float64) (dedicatedPrice, sharedPric
 		}
 	}
 
-	dedicatedPrice = (dedicatedPrice - dedicatedPrice*(discountPackages[dedicatedPackage]["discount"]/100))
-	sharedPrice = (sharedPrice - sharedPrice*(discountPackages[sharedPackage]["discount"]/100))
+	dedicatedPrice = (dedicatedPrice - dedicatedPrice*(discountPackages[dedicatedPackage]["discount"]/100)) / 1e7
+	sharedPrice = (sharedPrice - sharedPrice*(discountPackages[sharedPackage]["discount"]/100)) / 1e7
 
 	return
 }
