@@ -99,7 +99,7 @@ func ok() Response {
 }
 
 // Error generic error response
-func Error(err error, code int) Response {
+func GenError(err error, code int) Response {
 	if err == nil {
 		err = fmt.Errorf("no message")
 	}
@@ -109,15 +109,15 @@ func Error(err error, code int) Response {
 
 // BadRequest result
 func badRequest(err error) Response {
-	return Error(err, http.StatusBadRequest)
+	return GenError(err, http.StatusBadRequest)
 }
 
 // InternalServerError result
 func internalServerError(err error) Response {
-	return Error(err, http.StatusInternalServerError)
+	return GenError(err, http.StatusInternalServerError)
 }
 
 // NotFound response
 func notFound(err error) Response {
-	return Error(err, http.StatusNotFound)
+	return GenError(err, http.StatusNotFound)
 }
