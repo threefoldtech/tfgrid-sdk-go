@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	gomock "github.com/golang/mock/gomock"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	subi "github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
@@ -262,6 +263,36 @@ func (m *MockSubstrateExt) GetBalance(identity substrate.Identity) (substrate.Ba
 func (mr *MockSubstrateExtMockRecorder) GetBalance(identity interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalance", reflect.TypeOf((*MockSubstrateExt)(nil).GetBalance), identity)
+}
+
+// GetTFTPrice mocks base method.
+func (m *MockSubstrateExt) GetTFTPrice() (types.U32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTFTPrice")
+	ret0, _ := ret[0].(types.U32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTFTPrice indicates an expected call of GetTFTPrice.
+func (mr *MockSubstrateExtMockRecorder) GetTFTPrice() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTFTPrice", reflect.TypeOf((*MockSubstrateExt)(nil).GetTFTPrice))
+}
+
+// GetPricingPolicy mocks base method.
+func (m *MockSubstrateExt) GetPricingPolicy(policyID uint32) (substrate.PricingPolicy, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPricingPolicy", policyID)
+	ret0, _ := ret[0].(substrate.PricingPolicy)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPricingPolicy indicates an expected call of GetPricingPolicy.
+func (mr *MockSubstrateExtMockRecorder) GetPricingPolicy(policyID uint32) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPricingPolicy", reflect.TypeOf((*MockSubstrateExt)(nil).GetPricingPolicy), policyID)
 }
 
 // GetContract mocks base method.
