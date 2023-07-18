@@ -98,8 +98,8 @@ func ok() Response {
 	return genericResponse{status: http.StatusOK}
 }
 
-// Error generic error response
-func GenError(err error, code int) Response {
+// genError generic error response
+func genError(err error, code int) Response {
 	if err == nil {
 		err = fmt.Errorf("no message")
 	}
