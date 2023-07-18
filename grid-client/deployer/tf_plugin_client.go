@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
@@ -87,6 +88,9 @@ type TFPluginClient struct {
 	// contracts
 	graphQl         graphql.GraphQl
 	ContractsGetter graphql.ContractsGetter
+
+	// calculator
+	Calculator calculator.Calculator
 
 	cancelRelayContext context.CancelFunc
 }
@@ -232,6 +236,8 @@ func NewTFPluginClient(
 	}
 
 	tfPluginClient.ContractsGetter = graphql.NewContractsGetter(tfPluginClient.TwinID, tfPluginClient.graphQl, tfPluginClient.SubstrateConn, tfPluginClient.NcPool)
+
+	tfPluginClient.Calculator = calculator.NewCalculator(tfPluginClient.SubstrateConn, tfPluginClient.Identity)
 
 	return tfPluginClient, nil
 }
