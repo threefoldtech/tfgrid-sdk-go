@@ -109,15 +109,15 @@ func genError(err error, code int) Response {
 
 // BadRequest result
 func badRequest(err error) Response {
-	return GenError(err, http.StatusBadRequest)
+	return genError(err, http.StatusBadRequest)
 }
 
 // InternalServerError result
 func internalServerError(err error) Response {
-	return GenError(err, http.StatusInternalServerError)
+	return genError(err, http.StatusInternalServerError)
 }
 
 // NotFound response
 func notFound(err error) Response {
-	return GenError(err, http.StatusNotFound)
+	return genError(err, http.StatusNotFound)
 }
