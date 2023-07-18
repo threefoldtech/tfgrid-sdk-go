@@ -311,9 +311,10 @@ func generateNodes(db *sql.DB) error {
 		sru := rnd(200, 30*1024) * 1024 * 1024 * 1024 // 100GB -> 30TB
 		cru := rnd(4, 128)
 		up := flip(nodeUpRatio)
-		updatedAt := time.Now().Unix() - int64(rnd(60*60*3, 60*60*24*30*12))
+		updatedAt := time.Now().Unix() - int64(rnd(60*40*3, 60*60*24*30*12))
+
 		if up {
-			updatedAt = time.Now().Unix() - int64(rnd(0, 60*60*1))
+			updatedAt = time.Now().Unix() - int64(rnd(0, 60*40*1))
 		}
 		nodesMRU[i] = mru - max(2*uint64(gridtypes.Gigabyte), mru/10)
 		nodesSRU[i] = sru - 100*uint64(gridtypes.Gigabyte)
@@ -346,6 +347,8 @@ func generateNodes(db *sql.DB) error {
 				State:  powerState[rand.Intn(len(powerState))],
 				Target: powerState[rand.Intn(len(powerState))],
 			},
+			has_gpu:   i%2 == 0,
+			extra_fee: 0,
 		}
 		total_resources := node_resources_total{
 			id:      fmt.Sprintf("total-resources-%d", i),
@@ -386,6 +389,22 @@ func generateNodes(db *sql.DB) error {
 	return nil
 }
 
+func generateNodeGPUs(db *sql.DB) error {
+	for i := 0; i <= 10; i++ {
+		g := node_gpu{
+			node_twin_id: uint64(i + 100),
+			vendor:       "Advanced Micro Devices, Inc. [AMD/ATI]",
+			device:       "Navi 31 [Radeon RX 7900 XT/7900 XTX",
+			contract:     i % 2,
+			id:           "0000:0e:00.0/1002/744c",
+		}
+		if _, err := db.Exec(insertQuery(&g)); err != nil {
+			panic(err)
+		}
+	}
+	return nil
+}
+
 func generateData(db *sql.DB) error {
 	if err := generateTwins(db); err != nil {
 		panic(err)
@@ -406,6 +425,9 @@ func generateData(db *sql.DB) error {
 		panic(err)
 	}
 	if err := generatePublicIPs(db); err != nil {
+		panic(err)
+	}
+	if err := generateNodeGPUs(db); err != nil {
 		panic(err)
 	}
 	return nil

@@ -11,11 +11,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"sync"
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -30,20 +28,19 @@ const (
 	KeyTypeSr25519 = "sr25519"
 )
 
-var (
-	_ rmb.Client = (*DirectClient)(nil)
-)
+// Handler is a call back that is called with verified and decrypted incoming
+// messages. An error can be non-nil error if verification or decryption failed
+type Handler func(env *types.Envelope, err error)
 
-// DirectClient exposes the functionality to talk directly to an rmb relay
-type DirectClient struct {
-	source    *types.Address
-	signer    substrate.Identity
-	responses map[string]chan *types.Envelope
-	respM     sync.Mutex
-	twinDB    TwinDB
-	privKey   *secp256k1.PrivateKey
-	reader    Reader
-	writer    Writer
+// Client exposes the functionality to talk directly to an rmb relay
+type Client struct {
+	source  *types.Address
+	signer  substrate.Identity
+	twinDB  TwinDB
+	privKey *secp256k1.PrivateKey
+	reader  Reader
+	writer  Writer
+	handler Handler
 }
 
 func generateSecureKey(mnemonics string) (*secp256k1.PrivateKey, error) {
@@ -75,13 +72,21 @@ func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 	return identity, nil
 }
 
-// NewClient creates a new RMB direct client. It connects directly to the RMB-Relay, and peridically tries to reconnect if the connection broke.
+// NewClient creates a new RMB direct client. It connects directly to the RMB-Relay, and tries to reconnect if the connection broke.
 //
 // You can close the connection by canceling the passed context.
 //
 // Make sure the context passed to Call() does not outlive the directClient's context.
 // Call() will panic if called while the directClient's context is canceled.
-func NewClient(ctx context.Context, keytype string, mnemonics string, relayURL string, session string, sub *substrate.Substrate, enableEncryption bool) (*DirectClient, error) {
+func NewClient(
+	ctx context.Context,
+	keytype string,
+	mnemonics string,
+	relayURL string,
+	session string,
+	sub *substrate.Substrate,
+	enableEncryption bool,
+	handler Handler) (*Client, error) {
 	identity, err := getIdentity(keytype, mnemonics)
 	if err != nil {
 		return nil, err
@@ -132,21 +137,66 @@ func NewClient(ctx context.Context, keytype string, mnemonics string, relayURL s
 		Connection: sessionP,
 	}
 
-	cl := &DirectClient{
-		source:    &source,
-		signer:    identity,
-		responses: make(map[string]chan *types.Envelope),
-		twinDB:    twinDB,
-		privKey:   privKey,
-		reader:    reader,
-		writer:    writer,
+	cl := &Client{
+		source:  &source,
+		signer:  identity,
+		twinDB:  twinDB,
+		privKey: privKey,
+		reader:  reader,
+		writer:  writer,
+		handler: handler,
 	}
+
 	go cl.process(ctx)
 
 	return cl, nil
 }
 
-func (d *DirectClient) process(ctx context.Context) {
+func (d Client) handleIncoming(incoming *types.Envelope) error {
+	errResp := incoming.GetError()
+	if incoming.Source == nil {
+		// an envelope received that has NO source twin
+		// this is possible only if the relay returned an error
+		// hence
+		if errResp != nil {
+			return fmt.Errorf(errResp.Message)
+		}
+
+		// otherwise that's a malformed message
+		return fmt.Errorf("received an invalid envelope")
+	}
+
+	if err := VerifySignature(d.twinDB, incoming); err != nil {
+		return errors.Wrap(err, "message signature verification failed")
+	}
+
+	if errResp != nil {
+		// todo: include code also
+		return fmt.Errorf(errResp.Message)
+	}
+
+	var output []byte
+	switch payload := incoming.Payload.(type) {
+	case *types.Envelope_Cipher:
+		twin, err := d.twinDB.Get(incoming.Source.Twin)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get twin object for %d", incoming.Source.Twin)
+		}
+		if len(twin.E2EKey) == 0 {
+			return errors.Wrap(err, "bad twin pk")
+		}
+		output, err = d.decrypt(payload.Cipher, twin.E2EKey)
+		if err != nil {
+			return errors.Wrap(err, "could not decrypt payload")
+		}
+
+		incoming.Payload = &types.Envelope_Plain{Plain: output}
+	}
+
+	return nil
+}
+
+func (d *Client) process(ctx context.Context) {
 	for {
 		select {
 		case incoming := <-d.reader:
@@ -155,26 +205,12 @@ func (d *DirectClient) process(ctx context.Context) {
 				log.Error().Err(err).Msg("invalid message payload")
 				return
 			}
-			d.router(&env)
+			// verify and decoding!
+			err := d.handleIncoming(&env)
+			d.handler(&env, err)
 		case <-ctx.Done():
 			return
 		}
-	}
-}
-
-func (d *DirectClient) router(env *types.Envelope) {
-	d.respM.Lock()
-	defer d.respM.Unlock()
-
-	ch, ok := d.responses[env.Uid]
-	if !ok {
-		return
-	}
-
-	select {
-	case ch <- env:
-	default:
-		// client is not waiting anymore! just return then
 	}
 }
 
@@ -196,12 +232,12 @@ func generateNonce(size int) ([]byte, error) {
 	return nonce, nil
 }
 
-func (d *DirectClient) generateSharedSect(pubkey *secp256k1.PublicKey) [32]byte {
+func (d *Client) generateSharedSect(pubkey *secp256k1.PublicKey) [32]byte {
 	point := secp256k1.GenerateSharedSecret(d.privKey, pubkey)
 	return sha256.Sum256(point)
 }
 
-func (d *DirectClient) encrypt(data []byte, pubKey []byte) ([]byte, error) {
+func (d *Client) encrypt(data []byte, pubKey []byte) ([]byte, error) {
 	secPubKey, err := secp256k1.ParsePubKey(pubKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not parse dest public key")
@@ -223,7 +259,7 @@ func (d *DirectClient) encrypt(data []byte, pubKey []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
-func (d *DirectClient) decrypt(data []byte, pubKey []byte) ([]byte, error) {
+func (d *Client) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	secPubKey, err := secp256k1.ParsePubKey(pubKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not parse dest public key")
@@ -245,11 +281,11 @@ func (d *DirectClient) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	return decrypted, nil
 }
 
-func (d *DirectClient) makeRequest(dest uint32, cmd string, data []byte, ttl uint64) (*types.Envelope, error) {
+func (d *Client) makeRequest(id string, dest uint32, cmd string, data []byte, ttl uint64) (*types.Envelope, error) {
 	schema := rmb.DefaultSchema
 
 	env := types.Envelope{
-		Uid:         uuid.NewString(),
+		Uid:         id,
 		Timestamp:   uint64(time.Now().Unix()),
 		Expiration:  ttl,
 		Source:      d.source,
@@ -300,40 +336,25 @@ func (d *DirectClient) makeRequest(dest uint32, cmd string, data []byte, ttl uin
 
 }
 
-func (d *DirectClient) request(ctx context.Context, request *types.Envelope) (*types.Envelope, error) {
-
-	ch := make(chan *types.Envelope)
-	d.respM.Lock()
-	d.responses[request.Uid] = ch
-	d.respM.Unlock()
+func (d *Client) request(ctx context.Context, request *types.Envelope) error {
 
 	bytes, err := proto.Marshal(request)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	select {
 	case d.writer <- bytes:
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return ctx.Err()
 	}
 
-	var response *types.Envelope
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case response = <-ch:
-	}
-	if response == nil {
-		// shouldn't happen but just in case
-		return nil, fmt.Errorf("no response received")
-	}
+	return nil
 
-	return response, nil
 }
 
 // Call sends an rmb call to the relay
-func (d *DirectClient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
+func (d *Client) Call(ctx context.Context, id string, twin uint32, fn string, data interface{}) error {
 
 	payload, err := json.Marshal(data)
 	if err != nil {
@@ -346,96 +367,15 @@ func (d *DirectClient) Call(ctx context.Context, twin uint32, fn string, data in
 		ttl = uint64(time.Until(deadline).Seconds())
 	}
 
-	request, err := d.makeRequest(twin, fn, payload, ttl)
+	request, err := d.makeRequest(id, twin, fn, payload, ttl)
 	if err != nil {
 		return errors.Wrap(err, "failed to build request")
 	}
 
-	response, err := d.request(ctx, request)
-	if err != nil {
+	if err := d.request(ctx, request); err != nil {
 		return err
-	}
-
-	errResp := response.GetError()
-	if response.Source == nil {
-		// an envelope received that has NO source twin
-		// this is possible only if the relay returned an error
-		// hence
-		if errResp != nil {
-			return fmt.Errorf(errResp.Message)
-		}
-
-		// otherwise that's a malformed message
-		return fmt.Errorf("received an invalid envelope")
-	}
-
-	err = VerifySignature(d.twinDB, response)
-	if err != nil {
-		return errors.Wrap(err, "message signature verification failed")
-	}
-
-	if errResp != nil {
-		// todo: include code also
-		return fmt.Errorf(errResp.Message)
-	}
-
-	resp := response.GetResponse()
-	if resp == nil {
-		return fmt.Errorf("received a non response envelope")
-	}
-
-	if result == nil {
-		return nil
-	}
-
-	if response.Schema == nil || *response.Schema != rmb.DefaultSchema {
-		return fmt.Errorf("invalid schema received expected '%s'", rmb.DefaultSchema)
-	}
-
-	var output []byte
-	switch payload := response.Payload.(type) {
-	case *types.Envelope_Cipher:
-		twin, err := d.twinDB.Get(response.Source.Twin)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get twin object for %d", response.Source.Twin)
-		}
-		if len(twin.E2EKey) == 0 {
-			return errors.Wrap(err, "bad twin pk")
-		}
-		output, err = d.decrypt(payload.Cipher, twin.E2EKey)
-		if err != nil {
-			return errors.Wrap(err, "could not decrypt payload")
-		}
-	case *types.Envelope_Plain:
-		output = payload.Plain
-	}
-
-	return json.Unmarshal(output, &result)
-}
-
-// Ping sends an application level ping. You normally do not ever need to call this
-// yourself because this rmb client takes care of automatic pinging of the server
-// and reconnecting if needed. But in case you want to test if a connection is active
-// and established you can call this Ping method yourself.
-// If no error is returned then ping has succeeded.
-// Make sure to always provide a ctx with a timeout or a deadline otherwise the call
-// will block forever waiting for a response.
-func (d *DirectClient) Ping(ctx context.Context) error {
-	uid := uuid.NewString()
-	request := types.Envelope{
-		Uid:     uid,
-		Source:  d.source,
-		Message: &types.Envelope_Ping{},
-	}
-
-	response, err := d.request(ctx, &request)
-	if err != nil {
-		return err
-	}
-	_, ok := response.Message.(*types.Envelope_Pong)
-	if !ok {
-		return fmt.Errorf("expected a pong response got %T", response.Message)
 	}
 
 	return nil
+
 }

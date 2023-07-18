@@ -28,6 +28,7 @@ type DBData struct {
 	billings            map[uint64][]contract_bill_report
 	contractResources   map[string]contract_resources
 	nonDeletedContracts map[uint64][]uint64
+	gpus                map[uint64]node_gpu
 	db                  *sql.DB
 }
 
@@ -51,6 +52,8 @@ func loadNodes(db *sql.DB, data *DBData) error {
 		COALESCE(created_at, 0),
 		COALESCE(updated_at, 0),
 		COALESCE(location_id, ''),
+		COALESCE(has_gpu, false),
+		COALESCE(extra_fee, 0),
 		power
 	FROM
 		node;`)
@@ -77,6 +80,8 @@ func loadNodes(db *sql.DB, data *DBData) error {
 			&node.created_at,
 			&node.updated_at,
 			&node.location_id,
+			&node.HasGPU,
+			&node.ExtraFee,
 			&node.power,
 		); err != nil {
 			return err
@@ -468,6 +473,35 @@ func loadContractBillingReports(db *sql.DB, data *DBData) error {
 	return nil
 }
 
+func loadNodeGPUs(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT 
+		COALESCE(id, ''),
+		COALESCE(contract, 0),
+		COALESCE(node_twin_id, 0),
+		COALESCE(vendor, ''),
+		COALESCE(device, '')
+	FROM
+		node_gpu;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var gpu node_gpu
+		if err := rows.Scan(
+			&gpu.id,
+			&gpu.contract,
+			&gpu.node_twin_id,
+			&gpu.vendor,
+			&gpu.device,
+		); err != nil {
+			return err
+		}
+		data.gpus[gpu.node_twin_id] = gpu
+	}
+	return nil
+}
+
 func load(db *sql.DB) (DBData, error) {
 	data := DBData{
 		nodeIDMap:           make(map[string]uint64),
@@ -489,6 +523,7 @@ func load(db *sql.DB) (DBData, error) {
 		nodeTotalResources:  make(map[uint64]node_resources_total),
 		nodeUsedResources:   make(map[uint64]node_resources_total),
 		nonDeletedContracts: make(map[uint64][]uint64),
+		gpus:                make(map[uint64]node_gpu),
 		db:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {
@@ -522,6 +557,9 @@ func load(db *sql.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadNodesTotalResources(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadNodeGPUs(db, &data); err != nil {
 		return data, err
 	}
 	if err := calcNodesUsedResources(&data); err != nil {

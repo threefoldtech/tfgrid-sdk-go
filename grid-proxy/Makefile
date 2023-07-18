@@ -3,7 +3,7 @@ PQ_HOST = $(shell docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddr
 PQ_CONTAINER = postgres
 
 install-swag: 
-	@go install github.com/swaggo/swag/cmd/swag@latest;
+	@go install github.com/swaggo/swag/cmd/swag@v1.8.12;
 
 .PHONY: docs
 docs: install-swag ## Create the swagger docs

@@ -2,6 +2,7 @@
 package deployer
 
 import (
+	"math"
 	"math/big"
 	"regexp"
 	"strings"
@@ -81,7 +82,7 @@ func validateAccountBalanceForExtrinsics(sub subi.SubstrateExt, identity substra
 	}
 
 	if balance.Free.Cmp(big.NewInt(20000)) == -1 {
-		return errors.Errorf("account contains %s, min fee is 20000", balance.Free)
+		return errors.Errorf("account contains %f tft, min fee is 0.002 tft", float64(balance.Free.Int64())/math.Pow(10, 7))
 	}
 
 	return nil

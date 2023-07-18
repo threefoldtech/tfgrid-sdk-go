@@ -628,6 +628,42 @@ const docTemplate = `{
                         "description": "certificate type Diy or Certified",
                         "name": "certification_type",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "filter nodes on whether they have GPU support or not",
+                        "name": "has_gpu",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU device ID",
+                        "name": "gpu_device_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU device partial name",
+                        "name": "gpu_device_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU vendor ID",
+                        "name": "gpu_vendor_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU vendor partial name",
+                        "name": "gpu_vendor_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "filter nodes that have available GPU",
+                        "name": "gpu_available",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -704,6 +740,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/nodes/{node_id}/gpu": {
+            "get": {
+                "description": "Get node GPUs through the RMB relay",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NodeGPUs"
+                ],
+                "summary": "Show node GPUs information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Node ID",
+                        "name": "node_id",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.NodeGPU"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/nodes/{node_id}/statistics": {
             "get": {
                 "description": "Get node statistics for more information about each node through the RMB relay",
@@ -729,7 +817,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/types.NodeWithNestedCapacity"
+                            "$ref": "#/definitions/types.NodeStatistics"
                         }
                     },
                     "400": {
@@ -1005,6 +1093,9 @@ const docTemplate = `{
                 "gateways": {
                     "type": "integer"
                 },
+                "gpus": {
+                    "type": "integer"
+                },
                 "nodes": {
                     "type": "integer"
                 },
@@ -1101,6 +1192,9 @@ const docTemplate = `{
                 "dedicated": {
                     "type": "boolean"
                 },
+                "extraFee": {
+                    "type": "integer"
+                },
                 "farmId": {
                     "type": "integer"
                 },
@@ -1117,6 +1211,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/types.Location"
                 },
                 "nodeId": {
+                    "type": "integer"
+                },
+                "num_gpu": {
                     "type": "integer"
                 },
                 "power": {
@@ -1155,6 +1252,23 @@ const docTemplate = `{
                 }
             }
         },
+        "types.NodeGPU": {
+            "type": "object",
+            "properties": {
+                "contract": {
+                    "type": "integer"
+                },
+                "device": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "vendor": {
+                    "type": "string"
+                }
+            }
+        },
         "types.NodePower": {
             "type": "object",
             "properties": {
@@ -1163,6 +1277,54 @@ const docTemplate = `{
                 },
                 "target": {
                     "type": "string"
+                }
+            }
+        },
+        "types.NodeStatistics": {
+            "type": "object",
+            "properties": {
+                "system": {
+                    "$ref": "#/definitions/types.NodeStatisticsResources"
+                },
+                "total": {
+                    "$ref": "#/definitions/types.NodeStatisticsResources"
+                },
+                "used": {
+                    "$ref": "#/definitions/types.NodeStatisticsResources"
+                },
+                "users": {
+                    "$ref": "#/definitions/types.NodeStatisticsUsers"
+                }
+            }
+        },
+        "types.NodeStatisticsResources": {
+            "type": "object",
+            "properties": {
+                "cru": {
+                    "type": "integer"
+                },
+                "hru": {
+                    "type": "integer"
+                },
+                "ipv4u": {
+                    "type": "integer"
+                },
+                "mru": {
+                    "type": "integer"
+                },
+                "sru": {
+                    "type": "integer"
+                }
+            }
+        },
+        "types.NodeStatisticsUsers": {
+            "type": "object",
+            "properties": {
+                "deployments": {
+                    "type": "integer"
+                },
+                "workloads": {
+                    "type": "integer"
                 }
             }
         },
@@ -1187,6 +1349,9 @@ const docTemplate = `{
                 "dedicated": {
                     "type": "boolean"
                 },
+                "extraFee": {
+                    "type": "integer"
+                },
                 "farmId": {
                     "type": "integer"
                 },
@@ -1203,6 +1368,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/types.Location"
                 },
                 "nodeId": {
+                    "type": "integer"
+                },
+                "num_gpu": {
                     "type": "integer"
                 },
                 "power": {

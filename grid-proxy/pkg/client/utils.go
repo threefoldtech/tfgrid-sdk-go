@@ -113,6 +113,24 @@ func nodeParams(filter types.NodeFilter, limit types.Limit) string {
 	if filter.CertificationType != nil && *filter.CertificationType != "" {
 		fmt.Fprintf(&builder, "certification_type=%s&", url.QueryEscape(*filter.CertificationType))
 	}
+	if filter.HasGPU != nil {
+		fmt.Fprintf(&builder, "has_gpu=%t&", *filter.HasGPU)
+	}
+	if filter.GpuAvailable != nil {
+		fmt.Fprintf(&builder, "gpu_available=%t&", *filter.GpuAvailable)
+	}
+	if filter.GpuDeviceID != nil {
+		fmt.Fprintf(&builder, "gpu_device_id=%s&", *filter.GpuDeviceID)
+	}
+	if filter.GpuDeviceName != nil {
+		fmt.Fprintf(&builder, "gpu_device_name=%s&", *filter.GpuDeviceName)
+	}
+	if filter.GpuVendorID != nil {
+		fmt.Fprintf(&builder, "gpu_vendor_id=%s&", *filter.GpuVendorID)
+	}
+	if filter.GpuVendorName != nil {
+		fmt.Fprintf(&builder, "gpu_vendor_name=%s&", *filter.GpuVendorName)
+	}
 
 	res := builder.String()
 	// pop the extra ? or &

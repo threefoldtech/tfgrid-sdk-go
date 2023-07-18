@@ -2,28 +2,21 @@ package explorer
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-const (
-	nodeUpInterval = -3 * time.Hour
-)
-
-func decideNodeStatus(power types.NodePower, updatedAt int64) string {
-	if power.Target == "Down" { // off or powering off
-		return "standby"
-	} else if power.Target == "Up" && power.State == "Down" { // powering on
-		return "down"
-	} else if updatedAt >= time.Now().Add(nodeUpInterval).Unix() {
-		return "up"
-	} else {
-		return "down"
+// getNumGPUs should be deleted after removing hasGPU
+func getNumGPUs(hasGPU bool) int {
+	if hasGPU {
+		return 1
 	}
+	return 0
 }
 
 func nodeFromDBNode(info db.Node) types.Node {
@@ -70,8 +63,10 @@ func nodeFromDBNode(info db.Node) types.Node {
 		RentedByTwinID:    uint(info.RentedByTwinID),
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
+		NumGPU:            getNumGPUs(info.HasGPU),
+		ExtraFee:          info.ExtraFee,
 	}
-	node.Status = decideNodeStatus(node.Power, node.UpdatedAt)
+	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	return node
 }
 
@@ -139,8 +134,10 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		RentedByTwinID:    uint(info.RentedByTwinID),
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
+		NumGPU:            getNumGPUs(info.HasGPU),
+		ExtraFee:          info.ExtraFee,
 	}
-	node.Status = decideNodeStatus(node.Power, node.UpdatedAt)
+	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	return node
 }
 

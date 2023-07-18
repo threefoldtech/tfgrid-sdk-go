@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"time"
 
 	// to use for database/sql
 	_ "github.com/lib/pq"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 
 	"github.com/pkg/errors"
@@ -26,13 +27,6 @@ var (
 	ErrFarmNotFound = errors.New("farm not found")
 	//ErrViewNotFound
 	ErrNodeResourcesViewNotFound = errors.New("ERROR: relation \"nodes_resources_view\" does not exist (SQLSTATE 42P01)")
-)
-
-const (
-	nodeStateFactor = 3
-	reportInterval  = time.Hour
-	// the number of missed reports to mark the node down
-	// if node reports every 5 mins, it's marked down if the last report is more than 15 mins in the past
 )
 
 const (
@@ -121,6 +115,17 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string) (
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create orm wrapper around db")
 	}
+	sql, err := gormDB.DB()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to configure DB connection")
+	}
+	sql.SetMaxIdleConns(3)
+
+	err = gormDB.AutoMigrate(&NodeGPU{})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to auto migrate DB")
+	}
+
 	res := PostgresDatabase{gormDB}
 	if err := res.initialize(); err != nil {
 		return nil, errors.Wrap(err, "failed to setup tables")
@@ -142,21 +147,15 @@ func (d *PostgresDatabase) initialize() error {
 	return res.Error
 }
 
-func decideNodeStatusCondition(status string) string {
-	condition := "TRUE"
-	nodeUpInterval := time.Now().Unix() - nodeStateFactor*int64(reportInterval.Seconds())
-
-	if status == "up" {
-		condition = fmt.Sprintf(`node.updated_at >= %d`, nodeUpInterval)
-	} else if status == "down" {
-		condition = fmt.Sprintf(`node.updated_at < %d 
-				OR node.updated_at IS NULL
-				OR node.power->> 'target' = 'Up' AND node.power->> 'state' = 'Down'`, nodeUpInterval)
-	} else if status == "standby" {
-		condition = `node.power->> 'target' = 'Down'`
+func checkGPUFiltering(filter types.NodeFilter) bool {
+	if filter.GpuAvailable != nil ||
+		filter.GpuDeviceID != nil ||
+		filter.GpuDeviceName != nil ||
+		filter.GpuVendorID != nil ||
+		filter.GpuVendorName != nil {
+		return true
 	}
-
-	return condition
+	return false
 }
 
 // GetCounters returns aggregate info about the grid
@@ -187,7 +186,7 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = decideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
 	}
 
 	if res := d.gormDB.
@@ -229,6 +228,9 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 	if res := d.gormDB.Table("node").
 		Select("country, count(node_id) as nodes").Where(condition).Group("country").Scan(&distribution); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get nodes distribution")
+	}
+	if res := d.gormDB.Table("node").Where(condition).Where("node.has_gpu = true").Count(&counters.GPUs); res.Error != nil {
+		return counters, errors.Wrap(res.Error, "couldn't get node with GPU count")
 	}
 	nodesDistribution := map[string]int64{}
 	for _, d := range distribution {
@@ -332,6 +334,10 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 		)
 }
 func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
+	subquery := d.gormDB.Table("node_contract").
+		Select("DISTINCT ON (node_id) node_id, contract_id").
+		Where("state IN ('Created', 'GracePeriod')")
+
 	return d.gormDB.
 		Table("node").
 		Select(
@@ -367,6 +373,8 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"convert_to_decimal(location.longitude) as longitude",
 			"convert_to_decimal(location.latitude) as latitude",
 			"node.power",
+			"node.has_gpu",
+			"node.extra_fee",
 		).
 		Joins(
 			"LEFT JOIN nodes_resources_view ON node.node_id = nodes_resources_view.node_id",
@@ -376,6 +384,9 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 		).
 		Joins(
 			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
+		).
+		Joins(
+			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", subquery,
 		).
 		Joins(
 			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
@@ -392,7 +403,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = decideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
 	}
 
 	q = q.Where(condition)
@@ -461,7 +472,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)
 	}
 	if filter.Rentable != nil {
-		q = q.Where(`? = ((farm.dedicated_farm = true OR nodes_resources_view.states = 0) AND COALESCE(rent_contract.contract_id, 0) = 0)`, *filter.Rentable)
+		q = q.Where(`? = ((farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0) AND COALESCE(rent_contract.contract_id, 0) = 0)`, *filter.Rentable)
 	}
 	if filter.RentedBy != nil {
 		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
@@ -474,6 +485,35 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 	}
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
+	}
+	if filter.HasGPU != nil {
+		q = q.Where("node.has_gpu = ?", *filter.HasGPU)
+	}
+	if checkGPUFiltering(filter) {
+		q = q.Joins(
+			"LEFT JOIN node_gpu on node_gpu.node_twin_id = node.twin_id",
+		)
+
+		if filter.GpuDeviceName != nil {
+			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.device ILIKE ? || '%')", *filter.GpuDeviceName)
+		}
+
+		if filter.GpuVendorName != nil {
+			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.vendor ILIKE ? || '%')", *filter.GpuVendorName)
+		}
+
+		if filter.GpuVendorID != nil {
+			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuVendorID)
+		}
+
+		if filter.GpuDeviceID != nil {
+			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuDeviceID)
+		}
+
+		if filter.GpuAvailable != nil {
+			q = q.Where("EXISTS( select node_gpu.id WHERE (node_gpu.contract = 0) = ?)", *filter.GpuAvailable)
+		}
+
 	}
 
 	var count int64
@@ -725,4 +765,17 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 		return contracts, uint(count), errors.Wrap(res.Error, "failed to scan returned contracts from database")
 	}
 	return contracts, uint(count), nil
+}
+
+func (p *PostgresDatabase) UpsertNodesGPU(nodesGPU []types.NodeGPU) error {
+	// For upsert operation
+	conflictClause := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}, {Name: "node_twin_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"vendor", "device", "contract"}),
+	}
+	err := p.gormDB.Table("node_gpu").Clauses(conflictClause).Create(&nodesGPU).Error
+	if err != nil {
+		return fmt.Errorf("failed to upsert nodes GPU details: %w", err)
+	}
+	return nil
 }

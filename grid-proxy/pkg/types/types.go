@@ -29,6 +29,7 @@ type Counters struct {
 	Twins             int64            `json:"twins"`
 	Contracts         int64            `json:"contracts"`
 	NodesDistribution map[string]int64 `json:"nodesDistribution" gorm:"-:all"`
+	GPUs              int64            `json:"gpus"`
 }
 
 // PublicConfig node public config
@@ -109,6 +110,12 @@ type NodeFilter struct {
 	NodeID            *uint64
 	TwinID            *uint64
 	CertificationType *string
+	HasGPU            *bool
+	GpuDeviceID       *string
+	GpuDeviceName     *string
+	GpuVendorID       *string
+	GpuVendorName     *string
+	GpuAvailable      *bool
 }
 
 // FarmFilter farm filters
@@ -186,6 +193,8 @@ type Node struct {
 	RentedByTwinID    uint         `json:"rentedByTwinId"`
 	SerialNumber      string       `json:"serialNumber"`
 	Power             NodePower    `json:"power"`
+	NumGPU            int          `json:"num_gpu"`
+	ExtraFee          uint64       `json:"extraFee"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -217,6 +226,8 @@ type NodeWithNestedCapacity struct {
 	RentedByTwinID    uint           `json:"rentedByTwinId"`
 	SerialNumber      string         `json:"serialNumber"`
 	Power             NodePower      `json:"power"`
+	NumGPU            int            `json:"num_gpu"`
+	ExtraFee          uint64         `json:"extraFee"`
 }
 
 type Twin struct {
@@ -278,6 +289,14 @@ type NodeStatistics struct {
 // NodeStatus is used for status endpoint to decode json in
 type NodeStatus struct {
 	Status string `json:"status"`
+}
+
+type NodeGPU struct {
+	NodeTwinID uint32 `json:"-"`
+	ID         string `json:"id"`
+	Vendor     string `json:"vendor"`
+	Device     string `json:"device"`
+	Contract   int    `json:"contract"`
 }
 
 // Serialize is the serializer for node status struct
