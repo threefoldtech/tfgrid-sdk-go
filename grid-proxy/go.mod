@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.8.12
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230530114457-e57ee9560f79
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230718094615-0e20bc81b066
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.4.0
 	github.com/threefoldtech/zos v0.5.6-0.20230526112430-f620733482d7
 	gorm.io/driver/postgres v1.5.0

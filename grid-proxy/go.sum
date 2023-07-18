@@ -154,8 +154,8 @@ github.com/swaggo/http-swagger v1.3.4 h1:q7t/XLx0n15H1Q9/tk3Y9L4n210XzJF5WtnDX64
 github.com/swaggo/http-swagger v1.3.4/go.mod h1:9dAh0unqMBAlbp1uE2Uc2mQTxNMU/ha4UbucIg1MFkQ=
 github.com/swaggo/swag v1.8.12 h1:pctzkNPu0AlQP2royqX3apjKCQonAnf7KGoxeO4y64w=
 github.com/swaggo/swag v1.8.12/go.mod h1:lNfm6Gg+oAq3zRJQNEMBE66LIJKM44mxFqhEEgy2its=
-github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230530114457-e57ee9560f79 h1:raL62fseJwRAQoaUn5h1M5RLPCjLWLvyDOhpW9E1TNI=
-github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230530114457-e57ee9560f79/go.mod h1:dtDKAPiUDxAwIkfHV7xcAFZcOm+xwNIuOI1MLFS+MeQ=
+github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230718094615-0e20bc81b066 h1:hqR7Wseie3+rezngt1358W5GX5OyHQtkaAUUzX6F7N0=
+github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230718094615-0e20bc81b066/go.mod h1:dtDKAPiUDxAwIkfHV7xcAFZcOm+xwNIuOI1MLFS+MeQ=
 github.com/threefoldtech/zos v0.5.6-0.20230526112430-f620733482d7 h1:4gkPADdVpLK4jciXvQHgYYWCzNRnY04Vg34iVofRk+0=
 github.com/threefoldtech/zos v0.5.6-0.20230526112430-f620733482d7/go.mod h1:l6bANbmYn3y2Oi6WuoA/MeKrsHweRBflwk0DY8/jmao=
 github.com/tklauser/go-sysconf v0.3.9 h1:JeUVdAOWhhxVcU6Eqr/ATFHgXk/mmiItdKeJPev3vTo=
