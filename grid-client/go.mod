@@ -10,7 +10,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.1
 	github.com/stretchr/testify v1.8.4
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230703112955-abb8f79f2d7e
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230718094615-0e20bc81b066
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.4.0
 	github.com/threefoldtech/zos v0.5.6-0.20230621094643-c1c26774b2a8
@@ -20,8 +20,6 @@ require (
 )
 
 require (
-	github.com/hashicorp/errwrap v1.0.0 // indirect
-	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -56,7 +54,3 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy => ../grid-proxy
-
-replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go => ../rmb-sdk-go

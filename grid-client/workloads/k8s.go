@@ -34,6 +34,7 @@ type K8sNode struct {
 	NetworkName   string `json:"network_name"`
 	Token         string `json:"token"`
 	SSHKey        string `json:"ssh_key"`
+	ConsoleURL    string `json:"console_url"`
 }
 
 // K8sCluster struct for k8s cluster
@@ -92,6 +93,7 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, 
 		NetworkName:   string(d.Network.Interfaces[0].Network),
 		Token:         d.Env["K3S_TOKEN"],
 		SSHKey:        d.Env["SSH_KEY"],
+		ConsoleURL:    result.ConsoleURL,
 	}, nil
 }
 
