@@ -65,7 +65,7 @@ type Node struct {
 	Longitude       *float64
 	Latitude        *float64
 	Power           NodePower `gorm:"type:jsonb"`
-	HasGPU          bool
+	NumGPU          int       `gorm:"num_gpu"`
 	ExtraFee        uint64
 }
 

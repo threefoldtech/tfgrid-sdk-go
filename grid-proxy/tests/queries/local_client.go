@@ -283,6 +283,10 @@ func (g *GridProxyClientimpl) Twins(filter proxytypes.TwinFilter, limit proxytyp
 }
 func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNestedCapacity, err error) {
 	node := g.data.nodes[uint64(nodeID)]
+	numGPU := 0
+	if _, ok := g.data.gpus[node.twin_id]; ok {
+		numGPU = 1
+	}
 	nodePower := proxytypes.NodePower{
 		State:  node.power.State,
 		Target: node.power.Target,
@@ -335,18 +339,10 @@ func (g *GridProxyClientimpl) Node(nodeID uint32) (res proxytypes.NodeWithNested
 			State:  node.power.State,
 			Target: node.power.Target,
 		},
-		NumGPU:   getNumGPUs(node.HasGPU),
+		NumGPU:   numGPU,
 		ExtraFee: node.ExtraFee,
 	}
 	return
-}
-
-// getNumGPUs should be deleted after removing hasGPU
-func getNumGPUs(hasGPU bool) int {
-	if hasGPU {
-		return 1
-	}
-	return 0
 }
 
 func (g *GridProxyClientimpl) NodeStatus(nodeID uint32) (res proxytypes.NodeStatus, err error) {
@@ -386,7 +382,7 @@ func (g *GridProxyClientimpl) Counters(filter proxytypes.StatsFilter) (res proxy
 					res.Gateways++
 				}
 			}
-			if node.HasGPU {
+			if _, ok := g.data.gpus[node.twin_id]; ok {
 				gpus++
 			}
 		}

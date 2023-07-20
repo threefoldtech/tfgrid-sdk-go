@@ -52,7 +52,6 @@ func loadNodes(db *sql.DB, data *DBData) error {
 		COALESCE(created_at, 0),
 		COALESCE(updated_at, 0),
 		COALESCE(location_id, ''),
-		COALESCE(has_gpu, false),
 		COALESCE(extra_fee, 0),
 		power
 	FROM
@@ -80,7 +79,6 @@ func loadNodes(db *sql.DB, data *DBData) error {
 			&node.created_at,
 			&node.updated_at,
 			&node.location_id,
-			&node.HasGPU,
 			&node.ExtraFee,
 			&node.power,
 		); err != nil {

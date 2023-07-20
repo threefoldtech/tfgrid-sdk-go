@@ -671,6 +671,22 @@ paths:
         in: query
         name: free_sru
         type: integer
+      - description: Total mru in bytes
+        in: query
+        name: total_mru
+        type: integer
+      - description: Total cru in bytes
+        in: query
+        name: total_cru
+        type: integer
+      - description: Total sru in bytes
+        in: query
+        name: total_sru
+        type: integer
+      - description: Total hru in bytes
+        in: query
+        name: total_hru
+        type: integer
       - description: Min number of free ips in the farm of the node
         in: query
         name: free_ips

@@ -327,7 +327,6 @@ CREATE TABLE public.node (
     certification character varying(9),
     connection_price integer,
     power jsonb,
-    has_gpu boolean,
     extra_fee numeric
 );
 
