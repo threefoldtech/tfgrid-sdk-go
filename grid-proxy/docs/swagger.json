@@ -533,6 +533,30 @@
                     },
                     {
                         "type": "integer",
+                        "description": "Total mru in bytes",
+                        "name": "total_mru",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Total cru in bytes",
+                        "name": "total_cru",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Total sru in bytes",
+                        "name": "total_sru",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Total hru in bytes",
+                        "name": "total_hru",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "description": "Min number of free ips in the farm of the node",
                         "name": "free_ips",
                         "in": "query"
