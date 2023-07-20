@@ -11,14 +11,6 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-// getNumGPUs should be deleted after removing hasGPU
-func getNumGPUs(hasGPU bool) int {
-	if hasGPU {
-		return 1
-	}
-	return 0
-}
-
 func nodeFromDBNode(info db.Node) types.Node {
 	node := types.Node{
 		ID:              info.ID,
@@ -63,7 +55,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 		RentedByTwinID:    uint(info.RentedByTwinID),
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
-		NumGPU:            getNumGPUs(info.HasGPU),
+		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
@@ -134,7 +126,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		RentedByTwinID:    uint(info.RentedByTwinID),
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
-		NumGPU:            getNumGPUs(info.HasGPU),
+		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)

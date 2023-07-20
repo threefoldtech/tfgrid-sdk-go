@@ -147,17 +147,6 @@ func (d *PostgresDatabase) initialize() error {
 	return res.Error
 }
 
-func checkGPUFiltering(filter types.NodeFilter) bool {
-	if filter.GpuAvailable != nil ||
-		filter.GpuDeviceID != nil ||
-		filter.GpuDeviceName != nil ||
-		filter.GpuVendorID != nil ||
-		filter.GpuVendorName != nil {
-		return true
-	}
-	return false
-}
-
 // GetCounters returns aggregate info about the grid
 func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters, error) {
 	var counters types.Counters
@@ -229,7 +218,7 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 		Select("country, count(node_id) as nodes").Where(condition).Group("country").Scan(&distribution); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get nodes distribution")
 	}
-	if res := d.gormDB.Table("node").Where(condition).Where("node.has_gpu = true").Count(&counters.GPUs); res.Error != nil {
+	if res := d.gormDB.Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&counters.GPUs); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get node with GPU count")
 	}
 	nodesDistribution := map[string]int64{}
@@ -333,10 +322,13 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 		ON public_ip.farm_id = farm.id`,
 		)
 }
+
 func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 	subquery := d.gormDB.Table("node_contract").
 		Select("DISTINCT ON (node_id) node_id, contract_id").
 		Where("state IN ('Created', 'GracePeriod')")
+
+	nodeGPUQuery := `(SELECT count(node_gpu.id) FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id) as num_gpu`
 
 	return d.gormDB.
 		Table("node").
@@ -373,8 +365,8 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"convert_to_decimal(location.longitude) as longitude",
 			"convert_to_decimal(location.latitude) as latitude",
 			"node.power",
-			"node.has_gpu",
 			"node.extra_fee",
+			nodeGPUQuery,
 		).
 		Joins(
 			"LEFT JOIN nodes_resources_view ON node.node_id = nodes_resources_view.node_id",
@@ -393,6 +385,9 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 		).
 		Joins(
 			"LEFT JOIN location ON node.location_id = location.id",
+		).
+		Joins(
+			"LEFT JOIN node_gpu on node_gpu.node_twin_id = node.twin_id",
 		)
 }
 
@@ -486,34 +481,29 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
 	}
+
 	if filter.HasGPU != nil {
-		q = q.Where("node.has_gpu = ?", *filter.HasGPU)
+		q = q.Where("((select count(node_gpu.id) from node_gpu WHERE node_gpu.node_twin_id = node.twin_id) != 0) = ?", *filter.HasGPU)
 	}
-	if checkGPUFiltering(filter) {
-		q = q.Joins(
-			"LEFT JOIN node_gpu on node_gpu.node_twin_id = node.twin_id",
-		)
 
-		if filter.GpuDeviceName != nil {
-			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.device ILIKE ? || '%')", *filter.GpuDeviceName)
-		}
+	if filter.GpuDeviceName != nil {
+		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.device ILIKE ? || '%')", *filter.GpuDeviceName)
+	}
 
-		if filter.GpuVendorName != nil {
-			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.vendor ILIKE ? || '%')", *filter.GpuVendorName)
-		}
+	if filter.GpuVendorName != nil {
+		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.vendor ILIKE ? || '%')", *filter.GpuVendorName)
+	}
 
-		if filter.GpuVendorID != nil {
-			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuVendorID)
-		}
+	if filter.GpuVendorID != nil {
+		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuVendorID)
+	}
 
-		if filter.GpuDeviceID != nil {
-			q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuDeviceID)
-		}
+	if filter.GpuDeviceID != nil {
+		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuDeviceID)
+	}
 
-		if filter.GpuAvailable != nil {
-			q = q.Where("EXISTS( select node_gpu.id WHERE (node_gpu.contract = 0) = ?)", *filter.GpuAvailable)
-		}
-
+	if filter.GpuAvailable != nil {
+		q = q.Where("EXISTS( select node_gpu.id WHERE (node_gpu.contract = 0) = ?)", *filter.GpuAvailable)
 	}
 
 	var count int64
@@ -536,7 +526,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		}
 		q = q.Limit(int(limit.Size)).
 			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("node_id")
+			Order("node.node_id")
 	}
 
 	var nodes []Node
