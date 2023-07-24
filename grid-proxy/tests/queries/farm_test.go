@@ -1,7 +1,6 @@
-package main
+package test
 
 import (
-	"database/sql"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -9,16 +8,74 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
 
 const (
 	FARM_TESTS = 2000
 )
+
+var farmFilterRandomValues = map[string]func(agg FarmsAggregate) interface{}{
+	"FreeIPs": func(agg FarmsAggregate) interface{} {
+		return rndref(0, agg.maxFreeIPs)
+	},
+	"TotalIPs": func(agg FarmsAggregate) interface{} {
+		return rndref(0, agg.maxTotalIPs)
+	},
+	"StellarAddress": func(agg FarmsAggregate) interface{} {
+		return &agg.stellarAddresses[rand.Intn(len(agg.stellarAddresses))]
+	},
+	"PricingPolicyID": func(agg FarmsAggregate) interface{} {
+		return &agg.pricingPolicyIDs[rand.Intn(len(agg.pricingPolicyIDs))]
+	},
+	"FarmID": func(agg FarmsAggregate) interface{} {
+		return &agg.farmIDs[rand.Intn(len(agg.farmIDs))]
+	},
+	"TwinID": func(agg FarmsAggregate) interface{} {
+		return &agg.twinIDs[rand.Intn(len(agg.twinIDs))]
+	},
+	"Name": func(agg FarmsAggregate) interface{} {
+		name := changeCase(agg.farmNames[rand.Intn(len(agg.farmNames))])
+		return &name
+	},
+	"NameContains": func(agg FarmsAggregate) interface{} {
+		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
+		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		if a > b {
+			a, b = b, a
+		}
+		c = c[a : b+1]
+		return &c
+	},
+	"CertificationType": func(agg FarmsAggregate) interface{} {
+		return &agg.certifications[rand.Intn(len(agg.certifications))]
+	},
+	"Dedicated": func(agg FarmsAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
+	"NodeFreeMRU": func(agg FarmsAggregate) interface{} {
+		aggNode := calcNodesAggregates(&data)
+		mru := uint64(rand.Int63n(int64(aggNode.maxFreeMRU)))
+		return &mru
+	},
+	"NodeFreeHRU": func(agg FarmsAggregate) interface{} {
+		aggNode := calcNodesAggregates(&data)
+		hru := uint64(rand.Int63n(int64(aggNode.maxFreeHRU)))
+		return &hru
+	},
+	"NodeFreeSRU": func(agg FarmsAggregate) interface{} {
+		aggNode := calcNodesAggregates(&data)
+		sru := uint64(rand.Int63n(int64(aggNode.maxFreeSRU)))
+		return &sru
+	},
+}
 
 type FarmsAggregate struct {
 	stellarAddresses []string
@@ -34,22 +91,6 @@ type FarmsAggregate struct {
 }
 
 func TestFarm(t *testing.T) {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB)
-	db, err := sql.Open("postgres", psqlInfo)
-	if err != nil {
-		panic(errors.Wrap(err, "failed to open db"))
-	}
-	defer db.Close()
-
-	data, err := load(db)
-	if err != nil {
-		panic(err)
-	}
-	proxyClient := proxyclient.NewClient(ENDPOINT)
-	localClient := NewGridProxyClient(data)
-
 	t.Run("farms pagination test", func(t *testing.T) {
 		one := uint64(1)
 		f := proxytypes.FarmFilter{
@@ -61,15 +102,18 @@ func TestFarm(t *testing.T) {
 			RetCount: true,
 		}
 		for ; ; l.Page++ {
-			localFarms, localCount, err := localClient.Farms(f, l)
-			assert.NoError(t, err)
-			remoteFarms, remoteCount, err := proxyClient.Farms(f, l)
-			assert.NoError(t, err)
-			assert.Equal(t, localCount, remoteCount)
-			sortPublicIPs(localFarms, remoteFarms)
-			require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(f), cmp.Diff(localFarms, remoteFarms))
+			want, wantCount, err := mockClient.Farms(f, l)
+			require.NoError(t, err)
 
-			if l.Page*l.Size >= uint64(localCount) {
+			got, gotCount, err := gridProxyClient.Farms(f, l)
+			require.NoError(t, err)
+
+			assert.Equal(t, wantCount, gotCount)
+
+			sortPublicIPs(want, got)
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+
+			if l.Page*l.Size >= uint64(wantCount) {
 				break
 			}
 		}
@@ -83,15 +127,19 @@ func TestFarm(t *testing.T) {
 				Page:     1,
 				RetCount: false,
 			}
-			f := randomFarmsFilter(&agg)
-			localFarms, _, err := localClient.Farms(f, l)
-			assert.NoError(t, err)
-			remoteFarms, _, err := proxyClient.Farms(f, l)
-			assert.NoError(t, err)
-			sortPublicIPs(localFarms, remoteFarms)
+			f, err := randomFarmsFilter(&agg)
+			require.NoError(t, err)
 
-			require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(f), cmp.Diff(localFarms, remoteFarms))
+			want, wantCount, err := mockClient.Farms(f, l)
+			require.NoError(t, err)
 
+			got, gotCount, err := gridProxyClient.Farms(f, l)
+			require.NoError(t, err)
+
+			assert.Equal(t, wantCount, gotCount)
+
+			sortPublicIPs(want, got)
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 		}
 	})
 	t.Run("farms list node free hru", func(t *testing.T) {
@@ -101,48 +149,94 @@ func TestFarm(t *testing.T) {
 			Page:     1,
 			RetCount: false,
 		}
-		filter := proxytypes.FarmFilter{
+		f := proxytypes.FarmFilter{
 			NodeFreeHRU: &aggNode.maxFreeHRU,
 		}
-		localFarms, _, err := localClient.Farms(filter, l)
-		assert.NoError(t, err)
-		remoteFarms, _, err := proxyClient.Farms(filter, l)
-		assert.NoError(t, err)
-		sortPublicIPs(localFarms, remoteFarms)
 
-		require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(filter), cmp.Diff(localFarms, remoteFarms))
+		want, wantCount, err := mockClient.Farms(f, l)
+		require.NoError(t, err)
 
+		got, gotCount, err := gridProxyClient.Farms(f, l)
+		require.NoError(t, err)
+
+		assert.Equal(t, wantCount, gotCount)
+
+		sortPublicIPs(want, got)
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 	t.Run("farms list node free hru, mru", func(t *testing.T) {
 		aggNode := calcNodesAggregates(&data)
+
 		l := proxytypes.Limit{
 			Size:     999999999999,
 			Page:     1,
 			RetCount: false,
 		}
-		filter := proxytypes.FarmFilter{
+
+		f := proxytypes.FarmFilter{
 			NodeFreeHRU: &aggNode.maxFreeHRU,
 			NodeFreeMRU: &aggNode.maxFreeMRU,
 		}
-		localFarms, _, err := localClient.Farms(filter, l)
-		assert.NoError(t, err)
-		remoteFarms, _, err := proxyClient.Farms(filter, l)
-		assert.NoError(t, err)
-		sortPublicIPs(localFarms, remoteFarms)
 
-		require.True(t, reflect.DeepEqual(localFarms, remoteFarms), serializeFilter(filter), cmp.Diff(localFarms, remoteFarms))
+		want, wantCount, err := mockClient.Farms(f, l)
+		require.NoError(t, err)
 
+		got, gotCount, err := gridProxyClient.Farms(f, l)
+		require.NoError(t, err)
+
+		assert.Equal(t, wantCount, gotCount)
+
+		sortPublicIPs(want, got)
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 }
 
-func calcFarmsAggregates(data *DBData) (res FarmsAggregate) {
-	for _, farm := range data.farms {
-		res.farmNames = append(res.farmNames, farm.name)
-		res.stellarAddresses = append(res.stellarAddresses, farm.stellar_address)
-		res.pricingPolicyIDs = append(res.pricingPolicyIDs, farm.pricing_policy_id)
-		res.certifications = append(res.certifications, farm.certification)
-		res.farmIDs = append(res.farmIDs, farm.farm_id)
-		res.twinIDs = append(res.twinIDs, farm.twin_id)
+// TestContractsFilter iterates over all ContractFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
+func TestFarmFilter(t *testing.T) {
+	f := proxytypes.FarmFilter{}
+	fp := &f
+	v := reflect.ValueOf(fp).Elem()
+	l := proxytypes.Limit{
+		Size:     9999999,
+		Page:     1,
+		RetCount: true,
+	}
+
+	agg := calcFarmsAggregates(&data)
+
+	for i := 0; i < v.NumField(); i++ {
+		_, ok := farmFilterRandomValues[v.Type().Field(i).Name]
+		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
+
+		randomFieldValue := farmFilterRandomValues[v.Type().Field(i).Name](agg)
+		if v.Field(i).Type().Kind() != reflect.Slice {
+			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
+		}
+		v.Field(i).Set(reflect.ValueOf(randomFieldValue))
+
+		want, wantCount, err := mockClient.Farms(f, l)
+		require.NoError(t, err)
+
+		got, gotCount, err := gridProxyClient.Farms(f, l)
+		require.NoError(t, err)
+
+		assert.Equal(t, wantCount, gotCount)
+
+		sortPublicIPs(want, got)
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+
+		v.Field(i).Set(reflect.Zero(v.Field(i).Type()))
+	}
+}
+
+func calcFarmsAggregates(data *mock.DBData) (res FarmsAggregate) {
+	for _, farm := range data.Farms {
+		res.farmNames = append(res.farmNames, farm.Name)
+		res.stellarAddresses = append(res.stellarAddresses, farm.StellarAddress)
+		res.pricingPolicyIDs = append(res.pricingPolicyIDs, farm.PricingPolicyID)
+		res.certifications = append(res.certifications, farm.Certification)
+		res.farmIDs = append(res.farmIDs, farm.FarmID)
+		res.twinIDs = append(res.twinIDs, farm.TwinID)
 	}
 
 	for _, contract := range data.rentContracts {
@@ -151,11 +245,11 @@ func calcFarmsAggregates(data *DBData) (res FarmsAggregate) {
 
 	farmIPs := make(map[uint64]uint64)
 	farmTotalIPs := make(map[uint64]uint64)
-	for _, publicIP := range data.publicIPs {
-		if publicIP.contract_id == 0 {
-			farmIPs[data.farmIDMap[publicIP.farm_id]] += 1
+	for _, publicIP := range data.PublicIPs {
+		if publicIP.ContractID == 0 {
+			farmIPs[data.FarmIDMap[publicIP.FarmID]] += 1
 		}
-		farmTotalIPs[data.farmIDMap[publicIP.farm_id]] += 1
+		farmTotalIPs[data.FarmIDMap[publicIP.FarmID]] += 1
 	}
 	for _, cnt := range farmIPs {
 		res.maxFreeIPs = max(res.maxFreeIPs, cnt)
@@ -186,54 +280,24 @@ func calcFarmsAggregates(data *DBData) (res FarmsAggregate) {
 	return
 }
 
-func randomFarmsFilter(agg *FarmsAggregate) proxytypes.FarmFilter {
-	var f proxytypes.FarmFilter
-	if flip(.5) {
-		f.FreeIPs = rndref(0, agg.maxFreeIPs)
-	}
-	if flip(.5) {
-		f.TotalIPs = rndref(0, agg.maxTotalIPs)
-	}
-	if flip(.05) {
-		c := agg.stellarAddresses[rand.Intn(len(agg.stellarAddresses))]
-		f.StellarAddress = &c
-	}
-	if flip(.5) {
-		c := agg.pricingPolicyIDs[rand.Intn(len(agg.pricingPolicyIDs))]
-		f.PricingPolicyID = &c
-	}
-	if flip(.05) {
-		c := agg.farmIDs[rand.Intn(len(agg.farmIDs))]
-		f.FarmID = &c
-	}
-	if flip(.05) {
-		c := agg.twinIDs[rand.Intn(len(agg.twinIDs))]
-		f.TwinID = &c
-	}
-	if flip(.05) {
-		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
-		v := changeCase(c)
-		f.Name = &v
-	}
-	if flip(.05) {
-		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
-		if a > b {
-			a, b = b, a
+func randomFarmsFilter(agg *FarmsAggregate) (proxytypes.FarmFilter, error) {
+	f := proxytypes.FarmFilter{}
+	fp := &f
+	v := reflect.ValueOf(fp).Elem()
+
+	for i := 0; i < v.NumField(); i++ {
+		if rand.Float32() > .5 {
+			_, ok := farmFilterRandomValues[v.Type().Field(i).Name]
+			if !ok {
+				return proxytypes.FarmFilter{}, fmt.Errorf("Filter field %s has no random value generator", v.Type().Field(i).Name)
+			}
+
+			randomFieldValue := farmFilterRandomValues[v.Type().Field(i).Name](*agg)
+			if v.Field(i).Type().Kind() != reflect.Slice {
+				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
+			}
+			v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 		}
-		c = c[a : b+1]
-		f.NameContains = &c
-	}
-	if flip(.5) {
-		c := agg.certifications[rand.Intn(len(agg.certifications))]
-		f.CertificationType = &c
-	}
-	if flip(.5) {
-		v := true
-		if flip(.5) {
-			v = false
-		}
-		f.Dedicated = &v
 	}
 	if flip(.5) {
 		v := agg.rentersTwinIDs[rand.Intn(len(agg.rentersTwinIDs))]
@@ -262,7 +326,7 @@ func randomFarmsFilter(agg *FarmsAggregate) proxytypes.FarmFilter {
 		f.NodeStatus = &nodeStatuses[rand.Intn(len(nodeStatuses))]
 	}
 
-	return f
+	return f, nil
 }
 
 func sortPublicIPs(local, remote []proxytypes.Farm) {

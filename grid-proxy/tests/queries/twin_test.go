@@ -1,7 +1,6 @@
-package main
+package test
 
 import (
-	"database/sql"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -9,11 +8,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
 
 type TwinsAggregate struct {
@@ -21,30 +19,29 @@ type TwinsAggregate struct {
 	accountIDs []string
 	relays     []string
 	publicKeys []string
-	twins      map[uint64]twin
+	twins      map[uint64]mock.Twin
 }
 
 const (
 	TWINS_TESTS = 200
 )
 
+var twinFilterRandomValues = map[string]func(agg TwinsAggregate) interface{}{
+	"TwinID": func(agg TwinsAggregate) interface{} {
+		return &agg.twinIDs[rand.Intn(len(agg.twinIDs))]
+	},
+	"AccountID": func(agg TwinsAggregate) interface{} {
+		return &agg.accountIDs[rand.Intn(len(agg.accountIDs))]
+	},
+	"Relay": func(agg TwinsAggregate) interface{} {
+		return &agg.relays[rand.Intn(len(agg.relays))]
+	},
+	"PublicKey": func(agg TwinsAggregate) interface{} {
+		return &agg.publicKeys[rand.Intn(len(agg.publicKeys))]
+	},
+}
+
 func TestTwins(t *testing.T) {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB)
-	db, err := sql.Open("postgres", psqlInfo)
-	if err != nil {
-		panic(errors.Wrap(err, "failed to open db"))
-	}
-	defer db.Close()
-
-	data, err := load(db)
-	if err != nil {
-		panic(err)
-	}
-	proxyClient := proxyclient.NewClient(ENDPOINT)
-	localClient := NewGridProxyClient(data)
-
 	t.Run("twins pagination test", func(t *testing.T) {
 		f := proxytypes.TwinFilter{}
 		l := proxytypes.Limit{
@@ -53,14 +50,17 @@ func TestTwins(t *testing.T) {
 			RetCount: true,
 		}
 		for {
-			localTwins, localCount, err := localClient.Twins(f, l)
-			assert.NoError(t, err)
-			remoteTwins, remoteCount, err := proxyClient.Twins(f, l)
-			assert.NoError(t, err)
-			assert.Equal(t, localCount, remoteCount)
-			require.True(t, reflect.DeepEqual(localTwins, remoteTwins), serializeFilter(f), cmp.Diff(localTwins, remoteTwins))
+			want, wantCount, err := mockClient.Twins(f, l)
+			require.NoError(t, err)
 
-			if l.Page*l.Size >= uint64(localCount) {
+			got, gotCount, err := gridProxyClient.Twins(f, l)
+			require.NoError(t, err)
+
+			assert.Equal(t, wantCount, gotCount)
+
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+
+			if l.Page*l.Size >= uint64(wantCount) {
 				break
 			}
 			l.Page++
@@ -75,62 +75,90 @@ func TestTwins(t *testing.T) {
 				Page:     1,
 				RetCount: false,
 			}
-			f := randomTwinsFilter(&agg)
-			localTwins, _, err := localClient.Twins(f, l)
-			assert.NoError(t, err)
-			remoteTwins, _, err := proxyClient.Twins(f, l)
-			assert.NoError(t, err)
-			require.True(t, reflect.DeepEqual(localTwins, remoteTwins), serializeFilter(f), cmp.Diff(localTwins, remoteTwins))
+			f, err := randomTwinsFilter(&agg)
+			require.NoError(t, err)
 
+			want, wantCount, err := mockClient.Twins(f, l)
+			require.NoError(t, err)
+
+			got, gotCount, err := gridProxyClient.Twins(f, l)
+			require.NoError(t, err)
+
+			assert.Equal(t, wantCount, gotCount)
+
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 		}
 	})
 }
 
-func randomTwinsFilter(agg *TwinsAggregate) proxytypes.TwinFilter {
-	var f proxytypes.TwinFilter
-	if flip(.2) {
-		c := agg.twinIDs[rand.Intn(len(agg.twinIDs))]
-		f.TwinID = &c
-	}
-	if flip(.2) {
-		if f.TwinID != nil && flip(.4) {
-			accountID := agg.twins[*f.TwinID].account_id
-			f.AccountID = &accountID
-		} else {
-			c := agg.accountIDs[rand.Intn(len(agg.accountIDs))]
-			f.AccountID = &c
-		}
-	}
-	if flip(.2) {
-		if f.TwinID != nil && flip(.4) {
-			relay := agg.twins[*f.TwinID].account_id
-			f.Relay = &relay
-		} else {
-			c := agg.relays[rand.Intn(len(agg.relays))]
-			f.Relay = &c
-		}
-	}
-	if flip(.2) {
-		if f.TwinID != nil && flip(.4) {
-			publicKey := agg.twins[*f.TwinID].account_id
-			f.PublicKey = &publicKey
-		} else {
-			c := agg.publicKeys[rand.Intn(len(agg.publicKeys))]
-			f.PublicKey = &c
-		}
+func TestTwinFilter(t *testing.T) {
+	f := proxytypes.TwinFilter{}
+	fp := &f
+	v := reflect.ValueOf(fp).Elem()
+	l := proxytypes.Limit{
+		Size:     9999999,
+		Page:     1,
+		RetCount: true,
 	}
 
-	return f
+	agg := calcTwinsAggregates(&data)
+
+	for i := 0; i < v.NumField(); i++ {
+		_, ok := twinFilterRandomValues[v.Type().Field(i).Name]
+		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
+
+		randomFieldValue := twinFilterRandomValues[v.Type().Field(i).Name](agg)
+
+		if v.Field(i).Type().Kind() != reflect.Slice {
+			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
+		}
+		v.Field(i).Set(reflect.ValueOf(randomFieldValue))
+
+		want, wantCount, err := mockClient.Twins(f, l)
+		require.NoError(t, err)
+
+		got, gotCount, err := gridProxyClient.Twins(f, l)
+		require.NoError(t, err)
+
+		assert.Equal(t, wantCount, gotCount)
+
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+
+		v.Field(i).Set(reflect.Zero(v.Field(i).Type()))
+	}
 }
 
-func calcTwinsAggregates(data *DBData) (res TwinsAggregate) {
-	for _, twin := range data.twins {
-		res.twinIDs = append(res.twinIDs, twin.twin_id)
-		res.accountIDs = append(res.accountIDs, twin.account_id)
-		res.relays = append(res.relays, twin.relay)
-		res.publicKeys = append(res.publicKeys, twin.public_key)
+func randomTwinsFilter(agg *TwinsAggregate) (proxytypes.TwinFilter, error) {
+	f := proxytypes.TwinFilter{}
+	fp := &f
+	v := reflect.ValueOf(fp).Elem()
+
+	for i := 0; i < v.NumField(); i++ {
+		if rand.Float32() > .5 {
+			_, ok := twinFilterRandomValues[v.Type().Field(i).Name]
+			if !ok {
+				return proxytypes.TwinFilter{}, fmt.Errorf("Filter field %s has no random value generator", v.Type().Field(i).Name)
+			}
+
+			randomFieldValue := twinFilterRandomValues[v.Type().Field(i).Name](*agg)
+			if v.Field(i).Type().Kind() != reflect.Slice {
+				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
+			}
+			v.Field(i).Set(reflect.ValueOf(randomFieldValue))
+		}
 	}
-	res.twins = data.twins
+
+	return f, nil
+}
+
+func calcTwinsAggregates(data *mock.DBData) (res TwinsAggregate) {
+	for _, twin := range data.Twins {
+		res.twinIDs = append(res.twinIDs, twin.TwinID)
+		res.accountIDs = append(res.accountIDs, twin.AccountID)
+		res.relays = append(res.relays, twin.Relay)
+		res.publicKeys = append(res.publicKeys, twin.PublicKey)
+	}
+	res.twins = data.Twins
 	sort.Slice(res.twinIDs, func(i, j int) bool {
 		return res.twinIDs[i] < res.twinIDs[j]
 	})

@@ -31,8 +31,8 @@ When adding new changes to the gridproxy, make sure to follow the below steps to
 
 - fix bugs in postgres
 - refactor random filter generators
-- reorganize local client.
 - refactor satisfy fuctions (`nodeSatisfies`, `farmSatisfies`, ...) to return an error if a filter field is not handled
 - test each field of each filter separately.
-- remove `validateResults` and replace with `reflect.DeepEquals`
-- use `"github.com/google/go-cmp/cmp"` to log differences between local and remote clients
+- reorganize local client. - DONE
+- remove `validateResults` and replace with `reflect.DeepEquals` - DONE
+- use `"github.com/google/go-cmp/cmp"` to log differences between local and remote clients - DONE

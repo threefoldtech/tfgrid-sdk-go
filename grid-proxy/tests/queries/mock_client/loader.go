@@ -1,4 +1,4 @@
-package main
+package mock
 
 import (
 	"database/sql"
@@ -8,29 +8,29 @@ import (
 )
 
 type DBData struct {
-	nodeIDMap          map[string]uint64
-	farmIDMap          map[string]uint64
+	NodeIDMap          map[string]uint64
+	FarmIDMap          map[string]uint64
 	FreeIPs            map[uint64]uint64
 	TotalIPs           map[uint64]uint64
-	nodeUsedResources  map[uint64]node_resources_total
-	nodeRentedBy       map[uint64]uint64
-	nodeRentContractID map[uint64]uint64
-	farmHasRentedNode  map[uint64]bool
+	NodeUsedResources  map[uint64]NodeResourcesTotal
+	NodeRentedBy       map[uint64]uint64
+	NodeRentContractID map[uint64]uint64
+	FarmHasRentedNode  map[uint64]bool
 
-	nodes               map[uint64]node
-	nodeTotalResources  map[uint64]node_resources_total
-	farms               map[uint64]farm
-	twins               map[uint64]twin
-	publicIPs           map[string]public_ip
-	publicConfigs       map[uint64]public_config
-	nodeContracts       map[uint64]node_contract
-	rentContracts       map[uint64]rent_contract
-	nameContracts       map[uint64]name_contract
-	billings            map[uint64][]contract_bill_report
-	contractResources   map[string]contract_resources
-	nonDeletedContracts map[uint64][]uint64
-	gpus                map[uint64]node_gpu
-	db                  *sql.DB
+	Nodes               map[uint64]Node
+	NodeTotalResources  map[uint64]NodeResourcesTotal
+	Farms               map[uint64]Farm
+	Twins               map[uint64]Twin
+	PublicIPs           map[string]PublicIp
+	PublicConfigs       map[uint64]PublicConfig
+	NodeContracts       map[uint64]NodeContract
+	RentContracts       map[uint64]RentContract
+	NameContracts       map[uint64]NameContract
+	Billings            map[uint64][]ContractBillReport
+	ContractResources   map[string]ContractResources
+	NonDeletedContracts map[uint64][]uint64
+	GPUs                map[uint64]NodeGPU
+	DB                  *sql.DB
 }
 
 func loadNodes(db *sql.DB, data *DBData) error {
@@ -61,60 +61,60 @@ func loadNodes(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var node node
+		var node Node
 		if err := rows.Scan(
-			&node.id,
-			&node.grid_version,
-			&node.node_id,
-			&node.farm_id,
-			&node.twin_id,
-			&node.country,
-			&node.city,
-			&node.uptime,
-			&node.created,
-			&node.farming_policy_id,
-			&node.certification,
-			&node.secure,
-			&node.virtualized,
-			&node.serial_number,
-			&node.created_at,
-			&node.updated_at,
-			&node.location_id,
+			&node.ID,
+			&node.GridVersion,
+			&node.NodeID,
+			&node.FarmID,
+			&node.TwinID,
+			&node.Country,
+			&node.City,
+			&node.Uptime,
+			&node.Created,
+			&node.FarmingPolicyID,
+			&node.Certification,
+			&node.Secure,
+			&node.Virtualized,
+			&node.SerialNumber,
+			&node.CreatedAt,
+			&node.UpdatedAt,
+			&node.LocationID,
 			&node.ExtraFee,
-			&node.power,
+			&node.Power,
 		); err != nil {
 			return err
 		}
-		data.nodes[node.node_id] = node
-		data.nodeIDMap[node.id] = node.node_id
+		data.Nodes[node.NodeID] = node
+		data.NodeIDMap[node.ID] = node.NodeID
 	}
 	return nil
 }
 
 func calcNodesUsedResources(data *DBData) error {
 
-	for _, node := range data.nodes {
-		used := node_resources_total{
-			mru: uint64(2 * gridtypes.Gigabyte),
-			sru: uint64(100 * gridtypes.Gigabyte),
+	for _, node := range data.Nodes {
+		used := NodeResourcesTotal{
+			MRU: uint64(2 * gridtypes.Gigabyte),
+			SRU: uint64(100 * gridtypes.Gigabyte),
 		}
-		tenpercent := uint64(math.Round(float64(data.nodeTotalResources[node.node_id].mru) / 10))
-		if used.mru < tenpercent {
-			used.mru = tenpercent
+		tenpercent := uint64(math.Round(float64(data.NodeTotalResources[node.NodeID].MRU) / 10))
+		if used.MRU < tenpercent {
+			used.MRU = tenpercent
 		}
-		data.nodeUsedResources[node.node_id] = used
+		data.NodeUsedResources[node.NodeID] = used
 	}
 
-	for _, contract := range data.nodeContracts {
-		if contract.state == "Deleted" {
+	for _, contract := range data.NodeContracts {
+		if contract.State == "Deleted" {
 			continue
 		}
-		contratResourceID := contract.resources_used_id
-		data.nodeUsedResources[contract.node_id] = node_resources_total{
-			cru: data.contractResources[contratResourceID].cru + data.nodeUsedResources[contract.node_id].cru,
-			mru: data.contractResources[contratResourceID].mru + data.nodeUsedResources[contract.node_id].mru,
-			hru: data.contractResources[contratResourceID].hru + data.nodeUsedResources[contract.node_id].hru,
-			sru: data.contractResources[contratResourceID].sru + data.nodeUsedResources[contract.node_id].sru,
+		contratResourceID := contract.ResourcesUsedID
+		data.NodeUsedResources[contract.NodeID] = NodeResourcesTotal{
+			CRU: data.ContractResources[contratResourceID].CRU + data.NodeUsedResources[contract.NodeID].CRU,
+			MRU: data.ContractResources[contratResourceID].MRU + data.NodeUsedResources[contract.NodeID].MRU,
+			HRU: data.ContractResources[contratResourceID].HRU + data.NodeUsedResources[contract.NodeID].HRU,
+			SRU: data.ContractResources[contratResourceID].SRU + data.NodeUsedResources[contract.NodeID].SRU,
 		}
 
 	}
@@ -122,24 +122,24 @@ func calcNodesUsedResources(data *DBData) error {
 }
 
 func calcRentInfo(data *DBData) error {
-	for _, contract := range data.rentContracts {
-		if contract.state == "Deleted" {
+	for _, contract := range data.RentContracts {
+		if contract.State == "Deleted" {
 			continue
 		}
-		data.nodeRentedBy[contract.node_id] = contract.twin_id
-		data.nodeRentContractID[contract.node_id] = contract.contract_id
-		farmID := data.nodes[contract.node_id].farm_id
-		data.farmHasRentedNode[farmID] = true
+		data.NodeRentedBy[contract.NodeID] = contract.TwinID
+		data.NodeRentContractID[contract.NodeID] = contract.ContractID
+		farmID := data.Nodes[contract.NodeID].FarmID
+		data.FarmHasRentedNode[farmID] = true
 	}
 	return nil
 }
 
 func calcFreeIPs(data *DBData) error {
-	for _, publicIP := range data.publicIPs {
-		if publicIP.contract_id == 0 {
-			data.FreeIPs[data.farmIDMap[publicIP.farm_id]]++
+	for _, publicIP := range data.PublicIPs {
+		if publicIP.ContractID == 0 {
+			data.FreeIPs[data.FarmIDMap[publicIP.FarmID]]++
 		}
-		data.TotalIPs[data.farmIDMap[publicIP.farm_id]]++
+		data.TotalIPs[data.FarmIDMap[publicIP.FarmID]]++
 	}
 	return nil
 }
@@ -159,18 +159,18 @@ func loadNodesTotalResources(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var nodeResourcesTotal node_resources_total
+		var nodeResourcesTotal NodeResourcesTotal
 		if err := rows.Scan(
-			&nodeResourcesTotal.id,
-			&nodeResourcesTotal.hru,
-			&nodeResourcesTotal.sru,
-			&nodeResourcesTotal.cru,
-			&nodeResourcesTotal.mru,
-			&nodeResourcesTotal.node_id,
+			&nodeResourcesTotal.ID,
+			&nodeResourcesTotal.HRU,
+			&nodeResourcesTotal.SRU,
+			&nodeResourcesTotal.CRU,
+			&nodeResourcesTotal.MRU,
+			&nodeResourcesTotal.NodeID,
 		); err != nil {
 			return err
 		}
-		data.nodeTotalResources[data.nodeIDMap[nodeResourcesTotal.node_id]] = nodeResourcesTotal
+		data.NodeTotalResources[data.NodeIDMap[nodeResourcesTotal.NodeID]] = nodeResourcesTotal
 	}
 	return nil
 }
@@ -193,22 +193,22 @@ func loadFarms(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var farm farm
+		var farm Farm
 		if err := rows.Scan(
-			&farm.id,
-			&farm.grid_version,
-			&farm.farm_id,
-			&farm.name,
-			&farm.twin_id,
-			&farm.pricing_policy_id,
-			&farm.certification,
-			&farm.stellar_address,
-			&farm.dedicated_farm,
+			&farm.ID,
+			&farm.GridVersion,
+			&farm.FarmID,
+			&farm.Name,
+			&farm.TwinID,
+			&farm.PricingPolicyID,
+			&farm.Certification,
+			&farm.StellarAddress,
+			&farm.DedicatedFarm,
 		); err != nil {
 			return err
 		}
-		data.farms[farm.farm_id] = farm
-		data.farmIDMap[farm.id] = farm.farm_id
+		data.Farms[farm.FarmID] = farm
+		data.FarmIDMap[farm.ID] = farm.FarmID
 	}
 	return nil
 }
@@ -228,18 +228,18 @@ func loadTwins(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var twin twin
+		var twin Twin
 		if err := rows.Scan(
-			&twin.id,
-			&twin.grid_version,
-			&twin.twin_id,
-			&twin.account_id,
-			&twin.relay,
-			&twin.public_key,
+			&twin.ID,
+			&twin.GridVersion,
+			&twin.TwinID,
+			&twin.AccountID,
+			&twin.Relay,
+			&twin.PublicKey,
 		); err != nil {
 			return err
 		}
-		data.twins[twin.twin_id] = twin
+		data.Twins[twin.TwinID] = twin
 	}
 	return nil
 }
@@ -258,17 +258,17 @@ func loadPublicIPs(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var publicIP public_ip
+		var publicIP PublicIp
 		if err := rows.Scan(
-			&publicIP.id,
-			&publicIP.gateway,
-			&publicIP.ip,
-			&publicIP.contract_id,
-			&publicIP.farm_id,
+			&publicIP.ID,
+			&publicIP.Gateway,
+			&publicIP.IP,
+			&publicIP.ContractID,
+			&publicIP.FarmID,
 		); err != nil {
 			return err
 		}
-		data.publicIPs[publicIP.id] = publicIP
+		data.PublicIPs[publicIP.ID] = publicIP
 	}
 	return nil
 }
@@ -289,19 +289,19 @@ func loadPublicConfigs(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var publicConfig public_config
+		var publicConfig PublicConfig
 		if err := rows.Scan(
-			&publicConfig.id,
-			&publicConfig.ipv4,
-			&publicConfig.ipv6,
-			&publicConfig.gw4,
-			&publicConfig.gw6,
-			&publicConfig.domain,
-			&publicConfig.node_id,
+			&publicConfig.ID,
+			&publicConfig.IPv4,
+			&publicConfig.IPv6,
+			&publicConfig.GW4,
+			&publicConfig.GW6,
+			&publicConfig.Domain,
+			&publicConfig.NodeID,
 		); err != nil {
 			return err
 		}
-		data.publicConfigs[data.nodeIDMap[publicConfig.node_id]] = publicConfig
+		data.PublicConfigs[data.NodeIDMap[publicConfig.NodeID]] = publicConfig
 	}
 	return nil
 }
@@ -325,25 +325,25 @@ func loadContracts(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var contract node_contract
+		var contract NodeContract
 		if err := rows.Scan(
-			&contract.id,
-			&contract.grid_version,
-			&contract.contract_id,
-			&contract.twin_id,
-			&contract.node_id,
-			&contract.deployment_data,
-			&contract.deployment_hash,
-			&contract.number_of_public_i_ps,
-			&contract.state,
-			&contract.created_at,
-			&contract.resources_used_id,
+			&contract.ID,
+			&contract.GridVersion,
+			&contract.ContractID,
+			&contract.TwinID,
+			&contract.NodeID,
+			&contract.DeploymentData,
+			&contract.DeploymentHash,
+			&contract.NumberOfPublicIPs,
+			&contract.State,
+			&contract.CreatedAt,
+			&contract.ResourcesUsedID,
 		); err != nil {
 			return err
 		}
-		data.nodeContracts[contract.contract_id] = contract
-		if contract.state != "Deleted" {
-			data.nonDeletedContracts[contract.node_id] = append(data.nonDeletedContracts[contract.node_id], contract.contract_id)
+		data.NodeContracts[contract.ContractID] = contract
+		if contract.State != "Deleted" {
+			data.NonDeletedContracts[contract.NodeID] = append(data.NonDeletedContracts[contract.NodeID], contract.ContractID)
 		}
 
 	}
@@ -365,20 +365,20 @@ func loadRentContracts(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var contract rent_contract
+		var contract RentContract
 		if err := rows.Scan(
 
-			&contract.id,
-			&contract.grid_version,
-			&contract.contract_id,
-			&contract.twin_id,
-			&contract.node_id,
-			&contract.state,
-			&contract.created_at,
+			&contract.ID,
+			&contract.GridVersion,
+			&contract.ContractID,
+			&contract.TwinID,
+			&contract.NodeID,
+			&contract.State,
+			&contract.CreatedAt,
 		); err != nil {
 			return err
 		}
-		data.rentContracts[contract.contract_id] = contract
+		data.RentContracts[contract.ContractID] = contract
 	}
 	return nil
 }
@@ -398,19 +398,19 @@ func loadNameContracts(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var contract name_contract
+		var contract NameContract
 		if err := rows.Scan(
-			&contract.id,
-			&contract.grid_version,
-			&contract.contract_id,
-			&contract.twin_id,
-			&contract.name,
-			&contract.state,
-			&contract.created_at,
+			&contract.ID,
+			&contract.GridVersion,
+			&contract.ContractID,
+			&contract.TwinID,
+			&contract.Name,
+			&contract.State,
+			&contract.CreatedAt,
 		); err != nil {
 			return err
 		}
-		data.nameContracts[contract.contract_id] = contract
+		data.NameContracts[contract.ContractID] = contract
 	}
 	return nil
 }
@@ -430,18 +430,18 @@ func loadContractResources(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var contractResources contract_resources
+		var contractResources ContractResources
 		if err := rows.Scan(
-			&contractResources.id,
-			&contractResources.hru,
-			&contractResources.sru,
-			&contractResources.cru,
-			&contractResources.mru,
-			&contractResources.contract_id,
+			&contractResources.ID,
+			&contractResources.HRU,
+			&contractResources.SRU,
+			&contractResources.CRU,
+			&contractResources.MRU,
+			&contractResources.ContractID,
 		); err != nil {
 			return err
 		}
-		data.contractResources[contractResources.id] = contractResources
+		data.ContractResources[contractResources.ID] = contractResources
 	}
 	return nil
 }
@@ -459,17 +459,17 @@ func loadContractBillingReports(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var contractBillReport contract_bill_report
+		var contractBillReport ContractBillReport
 		if err := rows.Scan(
-			&contractBillReport.id,
-			&contractBillReport.contract_id,
-			&contractBillReport.discount_received,
-			&contractBillReport.amount_billed,
-			&contractBillReport.timestamp,
+			&contractBillReport.ID,
+			&contractBillReport.ContractID,
+			&contractBillReport.DiscountReceived,
+			&contractBillReport.AmountBilled,
+			&contractBillReport.Timestamp,
 		); err != nil {
 			return err
 		}
-		data.billings[contractBillReport.contract_id] = append(data.billings[contractBillReport.contract_id], contractBillReport)
+		data.Billings[contractBillReport.ContractID] = append(data.Billings[contractBillReport.ContractID], contractBillReport)
 	}
 	return nil
 }
@@ -488,45 +488,45 @@ func loadNodeGPUs(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var gpu node_gpu
+		var gpu NodeGPU
 		if err := rows.Scan(
-			&gpu.id,
-			&gpu.contract,
-			&gpu.node_twin_id,
-			&gpu.vendor,
-			&gpu.device,
+			&gpu.ID,
+			&gpu.Contract,
+			&gpu.NodeTwinID,
+			&gpu.Vendor,
+			&gpu.Device,
 		); err != nil {
 			return err
 		}
-		data.gpus[gpu.node_twin_id] = gpu
+		data.GPUs[gpu.NodeTwinID] = gpu
 	}
 	return nil
 }
 
-func load(db *sql.DB) (DBData, error) {
+func Load(db *sql.DB) (DBData, error) {
 	data := DBData{
-		nodeIDMap:           make(map[string]uint64),
-		farmIDMap:           make(map[string]uint64),
+		NodeIDMap:           make(map[string]uint64),
+		FarmIDMap:           make(map[string]uint64),
 		FreeIPs:             make(map[uint64]uint64),
 		TotalIPs:            make(map[uint64]uint64),
-		nodes:               make(map[uint64]node),
-		farms:               make(map[uint64]farm),
-		twins:               make(map[uint64]twin),
-		publicIPs:           make(map[string]public_ip),
-		publicConfigs:       make(map[uint64]public_config),
-		nodeContracts:       make(map[uint64]node_contract),
-		rentContracts:       make(map[uint64]rent_contract),
-		nameContracts:       make(map[uint64]name_contract),
-		nodeRentedBy:        make(map[uint64]uint64),
-		nodeRentContractID:  make(map[uint64]uint64),
-		billings:            make(map[uint64][]contract_bill_report),
-		contractResources:   make(map[string]contract_resources),
-		nodeTotalResources:  make(map[uint64]node_resources_total),
-		nodeUsedResources:   make(map[uint64]node_resources_total),
-		nonDeletedContracts: make(map[uint64][]uint64),
-		gpus:                make(map[uint64]node_gpu),
-		farmHasRentedNode:   make(map[uint64]bool),
-		db:                  db,
+		Nodes:               make(map[uint64]Node),
+		Farms:               make(map[uint64]Farm),
+		Twins:               make(map[uint64]Twin),
+		PublicIPs:           make(map[string]PublicIp),
+		PublicConfigs:       make(map[uint64]PublicConfig),
+		NodeContracts:       make(map[uint64]NodeContract),
+		RentContracts:       make(map[uint64]RentContract),
+		NameContracts:       make(map[uint64]NameContract),
+		NodeRentedBy:        make(map[uint64]uint64),
+		NodeRentContractID:  make(map[uint64]uint64),
+		Billings:            make(map[uint64][]ContractBillReport),
+		ContractResources:   make(map[string]ContractResources),
+		NodeTotalResources:  make(map[uint64]NodeResourcesTotal),
+		NodeUsedResources:   make(map[uint64]NodeResourcesTotal),
+		NonDeletedContracts: make(map[uint64][]uint64),
+		GPUs:                make(map[uint64]NodeGPU),
+		FarmHasRentedNode:   make(map[uint64]bool),
+		DB:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {
 		return data, err
