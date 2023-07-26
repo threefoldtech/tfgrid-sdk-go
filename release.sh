@@ -22,6 +22,9 @@ git push origin grid-proxy/$VERSION
 git tag -a rmb-sdk-go/$VERSION -m "release rmb-sdk-go/$VERSION"
 git push origin rmb-sdk-go/$VERSION
 
+# activation-service
+git tag -a activation-service/$VERSION -m "release activation-service/$VERSION"
+git push origin activation-service/$VERSION
 # main
 git tag -a $VERSION -m "release $VERSION"
 git push origin $VERSION
