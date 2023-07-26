@@ -334,11 +334,12 @@ func sortPublicIPs(local, remote []proxytypes.Farm) {
 		sort.Slice(local[id].PublicIps, func(i, j int) bool {
 			return local[id].PublicIps[i].ID < local[id].PublicIps[j].ID
 		})
+	}
 
+	for id := range remote {
 		sort.Slice(remote[id].PublicIps, func(i, j int) bool {
 			return remote[id].PublicIps[i].ID < remote[id].PublicIps[j].ID
 		})
-
 	}
 
 }

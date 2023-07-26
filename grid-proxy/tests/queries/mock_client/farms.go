@@ -42,13 +42,64 @@ var farmFilterFieldValidator = map[string]func(farm Farm, data *DBData, f proxyt
 		return f.Dedicated == nil || *f.Dedicated == farm.DedicatedFarm
 	},
 	"NodeFreeMRU": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return satisfyFarmResourceFilter(farm, data, f)
+		if f.NodeFreeMRU == nil {
+			return true
+		}
+
+		for nodeID, node := range data.Nodes {
+			if node.FarmID != farm.FarmID {
+				continue
+			}
+
+			total := data.NodeTotalResources[nodeID]
+			used := data.NodeUsedResources[nodeID]
+			free := calcFreeResources(total, used)
+			if *f.NodeFreeMRU <= free.MRU {
+				return true
+			}
+		}
+
+		return false
 	},
 	"NodeFreeHRU": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return satisfyFarmResourceFilter(farm, data, f)
+		if f.NodeFreeHRU == nil {
+			return true
+		}
+
+		for nodeID, node := range data.Nodes {
+			if node.FarmID != farm.FarmID {
+				continue
+			}
+
+			total := data.NodeTotalResources[nodeID]
+			used := data.NodeUsedResources[nodeID]
+			free := calcFreeResources(total, used)
+			if *f.NodeFreeHRU <= free.HRU {
+				return true
+			}
+		}
+
+		return false
 	},
 	"NodeFreeSRU": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return satisfyFarmResourceFilter(farm, data, f)
+		if f.NodeFreeSRU == nil {
+			return true
+		}
+
+		for nodeID, node := range data.Nodes {
+			if node.FarmID != farm.FarmID {
+				continue
+			}
+
+			total := data.NodeTotalResources[nodeID]
+			used := data.NodeUsedResources[nodeID]
+			free := calcFreeResources(total, used)
+			if *f.NodeFreeSRU <= free.SRU {
+				return true
+			}
+		}
+
+		return false
 	},
 }
 

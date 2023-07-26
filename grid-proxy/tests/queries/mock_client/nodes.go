@@ -9,6 +9,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"golang.org/x/exp/slices"
 )
 
 var nodeFilterFieldValidator = map[string]func(node Node, data *DBData, f proxytypes.NodeFilter) bool{
@@ -73,7 +74,7 @@ var nodeFilterFieldValidator = map[string]func(node Node, data *DBData, f proxyt
 		return f.FarmNameContains == nil || stringMatch(data.Farms[node.FarmID].Name, *f.FarmNameContains)
 	},
 	"FarmIDs": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
-		return f.FarmIDs == nil || isIn(f.FarmIDs, node.FarmID)
+		return f.FarmIDs == nil || len(f.FarmIDs) == 0 || slices.Contains(f.FarmIDs, node.FarmID)
 	},
 	"FreeIPs": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
 		return f.FreeIPs == nil || *f.FreeIPs <= data.FreeIPs[node.FarmID]

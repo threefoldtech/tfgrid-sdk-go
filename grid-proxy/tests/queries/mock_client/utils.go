@@ -27,15 +27,6 @@ func calcFreeResources(total NodeResourcesTotal, used NodeResourcesTotal) NodeRe
 	}
 }
 
-func isIn(l []uint64, v uint64) bool {
-	for _, i := range l {
-		if i == v {
-			return true
-		}
-	}
-	return false
-}
-
 func stringMatch(str string, sub_str string) bool {
 	return strings.Contains(strings.ToLower(str), strings.ToLower(sub_str))
 }
