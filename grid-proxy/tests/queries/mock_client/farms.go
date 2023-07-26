@@ -10,7 +10,7 @@ import (
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-var farmValidator = map[string]func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool{
+var farmFilterFieldValidator = map[string]func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool{
 	"FreeIPs": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
 		return f.FreeIPs == nil || *f.FreeIPs <= data.FreeIPs[farm.FarmID]
 	},
@@ -115,12 +115,12 @@ func (g *GridProxyMockClient) Farms(filter proxytypes.FarmFilter, limit proxytyp
 func farmSatisfies(data *DBData, farm Farm, f proxytypes.FarmFilter) (bool, error) {
 	v := reflect.ValueOf(f)
 	for i := 0; i < v.NumField(); i++ {
-		validator, ok := farmValidator[v.Type().Field(i).Name]
+		valid, ok := farmFilterFieldValidator[v.Type().Field(i).Name]
 		if !ok {
 			return false, fmt.Errorf("Field %s has no validator", v.Type().Field(i).Name)
 		}
 
-		if !validator(farm, data, f) {
+		if !valid(farm, data, f) {
 			return false, nil
 		}
 	}

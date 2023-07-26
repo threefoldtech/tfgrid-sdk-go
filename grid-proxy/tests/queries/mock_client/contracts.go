@@ -8,7 +8,7 @@ import (
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-var rentContractValidator = map[string]func(contract RentContract, f proxytypes.ContractFilter) bool{
+var rentContractFilterFieldValidator = map[string]func(contract RentContract, f proxytypes.ContractFilter) bool{
 	"ContractID": func(contract RentContract, f proxytypes.ContractFilter) bool {
 		return f.ContractID == nil || contract.ContractID == *f.ContractID
 	},
@@ -38,7 +38,7 @@ var rentContractValidator = map[string]func(contract RentContract, f proxytypes.
 	},
 }
 
-var nodeContractValidator = map[string]func(contract NodeContract, f proxytypes.ContractFilter) bool{
+var nodeContractFilterFieldValidator = map[string]func(contract NodeContract, f proxytypes.ContractFilter) bool{
 	"ContractID": func(contract NodeContract, f proxytypes.ContractFilter) bool {
 		return f.ContractID == nil || contract.ContractID == *f.ContractID
 	},
@@ -68,7 +68,7 @@ var nodeContractValidator = map[string]func(contract NodeContract, f proxytypes.
 	},
 }
 
-var nameContractValidator = map[string]func(contract NameContract, f proxytypes.ContractFilter) bool{
+var nameContractFilterFieldValidator = map[string]func(contract NameContract, f proxytypes.ContractFilter) bool{
 	"ContractID": func(contract NameContract, f proxytypes.ContractFilter) bool {
 		return f.ContractID == nil || contract.ContractID == *f.ContractID
 	},
@@ -201,12 +201,12 @@ func (g *GridProxyMockClient) Contracts(filter proxytypes.ContractFilter, limit 
 func rentContractsSatisfies(contract RentContract, f proxytypes.ContractFilter) (bool, error) {
 	v := reflect.ValueOf(f)
 	for i := 0; i < v.NumField(); i++ {
-		validator, ok := rentContractValidator[v.Type().Field(i).Name]
+		valid, ok := rentContractFilterFieldValidator[v.Type().Field(i).Name]
 		if !ok {
 			return false, fmt.Errorf("Field %s has no validator", v.Type().Field(i).Name)
 		}
 
-		if !validator(contract, f) {
+		if !valid(contract, f) {
 			return false, nil
 		}
 	}
@@ -217,12 +217,12 @@ func rentContractsSatisfies(contract RentContract, f proxytypes.ContractFilter) 
 func nameContractsSatisfies(contract NameContract, f proxytypes.ContractFilter) (bool, error) {
 	v := reflect.ValueOf(f)
 	for i := 0; i < v.NumField(); i++ {
-		validator, ok := nameContractValidator[v.Type().Field(i).Name]
+		valid, ok := nameContractFilterFieldValidator[v.Type().Field(i).Name]
 		if !ok {
 			return false, fmt.Errorf("Field %s has no validator", v.Type().Field(i).Name)
 		}
 
-		if !validator(contract, f) {
+		if !valid(contract, f) {
 			return false, nil
 		}
 	}
@@ -233,12 +233,12 @@ func nameContractsSatisfies(contract NameContract, f proxytypes.ContractFilter) 
 func nodeContractsSatisfies(contract NodeContract, f proxytypes.ContractFilter) (bool, error) {
 	v := reflect.ValueOf(f)
 	for i := 0; i < v.NumField(); i++ {
-		validator, ok := nodeContractValidator[v.Type().Field(i).Name]
+		valid, ok := nodeContractFilterFieldValidator[v.Type().Field(i).Name]
 		if !ok {
 			return false, fmt.Errorf("Field %s has no validator", v.Type().Field(i).Name)
 		}
 
-		if !validator(contract, f) {
+		if !valid(contract, f) {
 			return false, nil
 		}
 	}

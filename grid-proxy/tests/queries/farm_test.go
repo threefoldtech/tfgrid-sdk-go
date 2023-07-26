@@ -111,7 +111,7 @@ func TestFarm(t *testing.T) {
 			assert.Equal(t, wantCount, gotCount)
 
 			sortPublicIPs(want, got)
-			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 
 			if l.Page*l.Size >= uint64(wantCount) {
 				break
@@ -139,7 +139,7 @@ func TestFarm(t *testing.T) {
 			assert.Equal(t, wantCount, gotCount)
 
 			sortPublicIPs(want, got)
-			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 		}
 	})
 	t.Run("farms list node free hru", func(t *testing.T) {
@@ -162,7 +162,7 @@ func TestFarm(t *testing.T) {
 		assert.Equal(t, wantCount, gotCount)
 
 		sortPublicIPs(want, got)
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 	t.Run("farms list node free hru, mru", func(t *testing.T) {
 		aggNode := calcNodesAggregates(&data)
@@ -187,11 +187,11 @@ func TestFarm(t *testing.T) {
 		assert.Equal(t, wantCount, gotCount)
 
 		sortPublicIPs(want, got)
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 }
 
-// TestContractsFilter iterates over all ContractFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
+// TestFarmFilter iterates over all FarmFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestFarmFilter(t *testing.T) {
 	f := proxytypes.FarmFilter{}
 	fp := &f
@@ -223,7 +223,7 @@ func TestFarmFilter(t *testing.T) {
 		assert.Equal(t, wantCount, gotCount)
 
 		sortPublicIPs(want, got)
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 
 		v.Field(i).Set(reflect.Zero(v.Field(i).Type()))
 	}

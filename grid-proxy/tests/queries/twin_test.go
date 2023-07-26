@@ -58,7 +58,7 @@ func TestTwins(t *testing.T) {
 
 			assert.Equal(t, wantCount, gotCount)
 
-			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 
 			if l.Page*l.Size >= uint64(wantCount) {
 				break
@@ -86,11 +86,12 @@ func TestTwins(t *testing.T) {
 
 			assert.Equal(t, wantCount, gotCount)
 
-			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 		}
 	})
 }
 
+// TestTwinFilter iterates over all TwinFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestTwinFilter(t *testing.T) {
 	f := proxytypes.TwinFilter{}
 	fp := &f
@@ -122,7 +123,7 @@ func TestTwinFilter(t *testing.T) {
 
 		assert.Equal(t, wantCount, gotCount)
 
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 
 		v.Field(i).Set(reflect.Zero(v.Field(i).Type()))
 	}

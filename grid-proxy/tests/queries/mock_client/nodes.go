@@ -1,6 +1,8 @@
 package mock
 
 import (
+	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -8,6 +10,135 @@ import (
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
+
+var nodeFilterFieldValidator = map[string]func(node Node, data *DBData, f proxytypes.NodeFilter) bool{
+	"Status": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		nodePower := proxytypes.NodePower{
+			State:  node.Power.State,
+			Target: node.Power.Target,
+		}
+
+		return f.Status == nil || *f.Status == nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
+	},
+	"FreeMRU": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		total := data.NodeTotalResources[node.NodeID]
+		used := data.NodeUsedResources[node.NodeID]
+		free := calcFreeResources(total, used)
+		return f.FreeMRU == nil || *f.FreeMRU <= free.MRU
+	},
+	"FreeHRU": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		total := data.NodeTotalResources[node.NodeID]
+		used := data.NodeUsedResources[node.NodeID]
+		free := calcFreeResources(total, used)
+		return f.FreeHRU == nil || *f.FreeHRU <= free.HRU
+	},
+	"FreeSRU": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		total := data.NodeTotalResources[node.NodeID]
+		used := data.NodeUsedResources[node.NodeID]
+		free := calcFreeResources(total, used)
+		return f.FreeSRU == nil || *f.FreeSRU <= free.SRU
+	},
+	"TotalMRU": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		total := data.NodeTotalResources[node.NodeID]
+		return f.TotalMRU == nil || *f.TotalMRU <= total.MRU
+	},
+	"TotalHRU": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		total := data.NodeTotalResources[node.NodeID]
+		return f.TotalHRU == nil || *f.TotalHRU <= total.HRU
+	},
+	"TotalSRU": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		total := data.NodeTotalResources[node.NodeID]
+		return f.TotalSRU == nil || *f.TotalSRU <= total.SRU
+	},
+	"TotalCRU": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		total := data.NodeTotalResources[node.NodeID]
+		return f.TotalCRU == nil || *f.TotalCRU <= total.CRU
+	},
+	"Country": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.Country == nil || strings.EqualFold(*f.Country, node.Country)
+	},
+	"CountryContains": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.CountryContains == nil || stringMatch(node.Country, *f.CountryContains)
+	},
+	"City": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.City == nil || strings.EqualFold(*f.City, node.City)
+	},
+	"CityContains": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.CityContains == nil || stringMatch(node.City, *f.CityContains)
+	},
+	"FarmName": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.FarmName == nil || strings.EqualFold(*f.FarmName, data.Farms[node.FarmID].Name)
+	},
+	"FarmNameContains": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.FarmNameContains == nil || stringMatch(data.Farms[node.FarmID].Name, *f.FarmNameContains)
+	},
+	"FarmIDs": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.FarmIDs == nil || isIn(f.FarmIDs, node.FarmID)
+	},
+	"FreeIPs": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.FreeIPs == nil || *f.FreeIPs <= data.FreeIPs[node.FarmID]
+	},
+	"IPv4": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.IPv4 == nil || *f.IPv4 != (data.PublicConfigs[node.NodeID].IPv4 == "")
+	},
+	"IPv6": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.IPv6 == nil || *f.IPv6 != (data.PublicConfigs[node.NodeID].IPv6 == "")
+	},
+	"Domain": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.Domain == nil || *f.Domain != (data.PublicConfigs[node.NodeID].Domain == "")
+	},
+	"Dedicated": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.Dedicated == nil || *f.Dedicated == data.Farms[node.FarmID].DedicatedFarm
+	},
+	"Rentable": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		rentable := data.NodeRentedBy[node.NodeID] == 0 &&
+			(data.Farms[node.FarmID].DedicatedFarm || len(data.NonDeletedContracts[node.NodeID]) == 0)
+		return f.Rentable == nil || *f.Rentable == rentable
+	},
+	"Rented": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		_, ok := data.NodeRentedBy[node.NodeID]
+		return f.Rented == nil || *f.Rented == ok
+	},
+	"RentedBy": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.RentedBy == nil || *f.RentedBy == data.NodeRentedBy[node.NodeID]
+	},
+	"AvailableFor": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		renter := data.NodeRentedBy[node.NodeID]
+		return f.AvailableFor == nil || renter == *f.AvailableFor || (renter == 0 && !data.Farms[node.FarmID].DedicatedFarm)
+	},
+	"NodeID": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.NodeID == nil || *f.NodeID == node.NodeID
+	},
+	"TwinID": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.TwinID == nil || *f.TwinID == node.TwinID
+	},
+	"CertificationType": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.CertificationType == nil || *f.CertificationType == node.Certification
+	},
+	"HasGPU": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		return f.HasGPU == nil || *f.HasGPU == node.HasGPU
+	},
+	"GpuDeviceName": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		gpu := data.GPUs[node.TwinID]
+		return strings.Contains(strings.ToLower(gpu.Device), *f.GpuDeviceName)
+	},
+	"GpuVendorName": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		gpu := data.GPUs[node.TwinID]
+		return strings.Contains(strings.ToLower(gpu.Vendor), *f.GpuVendorName)
+	},
+	"GpuVendorID": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		gpu := data.GPUs[node.TwinID]
+		return strings.Contains(gpu.ID, *f.GpuVendorID)
+	},
+	"GpuDeviceID": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		gpu := data.GPUs[node.TwinID]
+		return strings.Contains(gpu.ID, *f.GpuDeviceID)
+	},
+	"GpuAvailable": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
+		gpu := data.GPUs[node.TwinID]
+		return gpu.Contract == 0 != *f.GpuAvailable
+	},
+}
 
 // Nodes returns nodes with the given filters and pagination parameters
 func (g *GridProxyMockClient) Nodes(filter proxytypes.NodeFilter, limit proxytypes.Limit) (res []proxytypes.Node, totalCount int, err error) {
@@ -19,7 +150,17 @@ func (g *GridProxyMockClient) Nodes(filter proxytypes.NodeFilter, limit proxytyp
 		limit.Size = 50
 	}
 	for _, node := range g.data.Nodes {
-		if nodeSatisfies(&g.data, node, filter) {
+		satisfies, err := nodeSatisfies(&g.data, node, filter)
+		if err != nil {
+			return res, totalCount, err
+		}
+
+		if satisfies {
+			numGPU := 0
+			if _, ok := g.data.GPUs[node.TwinID]; ok {
+				numGPU = 1
+			}
+
 			nodePower := proxytypes.NodePower{
 				State:  node.Power.State,
 				Target: node.Power.Target,
@@ -70,13 +211,15 @@ func (g *GridProxyMockClient) Nodes(filter proxytypes.NodeFilter, limit proxytyp
 					State:  node.Power.State,
 					Target: node.Power.Target,
 				},
-				NumGPU: getNumGPUs(node.HasGPU),
+				NumGPU: numGPU,
 			})
 		}
 	}
+
 	sort.Slice(res, func(i, j int) bool {
 		return res[i].NodeID < res[j].NodeID
 	})
+
 	if filter.AvailableFor != nil {
 		sort.Slice(res, func(i, j int) bool {
 
@@ -165,103 +308,20 @@ func (g *GridProxyMockClient) NodeStatus(nodeID uint32) (res proxytypes.NodeStat
 	return
 }
 
-func nodeSatisfies(data *DBData, node Node, f proxytypes.NodeFilter) bool {
-	nodePower := proxytypes.NodePower{
-		State:  node.Power.State,
-		Target: node.Power.Target,
-	}
-	if f.Status != nil && *f.Status != nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt)) {
-		return false
-	}
-	total := data.NodeTotalResources[node.NodeID]
-	used := data.NodeUsedResources[node.NodeID]
-	free := calcFreeResources(total, used)
-	if f.FreeMRU != nil && *f.FreeMRU > free.MRU {
-		return false
-	}
-	if f.FreeHRU != nil && *f.FreeHRU > free.HRU {
-		return false
-	}
-	if f.FreeSRU != nil && *f.FreeSRU > free.SRU {
-		return false
-	}
-	if f.Country != nil && !strings.EqualFold(*f.Country, node.Country) {
-		return false
-	}
-	if f.CountryContains != nil && !stringMatch(node.Country, *f.CountryContains) {
-		return false
-	}
-	if f.TotalCRU != nil && *f.TotalCRU > total.CRU {
-		return false
-	}
-	if f.TotalHRU != nil && *f.TotalHRU > total.HRU {
-		return false
-	}
-	if f.TotalMRU != nil && *f.TotalMRU > total.MRU {
-		return false
-	}
-	if f.TotalSRU != nil && *f.TotalSRU > total.SRU {
-		return false
-	}
-	if f.NodeID != nil && *f.NodeID != node.NodeID {
-		return false
-	}
-	if f.TwinID != nil && *f.TwinID != node.TwinID {
-		return false
-	}
-	if f.CityContains != nil && !stringMatch(node.City, *f.CityContains) {
-		return false
-	}
-	if f.City != nil && !strings.EqualFold(*f.City, node.City) {
-		return false
-	}
-	if f.FarmNameContains != nil && !stringMatch(data.Farms[node.FarmID].Name, *f.FarmNameContains) {
-		return false
-	}
-	if f.FarmName != nil && !strings.EqualFold(*f.FarmName, data.Farms[node.FarmID].Name) {
-		return false
-	}
-	if f.FarmIDs != nil && !isIn(f.FarmIDs, node.FarmID) {
-		return false
-	}
-	if f.FreeIPs != nil && *f.FreeIPs > data.FreeIPs[node.FarmID] {
-		return false
-	}
-	if f.IPv4 != nil && *f.IPv4 && data.PublicConfigs[node.NodeID].IPv4 == "" {
-		return false
-	}
-	if f.IPv6 != nil && *f.IPv6 && data.PublicConfigs[node.NodeID].IPv6 == "" {
-		return false
-	}
-	if f.Domain != nil && *f.Domain && data.PublicConfigs[node.NodeID].Domain == "" {
-		return false
-	}
-	rentable := data.NodeRentedBy[node.NodeID] == 0 &&
-		(data.Farms[node.FarmID].DedicatedFarm || len(data.NonDeletedContracts[node.NodeID]) == 0)
-	if f.Rentable != nil && *f.Rentable != rentable {
-		return false
-	}
-	if f.RentedBy != nil && *f.RentedBy != data.NodeRentedBy[node.NodeID] {
-		return false
-	}
-	if f.AvailableFor != nil &&
-		((data.NodeRentedBy[node.NodeID] != 0 && data.NodeRentedBy[node.NodeID] != *f.AvailableFor) ||
-			(data.NodeRentedBy[node.NodeID] != *f.AvailableFor && data.Farms[node.FarmID].DedicatedFarm)) {
-		return false
-	}
-	if f.Rented != nil {
-		_, ok := data.NodeRentedBy[node.NodeID]
-		return ok == *f.Rented
-	}
-	if f.HasGPU != nil && *f.HasGPU != node.HasGPU {
-		return false
+func nodeSatisfies(data *DBData, node Node, f proxytypes.NodeFilter) (bool, error) {
+	v := reflect.ValueOf(f)
+	for i := 0; i < v.NumField(); i++ {
+		valid, ok := nodeFilterFieldValidator[v.Type().Field(i).Name]
+		if !ok {
+			return false, fmt.Errorf("Field %s has no validator", v.Type().Field(i).Name)
+		}
+
+		if !valid(node, data, f) {
+			return false, nil
+		}
 	}
 
-	if !gpuSatisfies(data, node, f) {
-		return false
-	}
-
-	return true
+	return true, nil
 }
 
 // getNumGPUs should be deleted after removing hasGPU
@@ -271,39 +331,4 @@ func getNumGPUs(hasGPU bool) int {
 		return 1
 	}
 	return 0
-}
-
-func gpuSatisfies(data *DBData, node Node, f proxytypes.NodeFilter) bool {
-	gpu := data.GPUs[node.TwinID]
-
-	if f.GpuDeviceName != nil {
-		if !strings.Contains(strings.ToLower(gpu.Device), *f.GpuDeviceName) {
-			return false
-		}
-	}
-
-	if f.GpuVendorName != nil {
-		if !strings.Contains(strings.ToLower(gpu.Vendor), *f.GpuVendorName) {
-			return false
-		}
-	}
-
-	if f.GpuVendorID != nil {
-		if !strings.Contains(gpu.ID, *f.GpuVendorID) {
-			return false
-		}
-	}
-
-	if f.GpuDeviceID != nil {
-		if !strings.Contains(gpu.ID, *f.GpuDeviceID) {
-			return false
-		}
-	}
-
-	if f.GpuAvailable != nil {
-		if gpu.Contract == 0 != *f.GpuAvailable {
-			return false
-		}
-	}
-	return true
 }

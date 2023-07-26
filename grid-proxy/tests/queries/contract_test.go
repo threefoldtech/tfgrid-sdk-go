@@ -83,7 +83,7 @@ func TestContracts(t *testing.T) {
 
 			assert.Equal(t, wantCount, gotCount)
 
-			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 
 			if l.Page*l.Size >= uint64(wantCount) {
 				break
@@ -112,7 +112,7 @@ func TestContracts(t *testing.T) {
 
 			assert.Equal(t, wantCount, gotCount)
 
-			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 		}
 	})
 }
@@ -148,7 +148,7 @@ func TestContractsFilter(t *testing.T) {
 
 		assert.Equal(t, wantCount, gotCount)
 
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 
 		v.Field(i).Set(reflect.Zero(v.Field(i).Type()))
 	}

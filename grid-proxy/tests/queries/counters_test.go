@@ -31,7 +31,7 @@ func TestCounters(t *testing.T) {
 		got, err := gridProxyClient.Counters(f)
 		require.NoError(t, err)
 
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 
 	t.Run("counters all test", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestCounters(t *testing.T) {
 		got, err := gridProxyClient.Counters(f)
 		require.NoError(t, err)
 
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 }
 
@@ -67,7 +67,7 @@ func TestCountersFilter(t *testing.T) {
 		got, err := gridProxyClient.Counters(f)
 		require.NoError(t, err)
 
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 
 		v.Field(i).Set(reflect.Zero(v.Field(i).Type()))
 	}

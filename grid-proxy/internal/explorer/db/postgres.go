@@ -496,13 +496,13 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where("(SELECT count(id) from public_ip WHERE public_ip.farm_id = farm.id AND public_ip.contract_id = 0) >= ?", *filter.FreeIPs)
 	}
 	if filter.IPv4 != nil {
-		q = q.Where("COALESCE(public_config.ipv4, '') != ''")
+		q = q.Where("(COALESCE(public_config.ipv4, '') = '') != ?", *filter.IPv4)
 	}
 	if filter.IPv6 != nil {
-		q = q.Where("COALESCE(public_config.ipv6, '') != ''")
+		q = q.Where("(COALESCE(public_config.ipv6, '') = '') != ?", *filter.IPv6)
 	}
 	if filter.Domain != nil {
-		q = q.Where("COALESCE(public_config.domain, '') != ''")
+		q = q.Where("(COALESCE(public_config.domain, '') = '') != ?", *filter.Domain)
 	}
 	if filter.Dedicated != nil {
 		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)

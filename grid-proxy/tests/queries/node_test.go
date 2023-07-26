@@ -256,7 +256,7 @@ func TestNode(t *testing.T) {
 
 		assert.Equal(t, wantCount, gotCount)
 
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 
 	t.Run("node status test", func(t *testing.T) {
@@ -292,7 +292,7 @@ func TestNode(t *testing.T) {
 
 			assert.Equal(t, wantCount, gotCount)
 
-			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 		}
 	})
 
@@ -377,6 +377,7 @@ func TestNode(t *testing.T) {
 	})
 }
 
+// TestNodeFilter iterates over all NodeFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestNodeFilter(t *testing.T) {
 	f := proxytypes.NodeFilter{}
 	fp := &f
@@ -404,11 +405,11 @@ func TestNodeFilter(t *testing.T) {
 		require.NoError(t, err)
 
 		got, gotCount, err := gridProxyClient.Nodes(f, l)
-		require.NoError(t, err)
+		require.NoError(t, err, SerializeFilter(f))
 
 		assert.Equal(t, wantCount, gotCount)
 
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 
 		v.Field(i).Set(reflect.Zero(v.Field(i).Type()))
 	}
@@ -443,7 +444,7 @@ func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClie
 
 		assert.Equal(t, wantCount, gotCount)
 
-		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", serializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 
 		if l.Page*l.Size >= uint64(wantCount) {
 			break
@@ -498,21 +499,26 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 		res.maxTotalHRU = max(res.maxTotalHRU, total.HRU)
 		res.totalHRUs = append(res.totalHRUs, total.HRU)
 	}
+
 	for _, contract := range data.RentContracts {
 		if contract.State == "Deleted" {
 			continue
 		}
 		res.nodeRenters = append(res.nodeRenters, contract.TwinID)
 	}
+
 	for _, twin := range data.Twins {
 		res.twins = append(res.twins, twin.TwinID)
 	}
+
 	for city := range cities {
 		res.cities = append(res.cities, city)
 	}
+
 	for country := range countries {
 		res.countries = append(res.cities, country)
 	}
+
 	for _, farm := range data.Farms {
 		res.farmNames = append(res.farmNames, farm.Name)
 		res.farmIDs = append(res.farmIDs, farm.FarmID)
@@ -524,35 +530,46 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 			farmIPs[data.FarmIDMap[publicIP.FarmID]] += 1
 		}
 	}
+
 	for _, cnt := range farmIPs {
 		res.maxFreeIPs = max(res.maxFreeIPs, cnt)
 	}
+
 	sort.Slice(res.countries, func(i, j int) bool {
 		return res.countries[i] < res.countries[j]
 	})
+
 	sort.Slice(res.cities, func(i, j int) bool {
 		return res.cities[i] < res.cities[j]
 	})
+
 	sort.Slice(res.farmNames, func(i, j int) bool {
 		return res.farmNames[i] < res.farmNames[j]
 	})
+
 	sort.Slice(res.farmIDs, func(i, j int) bool {
 		return res.farmIDs[i] < res.farmIDs[j]
 	})
+
 	sort.Slice(res.freeMRUs, func(i, j int) bool {
 		return res.freeMRUs[i] < res.freeMRUs[j]
 	})
+
 	sort.Slice(res.freeSRUs, func(i, j int) bool {
 		return res.freeSRUs[i] < res.freeSRUs[j]
 	})
+
 	sort.Slice(res.freeHRUs, func(i, j int) bool {
 		return res.freeHRUs[i] < res.freeHRUs[j]
 	})
+
 	sort.Slice(res.nodeRenters, func(i, j int) bool {
 		return res.nodeRenters[i] < res.nodeRenters[j]
 	})
+
 	sort.Slice(res.twins, func(i, j int) bool {
 		return res.twins[i] < res.twins[j]
 	})
+
 	return
 }
