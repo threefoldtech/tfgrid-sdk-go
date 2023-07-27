@@ -487,11 +487,11 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 	}
 
 	if filter.GpuDeviceName != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.device ILIKE ? || '%')", *filter.GpuDeviceName)
+		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.device ILIKE '%' || ? || '%')", *filter.GpuDeviceName)
 	}
 
 	if filter.GpuVendorName != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.vendor ILIKE ? || '%')", *filter.GpuVendorName)
+		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.vendor ILIKE '%' || ? || '%')", *filter.GpuVendorName)
 	}
 
 	if filter.GpuVendorID != nil {

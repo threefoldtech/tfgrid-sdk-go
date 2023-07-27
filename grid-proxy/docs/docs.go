@@ -547,7 +547,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Total cru in bytes",
+                        "description": "Total cru number",
                         "name": "total_cru",
                         "in": "query"
                     },
