@@ -118,7 +118,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param free_hru query int false "Min free reservable hru in bytes"
 // @Param free_sru query int false "Min free reservable sru in bytes"
 // @Param total_mru query int false "Total mru in bytes"
-// @Param total_cru query int false "Total cru in bytes"
+// @Param total_cru query int false "Total cru number"
 // @Param total_sru query int false "Total sru in bytes"
 // @Param total_hru query int false "Total hru in bytes"
 // @Param free_ips query int false "Min number of free ips in the farm of the node"

@@ -675,7 +675,7 @@ paths:
         in: query
         name: total_mru
         type: integer
-      - description: Total cru in bytes
+      - description: Total cru number
         in: query
         name: total_cru
         type: integer
