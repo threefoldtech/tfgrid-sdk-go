@@ -10,10 +10,10 @@ fi
 
 echo $VERSION
 
-# goreleaser check
+goreleaser check
 
 tag_and_push() {
-    local component=$1
+    local component="$1"
     git tag -a "$component/$VERSION" -m "release $component/$VERSION"
     git push origin $component/$VERSION
 }
