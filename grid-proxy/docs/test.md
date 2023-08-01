@@ -19,7 +19,7 @@
 - Since the only input a user provides is some kind of filter (`NodeFilter`, `FarmFilter`, `TwinFilter`, ...), and a `Limit`, then we need to validate the incoming result with different values of filters and limits.
 - To test against random filter values, the tests provide a random value function for each field in a filter, like [here](../tests/queries/contract_test.go#L34)
 - All filter fields must have random value functions referenced by the field name, otherwise tests will not pass.
-- On the other hand, the MockClient should have a validator for nodes, farms, etc.. against filters, like [here](../tests/queries/mock_client/contracts.go#L11)
+- On the other hand, each queried object should have a satisfy function, like [here](../tests/queries/mock_client/contracts.go#L96)
 
 ## Testing new changes
 

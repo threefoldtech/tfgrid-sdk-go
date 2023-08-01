@@ -1,111 +1,16 @@
 package mock
 
 import (
-	"fmt"
-	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
-	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-var farmValidator = map[string]func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool{
-	"FreeIPs": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return f.FreeIPs == nil || *f.FreeIPs <= data.FreeIPs[farm.FarmID]
-	},
-	"TotalIPs": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return f.TotalIPs == nil || *f.TotalIPs <= data.TotalIPs[farm.FarmID]
-	},
-	"StellarAddress": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return f.StellarAddress == nil || *f.StellarAddress == farm.StellarAddress
-	},
-	"PricingPolicyID": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return f.PricingPolicyID == nil || *f.PricingPolicyID == farm.PricingPolicyID
-	},
-	"FarmID": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return f.FarmID == nil || *f.FarmID == farm.FarmID
-	},
-	"TwinID": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return f.TwinID == nil || *f.TwinID == farm.TwinID
-	},
-	"Name": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return f.Name == nil || *f.Name == "" || strings.EqualFold(*f.Name, farm.Name)
-	},
-	"NameContains": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return f.NameContains == nil || *f.NameContains == "" || stringMatch(farm.Name, *f.NameContains)
-	},
-	"CertificationType": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return f.CertificationType == nil || *f.CertificationType == "" || *f.CertificationType == farm.Certification
-	},
-	"Dedicated": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		return f.Dedicated == nil || *f.Dedicated == farm.DedicatedFarm
-	},
-	"NodeFreeMRU": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		if f.NodeFreeMRU == nil {
-			return true
-		}
-
-		for nodeID, node := range data.Nodes {
-			if node.FarmID != farm.FarmID {
-				continue
-			}
-
-			total := data.NodeTotalResources[nodeID]
-			used := data.NodeUsedResources[nodeID]
-			free := calcFreeResources(total, used)
-			if *f.NodeFreeMRU <= free.MRU {
-				return true
-			}
-		}
-
-		return false
-	},
-	"NodeFreeHRU": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		if f.NodeFreeHRU == nil {
-			return true
-		}
-
-		for nodeID, node := range data.Nodes {
-			if node.FarmID != farm.FarmID {
-				continue
-			}
-
-			total := data.NodeTotalResources[nodeID]
-			used := data.NodeUsedResources[nodeID]
-			free := calcFreeResources(total, used)
-			if *f.NodeFreeHRU <= free.HRU {
-				return true
-			}
-		}
-
-		return false
-	},
-	"NodeFreeSRU": func(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-		if f.NodeFreeSRU == nil {
-			return true
-		}
-
-		for nodeID, node := range data.Nodes {
-			if node.FarmID != farm.FarmID {
-				continue
-			}
-
-			total := data.NodeTotalResources[nodeID]
-			used := data.NodeUsedResources[nodeID]
-			free := calcFreeResources(total, used)
-			if *f.NodeFreeSRU <= free.SRU {
-				return true
-			}
-		}
-
-		return false
-	},
-}
-
 // Farms returns farms with the given filters and pagination parameters
-func (g *GridProxyMockClient) Farms(filter proxytypes.FarmFilter, limit proxytypes.Limit) (res []proxytypes.Farm, totalCount int, err error) {
-	res = []proxytypes.Farm{}
+func (g *GridProxyMockClient) Farms(filter types.FarmFilter, limit types.Limit) (res []types.Farm, totalCount int, err error) {
+	res = []types.Farm{}
 	if limit.Page == 0 {
 		limit.Page = 1
 	}
@@ -114,9 +19,9 @@ func (g *GridProxyMockClient) Farms(filter proxytypes.FarmFilter, limit proxytyp
 		limit.Size = 50
 	}
 
-	publicIPs := make(map[uint64][]proxytypes.PublicIP)
+	publicIPs := make(map[uint64][]types.PublicIP)
 	for _, publicIP := range g.data.PublicIPs {
-		publicIPs[g.data.FarmIDMap[publicIP.FarmID]] = append(publicIPs[g.data.FarmIDMap[publicIP.FarmID]], proxytypes.PublicIP{
+		publicIPs[g.data.FarmIDMap[publicIP.FarmID]] = append(publicIPs[g.data.FarmIDMap[publicIP.FarmID]], types.PublicIP{
 			ID:         publicIP.ID,
 			IP:         publicIP.IP,
 			ContractID: int(publicIP.ContractID),
@@ -125,13 +30,8 @@ func (g *GridProxyMockClient) Farms(filter proxytypes.FarmFilter, limit proxytyp
 	}
 
 	for _, farm := range g.data.Farms {
-		satisfies, err := farmSatisfies(&g.data, farm, filter)
-		if err != nil {
-			return res, totalCount, err
-		}
-
-		if satisfies {
-			res = append(res, proxytypes.Farm{
+		if farm.satisfies(filter, &g.data) {
+			res = append(res, types.Farm{
 				Name:              farm.Name,
 				FarmID:            int(farm.FarmID),
 				TwinID:            int(farm.TwinID),
@@ -163,60 +63,101 @@ func (g *GridProxyMockClient) Farms(filter proxytypes.FarmFilter, limit proxytyp
 	return
 }
 
-func farmSatisfies(data *DBData, farm Farm, f proxytypes.FarmFilter) (bool, error) {
-	v := reflect.ValueOf(f)
-	for i := 0; i < v.NumField(); i++ {
-		valid, ok := farmValidator[v.Type().Field(i).Name]
-		if !ok {
-			return false, fmt.Errorf("Field %s has no validator", v.Type().Field(i).Name)
-		}
-
-		if !valid(farm, data, f) {
-			return false, nil
-		}
+func (f *Farm) satisfies(filter types.FarmFilter, data *DBData) bool {
+	if filter.FreeIPs != nil && *filter.FreeIPs > data.FreeIPs[f.FarmID] {
+		return false
 	}
 
-	return true, nil
+	if filter.TotalIPs != nil && *filter.TotalIPs > data.TotalIPs[f.FarmID] {
+		return false
+	}
+
+	if filter.StellarAddress != nil && *filter.StellarAddress != f.StellarAddress {
+		return false
+	}
+
+	if filter.PricingPolicyID != nil && *filter.PricingPolicyID != f.PricingPolicyID {
+		return false
+	}
+
+	if filter.FarmID != nil && *filter.FarmID != f.FarmID {
+		return false
+	}
+
+	if filter.TwinID != nil && *filter.TwinID != f.TwinID {
+		return false
+	}
+
+	if filter.Name != nil && !strings.EqualFold(*filter.Name, f.Name) {
+		return false
+	}
+
+	if filter.NameContains != nil && !stringMatch(f.Name, *filter.NameContains) {
+		return false
+	}
+
+	if filter.CertificationType != nil && *filter.CertificationType != f.Certification {
+		return false
+	}
+
+	if filter.Dedicated != nil && *filter.Dedicated != f.DedicatedFarm {
+		return false
+	}
+
+	if !f.satisfyFarmNodesFilter(data, filter) {
+		return false
+	}
+
+	return true
 }
 
-func satisfyFarmResourceFilter(farm Farm, data *DBData, f proxytypes.FarmFilter) bool {
-	for _, val := range data.Nodes {
-		if val.FarmID != farm.FarmID {
+func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) bool {
+	for _, node := range data.Nodes {
+		if node.FarmID != f.FarmID {
 			continue
 		}
-		total := data.NodeTotalResources[val.NodeID]
-		used := data.NodeUsedResources[val.NodeID]
+
+		total := data.NodeTotalResources[node.NodeID]
+		used := data.NodeUsedResources[node.NodeID]
 		free := calcFreeResources(total, used)
-		if f.NodeFreeHRU != nil && free.HRU < *f.NodeFreeHRU {
-			continue
-		}
-		if f.NodeFreeMRU != nil && free.MRU < *f.NodeFreeMRU {
-			continue
-		}
-		if f.NodeFreeSRU != nil && free.SRU < *f.NodeFreeSRU {
-			continue
-		}
-		if f.NodeAvailableFor != nil && ((data.NodeRentedBy[val.NodeID] != 0 && data.NodeRentedBy[val.NodeID] != *f.NodeAvailableFor) ||
-			(data.NodeRentedBy[val.NodeID] != *f.NodeAvailableFor && data.Farms[val.FarmID].DedicatedFarm)) {
+		if filter.NodeFreeHRU != nil && free.HRU < *filter.NodeFreeHRU {
 			continue
 		}
 
-		_, ok := data.GPUs[val.TwinID]
-		if f.NodeHasGPU != nil && ok != *f.NodeHasGPU {
+		if filter.NodeFreeMRU != nil && free.MRU < *filter.NodeFreeMRU {
 			continue
 		}
 
-		if f.NodeRentedBy != nil && *f.NodeRentedBy != data.NodeRentedBy[val.NodeID] {
+		if filter.NodeFreeSRU != nil && free.SRU < *filter.NodeFreeSRU {
 			continue
 		}
 
-		nodePower := proxytypes.NodePower{
-			State:  val.Power.State,
-			Target: val.Power.Target,
-		}
-		if f.NodeStatus != nil && *f.NodeStatus != nodestatus.DecideNodeStatus(nodePower, int64(val.UpdatedAt)) {
+		if filter.NodeAvailableFor != nil && ((data.NodeRentedBy[node.NodeID] != 0 && data.NodeRentedBy[node.NodeID] != *filter.NodeAvailableFor) ||
+			(data.NodeRentedBy[node.NodeID] != *filter.NodeAvailableFor && data.Farms[node.FarmID].DedicatedFarm)) {
 			continue
 		}
+
+		_, ok := data.GPUs[node.TwinID]
+		if filter.NodeHasGPU != nil && ok != *filter.NodeHasGPU {
+			continue
+		}
+
+		if filter.NodeRentedBy != nil && *filter.NodeRentedBy != data.NodeRentedBy[node.NodeID] {
+			continue
+		}
+
+		nodePower := types.NodePower{
+			State:  node.Power.State,
+			Target: node.Power.Target,
+		}
+		if filter.NodeStatus != nil && *filter.NodeStatus != nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt)) {
+			continue
+		}
+
+		if filter.NodeCertified != nil && *filter.NodeCertified != (node.Certification == "Certified") {
+			continue
+		}
+
 		return true
 	}
 	return false

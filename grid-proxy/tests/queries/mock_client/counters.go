@@ -2,10 +2,10 @@ package mock
 
 import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
-	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-func (g *GridProxyMockClient) Counters(filter proxytypes.StatsFilter) (res proxytypes.Counters, err error) {
+func (g *GridProxyMockClient) Counters(filter types.StatsFilter) (res types.Counters, err error) {
 	res.Farms = int64(len(g.data.Farms))
 	res.Twins = int64(len(g.data.Twins))
 	res.PublicIPs = int64(len(g.data.PublicIPs))
@@ -15,7 +15,7 @@ func (g *GridProxyMockClient) Counters(filter proxytypes.StatsFilter) (res proxy
 	distribution := map[string]int64{}
 	var gpus int64
 	for _, node := range g.data.Nodes {
-		nodePower := proxytypes.NodePower{
+		nodePower := types.NodePower{
 			State:  node.Power.State,
 			Target: node.Power.Target,
 		}

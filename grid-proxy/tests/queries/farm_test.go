@@ -75,6 +75,30 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		sru := uint64(rand.Int63n(int64(aggNode.maxFreeSRU)))
 		return &sru
 	},
+	"NodeStatus": func(agg FarmsAggregate) interface{} {
+		nodeStatuses := []string{"up", "down", "standby"}
+		return &nodeStatuses[rand.Intn(len(nodeStatuses))]
+	},
+	"NodeAvailableFor": func(agg FarmsAggregate) interface{} {
+		return &agg.rentersTwinIDs[rand.Intn(len(agg.rentersTwinIDs))]
+	},
+	"NodeCertified": func(agg FarmsAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
+	"NodeRentedBy": func(agg FarmsAggregate) interface{} {
+		return &agg.rentersTwinIDs[rand.Intn(len(agg.rentersTwinIDs))]
+	},
+	"NodeHasGPU": func(agg FarmsAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
 }
 
 type FarmsAggregate struct {
@@ -239,8 +263,8 @@ func calcFarmsAggregates(data *mock.DBData) (res FarmsAggregate) {
 		res.twinIDs = append(res.twinIDs, farm.TwinID)
 	}
 
-	for _, contract := range data.rentContracts {
-		res.rentersTwinIDs = append(res.rentersTwinIDs, contract.twin_id)
+	for _, contract := range data.RentContracts {
+		res.rentersTwinIDs = append(res.rentersTwinIDs, contract.TwinID)
 	}
 
 	farmIPs := make(map[uint64]uint64)
@@ -287,43 +311,17 @@ func randomFarmsFilter(agg *FarmsAggregate) (proxytypes.FarmFilter, error) {
 
 	for i := 0; i < v.NumField(); i++ {
 		if rand.Float32() > .5 {
-			_, ok := farmFilterRandomValueGenerator[v.Type().Field(i).Name]
+			generate, ok := farmFilterRandomValueGenerator[v.Type().Field(i).Name]
 			if !ok {
 				return proxytypes.FarmFilter{}, fmt.Errorf("Filter field %s has no random value generator", v.Type().Field(i).Name)
 			}
 
-			randomFieldValue := farmFilterRandomValueGenerator[v.Type().Field(i).Name](*agg)
+			randomFieldValue := generate(*agg)
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}
 			v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 		}
-	}
-	if flip(.5) {
-		v := agg.rentersTwinIDs[rand.Intn(len(agg.rentersTwinIDs))]
-		f.NodeAvailableFor = &v
-	}
-	if flip(.5) {
-		v := true
-		if flip(.5) {
-			v = false
-		}
-		f.NodeCertified = &v
-	}
-	if flip(.5) {
-		v := true
-		if flip(.5) {
-			v = false
-		}
-		f.NodeHasGPU = &v
-	}
-	if flip(.5) {
-		v := agg.rentersTwinIDs[rand.Intn(len(agg.rentersTwinIDs))]
-		f.NodeRentedBy = &v
-	}
-	if flip(.5) {
-		nodeStatuses := []string{"up", "down", "standby"}
-		f.NodeStatus = &nodeStatuses[rand.Intn(len(nodeStatuses))]
 	}
 
 	return f, nil

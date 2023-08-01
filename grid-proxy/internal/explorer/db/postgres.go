@@ -524,27 +524,27 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 	}
 
 	if filter.HasGPU != nil {
-		q = q.Where("((select count(node_gpu.id) from node_gpu WHERE node_gpu.node_twin_id = node.twin_id) != 0) = ?", *filter.HasGPU)
+		q = q.Where("(COALESCE(node_gpu.id, '') != '') = ?", *filter.HasGPU)
 	}
 
 	if filter.GpuDeviceName != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.device ILIKE '%' || ? || '%')", *filter.GpuDeviceName)
+		q = q.Where("COALESCE(node_gpu.device, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceName)
 	}
 
 	if filter.GpuVendorName != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.vendor ILIKE '%' || ? || '%')", *filter.GpuVendorName)
+		q = q.Where("COALESCE(node_gpu.vendor, '') ILIKE '%' || ? || '%'", *filter.GpuVendorName)
 	}
 
 	if filter.GpuVendorID != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuVendorID)
+		q = q.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuVendorID)
 	}
 
 	if filter.GpuDeviceID != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuDeviceID)
+		q = q.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceID)
 	}
 
 	if filter.GpuAvailable != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE (node_gpu.contract = 0) = ?)", *filter.GpuAvailable)
+		q = q.Where("(COALESCE(node_gpu.contract, 0) = 0) = ?", *filter.GpuAvailable)
 	}
 
 	var count int64
