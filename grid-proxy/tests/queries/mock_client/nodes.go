@@ -121,23 +121,23 @@ var nodeValidator = map[string]func(node Node, data *DBData, f proxytypes.NodeFi
 	},
 	"GpuDeviceName": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
 		gpu := data.GPUs[node.TwinID]
-		return strings.Contains(strings.ToLower(gpu.Device), *f.GpuDeviceName)
+		return f.GpuDeviceName == nil || strings.Contains(strings.ToLower(gpu.Device), *f.GpuDeviceName)
 	},
 	"GpuVendorName": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
 		gpu := data.GPUs[node.TwinID]
-		return strings.Contains(strings.ToLower(gpu.Vendor), *f.GpuVendorName)
+		return f.GpuVendorName == nil || strings.Contains(strings.ToLower(gpu.Vendor), *f.GpuVendorName)
 	},
 	"GpuVendorID": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
 		gpu := data.GPUs[node.TwinID]
-		return strings.Contains(gpu.ID, *f.GpuVendorID)
+		return f.GpuVendorID == nil || strings.Contains(gpu.ID, *f.GpuVendorID)
 	},
 	"GpuDeviceID": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
 		gpu := data.GPUs[node.TwinID]
-		return strings.Contains(gpu.ID, *f.GpuDeviceID)
+		return f.GpuDeviceID == nil || strings.Contains(gpu.ID, *f.GpuDeviceID)
 	},
 	"GpuAvailable": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
 		gpu := data.GPUs[node.TwinID]
-		return gpu.Contract == 0 != *f.GpuAvailable
+		return f.GpuAvailable == nil || gpu.Contract == 0 == *f.GpuAvailable
 	},
 }
 

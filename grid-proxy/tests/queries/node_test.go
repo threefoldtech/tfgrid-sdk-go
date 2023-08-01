@@ -226,6 +226,29 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &v
 	},
+	"GpuDeviceName": func(agg NodesAggregate) interface{} {
+		deviceNames := []string{"navi", "a", "hamada", ""}
+		return &deviceNames[rand.Intn(len(deviceNames))]
+	},
+	"GpuVendorName": func(agg NodesAggregate) interface{} {
+		vendorNames := []string{"advanced", "a", "hamada", ""}
+		return &vendorNames[rand.Intn(len(vendorNames))]
+	},
+	"GpuVendorID": func(agg NodesAggregate) interface{} {
+		vendorIDs := []string{"1002", "1", "a", ""}
+		return &vendorIDs[rand.Intn(len(vendorIDs))]
+	},
+	"GpuDeviceID": func(agg NodesAggregate) interface{} {
+		deviceIDs := []string{"744c", "1", "a", ""}
+		return &deviceIDs[rand.Intn(len(deviceIDs))]
+	},
+	"GpuAvailable": func(agg NodesAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
 }
 
 func TestNode(t *testing.T) {
