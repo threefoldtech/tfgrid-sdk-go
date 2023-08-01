@@ -298,28 +298,57 @@ func printQuery(query string, args ...interface{}) {
 	}
 	fmt.Printf("node query: %s", query)
 }
+
 func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 	return d.gormDB.
 		Table("farm").
 		Select(
-			"DISTINCT ON (farm.farm_id) farm.farm_id",
+			"farm.farm_id",
 			"farm.name",
 			"farm.twin_id",
 			"farm.pricing_policy_id",
 			"farm.certification",
 			"farm.stellar_address",
 			"farm.dedicated_farm as dedicated",
-			"COALESCE(public_ip.public_ips, '[]') as public_ips",
+			"public_ips.public_ips",
 		).
 		Joins(
-			`LEFT JOIN
-		(SELECT
-			farm_id, 
-			json_agg(json_build_object('id', id, 'ip', ip, 'contractId', contract_id, 'gateway', gateway)) as public_ips
-		FROM
-			public_ip
-		GROUP by farm_id) public_ip
-		ON public_ip.farm_id = farm.id`,
+			"left join node on farm.farm_id = node.farm_id",
+		).
+		Joins("left join nodes_resources_view on nodes_resources_view.node_id = node.node_id").
+		Joins(`left join (
+			select 
+				farm_id,
+				COALESCE(jsonb_agg(jsonb_build_object('id', id, 'ip', ip, 'contract_id', contract_id, 'gateway', gateway)), '[]') as public_ips
+			from public_ip
+			GROUP BY farm_id
+		) public_ips on public_ips.farm_id = farm.id`).
+		Joins(`left join rent_contract on node.node_id = rent_contract.node_id and rent_contract.state IN ('Created', 'GracePeriod')`).
+		Joins(`left join (
+			select 
+				p1.farm_id,
+				count(p1.id) total_ips,
+				count(case when p2.contract_id = 0 then 1 end) free_ips
+			from public_ip p1
+			left join public_ip p2 on p1.id = p2.id
+			group by p1.farm_id
+		) public_ip_count on public_ip_count.farm_id = farm.id`).
+		Joins(`left join (
+			select 
+			   node_twin_id,
+			   count(id) as gpu_count
+		   from node_gpu
+		   GROUP BY node_twin_id
+	   ) node_gpu_count on node_gpu_count.node_twin_id = node.twin_id`).
+		Group(
+			`farm.farm_id,
+			farm.name,
+			farm.twin_id,
+			farm.pricing_policy_id,
+			farm.certification,
+			farm.stellar_address,
+			farm.dedicated_farm,
+			public_ips.public_ips`,
 		)
 }
 
@@ -556,29 +585,42 @@ func (d *PostgresDatabase) shouldRetry(resError error) bool {
 func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
 	q := d.farmTableQuery()
 
-	if filter.NodeFreeHRU != nil || filter.NodeFreeMRU != nil || filter.NodeFreeSRU != nil {
-		q = q.Joins(
-			"LEFT JOIN node on farm.farm_id = node.farm_id",
-		).Joins(
-			"LEFT JOIN nodes_resources_view on node.node_id = nodes_resources_view.node_id",
-		)
+	if filter.NodeFreeMRU != nil {
+		q = q.Where("nodes_resources_view.free_mru >= ?", *filter.NodeFreeMRU)
+	}
+	if filter.NodeFreeHRU != nil {
+		q = q.Where("nodes_resources_view.free_hru >= ?", *filter.NodeFreeHRU)
+	}
+	if filter.NodeFreeSRU != nil {
+		q = q.Where("nodes_resources_view.free_sru >= ?", *filter.NodeFreeSRU)
+	}
 
-		if filter.NodeFreeMRU != nil {
-			q = q.Where("EXISTS( select node.node_id WHERE nodes_resources_view.free_mru >= ?)", *filter.NodeFreeMRU)
-		}
-		if filter.NodeFreeHRU != nil {
-			q = q.Where("EXISTS( select node.node_id WHERE nodes_resources_view.free_hru >= ?)", *filter.NodeFreeHRU)
-		}
-		if filter.NodeFreeSRU != nil {
-			q = q.Where("EXISTS( select node.node_id WHERE nodes_resources_view.free_sru >= ?)", *filter.NodeFreeSRU)
-		}
+	if filter.NodeAvailableFor != nil {
+		q = q.Where("COALESCE(rent_contract.twin_id, 0) = ? OR (COALESCE(rent_contract.twin_id, 0) = 0 AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
+	}
+
+	if filter.NodeHasGPU != nil {
+		q = q.Where("(COALESCE(node_gpu_count.gpu_count, 0) > 0) = ?", *filter.NodeHasGPU)
+	}
+
+	if filter.NodeRentedBy != nil {
+		q = q.Where("COALESCE(rent_contract.twin_id, 0) = ?", *filter.NodeRentedBy)
+	}
+
+	if filter.NodeStatus != nil {
+		condition := nodestatus.DecideNodeStatusCondition(*filter.NodeStatus)
+		q = q.Where(condition)
+	}
+
+	if filter.NodeCertified != nil {
+		q = q.Where("(farm.certification = 'Certified') = ?", *filter.NodeCertified)
 	}
 
 	if filter.FreeIPs != nil {
-		q = q.Where("(SELECT count(id) from public_ip WHERE public_ip.farm_id = farm.id and public_ip.contract_id = 0) >= ?", *filter.FreeIPs)
+		q = q.Where("public_ip_count.free_ips >= ?", *filter.FreeIPs)
 	}
 	if filter.TotalIPs != nil {
-		q = q.Where("(SELECT count(id) from public_ip WHERE public_ip.farm_id = farm.id) >= ?", *filter.TotalIPs)
+		q = q.Where("public_ip_count.total_ips >= ?", *filter.TotalIPs)
 	}
 	if filter.StellarAddress != nil {
 		q = q.Where("farm.stellar_address = ?", *filter.StellarAddress)

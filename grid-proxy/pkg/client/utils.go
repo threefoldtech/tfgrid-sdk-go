@@ -193,6 +193,21 @@ func farmParams(filter types.FarmFilter, limit types.Limit) string {
 	if filter.NodeFreeSRU != nil && *filter.NodeFreeSRU != 0 {
 		fmt.Fprintf(&builder, "node_free_sru=%d&", *filter.NodeFreeSRU)
 	}
+	if filter.NodeAvailableFor != nil && *filter.NodeAvailableFor != 0 {
+		fmt.Fprintf(&builder, "node_available_for=%d&", *filter.NodeAvailableFor)
+	}
+	if filter.NodeCertified != nil {
+		fmt.Fprintf(&builder, "node_certified=%t&", *filter.NodeCertified)
+	}
+	if filter.NodeHasGPU != nil {
+		fmt.Fprintf(&builder, "node_has_gpu=%t&", *filter.NodeHasGPU)
+	}
+	if filter.NodeRentedBy != nil && *filter.NodeRentedBy != 0 {
+		fmt.Fprintf(&builder, "node_rented_by=%d&", *filter.NodeRentedBy)
+	}
+	if filter.NodeStatus != nil && *filter.NodeStatus != "" {
+		fmt.Fprintf(&builder, "node_status=%s&", *filter.NodeStatus)
+	}
 
 	res := builder.String()
 	// pop the extra ? or &

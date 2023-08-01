@@ -1,9 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
+	"reflect"
 	"strings"
+
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
+
+type Filter interface {
+	types.ContractFilter | types.NodeFilter | types.FarmFilter | types.TwinFilter | types.StatsFilter
+}
 
 func calcFreeResources(total node_resources_total, used node_resources_total) node_resources_total {
 	if total.mru < used.mru {
@@ -60,4 +68,17 @@ func changeCase(s string) string {
 
 func stringMatch(str string, sub_str string) bool {
 	return strings.Contains(strings.ToLower(str), strings.ToLower(sub_str))
+}
+
+func SerializeFilter[F Filter](f F) string {
+	res := ""
+	v := reflect.ValueOf(f)
+	for i := 0; i < v.NumField(); i++ {
+		if !v.Field(i).IsNil() {
+			res = fmt.Sprintf("%s%s : %+v\n", res, v.Type().Field(i).Name, reflect.Indirect(v.Field(i)))
+		}
+
+	}
+
+	return res
 }
