@@ -31,7 +31,7 @@ const (
 	CONTRACTS_TESTS = 2000
 )
 
-var contractFilterRandomValues = map[string]func(agg ContractsAggregate) interface{}{
+var contractFilterRandomValueGenerator = map[string]func(agg ContractsAggregate) interface{}{
 	"ContractID": func(agg ContractsAggregate) interface{} {
 		return &agg.contractIDs[rand.Intn(len(agg.contractIDs))]
 	},
@@ -131,10 +131,10 @@ func TestContractsFilter(t *testing.T) {
 	agg := calcContractsAggregates(&data)
 
 	for i := 0; i < v.NumField(); i++ {
-		_, ok := contractFilterRandomValues[v.Type().Field(i).Name]
+		generator, ok := contractFilterRandomValueGenerator[v.Type().Field(i).Name]
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
-		randomFieldValue := contractFilterRandomValues[v.Type().Field(i).Name](agg)
+		randomFieldValue := generator(agg)
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 		}
@@ -220,12 +220,12 @@ func randomContractsFilter(agg *ContractsAggregate) (proxytypes.ContractFilter, 
 
 	for i := 0; i < v.NumField(); i++ {
 		if rand.Float32() > .5 {
-			_, ok := contractFilterRandomValues[v.Type().Field(i).Name]
+			_, ok := contractFilterRandomValueGenerator[v.Type().Field(i).Name]
 			if !ok {
 				return proxytypes.ContractFilter{}, fmt.Errorf("Filter field %s has no random value generator", v.Type().Field(i).Name)
 			}
 
-			randomFieldValue := contractFilterRandomValues[v.Type().Field(i).Name](*agg)
+			randomFieldValue := contractFilterRandomValueGenerator[v.Type().Field(i).Name](*agg)
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}

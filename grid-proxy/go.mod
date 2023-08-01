@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/go-acme/lego/v4 v4.10.2
+	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/lib/pq v1.10.7
@@ -17,6 +18,7 @@ require (
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230809064214-d8ef5ca360eb
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.10.2
 	github.com/threefoldtech/zos v0.5.6-0.20230809073554-ddb0ad98fc4c
+	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	gorm.io/driver/postgres v1.5.0
 	gorm.io/gorm v1.25.0
 )

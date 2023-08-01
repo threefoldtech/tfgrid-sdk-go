@@ -18,7 +18,7 @@ const (
 	FARM_TESTS = 2000
 )
 
-var farmFilterRandomValues = map[string]func(agg FarmsAggregate) interface{}{
+var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interface{}{
 	"FreeIPs": func(agg FarmsAggregate) interface{} {
 		return rndref(0, agg.maxFreeIPs)
 	},
@@ -205,10 +205,10 @@ func TestFarmFilter(t *testing.T) {
 	agg := calcFarmsAggregates(&data)
 
 	for i := 0; i < v.NumField(); i++ {
-		_, ok := farmFilterRandomValues[v.Type().Field(i).Name]
+		generator, ok := farmFilterRandomValueGenerator[v.Type().Field(i).Name]
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
-		randomFieldValue := farmFilterRandomValues[v.Type().Field(i).Name](agg)
+		randomFieldValue := generator(agg)
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 		}
@@ -287,12 +287,12 @@ func randomFarmsFilter(agg *FarmsAggregate) (proxytypes.FarmFilter, error) {
 
 	for i := 0; i < v.NumField(); i++ {
 		if rand.Float32() > .5 {
-			_, ok := farmFilterRandomValues[v.Type().Field(i).Name]
+			_, ok := farmFilterRandomValueGenerator[v.Type().Field(i).Name]
 			if !ok {
 				return proxytypes.FarmFilter{}, fmt.Errorf("Filter field %s has no random value generator", v.Type().Field(i).Name)
 			}
 
-			randomFieldValue := farmFilterRandomValues[v.Type().Field(i).Name](*agg)
+			randomFieldValue := farmFilterRandomValueGenerator[v.Type().Field(i).Name](*agg)
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}

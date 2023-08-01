@@ -26,7 +26,7 @@ const (
 	TWINS_TESTS = 200
 )
 
-var twinFilterRandomValues = map[string]func(agg TwinsAggregate) interface{}{
+var twinFilterRandomValueGenerator = map[string]func(agg TwinsAggregate) interface{}{
 	"TwinID": func(agg TwinsAggregate) interface{} {
 		return &agg.twinIDs[rand.Intn(len(agg.twinIDs))]
 	},
@@ -105,10 +105,10 @@ func TestTwinFilter(t *testing.T) {
 	agg := calcTwinsAggregates(&data)
 
 	for i := 0; i < v.NumField(); i++ {
-		_, ok := twinFilterRandomValues[v.Type().Field(i).Name]
+		generator, ok := twinFilterRandomValueGenerator[v.Type().Field(i).Name]
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
-		randomFieldValue := twinFilterRandomValues[v.Type().Field(i).Name](agg)
+		randomFieldValue := generator(agg)
 
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
@@ -136,12 +136,12 @@ func randomTwinsFilter(agg *TwinsAggregate) (proxytypes.TwinFilter, error) {
 
 	for i := 0; i < v.NumField(); i++ {
 		if rand.Float32() > .5 {
-			_, ok := twinFilterRandomValues[v.Type().Field(i).Name]
+			_, ok := twinFilterRandomValueGenerator[v.Type().Field(i).Name]
 			if !ok {
 				return proxytypes.TwinFilter{}, fmt.Errorf("Filter field %s has no random value generator", v.Type().Field(i).Name)
 			}
 
-			randomFieldValue := twinFilterRandomValues[v.Type().Field(i).Name](*agg)
+			randomFieldValue := twinFilterRandomValueGenerator[v.Type().Field(i).Name](*agg)
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}

@@ -12,7 +12,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-var nodeFilterFieldValidator = map[string]func(node Node, data *DBData, f proxytypes.NodeFilter) bool{
+var nodeValidator = map[string]func(node Node, data *DBData, f proxytypes.NodeFilter) bool{
 	"Status": func(node Node, data *DBData, f proxytypes.NodeFilter) bool {
 		nodePower := proxytypes.NodePower{
 			State:  node.Power.State,
@@ -312,7 +312,7 @@ func (g *GridProxyMockClient) NodeStatus(nodeID uint32) (res proxytypes.NodeStat
 func nodeSatisfies(data *DBData, node Node, f proxytypes.NodeFilter) (bool, error) {
 	v := reflect.ValueOf(f)
 	for i := 0; i < v.NumField(); i++ {
-		valid, ok := nodeFilterFieldValidator[v.Type().Field(i).Name]
+		valid, ok := nodeValidator[v.Type().Field(i).Name]
 		if !ok {
 			return false, fmt.Errorf("Field %s has no validator", v.Type().Field(i).Name)
 		}

@@ -52,10 +52,10 @@ func TestCountersFilter(t *testing.T) {
 	v := reflect.ValueOf(fp).Elem()
 
 	for i := 0; i < v.NumField(); i++ {
-		_, ok := statsFilterRandomValues[v.Type().Field(i).Name]
+		generator, ok := statsFilterRandomValues[v.Type().Field(i).Name]
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
-		randomFieldValue := statsFilterRandomValues[v.Type().Field(i).Name]()
+		randomFieldValue := generator()
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 		}

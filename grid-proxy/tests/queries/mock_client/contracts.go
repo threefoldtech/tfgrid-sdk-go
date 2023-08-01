@@ -8,7 +8,7 @@ import (
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-var rentContractFilterFieldValidator = map[string]func(contract RentContract, f proxytypes.ContractFilter) bool{
+var rentContractValidator = map[string]func(contract RentContract, f proxytypes.ContractFilter) bool{
 	"ContractID": func(contract RentContract, f proxytypes.ContractFilter) bool {
 		return f.ContractID == nil || contract.ContractID == *f.ContractID
 	},
@@ -38,7 +38,7 @@ var rentContractFilterFieldValidator = map[string]func(contract RentContract, f 
 	},
 }
 
-var nodeContractFilterFieldValidator = map[string]func(contract NodeContract, f proxytypes.ContractFilter) bool{
+var nodeContractValidator = map[string]func(contract NodeContract, f proxytypes.ContractFilter) bool{
 	"ContractID": func(contract NodeContract, f proxytypes.ContractFilter) bool {
 		return f.ContractID == nil || contract.ContractID == *f.ContractID
 	},
@@ -201,7 +201,7 @@ func (g *GridProxyMockClient) Contracts(filter proxytypes.ContractFilter, limit 
 func rentContractsSatisfies(contract RentContract, f proxytypes.ContractFilter) (bool, error) {
 	v := reflect.ValueOf(f)
 	for i := 0; i < v.NumField(); i++ {
-		valid, ok := rentContractFilterFieldValidator[v.Type().Field(i).Name]
+		valid, ok := rentContractValidator[v.Type().Field(i).Name]
 		if !ok {
 			return false, fmt.Errorf("Field %s has no validator", v.Type().Field(i).Name)
 		}
@@ -233,7 +233,7 @@ func nameContractsSatisfies(contract NameContract, f proxytypes.ContractFilter) 
 func nodeContractsSatisfies(contract NodeContract, f proxytypes.ContractFilter) (bool, error) {
 	v := reflect.ValueOf(f)
 	for i := 0; i < v.NumField(); i++ {
-		valid, ok := nodeContractFilterFieldValidator[v.Type().Field(i).Name]
+		valid, ok := nodeContractValidator[v.Type().Field(i).Name]
 		if !ok {
 			return false, fmt.Errorf("Field %s has no validator", v.Type().Field(i).Name)
 		}

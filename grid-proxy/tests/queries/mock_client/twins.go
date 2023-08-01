@@ -8,7 +8,7 @@ import (
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-var twinFilterFieldValidator = map[string]func(twin Twin, f proxytypes.TwinFilter) bool{
+var twinValidator = map[string]func(twin Twin, f proxytypes.TwinFilter) bool{
 	"TwinID": func(twin Twin, f proxytypes.TwinFilter) bool {
 		return f.TwinID == nil || twin.TwinID == *f.TwinID
 	},
@@ -60,7 +60,7 @@ func (g *GridProxyMockClient) Twins(filter proxytypes.TwinFilter, limit proxytyp
 func twinSatisfies(twin Twin, f proxytypes.TwinFilter) (bool, error) {
 	v := reflect.ValueOf(f)
 	for i := 0; i < v.NumField(); i++ {
-		valid, ok := twinFilterFieldValidator[v.Type().Field(i).Name]
+		valid, ok := twinValidator[v.Type().Field(i).Name]
 		if !ok {
 			return false, fmt.Errorf("Field %s has no validator", v.Type().Field(i).Name)
 		}

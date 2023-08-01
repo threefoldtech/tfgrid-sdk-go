@@ -48,7 +48,7 @@ var (
 	ErrNodeNotFound = errors.New("node not found")
 )
 
-var nodeFilterRandomValues = map[string]func(agg NodesAggregate) interface{}{
+var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interface{}{
 	"Status": func(agg NodesAggregate) interface{} {
 		return &statuses[rand.Intn(3)]
 	},
@@ -391,10 +391,10 @@ func TestNodeFilter(t *testing.T) {
 	agg := calcNodesAggregates(&data)
 
 	for i := 0; i < v.NumField(); i++ {
-		_, ok := nodeFilterRandomValues[v.Type().Field(i).Name]
+		generator, ok := nodeFilterRandomValueGenerator[v.Type().Field(i).Name]
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
-		randomFieldValue := nodeFilterRandomValues[v.Type().Field(i).Name](agg)
+		randomFieldValue := generator(agg)
 
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
@@ -459,12 +459,12 @@ func randomNodeFilter(agg *NodesAggregate) (proxytypes.NodeFilter, error) {
 
 	for i := 0; i < v.NumField(); i++ {
 		if rand.Float32() > .5 {
-			_, ok := nodeFilterRandomValues[v.Type().Field(i).Name]
+			_, ok := nodeFilterRandomValueGenerator[v.Type().Field(i).Name]
 			if !ok {
 				return proxytypes.NodeFilter{}, fmt.Errorf("Filter field %s has no random value generator", v.Type().Field(i).Name)
 			}
 
-			randomFieldValue := nodeFilterRandomValues[v.Type().Field(i).Name](*agg)
+			randomFieldValue := nodeFilterRandomValueGenerator[v.Type().Field(i).Name](*agg)
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}
