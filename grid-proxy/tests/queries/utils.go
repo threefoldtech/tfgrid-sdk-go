@@ -59,10 +59,6 @@ func changeCase(s string) string {
 	return strings.Replace(s, string(s[idx]), strings.ToUpper(string(s[idx])), 1)
 }
 
-func stringMatch(str string, sub_str string) bool {
-	return strings.Contains(strings.ToLower(str), strings.ToLower(sub_str))
-}
-
 func SerializeFilter[F Filter](f F) string {
 	res := ""
 	v := reflect.ValueOf(f)
