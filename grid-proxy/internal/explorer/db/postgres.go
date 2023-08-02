@@ -313,9 +313,34 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 			"public_ips.public_ips",
 		).
 		Joins(
-			"left join node on farm.farm_id = node.farm_id",
+			`left join(
+				SELECT
+					node.node_id,
+					node.twin_id,
+					node.farm_id,
+					node.power,
+					node.updated_at,
+					nodes_resources_view.free_mru,
+					nodes_resources_view.free_hru,
+					nodes_resources_view.free_sru,
+					COALESCE(rent_contract.contract_id, 0) rent_contarct_id,
+					COALESCE(rent_contract.twin_id, 0) renter,
+					COALESCE(node_gpu.id, '') gpu_id
+				FROM node
+				LEFT JOIN nodes_resources_view ON node.node_id = nodes_resources_view.node_id
+				LEFT JOIN rent_contract ON node.node_id = rent_contract.node_id AND rent_contract.state IN ('Created', 'GracePeriod')
+				LEFT JOIN node_gpu ON node.twin_id = node_gpu.node_twin_id
+			) node on node.farm_id = farm.farm_id`,
 		).
-		Joins("left join nodes_resources_view on nodes_resources_view.node_id = node.node_id").
+		Joins(`left join(
+			SELECT
+				p1.farm_id,
+				COUNT(p1.id) total_ips,
+				COUNT(CASE WHEN p2.contract_id = 0 THEN 1 END) free_ips
+			FROM public_ip p1
+			LEFT JOIN public_ip p2 ON p1.id = p2.id
+			GROUP BY p1.farm_id
+		) public_ip_count on public_ip_count.farm_id = farm.id`).
 		Joins(`left join (
 			select 
 				farm_id,
@@ -323,23 +348,6 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 			from public_ip
 			GROUP BY farm_id
 		) public_ips on public_ips.farm_id = farm.id`).
-		Joins(`left join rent_contract on node.node_id = rent_contract.node_id and rent_contract.state IN ('Created', 'GracePeriod')`).
-		Joins(`left join (
-			select 
-				p1.farm_id,
-				count(p1.id) total_ips,
-				count(case when p2.contract_id = 0 then 1 end) free_ips
-			from public_ip p1
-			left join public_ip p2 on p1.id = p2.id
-			group by p1.farm_id
-		) public_ip_count on public_ip_count.farm_id = farm.id`).
-		Joins(`left join (
-			select 
-			   node_twin_id,
-			   count(id) as gpu_count
-		   from node_gpu
-		   GROUP BY node_twin_id
-	   ) node_gpu_count on node_gpu_count.node_twin_id = node.twin_id`).
 		Group(
 			`farm.farm_id,
 			farm.name,
@@ -586,25 +594,25 @@ func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) 
 	q := d.farmTableQuery()
 
 	if filter.NodeFreeMRU != nil {
-		q = q.Where("nodes_resources_view.free_mru >= ?", *filter.NodeFreeMRU)
+		q = q.Where("node.free_mru >= ?", *filter.NodeFreeMRU)
 	}
 	if filter.NodeFreeHRU != nil {
-		q = q.Where("nodes_resources_view.free_hru >= ?", *filter.NodeFreeHRU)
+		q = q.Where("node.free_hru >= ?", *filter.NodeFreeHRU)
 	}
 	if filter.NodeFreeSRU != nil {
-		q = q.Where("nodes_resources_view.free_sru >= ?", *filter.NodeFreeSRU)
+		q = q.Where("node.free_sru >= ?", *filter.NodeFreeSRU)
 	}
 
 	if filter.NodeAvailableFor != nil {
-		q = q.Where("COALESCE(rent_contract.twin_id, 0) = ? OR (COALESCE(rent_contract.twin_id, 0) = 0 AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
+		q = q.Where("node.renter = ? OR (node.renter = 0 AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
 	}
 
 	if filter.NodeHasGPU != nil {
-		q = q.Where("(COALESCE(node_gpu_count.gpu_count, 0) > 0) = ?", *filter.NodeHasGPU)
+		q = q.Where("(node.gpu_id != '') = ?", *filter.NodeHasGPU)
 	}
 
 	if filter.NodeRentedBy != nil {
-		q = q.Where("COALESCE(rent_contract.twin_id, 0) = ?", *filter.NodeRentedBy)
+		q = q.Where("node.renter = ?", *filter.NodeRentedBy)
 	}
 
 	if filter.NodeStatus != nil {
