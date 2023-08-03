@@ -303,6 +303,7 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 	return d.gormDB.
 		Table("farm").
 		Select(
+			"farm.id",
 			"farm.farm_id",
 			"farm.name",
 			"farm.twin_id",
@@ -310,7 +311,8 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 			"farm.certification",
 			"farm.stellar_address",
 			"farm.dedicated_farm as dedicated",
-			"public_ips.public_ips",
+			"COALESCE(public_ips.public_ips, '[]') as public_ips",
+			"bool_or(node.rent_contract_id != 0)",
 		).
 		Joins(
 			`left join(
@@ -320,10 +322,11 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 					node.farm_id,
 					node.power,
 					node.updated_at,
+					node.certification,
 					nodes_resources_view.free_mru,
 					nodes_resources_view.free_hru,
 					nodes_resources_view.free_sru,
-					COALESCE(rent_contract.contract_id, 0) rent_contarct_id,
+					COALESCE(rent_contract.contract_id, 0) rent_contract_id,
 					COALESCE(rent_contract.twin_id, 0) renter,
 					COALESCE(node_gpu.id, '') gpu_id
 				FROM node
@@ -344,19 +347,20 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 		Joins(`left join (
 			select 
 				farm_id,
-				COALESCE(jsonb_agg(jsonb_build_object('id', id, 'ip', ip, 'contract_id', contract_id, 'gateway', gateway)), '[]') as public_ips
+				jsonb_agg(jsonb_build_object('id', id, 'ip', ip, 'contract_id', contract_id, 'gateway', gateway)) as public_ips
 			from public_ip
 			GROUP BY farm_id
 		) public_ips on public_ips.farm_id = farm.id`).
 		Group(
-			`farm.farm_id,
+			`farm.id,
+			farm.farm_id,
 			farm.name,
 			farm.twin_id,
 			farm.pricing_policy_id,
 			farm.certification,
 			farm.stellar_address,
 			farm.dedicated_farm,
-			public_ips.public_ips`,
+			COALESCE(public_ips.public_ips, '[]')`,
 		)
 }
 
@@ -605,6 +609,7 @@ func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) 
 
 	if filter.NodeAvailableFor != nil {
 		q = q.Where("node.renter = ? OR (node.renter = 0 AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
+		q = q.Order("CASE WHEN bool_or(node.rent_contract_id != 0) = TRUE THEN 1 ELSE 2 END")
 	}
 
 	if filter.NodeHasGPU != nil {
@@ -621,7 +626,7 @@ func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) 
 	}
 
 	if filter.NodeCertified != nil {
-		q = q.Where("(farm.certification = 'Certified') = ?", *filter.NodeCertified)
+		q = q.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
 	}
 
 	if filter.FreeIPs != nil {

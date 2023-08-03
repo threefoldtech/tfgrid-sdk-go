@@ -138,9 +138,21 @@ func (g *GridProxyClientimpl) Farms(filter proxytypes.FarmFilter, limit proxytyp
 			})
 		}
 	}
-	sort.Slice(res, func(i, j int) bool {
-		return res[i].FarmID < res[j].FarmID
-	})
+
+	if filter.NodeAvailableFor != nil {
+		sort.Slice(res, func(i, j int) bool {
+			f1 := g.data.farmHasRentedNode[uint64(res[i].FarmID)]
+			f2 := g.data.farmHasRentedNode[uint64(res[j].FarmID)]
+			lessFarmID := res[i].FarmID < res[j].FarmID
+
+			return f1 && !f2 || f1 && f2 && lessFarmID || !f1 && !f2 && lessFarmID
+		})
+	} else {
+		sort.Slice(res, func(i, j int) bool {
+			return res[i].FarmID < res[j].FarmID
+		})
+	}
+
 	start, end := (limit.Page-1)*limit.Size, limit.Page*limit.Size
 	if len(res) == 0 {
 		return
