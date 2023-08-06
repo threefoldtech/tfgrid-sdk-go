@@ -247,6 +247,36 @@ const docTemplate = `{
                         "description": "Min free reservable sru for at least a single node that belongs to the farm, in bytes",
                         "name": "node_free_sru",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node status for at least a single node that belongs to the farm",
+                        "name": "node_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Twin ID of user who has at least one rented node in the farm",
+                        "name": "node_rented_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Twin ID of user for whom there is at least one node that is available to be deployed to in the farm",
+                        "name": "node_available_for",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "True for farms who have at least one node with a GPU",
+                        "name": "node_has_gpu",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "True for farms who have at least one certified node",
+                        "name": "node_certified",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1450,10 +1480,10 @@ const docTemplate = `{
         "types.PublicIP": {
             "type": "object",
             "properties": {
-                "contractId": {
+                "contract_id": {
                     "type": "integer"
                 },
-                "farmId": {
+                "farm_id": {
                     "type": "string"
                 },
                 "gateway": {
