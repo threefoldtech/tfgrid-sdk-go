@@ -636,7 +636,7 @@ func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) 
 		q = q.Where("public_ip_count.total_ips >= ?", *filter.TotalIPs)
 	}
 	if filter.StellarAddress != nil {
-		q = q.Where("farm.stellar_address = ?", *filter.StellarAddress)
+		q = q.Where("COALESCE(farm.stellar_address, '') = ?", *filter.StellarAddress)
 	}
 	if filter.PricingPolicyID != nil {
 		q = q.Where("farm.pricing_policy_id = ?", *filter.PricingPolicyID)
@@ -757,7 +757,7 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 			`LEFT JOIN (
 				SELECT 
 					contract_bill_report.contract_id,
-					COALESCE(json_agg(json_build_object('amountBilled', amount_billed, 'discountReceived', discount_received, 'timestamp', timestamp)), '[]') as billings
+					COALESCE(json_agg(json_build_object('amount_billed', amount_billed, 'discount_received', discount_received, 'timestamp', timestamp)), '[]') as billings
 				FROM
 					contract_bill_report
 				GROUP BY contract_id
