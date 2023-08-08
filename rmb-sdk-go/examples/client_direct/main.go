@@ -19,7 +19,7 @@ func app() error {
 	}
 
 	defer sub.Close()
-	client, err := direct.NewClient(context.Background(), direct.KeyTypeSr25519, mnemonics, "wss://relay.dev.grid.tf", "test-client", sub, true)
+	client, err := direct.NewRpcClient(context.Background(), direct.KeyTypeSr25519, mnemonics, "wss://relay.dev.grid.tf", "test-client", sub, true)
 	if err != nil {
 		return fmt.Errorf("failed to create direct client: %w", err)
 	}
@@ -27,9 +27,6 @@ func app() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if err := client.Ping(ctx); err != nil {
-		return fmt.Errorf("failed to do high level ping: %s", err)
-	}
 	const dst = 7 // <- replace this with the twin id of where the service is running
 	// it's okay to run both the server and the client behind the same rmb-peer
 	var output float64

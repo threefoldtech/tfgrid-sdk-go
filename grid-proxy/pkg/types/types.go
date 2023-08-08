@@ -63,8 +63,8 @@ type Farm struct {
 type PublicIP struct {
 	ID         string `json:"id"`
 	IP         string `json:"ip"`
-	FarmID     string `json:"farmId"`
-	ContractID int    `json:"contractId"`
+	FarmID     string `json:"farm_id"`
+	ContractID int    `json:"contract_id"`
 	Gateway    string `json:"gateway"`
 }
 
@@ -111,6 +111,11 @@ type NodeFilter struct {
 	TwinID            *uint64
 	CertificationType *string
 	HasGPU            *bool
+	GpuDeviceID       *string
+	GpuDeviceName     *string
+	GpuVendorID       *string
+	GpuVendorName     *string
+	GpuAvailable      *bool
 }
 
 // FarmFilter farm filters
@@ -128,6 +133,11 @@ type FarmFilter struct {
 	NodeFreeMRU       *uint64
 	NodeFreeHRU       *uint64
 	NodeFreeSRU       *uint64
+	NodeStatus        *string
+	NodeRentedBy      *uint64
+	NodeAvailableFor  *uint64
+	NodeHasGPU        *bool
+	NodeCertified     *bool
 }
 
 // TwinFilter twin filters
@@ -287,9 +297,11 @@ type NodeStatus struct {
 }
 
 type NodeGPU struct {
-	ID     string `json:"id"`
-	Vendor string `json:"vendor"`
-	Device string `json:"device"`
+	NodeTwinID uint32 `json:"-"`
+	ID         string `json:"id"`
+	Vendor     string `json:"vendor"`
+	Device     string `json:"device"`
+	Contract   int    `json:"contract"`
 }
 
 // Serialize is the serializer for node status struct

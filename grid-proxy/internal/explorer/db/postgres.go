@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"time"
 
 	// to use for database/sql
 	_ "github.com/lib/pq"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 
 	"github.com/pkg/errors"
@@ -26,13 +27,6 @@ var (
 	ErrFarmNotFound = errors.New("farm not found")
 	//ErrViewNotFound
 	ErrNodeResourcesViewNotFound = errors.New("ERROR: relation \"nodes_resources_view\" does not exist (SQLSTATE 42P01)")
-)
-
-const (
-	nodeStateFactor = 3
-	reportInterval  = time.Hour
-	// the number of missed reports to mark the node down
-	// if node reports every 5 mins, it's marked down if the last report is more than 15 mins in the past
 )
 
 const (
@@ -121,6 +115,17 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string) (
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create orm wrapper around db")
 	}
+	sql, err := gormDB.DB()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to configure DB connection")
+	}
+	sql.SetMaxIdleConns(3)
+
+	err = gormDB.AutoMigrate(&NodeGPU{})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to auto migrate DB")
+	}
+
 	res := PostgresDatabase{gormDB}
 	if err := res.initialize(); err != nil {
 		return nil, errors.Wrap(err, "failed to setup tables")
@@ -140,23 +145,6 @@ func (d *PostgresDatabase) Close() error {
 func (d *PostgresDatabase) initialize() error {
 	res := d.gormDB.Exec(setupPostgresql)
 	return res.Error
-}
-
-func decideNodeStatusCondition(status string) string {
-	condition := "TRUE"
-	nodeUpInterval := time.Now().Unix() - nodeStateFactor*int64(reportInterval.Seconds())
-
-	if status == "up" {
-		condition = fmt.Sprintf(`node.updated_at >= %d`, nodeUpInterval)
-	} else if status == "down" {
-		condition = fmt.Sprintf(`node.updated_at < %d 
-				OR node.updated_at IS NULL
-				OR node.power->> 'target' = 'Up' AND node.power->> 'state' = 'Down'`, nodeUpInterval)
-	} else if status == "standby" {
-		condition = `node.power->> 'target' = 'Down'`
-	}
-
-	return condition
 }
 
 // GetCounters returns aggregate info about the grid
@@ -187,7 +175,7 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = decideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
 	}
 
 	if res := d.gormDB.
@@ -230,7 +218,7 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 		Select("country, count(node_id) as nodes").Where(condition).Group("country").Scan(&distribution); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get nodes distribution")
 	}
-	if res := d.gormDB.Table("node").Where(condition).Where("node.has_gpu = true").Count(&counters.GPUs); res.Error != nil {
+	if res := d.gormDB.Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&counters.GPUs); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get node with GPU count")
 	}
 	nodesDistribution := map[string]int64{}
@@ -310,34 +298,78 @@ func printQuery(query string, args ...interface{}) {
 	}
 	fmt.Printf("node query: %s", query)
 }
+
 func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 	return d.gormDB.
 		Table("farm").
 		Select(
-			"DISTINCT ON (farm.farm_id) farm.farm_id",
+			"farm.id",
+			"farm.farm_id",
 			"farm.name",
 			"farm.twin_id",
 			"farm.pricing_policy_id",
 			"farm.certification",
 			"farm.stellar_address",
 			"farm.dedicated_farm as dedicated",
-			"COALESCE(public_ip.public_ips, '[]') as public_ips",
+			"COALESCE(public_ips.public_ips, '[]') as public_ips",
+			"bool_or(node.rent_contract_id != 0)",
 		).
 		Joins(
-			`LEFT JOIN
-		(SELECT
-			farm_id, 
-			json_agg(json_build_object('id', id, 'ip', ip, 'contractId', contract_id, 'gateway', gateway)) as public_ips
-		FROM
-			public_ip
-		GROUP by farm_id) public_ip
-		ON public_ip.farm_id = farm.id`,
+			`left join(
+				SELECT
+					node.node_id,
+					node.twin_id,
+					node.farm_id,
+					node.power,
+					node.updated_at,
+					node.certification,
+					nodes_resources_view.free_mru,
+					nodes_resources_view.free_hru,
+					nodes_resources_view.free_sru,
+					COALESCE(rent_contract.contract_id, 0) rent_contract_id,
+					COALESCE(rent_contract.twin_id, 0) renter,
+					COALESCE(node_gpu.id, '') gpu_id
+				FROM node
+				LEFT JOIN nodes_resources_view ON node.node_id = nodes_resources_view.node_id
+				LEFT JOIN rent_contract ON node.node_id = rent_contract.node_id AND rent_contract.state IN ('Created', 'GracePeriod')
+				LEFT JOIN node_gpu ON node.twin_id = node_gpu.node_twin_id
+			) node on node.farm_id = farm.farm_id`,
+		).
+		Joins(`left join(
+			SELECT
+				p1.farm_id,
+				COUNT(p1.id) total_ips,
+				COUNT(CASE WHEN p2.contract_id = 0 THEN 1 END) free_ips
+			FROM public_ip p1
+			LEFT JOIN public_ip p2 ON p1.id = p2.id
+			GROUP BY p1.farm_id
+		) public_ip_count on public_ip_count.farm_id = farm.id`).
+		Joins(`left join (
+			select 
+				farm_id,
+				jsonb_agg(jsonb_build_object('id', id, 'ip', ip, 'contract_id', contract_id, 'gateway', gateway)) as public_ips
+			from public_ip
+			GROUP BY farm_id
+		) public_ips on public_ips.farm_id = farm.id`).
+		Group(
+			`farm.id,
+			farm.farm_id,
+			farm.name,
+			farm.twin_id,
+			farm.pricing_policy_id,
+			farm.certification,
+			farm.stellar_address,
+			farm.dedicated_farm,
+			COALESCE(public_ips.public_ips, '[]')`,
 		)
 }
+
 func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 	subquery := d.gormDB.Table("node_contract").
 		Select("DISTINCT ON (node_id) node_id, contract_id").
 		Where("state IN ('Created', 'GracePeriod')")
+
+	nodeGPUQuery := `(SELECT count(node_gpu.id) FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id) as num_gpu`
 
 	return d.gormDB.
 		Table("node").
@@ -374,8 +406,8 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"convert_to_decimal(location.longitude) as longitude",
 			"convert_to_decimal(location.latitude) as latitude",
 			"node.power",
-			"node.has_gpu",
 			"node.extra_fee",
+			nodeGPUQuery,
 		).
 		Joins(
 			"LEFT JOIN nodes_resources_view ON node.node_id = nodes_resources_view.node_id",
@@ -394,6 +426,9 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 		).
 		Joins(
 			"LEFT JOIN location ON node.location_id = location.id",
+		).
+		Joins(
+			"LEFT JOIN node_gpu on node_gpu.node_twin_id = node.twin_id",
 		)
 }
 
@@ -404,7 +439,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = decideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
 	}
 
 	q = q.Where(condition)
@@ -487,8 +522,29 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
 	}
+
 	if filter.HasGPU != nil {
-		q = q.Where("node.has_gpu = ?", *filter.HasGPU)
+		q = q.Where("((select count(node_gpu.id) from node_gpu WHERE node_gpu.node_twin_id = node.twin_id) != 0) = ?", *filter.HasGPU)
+	}
+
+	if filter.GpuDeviceName != nil {
+		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.device ILIKE '%' || ? || '%')", *filter.GpuDeviceName)
+	}
+
+	if filter.GpuVendorName != nil {
+		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.vendor ILIKE '%' || ? || '%')", *filter.GpuVendorName)
+	}
+
+	if filter.GpuVendorID != nil {
+		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuVendorID)
+	}
+
+	if filter.GpuDeviceID != nil {
+		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuDeviceID)
+	}
+
+	if filter.GpuAvailable != nil {
+		q = q.Where("EXISTS( select node_gpu.id WHERE (node_gpu.contract = 0) = ?)", *filter.GpuAvailable)
 	}
 
 	var count int64
@@ -511,7 +567,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		}
 		q = q.Limit(int(limit.Size)).
 			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("node_id")
+			Order("node.node_id")
 	}
 
 	var nodes []Node
@@ -541,29 +597,43 @@ func (d *PostgresDatabase) shouldRetry(resError error) bool {
 func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
 	q := d.farmTableQuery()
 
-	if filter.NodeFreeHRU != nil || filter.NodeFreeMRU != nil || filter.NodeFreeSRU != nil {
-		q = q.Joins(
-			"LEFT JOIN node on farm.farm_id = node.farm_id",
-		).Joins(
-			"LEFT JOIN nodes_resources_view on node.node_id = nodes_resources_view.node_id",
-		)
+	if filter.NodeFreeMRU != nil {
+		q = q.Where("node.free_mru >= ?", *filter.NodeFreeMRU)
+	}
+	if filter.NodeFreeHRU != nil {
+		q = q.Where("node.free_hru >= ?", *filter.NodeFreeHRU)
+	}
+	if filter.NodeFreeSRU != nil {
+		q = q.Where("node.free_sru >= ?", *filter.NodeFreeSRU)
+	}
 
-		if filter.NodeFreeMRU != nil {
-			q = q.Where("EXISTS( select node.node_id WHERE nodes_resources_view.free_mru >= ?)", *filter.NodeFreeMRU)
-		}
-		if filter.NodeFreeHRU != nil {
-			q = q.Where("EXISTS( select node.node_id WHERE nodes_resources_view.free_hru >= ?)", *filter.NodeFreeHRU)
-		}
-		if filter.NodeFreeSRU != nil {
-			q = q.Where("EXISTS( select node.node_id WHERE nodes_resources_view.free_sru >= ?)", *filter.NodeFreeSRU)
-		}
+	if filter.NodeAvailableFor != nil {
+		q = q.Where("node.renter = ? OR (node.renter = 0 AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
+		q = q.Order("CASE WHEN bool_or(node.rent_contract_id != 0) = TRUE THEN 1 ELSE 2 END")
+	}
+
+	if filter.NodeHasGPU != nil {
+		q = q.Where("(node.gpu_id != '') = ?", *filter.NodeHasGPU)
+	}
+
+	if filter.NodeRentedBy != nil {
+		q = q.Where("node.renter = ?", *filter.NodeRentedBy)
+	}
+
+	if filter.NodeStatus != nil {
+		condition := nodestatus.DecideNodeStatusCondition(*filter.NodeStatus)
+		q = q.Where(condition)
+	}
+
+	if filter.NodeCertified != nil {
+		q = q.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
 	}
 
 	if filter.FreeIPs != nil {
-		q = q.Where("(SELECT count(id) from public_ip WHERE public_ip.farm_id = farm.id and public_ip.contract_id = 0) >= ?", *filter.FreeIPs)
+		q = q.Where("public_ip_count.free_ips >= ?", *filter.FreeIPs)
 	}
 	if filter.TotalIPs != nil {
-		q = q.Where("(SELECT count(id) from public_ip WHERE public_ip.farm_id = farm.id) >= ?", *filter.TotalIPs)
+		q = q.Where("public_ip_count.total_ips >= ?", *filter.TotalIPs)
 	}
 	if filter.StellarAddress != nil {
 		q = q.Where("farm.stellar_address = ?", *filter.StellarAddress)
@@ -740,4 +810,17 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 		return contracts, uint(count), errors.Wrap(res.Error, "failed to scan returned contracts from database")
 	}
 	return contracts, uint(count), nil
+}
+
+func (p *PostgresDatabase) UpsertNodesGPU(nodesGPU []types.NodeGPU) error {
+	// For upsert operation
+	conflictClause := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}, {Name: "node_twin_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"vendor", "device", "contract"}),
+	}
+	err := p.gormDB.Table("node_gpu").Clauses(conflictClause).Create(&nodesGPU).Error
+	if err != nil {
+		return fmt.Errorf("failed to upsert nodes GPU details: %w", err)
+	}
+	return nil
 }

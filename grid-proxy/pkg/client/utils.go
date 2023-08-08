@@ -116,6 +116,21 @@ func nodeParams(filter types.NodeFilter, limit types.Limit) string {
 	if filter.HasGPU != nil {
 		fmt.Fprintf(&builder, "has_gpu=%t&", *filter.HasGPU)
 	}
+	if filter.GpuAvailable != nil {
+		fmt.Fprintf(&builder, "gpu_available=%t&", *filter.GpuAvailable)
+	}
+	if filter.GpuDeviceID != nil {
+		fmt.Fprintf(&builder, "gpu_device_id=%s&", *filter.GpuDeviceID)
+	}
+	if filter.GpuDeviceName != nil {
+		fmt.Fprintf(&builder, "gpu_device_name=%s&", *filter.GpuDeviceName)
+	}
+	if filter.GpuVendorID != nil {
+		fmt.Fprintf(&builder, "gpu_vendor_id=%s&", *filter.GpuVendorID)
+	}
+	if filter.GpuVendorName != nil {
+		fmt.Fprintf(&builder, "gpu_vendor_name=%s&", *filter.GpuVendorName)
+	}
 
 	res := builder.String()
 	// pop the extra ? or &
@@ -177,6 +192,21 @@ func farmParams(filter types.FarmFilter, limit types.Limit) string {
 	}
 	if filter.NodeFreeSRU != nil && *filter.NodeFreeSRU != 0 {
 		fmt.Fprintf(&builder, "node_free_sru=%d&", *filter.NodeFreeSRU)
+	}
+	if filter.NodeAvailableFor != nil && *filter.NodeAvailableFor != 0 {
+		fmt.Fprintf(&builder, "node_available_for=%d&", *filter.NodeAvailableFor)
+	}
+	if filter.NodeCertified != nil {
+		fmt.Fprintf(&builder, "node_certified=%t&", *filter.NodeCertified)
+	}
+	if filter.NodeHasGPU != nil {
+		fmt.Fprintf(&builder, "node_has_gpu=%t&", *filter.NodeHasGPU)
+	}
+	if filter.NodeRentedBy != nil && *filter.NodeRentedBy != 0 {
+		fmt.Fprintf(&builder, "node_rented_by=%d&", *filter.NodeRentedBy)
+	}
+	if filter.NodeStatus != nil && *filter.NodeStatus != "" {
+		fmt.Fprintf(&builder, "node_status=%s&", *filter.NodeStatus)
 	}
 
 	res := builder.String()

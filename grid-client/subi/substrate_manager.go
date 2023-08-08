@@ -5,6 +5,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
@@ -54,6 +55,8 @@ type SubstrateExt interface {
 	CreateNameContract(identity substrate.Identity, name string) (uint64, error)
 	GetAccount(identity substrate.Identity) (substrate.AccountInfo, error)
 	GetBalance(identity substrate.Identity) (balance substrate.Balance, err error)
+	GetTFTPrice() (balance types.U32, err error)
+	GetPricingPolicy(policyID uint32) (pricingPolicy substrate.PricingPolicy, err error)
 	GetTwinPK(twinID uint32) ([]byte, error)
 	GetContractIDByNameRegistration(name string) (uint64, error)
 	BatchCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, *int, error)
@@ -82,6 +85,18 @@ func (s *SubstrateImpl) GetBalance(identity substrate.Identity) (balance substra
 
 	balance, err = s.Substrate.GetBalance(accountAddress)
 	return balance, normalizeNotFoundErrors(err)
+}
+
+// GetTFTPrice returns the TFT's price
+func (s *SubstrateImpl) GetTFTPrice() (balance types.U32, err error) {
+	price, err := s.Substrate.GetTFTPrice()
+	return price, normalizeNotFoundErrors(err)
+}
+
+// GetPricingPolicy returns a pricing policy
+func (s *SubstrateImpl) GetPricingPolicy(policyID uint32) (pricingPolicy substrate.PricingPolicy, err error) {
+	pricingPolicy, err = s.Substrate.GetPricingPolicy(policyID)
+	return pricingPolicy, normalizeNotFoundErrors(err)
 }
 
 // GetNodeTwin returns the twin ID for a node ID

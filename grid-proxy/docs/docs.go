@@ -252,6 +252,36 @@ const docTemplate = `{
                         "description": "Min free reservable sru for at least a single node that belongs to the farm, in bytes",
                         "name": "node_free_sru",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node status for at least a single node that belongs to the farm",
+                        "name": "node_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Twin ID of user who has at least one rented node in the farm",
+                        "name": "node_rented_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Twin ID of user for whom there is at least one node that is available to be deployed to in the farm",
+                        "name": "node_available_for",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "True for farms who have at least one node with a GPU",
+                        "name": "node_has_gpu",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "True for farms who have at least one certified node",
+                        "name": "node_certified",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -551,6 +581,30 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "description": "Total mru in bytes",
+                        "name": "total_mru",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Total cru number",
+                        "name": "total_cru",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Total sru in bytes",
+                        "name": "total_sru",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Total hru in bytes",
+                        "name": "total_hru",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "description": "Min number of free ips in the farm of the node",
                         "name": "free_ips",
                         "in": "query"
@@ -648,6 +702,36 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "filter nodes on whether they have GPU support or not",
                         "name": "has_gpu",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU device ID",
+                        "name": "gpu_device_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU device partial name",
+                        "name": "gpu_device_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU vendor ID",
+                        "name": "gpu_vendor_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes based on GPU vendor partial name",
+                        "name": "gpu_vendor_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "filter nodes that have available GPU",
+                        "name": "gpu_available",
                         "in": "query"
                     }
                 ],
@@ -802,7 +886,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/types.NodeWithNestedCapacity"
+                            "$ref": "#/definitions/types.NodeStatistics"
                         }
                     },
                     "400": {
@@ -1240,6 +1324,9 @@ const docTemplate = `{
         "types.NodeGPU": {
             "type": "object",
             "properties": {
+                "contract": {
+                    "type": "integer"
+                },
                 "device": {
                     "type": "string"
                 },
@@ -1259,6 +1346,54 @@ const docTemplate = `{
                 },
                 "target": {
                     "type": "string"
+                }
+            }
+        },
+        "types.NodeStatistics": {
+            "type": "object",
+            "properties": {
+                "system": {
+                    "$ref": "#/definitions/types.NodeStatisticsResources"
+                },
+                "total": {
+                    "$ref": "#/definitions/types.NodeStatisticsResources"
+                },
+                "used": {
+                    "$ref": "#/definitions/types.NodeStatisticsResources"
+                },
+                "users": {
+                    "$ref": "#/definitions/types.NodeStatisticsUsers"
+                }
+            }
+        },
+        "types.NodeStatisticsResources": {
+            "type": "object",
+            "properties": {
+                "cru": {
+                    "type": "integer"
+                },
+                "hru": {
+                    "type": "integer"
+                },
+                "ipv4u": {
+                    "type": "integer"
+                },
+                "mru": {
+                    "type": "integer"
+                },
+                "sru": {
+                    "type": "integer"
+                }
+            }
+        },
+        "types.NodeStatisticsUsers": {
+            "type": "object",
+            "properties": {
+                "deployments": {
+                    "type": "integer"
+                },
+                "workloads": {
+                    "type": "integer"
                 }
             }
         },
@@ -1360,10 +1495,10 @@ const docTemplate = `{
         "types.PublicIP": {
             "type": "object",
             "properties": {
-                "contractId": {
+                "contract_id": {
                     "type": "integer"
                 },
-                "farmId": {
+                "farm_id": {
                     "type": "string"
                 },
                 "gateway": {

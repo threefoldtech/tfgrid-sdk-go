@@ -13,6 +13,7 @@ type Database interface {
 	GetFarms(filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error)
 	GetTwins(filter types.TwinFilter, limit types.Limit) ([]types.Twin, uint, error)
 	GetContracts(filter types.ContractFilter, limit types.Limit) ([]DBContract, uint, error)
+	UpsertNodesGPU(nodesGPU []types.NodeGPU) error
 }
 
 // DBContract is contract info
@@ -64,7 +65,7 @@ type Node struct {
 	Longitude       *float64
 	Latitude        *float64
 	Power           NodePower `gorm:"type:jsonb"`
-	HasGPU          bool
+	NumGPU          int       `gorm:"num_gpu"`
 	ExtraFee        uint64
 }
 
@@ -90,4 +91,16 @@ type Farm struct {
 type NodesDistribution struct {
 	Country string `json:"country"`
 	Nodes   int64  `json:"nodes"`
+}
+
+type NodeGPU struct {
+	NodeTwinID int    `gorm:"primaryKey;autoIncrement:false"`
+	ID         string `gorm:"primaryKey"`
+	Vendor     string
+	Device     string
+	Contract   int
+}
+
+func (NodeGPU) TableName() string {
+	return "node_gpu"
 }

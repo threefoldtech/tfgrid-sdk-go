@@ -85,7 +85,7 @@ func TestNode(t *testing.T) {
 		remoteNodes, _, err := proxyClient.Nodes(f, l)
 		assert.NoError(t, err)
 		err = validateResults(localNodes, remoteNodes, false)
-		assert.NoError(t, err, serializeFilter(f))
+		assert.NoError(t, err, SerializeFilter(f))
 	})
 
 	t.Run("node status test", func(t *testing.T) {
@@ -115,7 +115,7 @@ func TestNode(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, len(localNodes), len(remoteNodes))
 			err = validateResults(localNodes, remoteNodes, f.AvailableFor != nil)
-			assert.NoError(t, err, serializeFilter(f))
+			assert.NoError(t, err, SerializeFilter(f))
 		}
 	})
 
@@ -160,6 +160,41 @@ func TestNode(t *testing.T) {
 			assert.Equal(t, node.NumGPU, 1, "has_gpu filter did not work")
 		}
 	})
+
+	t.Run("nodes test gpu vendor, device name filter", func(t *testing.T) {
+		device := "navi"
+		vendor := "advanced"
+		nodes, _, err := proxyClient.Nodes(proxytypes.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		localNodes, _, err := localClient.Nodes(proxytypes.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(nodes), len(localNodes), "gpu_device_name, gpu_vendor_name filters did not work")
+	})
+
+	t.Run("nodes test gpu vendor, device id filter", func(t *testing.T) {
+		device := "744c"
+		vendor := "1002"
+		nodes, _, err := proxyClient.Nodes(proxytypes.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		localNodes, _, err := localClient.Nodes(proxytypes.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(nodes), len(localNodes), "gpu_device_id, gpu_vendor_id filters did not work")
+	})
+
+	t.Run("nodes test gpu available", func(t *testing.T) {
+		available := false
+		nodes, _, err := proxyClient.Nodes(proxytypes.NodeFilter{GpuAvailable: &available}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		localNodes, _, err := localClient.Nodes(proxytypes.NodeFilter{GpuAvailable: &available}, proxytypes.Limit{})
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(nodes), len(localNodes), "gpu_available filter did not work")
+	})
 }
 
 func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
@@ -187,7 +222,7 @@ func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClie
 		assert.NoError(t, err)
 		assert.Equal(t, remoteCount, localCount, "local and remote counts are not equal")
 		err = validateResults(localNodes, remoteNodes, false)
-		assert.NoError(t, err, serializeFilter(f))
+		assert.NoError(t, err, SerializeFilter(f))
 		if l.Page*l.Size >= uint64(localCount) {
 			break
 		}
@@ -489,69 +524,4 @@ func validateResults(local, remote []proxytypes.Node, unordered bool) error {
 		return errors.New("length mismatch")
 	}
 	return nil
-}
-
-func serializeFilter(f proxytypes.NodeFilter) string {
-	res := ""
-	if f.Status != nil {
-		res = fmt.Sprintf("%sstatus: %s\n", res, *f.Status)
-	}
-	if f.FreeMRU != nil {
-		res = fmt.Sprintf("%sFreeMRU: %d\n", res, *f.FreeMRU)
-	}
-	if f.FreeSRU != nil {
-		res = fmt.Sprintf("%sFreeSRU: %d\n", res, *f.FreeSRU)
-	}
-	if f.FreeHRU != nil {
-		res = fmt.Sprintf("%sFreeHRU: %d\n", res, *f.FreeHRU)
-	}
-	if f.TotalCRU != nil {
-		res = fmt.Sprintf("%sTotalCRU: %d\n", res, *f.TotalCRU)
-	}
-	if f.TotalHRU != nil {
-		res = fmt.Sprintf("%sTotalHRU: %d\n", res, *f.TotalHRU)
-	}
-	if f.TotalMRU != nil {
-		res = fmt.Sprintf("%sTotalMRU: %d\n", res, *f.TotalMRU)
-	}
-	if f.TotalSRU != nil {
-		res = fmt.Sprintf("%sTotalSRU: %d\n", res, *f.TotalSRU)
-	}
-	if f.Country != nil {
-		res = fmt.Sprintf("%sCountry: %s\n", res, *f.Country)
-	}
-	if f.City != nil {
-		res = fmt.Sprintf("%sCity: %s\n", res, *f.City)
-	}
-	if f.FarmName != nil {
-		res = fmt.Sprintf("%sFarmName: %s\n", res, *f.FarmName)
-	}
-	if f.FarmIDs != nil {
-		res = fmt.Sprintf("%sFarmIDs: %v\n", res, f.FarmIDs)
-	}
-	if f.FreeIPs != nil {
-		res = fmt.Sprintf("%sFreeIPs: %d\n", res, *f.FreeIPs)
-	}
-	if f.IPv4 != nil {
-		res = fmt.Sprintf("%sIPv4: %t\n", res, *f.IPv4)
-	}
-	if f.IPv6 != nil {
-		res = fmt.Sprintf("%sIPv6: %t\n", res, *f.IPv6)
-	}
-	if f.Domain != nil {
-		res = fmt.Sprintf("%sDomain: %t\n", res, *f.Domain)
-	}
-	if f.Rentable != nil {
-		res = fmt.Sprintf("%sRentable: %t\n", res, *f.Rentable)
-	}
-	if f.Rentable != nil {
-		res = fmt.Sprintf("%sRentable: %t\n", res, *f.Rentable)
-	}
-	if f.AvailableFor != nil {
-		res = fmt.Sprintf("%sAvailableFor: %d\n", res, *f.AvailableFor)
-	}
-	if f.Rented != nil {
-		res = fmt.Sprintf("%sRented: %t\n", res, *f.Rented)
-	}
-	return res
 }

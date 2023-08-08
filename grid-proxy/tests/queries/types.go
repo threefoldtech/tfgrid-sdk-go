@@ -59,7 +59,6 @@ type node struct {
 	updated_at        uint64
 	location_id       string
 	power             nodePower `gorm:"type:jsonb"`
-	HasGPU            bool
 	ExtraFee          uint64
 }
 
@@ -150,4 +149,12 @@ type name_contract struct {
 	name         string
 	state        string
 	created_at   uint64
+}
+
+type node_gpu struct {
+	node_twin_id uint64
+	id           string
+	vendor       string
+	device       string
+	contract     int
 }

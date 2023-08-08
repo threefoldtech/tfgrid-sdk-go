@@ -182,6 +182,8 @@ definitions:
     type: object
   types.NodeGPU:
     properties:
+      contract:
+        type: integer
       device:
         type: string
       id:
@@ -195,6 +197,37 @@ definitions:
         type: string
       target:
         type: string
+    type: object
+  types.NodeStatistics:
+    properties:
+      system:
+        $ref: '#/definitions/types.NodeStatisticsResources'
+      total:
+        $ref: '#/definitions/types.NodeStatisticsResources'
+      used:
+        $ref: '#/definitions/types.NodeStatisticsResources'
+      users:
+        $ref: '#/definitions/types.NodeStatisticsUsers'
+    type: object
+  types.NodeStatisticsResources:
+    properties:
+      cru:
+        type: integer
+      hru:
+        type: integer
+      ipv4u:
+        type: integer
+      mru:
+        type: integer
+      sru:
+        type: integer
+    type: object
+  types.NodeStatisticsUsers:
+    properties:
+      deployments:
+        type: integer
+      workloads:
+        type: integer
     type: object
   types.NodeWithNestedCapacity:
     properties:
@@ -261,9 +294,9 @@ definitions:
     type: object
   types.PublicIP:
     properties:
-      contractId:
+      contract_id:
         type: integer
-      farmId:
+      farm_id:
         type: string
       gateway:
         type: string
@@ -449,6 +482,27 @@ paths:
         in: query
         name: node_free_sru
         type: integer
+      - description: Node status for at least a single node that belongs to the farm
+        in: query
+        name: node_status
+        type: string
+      - description: Twin ID of user who has at least one rented node in the farm
+        in: query
+        name: node_rented_by
+        type: integer
+      - description: Twin ID of user for whom there is at least one node that is available
+          to be deployed to in the farm
+        in: query
+        name: node_available_for
+        type: integer
+      - description: True for farms who have at least one node with a GPU
+        in: query
+        name: node_has_gpu
+        type: boolean
+      - description: True for farms who have at least one certified node
+        in: query
+        name: node_certified
+        type: boolean
       produces:
       - application/json
       responses:
@@ -646,6 +700,22 @@ paths:
         in: query
         name: free_sru
         type: integer
+      - description: Total mru in bytes
+        in: query
+        name: total_mru
+        type: integer
+      - description: Total cru number
+        in: query
+        name: total_cru
+        type: integer
+      - description: Total sru in bytes
+        in: query
+        name: total_sru
+        type: integer
+      - description: Total hru in bytes
+        in: query
+        name: total_hru
+        type: integer
       - description: Min number of free ips in the farm of the node
         in: query
         name: free_ips
@@ -714,6 +784,26 @@ paths:
       - description: filter nodes on whether they have GPU support or not
         in: query
         name: has_gpu
+        type: boolean
+      - description: filter nodes based on GPU device ID
+        in: query
+        name: gpu_device_id
+        type: string
+      - description: filter nodes based on GPU device partial name
+        in: query
+        name: gpu_device_name
+        type: string
+      - description: filter nodes based on GPU vendor ID
+        in: query
+        name: gpu_vendor_id
+        type: string
+      - description: filter nodes based on GPU vendor partial name
+        in: query
+        name: gpu_vendor_name
+        type: string
+      - description: filter nodes that have available GPU
+        in: query
+        name: gpu_available
         type: boolean
       produces:
       - application/json
@@ -818,7 +908,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/types.NodeWithNestedCapacity'
+            $ref: '#/definitions/types.NodeStatistics'
         "400":
           description: Bad Request
           schema:

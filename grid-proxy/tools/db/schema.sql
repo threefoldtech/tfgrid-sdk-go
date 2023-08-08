@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.9 (Debian 12.9-1.pgdg110+1)
--- Dumped by pg_dump version 12.9 (Debian 12.9-1.pgdg110+1)
+-- Dumped from database version 15.3 (Debian 15.3-1.pgdg110+1)
+-- Dumped by pg_dump version 15.3 (Ubuntu 15.3-0ubuntu0.23.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -25,9 +25,6 @@ CREATE SCHEMA substrate_threefold_status;
 
 ALTER SCHEMA substrate_threefold_status OWNER TO postgres;
 
---
--- Name: node_resources(integer); Type: FUNCTION; Schema: public; Owner: postgres
---
 
 SET default_tablespace = '';
 
@@ -330,7 +327,6 @@ CREATE TABLE public.node (
     certification character varying(9),
     connection_price integer,
     power jsonb,
-    has_gpu boolean,
     extra_fee numeric
 );
 
@@ -357,6 +353,21 @@ CREATE TABLE public.node_contract (
 
 
 ALTER TABLE public.node_contract OWNER TO postgres;
+
+--
+-- Name: node_gpu; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.node_gpu (
+    node_twin_id bigint NOT NULL,
+    id text NOT NULL,
+    vendor text,
+    device text,
+    contract bigint
+);
+
+
+ALTER TABLE public.node_gpu OWNER TO postgres;
 
 --
 -- Name: node_resources_free; Type: TABLE; Schema: public; Owner: postgres
@@ -422,9 +433,10 @@ CREATE VIEW public.nodes_resources_view AS
     COALESCE(node_resources_total.cru, (0)::numeric) AS total_cru,
     COALESCE(node_resources_total.mru, (0)::numeric) AS total_mru,
     COALESCE(node_resources_total.hru, (0)::numeric) AS total_hru,
-    COALESCE(node_resources_total.sru, (0)::numeric) AS total_sru
+    COALESCE(node_resources_total.sru, (0)::numeric) AS total_sru,
+    COALESCE(count(DISTINCT node_contract.state), (0)::bigint) AS states
    FROM (((public.contract_resources
-     JOIN public.node_contract node_contract ON ((((node_contract.resources_used_id)::text = (contract_resources.id)::text) AND ((node_contract.state)::text = 'Created'::text))))
+     JOIN public.node_contract node_contract ON ((((node_contract.resources_used_id)::text = (contract_resources.id)::text) AND ((node_contract.state)::text = ANY ((ARRAY['Created'::character varying, 'GracePeriod'::character varying])::text[])))))
      RIGHT JOIN public.node node ON ((node.node_id = node_contract.node_id)))
      JOIN public.node_resources_total node_resources_total ON (((node_resources_total.node_id)::text = (node.id)::text)))
   GROUP BY node.node_id, node_resources_total.mru, node_resources_total.sru, node_resources_total.hru, node_resources_total.cru;
@@ -885,6 +897,15 @@ ALTER TABLE ONLY public.node_resources_total
 
 
 --
+-- Name: node_gpu node_gpu_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.node_gpu
+    ADD CONSTRAINT node_gpu_pkey PRIMARY KEY (node_twin_id, id);
+
+
+
+--
 -- Name: status status_pkey; Type: CONSTRAINT; Schema: substrate_threefold_status; Owner: postgres
 --
 
@@ -1060,3 +1081,4 @@ ALTER TABLE ONLY public.node_resources_total
 --
 -- PostgreSQL database dump complete
 --
+

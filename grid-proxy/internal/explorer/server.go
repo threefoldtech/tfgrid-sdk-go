@@ -48,6 +48,11 @@ const (
 // @Param node_free_mru query int false "Min free reservable mru for at least a single node that belongs to the farm, in bytes"
 // @Param node_free_hru query int false "Min free reservable hru for at least a single node that belongs to the farm, in bytes"
 // @Param node_free_sru query int false "Min free reservable sru for at least a single node that belongs to the farm, in bytes"
+// @Param node_status query string false "Node status for at least a single node that belongs to the farm"
+// @Param node_rented_by query int false "Twin ID of user who has at least one rented node in the farm"
+// @Param node_available_for query int false "Twin ID of user for whom there is at least one node that is available to be deployed to in the farm"
+// @Param node_has_gpu query bool false "True for farms who have at least one node with a GPU"
+// @Param node_certified query bool false "True for farms who have at least one certified node"
 // @Success 200 {object} []types.Farm
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -117,6 +122,10 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"
 // @Param free_sru query int false "Min free reservable sru in bytes"
+// @Param total_mru query int false "Total mru in bytes"
+// @Param total_cru query int false "Total cru number"
+// @Param total_sru query int false "Total sru in bytes"
+// @Param total_hru query int false "Total hru in bytes"
 // @Param free_ips query int false "Min number of free ips in the farm of the node"
 // @Param status query string false "Node status filter, 'up': for only up nodes, 'down': for only down nodes & 'standby' for powered-off nodes by farmerbot."
 // @Param city query string false "Node city filter"
@@ -133,6 +142,11 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param farm_ids query string false "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')"
 // @Param certification_type query string false "certificate type NotCertified, Silver or Gold" Enums(NotCertified, Silver, Gold)
 // @Param has_gpu query bool false "filter nodes on whether they have GPU support or not"
+// @Param gpu_device_id query string false "filter nodes based on GPU device ID"
+// @Param gpu_device_name query string false "filter nodes based on GPU device partial name"
+// @Param gpu_vendor_id query string false "filter nodes based on GPU vendor ID"
+// @Param gpu_vendor_name query string false "filter nodes based on GPU vendor partial name"
+// @Param gpu_available query bool false "filter nodes that have available GPU"
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -397,7 +411,7 @@ func (a *App) version(r *http.Request) (interface{}, mw.Response) {
 // @Param node_id path int yes "Node ID"
 // @Accept  json
 // @Produce  json
-// @Success 200 {object} types.NodeWithNestedCapacity
+// @Success 200 {object} types.NodeStatistics
 // @Failure 400 {object} string
 // @Failure 404 {object} string
 // @Failure 500 {object} string
