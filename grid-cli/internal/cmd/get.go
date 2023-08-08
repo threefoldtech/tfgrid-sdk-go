@@ -22,8 +22,8 @@ func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID ui
 
 }
 
-// GetDeployment gets a deployment with its project name
-func GetDeployment(t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
+// GetVM gets a vm with its project name
+func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
 	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
 	if err != nil {
 		return workloads.Deployment{}, err
@@ -101,4 +101,20 @@ func GetGatewayFQDN(t deployer.TFPluginClient, name string) (workloads.GatewayFQ
 	}
 
 	return t.State.LoadGatewayFQDNFromGrid(nodeID, name, name)
+}
+
+// GetDeployment gets a deployment with its project name
+func GetDeployment(t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
+	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
+	if err != nil {
+		return workloads.Deployment{}, err
+	}
+
+	var nodeID uint32
+	for node, contractID := range nodeContractIDs {
+		checkIfExistAndAppend(t, node, contractID)
+		nodeID = node
+	}
+
+	return t.State.LoadDeploymentFromGrid(nodeID, name)
 }
