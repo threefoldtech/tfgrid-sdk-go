@@ -25,7 +25,7 @@ var deployZDBCmd = &cobra.Command{
 			return err
 		}
 
-		n, err := cmd.Flags().GetInt("n")
+		count, err := cmd.Flags().GetInt("count")
 		if err != nil {
 			return err
 		}
@@ -35,12 +35,12 @@ var deployZDBCmd = &cobra.Command{
 			return err
 		}
 
-		if len(names) > 0 && len(names) != n {
-			return fmt.Errorf("please provide '%d' names not '%d'", n, len(names))
+		if len(names) > 0 && len(names) != count {
+			return fmt.Errorf("please provide '%d' names not '%d'", count, len(names))
 		}
 
 		if len(names) == 0 {
-			for i := 0; i < n; i++ {
+			for i := 0; i < count; i++ {
 				names = append(names, fmt.Sprintf("%s%d", projectName, i))
 			}
 		}
@@ -92,7 +92,7 @@ var deployZDBCmd = &cobra.Command{
 		}
 
 		var zdbs []workloads.ZDB
-		for i := 0; i < n; i++ {
+		for i := 0; i < count; i++ {
 			if strings.TrimSpace(names[i]) == "" {
 				return fmt.Errorf("invalid empty name at index '%d'", i)
 			}
@@ -115,7 +115,7 @@ var deployZDBCmd = &cobra.Command{
 			nodes, err := deployer.FilterNodes(
 				cmd.Context(),
 				t,
-				filters.BuildZDBFilter(zdb, n, farm),
+				filters.BuildZDBFilter(zdb, count, farm),
 			)
 			if err != nil {
 				log.Fatal().Err(err).Send()
@@ -124,7 +124,7 @@ var deployZDBCmd = &cobra.Command{
 			node = uint32(nodes[0].NodeID)
 		}
 
-		resZDBs, err := command.DeployZDBs(cmd.Context(), t, projectName, zdbs, n, node)
+		resZDBs, err := command.DeployZDBs(cmd.Context(), t, projectName, zdbs, count, node)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -145,19 +145,19 @@ func init() {
 		log.Fatal().Err(err).Send()
 	}
 
-	deployZDBCmd.Flags().Int("size", 0, "disk size in gb of zdb")
+	deployZDBCmd.Flags().Int("size", 0, "hdd of zdb in gb")
 	err = deployZDBCmd.MarkFlagRequired("size")
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
 
-	deployZDBCmd.Flags().Int("n", 1, "number of zdbs to be deployed")
+	deployZDBCmd.Flags().Int("count", 1, "number of zdbs to be deployed")
 
 	deployZDBCmd.Flags().StringSlice("names", []string{}, "list of names of the zdb to be deployed")
 	deployZDBCmd.Flags().String("password", "", "password of the zdb")
 	deployZDBCmd.Flags().String("description", "", "description of the zdb")
 	deployZDBCmd.Flags().String("mode", "user", "mode of zdb, if it is user or seq")
-	deployZDBCmd.Flags().Bool("public", false, "make zdb public")
+	deployZDBCmd.Flags().Bool("public", false, "if zdb gets a public ip6")
 
 	deployZDBCmd.Flags().Uint32("node", 0, "node id that zdb should be deployed on")
 	deployZDBCmd.Flags().Uint64("farm", 1, "farm id that zdb should be deployed on")

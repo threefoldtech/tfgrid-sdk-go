@@ -11,18 +11,18 @@ tf-grid-cli deploy zdb [flags]
 ### Required Flags
 
 - project_name: project name for the ZDBs deployment also used for canceling the deployment. must be unique.
-- size: size of disk data in GB.
+- size: HDD of zdb in GB.
 
 ### Optional Flags
 
 - node: node id zdbs should be deployed on.
 - farm: farm id zdbs should be deployed on, if set choose available node from farm that fits zdbs deployment specs (default 1). note: node and farm flags cannot be set both.
-- n: number of zdbs to be deployed (default 1).
+- count: count of zdbs to be deployed (default 1).
 - names: a slice of names for the number of ZDBs.
 - password: passowrd for ZDBs deployed
 - description: description for your ZDBs, it's optional.
 - mode: the enumeration of the modes 0-db can operate in (default user).
-- public: if the namespace of the ZDB is public (default false).
+- public: if zdb gets a public ip6 (default false).
 
 Example:
 
@@ -41,7 +41,7 @@ $ tf-grid-cli deploy zdb --project_name examplezdb --size=10 --n=2 --password=pa
 tf-grid-cli get zdb <zdb-project-name>
 ```
 
-zdb-project-name is the name of the deployment specified in while deploying using tf-grid-cli.
+`zdb-project-name` is the name of the deployment specified in while deploying using tf-grid-cli.
 
 Example:
 
@@ -101,7 +101,7 @@ $ tf-grid-cli get zdb examplezdb
 tf-grid-cli cancel <zdb-project-name>
 ```
 
-zdb-project-name is the name of the deployment specified in while deploying using tf-grid-cli.
+`zdb-project-name` is the name of the deployment specified in while deploying using tf-grid-cli.
 
 Example:
 
