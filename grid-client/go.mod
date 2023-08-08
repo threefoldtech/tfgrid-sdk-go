@@ -14,7 +14,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.2
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.10.2
 	github.com/threefoldtech/zos v0.5.6-0.20230621094643-c1c26774b2a8
-	golang.org/x/crypto v0.8.0
+	golang.org/x/crypto v0.12.0
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b
 )
@@ -49,7 +49,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	golang.org/x/sync v0.2.0
-	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
