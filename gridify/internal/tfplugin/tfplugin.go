@@ -76,7 +76,7 @@ func (t *TFPluginClient) CancelByProjectName(projectName string) error {
 	return t.tfPluginClient.CancelByProjectName(projectName)
 }
 
-// GetAvailableNode returns nodes that match the given filter
+// GetAvailableNode returns nodes that match the given filter with rootfs specified in GBs
 func (t *TFPluginClient) GetAvailableNode(ctx context.Context, options types.NodeFilter, rootfs uint64) (uint32, error) {
 	nodes, err := deployer.FilterNodes(ctx, *t.tfPluginClient, options, nil, nil, []uint64{rootfs * 1024 * 1024 * 1024})
 	if err != nil {
