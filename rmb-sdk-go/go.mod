@@ -17,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230718094615-0e20bc81b066
 	github.com/tyler-smith/go-bip39 v1.1.0
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (
