@@ -11,7 +11,7 @@ require (
 	github.com/rs/zerolog v1.29.1
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230718094615-0e20bc81b066
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.2
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.4.0
 	github.com/threefoldtech/zos v0.5.6-0.20230621094643-c1c26774b2a8
 	golang.org/x/crypto v0.8.0
