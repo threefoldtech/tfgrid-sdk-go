@@ -11,34 +11,36 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
-// getVMCmd represents the get vm command
-var getVMCmd = &cobra.Command{
-	Use:   "vm",
-	Short: "Get deployed vm",
+// getZDBCmd represents the get zdb command
+var getZDBCmd = &cobra.Command{
+	Use:   "zdb",
+	Short: "Get deployed zdb",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.GetUserConfig()
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
+
 		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
 
-		vm, err := command.GetDeployment(t, args[0])
+		zdb, err := command.GetDeployment(t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		s, err := json.MarshalIndent(vm, "", "\t")
-		if err != nil {
-			log.Fatal().Err(err).Send()
-		}
-		log.Info().Msg("vm:\n" + string(s))
 
+		s, err := json.MarshalIndent(zdb, "", "\t")
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		log.Info().Msg("zdb:\n" + string(s))
 	},
 }
 
 func init() {
-	getCmd.AddCommand(getVMCmd)
+	getCmd.AddCommand(getZDBCmd)
 }

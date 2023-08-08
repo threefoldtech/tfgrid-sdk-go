@@ -22,8 +22,8 @@ func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID ui
 
 }
 
-// GetVM gets a vm with its project name
-func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
+// GetDeployment gets a deployment with its project name
+func GetDeployment(t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
 	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
 	if err != nil {
 		return workloads.Deployment{}, err

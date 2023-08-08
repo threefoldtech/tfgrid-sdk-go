@@ -2,7 +2,6 @@
 
 <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-53%25-brightgreen.svg?longCache=true&style=flat)</a> [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/tf-grid-cli-test.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/tf-grid-cli-test.yml) [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/tf-grid-cli-lint.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/tf-grid-cli-lint.yml)
 
-
 Threefold CLI to manage deployments on Threefold Grid.
 
 ## Usage
@@ -21,6 +20,7 @@ For examples and description of tf-grid-cli commands check out:
 - [gateway-fqdn](docs/gateway-fqdn.md)
 - [gateway-name](docs/gateway-name.md)
 - [kubernetes](docs/kubernetes.md)
+- [ZDB](docs/zdb.md)
 
 ## Download
 

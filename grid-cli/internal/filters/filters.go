@@ -36,6 +36,13 @@ func BuildGatewayFilter(farmID uint64) types.NodeFilter {
 	return buildGenericFilter(nil, nil, nil, []uint64{farmID}, &domain)
 }
 
+// BuildZDBFilter build a filter for a zdbs
+func BuildZDBFilter(zdb workloads.ZDB, n int, farmID uint64) types.NodeFilter {
+	freeSRUs := uint64(zdb.Size*n) / 1024
+	freeMRUs := uint64(0)
+	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, []uint64{farmID}, nil)
+}
+
 func buildGenericFilter(mrus, srus, ips *uint64, farmIDs []uint64, domain *bool) types.NodeFilter {
 	status := "up"
 	return types.NodeFilter{
