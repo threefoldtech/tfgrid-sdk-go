@@ -138,9 +138,21 @@ func (g *GridProxyClientimpl) Farms(filter proxytypes.FarmFilter, limit proxytyp
 			})
 		}
 	}
-	sort.Slice(res, func(i, j int) bool {
-		return res[i].FarmID < res[j].FarmID
-	})
+
+	if filter.NodeAvailableFor != nil {
+		sort.Slice(res, func(i, j int) bool {
+			f1 := g.data.farmHasRentedNode[uint64(res[i].FarmID)]
+			f2 := g.data.farmHasRentedNode[uint64(res[j].FarmID)]
+			lessFarmID := res[i].FarmID < res[j].FarmID
+
+			return f1 && !f2 || f1 && f2 && lessFarmID || !f1 && !f2 && lessFarmID
+		})
+	} else {
+		sort.Slice(res, func(i, j int) bool {
+			return res[i].FarmID < res[j].FarmID
+		})
+	}
+
 	start, end := (limit.Page-1)*limit.Size, limit.Page*limit.Size
 	if len(res) == 0 {
 		return
@@ -567,21 +579,24 @@ func farmSatisfies(data *DBData, farm farm, f proxytypes.FarmFilter) bool {
 	if f.Dedicated != nil && *f.Dedicated != farm.dedicated_farm {
 		return false
 	}
-	if f.NodeFreeHRU != nil || f.NodeFreeMRU != nil || f.NodeFreeSRU != nil {
-		if !satisfyFarmResourceFilter(farm, data, f) {
-			return false
-		}
+	if f.NodeCertified != nil && *f.NodeCertified != (farm.certification == "Certified") {
+		return false
 	}
+
+	if !satisfyFarmNodeFilters(farm, data, f) {
+		return false
+	}
+
 	return true
 }
 
-func satisfyFarmResourceFilter(farm farm, data *DBData, f proxytypes.FarmFilter) bool {
-	for _, val := range data.nodes {
-		if val.farm_id != farm.farm_id {
+func satisfyFarmNodeFilters(farm farm, data *DBData, f proxytypes.FarmFilter) bool {
+	for _, node := range data.nodes {
+		if node.farm_id != farm.farm_id {
 			continue
 		}
-		total := data.nodeTotalResources[val.node_id]
-		used := data.nodeUsedResources[val.node_id]
+		total := data.nodeTotalResources[node.node_id]
+		used := data.nodeUsedResources[node.node_id]
 		free := calcFreeResources(total, used)
 		if f.NodeFreeHRU != nil && free.hru < *f.NodeFreeHRU {
 			continue
@@ -592,6 +607,28 @@ func satisfyFarmResourceFilter(farm farm, data *DBData, f proxytypes.FarmFilter)
 		if f.NodeFreeSRU != nil && free.sru < *f.NodeFreeSRU {
 			continue
 		}
+		if f.NodeAvailableFor != nil && ((data.nodeRentedBy[node.node_id] != 0 && data.nodeRentedBy[node.node_id] != *f.NodeAvailableFor) ||
+			(data.nodeRentedBy[node.node_id] != *f.NodeAvailableFor && data.farms[node.farm_id].dedicated_farm)) {
+			continue
+		}
+
+		_, ok := data.gpus[node.twin_id]
+		if f.NodeHasGPU != nil && ok != *f.NodeHasGPU {
+			continue
+		}
+
+		if f.NodeRentedBy != nil && *f.NodeRentedBy != data.nodeRentedBy[node.node_id] {
+			continue
+		}
+
+		nodePower := proxytypes.NodePower{
+			State:  node.power.State,
+			Target: node.power.Target,
+		}
+		if f.NodeStatus != nil && *f.NodeStatus != nodestatus.DecideNodeStatus(nodePower, int64(node.updated_at)) {
+			continue
+		}
+
 		return true
 	}
 	return false

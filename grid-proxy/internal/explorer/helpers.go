@@ -187,23 +187,28 @@ func (a *App) handleFarmRequestsQueryParams(r *http.Request) (types.FarmFilter, 
 	var limit types.Limit
 
 	ints := map[string]**uint64{
-		"free_ips":          &filter.FreeIPs,
-		"total_ips":         &filter.TotalIPs,
-		"pricing_policy_id": &filter.PricingPolicyID,
-		"farm_id":           &filter.FarmID,
-		"twin_id":           &filter.TwinID,
-		"node_free_mru":     &filter.NodeFreeMRU,
-		"node_free_hru":     &filter.NodeFreeHRU,
-		"node_free_sru":     &filter.NodeFreeSRU,
+		"free_ips":           &filter.FreeIPs,
+		"total_ips":          &filter.TotalIPs,
+		"pricing_policy_id":  &filter.PricingPolicyID,
+		"farm_id":            &filter.FarmID,
+		"twin_id":            &filter.TwinID,
+		"node_free_mru":      &filter.NodeFreeMRU,
+		"node_free_hru":      &filter.NodeFreeHRU,
+		"node_free_sru":      &filter.NodeFreeSRU,
+		"node_available_for": &filter.NodeAvailableFor,
+		"node_rented_by":     &filter.NodeRentedBy,
 	}
 	strs := map[string]**string{
 		"name":               &filter.Name,
 		"name_contains":      &filter.NameContains,
 		"certification_type": &filter.CertificationType,
 		"stellar_address":    &filter.StellarAddress,
+		"node_status":        &filter.NodeStatus,
 	}
 	bools := map[string]**bool{
-		"dedicated": &filter.Dedicated,
+		"dedicated":      &filter.Dedicated,
+		"node_has_gpu":   &filter.NodeHasGPU,
+		"node_certified": &filter.NodeCertified,
 	}
 	if err := parseParams(r, ints, strs, bools, nil); err != nil {
 		return filter, limit, err

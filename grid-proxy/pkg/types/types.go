@@ -63,8 +63,8 @@ type Farm struct {
 type PublicIP struct {
 	ID         string `json:"id"`
 	IP         string `json:"ip"`
-	FarmID     string `json:"farmId"`
-	ContractID int    `json:"contractId"`
+	FarmID     string `json:"farm_id"`
+	ContractID int    `json:"contract_id"`
 	Gateway    string `json:"gateway"`
 }
 
@@ -133,6 +133,11 @@ type FarmFilter struct {
 	NodeFreeMRU       *uint64
 	NodeFreeHRU       *uint64
 	NodeFreeSRU       *uint64
+	NodeStatus        *string
+	NodeRentedBy      *uint64
+	NodeAvailableFor  *uint64
+	NodeHasGPU        *bool
+	NodeCertified     *bool
 }
 
 // TwinFilter twin filters

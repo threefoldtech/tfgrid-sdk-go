@@ -294,9 +294,9 @@ definitions:
     type: object
   types.PublicIP:
     properties:
-      contractId:
+      contract_id:
         type: integer
-      farmId:
+      farm_id:
         type: string
       gateway:
         type: string
@@ -478,6 +478,27 @@ paths:
         in: query
         name: node_free_sru
         type: integer
+      - description: Node status for at least a single node that belongs to the farm
+        in: query
+        name: node_status
+        type: string
+      - description: Twin ID of user who has at least one rented node in the farm
+        in: query
+        name: node_rented_by
+        type: integer
+      - description: Twin ID of user for whom there is at least one node that is available
+          to be deployed to in the farm
+        in: query
+        name: node_available_for
+        type: integer
+      - description: True for farms who have at least one node with a GPU
+        in: query
+        name: node_has_gpu
+        type: boolean
+      - description: True for farms who have at least one certified node
+        in: query
+        name: node_certified
+        type: boolean
       produces:
       - application/json
       responses:

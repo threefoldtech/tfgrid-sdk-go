@@ -15,6 +15,7 @@ type DBData struct {
 	nodeUsedResources  map[uint64]node_resources_total
 	nodeRentedBy       map[uint64]uint64
 	nodeRentContractID map[uint64]uint64
+	farmHasRentedNode  map[uint64]bool
 
 	nodes               map[uint64]node
 	nodeTotalResources  map[uint64]node_resources_total
@@ -127,6 +128,8 @@ func calcRentInfo(data *DBData) error {
 		}
 		data.nodeRentedBy[contract.node_id] = contract.twin_id
 		data.nodeRentContractID[contract.node_id] = contract.contract_id
+		farmID := data.nodes[contract.node_id].farm_id
+		data.farmHasRentedNode[farmID] = true
 	}
 	return nil
 }
@@ -522,6 +525,7 @@ func load(db *sql.DB) (DBData, error) {
 		nodeUsedResources:   make(map[uint64]node_resources_total),
 		nonDeletedContracts: make(map[uint64][]uint64),
 		gpus:                make(map[uint64]node_gpu),
+		farmHasRentedNode:   make(map[uint64]bool),
 		db:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {
