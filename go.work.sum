@@ -353,6 +353,7 @@ github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef/go.mod h1:cIg4er
 github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
+github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da h1:oI5xCqsCo564l8iNU+DwB5epxmsaqB+rhGL0m5jtYqE=
 github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/mock v1.1.1/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfbm0A=
 github.com/golang/mock v1.2.0/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfbm0A=
@@ -809,12 +810,4 @@ github.com/threefoldtech/rmb-sdk-go v0.0.0-20230214123537-4833a4e157e6/go.mod h1
 github.com/threefoldtech/rmb-sdk-go v1.0.0/go.mod h1:OFb7TpYhHa6YpWBJjsh6r7CX7uVbSPIJrk1QxlTT1jU=
 github.com/threefoldtech/rmb-sdk-go v1.0.1 h1:dyjPfLqOa9xhQjg1a3+pmTpJrflqCd/rreblUPGb2wU=
 github.com/threefoldtech/rmb-sdk-go v1.0.1/go.mod h1:DKMNAkL2+lc4iI+wemPx3z5q5Z9ww2uY7D25yIKpZH4=
-github.com/threefoldtech/substrate-client v0.1.5/go.mod h1:ys/GJLeLmNX8E36UFMeR0yZC5Lo4PufYtfwsVX8H/AM=
-github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.1.0/go.mod h1:HkvH7GqrKPLCAIPXUhcuwKVMCbgRX0HiCnfICf08MHE=
-github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.1.0/go.mod h1:fNse7PMQGKF6fWY7E58zjlHyqeNgNE4XX2dLdVAneCk=
-github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.4.0/go.mod h1:tttnc/l4F2lx1SyETTiLrMaiQEgMeGCvlVEIW6nUeJA=
-github.com/threefoldtech/zos v0.5.6-0.20230621094643-c1c26774b2a8 h1:1x+o9l/uFS8vCGcdkxB3WrM3xYtogOsM3cvHGn7c3fo=
-github.com/threefoldtech/zos v0.5.6-0.20230621094643-c1c26774b2a8/go.mod h1:KDLYu7igkUy1d2E+9rKFBeLY1iUs0zb2aj17ggue26c=
-golang.org/x/exp v0.0.0-20230206171751-46f607a40771 h1:xP7rWLUr1e1n2xkK5YB4LI0hPEy3LJC6Wk+D4pGlOJg=
-golang.org/x/exp v0.0.0-20230206171751-46f607a40771/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.zx2c4.com/wireguard v0.0.20200320 h1:1vE6zVeO7fix9cJX1Z9ZQ+ikPIIx7vIyU0o0tLDD88g=
