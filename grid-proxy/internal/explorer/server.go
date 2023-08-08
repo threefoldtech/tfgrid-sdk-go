@@ -42,7 +42,7 @@ const (
 // @Param twin_id query int false "twin id associated with the farm"
 // @Param name query string false "farm name"
 // @Param name_contains query string false "farm name contains"
-// @Param certification_type query string false "certificate type Diy or Certified"
+// @Param certification_type query string false "certificate type NotCertified, Silver or Gold" Enums(NotCertified, Silver, Gold)
 // @Param dedicated query bool false "farm is dedicated"
 // @Param stellar_address query string false "farm stellar_address"
 // @Param node_free_mru query int false "Min free reservable mru for at least a single node that belongs to the farm, in bytes"
@@ -140,7 +140,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param rented_by query int false "rented by twin id"
 // @Param available_for query int false "available for twin id"
 // @Param farm_ids query string false "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')"
-// @Param certification_type query string false "certificate type Diy or Certified"
+// @Param certification_type query string false "certificate type NotCertified, Silver or Gold" Enums(NotCertified, Silver, Gold)
 // @Param has_gpu query bool false "filter nodes on whether they have GPU support or not"
 // @Param gpu_device_id query string false "filter nodes based on GPU device ID"
 // @Param gpu_device_name query string false "filter nodes based on GPU device partial name"
@@ -181,7 +181,7 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param rented_by query int false "rented by twin id"
 // @Param available_for query int false "available for twin id"
 // @Param farm_ids query string false "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')"
-// @Param certification_type query string false "certificate type Diy or Certified"
+// @Param certification_type query string false "certificate type NotCertified, Silver or Gold" Enums(NotCertified, Silver, Gold)
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string

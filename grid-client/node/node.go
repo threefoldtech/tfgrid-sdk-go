@@ -55,7 +55,6 @@
 //		panic("failed to create hash")
 //	}
 //
-// fmt.Printf("Hash: %x\n", hash)
 // ```
 // create the contract and ge the contract id
 // then
@@ -455,6 +454,20 @@ func (n *NodeClient) GetNodeEndpoint(ctx context.Context) (net.IP, error) {
 func (n *NodeClient) Pools(ctx context.Context) (pools []PoolMetrics, err error) {
 	const cmd = "zos.storage.pools"
 	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &pools)
+	return
+}
+
+type GPU struct {
+	ID       string `json:"id"`
+	Vendor   string `json:"vendor"`
+	Device   string `json:"device"`
+	Contract uint64 `json:"contract"`
+}
+
+// GPUs returns a list of gpus
+func (n *NodeClient) GPUs(ctx context.Context) (gpus []GPU, err error) {
+	const cmd = "zos.gpu.list"
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &gpus)
 	return
 }
 

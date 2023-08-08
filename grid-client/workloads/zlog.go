@@ -11,8 +11,8 @@ import (
 
 // Zlog logger struct
 type Zlog struct {
-	Zmachine string
-	Output   string
+	Zmachine string `json:"zmachine"`
+	Output   string `json:"output"`
 }
 
 // ZosWorkload generates a zlog workload

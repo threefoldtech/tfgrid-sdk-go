@@ -451,7 +451,11 @@ paths:
         in: query
         name: name_contains
         type: string
-      - description: certificate type Diy or Certified
+      - description: certificate type NotCertified, Silver or Gold
+        enum:
+        - NotCertified
+        - Silver
+        - Gold
         in: query
         name: certification_type
         type: string
@@ -606,7 +610,11 @@ paths:
         in: query
         name: farm_ids
         type: string
-      - description: certificate type Diy or Certified
+      - description: certificate type NotCertified, Silver or Gold
+        enum:
+        - NotCertified
+        - Silver
+        - Gold
         in: query
         name: certification_type
         type: string
@@ -765,7 +773,11 @@ paths:
         in: query
         name: farm_ids
         type: string
-      - description: certificate type Diy or Certified
+      - description: certificate type NotCertified, Silver or Gold
+        enum:
+        - NotCertified
+        - Silver
+        - Gold
         in: query
         name: certification_type
         type: string

@@ -213,8 +213,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "NotCertified",
+                            "Silver",
+                            "Gold"
+                        ],
                         "type": "string",
-                        "description": "certificate type Diy or Certified",
+                        "description": "certificate type NotCertified, Silver or Gold",
                         "name": "certification_type",
                         "in": "query"
                     },
@@ -439,8 +444,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "NotCertified",
+                            "Silver",
+                            "Gold"
+                        ],
                         "type": "string",
-                        "description": "certificate type Diy or Certified",
+                        "description": "certificate type NotCertified, Silver or Gold",
                         "name": "certification_type",
                         "in": "query"
                     }
@@ -678,8 +688,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "NotCertified",
+                            "Silver",
+                            "Gold"
+                        ],
                         "type": "string",
-                        "description": "certificate type Diy or Certified",
+                        "description": "certificate type NotCertified, Silver or Gold",
                         "name": "certification_type",
                         "in": "query"
                     },

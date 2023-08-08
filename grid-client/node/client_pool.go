@@ -43,8 +43,7 @@ func (p *NodeClientPool) GetNodeClient(sub subi.SubstrateExt, nodeID uint32) (*N
 		return nil, errors.Wrapf(err, "failed to get node %d", nodeID)
 	}
 
-	cl = NewNodeClient(uint32(twinID), p.rmb, p.timeout)
-	p.nodeClients.Store(nodeID, cl)
+	cl, _ = p.nodeClients.LoadOrStore(nodeID, NewNodeClient(uint32(twinID), p.rmb, p.timeout))
 
 	return cl.(*NodeClient), nil
 }

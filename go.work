@@ -1,6 +1,7 @@
 go 1.19
 
 use (
+	./activation-service
 	./grid-cli
 	./grid-client
 	./grid-proxy
