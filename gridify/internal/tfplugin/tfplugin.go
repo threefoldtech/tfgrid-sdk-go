@@ -20,7 +20,7 @@ type TFPluginClientInterface interface {
 	LoadGatewayNameFromGrid(nodeID uint32, name string, deploymentName string) (workloads.GatewayNameProxy, error)
 	ListContractsOfProjectName(projectName string) (graphql.Contracts, error)
 	CancelByProjectName(projectName string) error
-	GetAvailableNode(ctx context.Context, options types.NodeFilter) (uint32, error)
+	GetAvailableNode(ctx context.Context, options types.NodeFilter, rootfs uint64) (uint32, error)
 	GetGridNetwork() string
 	SetState(nodeID uint32, contractIDs []uint64)
 }
@@ -77,8 +77,8 @@ func (t *TFPluginClient) CancelByProjectName(projectName string) error {
 }
 
 // GetAvailableNode returns nodes that match the given filter
-func (t *TFPluginClient) GetAvailableNode(ctx context.Context, options types.NodeFilter) (uint32, error) {
-	nodes, err := deployer.FilterNodes(ctx, *t.tfPluginClient, options)
+func (t *TFPluginClient) GetAvailableNode(ctx context.Context, options types.NodeFilter, rootfs uint64) (uint32, error) {
+	nodes, err := deployer.FilterNodes(ctx, *t.tfPluginClient, options, nil, nil, []uint64{rootfs * 1024 * 1024 * 1024})
 	if err != nil {
 		return 0, err
 	}

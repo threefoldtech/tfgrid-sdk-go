@@ -43,6 +43,9 @@ var deployGatewayNameCmd = &cobra.Command{
 				cmd.Context(),
 				t,
 				filters.BuildGatewayFilter(farm),
+				nil,
+				nil,
+				nil,
 			)
 			if err != nil {
 				log.Fatal().Err(err).Send()

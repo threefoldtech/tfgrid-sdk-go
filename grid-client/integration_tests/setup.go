@@ -18,9 +18,11 @@ import (
 )
 
 var (
-	trueVal  = true
-	statusUp = "up"
-	value1   = uint64(1)
+	trueVal   = true
+	falseVal  = false
+	statusUp  = "up"
+	value1    = uint64(1)
+	minRootfs = *convertGBToBytes(2)
 )
 
 var nodeFilter = types.NodeFilter{
@@ -29,7 +31,7 @@ var nodeFilter = types.NodeFilter{
 	FreeHRU: convertGBToBytes(2),
 	FreeMRU: convertGBToBytes(2),
 	FarmIDs: []uint64{1},
-	IPv6:    &trueVal,
+	Rented:  &falseVal,
 }
 
 func convertGBToBytes(gb uint64) *uint64 {

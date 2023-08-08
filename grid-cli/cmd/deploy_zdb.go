@@ -112,10 +112,14 @@ var deployZDBCmd = &cobra.Command{
 		}
 
 		if node == 0 {
+			filter, disks := filters.BuildZDBFilter(zdb, count, farm)
 			nodes, err := deployer.FilterNodes(
 				cmd.Context(),
 				t,
-				filters.BuildZDBFilter(zdb, count, farm),
+				filter,
+				nil,
+				disks,
+				nil,
 			)
 			if err != nil {
 				log.Fatal().Err(err).Send()

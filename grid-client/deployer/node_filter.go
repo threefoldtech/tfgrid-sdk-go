@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -16,7 +17,7 @@ import (
 )
 
 // FilterNodes filters nodes using proxy
-func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter) ([]types.Node, error) {
+func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64) ([]types.Node, error) {
 	nodes, _, err := tfPlugin.GridProxyClient.Nodes(options, types.Limit{})
 	if err != nil {
 		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
@@ -26,11 +27,19 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		return []types.Node{}, errors.Errorf("could not find any node with options: %+v", serializeOptions(options))
 	}
 
-	// if no sru needed
-	if options.FreeSRU == nil {
+	// if no storage needed
+	if options.FreeSRU == nil && options.FreeHRU == nil {
 		return nodes, nil
 	}
+	sort.Slice(ssdDisks, func(i, j int) bool {
+		return ssdDisks[i] > ssdDisks[j]
+	})
+	// add rootfs at the end to as zos provisions zmounts first.
+	ssdDisks = append(ssdDisks, rootfs...)
 
+	sort.Slice(hddDisks, func(i, j int) bool {
+		return hddDisks[i] > hddDisks[j]
+	})
 	// check pools
 	var nodePools []types.Node
 	for _, node := range nodes {
@@ -42,7 +51,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		if err != nil {
 			return []types.Node{}, errors.Wrapf(err, "failed to get node '%d' pools", node.NodeID)
 		}
-		if hasEnoughStorage(pools, *options.FreeSRU) {
+		if hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) && hasEnoughStorage(pools, ssdDisks, zos.HDDDevice) {
 			nodePools = append(nodePools, node)
 		}
 	}
@@ -66,10 +75,16 @@ func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes 
 		preferredNodesSet[int(node)] = struct{}{}
 	}
 
-	nodes, err := FilterNodes(ctx, tfPlugin, types.NodeFilter{
-		IPv4:   &trueVal,
-		Status: &statusUp,
-	})
+	nodes, err := FilterNodes(
+		ctx,
+		tfPlugin,
+		types.NodeFilter{
+			IPv4:   &trueVal,
+			Status: &statusUp,
+		},
+		nil,
+		nil,
+		nil)
 	if err != nil {
 		return 0, err
 	}
@@ -125,16 +140,28 @@ func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes 
 	return 0, errors.New("no nodes with public ipv4")
 }
 
-func hasEnoughStorage(pools []client.PoolMetrics, storage uint64) bool {
+// hasEnoughStorage checks if all deployment storage requirements can be satisfied with node's pools based on given disks order.
+func hasEnoughStorage(pools []client.PoolMetrics, storages []uint64, poolType zos.DeviceType) bool {
+	filteredPools := make([]client.PoolMetrics, 0)
 	for _, pool := range pools {
-		if pool.Type != zos.SSDDevice {
-			continue
-		}
-		if pool.Size-pool.Used > gridtypes.Unit(storage) {
-			return true
+		if pool.Type == poolType {
+			filteredPools = append(filteredPools, pool)
 		}
 	}
-	return false
+	if len(filteredPools) == 0 {
+		return false
+	}
+	for _, storage := range storages {
+		sort.Slice(filteredPools, func(i, j int) bool {
+			return (filteredPools[i].Size - filteredPools[i].Used) > (filteredPools[j].Size - filteredPools[j].Used)
+		})
+		// assuming zos provision to the largest pool always
+		if filteredPools[0].Size-filteredPools[0].Used < gridtypes.Unit(storage) {
+			return false
+		}
+		filteredPools[0].Used += gridtypes.Unit(storage)
+	}
+	return true
 }
 
 func serializeOptions(options types.NodeFilter) string {
