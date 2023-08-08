@@ -102,6 +102,28 @@ func DeployGatewayFQDN(ctx context.Context, t deployer.TFPluginClient, gateway w
 	return nil
 }
 
+// DeployZDBs deploys multiple zdbs
+func DeployZDBs(ctx context.Context, t deployer.TFPluginClient, projectName string, zdbs []workloads.ZDB, n int, node uint32) ([]workloads.ZDB, error) {
+	dl := workloads.NewDeployment(projectName, node, projectName, nil, "", nil, zdbs, nil, nil)
+	log.Info().Msgf("deploying zdbs")
+	err := t.DeploymentDeployer.Deploy(ctx, &dl)
+	if err != nil {
+		return []workloads.ZDB{}, errors.Wrapf(err, "failed to deploy zdbs on node %d", node)
+	}
+
+	var resZDBs []workloads.ZDB
+	for _, zdb := range zdbs {
+		resZDB, err := t.State.LoadZdbFromGrid(node, zdb.Name, dl.Name)
+		if err != nil {
+			return []workloads.ZDB{}, errors.Wrapf(err, "failed to load zdb '%s' from node %d", zdb.Name, node)
+		}
+
+		resZDBs = append(resZDBs, resZDB)
+	}
+
+	return resZDBs, nil
+}
+
 func buildNetwork(name, projectName string, nodes []uint32) workloads.ZNet {
 	return workloads.ZNet{
 		Name:  name,
