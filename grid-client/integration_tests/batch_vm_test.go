@@ -23,7 +23,7 @@ func TestBatchVMDeployment(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	assert.NoError(t, err)
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
 	if err != nil || len(nodes) < 2 {
 		t.Skip("no available nodes found")
 	}

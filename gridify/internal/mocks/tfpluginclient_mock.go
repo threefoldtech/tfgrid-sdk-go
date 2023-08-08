@@ -94,18 +94,18 @@ func (mr *MockTFPluginClientInterfaceMockRecorder) DeployNetwork(ctx, znet inter
 }
 
 // GetAvailableNode mocks base method.
-func (m *MockTFPluginClientInterface) GetAvailableNode(ctx context.Context, options types.NodeFilter) (uint32, error) {
+func (m *MockTFPluginClientInterface) GetAvailableNode(ctx context.Context, options types.NodeFilter, rootfs uint64) (uint32, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAvailableNode", ctx, options)
+	ret := m.ctrl.Call(m, "GetAvailableNode", ctx, options, rootfs)
 	ret0, _ := ret[0].(uint32)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAvailableNode indicates an expected call of GetAvailableNode.
-func (mr *MockTFPluginClientInterfaceMockRecorder) GetAvailableNode(ctx, options interface{}) *gomock.Call {
+func (mr *MockTFPluginClientInterfaceMockRecorder) GetAvailableNode(ctx, options, rootfs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableNode", reflect.TypeOf((*MockTFPluginClientInterface)(nil).GetAvailableNode), ctx, options)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableNode", reflect.TypeOf((*MockTFPluginClientInterface)(nil).GetAvailableNode), ctx, options, rootfs)
 }
 
 // GetGridNetwork mocks base method.

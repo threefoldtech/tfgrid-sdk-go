@@ -61,7 +61,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			GetAvailableNode(gomock.Any(), filter).
+			GetAvailableNode(gomock.Any(), filter, uint64(Eco.Storage)).
 			Return(uint32(0), errors.New("error"))
 
 		clientMock.
@@ -81,7 +81,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			GetAvailableNode(gomock.Any(), filter).
+			GetAvailableNode(gomock.Any(), filter, uint64(Eco.Storage)).
 			Return(uint32(1), nil)
 
 		clientMock.
@@ -101,7 +101,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			GetAvailableNode(gomock.Any(), filter).
+			GetAvailableNode(gomock.Any(), filter, uint64(Eco.Storage)).
 			Return(uint32(1), nil)
 
 		clientMock.
@@ -126,7 +126,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			GetAvailableNode(gomock.Any(), filter).
+			GetAvailableNode(gomock.Any(), filter, uint64(Eco.Storage)).
 			Return(uint32(1), nil)
 
 		clientMock.
@@ -156,7 +156,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			GetAvailableNode(gomock.Any(), filter).
+			GetAvailableNode(gomock.Any(), filter, uint64(Eco.Storage)).
 			Return(uint32(1), nil)
 
 		clientMock.
@@ -191,7 +191,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			GetAvailableNode(gomock.Any(), filter).
+			GetAvailableNode(gomock.Any(), filter, uint64(Eco.Storage)).
 			Return(uint32(1), nil)
 
 		clientMock.
@@ -231,7 +231,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			GetAvailableNode(gomock.Any(), filter).
+			GetAvailableNode(gomock.Any(), filter, uint64(Eco.Storage)).
 			Return(uint32(1), nil)
 
 		clientMock.
@@ -272,7 +272,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			GetAvailableNode(gomock.Any(), filter).
+			GetAvailableNode(gomock.Any(), filter, uint64(Eco.Storage)).
 			Return(uint32(1), nil)
 
 		clientMock.

@@ -20,6 +20,7 @@ import (
 const (
 	DataZDBNum = 4
 	MetaZDBNum = 4
+	zdbSize    = 1
 )
 
 func TestQSFSDeployment(t *testing.T) {
@@ -32,7 +33,12 @@ func TestQSFSDeployment(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	assert.NoError(t, err)
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
+	zdbSizes := make([]uint64, 0)
+	for i := 0; i < DataZDBNum+MetaZDBNum; i++ {
+		zdbSizes = append(zdbSizes, zdbSize)
+	}
+
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, zdbSizes, []uint64{minRootfs})
 	if err != nil {
 		t.Skip("no available nodes found")
 	}
@@ -57,7 +63,7 @@ func TestQSFSDeployment(t *testing.T) {
 			Name:        "qsfsDataZdb" + strconv.Itoa(i),
 			Password:    "password",
 			Public:      true,
-			Size:        1,
+			Size:        zdbSize,
 			Description: "zdb for testing",
 			Mode:        zos.ZDBModeSeq,
 		}
@@ -69,7 +75,7 @@ func TestQSFSDeployment(t *testing.T) {
 			Name:        "qsfsMetaZdb" + strconv.Itoa(i),
 			Password:    "password",
 			Public:      true,
-			Size:        1,
+			Size:        zdbSize,
 			Description: "zdb for testing",
 			Mode:        zos.ZDBModeUser,
 		}

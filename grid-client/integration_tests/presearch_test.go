@@ -26,7 +26,7 @@ func TestPresearchDeployment(t *testing.T) {
 
 	nodeFilter.IPv4 = &trueVal
 	nodeFilter.FreeIPs = &value1
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, []uint64{*convertGBToBytes(20)})
 	if err != nil {
 		t.Skip("no available nodes found")
 	}
