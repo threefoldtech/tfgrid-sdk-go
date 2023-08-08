@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -29,7 +28,7 @@ var nodeFilter = types.NodeFilter{
 	FreeHRU: convertGBToBytes(2),
 	FreeMRU: convertGBToBytes(2),
 	FarmIDs: []uint64{1},
-	IPv6:    &trueVal,
+	//IPv6:    &trueVal,
 }
 
 func convertGBToBytes(gb uint64) *uint64 {
@@ -38,10 +37,10 @@ func convertGBToBytes(gb uint64) *uint64 {
 }
 
 func setup() (deployer.TFPluginClient, error) {
-	mnemonics := os.Getenv("MNEMONICS")
+	mnemonics := "winner giant reward damage expose pulse recipe manual brand volcano dry avoid"
 	log.Printf("mnemonics: %s", mnemonics)
 
-	network := os.Getenv("NETWORK")
+	network := "qa"
 	log.Printf("network: %s", network)
 
 	return deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, false)
