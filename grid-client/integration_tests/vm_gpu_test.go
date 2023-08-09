@@ -43,7 +43,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 		HasGPU:   &trueVal,
 	}
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, []uint64{*convertGBToBytes(20)}, nil, []uint64{minRootfs})
 	if err != nil {
 		t.Skip("no available nodes found")
 	}

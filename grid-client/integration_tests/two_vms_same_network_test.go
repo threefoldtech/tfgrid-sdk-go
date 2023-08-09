@@ -24,7 +24,7 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs, minRootfs})
 	if err != nil {
 		t.Skip("no available nodes found")
 	}

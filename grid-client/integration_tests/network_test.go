@@ -20,7 +20,7 @@ func TestNetworkDeployment(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, nil)
 	if err != nil || len(nodes) < 2 {
 		t.Skip("no available nodes found")
 	}

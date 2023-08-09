@@ -19,7 +19,7 @@ func TestZDBDeployment(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, []uint64{*convertGBToBytes(10)}, nil)
 	if err != nil {
 		t.Skip("no available nodes found")
 	}
