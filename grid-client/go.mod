@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
+	github.com/centrifuge/go-substrate-rpc-client/v4 v4.1.0
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/golang/mock v1.6.0
 	github.com/pkg/errors v0.9.1
@@ -47,7 +47,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/cors v1.9.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
-	github.com/vedhavyas/go-subkey v1.0.3 // indirect
+	github.com/vedhavyas/go-subkey v1.0.4 // indirect
 	golang.org/x/sync v0.2.0
 	golang.org/x/sys v0.11.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
