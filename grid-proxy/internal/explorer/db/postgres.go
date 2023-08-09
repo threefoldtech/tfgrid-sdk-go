@@ -31,6 +31,61 @@ var (
 
 const (
 	setupPostgresql = `
+	BEGIN;
+
+	DROP TABLE IF EXISTS aggregated_bill_reports;
+	CREATE TABLE aggregated_bill_reports AS
+			SELECT 
+			contract_id,
+			COALESCE(
+				jsonb_agg(
+					jsonb_build_object(
+						'amountBilled',
+						amount_billed,
+						'discountReceived',
+						discount_received,
+						'timestamp',
+						timestamp
+					)
+				),
+				'[]'
+			) AS billings
+			FROM contract_bill_report
+			GROUP BY contract_id;
+
+	ALTER TABLE aggregated_bill_reports DROP CONSTRAINT IF EXISTS contract_id_primary;
+	ALTER TABLE aggregated_bill_reports ADD CONSTRAINT contract_id_primary PRIMARY KEY (contract_id);
+
+	CREATE OR REPLACE FUNCTION update_aggregated_bill_reports() RETURNS TRIGGER AS $update_aggregated_bill_reports$
+		BEGIN
+			IF (TG_OP = 'INSERT') THEN
+				INSERT INTO aggregated_bill_reports (contract_id, billings)
+				VALUES(New.contract_id, jsonb_build_array(
+					jsonb_build_object(
+						'amount_billed',NEW.amount_billed,
+						'discount_received',NEW.discount_received,
+						'timestamp',NEW.timestamp
+						)
+					)
+				) 
+				ON CONFLICT (contract_id) 
+				DO 
+				UPDATE SET billings = aggregated_bill_reports.billings || jsonb_build_object(
+					'amount_billed',NEW.amount_billed,
+					'discount_received',NEW.discount_received,
+					'timestamp',NEW.timestamp
+				);            
+			END IF;
+			RETURN NULL; -- result is ignored since this is an AFTER trigger
+		END;
+	$update_aggregated_bill_reports$ LANGUAGE plpgsql;
+
+	CREATE OR REPLACE TRIGGER bill_aggregates_trig
+	AFTER INSERT ON contract_bill_report
+		FOR EACH ROW EXECUTE FUNCTION update_aggregated_bill_reports();
+	
+	END;
+	
 	CREATE OR REPLACE VIEW nodes_resources_view AS SELECT
 		node.node_id,
 		COALESCE(sum(contract_resources.cru), 0) as used_cru,
@@ -734,10 +789,10 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 	q := d.gormDB.
 		Table(`(SELECT contract_id, twin_id, state, created_at, ''AS name, node_id, deployment_data, deployment_hash, number_of_public_i_ps, 'node' AS type
 	FROM node_contract 
-	UNION 
+	UNION ALL
 	SELECT contract_id, twin_id, state, created_at, '' AS name, node_id, '', '', 0, 'rent' AS type
 	FROM rent_contract 
-	UNION 
+	UNION ALL
 	SELECT contract_id, twin_id, state, created_at, name, 0, '', '', 0, 'name' AS type
 	FROM name_contract) contracts`).
 		Select(
@@ -751,19 +806,12 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 			"deployment_hash",
 			"number_of_public_i_ps as number_of_public_ips",
 			"type",
-			"COALESCE(contract_billing.billings, '[]') as contract_billings",
+			"COALESCE(aggregated_bill_reports.billings, '[]') as contract_billings",
 		).
 		Joins(
-			`LEFT JOIN (
-				SELECT 
-					contract_bill_report.contract_id,
-					COALESCE(json_agg(json_build_object('amountBilled', amount_billed, 'discountReceived', discount_received, 'timestamp', timestamp)), '[]') as billings
-				FROM
-					contract_bill_report
-				GROUP BY contract_id
-			) contract_billing
-			ON contracts.contract_id = contract_billing.contract_id`,
+			`LEFT JOIN aggregated_bill_reports ON contracts.contract_id = aggregated_bill_reports.contract_id`,
 		)
+
 	if filter.Type != nil {
 		q = q.Where("type = ?", *filter.Type)
 	}
