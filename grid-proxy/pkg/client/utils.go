@@ -98,6 +98,9 @@ func nodeParams(filter types.NodeFilter, limit types.Limit) string {
 	if filter.AvailableFor != nil {
 		fmt.Fprintf(&builder, "available_for=%d&", *filter.AvailableFor)
 	}
+	if filter.Dedicated != nil {
+		fmt.Fprintf(&builder, "dedicated=%t&", *filter.Dedicated)
+	}
 	if limit.Page != 0 {
 		fmt.Fprintf(&builder, "page=%d&", limit.Page)
 	}
@@ -225,6 +228,14 @@ func twinParams(filter types.TwinFilter, limit types.Limit) string {
 
 	if filter.AccountID != nil && *filter.AccountID != "" {
 		fmt.Fprintf(&builder, "account_id=%s&", url.QueryEscape(*filter.AccountID))
+	}
+
+	if filter.Relay != nil && *filter.Relay != "" {
+		fmt.Fprintf(&builder, "relay=%s&", url.QueryEscape(*filter.Relay))
+	}
+
+	if filter.PublicKey != nil && *filter.PublicKey != "" {
+		fmt.Fprintf(&builder, "public_key=%s&", url.QueryEscape(*filter.PublicKey))
 	}
 
 	if limit.Page != 0 {

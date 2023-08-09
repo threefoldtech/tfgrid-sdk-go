@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"fmt"
@@ -7,36 +7,28 @@ import (
 	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
 
 type Filter interface {
 	types.ContractFilter | types.NodeFilter | types.FarmFilter | types.TwinFilter | types.StatsFilter
 }
 
-func calcFreeResources(total node_resources_total, used node_resources_total) node_resources_total {
-	if total.mru < used.mru {
+func calcFreeResources(total mock.NodeResourcesTotal, used mock.NodeResourcesTotal) mock.NodeResourcesTotal {
+	if total.MRU < used.MRU {
 		panic("total mru is less than mru")
 	}
-	if total.hru < used.hru {
+	if total.HRU < used.HRU {
 		panic("total hru is less than hru")
 	}
-	if total.sru < used.sru {
+	if total.SRU < used.SRU {
 		panic("total sru is less than sru")
 	}
-	return node_resources_total{
-		hru: total.hru - used.hru,
-		sru: total.sru - used.sru,
-		mru: total.mru - used.mru,
+	return mock.NodeResourcesTotal{
+		HRU: total.HRU - used.HRU,
+		SRU: total.SRU - used.SRU,
+		MRU: total.MRU - used.MRU,
 	}
-}
-
-func isIn(l []uint64, v uint64) bool {
-	for _, i := range l {
-		if i == v {
-			return true
-		}
-	}
-	return false
 }
 
 func flip(success float32) bool {
@@ -54,6 +46,7 @@ func max(a, b uint64) uint64 {
 	}
 	return b
 }
+
 func min(a, b uint64) uint64 {
 	if a < b {
 		return a
@@ -64,10 +57,6 @@ func min(a, b uint64) uint64 {
 func changeCase(s string) string {
 	idx := rand.Intn(len(s))
 	return strings.Replace(s, string(s[idx]), strings.ToUpper(string(s[idx])), 1)
-}
-
-func stringMatch(str string, sub_str string) bool {
-	return strings.Contains(strings.ToLower(str), strings.ToLower(sub_str))
 }
 
 func SerializeFilter[F Filter](f F) string {

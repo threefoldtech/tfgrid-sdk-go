@@ -496,13 +496,13 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where("(SELECT count(id) from public_ip WHERE public_ip.farm_id = farm.id AND public_ip.contract_id = 0) >= ?", *filter.FreeIPs)
 	}
 	if filter.IPv4 != nil {
-		q = q.Where("COALESCE(public_config.ipv4, '') != ''")
+		q = q.Where("(COALESCE(public_config.ipv4, '') = '') != ?", *filter.IPv4)
 	}
 	if filter.IPv6 != nil {
-		q = q.Where("COALESCE(public_config.ipv6, '') != ''")
+		q = q.Where("(COALESCE(public_config.ipv6, '') = '') != ?", *filter.IPv6)
 	}
 	if filter.Domain != nil {
-		q = q.Where("COALESCE(public_config.domain, '') != ''")
+		q = q.Where("(COALESCE(public_config.domain, '') = '') != ?", *filter.Domain)
 	}
 	if filter.Dedicated != nil {
 		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)
@@ -524,27 +524,27 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 	}
 
 	if filter.HasGPU != nil {
-		q = q.Where("((select count(node_gpu.id) from node_gpu WHERE node_gpu.node_twin_id = node.twin_id) != 0) = ?", *filter.HasGPU)
+		q = q.Where("(COALESCE(node_gpu.id, '') != '') = ?", *filter.HasGPU)
 	}
 
 	if filter.GpuDeviceName != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.device ILIKE '%' || ? || '%')", *filter.GpuDeviceName)
+		q = q.Where("COALESCE(node_gpu.device, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceName)
 	}
 
 	if filter.GpuVendorName != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.vendor ILIKE '%' || ? || '%')", *filter.GpuVendorName)
+		q = q.Where("COALESCE(node_gpu.vendor, '') ILIKE '%' || ? || '%'", *filter.GpuVendorName)
 	}
 
 	if filter.GpuVendorID != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuVendorID)
+		q = q.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuVendorID)
 	}
 
 	if filter.GpuDeviceID != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE node_gpu.id ILIKE '%' || ? || '%')", *filter.GpuDeviceID)
+		q = q.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceID)
 	}
 
 	if filter.GpuAvailable != nil {
-		q = q.Where("EXISTS( select node_gpu.id WHERE (node_gpu.contract = 0) = ?)", *filter.GpuAvailable)
+		q = q.Where("(COALESCE(node_gpu.contract, 0) = 0) = ?", *filter.GpuAvailable)
 	}
 
 	var count int64
