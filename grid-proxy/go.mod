@@ -13,7 +13,7 @@ require (
 	github.com/rs/zerolog v1.30.0
 	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/http-swagger v1.3.4
-	github.com/swaggo/swag v1.8.12
+	github.com/swaggo/swag v1.16.1
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230809064214-d8ef5ca360eb
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.10.2
 	github.com/threefoldtech/zos v0.5.6-0.20230809073554-ddb0ad98fc4c
