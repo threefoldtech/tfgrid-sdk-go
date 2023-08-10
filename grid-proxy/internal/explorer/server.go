@@ -58,12 +58,10 @@ const (
 // @Failure 500 {object} string
 // @Router /farms [get]
 func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
-	filter := types.FarmFilter{}
-	limit := types.DefaultLimit()
-	if err := parseQueryParams(r, &filter, &limit); err != nil {
+	filter, limit, err := a.handleFarmRequestsQueryParams(r)
+	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-
 	dbFarms, farmsCount, err := a.db.GetFarms(filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query farm")
@@ -101,12 +99,10 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 // @Failure 500 {object} string
 // @Router /stats [get]
 func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
-	filter := types.StatsFilter{}
-	limit := types.DefaultLimit()
-	if err := parseQueryParams(r, &filter, &limit); err != nil {
+	filter, err := a.handleStatsRequestsQueryParams(r)
+	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-
 	counters, err := a.db.GetCounters(filter)
 	if err != nil {
 		return nil, mw.Error(err)
@@ -195,12 +191,10 @@ func (a *App) getGateways(r *http.Request) (interface{}, mw.Response) {
 }
 
 func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
-	filter := types.NodeFilter{}
-	limit := types.DefaultLimit()
-	if err := parseQueryParams(r, &filter, &limit); err != nil {
+	filter, limit, err := a.handleNodeRequestsQueryParams(r)
+	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-
 	dbNodes, nodesCount, err := a.db.GetNodes(filter, limit)
 	if err != nil {
 		return nil, mw.Error(err)
@@ -298,12 +292,10 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 // @Failure 500 {object} string
 // @Router /twins [get]
 func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
-	filter := types.TwinFilter{}
-	limit := types.DefaultLimit()
-	if err := parseQueryParams(r, &filter, &limit); err != nil {
+	filter, limit, err := a.handleTwinRequestsQueryParams(r)
+	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-
 	twins, twinsCount, err := a.db.GetTwins(filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query twin")
@@ -345,12 +337,10 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 // @Failure 500 {object} string
 // @Router /contracts [get]
 func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
-	filter := types.ContractFilter{}
-	limit := types.DefaultLimit()
-	if err := parseQueryParams(r, &filter, &limit); err != nil {
+	filter, limit, err := a.handleContractRequestsQueryParams(r)
+	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-
 	dbContracts, contractsCount, err := a.db.GetContracts(filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query contract")
