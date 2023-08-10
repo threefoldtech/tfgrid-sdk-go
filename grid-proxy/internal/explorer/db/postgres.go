@@ -678,7 +678,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		q = q.Where("public_ip_count.total_ips >= ?", *filter.TotalIPs)
 	}
 	if filter.StellarAddress != nil {
-		q = q.Where("farm.stellar_address = ?", *filter.StellarAddress)
+		q = q.Where("COALESCE(farm.stellar_address, '') = ?", *filter.StellarAddress)
 	}
 	if filter.PricingPolicyID != nil {
 		q = q.Where("farm.pricing_policy_id = ?", *filter.PricingPolicyID)

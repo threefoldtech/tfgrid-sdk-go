@@ -6,12 +6,16 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
+	"github.com/gorilla/schema"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
+
+var encoder = schema.NewEncoder()
 
 // Client a client to communicate with the grid proxy
 type Client interface {
@@ -65,15 +69,15 @@ func requestCounters(r *http.Response) (int, error) {
 	return 0, nil
 }
 
-func (g *Clientimpl) url(sub string, args ...interface{}) string {
-
-	return g.endpoint + fmt.Sprintf(sub, args...)
-}
-
 // Ping makes sure the server is up
 func (g *Clientimpl) Ping() error {
 	client := g.newHTTPClient()
-	req, err := http.NewRequest(http.MethodGet, g.url("version"), nil)
+	url, err := g.prepareURL("ping")
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare url")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
@@ -89,16 +93,21 @@ func (g *Clientimpl) Ping() error {
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("non ok return status code from the the grid proxy home page: %s", http.StatusText(res.StatusCode))
 	}
+
 	return nil
 }
 
 // Nodes returns nodes with the given filters and pagination parameters
 func (g *Clientimpl) Nodes(filter types.NodeFilter, limit types.Limit) (nodes []types.Node, totalCount int, err error) {
-	query := nodeParams(filter, limit)
 	client := g.newHTTPClient()
-	req, err := http.NewRequest(http.MethodGet, g.url("nodes%s", query), nil)
+	url, err := g.prepareURL("nodes", filter, limit)
 	if err != nil {
-		return
+		return nil, 0, errors.Wrap(err, "failed to prepare url")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	res, err := client.Do(req)
@@ -123,9 +132,13 @@ func (g *Clientimpl) Nodes(filter types.NodeFilter, limit types.Limit) (nodes []
 
 // Farms returns farms with the given filters and pagination parameters
 func (g *Clientimpl) Farms(filter types.FarmFilter, limit types.Limit) (farms []types.Farm, totalCount int, err error) {
-	query := farmParams(filter, limit)
+	url, err := g.prepareURL("farms", filter, limit)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "failed to prepare url")
+	}
+
 	client := g.newHTTPClient()
-	req, err := http.NewRequest(http.MethodGet, g.url("farms%s", query), nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return
 	}
@@ -156,9 +169,13 @@ func (g *Clientimpl) Farms(filter types.FarmFilter, limit types.Limit) (farms []
 
 // Twins returns twins with the given filters and pagination parameters
 func (g *Clientimpl) Twins(filter types.TwinFilter, limit types.Limit) (twins []types.Twin, totalCount int, err error) {
-	query := twinParams(filter, limit)
+	url, err := g.prepareURL("twins", filter, limit)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "failed to prepare url")
+	}
+
 	client := g.newHTTPClient()
-	req, err := http.NewRequest(http.MethodGet, g.url("twins%s", query), nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return
 	}
@@ -189,11 +206,15 @@ func (g *Clientimpl) Twins(filter types.TwinFilter, limit types.Limit) (twins []
 
 // Contracts returns contracts with the given filters and pagination parameters
 func (g *Clientimpl) Contracts(filter types.ContractFilter, limit types.Limit) (contracts []types.Contract, totalCount int, err error) {
-	query := contractParams(filter, limit)
-	client := g.newHTTPClient()
-	req, err := http.NewRequest(http.MethodGet, g.url("contracts%s", query), nil)
+	url, err := g.prepareURL("contracts", filter, limit)
 	if err != nil {
-		return
+		return nil, 0, errors.Wrap(err, "failed to prepare url")
+	}
+
+	client := g.newHTTPClient()
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	res, err := client.Do(req)
@@ -220,7 +241,12 @@ func (g *Clientimpl) Contracts(filter types.ContractFilter, limit types.Limit) (
 // Node returns the node with the give id
 func (g *Clientimpl) Node(nodeID uint32) (node types.NodeWithNestedCapacity, err error) {
 	client := g.newHTTPClient()
-	req, err := http.NewRequest(http.MethodGet, g.url("nodes/%d", nodeID), nil)
+	url, err := g.prepareURL(fmt.Sprintf("nodes/%d", nodeID))
+	if err != nil {
+		return types.NodeWithNestedCapacity{}, errors.Wrap(err, "failed to prepare url")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return types.NodeWithNestedCapacity{}, fmt.Errorf("failed to create node request: %w", err)
 	}
@@ -248,7 +274,12 @@ func (g *Clientimpl) Node(nodeID uint32) (node types.NodeWithNestedCapacity, err
 // NodeStatus returns the node status up/down
 func (g *Clientimpl) NodeStatus(nodeID uint32) (status types.NodeStatus, err error) {
 	client := g.newHTTPClient()
-	req, err := http.NewRequest(http.MethodGet, g.url("nodes/%d/status", nodeID), nil)
+	url, err := g.prepareURL(fmt.Sprintf("nodes/%d/status", nodeID))
+	if err != nil {
+		return types.NodeStatus{}, errors.Wrap(err, "failed to prepare url")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return types.NodeStatus{}, fmt.Errorf("failed to create nodes request: %w", err)
 	}
@@ -273,9 +304,13 @@ func (g *Clientimpl) NodeStatus(nodeID uint32) (status types.NodeStatus, err err
 
 // Counters return statistics about the grid
 func (g *Clientimpl) Counters(filter types.StatsFilter) (counters types.Counters, err error) {
-	query := statsParams(filter)
+	url, err := g.prepareURL("stats", filter)
+	if err != nil {
+		return types.Counters{}, errors.Wrap(err, "failed to prepare url")
+	}
+
 	client := g.newHTTPClient()
-	req, err := http.NewRequest(http.MethodGet, g.url("stats%s", query), nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return types.Counters{}, fmt.Errorf("failed to create stats request: %w", err)
 	}
@@ -299,55 +334,90 @@ func (g *Clientimpl) Counters(filter types.StatsFilter) (counters types.Counters
 }
 
 // Contract returns a single contract based on the contractID
-func (g *Clientimpl) Contract(contractID uint32) (res types.Contract, err error) {
-	req, err := http.Get(g.url("contracts/%d", contractID))
+func (g *Clientimpl) Contract(contractID uint32) (types.Contract, error) {
+	client := g.newHTTPClient()
+	url, err := g.prepareURL(fmt.Sprintf("contracts/%d", contractID))
 	if err != nil {
-		return
-	}
-	if req.StatusCode != http.StatusOK {
-		err = parseError(req.Body)
-		return
-	}
-	data, err := io.ReadAll(req.Body)
-	if err != nil {
-		return
+		return types.Contract{}, errors.Wrap(err, "failed to prepare url")
 	}
 
-	res, err = decodeSingleContract(data)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return
+		return types.Contract{}, fmt.Errorf("failed to create contract request: %w", err)
 	}
-	return
+
+	res, err := client.Do(req)
+	if res != nil {
+		defer res.Body.Close()
+	}
+	if err != nil {
+		return types.Contract{}, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		err = parseError(res.Body)
+		return types.Contract{}, err
+	}
+
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return types.Contract{}, err
+	}
+
+	contract, err := decodeSingleContract(data)
+	if err != nil {
+		return types.Contract{}, err
+	}
+
+	return contract, nil
 }
 
 // ContractBills returns all bills for a single contract based on contractID and pagination params
-func (g *Clientimpl) ContractBills(contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
-	query := billsParams(limit)
-
-	req, err := http.Get(g.url("contracts/%d/bills%s", contractID, query))
+func (g *Clientimpl) ContractBills(contractID uint32, limit types.Limit) ([]types.ContractBilling, uint, error) {
+	client := g.newHTTPClient()
+	url, err := g.prepareURL(fmt.Sprintf("contracts/%d/bills", contractID), limit)
 	if err != nil {
-		return
-	}
-	if req.StatusCode != http.StatusOK {
-		err = parseError(req.Body)
-		return
+		return nil, 0, errors.Wrap(err, "failed to prepare url")
 	}
 
-	data, err := io.ReadAll(req.Body)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return
+		return nil, 0, err
 	}
 
-	count, err := requestCounters(req)
+	res, err := client.Do(req)
+	if res != nil {
+		defer res.Body.Close()
+	}
 	if err != nil {
-		return
+		return nil, 0, err
 	}
 
-	err = json.Unmarshal(data, &res)
+	if res.StatusCode != http.StatusOK {
+		err = parseError(res.Body)
+		return nil, 0, err
+	}
 
-	totalCount = uint(count)
-	return
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	count, err := requestCounters(res)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	contractBills := []types.ContractBilling{}
+	if err := json.Unmarshal(data, &contractBills); err != nil {
+		return nil, 0, err
+	}
+
+	totalCount := uint(count)
+
+	return contractBills, totalCount, nil
 }
+
 func (g *Clientimpl) newHTTPClient() *http.Client {
 	return &http.Client{
 		Timeout: time.Second * 30,
@@ -359,4 +429,27 @@ func (g *Clientimpl) newHTTPClient() *http.Client {
 			ResponseHeaderTimeout: 5 * time.Second,
 		},
 	}
+}
+
+func (g *Clientimpl) prepareURL(path string, params ...interface{}) (string, error) {
+	values := url.Values{}
+
+	for _, param := range params {
+		if err := encoder.Encode(param, values); err != nil {
+			return "", errors.Wrap(err, "failed to encode query params")
+		}
+	}
+
+	baseURL := g.endpoint
+	resource := fmt.Sprintf("/%s", path)
+
+	u, err := url.ParseRequestURI(baseURL)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to parse request URI")
+	}
+
+	u.Path = resource
+	u.RawQuery = values.Encode()
+
+	return u.String(), nil
 }
