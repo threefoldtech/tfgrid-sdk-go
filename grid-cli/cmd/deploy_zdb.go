@@ -143,7 +143,7 @@ var deployZDBCmd = &cobra.Command{
 func init() {
 	deployCmd.AddCommand(deployZDBCmd)
 
-	deployZDBCmd.Flags().String("project_name", "", "project name of the zdbs to be deployed")
+	deployZDBCmd.Flags().StringP("project_name", "n", "", "project name of the zdbs to be deployed")
 	err := deployZDBCmd.MarkFlagRequired("project_name")
 	if err != nil {
 		log.Fatal().Err(err).Send()
