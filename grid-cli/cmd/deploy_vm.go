@@ -78,6 +78,9 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		if len(gpus) > 0 && node == 0 {
+			log.Fatal().Msg("must specify node ID when using GPUs")
+		}
 
 		ipv4, err := cmd.Flags().GetBool("ipv4")
 		if err != nil {
@@ -178,8 +181,6 @@ func init() {
 	deployVMCmd.Flags().Int("disk", 0, "disk size in gb mounted on /data")
 	deployVMCmd.Flags().String("flist", ubuntuFlist, "flist for vm")
 	deployVMCmd.Flags().StringSlice("gpus", []string{}, "gpus for vm")
-	// to ensure node is provided for gpus
-	deployVMCmd.MarkFlagsRequiredTogether("gpus", "node")
 
 	deployVMCmd.Flags().String("entrypoint", ubuntuFlistEntrypoint, "entrypoint for vm")
 	// to ensure entrypoint is provided for custom flist
