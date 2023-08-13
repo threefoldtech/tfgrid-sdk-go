@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
-	github.com/go-acme/lego/v4 v4.10.2
+	github.com/go-acme/lego/v4 v4.13.3
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -27,7 +27,7 @@ require (
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
-	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
+	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -57,8 +57,8 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.18 // indirect
-	github.com/miekg/dns v1.1.53 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/miekg/dns v1.1.55 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b // indirect
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -66,13 +66,12 @@ require (
 	github.com/swaggo/files v1.0.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
-	golang.org/x/crypto v0.8.0 // indirect
-	golang.org/x/mod v0.10.0 // indirect
-	golang.org/x/net v0.9.0 // indirect
-	golang.org/x/sync v0.2.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
-	golang.org/x/tools v0.8.0 // indirect
+	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/mod v0.11.0 // indirect
+	golang.org/x/net v0.11.0 // indirect
+	golang.org/x/sys v0.9.0 // indirect
+	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/tools v0.10.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
