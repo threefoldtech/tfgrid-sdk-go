@@ -29,7 +29,7 @@ Example:
 - Deploying ZDBs
 
 ```console
-$ tf-grid-cli deploy zdb --project_name examplezdb --size=10 --n=2 --password=password
+$ tf-grid-cli deploy zdb --project_name examplezdb --size=10 --count=2 --password=password
 12:06PM INF deploying zdbs
 12:06PM INF zdb 'examplezdb0' is deployed
 12:06PM INF zdb 'examplezdb1' is deployed
