@@ -110,7 +110,9 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to create relay client")
 	}
 
-	db, err := db.NewPostgresDatabase(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB)
+	dbConnStr := db.GetConnectionString(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB)
+
+	db, err := db.NewPostgresDatabase(dbConnStr)
 	if err != nil {
 		log.Fatal().Err(err).Msg("couldn't get postgres client")
 	}
@@ -129,7 +131,7 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to create GPU indexer")
 	}
 
-	indexer.Start(ctx)
+	indexer.Start(ctx, dbConnStr)
 
 	s, err := createServer(f, db, GitCommit, relayRPCClient)
 	if err != nil {

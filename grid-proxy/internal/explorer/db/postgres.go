@@ -98,7 +98,19 @@ const (
 		END;
 	RETURN v_dec_value;
 	END;
-	$$ LANGUAGE plpgsql;`
+	$$ LANGUAGE plpgsql;
+	
+	CREATE OR REPLACE FUNCTION notify_node_change() RETURNS trigger AS $notify_node_change$
+	BEGIN
+		PERFORM pg_notify('node_count_change', '');
+		RETURN NULL;
+	END;
+	$notify_node_change$ LANGUAGE plpgsql;
+	
+	CREATE OR REPLACE TRIGGER node_count_change
+	AFTER INSERT OR DELETE ON node
+	FOR EACH ROW EXECUTE PROCEDURE notify_node_change();
+	`
 )
 
 // PostgresDatabase postgres db client
@@ -106,11 +118,14 @@ type PostgresDatabase struct {
 	gormDB *gorm.DB
 }
 
-// NewPostgresDatabase returns a new postgres db client
-func NewPostgresDatabase(host string, port int, user, password, dbname string) (Database, error) {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+func GetConnectionString(host string, port int, user, password, dbname string) string {
+	return fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
+}
+
+// NewPostgresDatabase returns a new postgres db client
+func NewPostgresDatabase(psqlInfo string) (Database, error) {
 	gormDB, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create orm wrapper around db")
