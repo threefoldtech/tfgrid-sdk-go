@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,7 +22,7 @@ import (
 const (
 	resultsBatcherCleanupInterval = 10 * time.Second
 	minListenerReconnectInterval  = 10 * time.Second
-	dbChangeChannelName           = "node_count_change"
+	dbNotificationChannel         = "node_added"
 )
 
 type NodeGPUIndexer struct {
@@ -31,7 +32,7 @@ type NodeGPUIndexer struct {
 	batchSize              int
 	nodesGPUResultsChan    chan []types.NodeGPU
 	nodesGPUBatchesChan    chan []types.NodeGPU
-	nodesChangeChan        chan bool
+	nodesChangeChan        chan int64
 	nodesGPUResultsWorkers int
 	nodesGPUBufferWorkers  int
 }
@@ -50,7 +51,7 @@ func NewNodeGPUIndexer(
 		db:                     db,
 		nodesGPUResultsChan:    make(chan []types.NodeGPU),
 		nodesGPUBatchesChan:    make(chan []types.NodeGPU),
-		nodesChangeChan:        make(chan bool),
+		nodesChangeChan:        make(chan int64),
 		checkInterval:          time.Duration(indexerCheckIntervalMins) * time.Minute,
 		batchSize:              batchSize,
 		nodesGPUResultsWorkers: nodesGPUResultsWorkers,
@@ -76,7 +77,7 @@ func (n *NodeGPUIndexer) startDBListener(ctx context.Context, psqlInfo string) {
 	})
 	defer listener.Close()
 
-	err := listener.Listen(dbChangeChannelName)
+	err := listener.Listen(dbNotificationChannel)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to listen to DB changes")
 		return
@@ -94,8 +95,16 @@ func (n *NodeGPUIndexer) startDBListener(ctx context.Context, psqlInfo string) {
 				continue
 			}
 
-			log.Debug().Msgf("Received data from channel [%v]", notification.Channel)
-			n.nodesChangeChan <- true
+			payload := notification.Extra
+			twinId, err := strconv.ParseInt(payload, 10, 64)
+			if err != nil {
+				log.Error().Err(err).Msgf("failed to parse twin id %v", twinId)
+				continue
+			}
+
+			log.Debug().Msgf("Received data from channel [%v]: twin_id: %v", notification.Channel, payload)
+
+			n.nodesChangeChan <- twinId
 		case <-ctx.Done():
 			log.Error().Err(ctx.Err()).Msg("context canceled")
 			return
@@ -103,12 +112,23 @@ func (n *NodeGPUIndexer) startDBListener(ctx context.Context, psqlInfo string) {
 	}
 }
 
+func (n *NodeGPUIndexer) getGPUInfo(ctx context.Context, twinId int64) {
+	id := uuid.NewString()
+	err := n.relayClient.Call(ctx, id, uint32(twinId), "zos.gpu.list", nil)
+	if err != nil {
+		log.Error().Err(err).Msgf("failed to send get GPU info request from relay in GPU indexer for node with twin %d", twinId)
+	}
+}
+
 func (n *NodeGPUIndexer) queryGridNodes(ctx context.Context) {
+	ticker := time.NewTicker(n.checkInterval)
 	n.runQueryGridNodes(ctx)
 	for {
 		select {
-		case <-n.nodesChangeChan:
+		case <-ticker.C:
 			n.runQueryGridNodes(ctx)
+		case addedNodeTwinId := <-n.nodesChangeChan:
+			n.getGPUInfo(ctx, addedNodeTwinId)
 		case <-ctx.Done():
 			return
 		}
@@ -139,11 +159,7 @@ func (n *NodeGPUIndexer) runQueryGridNodes(ctx context.Context) {
 		}
 
 		for _, node := range nodes {
-			id := uuid.NewString()
-			err = n.relayClient.Call(ctx, id, uint32(node.TwinID), "zos.gpu.list", nil)
-			if err != nil {
-				log.Error().Err(err).Msgf("failed to send get GPU info request from relay in GPU indexer for node %d", node.NodeID)
-			}
+			n.getGPUInfo(ctx, node.TwinID)
 		}
 
 		limit.Page++

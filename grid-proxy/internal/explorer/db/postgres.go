@@ -102,13 +102,13 @@ const (
 	
 	CREATE OR REPLACE FUNCTION notify_node_change() RETURNS trigger AS $notify_node_change$
 	BEGIN
-		PERFORM pg_notify('node_count_change', '');
+		PERFORM pg_notify('node_added', NEW.twin_id);
 		RETURN NULL;
 	END;
 	$notify_node_change$ LANGUAGE plpgsql;
 	
-	CREATE OR REPLACE TRIGGER node_count_change
-	AFTER INSERT OR DELETE ON node
+	CREATE OR REPLACE TRIGGER node_added
+	AFTER INSERT ON node
 	FOR EACH ROW EXECUTE PROCEDURE notify_node_change();
 	`
 )
