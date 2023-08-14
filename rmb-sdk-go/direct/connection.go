@@ -126,22 +126,28 @@ func (c *InnerConnection) Start(ctx context.Context) (Reader, Writer) {
 		defer close(output)
 		defer close(input)
 		for {
-			con, err := c.connect()
-			if err != nil {
-				log.Error().Err(err).Msg("failed to reconnect")
-				continue
-			}
-
-			err = c.loop(ctx, con, output, input)
+			err := c.listenAndServe(ctx, output, input)
 			if err == context.Canceled {
 				break
 			} else if err != nil {
 				log.Error().Err(err)
 			}
+
+			<-time.After(2 * time.Second)
 		}
 	}()
 
 	return output, input
+}
+
+// listenAndServe creates the websocket connection, and if successful, listens for and serves incoming and outgoing messages.
+func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte, input chan []byte) error {
+	con, err := c.connect()
+	if err != nil {
+		return errors.Wrap(err, "failed to reconnect")
+	}
+
+	return c.loop(ctx, con, output, input)
 }
 
 func (c *InnerConnection) connect() (*websocket.Conn, error) {
