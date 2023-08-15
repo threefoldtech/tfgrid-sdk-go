@@ -138,6 +138,7 @@ type FarmFilter struct {
 	NodeAvailableFor  *uint64
 	NodeHasGPU        *bool
 	NodeCertified     *bool
+	Country           *string
 }
 
 // TwinFilter twin filters

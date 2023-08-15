@@ -204,6 +204,7 @@ func (a *App) handleFarmRequestsQueryParams(r *http.Request) (types.FarmFilter, 
 		"certification_type": &filter.CertificationType,
 		"stellar_address":    &filter.StellarAddress,
 		"node_status":        &filter.NodeStatus,
+		"country":            &filter.Country,
 	}
 	bools := map[string]**bool{
 		"dedicated":      &filter.Dedicated,

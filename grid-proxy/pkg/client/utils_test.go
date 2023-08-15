@@ -45,6 +45,7 @@ func farmsFilterValues() (types.FarmFilter, types.Limit, string) {
 	DYI := "DYI"
 	Dedicated := false
 	ints := []uint64{0, 1, 2, 3, 4, 5, 6}
+	country := "Egypt"
 	f := types.FarmFilter{
 		FreeIPs:           &ints[1],
 		TotalIPs:          &ints[2],
@@ -56,6 +57,7 @@ func farmsFilterValues() (types.FarmFilter, types.Limit, string) {
 		NameContains:      &FreeFar,
 		CertificationType: &DYI,
 		Dedicated:         &Dedicated,
+		Country:           &country,
 	}
 	l := types.Limit{
 		Page: 12,

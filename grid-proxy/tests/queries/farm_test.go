@@ -41,6 +41,11 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		name := changeCase(agg.farmNames[rand.Intn(len(agg.farmNames))])
 		return &name
 	},
+	"Country": func(_ FarmsAggregate) interface{} {
+		aggNode := calcNodesAggregates(&data)
+		country := changeCase(aggNode.countries[rand.Intn(len(aggNode.countries))])
+		return &country
+	},
 	"NameContains": func(agg FarmsAggregate) interface{} {
 		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
 		a, b := rand.Intn(len(c)), rand.Intn(len(c))

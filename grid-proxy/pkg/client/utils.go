@@ -211,6 +211,9 @@ func farmParams(filter types.FarmFilter, limit types.Limit) string {
 	if filter.NodeStatus != nil && *filter.NodeStatus != "" {
 		fmt.Fprintf(&builder, "node_status=%s&", *filter.NodeStatus)
 	}
+	if filter.Country != nil && *filter.Country != "" {
+		fmt.Fprintf(&builder, "country=%s&", url.QueryEscape(*filter.Country))
+	}
 
 	res := builder.String()
 	// pop the extra ? or &
