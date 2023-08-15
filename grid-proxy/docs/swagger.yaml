@@ -503,6 +503,10 @@ paths:
         in: query
         name: node_certified
         type: boolean
+      - description: farm country
+        in: query
+        name: country
+        type: string
       produces:
       - application/json
       responses:

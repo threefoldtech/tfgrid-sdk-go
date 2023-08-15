@@ -53,6 +53,7 @@ const (
 // @Param node_available_for query int false "Twin ID of user for whom there is at least one node that is available to be deployed to in the farm"
 // @Param node_has_gpu query bool false "True for farms who have at least one node with a GPU"
 // @Param node_certified query bool false "True for farms who have at least one certified node"
+// @Param country query string false "farm country"
 // @Success 200 {object} []types.Farm
 // @Failure 400 {object} string
 // @Failure 500 {object} string

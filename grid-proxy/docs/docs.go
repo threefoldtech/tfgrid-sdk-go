@@ -282,6 +282,12 @@ const docTemplate = `{
                         "description": "True for farms who have at least one certified node",
                         "name": "node_certified",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "farm country",
+                        "name": "country",
+                        "in": "query"
                     }
                 ],
                 "responses": {

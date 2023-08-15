@@ -539,7 +539,7 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 	}
 
 	for country := range countries {
-		res.countries = append(res.cities, country)
+		res.countries = append(res.countries, country)
 	}
 
 	for _, farm := range data.Farms {

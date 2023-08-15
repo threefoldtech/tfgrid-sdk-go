@@ -323,6 +323,7 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 					node.power,
 					node.updated_at,
 					node.certification,
+					node.country,
 					nodes_resources_view.free_mru,
 					nodes_resources_view.free_hru,
 					nodes_resources_view.free_sru,
@@ -618,6 +619,10 @@ func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) 
 
 	if filter.NodeRentedBy != nil {
 		q = q.Where("node.renter = ?", *filter.NodeRentedBy)
+	}
+
+	if filter.Country != nil {
+		q = q.Where("LOWER(node.country) = LOWER(?)", *filter.Country)
 	}
 
 	if filter.NodeStatus != nil {
