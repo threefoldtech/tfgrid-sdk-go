@@ -98,7 +98,7 @@ func (n *NodeGPUIndexer) startDBListener(ctx context.Context, psqlInfo string) {
 			payload := notification.Extra
 			twinId, err := strconv.ParseInt(payload, 10, 64)
 			if err != nil {
-				log.Error().Err(err).Msgf("failed to parse twin id %v", twinId)
+				log.Error().Err(err).Msgf("failed to parse twin id %v", payload)
 				continue
 			}
 
