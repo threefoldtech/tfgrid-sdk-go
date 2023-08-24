@@ -259,13 +259,12 @@ type RentContractDetails struct {
 }
 
 type Contract struct {
-	ContractID uint              `json:"contractId"`
-	TwinID     uint              `json:"twinId"`
-	State      string            `json:"state"`
-	CreatedAt  uint              `json:"created_at"`
-	Type       string            `json:"type"`
-	Details    interface{}       `json:"details"`
-	Billing    []ContractBilling `json:"billing"`
+	ContractID uint        `json:"contractId"`
+	TwinID     uint        `json:"twinId"`
+	State      string      `json:"state"`
+	CreatedAt  uint        `json:"created_at"`
+	Type       string      `json:"type"`
+	Details    interface{} `json:"details"`
 }
 
 type Version struct {

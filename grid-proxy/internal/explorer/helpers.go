@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -22,6 +23,20 @@ func errorReply(err error) mw.Response {
 	} else {
 		return mw.Error(err)
 	}
+}
+
+func createResponse(totalCount uint, limit types.Limit) mw.Response {
+	r := mw.Ok()
+
+	if limit.RetCount {
+		pages := math.Ceil(float64(totalCount) / float64(limit.Size))
+
+		r = r.
+			WithHeader("count", fmt.Sprintf("%d", totalCount)).
+			WithHeader("size", fmt.Sprintf("%d", limit.Size)).
+			WithHeader("pages", fmt.Sprintf("%d", int(pages)))
+	}
+	return r
 }
 
 func getLimit(r *http.Request) (types.Limit, error) {
@@ -304,4 +319,47 @@ func (a *App) getNodeData(nodeIDStr string) (types.NodeWithNestedCapacity, error
 	}
 	apiNode := nodeWithNestedCapacityFromDBNode(info)
 	return apiNode, nil
+}
+
+// getContractData is a helper function that wraps fetch contract data
+func (a *App) getContractData(contractIDStr string) (types.Contract, error) {
+	contractID, err := strconv.Atoi(contractIDStr)
+	if err != nil {
+		return types.Contract{}, errors.Wrapf(err, "invalid contract id: %s", contractIDStr)
+	}
+
+	info, err := a.db.GetContract(uint32(contractID))
+
+	if errors.Is(err, db.ErrContractNotFound) {
+		return types.Contract{}, ErrContractNotFound
+	} else if err != nil {
+		return types.Contract{}, err
+	}
+
+	res, err := contractFromDBContract(info)
+	if err != nil {
+		return types.Contract{}, err
+	}
+
+	return res, nil
+}
+
+// getContractBillsData is a helper function that gets bills reports for a single contract data
+func (a *App) getContractBillsData(contractIDStr string, limit types.Limit) ([]types.ContractBilling, uint, error) {
+	contractID, err := strconv.Atoi(contractIDStr)
+	if err != nil {
+		return []types.ContractBilling{}, 0, errors.Wrapf(err, "invalid contract id: %s", contractIDStr)
+	}
+
+	info, billsCount, err := a.db.GetContractBills(uint32(contractID), limit)
+	if err != nil {
+		return []types.ContractBilling{}, 0, errors.Wrapf(err, "contract not found with id: %d", contractID)
+	}
+
+	bills := []types.ContractBilling{}
+	for _, report := range info {
+		bills = append(bills, contractBillFromDBContractBill(report))
+	}
+
+	return bills, billsCount, nil
 }

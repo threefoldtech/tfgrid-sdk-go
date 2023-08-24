@@ -133,6 +133,16 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 	return node
 }
 
+func contractBillFromDBContractBill(info db.ContractBilling) types.ContractBilling {
+	bill := types.ContractBilling{
+		AmountBilled:     info.AmountBilled,
+		Timestamp:        info.Timestamp,
+		DiscountReceived: info.DiscountReceived,
+	}
+
+	return bill
+}
+
 func contractFromDBContract(info db.DBContract) (types.Contract, error) {
 	var details interface{}
 	switch info.Type {
@@ -159,9 +169,6 @@ func contractFromDBContract(info db.DBContract) (types.Contract, error) {
 		CreatedAt:  info.CreatedAt,
 		Type:       info.Type,
 		Details:    details,
-	}
-	if err := json.Unmarshal([]byte(info.ContractBillings), &contract.Billing); err != nil {
-		return contract, errors.Wrap(err, "couldn't parse contract billing")
 	}
 	return contract, nil
 }

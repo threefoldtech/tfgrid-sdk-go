@@ -44,7 +44,6 @@ func (g *GridProxyMockClient) Contracts(filter types.ContractFilter, limit types
 					DeploymentHash:    contract.DeploymentHash,
 					NumberOfPublicIps: uint(contract.NumberOfPublicIPs),
 				},
-				Billing: append([]types.ContractBilling{}, billings[contract.ContractID]...),
 			}
 			res = append(res, contract)
 		}
@@ -61,7 +60,6 @@ func (g *GridProxyMockClient) Contracts(filter types.ContractFilter, limit types
 				Details: types.RentContractDetails{
 					NodeID: uint(contract.NodeID),
 				},
-				Billing: append([]types.ContractBilling{}, billings[contract.ContractID]...),
 			}
 			res = append(res, contract)
 		}
@@ -78,7 +76,6 @@ func (g *GridProxyMockClient) Contracts(filter types.ContractFilter, limit types
 				Details: types.NameContractDetails{
 					Name: contract.Name,
 				},
-				Billing: append([]types.ContractBilling{}, billings[contract.ContractID]...),
 			}
 			res = append(res, contract)
 		}
