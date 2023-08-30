@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -42,6 +43,15 @@ func max(a, b uint64) uint64 {
 		return a
 	}
 	return b
+}
+
+func extractValuesFromInsertQuery(q string) (string, error) {
+
+	valuesIndex := strings.Index(q, "VALUES")
+	if valuesIndex == -1 {
+		return "", errors.New("values not found")
+	}
+	return q[valuesIndex+6 : len(q)-1], nil
 }
 
 func insertQuery(v interface{}) string {

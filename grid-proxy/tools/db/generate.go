@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,6 +49,16 @@ const (
 	minContractCRU = 1
 )
 
+var (
+	countries = []string{"Belgium", "United States", "Egypt", "United Kingdom"}
+	cities    = map[string][]string{
+		"Belgium":        {"Brussels", "Antwerp", "Ghent", "Charleroi"},
+		"United States":  {"New York", "Chicago", "Los Angeles", "San Francisco"},
+		"Egypt":          {"Cairo", "Giza", "October", "Nasr City"},
+		"United Kingdom": {"London", "Liverpool", "Manchester", "Cambridge"},
+	}
+)
+
 func initSchema(db *sql.DB) error {
 	schema, err := os.ReadFile("./schema.sql")
 	if err != nil {
@@ -61,6 +72,8 @@ func initSchema(db *sql.DB) error {
 }
 
 func generateTwins(db *sql.DB) error {
+	var values []string
+
 	for i := uint64(1); i <= twinCount; i++ {
 		twin := twin{
 			id:           fmt.Sprintf("twin-%d", i),
@@ -70,14 +83,32 @@ func generateTwins(db *sql.DB) error {
 			twin_id:      i,
 			grid_version: 3,
 		}
-		if _, err := db.Exec(insertQuery(&twin)); err != nil {
+
+		value, err := extractValuesFromInsertQuery(insertQuery(&twin))
+		if err != nil {
 			panic(err)
 		}
+		values = append(values, value)
 	}
+
+	if len(values) != 0 {
+		query := "INSERT INTO twin (id, grid_version, twin_id, account_id, relay, public_key) VALUES"
+		query += strings.Join(values, ",") + ";"
+
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+
+	}
+
+	fmt.Println("twins generated")
 	return nil
 }
 
 func generatePublicIPs(db *sql.DB) error {
+	var publicIPValues []string
+	var nodeContractUpdateValues []string
+
 	for i := uint64(1); i <= publicIPCount; i++ {
 		contract_id := uint64(0)
 		if flip(usedPublicIPsRatio) {
@@ -91,17 +122,39 @@ func generatePublicIPs(db *sql.DB) error {
 			contract_id: contract_id,
 			farm_id:     fmt.Sprintf("farm-%d", rnd(1, farmCount)),
 		}
-		if _, err := db.Exec(insertQuery(&public_ip)); err != nil {
+
+		value, err := extractValuesFromInsertQuery(insertQuery(&public_ip))
+		if err != nil {
 			panic(err)
 		}
-		if _, err := db.Exec(fmt.Sprintf("UPDATE node_contract set number_of_public_i_ps = number_of_public_i_ps + 1 WHERE contract_id = %d;", contract_id)); err != nil {
+		publicIPValues = append(publicIPValues, value)
+		nodeContractUpdateValues = append(nodeContractUpdateValues, fmt.Sprintf("%d", contract_id))
+
+	}
+
+	if len(publicIPValues) != 0 {
+		query := "INSERT INTO public_ip (id, gateway, ip, contract_id, farm_id) VALUES"
+		query += strings.Join(publicIPValues, ",") + ";"
+
+		if _, err := db.Exec(query); err != nil {
 			panic(err)
 		}
 	}
+
+	if len(nodeContractUpdateValues) != 0 {
+		query := "UPDATE node_contract set number_of_public_i_ps = number_of_public_i_ps + 1 WHERE contract_id IN ("
+		query += strings.Join(nodeContractUpdateValues, ",") + ");"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+	fmt.Println("public IPs generated")
+
 	return nil
 }
 
 func generateFarms(db *sql.DB) error {
+	var values []string
 	for i := uint64(1); i <= farmCount; i++ {
 		farm := farm{
 			id:                fmt.Sprintf("farm-%d", i),
@@ -117,14 +170,32 @@ func generateFarms(db *sql.DB) error {
 		if farm.dedicated_farm {
 			dedicatedFarms[farm.farm_id] = struct{}{}
 		}
-		if _, err := db.Exec(insertQuery(&farm)); err != nil {
+
+		value, err := extractValuesFromInsertQuery(insertQuery(&farm))
+		if err != nil {
+			panic(err)
+		}
+		values = append(values, value)
+	}
+
+	if len(values) != 0 {
+		query := "INSERT INTO farm (id, grid_version, farm_id, name, twin_id, pricing_policy_id, certification, stellar_address, dedicated_farm) VALUES"
+		query += strings.Join(values, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
 			panic(err)
 		}
 	}
+	fmt.Println("Farms generated")
+
 	return nil
 }
 
 func generateContracts(db *sql.DB) error {
+	var contractsValues []string
+	var contractResourcesValues []string
+	var billingValues []string
+	startContractCnt := contractCnt
+
 	for i := uint64(1); i <= contractCount; i++ {
 		nodeID := rnd(1, nodeCount)
 		state := "Deleted"
@@ -178,15 +249,19 @@ func generateContracts(db *sql.DB) error {
 			nodesMRU[nodeID] -= mru
 			createdNodeContracts = append(createdNodeContracts, contractCnt)
 		}
-		if _, err := db.Exec(insertQuery(&contract)); err != nil {
+
+		value, err := extractValuesFromInsertQuery(insertQuery(&contract))
+		if err != nil {
 			panic(err)
 		}
-		if _, err := db.Exec(insertQuery(&contract_resources)); err != nil {
+		contractsValues = append(contractsValues, value)
+
+		value, err = extractValuesFromInsertQuery(insertQuery(&contract_resources))
+		if err != nil {
 			panic(err)
 		}
-		if _, err := db.Exec(fmt.Sprintf(`UPDATE node_contract SET resources_used_id = 'contract-resources-%d' WHERE id = 'node-contract-%d'`, contractCnt, contractCnt)); err != nil {
-			panic(err)
-		}
+		contractResourcesValues = append(contractResourcesValues, value)
+
 		billings := rnd(0, 10)
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
@@ -197,15 +272,54 @@ func generateContracts(db *sql.DB) error {
 				timestamp:         uint64(time.Now().UnixNano()),
 			}
 			billCnt++
-			if _, err := db.Exec(insertQuery(&billing)); err != nil {
+
+			value, err = extractValuesFromInsertQuery(insertQuery(&billing))
+			if err != nil {
 				panic(err)
 			}
+			billingValues = append(billingValues, value)
 		}
 		contractCnt++
 	}
+
+	if len(contractsValues) != 0 {
+		query := "INSERT INTO node_contract (id, grid_version, contract_id, twin_id, node_id, deployment_data, deployment_hash, number_of_public_i_ps, state, created_at, resources_used_id) VALUES"
+		query += strings.Join(contractsValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+
+	if len(contractResourcesValues) != 0 {
+		query := "INSERT INTO contract_resources (id, hru, sru, cru, mru, contract_id) VALUES"
+		query += strings.Join(contractResourcesValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+
+	query := fmt.Sprintf(`UPDATE node_contract SET resources_used_id = CONCAT('contract-resources-',split_part(id, '-', -1))
+		WHERE CAST(split_part(id, '-', -1) AS INTEGER) BETWEEN %d AND %d;`, startContractCnt, contractCnt-1)
+	if _, err := db.Exec(query); err != nil {
+		panic(err)
+	}
+
+	if len(billingValues) != 0 {
+		query := "INSERT INTO contract_bill_report (id, contract_id, discount_received, amount_billed, timestamp) VALUES"
+		query += strings.Join(billingValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+
+	fmt.Println("node contracts generated")
+
 	return nil
 }
+
 func generateNameContracts(db *sql.DB) error {
+	var contractValues []string
+	var billReportsValues []string
 	for i := uint64(1); i <= nameContractCount; i++ {
 		nodeID := rnd(1, nodeCount)
 		state := "Deleted"
@@ -225,7 +339,7 @@ func generateNameContracts(db *sql.DB) error {
 			continue
 		}
 		contract := name_contract{
-			id:           fmt.Sprintf("node-contract-%d", contractCnt),
+			id:           fmt.Sprintf("name-contract-%d", contractCnt),
 			twin_id:      twinID,
 			contract_id:  contractCnt,
 			state:        state,
@@ -233,9 +347,13 @@ func generateNameContracts(db *sql.DB) error {
 			grid_version: 3,
 			name:         uuid.NewString(),
 		}
-		if _, err := db.Exec(insertQuery(&contract)); err != nil {
+
+		value, err := extractValuesFromInsertQuery(insertQuery(&contract))
+		if err != nil {
 			panic(err)
 		}
+		contractValues = append(contractValues, value)
+
 		billings := rnd(0, 10)
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
@@ -246,15 +364,39 @@ func generateNameContracts(db *sql.DB) error {
 				timestamp:         uint64(time.Now().UnixNano()),
 			}
 			billCnt++
-			if _, err := db.Exec(insertQuery(&billing)); err != nil {
+
+			value, err = extractValuesFromInsertQuery(insertQuery(&billing))
+			if err != nil {
 				panic(err)
 			}
+			billReportsValues = append(billReportsValues, value)
 		}
 		contractCnt++
 	}
+
+	if len(contractValues) != 0 {
+		query := "INSERT INTO name_contract (id, grid_version, contract_id, twin_id, name, state, created_at) VALUES"
+		query += strings.Join(contractValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+
+	if len(billReportsValues) != 0 {
+		query := "INSERT INTO contract_bill_report (id, contract_id, discount_received, amount_billed, timestamp) VALUES"
+		query += strings.Join(billReportsValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+
+	fmt.Println("name contracts generated")
+
 	return nil
 }
 func generateRentContracts(db *sql.DB) error {
+	var contractValues []string
+	var billReportsValues []string
 	for i := uint64(1); i <= rentContractCount; i++ {
 		nl, nodeID := popRandom(availableRentNodesList)
 		availableRentNodesList = nl
@@ -279,9 +421,13 @@ func generateRentContracts(db *sql.DB) error {
 		if state != "Deleted" {
 			renter[nodeID] = contract.twin_id
 		}
-		if _, err := db.Exec(insertQuery(&contract)); err != nil {
+
+		value, err := extractValuesFromInsertQuery(insertQuery(&contract))
+		if err != nil {
 			panic(err)
 		}
+		contractValues = append(contractValues, value)
+
 		billings := rnd(0, 10)
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
@@ -293,19 +439,43 @@ func generateRentContracts(db *sql.DB) error {
 			}
 
 			billCnt++
-			if _, err := db.Exec(insertQuery(&billing)); err != nil {
+
+			value, err = extractValuesFromInsertQuery(insertQuery(&billing))
+			if err != nil {
 				panic(err)
 			}
+			billReportsValues = append(billReportsValues, value)
+
 		}
 		contractCnt++
 	}
+
+	if len(contractValues) != 0 {
+		query := "INSERT INTO rent_contract (id, grid_version, contract_id, twin_id, node_id, state, created_at) VALUES"
+		query += strings.Join(contractValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+	if len(billReportsValues) != 0 {
+		query := "INSERT INTO contract_bill_report (id, contract_id, discount_received, amount_billed, timestamp) VALUES"
+		query += strings.Join(billReportsValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+	fmt.Println("rent contracts generated")
+
 	return nil
 }
 
 func generateNodes(db *sql.DB) error {
-	const NodeCount = 1000
 	powerState := []string{"Up", "Down"}
-	for i := uint64(1); i <= NodeCount; i++ {
+	var locationValues []string
+	var nodeValues []string
+	var totalResourcesValues []string
+	var publicConfigValues []string
+	for i := uint64(1); i <= nodeCount; i++ {
 		mru := rnd(4, 256) * 1024 * 1024 * 1024
 		hru := rnd(100, 30*1024) * 1024 * 1024 * 1024 // 100GB -> 30TB
 		sru := rnd(200, 30*1024) * 1024 * 1024 * 1024 // 100GB -> 30TB
@@ -325,14 +495,17 @@ func generateNodes(db *sql.DB) error {
 			longitude: fmt.Sprintf("location--long-%d", i),
 			latitude:  fmt.Sprintf("location-lat-%d", i),
 		}
+
+		countryIndex := rand.Intn(len(countries))
+		cityIndex := rand.Intn(len(cities[countries[countryIndex]]))
 		node := node{
 			id:                fmt.Sprintf("node-%d", i),
 			location_id:       fmt.Sprintf("location-%d", i),
 			node_id:           i,
 			farm_id:           i%100 + 1,
 			twin_id:           i + 100 + 1,
-			country:           "Belgium",
-			city:              "Unknown",
+			country:           countries[countryIndex],
+			city:              cities[countries[countryIndex]][cityIndex],
 			uptime:            1000,
 			updated_at:        uint64(updatedAt),
 			created:           uint64(time.Now().Unix()),
@@ -361,18 +534,27 @@ func generateNodes(db *sql.DB) error {
 			availableRentNodes[i] = struct{}{}
 			availableRentNodesList = append(availableRentNodesList, i)
 		}
-		if _, err := db.Exec(insertQuery(&location)); err != nil {
+
+		value, err := extractValuesFromInsertQuery(insertQuery(&location))
+		if err != nil {
 			panic(err)
 		}
-		if _, err := db.Exec(insertQuery(&node)); err != nil {
+		locationValues = append(locationValues, value)
+
+		value, err = extractValuesFromInsertQuery(insertQuery(&node))
+		if err != nil {
 			panic(err)
 		}
-		if _, err := db.Exec(insertQuery(&total_resources)); err != nil {
+		nodeValues = append(nodeValues, value)
+
+		value, err = extractValuesFromInsertQuery(insertQuery(&total_resources))
+		if err != nil {
 			panic(err)
 		}
+		totalResourcesValues = append(totalResourcesValues, value)
 
 		if flip(.1) {
-			if _, err := db.Exec(insertQuery(&public_config{
+			value, err = extractValuesFromInsertQuery(insertQuery(&public_config{
 				id:      fmt.Sprintf("public-config-%d", i),
 				ipv4:    "185.16.5.2/24",
 				gw4:     "185.16.5.2",
@@ -380,15 +562,54 @@ func generateNodes(db *sql.DB) error {
 				gw6:     "::1",
 				domain:  "hamada.com",
 				node_id: fmt.Sprintf("node-%d", i),
-			})); err != nil {
+			}))
+			if err != nil {
 				panic(err)
 			}
+			publicConfigValues = append(publicConfigValues)
+
 		}
 	}
+
+	if len(locationValues) != 0 {
+		query := "INSERT INTO location (id, longitude, latitude) VALUES"
+		query += strings.Join(locationValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+
+	if len(nodeValues) != 0 {
+		query := "INSERT INTO node (id, grid_version, node_id, farm_id, twin_id, country, city, uptime, created, farming_policy_id, certification, secure, virtualized, serial_number, created_at, updated_at, location_id, power, extra_fee) VALUES"
+		query += strings.Join(nodeValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+
+	if len(totalResourcesValues) != 0 {
+		query := "INSERT INTO node_resources_total (id, hru, sru, cru, mru, node_id) VALUES"
+		query += strings.Join(totalResourcesValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+
+	if len(publicConfigValues) != 0 {
+		query := "INSERT INTO public_config (id, ipv4, ipv6, gw4, gw6, domain, node_id) VALUES"
+		query += strings.Join(publicConfigValues, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
+			panic(err)
+		}
+	}
+
+	fmt.Println("nodes generated")
+
 	return nil
 }
 
 func generateNodeGPUs(db *sql.DB) error {
+	var values []string
 	for i := 0; i <= 10; i++ {
 		g := node_gpu{
 			node_twin_id: uint64(i + 100),
@@ -397,10 +618,24 @@ func generateNodeGPUs(db *sql.DB) error {
 			contract:     i % 2,
 			id:           "0000:0e:00.0/1002/744c",
 		}
-		if _, err := db.Exec(insertQuery(&g)); err != nil {
+
+		value, err := extractValuesFromInsertQuery(insertQuery(&g))
+		if err != nil {
+			panic(err)
+		}
+		values = append(values, value)
+	}
+
+	if len(values) != 0 {
+		query := "INSERT INTO node_gpu (node_twin_id, id, vendor, device, contract) VALUES"
+		query += strings.Join(values, ",") + ";"
+		if _, err := db.Exec(query); err != nil {
 			panic(err)
 		}
 	}
+
+	fmt.Println("node GPUs generated")
+
 	return nil
 }
 
