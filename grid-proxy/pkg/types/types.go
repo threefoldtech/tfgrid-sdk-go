@@ -258,13 +258,57 @@ type RentContractDetails struct {
 	NodeID uint `json:"nodeId"`
 }
 
+type ContractDetails interface{}
+
 type Contract struct {
-	ContractID uint        `json:"contractId"`
-	TwinID     uint        `json:"twinId"`
-	State      string      `json:"state"`
-	CreatedAt  uint        `json:"created_at"`
-	Type       string      `json:"type"`
-	Details    interface{} `json:"details"`
+	ContractID uint            `json:"contract_id"`
+	TwinID     uint            `json:"twin_id"`
+	State      string          `json:"state"`
+	CreatedAt  uint            `json:"created_at"`
+	Type       string          `json:"type"`
+	Details    ContractDetails `json:"details"`
+}
+
+// UnmarshalJSON is a custom unmarshal method that can marshal the nested Details based on type.
+func (c *Contract) UnmarshalJSON(data []byte) error {
+	type ContractAlias Contract
+
+	aux := &struct {
+		Details map[string]interface{} `json:"details"`
+		*ContractAlias
+	}{
+		ContractAlias: (*ContractAlias)(c),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	switch c.Type {
+	case "node":
+		{
+			c.Details = NodeContractDetails{
+				NodeID:            uint(aux.Details["nodeId"].(float64)),
+				DeploymentData:    aux.Details["deployment_data"].(string),
+				DeploymentHash:    aux.Details["deployment_hash"].(string),
+				NumberOfPublicIps: uint(aux.Details["number_of_public_ips"].(float64)),
+			}
+		}
+	case "name":
+		{
+			c.Details = NameContractDetails{
+				Name: aux.Details["name"].(string),
+			}
+		}
+	case "rent":
+		{
+			c.Details = RentContractDetails{
+				NodeID: uint(aux.Details["nodeId"].(float64)),
+			}
+		}
+	}
+
+	return nil
 }
 
 type Version struct {

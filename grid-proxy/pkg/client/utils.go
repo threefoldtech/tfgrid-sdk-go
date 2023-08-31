@@ -324,3 +324,25 @@ func statsParams(filter types.StatsFilter) string {
 	// pop the extra ? or &
 	return res[:len(res)-1]
 }
+
+func billsParams(limit types.Limit) string {
+	var builder strings.Builder
+	fmt.Fprintf(&builder, "?")
+
+	if limit.Page != 0 {
+		fmt.Fprintf(&builder, "page=%d&", limit.Page)
+	}
+	if limit.Size != 0 {
+		fmt.Fprintf(&builder, "size=%d&", limit.Size)
+	}
+	if limit.RetCount {
+		fmt.Fprintf(&builder, "ret_count=true&")
+	}
+	if limit.Randomize {
+		fmt.Fprintf(&builder, "randomize=true&")
+	}
+
+	res := builder.String()
+	// pop the extra ? or &
+	return res[:len(res)-1]
+}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -29,6 +30,10 @@ type ContractsAggregate struct {
 
 const (
 	CONTRACTS_TESTS = 2000
+)
+
+var (
+	ErrContractNotFound = errors.New("contract not found")
 )
 
 var contractFilterRandomValueGenerator = map[string]func(agg ContractsAggregate) interface{}{
@@ -113,6 +118,54 @@ func TestContracts(t *testing.T) {
 			assert.Equal(t, wantCount, gotCount)
 
 			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+		}
+	})
+}
+
+func TestContract(t *testing.T) {
+	t.Run("single contract test", func(t *testing.T) {
+		contractID := rand.Intn(CONTRACTS_TESTS)
+
+		want, err := mockClient.Contract(uint32(contractID))
+		require.NoError(t, err)
+
+		got, err := gridProxyClient.Contract(uint32(contractID))
+		require.NoError(t, err)
+
+		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("wanted: %+v\n got: %+v", want, got))
+	})
+
+	t.Run("contract not found test", func(t *testing.T) {
+		contractID := 1000000000000
+		_, err := gridProxyClient.Contract(uint32(contractID))
+		assert.Equal(t, err.Error(), ErrContractNotFound.Error())
+	})
+}
+
+func TestBills(t *testing.T) {
+	t.Run("contract bills test", func(t *testing.T) {
+		contractID := rand.Intn(CONTRACTS_TESTS)
+
+		l := proxytypes.Limit{
+			Size:     5,
+			Page:     1,
+			RetCount: true,
+		}
+
+		for ; ; l.Page++ {
+			want, wantCount, err := mockClient.ContractBills(uint32(contractID), l)
+			require.NoError(t, err)
+
+			got, gotCount, err := gridProxyClient.ContractBills(uint32(contractID), l)
+			require.NoError(t, err)
+
+			assert.Equal(t, wantCount, gotCount)
+
+			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+
+			if l.Page*l.Size >= uint64(wantCount) {
+				break
+			}
 		}
 	})
 }

@@ -17,6 +17,8 @@ type Client interface {
 	Nodes(filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error)
 	Farms(filter types.FarmFilter, pagination types.Limit) (res []types.Farm, totalCount int, err error)
 	Contracts(filter types.ContractFilter, pagination types.Limit) (res []types.Contract, totalCount int, err error)
+	Contract(contractID uint32) (types.Contract, error)
+	ContractBills(contractID uint32, limit types.Limit) ([]types.ContractBilling, uint, error)
 	Twins(filter types.TwinFilter, pagination types.Limit) (res []types.Twin, totalCount int, err error)
 	Node(nodeID uint32) (res types.NodeWithNestedCapacity, err error)
 	NodeStatus(nodeID uint32) (res types.NodeStatus, err error)
@@ -164,18 +166,18 @@ func (g *Clientimpl) Contracts(filter types.ContractFilter, limit types.Limit) (
 	for idx := range res {
 		if res[idx].Type == "node" {
 			res[idx].Details = types.NodeContractDetails{
-				NodeID:            uint(res[idx].Details.(map[string]interface{})["nodeId"].(float64)),
-				DeploymentData:    res[idx].Details.(map[string]interface{})["deployment_data"].(string),
-				DeploymentHash:    res[idx].Details.(map[string]interface{})["deployment_hash"].(string),
-				NumberOfPublicIps: uint(res[idx].Details.(map[string]interface{})["number_of_public_ips"].(float64)),
+				NodeID:            res[idx].Details.(types.NodeContractDetails).NodeID,
+				DeploymentData:    res[idx].Details.(types.NodeContractDetails).DeploymentData,
+				DeploymentHash:    res[idx].Details.(types.NodeContractDetails).DeploymentHash,
+				NumberOfPublicIps: res[idx].Details.(types.NodeContractDetails).NumberOfPublicIps,
 			}
 		} else if res[idx].Type == "rent" {
 			res[idx].Details = types.RentContractDetails{
-				NodeID: uint(res[idx].Details.(map[string]interface{})["nodeId"].(float64)),
+				NodeID: res[idx].Details.(types.RentContractDetails).NodeID,
 			}
 		} else if res[idx].Type == "name" {
 			res[idx].Details = types.NameContractDetails{
-				Name: res[idx].Details.(map[string]interface{})["name"].(string),
+				Name: res[idx].Details.(types.NameContractDetails).Name,
 			}
 		}
 	}
@@ -231,5 +233,53 @@ func (g *Clientimpl) Counters(filter types.StatsFilter) (res types.Counters, err
 	if err := json.NewDecoder(req.Body).Decode(&res); err != nil {
 		return res, err
 	}
+	return
+}
+
+// Contract returns a single contract based on the contractID
+func (g *Clientimpl) Contract(contractID uint32) (res types.Contract, err error) {
+	req, err := http.Get(g.url("contracts/%d", contractID))
+	if err != nil {
+		return
+	}
+	if req.StatusCode != http.StatusOK {
+		err = parseError(req.Body)
+		return
+	}
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		return
+	}
+	err = res.UnmarshalJSON(data)
+
+	return
+}
+
+// ContractBills returns all bills for a single contract based on contractID and pagination params
+func (g *Clientimpl) ContractBills(contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
+	query := billsParams(limit)
+
+	req, err := http.Get(g.url("contracts/%d/bills%s", contractID, query))
+	if err != nil {
+		return
+	}
+	if req.StatusCode != http.StatusOK {
+		err = parseError(req.Body)
+		return
+	}
+
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		return
+	}
+
+	count, err := requestCounters(req)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(data, &res)
+
+	totalCount = uint(count)
 	return
 }
