@@ -272,5 +272,6 @@ func (g *GridProxyMockClient) ContractBills(contractID uint32, limit types.Limit
 		})
 	}
 
+	totalCount = uint(len(bills))
 	return res, totalCount, err
 }

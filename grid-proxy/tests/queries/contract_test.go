@@ -166,6 +166,7 @@ func TestBills(t *testing.T) {
 			if l.Page*l.Size >= uint64(wantCount) {
 				break
 			}
+			l.Page++
 		}
 	})
 }
