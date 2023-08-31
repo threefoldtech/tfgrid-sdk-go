@@ -62,11 +62,11 @@ var (
 func initSchema(db *sql.DB) error {
 	schema, err := os.ReadFile("./schema.sql")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	_, err = db.Exec(string(schema))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func generateTwins(db *sql.DB) error {
 
 		value, err := extractValuesFromInsertQuery(insertQuery(&twin))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		values = append(values, value)
 	}
@@ -96,7 +96,7 @@ func generateTwins(db *sql.DB) error {
 		query += strings.Join(values, ",") + ";"
 
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 
 	}
@@ -125,7 +125,7 @@ func generatePublicIPs(db *sql.DB) error {
 
 		value, err := extractValuesFromInsertQuery(insertQuery(&public_ip))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		publicIPValues = append(publicIPValues, value)
 		nodeContractUpdateValues = append(nodeContractUpdateValues, fmt.Sprintf("%d", contract_id))
@@ -137,7 +137,7 @@ func generatePublicIPs(db *sql.DB) error {
 		query += strings.Join(publicIPValues, ",") + ";"
 
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -145,7 +145,7 @@ func generatePublicIPs(db *sql.DB) error {
 		query := "UPDATE node_contract set number_of_public_i_ps = number_of_public_i_ps + 1 WHERE contract_id IN ("
 		query += strings.Join(nodeContractUpdateValues, ",") + ");"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 	fmt.Println("public IPs generated")
@@ -173,7 +173,7 @@ func generateFarms(db *sql.DB) error {
 
 		value, err := extractValuesFromInsertQuery(insertQuery(&farm))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		values = append(values, value)
 	}
@@ -182,7 +182,7 @@ func generateFarms(db *sql.DB) error {
 		query := "INSERT INTO farm (id, grid_version, farm_id, name, twin_id, pricing_policy_id, certification, stellar_address, dedicated_farm) VALUES"
 		query += strings.Join(values, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 	fmt.Println("Farms generated")
@@ -252,13 +252,13 @@ func generateContracts(db *sql.DB) error {
 
 		value, err := extractValuesFromInsertQuery(insertQuery(&contract))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		contractsValues = append(contractsValues, value)
 
 		value, err = extractValuesFromInsertQuery(insertQuery(&contract_resources))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		contractResourcesValues = append(contractResourcesValues, value)
 
@@ -275,7 +275,7 @@ func generateContracts(db *sql.DB) error {
 
 			value, err = extractValuesFromInsertQuery(insertQuery(&billing))
 			if err != nil {
-				panic(err)
+				return err
 			}
 			billingValues = append(billingValues, value)
 		}
@@ -286,7 +286,7 @@ func generateContracts(db *sql.DB) error {
 		query := "INSERT INTO node_contract (id, grid_version, contract_id, twin_id, node_id, deployment_data, deployment_hash, number_of_public_i_ps, state, created_at, resources_used_id) VALUES"
 		query += strings.Join(contractsValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -294,21 +294,21 @@ func generateContracts(db *sql.DB) error {
 		query := "INSERT INTO contract_resources (id, hru, sru, cru, mru, contract_id) VALUES"
 		query += strings.Join(contractResourcesValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
 	query := fmt.Sprintf(`UPDATE node_contract SET resources_used_id = CONCAT('contract-resources-',split_part(id, '-', -1))
 		WHERE CAST(split_part(id, '-', -1) AS INTEGER) BETWEEN %d AND %d;`, startContractCnt, contractCnt-1)
 	if _, err := db.Exec(query); err != nil {
-		panic(err)
+		return err
 	}
 
 	if len(billingValues) != 0 {
 		query := "INSERT INTO contract_bill_report (id, contract_id, discount_received, amount_billed, timestamp) VALUES"
 		query += strings.Join(billingValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -350,7 +350,7 @@ func generateNameContracts(db *sql.DB) error {
 
 		value, err := extractValuesFromInsertQuery(insertQuery(&contract))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		contractValues = append(contractValues, value)
 
@@ -367,7 +367,7 @@ func generateNameContracts(db *sql.DB) error {
 
 			value, err = extractValuesFromInsertQuery(insertQuery(&billing))
 			if err != nil {
-				panic(err)
+				return err
 			}
 			billReportsValues = append(billReportsValues, value)
 		}
@@ -378,7 +378,7 @@ func generateNameContracts(db *sql.DB) error {
 		query := "INSERT INTO name_contract (id, grid_version, contract_id, twin_id, name, state, created_at) VALUES"
 		query += strings.Join(contractValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -386,7 +386,7 @@ func generateNameContracts(db *sql.DB) error {
 		query := "INSERT INTO contract_bill_report (id, contract_id, discount_received, amount_billed, timestamp) VALUES"
 		query += strings.Join(billReportsValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -424,7 +424,7 @@ func generateRentContracts(db *sql.DB) error {
 
 		value, err := extractValuesFromInsertQuery(insertQuery(&contract))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		contractValues = append(contractValues, value)
 
@@ -442,7 +442,7 @@ func generateRentContracts(db *sql.DB) error {
 
 			value, err = extractValuesFromInsertQuery(insertQuery(&billing))
 			if err != nil {
-				panic(err)
+				return err
 			}
 			billReportsValues = append(billReportsValues, value)
 
@@ -454,14 +454,14 @@ func generateRentContracts(db *sql.DB) error {
 		query := "INSERT INTO rent_contract (id, grid_version, contract_id, twin_id, node_id, state, created_at) VALUES"
 		query += strings.Join(contractValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 	if len(billReportsValues) != 0 {
 		query := "INSERT INTO contract_bill_report (id, contract_id, discount_received, amount_billed, timestamp) VALUES"
 		query += strings.Join(billReportsValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 	fmt.Println("rent contracts generated")
@@ -537,19 +537,19 @@ func generateNodes(db *sql.DB) error {
 
 		value, err := extractValuesFromInsertQuery(insertQuery(&location))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		locationValues = append(locationValues, value)
 
 		value, err = extractValuesFromInsertQuery(insertQuery(&node))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		nodeValues = append(nodeValues, value)
 
 		value, err = extractValuesFromInsertQuery(insertQuery(&total_resources))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		totalResourcesValues = append(totalResourcesValues, value)
 
@@ -564,7 +564,7 @@ func generateNodes(db *sql.DB) error {
 				node_id: fmt.Sprintf("node-%d", i),
 			}))
 			if err != nil {
-				panic(err)
+				return err
 			}
 			publicConfigValues = append(publicConfigValues)
 
@@ -575,7 +575,7 @@ func generateNodes(db *sql.DB) error {
 		query := "INSERT INTO location (id, longitude, latitude) VALUES"
 		query += strings.Join(locationValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -583,7 +583,7 @@ func generateNodes(db *sql.DB) error {
 		query := "INSERT INTO node (id, grid_version, node_id, farm_id, twin_id, country, city, uptime, created, farming_policy_id, certification, secure, virtualized, serial_number, created_at, updated_at, location_id, power, extra_fee) VALUES"
 		query += strings.Join(nodeValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -591,7 +591,7 @@ func generateNodes(db *sql.DB) error {
 		query := "INSERT INTO node_resources_total (id, hru, sru, cru, mru, node_id) VALUES"
 		query += strings.Join(totalResourcesValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -599,7 +599,7 @@ func generateNodes(db *sql.DB) error {
 		query := "INSERT INTO public_config (id, ipv4, ipv6, gw4, gw6, domain, node_id) VALUES"
 		query += strings.Join(publicConfigValues, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -621,7 +621,7 @@ func generateNodeGPUs(db *sql.DB) error {
 
 		value, err := extractValuesFromInsertQuery(insertQuery(&g))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		values = append(values, value)
 	}
@@ -630,7 +630,7 @@ func generateNodeGPUs(db *sql.DB) error {
 		query := "INSERT INTO node_gpu (node_twin_id, id, vendor, device, contract) VALUES"
 		query += strings.Join(values, ",") + ";"
 		if _, err := db.Exec(query); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
