@@ -10,8 +10,11 @@ import (
 	"strings"
 )
 
-func rnd(min, max uint64) uint64 {
-	return rand.Uint64()%(max-min+1) + min
+func rnd(min, max uint64) (uint64, error) {
+	if max-min+1 <= 0 {
+		return 0, errors.New("min cannot be greater than max")
+	}
+	return uint64(rand.Intn(int(max)-int(min)+1) + int(min)), nil
 }
 
 func flip(success float32) bool {
@@ -45,19 +48,9 @@ func max(a, b uint64) uint64 {
 	return b
 }
 
-func extractValuesFromInsertQuery(q string) (string, error) {
-
-	valuesIndex := strings.Index(q, "VALUES")
-	if valuesIndex == -1 {
-		return "", errors.New("values not found")
-	}
-	return q[valuesIndex+6 : len(q)-1], nil
-}
-
-func insertQuery(v interface{}) string {
-	query := fmt.Sprintf("INSERT INTO %s (", reflect.Indirect(reflect.ValueOf(v)).Type().Name())
+func objectToTupleString(v interface{}) string {
 	vals := "("
-	val := reflect.ValueOf(v).Elem()
+	val := reflect.ValueOf(v)
 	for i := 0; i < val.NumField(); i++ {
 		if i == 0 {
 			v := fmt.Sprint(val.Field(i))
@@ -67,7 +60,6 @@ func insertQuery(v interface{}) string {
 			if v != "NULL" && val.Field(i).Type().Name() == "string" {
 				v = fmt.Sprintf(`'%s'`, v)
 			}
-			query = fmt.Sprintf("%s%s", query, val.Type().Field(i).Name)
 			vals = fmt.Sprintf("%s%s", vals, v)
 		} else {
 			v := fmt.Sprint(val.Field(i))
@@ -94,16 +86,17 @@ func insertQuery(v interface{}) string {
 				}
 				v = fmt.Sprintf("'%s'", string(powerJSON))
 			}
-			query = fmt.Sprintf("%s, %s", query, val.Type().Field(i).Name)
 			vals = fmt.Sprintf("%s, %s", vals, v)
 		}
 	}
-	query = fmt.Sprintf("%s) VALUES %s);", query, vals)
-	return query
+	return fmt.Sprintf("%s)", vals)
 }
-func popRandom(l []uint64) ([]uint64, uint64) {
-	idx := rnd(0, uint64(len(l)-1))
+func popRandom(l []uint64) ([]uint64, uint64, error) {
+	idx, err := rnd(0, uint64(len(l)-1))
+	if err != nil {
+		return nil, 0, err
+	}
 	e := l[idx]
 	l[idx], l[len(l)-1] = l[len(l)-1], l[idx]
-	return l[:len(l)-1], e
+	return l[:len(l)-1], e, nil
 }

@@ -54,6 +54,9 @@ type twin struct {
 	relay        string
 	public_key   string
 }
+
+func (t twin) String() string { return "" }
+
 type public_ip struct {
 	id          string
 	gateway     string

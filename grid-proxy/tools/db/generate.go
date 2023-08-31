@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -22,8 +23,6 @@ var (
 	availableRentNodes     = make(map[uint64]struct{})
 	availableRentNodesList = make([]uint64, 0)
 	renter                 = make(map[uint64]uint64)
-	billCnt                = 1
-	contractCnt            = uint64(1)
 )
 
 const (
@@ -32,10 +31,10 @@ const (
 	nodeUpRatio          = .5
 	nodeCount            = 1000
 	farmCount            = 100
-	normalUsers          = 2000
+	normalUsers          = 200
 	publicIPCount        = 1000
 	twinCount            = nodeCount + farmCount + normalUsers
-	contractCount        = 3000
+	nodeContractCount    = 3000
 	rentContractCount    = 100
 	nameContractCount    = 300
 
@@ -72,7 +71,7 @@ func initSchema(db *sql.DB) error {
 }
 
 func generateTwins(db *sql.DB) error {
-	var values []string
+	var twins []interface{}
 
 	for i := uint64(1); i <= twinCount; i++ {
 		twin := twin{
@@ -84,61 +83,50 @@ func generateTwins(db *sql.DB) error {
 			grid_version: 3,
 		}
 
-		value, err := extractValuesFromInsertQuery(insertQuery(&twin))
-		if err != nil {
-			return err
-		}
-		values = append(values, value)
+		twins = append(twins, twin)
 	}
 
-	if len(values) != 0 {
-		query := "INSERT INTO twin (id, grid_version, twin_id, account_id, relay, public_key) VALUES"
-		query += strings.Join(values, ",") + ";"
-
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
-
+	if err := insertTuples(db, twins); err != nil {
+		return err
 	}
-
 	fmt.Println("twins generated")
+
 	return nil
 }
 
 func generatePublicIPs(db *sql.DB) error {
-	var publicIPValues []string
+	var publicIPs []interface{}
 	var nodeContractUpdateValues []string
 
 	for i := uint64(1); i <= publicIPCount; i++ {
 		contract_id := uint64(0)
 		if flip(usedPublicIPsRatio) {
-			contract_id = createdNodeContracts[rnd(0, uint64(len(createdNodeContracts))-1)]
+			idx, err := rnd(0, uint64(len(createdNodeContracts))-1)
+			if err != nil {
+				return err
+			}
+			contract_id = createdNodeContracts[idx]
 		}
 		ip := randomIPv4()
+		farmID, err := rnd(1, farmCount)
+		if err != nil {
+			return err
+		}
 		public_ip := public_ip{
 			id:          fmt.Sprintf("public-ip-%d", i),
 			gateway:     ip.String(),
 			ip:          IPv4Subnet(ip).String(),
 			contract_id: contract_id,
-			farm_id:     fmt.Sprintf("farm-%d", rnd(1, farmCount)),
+			farm_id:     fmt.Sprintf("farm-%d", farmID),
 		}
 
-		value, err := extractValuesFromInsertQuery(insertQuery(&public_ip))
-		if err != nil {
-			return err
-		}
-		publicIPValues = append(publicIPValues, value)
+		publicIPs = append(publicIPs, public_ip)
 		nodeContractUpdateValues = append(nodeContractUpdateValues, fmt.Sprintf("%d", contract_id))
 
 	}
 
-	if len(publicIPValues) != 0 {
-		query := "INSERT INTO public_ip (id, gateway, ip, contract_id, farm_id) VALUES"
-		query += strings.Join(publicIPValues, ",") + ";"
-
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, publicIPs); err != nil {
+		return err
 	}
 
 	if len(nodeContractUpdateValues) != 0 {
@@ -154,7 +142,7 @@ func generatePublicIPs(db *sql.DB) error {
 }
 
 func generateFarms(db *sql.DB) error {
-	var values []string
+	var farms []interface{}
 	for i := uint64(1); i <= farmCount; i++ {
 		farm := farm{
 			id:                fmt.Sprintf("farm-%d", i),
@@ -171,33 +159,27 @@ func generateFarms(db *sql.DB) error {
 			dedicatedFarms[farm.farm_id] = struct{}{}
 		}
 
-		value, err := extractValuesFromInsertQuery(insertQuery(&farm))
-		if err != nil {
-			return err
-		}
-		values = append(values, value)
+		farms = append(farms, farm)
 	}
 
-	if len(values) != 0 {
-		query := "INSERT INTO farm (id, grid_version, farm_id, name, twin_id, pricing_policy_id, certification, stellar_address, dedicated_farm) VALUES"
-		query += strings.Join(values, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, farms); err != nil {
+		return err
 	}
-	fmt.Println("Farms generated")
+	fmt.Println("farms generated")
 
 	return nil
 }
 
-func generateContracts(db *sql.DB) error {
-	var contractsValues []string
-	var contractResourcesValues []string
-	var billingValues []string
-	startContractCnt := contractCnt
+func generateNodeContracts(db *sql.DB, billCount *int) error {
+	var contracts []interface{}
+	var contractResources []interface{}
+	var billingReports []interface{}
 
-	for i := uint64(1); i <= contractCount; i++ {
-		nodeID := rnd(1, nodeCount)
+	for i := uint64(1); i <= nodeContractCount; i++ {
+		nodeID, err := rnd(1, nodeCount)
+		if err != nil {
+			return err
+		}
 		state := "Deleted"
 		if nodeUP[nodeID] {
 			if flip(contractCreatedRatio) {
@@ -210,7 +192,10 @@ func generateContracts(db *sql.DB) error {
 			i--
 			continue
 		}
-		twinID := rnd(1100, 3100)
+		twinID, err := rnd(1100, 3100)
+		if err != nil {
+			return err
+		}
 		if renter, ok := renter[nodeID]; ok {
 			twinID = renter
 		}
@@ -219,97 +204,91 @@ func generateContracts(db *sql.DB) error {
 			continue
 		}
 		contract := node_contract{
-			id:                    fmt.Sprintf("node-contract-%d", contractCnt),
+			id:                    fmt.Sprintf("node-contract-%d", i+rentContractCount),
 			twin_id:               twinID,
-			contract_id:           contractCnt,
+			contract_id:           i + rentContractCount,
 			state:                 state,
 			created_at:            uint64(time.Now().Unix()),
 			node_id:               nodeID,
-			deployment_data:       fmt.Sprintf("deployment-data-%d", contractCnt),
-			deployment_hash:       fmt.Sprintf("deployment-hash-%d", contractCnt),
+			deployment_data:       fmt.Sprintf("deployment-data-%d", i+rentContractCount),
+			deployment_hash:       fmt.Sprintf("deployment-hash-%d", i+rentContractCount),
 			number_of_public_i_ps: 0,
 			grid_version:          3,
 			resources_used_id:     "",
 		}
-		cru := rnd(minContractCRU, maxContractCRU)
-		hru := rnd(minContractHRU, min(maxContractHRU, nodesHRU[nodeID]))
-		sru := rnd(minContractSRU, min(maxContractSRU, nodesSRU[nodeID]))
-		mru := rnd(minContractMRU, min(maxContractMRU, nodesMRU[nodeID]))
+		cru, err := rnd(minContractCRU, maxContractCRU)
+		if err != nil {
+			return err
+		}
+		hru, err := rnd(minContractHRU, min(maxContractHRU, nodesHRU[nodeID]))
+		if err != nil {
+			return err
+		}
+		sru, err := rnd(minContractSRU, min(maxContractSRU, nodesSRU[nodeID]))
+		if err != nil {
+			return err
+		}
+		mru, err := rnd(minContractMRU, min(maxContractMRU, nodesMRU[nodeID]))
+		if err != nil {
+			return err
+		}
 		contract_resources := contract_resources{
-			id:          fmt.Sprintf("contract-resources-%d", contractCnt),
+			id:          fmt.Sprintf("contract-resources-%d", i+rentContractCount),
 			hru:         hru,
 			sru:         sru,
 			cru:         cru,
 			mru:         mru,
-			contract_id: fmt.Sprintf("node-contract-%d", contractCnt),
+			contract_id: fmt.Sprintf("node-contract-%d", i+rentContractCount),
 		}
 		if contract.state != "Deleted" {
 			nodesHRU[nodeID] -= hru
 			nodesSRU[nodeID] -= sru
 			nodesMRU[nodeID] -= mru
-			createdNodeContracts = append(createdNodeContracts, contractCnt)
+			createdNodeContracts = append(createdNodeContracts, i+rentContractCount)
 		}
 
-		value, err := extractValuesFromInsertQuery(insertQuery(&contract))
+		contracts = append(contracts, contract)
+
+		contractResources = append(contractResources, contract_resources)
+
+		billings, err := rnd(0, 10)
 		if err != nil {
 			return err
 		}
-		contractsValues = append(contractsValues, value)
-
-		value, err = extractValuesFromInsertQuery(insertQuery(&contract_resources))
+		amountBilled, err := rnd(0, 100000)
 		if err != nil {
 			return err
 		}
-		contractResourcesValues = append(contractResourcesValues, value)
-
-		billings := rnd(0, 10)
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
-				id:                fmt.Sprintf("contract-bill-report-%d", billCnt),
-				contract_id:       contractCnt,
+				id:                fmt.Sprintf("contract-bill-report-%d", *billCount),
+				contract_id:       i + rentContractCount,
 				discount_received: "Default",
-				amount_billed:     rnd(0, 100000),
+				amount_billed:     amountBilled,
 				timestamp:         uint64(time.Now().UnixNano()),
 			}
-			billCnt++
+			*billCount++
 
-			value, err = extractValuesFromInsertQuery(insertQuery(&billing))
-			if err != nil {
-				return err
-			}
-			billingValues = append(billingValues, value)
-		}
-		contractCnt++
-	}
-
-	if len(contractsValues) != 0 {
-		query := "INSERT INTO node_contract (id, grid_version, contract_id, twin_id, node_id, deployment_data, deployment_hash, number_of_public_i_ps, state, created_at, resources_used_id) VALUES"
-		query += strings.Join(contractsValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
+			billingReports = append(billingReports, billing)
 		}
 	}
 
-	if len(contractResourcesValues) != 0 {
-		query := "INSERT INTO contract_resources (id, hru, sru, cru, mru, contract_id) VALUES"
-		query += strings.Join(contractResourcesValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, contracts); err != nil {
+		return err
+	}
+
+	if err := insertTuples(db, contractResources); err != nil {
+		return err
 	}
 
 	query := fmt.Sprintf(`UPDATE node_contract SET resources_used_id = CONCAT('contract-resources-',split_part(id, '-', -1))
-		WHERE CAST(split_part(id, '-', -1) AS INTEGER) BETWEEN %d AND %d;`, startContractCnt, contractCnt-1)
+		WHERE CAST(split_part(id, '-', -1) AS INTEGER) BETWEEN %d AND %d;`, rentContractCount+1, rentContractCount+nodeContractCount)
 	if _, err := db.Exec(query); err != nil {
 		return err
 	}
 
-	if len(billingValues) != 0 {
-		query := "INSERT INTO contract_bill_report (id, contract_id, discount_received, amount_billed, timestamp) VALUES"
-		query += strings.Join(billingValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, billingReports); err != nil {
+		return err
 	}
 
 	fmt.Println("node contracts generated")
@@ -317,11 +296,15 @@ func generateContracts(db *sql.DB) error {
 	return nil
 }
 
-func generateNameContracts(db *sql.DB) error {
-	var contractValues []string
-	var billReportsValues []string
+func generateNameContracts(db *sql.DB, billCount *int) error {
+	var contracts []interface{}
+	var billReports []interface{}
 	for i := uint64(1); i <= nameContractCount; i++ {
-		nodeID := rnd(1, nodeCount)
+		nodeID, err := rnd(1, nodeCount)
+		if err != nil {
+			return err
+		}
+
 		state := "Deleted"
 		if nodeUP[nodeID] {
 			if flip(contractCreatedRatio) {
@@ -330,7 +313,10 @@ func generateNameContracts(db *sql.DB) error {
 				state = "GracePeriod"
 			}
 		}
-		twinID := rnd(1100, 3100)
+		twinID, err := rnd(1100, 3100)
+		if err != nil {
+			return err
+		}
 		if renter, ok := renter[nodeID]; ok {
 			twinID = renter
 		}
@@ -339,66 +325,56 @@ func generateNameContracts(db *sql.DB) error {
 			continue
 		}
 		contract := name_contract{
-			id:           fmt.Sprintf("name-contract-%d", contractCnt),
+			id:           fmt.Sprintf("name-contract-%d", rentContractCount+nodeContractCount+i),
 			twin_id:      twinID,
-			contract_id:  contractCnt,
+			contract_id:  rentContractCount + nodeContractCount + i,
 			state:        state,
 			created_at:   uint64(time.Now().Unix()),
 			grid_version: 3,
 			name:         uuid.NewString(),
 		}
 
-		value, err := extractValuesFromInsertQuery(insertQuery(&contract))
+		contracts = append(contracts, contract)
+
+		billings, err := rnd(0, 10)
 		if err != nil {
 			return err
 		}
-		contractValues = append(contractValues, value)
-
-		billings := rnd(0, 10)
+		amountBilled, err := rnd(0, 100000)
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
-				id:                fmt.Sprintf("contract-bill-report-%d", billCnt),
-				contract_id:       contractCnt,
+				id:                fmt.Sprintf("contract-bill-report-%d", *billCount),
+				contract_id:       rentContractCount + nodeContractCount + i,
 				discount_received: "Default",
-				amount_billed:     rnd(0, 100000),
+				amount_billed:     amountBilled,
 				timestamp:         uint64(time.Now().UnixNano()),
 			}
-			billCnt++
+			*billCount++
 
-			value, err = extractValuesFromInsertQuery(insertQuery(&billing))
-			if err != nil {
-				return err
-			}
-			billReportsValues = append(billReportsValues, value)
-		}
-		contractCnt++
-	}
-
-	if len(contractValues) != 0 {
-		query := "INSERT INTO name_contract (id, grid_version, contract_id, twin_id, name, state, created_at) VALUES"
-		query += strings.Join(contractValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
+			billReports = append(billReports, billing)
 		}
 	}
 
-	if len(billReportsValues) != 0 {
-		query := "INSERT INTO contract_bill_report (id, contract_id, discount_received, amount_billed, timestamp) VALUES"
-		query += strings.Join(billReportsValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, contracts); err != nil {
+		return err
+	}
+
+	if err := insertTuples(db, billReports); err != nil {
+		return err
 	}
 
 	fmt.Println("name contracts generated")
 
 	return nil
 }
-func generateRentContracts(db *sql.DB) error {
-	var contractValues []string
-	var billReportsValues []string
+func generateRentContracts(db *sql.DB, billCount *int) error {
+	var contracts []interface{}
+	var billReports []interface{}
 	for i := uint64(1); i <= rentContractCount; i++ {
-		nl, nodeID := popRandom(availableRentNodesList)
+		nl, nodeID, err := popRandom(availableRentNodesList)
+		if err != nil {
+			return err
+		}
 		availableRentNodesList = nl
 		delete(availableRentNodes, nodeID)
 		state := "Deleted"
@@ -409,10 +385,12 @@ func generateRentContracts(db *sql.DB) error {
 				state = "GracePeriod"
 			}
 		}
+		twinID, err := rnd(1100, 3100)
+
 		contract := rent_contract{
-			id:           fmt.Sprintf("rent-contract-%d", contractCnt),
-			twin_id:      rnd(1100, 3100),
-			contract_id:  contractCnt,
+			id:           fmt.Sprintf("rent-contract-%d", i),
+			twin_id:      twinID,
+			contract_id:  i,
 			state:        state,
 			created_at:   uint64(time.Now().Unix()),
 			node_id:      nodeID,
@@ -422,48 +400,37 @@ func generateRentContracts(db *sql.DB) error {
 			renter[nodeID] = contract.twin_id
 		}
 
-		value, err := extractValuesFromInsertQuery(insertQuery(&contract))
+		contracts = append(contracts, contract)
+
+		billings, err := rnd(0, 10)
 		if err != nil {
 			return err
 		}
-		contractValues = append(contractValues, value)
-
-		billings := rnd(0, 10)
+		amountBilled, err := rnd(0, 100000)
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
-				id:                fmt.Sprintf("contract-bill-report-%d", billCnt),
-				contract_id:       contractCnt,
+				id:                fmt.Sprintf("contract-bill-report-%d", *billCount),
+				contract_id:       i,
 				discount_received: "Default",
-				amount_billed:     rnd(0, 100000),
+				amount_billed:     amountBilled,
 				timestamp:         uint64(time.Now().UnixNano()),
 			}
 
-			billCnt++
+			*billCount++
 
-			value, err = extractValuesFromInsertQuery(insertQuery(&billing))
-			if err != nil {
-				return err
-			}
-			billReportsValues = append(billReportsValues, value)
+			billReports = append(billReports, billing)
 
 		}
-		contractCnt++
 	}
 
-	if len(contractValues) != 0 {
-		query := "INSERT INTO rent_contract (id, grid_version, contract_id, twin_id, node_id, state, created_at) VALUES"
-		query += strings.Join(contractValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, contracts); err != nil {
+		return err
 	}
-	if len(billReportsValues) != 0 {
-		query := "INSERT INTO contract_bill_report (id, contract_id, discount_received, amount_billed, timestamp) VALUES"
-		query += strings.Join(billReportsValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+
+	if err := insertTuples(db, billReports); err != nil {
+		return err
 	}
+
 	fmt.Println("rent contracts generated")
 
 	return nil
@@ -471,20 +438,47 @@ func generateRentContracts(db *sql.DB) error {
 
 func generateNodes(db *sql.DB) error {
 	powerState := []string{"Up", "Down"}
-	var locationValues []string
-	var nodeValues []string
-	var totalResourcesValues []string
-	var publicConfigValues []string
+	var locations []interface{}
+	var nodes []interface{}
+	var totalResources []interface{}
+	var publicConfigs []interface{}
 	for i := uint64(1); i <= nodeCount; i++ {
-		mru := rnd(4, 256) * 1024 * 1024 * 1024
-		hru := rnd(100, 30*1024) * 1024 * 1024 * 1024 // 100GB -> 30TB
-		sru := rnd(200, 30*1024) * 1024 * 1024 * 1024 // 100GB -> 30TB
-		cru := rnd(4, 128)
-		up := flip(nodeUpRatio)
-		updatedAt := time.Now().Unix() - int64(rnd(60*40*3, 60*60*24*30*12))
+		mru, err := rnd(4, 256)
+		if err != nil {
+			return err
+		}
+		mru *= 1024 * 1024 * 1024
 
+		hru, err := rnd(100, 30*1024)
+		if err != nil {
+			return err
+		}
+		hru *= 1024 * 1024 * 1024 // 100GB -> 30TB
+
+		sru, err := rnd(200, 30*1024)
+		if err != nil {
+			return err
+		}
+		sru *= 1024 * 1024 * 1024 // 100GB -> 30TB
+
+		cru, err := rnd(4, 128)
+		if err != nil {
+			return err
+		}
+
+		up := flip(nodeUpRatio)
+		periodFromLatestUpdate, err := rnd(60*40*3, 60*60*24*30*12)
+		if err != nil {
+			return err
+		}
+		updatedAt := time.Now().Unix() - int64(periodFromLatestUpdate)
+
+		periodFromLatestUpdate, err = rnd(0, 60*40*1)
+		if err != nil {
+			return err
+		}
 		if up {
-			updatedAt = time.Now().Unix() - int64(rnd(0, 60*40*1))
+			updatedAt = time.Now().Unix() - int64(periodFromLatestUpdate)
 		}
 		nodesMRU[i] = mru - max(2*uint64(gridtypes.Gigabyte), mru/10)
 		nodesSRU[i] = sru - 100*uint64(gridtypes.Gigabyte)
@@ -530,31 +524,20 @@ func generateNodes(db *sql.DB) error {
 			mru:     mru,
 			node_id: fmt.Sprintf("node-%d", i),
 		}
+
 		if _, ok := dedicatedFarms[node.farm_id]; ok {
 			availableRentNodes[i] = struct{}{}
 			availableRentNodesList = append(availableRentNodesList, i)
 		}
 
-		value, err := extractValuesFromInsertQuery(insertQuery(&location))
-		if err != nil {
-			return err
-		}
-		locationValues = append(locationValues, value)
+		locations = append(locations, location)
 
-		value, err = extractValuesFromInsertQuery(insertQuery(&node))
-		if err != nil {
-			return err
-		}
-		nodeValues = append(nodeValues, value)
+		nodes = append(nodes, node)
 
-		value, err = extractValuesFromInsertQuery(insertQuery(&total_resources))
-		if err != nil {
-			return err
-		}
-		totalResourcesValues = append(totalResourcesValues, value)
+		totalResources = append(totalResources, total_resources)
 
 		if flip(.1) {
-			value, err = extractValuesFromInsertQuery(insertQuery(&public_config{
+			publicConfig := public_config{
 				id:      fmt.Sprintf("public-config-%d", i),
 				ipv4:    "185.16.5.2/24",
 				gw4:     "185.16.5.2",
@@ -562,54 +545,34 @@ func generateNodes(db *sql.DB) error {
 				gw6:     "::1",
 				domain:  "hamada.com",
 				node_id: fmt.Sprintf("node-%d", i),
-			}))
-			if err != nil {
-				return err
 			}
-			publicConfigValues = append(publicConfigValues)
+			publicConfigs = append(publicConfigs, publicConfig)
 
 		}
 	}
 
-	if len(locationValues) != 0 {
-		query := "INSERT INTO location (id, longitude, latitude) VALUES"
-		query += strings.Join(locationValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, locations); err != nil {
+		return err
 	}
 
-	if len(nodeValues) != 0 {
-		query := "INSERT INTO node (id, grid_version, node_id, farm_id, twin_id, country, city, uptime, created, farming_policy_id, certification, secure, virtualized, serial_number, created_at, updated_at, location_id, power, extra_fee) VALUES"
-		query += strings.Join(nodeValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, nodes); err != nil {
+		return err
 	}
 
-	if len(totalResourcesValues) != 0 {
-		query := "INSERT INTO node_resources_total (id, hru, sru, cru, mru, node_id) VALUES"
-		query += strings.Join(totalResourcesValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, totalResources); err != nil {
+		return err
 	}
 
-	if len(publicConfigValues) != 0 {
-		query := "INSERT INTO public_config (id, ipv4, ipv6, gw4, gw6, domain, node_id) VALUES"
-		query += strings.Join(publicConfigValues, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, publicConfigs); err != nil {
+		return err
 	}
-
 	fmt.Println("nodes generated")
 
 	return nil
 }
 
 func generateNodeGPUs(db *sql.DB) error {
-	var values []string
+	var GPUs []interface{}
 	for i := 0; i <= 10; i++ {
 		g := node_gpu{
 			node_twin_id: uint64(i + 100),
@@ -619,23 +582,61 @@ func generateNodeGPUs(db *sql.DB) error {
 			id:           "0000:0e:00.0/1002/744c",
 		}
 
-		value, err := extractValuesFromInsertQuery(insertQuery(&g))
-		if err != nil {
-			return err
-		}
-		values = append(values, value)
+		GPUs = append(GPUs, g)
 	}
 
-	if len(values) != 0 {
-		query := "INSERT INTO node_gpu (node_twin_id, id, vendor, device, contract) VALUES"
-		query += strings.Join(values, ",") + ";"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := insertTuples(db, GPUs); err != nil {
+		return err
 	}
 
 	fmt.Println("node GPUs generated")
 
+	return nil
+
+}
+
+func generateContracts(db *sql.DB) error {
+	billCount := 1
+	// Note: it's order senstive
+	if err := generateRentContracts(db, &billCount); err != nil {
+		return err
+	}
+
+	if err := generateNodeContracts(db, &billCount); err != nil {
+		return err
+	}
+
+	if err := generateNameContracts(db, &billCount); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func insertTuples(db *sql.DB, tuples []interface{}) error {
+
+	if len(tuples) != 0 {
+		query := fmt.Sprintf("INSERT INTO %s (", reflect.Indirect(reflect.ValueOf(tuples[0])).Type().Name())
+		objType := reflect.TypeOf(tuples[0])
+		for i := 0; i < objType.NumField(); i++ {
+			if i != 0 {
+				query += ", "
+			}
+			query = fmt.Sprintf("%s%s", query, objType.Field(i).Name)
+		}
+		query = fmt.Sprintf("%s) VALUES ", query)
+		for idx, value := range tuples {
+			if idx == 0 {
+				query = fmt.Sprintf("%s %s", query, objectToTupleString(value))
+				continue
+			}
+			query = fmt.Sprintf("%s, %s", query, objectToTupleString(value))
+		}
+		query = fmt.Sprintf("%s ;", query)
+		if _, err := db.Exec(query); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -643,26 +644,26 @@ func generateData(db *sql.DB) error {
 	if err := generateTwins(db); err != nil {
 		panic(err)
 	}
+
 	if err := generateFarms(db); err != nil {
 		panic(err)
 	}
+
 	if err := generateNodes(db); err != nil {
 		panic(err)
 	}
-	if err := generateRentContracts(db); err != nil {
-		panic(err)
-	}
+
 	if err := generateContracts(db); err != nil {
 		panic(err)
 	}
-	if err := generateNameContracts(db); err != nil {
-		panic(err)
-	}
+
 	if err := generatePublicIPs(db); err != nil {
 		panic(err)
 	}
+
 	if err := generateNodeGPUs(db); err != nil {
 		panic(err)
 	}
+
 	return nil
 }
