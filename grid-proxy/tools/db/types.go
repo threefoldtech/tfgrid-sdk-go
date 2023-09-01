@@ -55,7 +55,6 @@ type twin struct {
 	public_key   string
 }
 
-func (t twin) String() string { return "" }
 
 type public_ip struct {
 	id          string

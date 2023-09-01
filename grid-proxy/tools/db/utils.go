@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// rnd gets a random number between min and max
 func rnd(min, max uint64) (uint64, error) {
 	if max-min+1 <= 0 {
 		return 0, errors.New("min cannot be greater than max")
@@ -17,10 +18,12 @@ func rnd(min, max uint64) (uint64, error) {
 	return uint64(rand.Intn(int(max)-int(min)+1) + int(min)), nil
 }
 
+// flip simulates a coin flip with a given success probability.
 func flip(success float32) bool {
 	return rand.Float32() < success
 }
 
+// randomIPv4 gets a random IPv4
 func randomIPv4() net.IP {
 	ip := make([]byte, 4)
 	rand.Read(ip)
@@ -35,12 +38,15 @@ func IPv4Subnet(ip net.IP) *net.IPNet {
 	}
 }
 
+// min gets min between 2 numbers
 func min(a, b uint64) uint64 {
 	if a < b {
 		return a
 	}
 	return b
 }
+
+// max gets max between 2 numbers
 func max(a, b uint64) uint64 {
 	if a > b {
 		return a
@@ -48,6 +54,7 @@ func max(a, b uint64) uint64 {
 	return b
 }
 
+// objectToTupleString converts a object into a string representation suitable for sql query
 func objectToTupleString(v interface{}) string {
 	vals := "("
 	val := reflect.ValueOf(v)
@@ -91,6 +98,8 @@ func objectToTupleString(v interface{}) string {
 	}
 	return fmt.Sprintf("%s)", vals)
 }
+
+// popRandom selects a random element from the given slice,
 func popRandom(l []uint64) ([]uint64, uint64, error) {
 	idx, err := rnd(0, uint64(len(l)-1))
 	if err != nil {

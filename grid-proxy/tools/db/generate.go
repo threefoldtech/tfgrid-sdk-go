@@ -82,7 +82,6 @@ func generateTwins(db *sql.DB) error {
 			twin_id:      i,
 			grid_version: 3,
 		}
-
 		twins = append(twins, twin)
 	}
 
@@ -96,7 +95,7 @@ func generateTwins(db *sql.DB) error {
 
 func generatePublicIPs(db *sql.DB) error {
 	var publicIPs []interface{}
-	var nodeContractUpdateValues []string
+	var nodeContracts []interface{}
 
 	for i := uint64(1); i <= publicIPCount; i++ {
 		contract_id := uint64(0)
@@ -109,9 +108,11 @@ func generatePublicIPs(db *sql.DB) error {
 		}
 		ip := randomIPv4()
 		farmID, err := rnd(1, farmCount)
+		
 		if err != nil {
 			return err
 		}
+		
 		public_ip := public_ip{
 			id:          fmt.Sprintf("public-ip-%d", i),
 			gateway:     ip.String(),
@@ -121,7 +122,7 @@ func generatePublicIPs(db *sql.DB) error {
 		}
 
 		publicIPs = append(publicIPs, public_ip)
-		nodeContractUpdateValues = append(nodeContractUpdateValues, fmt.Sprintf("%d", contract_id))
+		nodeContracts = append(nodeContracts, contract_id)
 
 	}
 
@@ -129,13 +130,10 @@ func generatePublicIPs(db *sql.DB) error {
 		return err
 	}
 
-	if len(nodeContractUpdateValues) != 0 {
-		query := "UPDATE node_contract set number_of_public_i_ps = number_of_public_i_ps + 1 WHERE contract_id IN ("
-		query += strings.Join(nodeContractUpdateValues, ",") + ");"
-		if _, err := db.Exec(query); err != nil {
-			return err
-		}
+	if err := updateNodeContractPublicIPs(db, nodeContracts); err != nil {
+		return err
 	}
+
 	fmt.Println("public IPs generated")
 
 	return nil
@@ -143,6 +141,7 @@ func generatePublicIPs(db *sql.DB) error {
 
 func generateFarms(db *sql.DB) error {
 	var farms []interface{}
+
 	for i := uint64(1); i <= farmCount; i++ {
 		farm := farm{
 			id:                fmt.Sprintf("farm-%d", i),
@@ -155,6 +154,7 @@ func generateFarms(db *sql.DB) error {
 			grid_version:      3,
 			stellar_address:   "",
 		}
+
 		if farm.dedicated_farm {
 			dedicatedFarms[farm.farm_id] = struct{}{}
 		}
@@ -181,6 +181,7 @@ func generateNodeContracts(db *sql.DB, billCount *int) error {
 			return err
 		}
 		state := "Deleted"
+
 		if nodeUP[nodeID] {
 			if flip(contractCreatedRatio) {
 				state = "Created"
@@ -188,21 +189,26 @@ func generateNodeContracts(db *sql.DB, billCount *int) error {
 				state = "GracePeriod"
 			}
 		}
+
 		if state != "Deleted" && (minContractHRU > nodesHRU[nodeID] || minContractMRU > nodesMRU[nodeID] || minContractSRU > nodesSRU[nodeID]) {
 			i--
 			continue
 		}
+
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
 			return err
 		}
+
 		if renter, ok := renter[nodeID]; ok {
 			twinID = renter
 		}
+
 		if _, ok := availableRentNodes[nodeID]; ok {
 			i--
 			continue
 		}
+
 		contract := node_contract{
 			id:                    fmt.Sprintf("node-contract-%d", i+rentContractCount),
 			twin_id:               twinID,
@@ -216,22 +222,27 @@ func generateNodeContracts(db *sql.DB, billCount *int) error {
 			grid_version:          3,
 			resources_used_id:     "",
 		}
+
 		cru, err := rnd(minContractCRU, maxContractCRU)
 		if err != nil {
 			return err
 		}
+
 		hru, err := rnd(minContractHRU, min(maxContractHRU, nodesHRU[nodeID]))
 		if err != nil {
 			return err
 		}
+
 		sru, err := rnd(minContractSRU, min(maxContractSRU, nodesSRU[nodeID]))
 		if err != nil {
 			return err
 		}
+
 		mru, err := rnd(minContractMRU, min(maxContractMRU, nodesMRU[nodeID]))
 		if err != nil {
 			return err
 		}
+
 		contract_resources := contract_resources{
 			id:          fmt.Sprintf("contract-resources-%d", i+rentContractCount),
 			hru:         hru,
@@ -255,6 +266,7 @@ func generateNodeContracts(db *sql.DB, billCount *int) error {
 		if err != nil {
 			return err
 		}
+		
 		amountBilled, err := rnd(0, 100000)
 		if err != nil {
 			return err
@@ -281,9 +293,7 @@ func generateNodeContracts(db *sql.DB, billCount *int) error {
 		return err
 	}
 
-	query := fmt.Sprintf(`UPDATE node_contract SET resources_used_id = CONCAT('contract-resources-',split_part(id, '-', -1))
-		WHERE CAST(split_part(id, '-', -1) AS INTEGER) BETWEEN %d AND %d;`, rentContractCount+1, rentContractCount+nodeContractCount)
-	if _, err := db.Exec(query); err != nil {
+	if err := updateNodeContractResourceID(db, rentContractCount+1, rentContractCount+nodeContractCount); err != nil {
 		return err
 	}
 
@@ -313,17 +323,21 @@ func generateNameContracts(db *sql.DB, billCount *int) error {
 				state = "GracePeriod"
 			}
 		}
+
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
 			return err
 		}
+
 		if renter, ok := renter[nodeID]; ok {
 			twinID = renter
 		}
+
 		if _, ok := availableRentNodes[nodeID]; ok {
 			i--
 			continue
 		}
+
 		contract := name_contract{
 			id:           fmt.Sprintf("name-contract-%d", rentContractCount+nodeContractCount+i),
 			twin_id:      twinID,
@@ -375,6 +389,7 @@ func generateRentContracts(db *sql.DB, billCount *int) error {
 		if err != nil {
 			return err
 		}
+		
 		availableRentNodesList = nl
 		delete(availableRentNodes, nodeID)
 		state := "Deleted"
@@ -396,6 +411,7 @@ func generateRentContracts(db *sql.DB, billCount *int) error {
 			node_id:      nodeID,
 			grid_version: 3,
 		}
+
 		if state != "Deleted" {
 			renter[nodeID] = contract.twin_id
 		}
@@ -406,7 +422,12 @@ func generateRentContracts(db *sql.DB, billCount *int) error {
 		if err != nil {
 			return err
 		}
+		
 		amountBilled, err := rnd(0, 100000)
+		if err != nil {
+			return err
+		}
+
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
 				id:                fmt.Sprintf("contract-bill-report-%d", *billCount),
@@ -477,13 +498,16 @@ func generateNodes(db *sql.DB) error {
 		if err != nil {
 			return err
 		}
+
 		if up {
 			updatedAt = time.Now().Unix() - int64(periodFromLatestUpdate)
 		}
+
 		nodesMRU[i] = mru - max(2*uint64(gridtypes.Gigabyte), mru/10)
 		nodesSRU[i] = sru - 100*uint64(gridtypes.Gigabyte)
 		nodesHRU[i] = hru
 		nodeUP[i] = up
+		
 		location := location{
 			id:        fmt.Sprintf("location-%d", i),
 			longitude: fmt.Sprintf("location--long-%d", i),
@@ -516,6 +540,7 @@ func generateNodes(db *sql.DB) error {
 			},
 			extra_fee: 0,
 		}
+
 		total_resources := node_resources_total{
 			id:      fmt.Sprintf("total-resources-%d", i),
 			hru:     hru,
@@ -624,7 +649,9 @@ func insertTuples(db *sql.DB, tuples []interface{}) error {
 			}
 			query = fmt.Sprintf("%s%s", query, objType.Field(i).Name)
 		}
+
 		query = fmt.Sprintf("%s) VALUES ", query)
+		
 		for idx, value := range tuples {
 			if idx == 0 {
 				query = fmt.Sprintf("%s %s", query, objectToTupleString(value))
@@ -632,6 +659,7 @@ func insertTuples(db *sql.DB, tuples []interface{}) error {
 			}
 			query = fmt.Sprintf("%s, %s", query, objectToTupleString(value))
 		}
+
 		query = fmt.Sprintf("%s ;", query)
 		if _, err := db.Exec(query); err != nil {
 			return err
@@ -640,6 +668,33 @@ func insertTuples(db *sql.DB, tuples []interface{}) error {
 	return nil
 }
 
+func updateNodeContractPublicIPs(db *sql.DB, nodeContracts []interface{}) error {
+
+	if len(nodeContracts) != 0 {
+		var IDs []string
+		for _, contractID := range nodeContracts {
+			IDs = append(IDs, fmt.Sprintf("%d", contractID))
+
+		}
+
+		query := "UPDATE node_contract set number_of_public_i_ps = number_of_public_i_ps + 1 WHERE contract_id IN ("
+		query = fmt.Sprintf("%s%s);", query, strings.Join(IDs, ","))
+		if _, err := db.Exec(query); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func updateNodeContractResourceID(db *sql.DB, min, max int) error {
+	query := fmt.Sprintf(`UPDATE node_contract SET resources_used_id = CONCAT('contract-resources-',split_part(id, '-', -1))
+		WHERE CAST(split_part(id, '-', -1) AS INTEGER) BETWEEN %d AND %d;`, min, max)
+	if _, err := db.Exec(query); err != nil {
+		return err
+	}
+	
+	return nil
+}
 func generateData(db *sql.DB) error {
 	if err := generateTwins(db); err != nil {
 		panic(err)
