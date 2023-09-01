@@ -13,6 +13,11 @@ func TestMin(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestRnd(t *testing.T) {
+	_, got := rnd(2, 1)
+	assert.Equal(t, errMaxMinInvalid, got)
+}
+
 func TestMax(t *testing.T) {
 	want := uint64(5)
 	got := max(4, 5)
