@@ -4,6 +4,11 @@ on:
   push:
     paths:
       - grid-proxy/**
+  pull_request:
+      types: [opened, reopened, review_requested]
+      paths:
+        - grid-proxy/**
+        
   workflow_dispatch:
 
 jobs:
