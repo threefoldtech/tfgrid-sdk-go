@@ -827,6 +827,9 @@ CREATE INDEX "IDX_f294cfb50bb7c7b976d86c08fd" ON public.node_contract USING btre
 CREATE UNIQUE INDEX "IDX_fd430c3a2645c8f409f859c2aa" ON public.node_resources_total USING btree (node_id);
 CREATE UNIQUE INDEX idx_rent_contract_node_id ON public.rent_contract USING btree (node_id);
 CREATE INDEX idx_node_contract_state ON public.node_contract USING btree(state);
+CREATE INDEX idx_node_contract_node_id ON public.node_contract(node_id);
+CREATE INDEX idx_farm_id ON public.farm(farm_id); 
+CREATE INDEX idx_node_farm_id ON public.node(farm_id); 
 --
 -- Name: interfaces FK_23937641f28c607f061dab4694b; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
