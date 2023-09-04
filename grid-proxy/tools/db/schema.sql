@@ -899,4 +899,4 @@ ALTER TABLE ONLY public.node_resources_total
 ADD CONSTRAINT "FK_fd430c3a2645c8f409f859c2aae" FOREIGN KEY (node_id) REFERENCES public.node(id);
 --
 -- PostgreSQL database dump complete
-- -
+--
