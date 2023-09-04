@@ -18,7 +18,7 @@ jobs:
       run:
         working-directory: grid-proxy
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -52,7 +52,7 @@ jobs:
 
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@v3.5.3
+        uses: actions/checkout@v4
 
       - name: Log in to the Container registry
         uses: docker/login-action@v2.2.0
