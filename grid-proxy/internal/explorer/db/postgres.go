@@ -242,7 +242,7 @@ func (np *NodePower) Scan(value interface{}) error {
 
 // GetNode returns node info
 func (d *PostgresDatabase) GetNode(nodeID uint32) (Node, error) {
-	q := d.nodeTableQuery()
+	q := d.nodeTableQuery(nil)
 	q = q.Where("node.node_id = ?", nodeID)
 	q = q.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
 	var node Node
@@ -365,11 +365,12 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 		)
 }
 
-func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
-	subquery := d.gormDB.Table("node_contract").
-		Select("DISTINCT ON (node_id) node_id, contract_id").
-		Where("state IN ('Created', 'GracePeriod')")
+func (d *PostgresDatabase) nodeTableQuery(availableFor *uint64) *gorm.DB {
 
+	availableForFilter := ""
+	if availableFor != nil {
+		availableForFilter = fmt.Sprintf("AND rent_contract.twin_id = %d", *availableFor)
+	}
 	nodeGPUQuery := `(SELECT count(node_gpu.id) FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id) as num_gpu`
 
 	return d.gormDB.
@@ -417,10 +418,10 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"LEFT JOIN public_config ON node.id = public_config.node_id",
 		).
 		Joins(
-			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
+			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id " + ava,
 		).
 		Joins(
-			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", subquery,
+			"LEFT JOIN node_contract ON node_contract.state IN ('Created', 'GracePeriod') AND node_contract.node_id = node.node_id",
 		).
 		Joins(
 			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
@@ -435,7 +436,8 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 
 // GetNodes returns nodes filtered and paginated
 func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) ([]Node, uint, error) {
-	q := d.nodeTableQuery()
+	q := d.nodeTableQuery(filter.AvailableFor)
+
 	q = q.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
 
 	condition := "TRUE"
@@ -515,7 +517,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
 	}
 	if filter.AvailableFor != nil {
-		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ? OR (COALESCE(rent_contract.twin_id, 0) = 0 AND farm.dedicated_farm = false)`, *filter.AvailableFor)
+		q = q.Where(`(COALESCE(rent_contract.twin_id, 0) = 0 AND farm.dedicated_farm = false)`)
 	}
 	if filter.Rented != nil {
 		q = q.Where(`? = (COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Rented)
@@ -564,7 +566,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 			Offset(int(rand.Intn(int(count)) - int(limit.Size)))
 	} else {
 		if filter.AvailableFor != nil {
-			q = q.Order("(case when rent_contract.contract_id is not null then 1 else 2 end)")
+			q = q.Order("rent_contract.contract_id NULLS LAST")
 		}
 		q = q.Limit(int(limit.Size)).
 			Offset(int(limit.Page-1) * int(limit.Size)).
