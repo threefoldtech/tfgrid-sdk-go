@@ -29,14 +29,14 @@ const (
 	contractCreatedRatio = .1 // from devnet
 	usedPublicIPsRatio   = .9
 	nodeUpRatio          = .5
-	nodeCount            = 1000
-	farmCount            = 100
-	normalUsers          = 200
+	nodeCount            = 100000
+	farmCount            = 10000
+	normalUsers          = 50000
 	publicIPCount        = 1000
 	twinCount            = nodeCount + farmCount + normalUsers
-	nodeContractCount    = 3000
-	rentContractCount    = 100
-	nameContractCount    = 300
+	nodeContractCount    = 100000
+	rentContractCount    = 1000
+	nameContractCount    = 1000
 
 	maxContractHRU = 1024 * 1024 * 1024 * 300
 	maxContractSRU = 1024 * 1024 * 1024 * 300
@@ -170,7 +170,7 @@ func generateFarms(db *sql.DB) error {
 	return nil
 }
 
-func generateNodeContracts(db *sql.DB, billCount *int) error {
+func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) (error, int, int) {
 	var contracts []string
 	var contractResources []string
 	var billingReports []string
@@ -178,7 +178,7 @@ func generateNodeContracts(db *sql.DB, billCount *int) error {
 	for i := uint64(1); i <= nodeContractCount; i++ {
 		nodeID, err := rnd(1, nodeCount)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 		state := "Deleted"
 
@@ -197,7 +197,7 @@ func generateNodeContracts(db *sql.DB, billCount *int) error {
 
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		if renter, ok := renter[nodeID]; ok {
@@ -210,14 +210,14 @@ func generateNodeContracts(db *sql.DB, billCount *int) error {
 		}
 
 		contract := node_contract{
-			id:                    fmt.Sprintf("node-contract-%d", i+rentContractCount),
+			id:                    fmt.Sprintf("node-contract-%d", contractsStartID),
 			twin_id:               twinID,
-			contract_id:           i + rentContractCount,
+			contract_id:           uint64(contractsStartID),
 			state:                 state,
 			created_at:            uint64(time.Now().Unix()),
 			node_id:               nodeID,
-			deployment_data:       fmt.Sprintf("deployment-data-%d", i+rentContractCount),
-			deployment_hash:       fmt.Sprintf("deployment-hash-%d", i+rentContractCount),
+			deployment_data:       fmt.Sprintf("deployment-data-%d", contractsStartID),
+			deployment_hash:       fmt.Sprintf("deployment-hash-%d", contractsStartID),
 			number_of_public_i_ps: 0,
 			grid_version:          3,
 			resources_used_id:     "",
@@ -225,37 +225,37 @@ func generateNodeContracts(db *sql.DB, billCount *int) error {
 
 		cru, err := rnd(minContractCRU, maxContractCRU)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		hru, err := rnd(minContractHRU, min(maxContractHRU, nodesHRU[nodeID]))
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		sru, err := rnd(minContractSRU, min(maxContractSRU, nodesSRU[nodeID]))
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		mru, err := rnd(minContractMRU, min(maxContractMRU, nodesMRU[nodeID]))
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		contract_resources := contract_resources{
-			id:          fmt.Sprintf("contract-resources-%d", i+rentContractCount),
+			id:          fmt.Sprintf("contract-resources-%d", contractsStartID),
 			hru:         hru,
 			sru:         sru,
 			cru:         cru,
 			mru:         mru,
-			contract_id: fmt.Sprintf("node-contract-%d", i+rentContractCount),
+			contract_id: fmt.Sprintf("node-contract-%d", contractsStartID),
 		}
 		if contract.state != "Deleted" {
 			nodesHRU[nodeID] -= hru
 			nodesSRU[nodeID] -= sru
 			nodesMRU[nodeID] -= mru
-			createdNodeContracts = append(createdNodeContracts, i+rentContractCount)
+			createdNodeContracts = append(createdNodeContracts, uint64(contractsStartID))
 		}
 
 		contracts = append(contracts, objectToTupleString(contract))
@@ -264,55 +264,56 @@ func generateNodeContracts(db *sql.DB, billCount *int) error {
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		amountBilled, err := rnd(0, 100000)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
-				id:                fmt.Sprintf("contract-bill-report-%d", *billCount),
-				contract_id:       i + rentContractCount,
+				id:                fmt.Sprintf("contract-bill-report-%d", billsStartID),
+				contract_id:       uint64(contractsStartID),
 				discount_received: "Default",
 				amount_billed:     amountBilled,
 				timestamp:         uint64(time.Now().UnixNano()),
 			}
-			*billCount++
+			billsStartID++
 
 			billingReports = append(billingReports, objectToTupleString(billing))
 		}
+		contractsStartID++
 	}
 
 	if err := insertTuples(db, node_contract{}, contracts); err != nil {
-		return err
+		return err, billsStartID, contractsStartID
 	}
 
 	if err := insertTuples(db, contract_resources{}, contractResources); err != nil {
-		return err
+		return err, billsStartID, contractsStartID
 	}
 
-	if err := updateNodeContractResourceID(db, rentContractCount+1, rentContractCount+nodeContractCount); err != nil {
-		return err
+	if err := updateNodeContractResourceID(db, contractsStartID-nodeContractCount, contractsStartID); err != nil {
+		return err, billsStartID, contractsStartID
 	}
 
 	if err := insertTuples(db, contract_bill_report{}, billingReports); err != nil {
-		return err
+		return err, billsStartID, contractsStartID
 	}
 
 	fmt.Println("node contracts generated")
 
-	return nil
+	return nil, billsStartID, contractsStartID
 }
 
-func generateNameContracts(db *sql.DB, billCount *int) error {
+func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) (error, int, int) {
 	var contracts []string
 	var billReports []string
 	for i := uint64(1); i <= nameContractCount; i++ {
 		nodeID, err := rnd(1, nodeCount)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		state := "Deleted"
@@ -326,7 +327,7 @@ func generateNameContracts(db *sql.DB, billCount *int) error {
 
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		if renter, ok := renter[nodeID]; ok {
@@ -339,9 +340,9 @@ func generateNameContracts(db *sql.DB, billCount *int) error {
 		}
 
 		contract := name_contract{
-			id:           fmt.Sprintf("name-contract-%d", rentContractCount+nodeContractCount+i),
+			id:           fmt.Sprintf("name-contract-%d", contractsStartID),
 			twin_id:      twinID,
-			contract_id:  rentContractCount + nodeContractCount + i,
+			contract_id:  uint64(contractsStartID),
 			state:        state,
 			created_at:   uint64(time.Now().Unix()),
 			grid_version: 3,
@@ -352,42 +353,43 @@ func generateNameContracts(db *sql.DB, billCount *int) error {
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 		amountBilled, err := rnd(0, 100000)
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
-				id:                fmt.Sprintf("contract-bill-report-%d", *billCount),
-				contract_id:       rentContractCount + nodeContractCount + i,
+				id:                fmt.Sprintf("contract-bill-report-%d", billsStartID),
+				contract_id:       uint64(contractsStartID),
 				discount_received: "Default",
 				amount_billed:     amountBilled,
 				timestamp:         uint64(time.Now().UnixNano()),
 			}
-			*billCount++
+			billsStartID++
 
 			billReports = append(billReports, objectToTupleString(billing))
 		}
+		contractsStartID++
 	}
 
 	if err := insertTuples(db, name_contract{}, contracts); err != nil {
-		return err
+		return err, billsStartID, contractsStartID
 	}
 
 	if err := insertTuples(db, contract_bill_report{}, billReports); err != nil {
-		return err
+		return err, billsStartID, contractsStartID
 	}
 
 	fmt.Println("name contracts generated")
 
-	return nil
+	return nil, billsStartID, contractsStartID
 }
-func generateRentContracts(db *sql.DB, billCount *int) error {
+func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) (error, int, int) {
 	var contracts []string
 	var billReports []string
 	for i := uint64(1); i <= rentContractCount; i++ {
 		nl, nodeID, err := popRandom(availableRentNodesList)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		availableRentNodesList = nl
@@ -403,9 +405,9 @@ func generateRentContracts(db *sql.DB, billCount *int) error {
 		twinID, err := rnd(1100, 3100)
 
 		contract := rent_contract{
-			id:           fmt.Sprintf("rent-contract-%d", i),
+			id:           fmt.Sprintf("rent-contract-%d", contractsStartID),
 			twin_id:      twinID,
-			contract_id:  i,
+			contract_id:  uint64(contractsStartID),
 			state:        state,
 			created_at:   uint64(time.Now().Unix()),
 			node_id:      nodeID,
@@ -420,41 +422,42 @@ func generateRentContracts(db *sql.DB, billCount *int) error {
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		amountBilled, err := rnd(0, 100000)
 		if err != nil {
-			return err
+			return err, billsStartID, contractsStartID
 		}
 
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
-				id:                fmt.Sprintf("contract-bill-report-%d", *billCount),
-				contract_id:       i,
+				id:                fmt.Sprintf("contract-bill-report-%d", billsStartID),
+				contract_id:       uint64(contractsStartID),
 				discount_received: "Default",
 				amount_billed:     amountBilled,
 				timestamp:         uint64(time.Now().UnixNano()),
 			}
 
-			*billCount++
+			billsStartID++
 
 			billReports = append(billReports, objectToTupleString(billing))
 
 		}
+		contractsStartID++
 	}
 
 	if err := insertTuples(db, rent_contract{}, contracts); err != nil {
-		return err
+		return err, billsStartID, contractsStartID
 	}
 
 	if err := insertTuples(db, contract_bill_report{}, billReports); err != nil {
-		return err
+		return err, billsStartID, contractsStartID
 	}
 
 	fmt.Println("rent contracts generated")
 
-	return nil
+	return nil, billsStartID, contractsStartID
 }
 
 func generateNodes(db *sql.DB) error {
@@ -621,17 +624,21 @@ func generateNodeGPUs(db *sql.DB) error {
 }
 
 func generateContracts(db *sql.DB) error {
-	billCount := 1
-	// Note: it's order senstive
-	if err := generateRentContracts(db, &billCount); err != nil {
+	billsStartID := 1
+	contractsStartID := 1
+
+	err, billsStartID, contractCount := generateRentContracts(db, billsStartID, contractsStartID)
+	if err != nil {
 		return err
 	}
 
-	if err := generateNodeContracts(db, &billCount); err != nil {
+	err, billsStartID, contractsStartID = generateNodeContracts(db, billsStartID, contractCount)
+	if err != nil {
 		return err
 	}
 
-	if err := generateNameContracts(db, &billCount); err != nil {
+	err, billsStartID, contractsStartID = generateNameContracts(db, billsStartID, contractCount)
+	if err != nil {
 		return err
 	}
 

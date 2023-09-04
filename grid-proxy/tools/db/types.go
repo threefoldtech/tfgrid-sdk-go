@@ -55,7 +55,6 @@ type twin struct {
 	public_key   string
 }
 
-
 type public_ip struct {
 	id          string
 	gateway     string

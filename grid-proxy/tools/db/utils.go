@@ -10,13 +10,11 @@ import (
 	"strings"
 )
 
-var errMaxMinInvalid = errors.New("min cannot be greater than max")
-
 // rnd gets a random number between min and max
 
 func rnd(min, max uint64) (uint64, error) {
 	if max-min+1 <= 0 {
-		return 0, errMaxMinInvalid
+		return 0, errors.New("min cannot be greater than max")
 	}
 	randomNumber := rand.Uint64()%(max-min+1) + min
 	return randomNumber, nil
