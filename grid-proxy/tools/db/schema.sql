@@ -825,7 +825,6 @@ CREATE INDEX "IDX_f294cfb50bb7c7b976d86c08fd" ON public.node_contract USING btre
 --
 
 CREATE UNIQUE INDEX "IDX_fd430c3a2645c8f409f859c2aa" ON public.node_resources_total USING btree (node_id);
-
 CREATE UNIQUE INDEX idx_rent_contract_node_id ON public.rent_contract USING btree (node_id);
 CREATE INDEX idx_node_contract_state ON public.node_contract USING btree(state);
 CREATE INDEX idx_node_contract_node_id ON public.node_contract USING btree(node_id);
