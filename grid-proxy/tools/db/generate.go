@@ -95,7 +95,7 @@ func generateTwins(db *sql.DB) error {
 
 func generatePublicIPs(db *sql.DB) error {
 	var publicIPs []string
-	var nodeContracts []interface{}
+	var nodeContracts []uint64
 
 	for i := uint64(1); i <= publicIPCount; i++ {
 		contract_id := uint64(0)
@@ -108,7 +108,6 @@ func generatePublicIPs(db *sql.DB) error {
 		}
 		ip := randomIPv4()
 		farmID, err := rnd(1, farmCount)
-
 		if err != nil {
 			return err
 		}
@@ -120,10 +119,8 @@ func generatePublicIPs(db *sql.DB) error {
 			contract_id: contract_id,
 			farm_id:     fmt.Sprintf("farm-%d", farmID),
 		}
-
 		publicIPs = append(publicIPs, objectToTupleString(public_ip))
 		nodeContracts = append(nodeContracts, contract_id)
-
 	}
 
 	if err := insertTuples(db, public_ip{}, publicIPs); err != nil {
@@ -170,7 +167,7 @@ func generateFarms(db *sql.DB) error {
 	return nil
 }
 
-func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) (error, int, int) {
+func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) (int, int, error) {
 	var contracts []string
 	var contractResources []string
 	var billingReports []string
@@ -178,7 +175,7 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) (erro
 	for i := uint64(1); i <= nodeContractCount; i++ {
 		nodeID, err := rnd(1, nodeCount)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 		state := "Deleted"
 
@@ -197,7 +194,7 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) (erro
 
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		if renter, ok := renter[nodeID]; ok {
@@ -225,22 +222,22 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) (erro
 
 		cru, err := rnd(minContractCRU, maxContractCRU)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		hru, err := rnd(minContractHRU, min(maxContractHRU, nodesHRU[nodeID]))
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		sru, err := rnd(minContractSRU, min(maxContractSRU, nodesSRU[nodeID]))
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		mru, err := rnd(minContractMRU, min(maxContractMRU, nodesMRU[nodeID]))
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		contract_resources := contract_resources{
@@ -264,12 +261,12 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) (erro
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		amountBilled, err := rnd(0, 100000)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
@@ -287,33 +284,33 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) (erro
 	}
 
 	if err := insertTuples(db, node_contract{}, contracts); err != nil {
-		return err, billsStartID, contractsStartID
+		return billsStartID, contractsStartID, err
 	}
 
 	if err := insertTuples(db, contract_resources{}, contractResources); err != nil {
-		return err, billsStartID, contractsStartID
+		return billsStartID, contractsStartID, err
 	}
 
 	if err := updateNodeContractResourceID(db, contractsStartID-nodeContractCount, contractsStartID); err != nil {
-		return err, billsStartID, contractsStartID
+		return billsStartID, contractsStartID, err
 	}
 
 	if err := insertTuples(db, contract_bill_report{}, billingReports); err != nil {
-		return err, billsStartID, contractsStartID
+		return billsStartID, contractsStartID, err
 	}
 
 	fmt.Println("node contracts generated")
 
-	return nil, billsStartID, contractsStartID
+	return billsStartID, contractsStartID, nil
 }
 
-func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) (error, int, int) {
+func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) (int, int, error) {
 	var contracts []string
 	var billReports []string
 	for i := uint64(1); i <= nameContractCount; i++ {
 		nodeID, err := rnd(1, nodeCount)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		state := "Deleted"
@@ -327,7 +324,7 @@ func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) (erro
 
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		if renter, ok := renter[nodeID]; ok {
@@ -353,7 +350,7 @@ func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) (erro
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 		amountBilled, err := rnd(0, 100000)
 		for j := uint64(0); j < billings; j++ {
@@ -372,24 +369,24 @@ func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) (erro
 	}
 
 	if err := insertTuples(db, name_contract{}, contracts); err != nil {
-		return err, billsStartID, contractsStartID
+		return billsStartID, contractsStartID, err
 	}
 
 	if err := insertTuples(db, contract_bill_report{}, billReports); err != nil {
-		return err, billsStartID, contractsStartID
+		return billsStartID, contractsStartID, err
 	}
 
 	fmt.Println("name contracts generated")
 
-	return nil, billsStartID, contractsStartID
+	return billsStartID, contractsStartID, nil
 }
-func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) (error, int, int) {
+func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) (int, int, error) {
 	var contracts []string
 	var billReports []string
 	for i := uint64(1); i <= rentContractCount; i++ {
 		nl, nodeID, err := popRandom(availableRentNodesList)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		availableRentNodesList = nl
@@ -422,12 +419,12 @@ func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) (erro
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		amountBilled, err := rnd(0, 100000)
 		if err != nil {
-			return err, billsStartID, contractsStartID
+			return billsStartID, contractsStartID, err
 		}
 
 		for j := uint64(0); j < billings; j++ {
@@ -448,16 +445,16 @@ func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) (erro
 	}
 
 	if err := insertTuples(db, rent_contract{}, contracts); err != nil {
-		return err, billsStartID, contractsStartID
+		return billsStartID, contractsStartID, err
 	}
 
 	if err := insertTuples(db, contract_bill_report{}, billReports); err != nil {
-		return err, billsStartID, contractsStartID
+		return billsStartID, contractsStartID, err
 	}
 
 	fmt.Println("rent contracts generated")
 
-	return nil, billsStartID, contractsStartID
+	return billsStartID, contractsStartID, nil
 }
 
 func generateNodes(db *sql.DB) error {
@@ -627,17 +624,17 @@ func generateContracts(db *sql.DB) error {
 	billsStartID := 1
 	contractsStartID := 1
 
-	err, billsStartID, contractCount := generateRentContracts(db, billsStartID, contractsStartID)
+	billsStartID, contractCount, err := generateRentContracts(db, billsStartID, contractsStartID)
 	if err != nil {
 		return err
 	}
 
-	err, billsStartID, contractsStartID = generateNodeContracts(db, billsStartID, contractCount)
+	billsStartID, contractsStartID, err = generateNodeContracts(db, billsStartID, contractCount)
 	if err != nil {
 		return err
 	}
 
-	err, billsStartID, contractsStartID = generateNameContracts(db, billsStartID, contractCount)
+	billsStartID, contractsStartID, err = generateNameContracts(db, billsStartID, contractCount)
 	if err != nil {
 		return err
 	}
@@ -669,7 +666,7 @@ func insertTuples(db *sql.DB, tupleObj interface{}, tuples []string) error {
 	return nil
 }
 
-func updateNodeContractPublicIPs(db *sql.DB, nodeContracts []interface{}) error {
+func updateNodeContractPublicIPs(db *sql.DB, nodeContracts []uint64) error {
 
 	if len(nodeContracts) != 0 {
 		var IDs []string
