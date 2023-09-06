@@ -119,7 +119,9 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string) (
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to configure DB connection")
 	}
+
 	sql.SetMaxIdleConns(3)
+	sql.SetMaxOpenConns(80)
 
 	err = gormDB.AutoMigrate(&NodeGPU{})
 	if err != nil {
