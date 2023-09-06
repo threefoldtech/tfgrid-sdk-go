@@ -840,7 +840,8 @@ func (d *PostgresDatabase) GetContractBills(contractID uint32, limit types.Limit
 		Where("contract_id = ?", contractID)
 
 	q = q.Limit(int(limit.Size)).
-		Offset(int(limit.Page-1) * int(limit.Size))
+		Offset(int(limit.Page-1) * int(limit.Size)).
+		Order("timestamp DESC")
 
 	var count int64
 	if limit.RetCount {
