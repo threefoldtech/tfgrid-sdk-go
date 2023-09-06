@@ -107,7 +107,7 @@ type PostgresDatabase struct {
 }
 
 // NewPostgresDatabase returns a new postgres db client
-func NewPostgresDatabase(host string, port int, user, password, dbname string) (Database, error) {
+func NewPostgresDatabase(host string, port int, user, password, dbname string, maxConns int) (Database, error) {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
@@ -121,7 +121,7 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string) (
 	}
 
 	sql.SetMaxIdleConns(3)
-	sql.SetMaxOpenConns(80)
+	sql.SetMaxOpenConns(maxConns)
 
 	err = gormDB.AutoMigrate(&NodeGPU{})
 	if err != nil {
