@@ -159,27 +159,9 @@ func (g *Clientimpl) Contracts(filter types.ContractFilter, limit types.Limit) (
 	if err != nil {
 		return
 	}
-	err = json.Unmarshal(data, &res)
+	res, err = decodeMultipleContracts(data)
 	if err != nil {
 		return
-	}
-	for idx := range res {
-		if res[idx].Type == "node" {
-			res[idx].Details = types.NodeContractDetails{
-				NodeID:            res[idx].Details.(types.NodeContractDetails).NodeID,
-				DeploymentData:    res[idx].Details.(types.NodeContractDetails).DeploymentData,
-				DeploymentHash:    res[idx].Details.(types.NodeContractDetails).DeploymentHash,
-				NumberOfPublicIps: res[idx].Details.(types.NodeContractDetails).NumberOfPublicIps,
-			}
-		} else if res[idx].Type == "rent" {
-			res[idx].Details = types.RentContractDetails{
-				NodeID: res[idx].Details.(types.RentContractDetails).NodeID,
-			}
-		} else if res[idx].Type == "name" {
-			res[idx].Details = types.NameContractDetails{
-				Name: res[idx].Details.(types.NameContractDetails).Name,
-			}
-		}
 	}
 	totalCount, err = requestCounters(req)
 	return
@@ -250,8 +232,11 @@ func (g *Clientimpl) Contract(contractID uint32) (res types.Contract, err error)
 	if err != nil {
 		return
 	}
-	err = res.UnmarshalJSON(data)
 
+	res, err = decodeSingleContract(data)
+	if err != nil {
+		return
+	}
 	return
 }
 

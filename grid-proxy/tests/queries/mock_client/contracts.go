@@ -16,19 +16,6 @@ func (g *GridProxyMockClient) Contracts(filter types.ContractFilter, limit types
 	if limit.Size == 0 {
 		limit.Size = 50
 	}
-	billings := make(map[uint64][]types.ContractBilling)
-	for contractID, contractBillings := range g.data.Billings {
-		for _, billing := range contractBillings {
-			billings[contractID] = append(billings[contractID], types.ContractBilling{
-				AmountBilled:     billing.AmountBilled,
-				DiscountReceived: billing.DiscountReceived,
-				Timestamp:        billing.Timestamp,
-			})
-		}
-		sort.Slice(billings[contractID], func(i, j int) bool {
-			return billings[contractID][i].Timestamp < billings[contractID][j].Timestamp
-		})
-	}
 
 	for _, contract := range g.data.NodeContracts {
 		if contract.satisfies(filter) {
