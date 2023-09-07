@@ -29,14 +29,14 @@ const (
 	contractCreatedRatio = .1 // from devnet
 	usedPublicIPsRatio   = .9
 	nodeUpRatio          = .5
-	nodeCount            = 100000
-	farmCount            = 10000
-	normalUsers          = 50000
+	nodeCount            = 1000
+	farmCount            = 100
+	normalUsers          = 2000
 	publicIPCount        = 1000
 	twinCount            = nodeCount + farmCount + normalUsers
-	nodeContractCount    = 100000
-	rentContractCount    = 1000
-	nameContractCount    = 1000
+	nodeContractCount    = 3000
+	rentContractCount    = 100
+	nameContractCount    = 300
 
 	maxContractHRU = 1024 * 1024 * 1024 * 300
 	maxContractSRU = 1024 * 1024 * 1024 * 300
