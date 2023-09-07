@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -14,7 +13,7 @@ import (
 
 func rnd(min, max uint64) (uint64, error) {
 	if max-min+1 <= 0 {
-		return 0, errors.New("min cannot be greater than max")
+		return 0, fmt.Errorf("min (%d) cannot be greater than max (%d)", min, max)
 	}
 	randomNumber := rand.Uint64()%(max-min+1) + min
 	return randomNumber, nil

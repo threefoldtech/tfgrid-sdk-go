@@ -61,11 +61,11 @@ var (
 func initSchema(db *sql.DB) error {
 	schema, err := os.ReadFile("./schema.sql")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to init schema: %w", err)
 	}
 	_, err = db.Exec(string(schema))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to init schema: %w", err)
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func generateTwins(db *sql.DB) error {
 	}
 
 	if err := insertTuples(db, twin{}, twins); err != nil {
-		return err
+		return fmt.Errorf("failed to insert twins: %w", err)
 	}
 	fmt.Println("twins generated")
 
@@ -102,14 +102,14 @@ func generatePublicIPs(db *sql.DB) error {
 		if flip(usedPublicIPsRatio) {
 			idx, err := rnd(0, uint64(len(createdNodeContracts))-1)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to generate random index: %w", err)
 			}
 			contract_id = createdNodeContracts[idx]
 		}
 		ip := randomIPv4()
 		farmID, err := rnd(1, farmCount)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to generate random farm id: %w", err)
 		}
 
 		public_ip := public_ip{
@@ -124,11 +124,11 @@ func generatePublicIPs(db *sql.DB) error {
 	}
 
 	if err := insertTuples(db, public_ip{}, publicIPs); err != nil {
-		return err
+		return fmt.Errorf("failed to insert public ips: %w", err)
 	}
 
 	if err := updateNodeContractPublicIPs(db, nodeContracts); err != nil {
-		return err
+		return fmt.Errorf("failed to update contract public ips: %w", err)
 	}
 
 	fmt.Println("public IPs generated")
@@ -160,7 +160,7 @@ func generateFarms(db *sql.DB) error {
 	}
 
 	if err := insertTuples(db, farm{}, farms); err != nil {
-		return err
+		return fmt.Errorf("failed to insert farms: %w", err)
 	}
 	fmt.Println("farms generated")
 
@@ -175,7 +175,7 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 	for i := uint64(1); i <= nodeContractCount; i++ {
 		nodeID, err := rnd(1, nodeCount)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random node id: %w", err)
 		}
 		state := "Deleted"
 
@@ -194,7 +194,7 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random twin id: %w", err)
 		}
 
 		if renter, ok := renter[nodeID]; ok {
@@ -222,22 +222,22 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 
 		cru, err := rnd(minContractCRU, maxContractCRU)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random cru: %w", err)
 		}
 
 		hru, err := rnd(minContractHRU, min(maxContractHRU, nodesHRU[nodeID]))
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random hru: %w", err)
 		}
 
 		sru, err := rnd(minContractSRU, min(maxContractSRU, nodesSRU[nodeID]))
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random sru: %w", err)
 		}
 
 		mru, err := rnd(minContractMRU, min(maxContractMRU, nodesMRU[nodeID]))
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random mru: %w", err)
 		}
 
 		contract_resources := contract_resources{
@@ -261,12 +261,12 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random billing count: %w", err)
 		}
 
 		amountBilled, err := rnd(0, 100000)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random amount billed: %w", err)
 		}
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
@@ -284,15 +284,15 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 	}
 
 	if err := insertTuples(db, node_contract{}, contracts); err != nil {
-		return nil, contractsStartID, err
+		return nil, contractsStartID, fmt.Errorf("failed to insert node contracts: %w", err)
 	}
 
 	if err := insertTuples(db, contract_resources{}, contractResources); err != nil {
-		return nil, contractsStartID, err
+		return nil, contractsStartID, fmt.Errorf("failed to insert contract resources: %w", err)
 	}
 
 	if err := updateNodeContractResourceID(db, contractsStartID-nodeContractCount, contractsStartID); err != nil {
-		return nil, contractsStartID, err
+		return nil, contractsStartID, fmt.Errorf("failed to update node contract resources id: %w", err)
 	}
 
 	fmt.Println("node contracts generated")
@@ -306,7 +306,7 @@ func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 	for i := uint64(1); i <= nameContractCount; i++ {
 		nodeID, err := rnd(1, nodeCount)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random node id: %w", err)
 		}
 
 		state := "Deleted"
@@ -320,7 +320,7 @@ func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random twin id: %w", err)
 		}
 
 		if renter, ok := renter[nodeID]; ok {
@@ -346,9 +346,13 @@ func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate random billings count: %w", err)
 		}
 		amountBilled, err := rnd(0, 100000)
+		if err != nil {
+			return nil, contractsStartID, fmt.Errorf("failed to generate random amount billed: %w", err)
+		}
+
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
 				id:                fmt.Sprintf("contract-bill-report-%d", billsStartID),
@@ -365,7 +369,7 @@ func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 	}
 
 	if err := insertTuples(db, name_contract{}, contracts); err != nil {
-		return nil, contractsStartID, err
+		return nil, contractsStartID, fmt.Errorf("failed to insert name contracts: %w", err)
 	}
 
 	fmt.Println("name contracts generated")
@@ -378,7 +382,7 @@ func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 	for i := uint64(1); i <= rentContractCount; i++ {
 		nl, nodeID, err := popRandom(availableRentNodesList)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to select random element from the gives slice: %w", err)
 		}
 
 		availableRentNodesList = nl
@@ -411,12 +415,12 @@ func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate billings count: %w", err)
 		}
 
 		amountBilled, err := rnd(0, 100000)
 		if err != nil {
-			return nil, contractsStartID, err
+			return nil, contractsStartID, fmt.Errorf("failed to generate amount billed: %w", err)
 		}
 
 		for j := uint64(0); j < billings; j++ {
@@ -437,7 +441,7 @@ func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 	}
 
 	if err := insertTuples(db, rent_contract{}, contracts); err != nil {
-		return nil, contractsStartID, err
+		return nil, contractsStartID, fmt.Errorf("failed to insert rent contracts: %w", err)
 	}
 
 	fmt.Println("rent contracts generated")
@@ -454,38 +458,38 @@ func generateNodes(db *sql.DB) error {
 	for i := uint64(1); i <= nodeCount; i++ {
 		mru, err := rnd(4, 256)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to generate random mru: %w", err)
 		}
 		mru *= 1024 * 1024 * 1024
 
 		hru, err := rnd(100, 30*1024)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to generate random hru: %w", err)
 		}
 		hru *= 1024 * 1024 * 1024 // 100GB -> 30TB
 
 		sru, err := rnd(200, 30*1024)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to generate random sru: %w", err)
 		}
 		sru *= 1024 * 1024 * 1024 // 100GB -> 30TB
 
 		cru, err := rnd(4, 128)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to generate random cru: %w", err)
 		}
 
 		up := flip(nodeUpRatio)
 		periodFromLatestUpdate, err := rnd(60*40*3, 60*60*24*30*12)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to generate random period from latest update: %w", err)
 		}
 		updatedAt := time.Now().Unix() - int64(periodFromLatestUpdate)
 
 		if up {
 			periodFromLatestUpdate, err = rnd(0, 60*40*1)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to generate period from latest update: %w", err)
 			}
 			updatedAt = time.Now().Unix() - int64(periodFromLatestUpdate)
 		}
@@ -564,19 +568,19 @@ func generateNodes(db *sql.DB) error {
 	}
 
 	if err := insertTuples(db, location{}, locations); err != nil {
-		return err
+		return fmt.Errorf("failed to insert locations: %w", err)
 	}
 
 	if err := insertTuples(db, node{}, nodes); err != nil {
-		return err
+		return fmt.Errorf("failed to isnert nodes: %w", err)
 	}
 
 	if err := insertTuples(db, node_resources_total{}, totalResources); err != nil {
-		return err
+		return fmt.Errorf("failed to insert node resources total: %w", err)
 	}
 
 	if err := insertTuples(db, public_config{}, publicConfigs); err != nil {
-		return err
+		return fmt.Errorf("failed to insert public configs: %w", err)
 	}
 	fmt.Println("nodes generated")
 
@@ -598,7 +602,7 @@ func generateNodeGPUs(db *sql.DB) error {
 	}
 
 	if err := insertTuples(db, node_gpu{}, GPUs); err != nil {
-		return err
+		return fmt.Errorf("failed to insert node gpu: %w", err)
 	}
 
 	fmt.Println("node GPUs generated")
@@ -614,23 +618,26 @@ func generateContracts(db *sql.DB) error {
 
 	rentContractsBillReports, contractCount, err := generateRentContracts(db, 1, contractsStartID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate rent contracts: %w", err)
 	}
 	billReports = append(billReports, rentContractsBillReports...)
 
 	nodeContractsBillReports, contractsStartID, err := generateNodeContracts(db, len(billReports)+1, contractCount)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate node contracts: %w", err)
 	}
 	billReports = append(billReports, nodeContractsBillReports...)
 
 	nameContractsBillReports, contractsStartID, err := generateNameContracts(db, len(billReports)+1, contractCount)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate name contracts: %w", err)
 	}
 	billReports = append(billReports, nameContractsBillReports...)
 
-	return insertTuples(db, contract_bill_report{}, billReports)
+	if err := insertTuples(db, contract_bill_report{}, billReports); err != nil {
+		return fmt.Errorf("failed to generate contract bill reports: %w", err)
+	}
+	return nil
 }
 
 func insertTuples(db *sql.DB, tupleObj interface{}, tuples []string) error {
@@ -650,7 +657,7 @@ func insertTuples(db *sql.DB, tupleObj interface{}, tuples []string) error {
 		query += strings.Join(tuples, ",")
 		query += ";"
 		if _, err := db.Exec(query); err != nil {
-			return err
+			return fmt.Errorf("failed to insert tuples: %w", err)
 		}
 
 	}
@@ -669,7 +676,7 @@ func updateNodeContractPublicIPs(db *sql.DB, nodeContracts []uint64) error {
 		query := "UPDATE node_contract set number_of_public_i_ps = number_of_public_i_ps + 1 WHERE contract_id IN ("
 		query += strings.Join(IDs, ",") + ");"
 		if _, err := db.Exec(query); err != nil {
-			return err
+			return fmt.Errorf("failed to update node contracts public ips: %w", err)
 		}
 	}
 	return nil
@@ -679,34 +686,34 @@ func updateNodeContractResourceID(db *sql.DB, min, max int) error {
 	query := fmt.Sprintf(`UPDATE node_contract SET resources_used_id = CONCAT('contract-resources-',split_part(id, '-', -1))
 		WHERE CAST(split_part(id, '-', -1) AS INTEGER) BETWEEN %d AND %d;`, min, max)
 	if _, err := db.Exec(query); err != nil {
-		return err
+		return fmt.Errorf("failed to update node contract resource id: %w", err)
 	}
 
 	return nil
 }
 func generateData(db *sql.DB) error {
 	if err := generateTwins(db); err != nil {
-		panic(err)
+		return fmt.Errorf("failed to genrate twins: %w", err)
 	}
 
 	if err := generateFarms(db); err != nil {
-		panic(err)
+		return fmt.Errorf("failed to generate farms: %w", err)
 	}
 
 	if err := generateNodes(db); err != nil {
-		panic(err)
+		return fmt.Errorf("failed to generate nodes: %w", err)
 	}
 
 	if err := generateContracts(db); err != nil {
-		panic(err)
+		return fmt.Errorf("failed to generate contracts: %w", err)
 	}
 
 	if err := generatePublicIPs(db); err != nil {
-		panic(err)
+		return fmt.Errorf("failed to generate public ips: %w", err)
 	}
 
 	if err := generateNodeGPUs(db); err != nil {
-		panic(err)
+		return fmt.Errorf("failed to generate node gpus: %w", err)
 	}
 
 	return nil
