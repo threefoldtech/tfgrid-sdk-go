@@ -494,12 +494,11 @@ func generateNodes(db *sql.DB) error {
 		}
 		updatedAt := time.Now().Unix() - int64(periodFromLatestUpdate)
 
-		periodFromLatestUpdate, err = rnd(0, 60*40*1)
-		if err != nil {
-			return err
-		}
-
 		if up {
+			periodFromLatestUpdate, err = rnd(0, 60*40*1)
+			if err != nil {
+				return err
+			}
 			updatedAt = time.Now().Unix() - int64(periodFromLatestUpdate)
 		}
 
