@@ -82,7 +82,11 @@ func generateTwins(db *sql.DB) error {
 			twin_id:      i,
 			grid_version: 3,
 		}
-		twins = append(twins, objectToTupleString(twin))
+		tuple, err := objectToTupleString(twin)
+		if err != nil {
+			return fmt.Errorf("failed to convert twin object to tuple string: %w", err)
+		}
+		twins = append(twins, tuple)
 	}
 
 	if err := insertTuples(db, twin{}, twins); err != nil {
@@ -119,7 +123,11 @@ func generatePublicIPs(db *sql.DB) error {
 			contract_id: contract_id,
 			farm_id:     fmt.Sprintf("farm-%d", farmID),
 		}
-		publicIPs = append(publicIPs, objectToTupleString(public_ip))
+		publicIpTuple, err := objectToTupleString(public_ip)
+		if err != nil {
+			return fmt.Errorf("failed to convert public ip object to tuple string: %w", err)
+		}
+		publicIPs = append(publicIPs, publicIpTuple)
 		nodeContracts = append(nodeContracts, contract_id)
 	}
 
@@ -156,7 +164,11 @@ func generateFarms(db *sql.DB) error {
 			dedicatedFarms[farm.farm_id] = struct{}{}
 		}
 
-		farms = append(farms, objectToTupleString(farm))
+		farmTuple, err := objectToTupleString(farm)
+		if err != nil {
+			return fmt.Errorf("failed to convert farm object to tuple string: %w", err)
+		}
+		farms = append(farms, farmTuple)
 	}
 
 	if err := insertTuples(db, farm{}, farms); err != nil {
@@ -255,9 +267,17 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 			createdNodeContracts = append(createdNodeContracts, uint64(contractsStartID))
 		}
 
-		contracts = append(contracts, objectToTupleString(contract))
+		contractTuple, err := objectToTupleString(contract)
+		if err != nil {
+			return nil, contractsStartID, fmt.Errorf("failed to convert contract object to tuple string: %w", err)
+		}
+		contracts = append(contracts, contractTuple)
 
-		contractResources = append(contractResources, objectToTupleString(contract_resources))
+		contractResourcesTuple, err := objectToTupleString(contract_resources)
+		if err != nil {
+			return nil, contractsStartID, fmt.Errorf("failed to convert contract resources object to tuple string: %w", err)
+		}
+		contractResources = append(contractResources, contractResourcesTuple)
 
 		billings, err := rnd(0, 10)
 		if err != nil {
@@ -278,7 +298,11 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 			}
 			billsStartID++
 
-			billingReports = append(billingReports, objectToTupleString(billing))
+			billTuple, err := objectToTupleString(billing)
+			if err != nil {
+				return nil, contractsStartID, fmt.Errorf("failed to convert contract bill report object to tuple string: %w", err)
+			}
+			billingReports = append(billingReports, billTuple)
 		}
 		contractsStartID++
 	}
@@ -342,7 +366,11 @@ func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 			name:         uuid.NewString(),
 		}
 
-		contracts = append(contracts, objectToTupleString(contract))
+		contractTuple, err := objectToTupleString(contract)
+		if err != nil {
+			return nil, contractsStartID, fmt.Errorf("failed to convert contract object to tuple string: %w", err)
+		}
+		contracts = append(contracts, contractTuple)
 
 		billings, err := rnd(0, 10)
 		if err != nil {
@@ -363,7 +391,11 @@ func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 			}
 			billsStartID++
 
-			billReports = append(billReports, objectToTupleString(billing))
+			billTuple, err := objectToTupleString(billing)
+			if err != nil {
+				return nil, contractsStartID, fmt.Errorf("failed to convert contract bill report object to tuple string: %w", err)
+			}
+			billReports = append(billReports, billTuple)
 		}
 		contractsStartID++
 	}
@@ -411,7 +443,11 @@ func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 			renter[nodeID] = contract.twin_id
 		}
 
-		contracts = append(contracts, objectToTupleString(contract))
+		contractTuple, err := objectToTupleString(contract)
+		if err != nil {
+			return nil, contractsStartID, fmt.Errorf("failed to convert contract object to tuple string: %w", err)
+		}
+		contracts = append(contracts, contractTuple)
 
 		billings, err := rnd(0, 10)
 		if err != nil {
@@ -434,7 +470,11 @@ func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 
 			billsStartID++
 
-			billReports = append(billReports, objectToTupleString(billing))
+			billTuple, err := objectToTupleString(billing)
+			if err != nil {
+				return nil, contractsStartID, fmt.Errorf("failed to convert contract bill report object to tuple string: %w", err)
+			}
+			billReports = append(billReports, billTuple)
 
 		}
 		contractsStartID++
@@ -546,11 +586,23 @@ func generateNodes(db *sql.DB) error {
 			availableRentNodesList = append(availableRentNodesList, i)
 		}
 
-		locations = append(locations, objectToTupleString(location))
+		locationTuple, err := objectToTupleString(location)
+		if err != nil {
+			return fmt.Errorf("failed to convert location object to tuple string: %w", err)
+		}
+		locations = append(locations, locationTuple)
 
-		nodes = append(nodes, objectToTupleString(node))
+		nodeTuple, err := objectToTupleString(node)
+		if err != nil {
+			return fmt.Errorf("failed to convert node object to tuple string: %w", err)
+		}
+		nodes = append(nodes, nodeTuple)
 
-		totalResources = append(totalResources, objectToTupleString(total_resources))
+		totalResourcesTuple, err := objectToTupleString(total_resources)
+		if err != nil {
+			return fmt.Errorf("failed to convert total resources object to tuple string: %w", err)
+		}
+		totalResources = append(totalResources, totalResourcesTuple)
 
 		if flip(.1) {
 			publicConfig := public_config{
@@ -562,7 +614,11 @@ func generateNodes(db *sql.DB) error {
 				domain:  "hamada.com",
 				node_id: fmt.Sprintf("node-%d", i),
 			}
-			publicConfigs = append(publicConfigs, objectToTupleString(publicConfig))
+			publicConfigTuple, err := objectToTupleString(publicConfig)
+			if err != nil {
+				return fmt.Errorf("failed to convert public config object to tuple string: %w", err)
+			}
+			publicConfigs = append(publicConfigs, publicConfigTuple)
 
 		}
 	}
@@ -598,7 +654,11 @@ func generateNodeGPUs(db *sql.DB) error {
 			id:           "0000:0e:00.0/1002/744c",
 		}
 
-		GPUs = append(GPUs, objectToTupleString(g))
+		gpuTuple, err := objectToTupleString(g)
+		if err != nil {
+			return fmt.Errorf("failed to convert gpu object to tuple string: %w", err)
+		}
+		GPUs = append(GPUs, gpuTuple)
 	}
 
 	if err := insertTuples(db, node_gpu{}, GPUs); err != nil {
@@ -608,7 +668,6 @@ func generateNodeGPUs(db *sql.DB) error {
 	fmt.Println("node GPUs generated")
 
 	return nil
-
 }
 
 func generateContracts(db *sql.DB) error {
@@ -688,7 +747,6 @@ func updateNodeContractResourceID(db *sql.DB, min, max int) error {
 	if _, err := db.Exec(query); err != nil {
 		return fmt.Errorf("failed to update node contract resource id: %w", err)
 	}
-
 	return nil
 }
 func generateData(db *sql.DB) error {
@@ -715,6 +773,5 @@ func generateData(db *sql.DB) error {
 	if err := generateNodeGPUs(db); err != nil {
 		return fmt.Errorf("failed to generate node gpus: %w", err)
 	}
-
 	return nil
 }

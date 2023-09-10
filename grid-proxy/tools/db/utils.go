@@ -56,7 +56,7 @@ func max(a, b uint64) uint64 {
 }
 
 // objectToTupleString converts a object into a string representation suitable for sql query
-func objectToTupleString(v interface{}) string {
+func objectToTupleString(v interface{}) (string, error) {
 	vals := "("
 	val := reflect.ValueOf(v)
 	for i := 0; i < val.NumField(); i++ {
@@ -90,14 +90,14 @@ func objectToTupleString(v interface{}) string {
 				// Marshal the power map to JSON and wrap it in quotes
 				powerJSON, err := json.Marshal(power)
 				if err != nil {
-					panic(err)
+					return "", fmt.Errorf("failed to marshal the power map to JSON: %w", err)
 				}
 				v = fmt.Sprintf("'%s'", string(powerJSON))
 			}
 			vals = fmt.Sprintf("%s, %s", vals, v)
 		}
 	}
-	return fmt.Sprintf("%s)", vals)
+	return fmt.Sprintf("%s)", vals), nil
 }
 
 // popRandom selects a random element from the given slice,

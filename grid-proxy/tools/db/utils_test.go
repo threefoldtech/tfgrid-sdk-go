@@ -36,7 +36,8 @@ func TestObjectToTupleString(t *testing.T) {
 			twin_id:      1,
 			grid_version: 3,
 		}
-		got := objectToTupleString(twin)
+		got, err := objectToTupleString(twin)
+		assert.Nil(t, err)
 		want := "('twin-1', 3, 1, 'account-id-1', 'relay-1', 'public-key-1')"
 		assert.Equal(t, want, got)
 	})
@@ -57,10 +58,10 @@ func TestObjectToTupleString(t *testing.T) {
 			resources_used_id:     "",
 		}
 
-		got := objectToTupleString(contract)
+		got, err := objectToTupleString(contract)
+		assert.Nil(t, err)
 		want := fmt.Sprintf("('node-contract-1', 3, 1, 1, 1, 'deployment-data-1', 'deployment-hash-1', 0, 'Created', %d, NULL)", createdAt)
 		assert.Equal(t, want, got)
 
 	})
-
 }
