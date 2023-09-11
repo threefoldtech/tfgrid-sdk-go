@@ -30,6 +30,17 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 	if err != nil {
 		return workloads.VM{}, errors.Wrapf(err, "failed to deploy network on node %d", node)
 	}
+
+	defer func() {
+		if err != nil {
+			log.Warn().Msg("error happened while deploying. removing network")
+			err = t.NetworkDeployer.Cancel(ctx, &network)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to remove network")
+			}
+		}
+	}()
+
 	log.Info().Msg("deploying vm")
 	err = t.DeploymentDeployer.Deploy(ctx, &dl)
 	if err != nil {
@@ -66,6 +77,17 @@ func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, mas
 	if err != nil {
 		return workloads.K8sCluster{}, errors.Wrapf(err, "failed to deploy network on nodes %v", network.Nodes)
 	}
+
+	defer func() {
+		if err != nil {
+			log.Warn().Msg("error happened while deploying. removing network")
+			err = t.NetworkDeployer.Cancel(ctx, &network)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to remove network")
+			}
+		}
+	}()
+
 	log.Info().Msg("deploying cluster")
 	err = t.K8sDeployer.Deploy(ctx, &cluster)
 	if err != nil {
