@@ -249,6 +249,7 @@ func (g *GridProxyMockClient) Contract(contractID uint32) (res types.Contract, e
 
 // ContractBills returns all bills reports for a contract with the given contract id and pagination parameters
 func (g *GridProxyMockClient) ContractBills(contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
+	res = []types.ContractBilling{}
 	bills := g.data.Billings[uint64(contractID)]
 
 	for _, bill := range bills {

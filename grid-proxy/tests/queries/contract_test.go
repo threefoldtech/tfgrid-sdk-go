@@ -147,7 +147,7 @@ func TestBills(t *testing.T) {
 		contractID := rand.Intn(CONTRACTS_TESTS)
 
 		l := proxytypes.Limit{
-			Size:     5,
+			Size:     99999,
 			Page:     1,
 			RetCount: true,
 		}

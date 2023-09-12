@@ -454,7 +454,9 @@ func loadContractBillingReports(db *sql.DB, data *DBData) error {
 		COALESCE(amount_billed, 0),
 		COALESCE(timestamp, 0)
 	FROM
-		contract_bill_report;`)
+		contract_bill_report
+	ORDER BY
+        timestamp DESC;`)
 	if err != nil {
 		return err
 	}

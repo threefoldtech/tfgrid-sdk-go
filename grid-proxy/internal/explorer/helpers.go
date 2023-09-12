@@ -358,7 +358,7 @@ func (a *App) getContractBillsData(contractIDStr string, limit types.Limit) ([]t
 
 	bills := []types.ContractBilling{}
 	for _, report := range info {
-		bills = append(bills, contractBillFromDBContractBill(report))
+		bills = append(bills, types.ContractBilling(report))
 	}
 
 	return bills, billsCount, nil
