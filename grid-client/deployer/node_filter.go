@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -34,6 +35,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	sort.Slice(ssdDisks, func(i, j int) bool {
 		return ssdDisks[i] > ssdDisks[j]
 	})
+
 	// add rootfs at the end to as zos provisions zmounts first.
 	ssdDisks = append(ssdDisks, rootfs...)
 
@@ -45,11 +47,16 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	for _, node := range nodes {
 		client, err := tfPlugin.NcPool.GetNodeClient(tfPlugin.SubstrateConn, uint32(node.NodeID))
 		if err != nil {
-			return []types.Node{}, errors.Wrapf(err, "failed to get node '%d' client", node.NodeID)
+			log.Error().Err(err).Msgf("failed to get node '%d' client", node.NodeID)
+			workloads.Delete(nodePools, node)
+			continue
 		}
+
 		pools, err := client.Pools(ctx)
 		if err != nil {
-			return []types.Node{}, errors.Wrapf(err, "failed to get node '%d' pools", node.NodeID)
+			log.Error().Err(err).Msgf("failed to get node '%d' pools", node.NodeID)
+			workloads.Delete(nodePools, node)
+			continue
 		}
 		if hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) && hasEnoughStorage(pools, ssdDisks, zos.HDDDevice) {
 			nodePools = append(nodePools, node)

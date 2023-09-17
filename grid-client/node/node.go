@@ -452,6 +452,9 @@ func (n *NodeClient) GetNodeEndpoint(ctx context.Context) (net.IP, error) {
 
 // Pools returns statistics of separate pools
 func (n *NodeClient) Pools(ctx context.Context) (pools []PoolMetrics, err error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
 	const cmd = "zos.storage.pools"
 	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &pools)
 	return
@@ -466,6 +469,9 @@ type GPU struct {
 
 // GPUs returns a list of gpus
 func (n *NodeClient) GPUs(ctx context.Context) (gpus []GPU, err error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
 	const cmd = "zos.gpu.list"
 	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &gpus)
 	return
@@ -473,6 +479,9 @@ func (n *NodeClient) GPUs(ctx context.Context) (gpus []GPU, err error) {
 
 // HasPublicIPv6 returns true if the node has a public ip6 configuration
 func (n *NodeClient) HasPublicIPv6(ctx context.Context) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
 	const cmd = "zos.network.has_ipv6"
 	var result bool
 
@@ -485,8 +494,10 @@ func (n *NodeClient) HasPublicIPv6(ctx context.Context) (bool, error) {
 
 // NetworkListAllInterfaces return all physical devices on a node
 func (n *NodeClient) NetworkListAllInterfaces(ctx context.Context) (result map[string]Interface, err error) {
-	const cmd = "zos.network.admin.interfaces"
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
 
+	const cmd = "zos.network.admin.interfaces"
 	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result)
 
 	return
@@ -496,15 +507,19 @@ func (n *NodeClient) NetworkListAllInterfaces(ctx context.Context) (result map[s
 // NetworkSetPublicExitDevice select which physical interface to use as an exit device
 // setting `iface` to `zos` will then make node run in a single nic setup.
 func (n *NodeClient) NetworkSetPublicExitDevice(ctx context.Context, iface string) error {
-	const cmd = "zos.network.admin.set_public_nic"
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
 
+	const cmd = "zos.network.admin.set_public_nic"
 	return n.bus.Call(ctx, n.nodeTwin, cmd, iface, nil)
 }
 
 // NetworkGetPublicExitDevice gets the current dual nic setup of the node.
 func (n *NodeClient) NetworkGetPublicExitDevice(ctx context.Context) (exit ExitDevice, err error) {
-	const cmd = "zos.network.admin.get_public_nic"
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
 
+	const cmd = "zos.network.admin.get_public_nic"
 	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &exit)
 	return
 }
