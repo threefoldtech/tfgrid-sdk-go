@@ -9,6 +9,7 @@ const (
 
 	tftIssuerAddress    = "GA47YZA3PKFUZMPLQ3B5F2E3CJIB57TGGU7SPCQT2WAEYKN766PWIMB3"
 	bridgeTestTFTAmount = 10
+	txnTimeoutSeconds   = 60
 )
 
 var networks = []network{devNetwork, qaNetwork, testNetwork, mainNetwork}

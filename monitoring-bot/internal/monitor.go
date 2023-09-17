@@ -37,8 +37,10 @@ type config struct {
 	chatID                string `env:"CHAT_ID"`
 	intervalMins          int    `env:"MINS"`
 	bridgeMonIntervalMins int    `env:"BRIDGE_MON_INTERVAL_MIN"`
-	stellarSecret         string `env:"STELLAR_SECRET"`
-	stellarAddress        string `env:"STELLAR_ADDRESS"`
+	publicStellarSecret   string `env:"PUBLIC_STELLAR_SECRET"`
+	publicStellarAddress  string `env:"PUBLIC_STELLAR_ADDRESS"`
+	testStellarSecret     string `env:"TEST_STELLAR_SECRET"`
+	testStellarAddress    string `env:"TEST_STELLAR_ADDRESS"`
 }
 
 type wallet struct {
