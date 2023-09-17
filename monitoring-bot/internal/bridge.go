@@ -72,7 +72,12 @@ func (m *Monitor) sendToTfChain(tfChain network) error {
 		return fmt.Errorf("failed to verify destination account: %w", err)
 	}
 
-	sourceKP := keypair.MustParseFull(m.env.stellarSecret)
+	strSecret := m.env.testStellarSecret
+	if tfChain == mainNetwork || tfChain == testNetwork {
+		strSecret = m.env.publicStellarSecret
+	}
+
+	sourceKP := keypair.MustParseFull(strSecret)
 	sourceAccountRequest := horizonclient.AccountRequest{AccountID: sourceKP.Address()}
 	sourceAccount, err := strClient.AccountDetail(sourceAccountRequest)
 	if err != nil {
@@ -85,7 +90,7 @@ func (m *Monitor) sendToTfChain(tfChain network) error {
 			IncrementSequenceNum: true,
 			BaseFee:              txnbuild.MinBaseFee,
 			Preconditions: txnbuild.Preconditions{
-				TimeBounds: txnbuild.NewTimeout(60),
+				TimeBounds: txnbuild.NewTimeout(txnTimeoutSeconds),
 			},
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -131,7 +136,12 @@ func (m *Monitor) sendToStellar(tfChain network) error {
 		return fmt.Errorf("failed to get identity from mnemonic: %w", err)
 	}
 
-	err = conn.SwapToStellar(identity, m.env.stellarAddress, *big.NewInt(int64(bridgeTestTFTAmount * 10000000)))
+	strAddress := m.env.testStellarAddress
+	if tfChain == mainNetwork || tfChain == testNetwork {
+		strAddress = m.env.publicStellarAddress
+	}
+
+	err = conn.SwapToStellar(identity, strAddress, *big.NewInt(int64(bridgeTestTFTAmount * 10000000)))
 	if err != nil {
 		return fmt.Errorf("failed to send %d TFT to stellar: %w", bridgeTestTFTAmount, err)
 	}

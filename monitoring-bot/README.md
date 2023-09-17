@@ -26,8 +26,10 @@ This is a bot to monitor some TFGrid functionalities here is a list:
     CHAT_ID=<your personal chat ID, where bot will send you >
     MINS=<number of minutes between each message>
     BRIDGE_MON_INTERVAL_MIN=<number of minutes between each bridge test report>
-    STELLAR_SECRET=<stellar account secret>
-    STELLAR_ADDRESS=<stellar account address>
+    PUBLIC_STELLAR_SECRET=<stellar account secret on stellar public network>
+    PUBLIC_STELLAR_ADDRESS=<stellar account address on stellar public network>
+    TEST_STELLAR_SECRET=<stellar account secret on stellar test network>
+    TEST_STELLAR_ADDRESS=<stellar account address on stellar test network>
     ```
 
 - Create a new json file `wallets.json` and add the list of addresses you want to monitor, for example:

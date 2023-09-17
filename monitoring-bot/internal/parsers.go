@@ -83,10 +83,14 @@ func parseEnv(content string) (config, error) {
 				return config{}, err
 			}
 			cfg.bridgeMonIntervalMins = bridgeMonIntervalMins
-		case "STELLAR_SECRET":
-			cfg.stellarSecret = value
-		case "STELLAR_ADDRESS":
-			cfg.stellarAddress = value
+		case "PUBLIC_STELLAR_SECRET":
+			cfg.publicStellarSecret = value
+		case "PUBLIC_STELLAR_ADDRESS":
+			cfg.publicStellarAddress = value
+		case "TEST_STELLAR_SECRET":
+			cfg.testStellarSecret = value
+		case "TEST_STELLAR_ADDRESS":
+			cfg.testStellarAddress = value
 
 		default:
 			return config{}, fmt.Errorf("key %v is invalid", key)
