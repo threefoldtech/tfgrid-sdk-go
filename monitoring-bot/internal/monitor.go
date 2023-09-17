@@ -25,17 +25,20 @@ type address string
 type network string
 
 type config struct {
-	testMnemonic string `env:"TESTNET_MNEMONIC"`
-	mainMnemonic string `env:"MAINNET_MNEMONIC"`
-	devMnemonic  string `env:"DEVNET_MNEMONIC"`
-	qaMnemonic   string `env:"QANET_MNEMONIC"`
-	devFarmName  string `env:"DEV_FARM_NAME"`
-	qaFarmName   string `env:"QA_FARM_NAME"`
-	testFarmName string `env:"TEST_FARM_NAME"`
-	mainFarmName string `env:"MAIN_FARM_NAME"`
-	botToken     string `env:"BOT_TOKEN"`
-	chatID       string `env:"CHAT_ID"`
-	intervalMins int    `env:"MINS"`
+	testMnemonic          string `env:"TESTNET_MNEMONIC"`
+	mainMnemonic          string `env:"MAINNET_MNEMONIC"`
+	devMnemonic           string `env:"DEVNET_MNEMONIC"`
+	qaMnemonic            string `env:"QANET_MNEMONIC"`
+	devFarmName           string `env:"DEV_FARM_NAME"`
+	qaFarmName            string `env:"QA_FARM_NAME"`
+	testFarmName          string `env:"TEST_FARM_NAME"`
+	mainFarmName          string `env:"MAIN_FARM_NAME"`
+	botToken              string `env:"BOT_TOKEN"`
+	chatID                string `env:"CHAT_ID"`
+	intervalMins          int    `env:"MINS"`
+	bridgeMonIntervalMins int    `env:"BRIDGE_MON_INTERVAL_MIN"`
+	stellarSecret         string `env:"STELLAR_SECRET"`
+	stellarAddress        string `env:"STELLAR_ADDRESS"`
 }
 
 type wallet struct {
@@ -167,32 +170,42 @@ func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 
 // Start starting the monitoring service
 func (m *Monitor) Start() {
-	ticker := time.NewTicker(time.Duration(m.env.intervalMins) * time.Minute)
+	go func() {
+		ticker := time.NewTicker(time.Duration(m.env.intervalMins) * time.Minute)
+		for range ticker.C {
+			for network, manager := range m.substrate {
 
-	for range ticker.C {
-		for network, manager := range m.substrate {
+				wallets := []wallet{}
+				switch network {
+				case mainNetwork:
+					wallets = m.wallets.Mainnet
+				case testNetwork:
+					wallets = m.wallets.Testnet
+				}
 
-			wallets := []wallet{}
-			switch network {
-			case mainNetwork:
-				wallets = m.wallets.Mainnet
-			case testNetwork:
-				wallets = m.wallets.Testnet
-			}
-
-			for _, wallet := range wallets {
-				log.Debug().Msgf("monitoring for network %v, address %v", network, wallet.Address)
-				err := m.sendMessage(manager, wallet)
-				if err != nil {
-					log.Error().Err(err).Msg("monitoring failed with error")
+				for _, wallet := range wallets {
+					log.Debug().Msgf("monitoring for network %v, address %v", network, wallet.Address)
+					err := m.sendMessage(manager, wallet)
+					if err != nil {
+						log.Error().Err(err).Msg("monitoring failed with error")
+					}
 				}
 			}
-		}
 
-		log.Debug().Msg("monitoring proxy and relay for all networks")
-		err := m.monitorNetworks()
+			log.Debug().Msg("monitoring proxy and relay for all networks")
+			err := m.monitorNetworks()
+			if err != nil {
+				log.Error().Err(err).Msg("monitoring networks failed with error")
+			}
+
+		}
+	}()
+
+	bridgeTicker := time.NewTicker(time.Duration(m.env.bridgeMonIntervalMins) * time.Minute)
+	for range bridgeTicker.C {
+		err := m.monitorBridges()
 		if err != nil {
-			log.Error().Err(err).Msg("monitoring networks failed with error")
+			log.Error().Err(err).Msg("monitoring bridges failed")
 		}
 	}
 }
@@ -213,25 +226,27 @@ func (m *Monitor) sendMessage(manager client.Manager, wallet wallet) error {
 	if balance >= float64(wallet.Threshold) {
 		return nil
 	}
+	return m.sendBotMessage(fmt.Sprintf("wallet %v with address:\n%v\nhas balance = %v ⚠️", wallet.Name, wallet.Address, balance))
+}
 
+func (m *Monitor) sendBotMessage(msg string) error {
 	url := fmt.Sprintf("%s/sendMessage", m.getTelegramURL())
 	body, _ := json.Marshal(map[string]string{
 		"chat_id": m.env.chatID,
-		"text":    fmt.Sprintf("wallet %v with address:\n%v\nhas balance = %v ⚠️", wallet.Name, wallet.Address, balance),
+		"text":    msg,
 	})
-	response, err := http.Post(
+
+	res, err := http.Post(
 		url,
 		"application/json",
 		bytes.NewBuffer(body),
 	)
-	if err != nil {
-		return err
-	}
-	if response.StatusCode >= 400 {
-		return errors.New("request send message failed")
+
+	if err != nil || res.StatusCode >= 400 {
+		return fmt.Errorf("failed to send message: %w", err)
 	}
 
-	defer response.Body.Close()
+	defer res.Body.Close()
 	return nil
 }
 
@@ -277,25 +292,7 @@ func (m *Monitor) monitorNetworks() error {
 		return nil
 	}
 
-	url := fmt.Sprintf("%s/sendMessage", m.getTelegramURL())
-	body, _ := json.Marshal(map[string]string{
-		"chat_id": m.env.chatID,
-		"text":    message,
-	})
-	response, err := http.Post(
-		url,
-		"application/json",
-		bytes.NewBuffer(body),
-	)
-	if err != nil {
-		return err
-	}
-	if response.StatusCode >= 400 {
-		return errors.New("request send proxy check message failed")
-	}
-
-	defer response.Body.Close()
-	return nil
+	return m.sendBotMessage(message)
 }
 
 // getBalance gets the balance in TFT for the address given
