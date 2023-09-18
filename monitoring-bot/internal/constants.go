@@ -7,10 +7,13 @@ const (
 	devNetwork  network = "devnet"
 	qaNetwork   network = "qanet"
 
-	tftIssuerStellarTest   = "GA47YZA3PKFUZMPLQ3B5F2E3CJIB57TGGU7SPCQT2WAEYKN766PWIMB3"
-	tftIssuerStellarPublic = "GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47"
-	bridgeTestTFTAmount    = 10
-	txnTimeoutSeconds      = 60
+	tftIssuerStellarTest       = "GA47YZA3PKFUZMPLQ3B5F2E3CJIB57TGGU7SPCQT2WAEYKN766PWIMB3"
+	tftIssuerStellarPublic     = "GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47"
+	bridgeTestTFTAmount        = 10
+	txnTimeoutSeconds          = 60
+	balanceWaitIntervalSeconds = 30
+
+	telegramBotURL = "https://api.telegram.org/bot"
 )
 
 var networks = []network{devNetwork, qaNetwork, testNetwork, mainNetwork}

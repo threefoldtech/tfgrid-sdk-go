@@ -214,13 +214,19 @@ func (m *Monitor) Start() {
 
 // getTelegramUrl returns the telegram bot api url
 func (m *Monitor) getTelegramURL() string {
-	return fmt.Sprintf("https://api.telegram.org/bot%s", m.env.botToken)
+	return fmt.Sprintf("%s%s", telegramBotURL, m.env.botToken)
 }
 
 // sendMessage sends a message with the balance to a telegram bot
 // if it is less than the tft threshold
 func (m *Monitor) sendMessage(manager client.Manager, wallet wallet) error {
-	balance, err := m.getBalance(manager, wallet.Address)
+	con, err := manager.Substrate()
+	if err != nil {
+		return err
+	}
+	defer con.Close()
+
+	balance, err := m.getBalance(con, wallet.Address)
 	if err != nil {
 		return err
 	}
@@ -298,14 +304,8 @@ func (m *Monitor) monitorNetworks() error {
 }
 
 // getBalance gets the balance in TFT for the address given
-func (m *Monitor) getBalance(manager client.Manager, address address) (float64, error) {
+func (m *Monitor) getBalance(con *client.Substrate, address address) (float64, error) {
 	log.Debug().Msgf("get balance for %v", address)
-
-	con, err := manager.Substrate()
-	if err != nil {
-		return 0, err
-	}
-	defer con.Close()
 
 	account, err := client.FromAddress(string(address))
 	if err != nil {
