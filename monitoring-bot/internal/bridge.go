@@ -63,18 +63,20 @@ func (m *Monitor) sendToTfChain(tfChain network) error {
 		return fmt.Errorf("failed to get twinId: %w", err)
 	}
 
-	tftTrustLine := txnbuild.CreditAsset{Code: "TFT", Issuer: tftIssuerAddress}
+	strSecret := m.env.testStellarSecret
+	stellarTFTIssuerAddress := tftIssuerStellarTest
+	if tfChain == mainNetwork || tfChain == testNetwork {
+		strSecret = m.env.publicStellarSecret
+		stellarTFTIssuerAddress = tftIssuerStellarPublic
+	}
+
+	tftTrustLine := txnbuild.CreditAsset{Code: "TFT", Issuer: stellarTFTIssuerAddress}
 	strClient := horizonclient.DefaultTestNetClient
 	destAccountRequest := horizonclient.AccountRequest{AccountID: BridgeAddresses[tfChain]}
 
 	_, err = strClient.AccountDetail(destAccountRequest)
 	if err != nil {
 		return fmt.Errorf("failed to verify destination account: %w", err)
-	}
-
-	strSecret := m.env.testStellarSecret
-	if tfChain == mainNetwork || tfChain == testNetwork {
-		strSecret = m.env.publicStellarSecret
 	}
 
 	sourceKP := keypair.MustParseFull(strSecret)
