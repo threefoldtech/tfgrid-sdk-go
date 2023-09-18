@@ -25,22 +25,21 @@ type address string
 type network string
 
 type config struct {
-	testMnemonic          string `env:"TESTNET_MNEMONIC"`
-	mainMnemonic          string `env:"MAINNET_MNEMONIC"`
-	devMnemonic           string `env:"DEVNET_MNEMONIC"`
-	qaMnemonic            string `env:"QANET_MNEMONIC"`
-	devFarmName           string `env:"DEV_FARM_NAME"`
-	qaFarmName            string `env:"QA_FARM_NAME"`
-	testFarmName          string `env:"TEST_FARM_NAME"`
-	mainFarmName          string `env:"MAIN_FARM_NAME"`
-	botToken              string `env:"BOT_TOKEN"`
-	chatID                string `env:"CHAT_ID"`
-	intervalMins          int    `env:"MINS"`
-	bridgeMonIntervalMins int    `env:"BRIDGE_MON_INTERVAL_MIN"`
-	publicStellarSecret   string `env:"PUBLIC_STELLAR_SECRET"`
-	publicStellarAddress  string `env:"PUBLIC_STELLAR_ADDRESS"`
-	testStellarSecret     string `env:"TEST_STELLAR_SECRET"`
-	testStellarAddress    string `env:"TEST_STELLAR_ADDRESS"`
+	testMnemonic         string `env:"TESTNET_MNEMONIC"`
+	mainMnemonic         string `env:"MAINNET_MNEMONIC"`
+	devMnemonic          string `env:"DEVNET_MNEMONIC"`
+	qaMnemonic           string `env:"QANET_MNEMONIC"`
+	devFarmName          string `env:"DEV_FARM_NAME"`
+	qaFarmName           string `env:"QA_FARM_NAME"`
+	testFarmName         string `env:"TEST_FARM_NAME"`
+	mainFarmName         string `env:"MAIN_FARM_NAME"`
+	botToken             string `env:"BOT_TOKEN"`
+	chatID               string `env:"CHAT_ID"`
+	intervalMins         int    `env:"MINS"`
+	publicStellarSecret  string `env:"PUBLIC_STELLAR_SECRET"`
+	publicStellarAddress string `env:"PUBLIC_STELLAR_ADDRESS"`
+	testStellarSecret    string `env:"TEST_STELLAR_SECRET"`
+	testStellarAddress   string `env:"TEST_STELLAR_ADDRESS"`
 }
 
 type wallet struct {
@@ -172,41 +171,36 @@ func NewMonitor(envPath string, jsonPath string) (Monitor, error) {
 
 // Start starting the monitoring service
 func (m *Monitor) Start() {
-	go func() {
-		ticker := time.NewTicker(time.Duration(m.env.intervalMins) * time.Minute)
-		for range ticker.C {
-			for network, manager := range m.substrate {
 
-				wallets := []wallet{}
-				switch network {
-				case mainNetwork:
-					wallets = m.wallets.Mainnet
-				case testNetwork:
-					wallets = m.wallets.Testnet
-				}
+	ticker := time.NewTicker(time.Duration(m.env.intervalMins) * time.Minute)
+	for range ticker.C {
+		for network, manager := range m.substrate {
 
-				for _, wallet := range wallets {
-					log.Debug().Msgf("monitoring for network %v, address %v", network, wallet.Address)
-					err := m.sendMessage(manager, wallet)
-					if err != nil {
-						log.Error().Err(err).Msg("monitoring failed with error")
-					}
-				}
+			wallets := []wallet{}
+			switch network {
+			case mainNetwork:
+				wallets = m.wallets.Mainnet
+			case testNetwork:
+				wallets = m.wallets.Testnet
 			}
 
-			log.Debug().Msg("monitoring proxy and relay for all networks")
-			err := m.monitorNetworks()
-			if err != nil {
-				log.Error().Err(err).Msg("monitoring networks failed with error")
+			for _, wallet := range wallets {
+				log.Debug().Msgf("monitoring for network %v, address %v", network, wallet.Address)
+				err := m.sendMessage(manager, wallet)
+				if err != nil {
+					log.Error().Err(err).Msg("monitoring failed with error")
+				}
 			}
-
 		}
-	}()
 
-	bridgeTicker := time.NewTicker(time.Duration(m.env.bridgeMonIntervalMins) * time.Minute)
-	for range bridgeTicker.C {
-		err := m.monitorBridges()
+		log.Debug().Msg("monitoring proxy and relay for all networks")
+		err := m.monitorNetworks()
 		if err != nil {
+			log.Error().Err(err).Msg("monitoring networks failed with error")
+		}
+
+		log.Debug().Msg("monitoring stellar bridges")
+		if err := m.monitorBridges(); err != nil {
 			log.Error().Err(err).Msg("monitoring bridges failed")
 		}
 	}
@@ -249,9 +243,12 @@ func (m *Monitor) sendBotMessage(msg string) error {
 		"application/json",
 		bytes.NewBuffer(body),
 	)
+	if err != nil {
+		return fmt.Errorf("failed to send http post request: %w", err)
+	}
 
-	if err != nil || res.StatusCode >= 400 {
-		return fmt.Errorf("failed to send message: %w", err)
+	if res.StatusCode >= 400 {
+		return fmt.Errorf("http error with status code: %d", res.StatusCode)
 	}
 
 	defer res.Body.Close()

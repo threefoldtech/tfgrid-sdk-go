@@ -104,22 +104,22 @@ func (m *Monitor) bridgeTXWrapper(tx bridgeTX) func(conn *client.Substrate, iden
 	}
 }
 
-func (m *Monitor) sendToTfChain(conn *client.Substrate, identity client.Identity, tfChain network) error {
+func (m *Monitor) sendToTfChain(conn *client.Substrate, identity client.Identity, net network) error {
 	twinID, err := conn.GetTwinByPubKey(identity.PublicKey())
 	if err != nil {
-		return fmt.Errorf("failed to get twinId: %w", err)
+		return fmt.Errorf("failed to get twin id: %w", err)
 	}
 
 	strSecret := m.env.testStellarSecret
 	stellarTFTIssuerAddress := tftIssuerStellarTest
-	if tfChain == mainNetwork || tfChain == testNetwork {
+	if net == mainNetwork || net == testNetwork {
 		strSecret = m.env.publicStellarSecret
 		stellarTFTIssuerAddress = tftIssuerStellarPublic
 	}
 
 	tftTrustLine := txnbuild.CreditAsset{Code: "TFT", Issuer: stellarTFTIssuerAddress}
 	strClient := horizonclient.DefaultTestNetClient
-	destAccountRequest := horizonclient.AccountRequest{AccountID: BridgeAddresses[tfChain]}
+	destAccountRequest := horizonclient.AccountRequest{AccountID: BridgeAddresses[net]}
 
 	_, err = strClient.AccountDetail(destAccountRequest)
 	if err != nil {
@@ -143,7 +143,7 @@ func (m *Monitor) sendToTfChain(conn *client.Substrate, identity client.Identity
 			},
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
-					Destination: BridgeAddresses[tfChain],
+					Destination: BridgeAddresses[net],
 					Amount:      fmt.Sprintf("%d", bridgeTestTFTAmount),
 					Asset:       tftTrustLine,
 				},
@@ -156,7 +156,7 @@ func (m *Monitor) sendToTfChain(conn *client.Substrate, identity client.Identity
 	}
 
 	netPassphrase := strNet.TestNetworkPassphrase
-	if tfChain == mainNetwork || tfChain == testNetwork {
+	if net == mainNetwork || net == testNetwork {
 		netPassphrase = strNet.PublicNetworkPassphrase
 	}
 
@@ -173,9 +173,9 @@ func (m *Monitor) sendToTfChain(conn *client.Substrate, identity client.Identity
 	return nil
 }
 
-func (m *Monitor) sendToStellar(conn *client.Substrate, identity client.Identity, tfChain network) error {
+func (m *Monitor) sendToStellar(conn *client.Substrate, identity client.Identity, net network) error {
 	strAddress := m.env.testStellarAddress
-	if tfChain == mainNetwork || tfChain == testNetwork {
+	if net == mainNetwork || net == testNetwork {
 		strAddress = m.env.publicStellarAddress
 	}
 
