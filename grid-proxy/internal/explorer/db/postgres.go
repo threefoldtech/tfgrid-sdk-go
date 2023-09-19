@@ -377,7 +377,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 	return d.gormDB.
 		Table("node").
 		Select(
-			"node.id",
+			"DISTINCT node.id",
 			"node.node_id",
 			"node.farm_id",
 			"node.twin_id",
