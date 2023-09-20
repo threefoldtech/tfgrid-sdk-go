@@ -523,13 +523,13 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
 	}
 
+	/*
+		used distinct selecting to avoid duplicated node after the join.
+		- postgres apply WHERE before DISTINCT so filters will still filter on the whole data.
+		- we don't return any gpu info on the node object so no worries of losing the data because DISTINCT.
+	*/
 	nodeGpuSubquery := d.gormDB.Table("node_gpu").
-		Select(`DISTINCT ON (node_twin_id) node_twin_id, 
-			id,
-			vendor,
-			device,
-			contract`,
-		)
+		Select("DISTINCT ON (node_twin_id) node_twin_id")
 
 	if filter.HasGPU != nil {
 		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.id, '') != '') = ?", *filter.HasGPU)
