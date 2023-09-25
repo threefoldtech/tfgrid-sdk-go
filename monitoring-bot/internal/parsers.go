@@ -77,12 +77,6 @@ func parseEnv(content string) (config, error) {
 				return config{}, err
 			}
 			cfg.intervalMins = intervalMins
-		case "BRIDGE_MON_INTERVAL_MIN":
-			bridgeMonIntervalMins, err := strconv.Atoi(value)
-			if err != nil {
-				return config{}, err
-			}
-			cfg.bridgeMonIntervalMins = bridgeMonIntervalMins
 		case "PUBLIC_STELLAR_SECRET":
 			cfg.publicStellarSecret = value
 		case "PUBLIC_STELLAR_ADDRESS":

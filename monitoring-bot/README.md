@@ -7,6 +7,7 @@ This is a bot to monitor some TFGrid functionalities here is a list:
 
 - liveness of gridproxy on different networks and rmb call behavior to some farmer nodes.
 - the balance in accounts and send warnings if it is under some threshold.
+- transactions to/from stellar bridge.
 
 ## How to start
 
@@ -25,7 +26,6 @@ This is a bot to monitor some TFGrid functionalities here is a list:
     BOT_TOKEN=<bot token. you got it after creating the bot>
     CHAT_ID=<your personal chat ID, where bot will send you >
     MINS=<number of minutes between each message>
-    BRIDGE_MON_INTERVAL_MIN=<number of minutes between each bridge test report>
     PUBLIC_STELLAR_SECRET=<stellar account secret on stellar public network>
     PUBLIC_STELLAR_ADDRESS=<stellar account address on stellar public network>
     TEST_STELLAR_SECRET=<stellar account secret on stellar test network>
@@ -61,14 +61,14 @@ This is a bot to monitor some TFGrid functionalities here is a list:
     ```bash
     go run main.go -e .env -w wallets.json
     ```
-  - From the release binary:         
+
+  - From the release binary:
     > Download the latest from the [releases page](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
 
-
-        ```bash
-        sudo cp monitoring-bot /usr/local/bin
-        monitoring-bot -e .env -w wallets.json
-        ```
+    ```bash
+    sudo cp monitoring-bot /usr/local/bin
+    monitoring-bot -e .env -w wallets.json
+    ```
 
     Where
 
