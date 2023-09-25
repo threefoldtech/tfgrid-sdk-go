@@ -66,7 +66,7 @@ func (m *Monitor) monitorBridge(net network) (balanceReport, error) {
 	// get current balance
 	originalBalance, err := m.getBalance(conn, address(identity.Address()))
 	if err != nil {
-		return balanceReport{}, fmt.Errorf("failed to get balance for account ")
+		return balanceReport{}, fmt.Errorf("failed to get balance for account: %w", err)
 	}
 
 	balanceAfterChain, err := m.bridgeTXWrapper(m.sendToTfChain)(conn, identity, net)
@@ -97,7 +97,7 @@ func (m *Monitor) bridgeTXWrapper(tx bridgeTX) func(conn *client.Substrate, iden
 
 		balanceAfterChain, err := m.getBalance(conn, address(identity.Address()))
 		if err != nil {
-			return 0, fmt.Errorf("failed to get balance for account ")
+			return 0, fmt.Errorf("failed to get balance for account: %w", err)
 		}
 
 		return balanceAfterChain, nil

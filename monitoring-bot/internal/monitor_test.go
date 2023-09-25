@@ -94,7 +94,7 @@ func TestMonitor(t *testing.T) {
 		wallet := wallet{"", 1, ""}
 
 		monitor.env.botToken = ""
-		err = monitor.sendMessage(substrate[testNetwork], wallet)
+		err = monitor.monitorBalance(substrate[testNetwork], wallet)
 		if err == nil {
 			t.Errorf("sending a message should fail")
 		}
@@ -110,7 +110,7 @@ func TestMonitor(t *testing.T) {
 
 		wallet := wallet{"", 1, ""}
 
-		err = monitor.sendMessage(substrate[testNetwork], wallet)
+		err = monitor.monitorBalance(substrate[testNetwork], wallet)
 		if err == nil {
 			t.Errorf("no message should be sent")
 		}

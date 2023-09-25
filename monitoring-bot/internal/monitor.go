@@ -186,7 +186,7 @@ func (m *Monitor) Start() {
 
 			for _, wallet := range wallets {
 				log.Debug().Msgf("monitoring for network %v, address %v", network, wallet.Address)
-				err := m.sendMessage(manager, wallet)
+				err := m.monitorBalance(manager, wallet)
 				if err != nil {
 					log.Error().Err(err).Msg("monitoring failed with error")
 				}
@@ -211,9 +211,9 @@ func (m *Monitor) getTelegramURL() string {
 	return fmt.Sprintf("%s%s", telegramBotURL, m.env.botToken)
 }
 
-// sendMessage sends a message with the balance to a telegram bot
+// monitorBalance sends a message with the balance to a telegram bot
 // if it is less than the tft threshold
-func (m *Monitor) sendMessage(manager client.Manager, wallet wallet) error {
+func (m *Monitor) monitorBalance(manager client.Manager, wallet wallet) error {
 	con, err := manager.Substrate()
 	if err != nil {
 		return err
@@ -244,11 +244,11 @@ func (m *Monitor) sendBotMessage(msg string) error {
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to send http post request: %w", err)
+		return fmt.Errorf("failed to send telegram message request: %w", err)
 	}
 
 	if res.StatusCode >= 400 {
-		return fmt.Errorf("http error with status code: %d", res.StatusCode)
+		return fmt.Errorf("failed to send telegram message request with status code: %d", res.StatusCode)
 	}
 
 	defer res.Body.Close()
