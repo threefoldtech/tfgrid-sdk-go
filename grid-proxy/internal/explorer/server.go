@@ -62,7 +62,7 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	dbFarms, farmsCount, err := a.db.GetFarms(filter, limit)
+	dbFarms, farmsCount, err := a.db.GetFarms(r.Context(), filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query farm")
 		return nil, mw.Error(err)
@@ -98,7 +98,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	counters, err := a.db.GetCounters(filter)
+	counters, err := a.db.GetCounters(r.Context(), filter)
 	if err != nil {
 		return nil, mw.Error(err)
 	}
@@ -190,7 +190,7 @@ func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	dbNodes, nodesCount, err := a.db.GetNodes(filter, limit)
+	dbNodes, nodesCount, err := a.db.GetNodes(r.Context(), filter, limit)
 	if err != nil {
 		return nil, mw.Error(err)
 	}
@@ -245,7 +245,7 @@ func (a *App) getGateway(r *http.Request) (interface{}, mw.Response) {
 
 func (a *App) _getNode(r *http.Request) (interface{}, mw.Response) {
 	nodeID := mux.Vars(r)["node_id"]
-	nodeData, err := a.getNodeData(nodeID)
+	nodeData, err := a.getNodeData(r.Context(), nodeID)
 	if err != nil {
 		return nil, errorReply(err)
 	}
@@ -256,7 +256,7 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 	response := types.NodeStatus{}
 	nodeID := mux.Vars(r)["node_id"]
 
-	nodeData, err := a.getNodeData(nodeID)
+	nodeData, err := a.getNodeData(r.Context(), nodeID)
 	if err != nil {
 		return nil, errorReply(err)
 	}
@@ -284,7 +284,7 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	twins, twinsCount, err := a.db.GetTwins(filter, limit)
+	twins, twinsCount, err := a.db.GetTwins(r.Context(), filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query twin")
 		return nil, mw.Error(err)
@@ -321,7 +321,7 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	dbContracts, contractsCount, err := a.db.GetContracts(filter, limit)
+	dbContracts, contractsCount, err := a.db.GetContracts(r.Context(), filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query contract")
 		return nil, mw.Error(err)
@@ -391,7 +391,7 @@ func (a *App) version(r *http.Request) (interface{}, mw.Response) {
 // @Router /nodes/{node_id}/statistics  [get]
 func (a *App) getNodeStatistics(r *http.Request) (interface{}, mw.Response) {
 	nodeID := mux.Vars(r)["node_id"]
-	node, err := a.getNodeData(nodeID)
+	node, err := a.getNodeData(r.Context(), nodeID)
 	if err != nil {
 		return nil, errorReply(err)
 	}
@@ -422,7 +422,7 @@ func (a *App) getNodeStatistics(r *http.Request) (interface{}, mw.Response) {
 // @Router /nodes/{node_id}/gpu  [get]
 func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 	nodeID := mux.Vars(r)["node_id"]
-	node, err := a.getNodeData(nodeID)
+	node, err := a.getNodeData(r.Context(), nodeID)
 	if err != nil {
 		return nil, errorReply(err)
 	}
@@ -454,7 +454,7 @@ func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 func (a *App) getContract(r *http.Request) (interface{}, mw.Response) {
 	contractID := mux.Vars(r)["contract_id"]
 
-	contractData, err := a.getContractData(contractID)
+	contractData, err := a.getContractData(r.Context(), contractID)
 	if err != nil {
 		return nil, errorReply(err)
 	}
@@ -485,7 +485,7 @@ func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
 		return []types.ContractBilling{}, nil
 	}
 
-	contractBillsData, totalCount, err := a.getContractBillsData(contractID, limit)
+	contractBillsData, totalCount, err := a.getContractBillsData(r.Context(), contractID, limit)
 	if err != nil {
 		return nil, errorReply(err)
 	}
