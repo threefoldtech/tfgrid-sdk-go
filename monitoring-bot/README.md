@@ -1,11 +1,11 @@
 # tfgrid monitoring bot
 
-<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-48%25-brightgreen.svg?longCache=true&style=flat)</a>
+<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-39%25-brightgreen.svg?longCache=true&style=flat)</a>
 [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/monbot-test.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/monbot-test.yml) [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/monbot-lint.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/monbot-lint.yml)
 
 This is a bot to monitor some TFGrid functionalities here is a list:
 
-- liveness of gridproxy on different networks and rmb call behavior to some farmer nodes.
+- liveness of gridproxy on different networks and rmb call behavior to some farmer nodes. If all selected farmer nodes failed for a specific network the bot will send an alert message otherwise It won't send any messages.
 - the balance in accounts and send warnings if it is under some threshold.
 - transactions to/from stellar bridge.
 
