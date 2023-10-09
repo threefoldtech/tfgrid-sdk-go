@@ -260,15 +260,8 @@ func (m *Monitor) monitorNetworks() error {
 	m.notWorkingNodesPerNetwork = map[network][]uint32{}
 	m.workingNodesPerNetwork = map[network][]uint32{}
 
-	gridProxyHealthCheck, err := m.pingGridProxies()
-	if err != nil {
-		return err
-	}
-
-	versions, err := m.systemVersion()
-	if err != nil {
-		return err
-	}
+	gridProxyHealthCheck := m.pingGridProxies()
+	versions := m.systemVersion()
 
 	message := ""
 	var failure bool
@@ -318,7 +311,7 @@ func (m *Monitor) getBalance(con *client.Substrate, address address) (float64, e
 }
 
 // pingGridProxies pings the different grid proxy networks
-func (m *Monitor) pingGridProxies() (map[network]bool, error) {
+func (m *Monitor) pingGridProxies() map[network]bool {
 	gridProxyHealthCheck := map[network]bool{}
 
 	for _, network := range networks {
@@ -335,7 +328,7 @@ func (m *Monitor) pingGridProxies() (map[network]bool, error) {
 		}
 		gridProxyHealthCheck[network] = true
 	}
-	return gridProxyHealthCheck, nil
+	return gridProxyHealthCheck
 }
 
 type version struct {
@@ -344,7 +337,7 @@ type version struct {
 }
 
 // systemVersion executes system version cmd
-func (m *Monitor) systemVersion() (map[network]version, error) {
+func (m *Monitor) systemVersion() map[network]version {
 	versions := map[network]version{}
 
 	for _, network := range networks {
@@ -396,7 +389,7 @@ func (m *Monitor) systemVersion() (map[network]version, error) {
 		}
 	}
 
-	return versions, nil
+	return versions
 }
 
 func (m *Monitor) checkNodeSystemVersion(con *client.Substrate, rmbClient rmb.Client, NodeID uint32, net network) (version, error) {
