@@ -6,34 +6,34 @@ import (
 	"os"
 
 	"github.com/NicoNex/echotron/v3"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	monitor "github.com/threefoldtech/tfgrid-sdk-go/user-contracts-mon/internal"
 )
 
 func main() {
-	conf := flag.String("e", "./.env", "Path to config file")
+	env := flag.String("e", "./.env", "Path to env file")
 	flag.Parse()
 
-	mon, err := monitor.NewMonitor(*conf)
+	mon, err := monitor.NewMonitor(*env)
 	if err != nil {
 		log.Printf(err.Error())
 		os.Exit(1)
 	}
-	log.Printf("bot has started and waiting for requests")
+	log.Printf("monitoring bot has started and waiting for requests")
+
+	tfPluginClient, err := deployer.NewTFPluginClient(mon.Mnemonic, "sr25519", mon.Network, "", "", "", 0, true)
+	if err != nil {
+		log.Printf("Failed to establish gird connection")
+		os.Exit(1)
+	}
+	log.Printf("grid connection established successfully")
 
 	for update := range echotron.PollingUpdates(mon.BotToken) {
 		if update.Message.Text == "/start" {
 			log.Printf("[%s] %s", update.Message.From.Username, update.Message.Text)
-
-			okChan := make(chan bool, 0)
-			go mon.StartMonitoring(update.ChatID(), okChan)
-
-			ok := <-okChan
-
-			if !ok {
-				log.Printf("Failed to start monitoring")
-				os.Exit(1)
-			}
-
+			go mon.StartMonitoring(tfPluginClient, update.ChatID())
+		} else {
+			mon.Bot.SendMessage("to start monitoring enter /start", update.ChatID(), nil)
 		}
 	}
 }

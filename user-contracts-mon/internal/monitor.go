@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/NicoNex/echotron/v3"
-	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 )
 
 // Monitor struct of parsed configration
@@ -37,31 +35,25 @@ func NewMonitor(envPath string) (Monitor, error) {
 
 // StartMonitoring starts monitoring the contracts with
 // specific mnemonics and notify them every fixed interval
-func (mon Monitor) StartMonitoring(chatID int64, ok chan bool) error {
-	log.Debug().Msgf("mnemonics: %s", mon.Mnemonic)
-	log.Debug().Msgf("network: %s", mon.Network)
-
-	tfPluginClient, err := deployer.NewTFPluginClient(mon.Mnemonic, "sr25519", mon.Network, "", "", "", 0, true)
-	if err != nil {
-		ok <- false
-	}
-	ok <- true
-
+func (mon Monitor) StartMonitoring(tfPluginClient deployer.TFPluginClient, chatID int64) {
 	ticker := time.NewTicker(time.Duration(mon.interval) * time.Second)
 
 	for ; true; <-ticker.C {
-		contracts, err := tfPluginClient.ContractsGetter.ListContractsByTwinID([]string{"GracePeriod"})
+		contractsInGracePeriod, err := getContractsInGracePeriod(tfPluginClient)
 		if err != nil {
-			return err
+			mon.Bot.SendMessage("Failed to get contracts in grace period", chatID, nil)
+			return
 		}
-		contractsInfo := formatContracts(contracts)
-
-		mon.Bot.SendMessage(contractsInfo, chatID, nil)
+		mon.Bot.SendMessage(contractsInGracePeriod, chatID, nil)
 	}
-	return nil
 }
 
-func formatContracts(contracts graphql.Contracts) string {
+func getContractsInGracePeriod(tfPluginClient deployer.TFPluginClient) (string, error) {
+	contracts, err := tfPluginClient.ContractsGetter.ListContractsByTwinID([]string{"GracePeriod"})
+	if err != nil {
+		return "", err
+	}
+
 	info := "contracts in grace period:\n"
 	for _, contract := range contracts.NameContracts {
 		info += fmt.Sprintf("- %s\n", contract.ContractID)
@@ -77,5 +69,5 @@ func formatContracts(contracts graphql.Contracts) string {
 	if len(info) == 0 {
 		info = "- None"
 	}
-	return info
+	return info, nil
 }
