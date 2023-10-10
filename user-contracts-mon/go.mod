@@ -3,8 +3,14 @@ module github.com/threefoldtech/tfgrid-sdk-go/user-contracts-mon
 go 1.19
 
 require (
+	github.com/NicoNex/echotron/v3 v3.27.0
+	github.com/hashicorp/go-envparse v0.1.0
+	github.com/rs/zerolog v1.30.0
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.2
+)
+
+require (
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
-	github.com/NicoNex/echotron/v3 v3.27.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12 // indirect
@@ -15,7 +21,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/ethereum/go-ethereum v1.11.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
 	github.com/google/uuid v1.3.1 // indirect
@@ -23,7 +28,6 @@ require (
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
-	github.com/hashicorp/go-envparse v0.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6 // indirect
@@ -34,10 +38,7 @@ require (
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/cors v1.9.0 // indirect
-	github.com/rs/zerolog v1.30.0 // indirect
-	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230809064214-d8ef5ca360eb // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.2 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.2 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.10.2 // indirect
 	github.com/threefoldtech/zos v0.5.6-0.20230809073554-ddb0ad98fc4c // indirect

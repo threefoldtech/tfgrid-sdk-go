@@ -1,9 +1,7 @@
 package monitor
 
 import (
-	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/NicoNex/echotron/v3"
@@ -11,8 +9,6 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 )
-
-var invalidCfgError = errors.New("Invalid or Missing Fields in configration file")
 
 // Monitor struct of parsed configration
 type Monitor struct {
@@ -25,27 +21,16 @@ type Monitor struct {
 
 // NewMonitor creates a new monitor from parsed config/env file
 func NewMonitor(envPath string) (Monitor, error) {
-	mon := Monitor{}
-	envMap, err := parseConfig(envPath)
+	envContent, err := parseFile(envPath)
 	if err != nil {
-		return mon, err
+		return Monitor{}, err
 	}
 
-	mon.Mnemonic = envMap["MNEMONIC"]
-	mon.BotToken = envMap["BOT_TOKEN"]
-	mon.Network = envMap["NETWORK"]
+	mon, err := parseMonitor(envContent)
+	if err != nil {
+		return Monitor{}, err
+	}
 	mon.Bot = echotron.NewAPI(mon.BotToken)
-
-	interval, err := strconv.Atoi(envMap["INTERVAL"])
-	if err != nil {
-		return Monitor{}, invalidCfgError
-	}
-
-	mon.interval = interval
-
-	if mon.Mnemonic == "" || mon.Network == "" || mon.BotToken == "" {
-		return Monitor{}, invalidCfgError
-	}
 
 	return mon, nil
 }
