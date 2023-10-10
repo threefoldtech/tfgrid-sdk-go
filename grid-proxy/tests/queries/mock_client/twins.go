@@ -1,13 +1,14 @@
 package mock
 
 import (
+	"context"
 	"sort"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 // Twins returns twins with the given filters and pagination parameters
-func (g *GridProxyMockClient) Twins(filter types.TwinFilter, limit types.Limit) (res []types.Twin, totalCount int, err error) {
+func (g *GridProxyMockClient) Twins(ctx context.Context, filter types.TwinFilter, limit types.Limit) (res []types.Twin, totalCount int, err error) {
 	res = []types.Twin{}
 
 	if limit.Page == 0 {

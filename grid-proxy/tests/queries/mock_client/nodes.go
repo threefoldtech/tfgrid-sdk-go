@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -11,7 +12,7 @@ import (
 )
 
 // Nodes returns nodes with the given filters and pagination parameters
-func (g *GridProxyMockClient) Nodes(filter types.NodeFilter, limit types.Limit) (res []types.Node, totalCount int, err error) {
+func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) (res []types.Node, totalCount int, err error) {
 	res = []types.Node{}
 	if limit.Page == 0 {
 		limit.Page = 1
@@ -97,7 +98,7 @@ func (g *GridProxyMockClient) Nodes(filter types.NodeFilter, limit types.Limit) 
 	return
 }
 
-func (g *GridProxyMockClient) Node(nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
+func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
 	node := g.data.Nodes[uint64(nodeID)]
 	numGPU := 0
 	if _, ok := g.data.GPUs[node.TwinID]; ok {
@@ -161,7 +162,7 @@ func (g *GridProxyMockClient) Node(nodeID uint32) (res types.NodeWithNestedCapac
 	return
 }
 
-func (g *GridProxyMockClient) NodeStatus(nodeID uint32) (res types.NodeStatus, err error) {
+func (g *GridProxyMockClient) NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error) {
 	node := g.data.Nodes[uint64(nodeID)]
 	nodePower := types.NodePower{
 		State:  node.Power.State,

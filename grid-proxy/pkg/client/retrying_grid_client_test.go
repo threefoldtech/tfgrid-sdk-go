@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -21,41 +22,41 @@ func (r *requestCounter) Ping() error {
 	r.Counter++
 	return errors.New("error")
 }
-func (r *requestCounter) Nodes(filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error) {
+func (r requestCounter) Nodes(ctx context.Context, filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error) {
 	r.Counter++
 	return nil, 0, errors.New("error")
 }
-func (r *requestCounter) Farms(filter types.FarmFilter, pagination types.Limit) (res []types.Farm, totalCount int, err error) {
+func (r *requestCounter) Farms(ctx context.Context, filter types.FarmFilter, pagination types.Limit) (res []types.Farm, totalCount int, err error) {
 	r.Counter++
 	return nil, 0, errors.New("error")
 }
-func (r *requestCounter) Contracts(filter types.ContractFilter, pagination types.Limit) (res []types.Contract, totalCount int, err error) {
+func (r *requestCounter) Contracts(ctx context.Context, filter types.ContractFilter, pagination types.Limit) (res []types.Contract, totalCount int, err error) {
 	r.Counter++
 	return nil, 0, errors.New("error")
 }
-func (r *requestCounter) Twins(filter types.TwinFilter, pagination types.Limit) (res []types.Twin, totalCount int, err error) {
+func (r *requestCounter) Twins(ctx context.Context, filter types.TwinFilter, pagination types.Limit) (res []types.Twin, totalCount int, err error) {
 	r.Counter++
 	return nil, 0, errors.New("error")
 }
-func (r *requestCounter) Node(nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
+func (r *requestCounter) Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
 	r.Counter++
 	return types.NodeWithNestedCapacity{}, errors.New("error")
 }
-func (r *requestCounter) NodeStatus(nodeID uint32) (res types.NodeStatus, err error) {
+func (r *requestCounter) NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error) {
 	r.Counter++
 	return types.NodeStatus{}, errors.New("error")
 }
-func (r *requestCounter) Counters(filter types.StatsFilter) (res types.Counters, err error) {
+func (r *requestCounter) Counters(ctx context.Context, filter types.StatsFilter) (res types.Counters, err error) {
 	r.Counter++
 	return types.Counters{}, errors.New("error")
 }
 
-func (r *requestCounter) Contract(contractID uint32) (res types.Contract, err error) {
+func (r *requestCounter) Contract(ctx context.Context, contractID uint32) (res types.Contract, err error) {
 	r.Counter++
 	return types.Contract{}, errors.New("error")
 }
 
-func (r *requestCounter) ContractBills(contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
+func (r *requestCounter) ContractBills(ctx context.Context, contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
 	r.Counter++
 	return nil, 0, errors.New("error")
 }
@@ -85,16 +86,16 @@ func TestCalledMultipleTimes(t *testing.T) {
 	proxy := NewRetryingClientWithTimeout(r, 1*time.Millisecond)
 	methods := map[string]func(){
 		"nodes": func() {
-			_, _, _ = proxy.Nodes(types.NodeFilter{}, types.Limit{})
+			_, _, _ = proxy.Nodes(context.Background(), types.NodeFilter{}, types.Limit{})
 		},
 		"node": func() {
-			_, _ = proxy.Node(1)
+			_, _ = proxy.Node(context.Background(), 1)
 		},
 		"farms": func() {
-			_, _, _ = proxy.Farms(types.FarmFilter{}, types.Limit{})
+			_, _, _ = proxy.Farms(context.Background(), types.FarmFilter{}, types.Limit{})
 		},
 		"node_status": func() {
-			_, _ = proxy.NodeStatus(1)
+			_, _ = proxy.NodeStatus(context.Background(), 1)
 		},
 	}
 	for endpoint, f := range methods {

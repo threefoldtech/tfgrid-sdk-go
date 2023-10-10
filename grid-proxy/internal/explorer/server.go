@@ -3,6 +3,7 @@ package explorer
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 
 	// swagger configuration
 	_ "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/docs"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/mw"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
@@ -62,24 +62,17 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	dbFarms, farmsCount, err := a.db.GetFarms(r.Context(), filter, limit)
+
+	dbFarms, farmsCount, err := a.cl.Farms(r.Context(), filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query farm")
 		return nil, mw.Error(err)
 	}
-	farms := make([]types.Farm, 0, len(dbFarms))
-	for _, farm := range dbFarms {
-		f, err := farmFromDBFarm(farm)
-		if err != nil {
-			log.Err(err).Msg("couldn't convert db farm to api farm")
-		}
-		farms = append(farms, f)
-	}
 
 	// return the number of pages and totalCount in the response headers
-	resp := createResponse(farmsCount, limit)
+	resp := createResponse(uint(farmsCount), limit)
 
-	return farms, resp
+	return dbFarms, resp
 }
 
 // getStats godoc
@@ -98,10 +91,12 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	counters, err := a.db.GetCounters(r.Context(), filter)
+
+	counters, err := a.cl.Counters(r.Context(), filter)
 	if err != nil {
 		return nil, mw.Error(err)
 	}
+
 	return counters, nil
 }
 
@@ -190,17 +185,14 @@ func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	dbNodes, nodesCount, err := a.db.GetNodes(r.Context(), filter, limit)
+
+	dbNodes, nodesCount, err := a.cl.Nodes(r.Context(), filter, limit)
 	if err != nil {
 		return nil, mw.Error(err)
 	}
-	nodes := make([]types.Node, len(dbNodes))
-	for idx, node := range dbNodes {
-		nodes[idx] = nodeFromDBNode(node)
-	}
 
-	resp := createResponse(nodesCount, limit)
-	return nodes, resp
+	resp := createResponse(uint(nodesCount), limit)
+	return dbNodes, resp
 }
 
 // getNode godoc
@@ -253,15 +245,19 @@ func (a *App) _getNode(r *http.Request) (interface{}, mw.Response) {
 }
 
 func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
-	response := types.NodeStatus{}
-	nodeID := mux.Vars(r)["node_id"]
+	nodeIDStr := mux.Vars(r)["node_id"]
 
-	nodeData, err := a.getNodeData(r.Context(), nodeID)
+	nodeID, err := strconv.Atoi(nodeIDStr)
+	if err != nil {
+		return types.NodeWithNestedCapacity{}, mw.BadRequest(err)
+	}
+
+	status, err := a.cl.NodeStatus(r.Context(), uint32(nodeID))
 	if err != nil {
 		return nil, errorReply(err)
 	}
-	response.Status = nodeData.Status
-	return response, nil
+
+	return status, nil
 }
 
 // listTwins godoc
@@ -284,13 +280,14 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	twins, twinsCount, err := a.db.GetTwins(r.Context(), filter, limit)
+
+	twins, twinsCount, err := a.cl.Twins(r.Context(), filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query twin")
 		return nil, mw.Error(err)
 	}
 
-	resp := createResponse(twinsCount, limit)
+	resp := createResponse(uint(twinsCount), limit)
 	return twins, resp
 }
 
@@ -321,22 +318,15 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	dbContracts, contractsCount, err := a.db.GetContracts(r.Context(), filter, limit)
+
+	dbContracts, contractsCount, err := a.cl.Contracts(r.Context(), filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query contract")
 		return nil, mw.Error(err)
 	}
 
-	contracts := make([]types.Contract, len(dbContracts))
-	for idx, contract := range dbContracts {
-		contracts[idx], err = contractFromDBContract(contract)
-		if err != nil {
-			log.Err(err).Msg("failed to convert db contract to api contract")
-		}
-	}
-
-	resp := createResponse(contractsCount, limit)
-	return contracts, resp
+	resp := createResponse(uint(contractsCount), limit)
+	return dbContracts, resp
 }
 
 // ping godoc
@@ -501,11 +491,11 @@ func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 // @BasePath /
-func Setup(router *mux.Router, gitCommit string, database db.Database, relayClient rmb.Client) error {
+func Setup(router *mux.Router, gitCommit string, gridProxyClient GridProxyClient, relayClient rmb.Client) error {
 
 	c := cache.New(2*time.Minute, 3*time.Minute)
 	a := App{
-		db:             database,
+		cl:             gridProxyClient,
 		lruCache:       c,
 		releaseVersion: gitCommit,
 		relayClient:    relayClient,

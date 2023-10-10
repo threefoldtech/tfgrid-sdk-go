@@ -5,7 +5,6 @@ import (
 
 	cache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 )
@@ -25,7 +24,7 @@ var (
 
 // App is the main app objects
 type App struct {
-	db             db.Database
+	cl             GridProxyClient
 	lruCache       *cache.Cache
 	releaseVersion string
 	relayClient    rmb.Client

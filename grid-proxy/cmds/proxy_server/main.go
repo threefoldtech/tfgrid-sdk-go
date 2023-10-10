@@ -118,6 +118,8 @@ func main() {
 		log.Fatal().Err(err).Msg("couldn't get postgres client")
 	}
 
+	gridProxyClient := explorer.GridProxyClient{DB: db}
+
 	indexer, err := gpuindexer.NewNodeGPUIndexer(
 		ctx,
 		f.relayURL,
@@ -134,7 +136,7 @@ func main() {
 
 	indexer.Start(ctx)
 
-	s, err := createServer(f, db, GitCommit, relayRPCClient)
+	s, err := createServer(f, gridProxyClient, GitCommit, relayRPCClient)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create mux server")
 	}
@@ -199,13 +201,13 @@ func createRPCRMBClient(ctx context.Context, relayURL, mnemonics string, sub *su
 	return client, nil
 }
 
-func createServer(f flags, db db.Database, gitCommit string, relayClient rmb.Client) (*http.Server, error) {
+func createServer(f flags, gridProxyClient explorer.GridProxyClient, gitCommit string, relayClient rmb.Client) (*http.Server, error) {
 	log.Info().Msg("Creating server")
 
 	router := mux.NewRouter().StrictSlash(true)
 
 	// setup explorer
-	if err := explorer.Setup(router, gitCommit, db, relayClient); err != nil {
+	if err := explorer.Setup(router, gitCommit, gridProxyClient, relayClient); err != nil {
 		return nil, err
 	}
 
