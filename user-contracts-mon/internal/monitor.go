@@ -37,14 +37,15 @@ func NewMonitor(envPath string) (Monitor, error) {
 
 // StartMonitoring starts monitoring the contracts with
 // specific mnemonics and notify them every fixed interval
-func (mon Monitor) StartMonitoring(chatID int64) error {
+func (mon Monitor) StartMonitoring(chatID int64, ok chan bool) error {
 	log.Debug().Msgf("mnemonics: %s", mon.Mnemonic)
 	log.Debug().Msgf("network: %s", mon.Network)
 
 	tfPluginClient, err := deployer.NewTFPluginClient(mon.Mnemonic, "sr25519", mon.Network, "", "", "", 0, true)
 	if err != nil {
-		return err
+		ok <- false
 	}
+	ok <- true
 
 	ticker := time.NewTicker(time.Duration(mon.interval) * time.Second)
 

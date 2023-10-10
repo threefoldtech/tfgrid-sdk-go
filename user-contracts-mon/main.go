@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	conf := flag.String("cfg", "./.config", "Path to config file")
+	conf := flag.String("e", "./.env", "Path to config file")
 	flag.Parse()
 
 	mon, err := monitor.NewMonitor(*conf)
@@ -18,16 +18,22 @@ func main() {
 		log.Printf(err.Error())
 		os.Exit(1)
 	}
+	log.Printf("bot has started and waiting for requests")
 
 	for update := range echotron.PollingUpdates(mon.BotToken) {
 		if update.Message.Text == "/start" {
-
 			log.Printf("[%s] %s", update.Message.From.Username, update.Message.Text)
-			err = mon.StartMonitoring(update.ChatID())
-			if err != nil {
-				log.Printf(err.Error())
+
+			okChan := make(chan bool, 0)
+			go mon.StartMonitoring(update.ChatID(), okChan)
+
+			ok := <-okChan
+
+			if !ok {
+				log.Printf("Failed to start monitoring")
 				os.Exit(1)
 			}
+
 		}
 	}
 }
