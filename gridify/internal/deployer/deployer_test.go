@@ -16,7 +16,7 @@ import (
 )
 
 func TestDeploy(t *testing.T) {
-	rand.Seed(1)
+	rand.NewSource(1)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -73,7 +73,7 @@ func TestDeploy(t *testing.T) {
 		assert.Error(t, err)
 	})
 	t.Run("network deployment failed", func(t *testing.T) {
-		rand.Seed(1)
+		rand.NewSource(1)
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -93,7 +93,7 @@ func TestDeploy(t *testing.T) {
 		assert.Error(t, err)
 	})
 	t.Run("vm deployment failed", func(t *testing.T) {
-		rand.Seed(1)
+		rand.NewSource(1)
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -118,7 +118,7 @@ func TestDeploy(t *testing.T) {
 		assert.Error(t, err)
 	})
 	t.Run("loading vm failed", func(t *testing.T) {
-		rand.Seed(1)
+		rand.NewSource(1)
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -148,7 +148,7 @@ func TestDeploy(t *testing.T) {
 		assert.Error(t, err)
 	})
 	t.Run("gateway deployment failed", func(t *testing.T) {
-		rand.Seed(1)
+		rand.NewSource(1)
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -183,7 +183,7 @@ func TestDeploy(t *testing.T) {
 		assert.Error(t, err)
 	})
 	t.Run("loading gateway failed", func(t *testing.T) {
-		rand.Seed(1)
+		rand.NewSource(1)
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -223,7 +223,7 @@ func TestDeploy(t *testing.T) {
 		assert.Error(t, err)
 	})
 	t.Run("deploying using one port", func(t *testing.T) {
-		rand.Seed(1)
+		rand.NewSource(1)
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -264,7 +264,7 @@ func TestDeploy(t *testing.T) {
 		assert.Equal(t, fqdns, map[uint]string{80: "domain1"})
 	})
 	t.Run("deploying using multiple ports", func(t *testing.T) {
-		rand.Seed(1)
+		rand.NewSource(1)
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
