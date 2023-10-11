@@ -23,12 +23,12 @@ type Monitor struct {
 
 // NewMonitor creates a new monitor from parsed config/env file
 func NewMonitor(envPath string) (Monitor, error) {
-	envContent, err := parseFile(envPath)
+	envFile, err := readFile(envPath)
 	if err != nil {
 		return Monitor{}, err
 	}
 
-	mon, err := parseMonitor(envContent)
+	mon, err := parseMonitor(envFile)
 	if err != nil {
 		return Monitor{}, err
 	}

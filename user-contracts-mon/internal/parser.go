@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"errors"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -11,19 +12,19 @@ import (
 
 var invalidCfgError = errors.New("Invalid or Missing Fields in configration file")
 
-func parseFile(envPath string) (string, error) {
-	envContent, err := os.ReadFile(envPath)
+func readFile(envPath string) (io.Reader, error) {
+	envFile, err := os.Open(envPath)
 	if err != nil {
-		return "", err
+		return strings.NewReader(""), err
 	}
 
-	return string(envContent), nil
+	return envFile, nil
 }
 
-func parseMonitor(envContent string) (Monitor, error) {
+func parseMonitor(envFile io.Reader) (Monitor, error) {
 	mon := Monitor{}
 
-	envMap, err := env.Parse(strings.NewReader(string(envContent)))
+	envMap, err := env.Parse(envFile)
 	if err != nil {
 		return mon, err
 	}
