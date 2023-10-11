@@ -14,9 +14,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-// Client a client to communicate with the grid proxy
-type Client interface {
-	Ping() error
+type DBClient interface {
 	Nodes(ctx context.Context, filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error)
 	Farms(ctx context.Context, filter types.FarmFilter, pagination types.Limit) (res []types.Farm, totalCount int, err error)
 	Contracts(ctx context.Context, filter types.ContractFilter, pagination types.Limit) (res []types.Contract, totalCount int, err error)
@@ -26,6 +24,12 @@ type Client interface {
 	Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error)
 	NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error)
 	Counters(ctx context.Context, filter types.StatsFilter) (res types.Counters, err error)
+}
+
+// Client a client to communicate with the grid proxy
+type Client interface {
+	Ping() error
+	DBClient
 }
 
 // Clientimpl concrete implementation of the client to communicate with the grid proxy
