@@ -2,54 +2,53 @@ package monitor
 
 import (
 	"errors"
-	"io"
 	"os"
 	"strconv"
-	"strings"
 
 	env "github.com/hashicorp/go-envparse"
 )
 
-var invalidCfgError = errors.New("Invalid or Missing Fields in configration file")
-
-func readFile(envPath string) (io.Reader, error) {
-	envFile, err := os.Open(envPath)
-	if err != nil {
-		return strings.NewReader(""), err
-	}
-
-	return envFile, nil
+// configrations parsed from the env file
+type Config struct {
+	mnemonic string `env:"MNEMONIC"`
+	botToken string `env:"BOT_TOKEN"`
+	network  string `env:"NETWORK"`
+	interval int    `env:"INTERVAL"`
 }
 
-func parseMonitor(envFile io.Reader) (Monitor, error) {
-	mon := Monitor{}
+func ParseConfig(envPath string) (Config, error) {
+	conf := Config{}
+
+	envFile, err := os.Open(envPath)
+	if err != nil {
+		return conf, err
+	}
 
 	envMap, err := env.Parse(envFile)
 	if err != nil {
-		return mon, err
+		return conf, err
 	}
 
-	mon.Mnemonic = envMap["MNEMONIC"]
-	mon.BotToken = envMap["BOT_TOKEN"]
-	mon.Network = envMap["NETWORK"]
-
+	conf.mnemonic = envMap["MNEMONIC"]
+	conf.botToken = envMap["BOT_TOKEN"]
+	conf.network = envMap["NETWORK"]
 	interval, err := strconv.Atoi(envMap["INTERVAL"])
 	if err != nil {
-		return Monitor{}, errors.New("invalid or missing 'INTERVAL' field")
+		return Config{}, errors.New("invalid or missing 'INTERVAL' field")
 	}
-	mon.interval = interval
+	conf.interval = interval
 
-	if mon.Mnemonic == "" {
-		return Monitor{}, errors.New("missing 'MNEMONIC' field")
-	}
-
-	if mon.Network == "" {
-		return Monitor{}, errors.New("missing 'NETWORK' field")
+	if conf.mnemonic == "" {
+		return Config{}, errors.New("missing 'MNEMONIC' field")
 	}
 
-	if mon.BotToken == "" {
-		return Monitor{}, errors.New("missing 'BOT_TOKEN' field")
+	if conf.network == "" {
+		return Config{}, errors.New("missing 'NETWORK' field")
 	}
 
-	return mon, nil
+	if conf.botToken == "" {
+		return Config{}, errors.New("missing 'BOT_TOKEN' field")
+	}
+
+	return conf, nil
 }

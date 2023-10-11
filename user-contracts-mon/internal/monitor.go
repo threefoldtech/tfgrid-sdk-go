@@ -13,23 +13,19 @@ import (
 // Monitor struct of parsed configration
 type Monitor struct {
 	Bot      echotron.API
-	Mnemonic string `env:"MNEMONIC"`
-	BotToken string `env:"BOT_TOKEN"`
-	Network  string `env:"NETWORK"`
-	interval int    `env:"INTERVAL"`
+	Mnemonic string
+	BotToken string
+	Network  string
+	interval int
 }
 
 // NewMonitor creates a new monitor from parsed config/env file
-func NewMonitor(envPath string) (Monitor, error) {
-	envFile, err := readFile(envPath)
-	if err != nil {
-		return Monitor{}, err
-	}
-
-	mon, err := parseMonitor(envFile)
-	if err != nil {
-		return Monitor{}, err
-	}
+func NewMonitor(conf Config) (Monitor, error) {
+	mon := Monitor{}
+	mon.Mnemonic = conf.mnemonic
+	mon.Network = conf.network
+	mon.interval = conf.interval
+	mon.BotToken = conf.botToken
 	mon.Bot = echotron.NewAPI(mon.BotToken)
 
 	return mon, nil

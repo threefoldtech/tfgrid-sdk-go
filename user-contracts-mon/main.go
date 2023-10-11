@@ -14,7 +14,12 @@ func main() {
 	env := flag.String("e", "./.env", "Path to env file")
 	flag.Parse()
 
-	mon, err := monitor.NewMonitor(*env)
+	conf, err := monitor.ParseConfig(*env)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	mon, err := monitor.NewMonitor(conf)
 	if err != nil {
 		log.Printf(err.Error())
 		os.Exit(1)
