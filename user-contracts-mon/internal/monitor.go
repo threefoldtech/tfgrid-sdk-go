@@ -2,14 +2,11 @@ package monitor
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/NicoNex/echotron/v3"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"golang.org/x/exp/slices"
 )
 
 // Monitor struct of parsed configration
@@ -77,7 +74,7 @@ func getContractsInGracePeriod(tfPluginClient deployer.TFPluginClient) (string, 
 	for _, contract := range contracts.RentContracts {
 		info += fmt.Sprintf("- %s\n", contract.ContractID)
 	}
-	if len(info) == 0 {
+	if info == "" {
 		return "", nil
 	}
 	return "contracts in grace period:\n" + info, nil
@@ -89,46 +86,38 @@ func getContractsAgainstDownNodes(tfPluginClient deployer.TFPluginClient) (strin
 		return "", err
 	}
 
-	downNodes, err := getDownNodes(tfPluginClient)
-	if err != nil {
-		return "", err
-	}
-
-	contractsWithDownNodes := ""
+	contractsIds := ""
 	for _, contract := range contracts.NodeContracts {
 
-		contractNodeId := int(contract.NodeID)
-		if slices.Contains(downNodes, contractNodeId) {
-			contractsWithDownNodes += fmt.Sprintf("- %s\n", contract.ContractID)
+		up, err := isNodeUp(contract.NodeID, tfPluginClient)
+		if err != nil {
+			return "", err
+		}
+
+		if !up {
+			contractsIds += fmt.Sprintf("- %s\n", contract.ContractID)
 		}
 	}
 
-	if len(contractsWithDownNodes) == 0 {
+	if contractsIds == "" {
 		return "", nil
 	}
-	return "contracts against down nodes:\n" + contractsWithDownNodes, nil
+	return "contracts against down nodes:\n" + contractsIds, nil
 }
 
-func getDownNodes(tfPluginClient deployer.TFPluginClient) ([]int, error) {
-	statusDown := "down"
-	minRootfs := []uint64{2 * 1024 * 1024 * 1024}
-
-	nodeFilter := types.NodeFilter{
-		Status: &statusDown,
-	}
-
+func isNodeUp(id uint32, tfPluginClient deployer.TFPluginClient) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, minRootfs)
+	cli, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, id)
 	if err != nil {
-		return []int{}, errors.New("failed to find down nodes")
+		return false, err
 	}
 
-	downNodesIds := make([]int, len(nodes))
-	for _, node := range nodes {
-		downNodesIds = append(downNodesIds, node.NodeID)
-	}
+	err = cli.IsNodeUp(ctx)
 
-	return downNodesIds, nil
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
 }
