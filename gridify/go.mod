@@ -1,6 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/gridify
 
-go 1.19
+go 1.21
 
 require (
 	github.com/cosmos/go-bip39 v1.0.0

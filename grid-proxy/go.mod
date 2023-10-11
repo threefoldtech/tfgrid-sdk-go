@@ -1,6 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/grid-proxy
 
-go 1.19
+go 1.21
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
@@ -24,7 +24,7 @@ require (
 )
 
 require (
-	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
+	github.com/ChainSafe/go-schnorrkel v1.1.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect

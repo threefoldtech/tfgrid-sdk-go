@@ -1,6 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go
 
-go 1.19
+go 1.21
 
 require (
 	github.com/ChainSafe/go-schnorrkel v1.1.0
