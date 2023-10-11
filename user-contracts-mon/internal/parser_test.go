@@ -26,7 +26,7 @@ func TestParsers(t *testing.T) {
 			NETWORK=  "dev",
 			INTERVAL= "2",
             `
-		_, err := parseMonitor(strings.NewReader(env))
+		_, err := ParseConfig(strings.NewReader(env))
 
 		if err == nil {
 			t.Errorf("expected error, missing fields")
@@ -39,7 +39,7 @@ func TestParsers(t *testing.T) {
             NETWORK= "test"
 		`
 
-		_, err := parseMonitor(strings.NewReader(env))
+		_, err := ParseConfig(strings.NewReader(env))
 
 		if err == nil {
 			t.Errorf("expected error, invalid interval")
@@ -53,7 +53,7 @@ func TestParsers(t *testing.T) {
             MNEMONIC=  "mnemonic"
             INTERVAL=  "3"
 		`
-		_, err := parseMonitor(strings.NewReader(env))
+		_, err := ParseConfig(strings.NewReader(env))
 		if err != nil {
 			t.Errorf("parsing should be successful")
 		}
