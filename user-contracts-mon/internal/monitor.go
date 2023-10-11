@@ -7,6 +7,7 @@ import (
 
 	"github.com/NicoNex/echotron/v3"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 )
 
 // Monitor struct of parsed configration
@@ -86,16 +87,20 @@ func getContractsAgainstDownNodes(tfPluginClient deployer.TFPluginClient) (strin
 		return "", err
 	}
 
+	nodeContracts := contracts.NodeContracts
+	nodeContracts = append(nodeContracts, contracts.RentContracts...)
+
 	contractsIds := ""
-	for _, contract := range contracts.NodeContracts {
+	upNodes := make(chan string)
 
-		up, err := isNodeUp(contract.NodeID, tfPluginClient)
-		if err != nil {
-			return "", err
-		}
+	for _, contract := range nodeContracts {
+		go isNodeUp(tfPluginClient, contract, upNodes)
+	}
 
-		if !up {
-			contractsIds += fmt.Sprintf("- %s\n", contract.ContractID)
+	for range nodeContracts {
+		id := <-upNodes
+		if id != "" {
+			contractsIds += fmt.Sprintf("- %s\n", id)
 		}
 	}
 
@@ -105,19 +110,21 @@ func getContractsAgainstDownNodes(tfPluginClient deployer.TFPluginClient) (strin
 	return "contracts against down nodes:\n" + contractsIds, nil
 }
 
-func isNodeUp(id uint32, tfPluginClient deployer.TFPluginClient) (bool, error) {
+func isNodeUp(tfPluginClient deployer.TFPluginClient, contract graphql.Contract, upNodes chan string) {
+	cli, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, contract.NodeID)
+	if err != nil {
+		upNodes <- contract.ContractID
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	cli, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, id)
-	if err != nil {
-		return false, err
-	}
-
 	err = cli.IsNodeUp(ctx)
-
 	if err != nil {
-		return false, nil
+		upNodes <- contract.ContractID
+		return
 	}
-	return true, nil
+
+	upNodes <- ""
 }
