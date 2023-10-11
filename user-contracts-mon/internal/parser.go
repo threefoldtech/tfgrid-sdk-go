@@ -35,12 +35,21 @@ func parseMonitor(envFile io.Reader) (Monitor, error) {
 
 	interval, err := strconv.Atoi(envMap["INTERVAL"])
 	if err != nil {
-		return Monitor{}, invalidCfgError
+		return Monitor{}, errors.New("invalid or missing 'INTERVAL' field")
 	}
 	mon.interval = interval
 
-	if mon.Mnemonic == "" || mon.Network == "" || mon.BotToken == "" {
-		return Monitor{}, invalidCfgError
+	if mon.Mnemonic == "" {
+		return Monitor{}, errors.New("missing 'MNEMONIC' field")
 	}
+
+	if mon.Network == "" {
+		return Monitor{}, errors.New("missing 'NETWORK' field")
+	}
+
+	if mon.BotToken == "" {
+		return Monitor{}, errors.New("missing 'BOT_TOKEN' field")
+	}
+
 	return mon, nil
 }
