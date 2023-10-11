@@ -491,11 +491,11 @@ func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 // @BasePath /
-func Setup(router *mux.Router, gitCommit string, gridProxyClient GridProxyClient, relayClient rmb.Client) error {
+func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Client) error {
 
 	c := cache.New(2*time.Minute, 3*time.Minute)
 	a := App{
-		cl:             gridProxyClient,
+		cl:             cl,
 		lruCache:       c,
 		releaseVersion: gitCommit,
 		relayClient:    relayClient,

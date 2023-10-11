@@ -24,7 +24,7 @@ var (
 
 // App is the main app objects
 type App struct {
-	cl             GridProxyClient
+	cl             DBClient
 	lruCache       *cache.Cache
 	releaseVersion string
 	relayClient    rmb.Client

@@ -10,20 +10,16 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-// GridProxyClient is an implementation for the gridproxy client interface [github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client.Client]
+// DBClient is an implementation for the db client interface [github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client.DBClient]
 //
 // It fetches the desired data from the database, does the appropriate type conversions, and returns the result.
-type GridProxyClient struct {
+type DBClient struct {
 	DB db.Database
 }
 
-var _ client.Client = (*GridProxyClient)(nil)
+var _ client.DBClient = (*DBClient)(nil)
 
-func (c *GridProxyClient) Ping() error {
-	return nil
-}
-
-func (c *GridProxyClient) Nodes(ctx context.Context, filter types.NodeFilter, pagination types.Limit) ([]types.Node, int, error) {
+func (c *DBClient) Nodes(ctx context.Context, filter types.NodeFilter, pagination types.Limit) ([]types.Node, int, error) {
 	dbNodes, cnt, err := c.DB.GetNodes(ctx, filter, pagination)
 	if err != nil {
 		return nil, 0, err
@@ -37,7 +33,7 @@ func (c *GridProxyClient) Nodes(ctx context.Context, filter types.NodeFilter, pa
 	return nodes, int(cnt), nil
 }
 
-func (c *GridProxyClient) Farms(ctx context.Context, filter types.FarmFilter, pagination types.Limit) ([]types.Farm, int, error) {
+func (c *DBClient) Farms(ctx context.Context, filter types.FarmFilter, pagination types.Limit) ([]types.Farm, int, error) {
 	dbFarms, cnt, err := c.DB.GetFarms(ctx, filter, pagination)
 	if err != nil {
 		return nil, 0, err
@@ -47,7 +43,7 @@ func (c *GridProxyClient) Farms(ctx context.Context, filter types.FarmFilter, pa
 	for _, farm := range dbFarms {
 		f, err := farmFromDBFarm(farm)
 		if err != nil {
-			log.Err(err).Msg("couldn't convert db farm to api farm")
+			return nil, 0, err
 		}
 		farms = append(farms, f)
 	}
@@ -55,7 +51,7 @@ func (c *GridProxyClient) Farms(ctx context.Context, filter types.FarmFilter, pa
 	return farms, int(cnt), nil
 }
 
-func (c *GridProxyClient) Contracts(ctx context.Context, filter types.ContractFilter, pagination types.Limit) ([]types.Contract, int, error) {
+func (c *DBClient) Contracts(ctx context.Context, filter types.ContractFilter, pagination types.Limit) ([]types.Contract, int, error) {
 	dbContracts, cnt, err := c.DB.GetContracts(ctx, filter, pagination)
 	if err != nil {
 		return nil, 0, err
@@ -65,14 +61,14 @@ func (c *GridProxyClient) Contracts(ctx context.Context, filter types.ContractFi
 	for idx, contract := range dbContracts {
 		contracts[idx], err = contractFromDBContract(contract)
 		if err != nil {
-			log.Err(err).Msg("failed to convert db contract to api contract")
+			return nil, 0, err
 		}
 	}
 
 	return contracts, int(cnt), nil
 }
 
-func (c *GridProxyClient) Contract(ctx context.Context, contractID uint32) (types.Contract, error) {
+func (c *DBClient) Contract(ctx context.Context, contractID uint32) (types.Contract, error) {
 	dbContract, err := c.DB.GetContract(ctx, uint32(contractID))
 	if err != nil {
 		return types.Contract{}, err
@@ -86,7 +82,7 @@ func (c *GridProxyClient) Contract(ctx context.Context, contractID uint32) (type
 	return contract, nil
 }
 
-func (c *GridProxyClient) ContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]types.ContractBilling, uint, error) {
+func (c *DBClient) ContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]types.ContractBilling, uint, error) {
 	dbBills, cnt, err := c.DB.GetContractBills(ctx, contractID, limit)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get contract %d bills: %w", contractID, err)
@@ -100,7 +96,7 @@ func (c *GridProxyClient) ContractBills(ctx context.Context, contractID uint32, 
 	return bills, cnt, nil
 }
 
-func (c *GridProxyClient) Twins(ctx context.Context, filter types.TwinFilter, pagination types.Limit) ([]types.Twin, int, error) {
+func (c *DBClient) Twins(ctx context.Context, filter types.TwinFilter, pagination types.Limit) ([]types.Twin, int, error) {
 	dbTwins, cnt, err := c.DB.GetTwins(ctx, filter, pagination)
 	if err != nil {
 		return nil, 0, err
@@ -109,7 +105,7 @@ func (c *GridProxyClient) Twins(ctx context.Context, filter types.TwinFilter, pa
 	return dbTwins, int(cnt), nil
 }
 
-func (c *GridProxyClient) Node(ctx context.Context, nodeID uint32) (types.NodeWithNestedCapacity, error) {
+func (c *DBClient) Node(ctx context.Context, nodeID uint32) (types.NodeWithNestedCapacity, error) {
 	dbNode, err := c.DB.GetNode(ctx, nodeID)
 	if err != nil {
 		return types.NodeWithNestedCapacity{}, err
@@ -119,7 +115,7 @@ func (c *GridProxyClient) Node(ctx context.Context, nodeID uint32) (types.NodeWi
 	return node, nil
 }
 
-func (c *GridProxyClient) NodeStatus(ctx context.Context, nodeID uint32) (types.NodeStatus, error) {
+func (c *DBClient) NodeStatus(ctx context.Context, nodeID uint32) (types.NodeStatus, error) {
 	dbNode, err := c.DB.GetNode(ctx, nodeID)
 	if err != nil {
 		return types.NodeStatus{}, err
@@ -130,6 +126,6 @@ func (c *GridProxyClient) NodeStatus(ctx context.Context, nodeID uint32) (types.
 	return status, nil
 }
 
-func (c *GridProxyClient) Counters(ctx context.Context, filter types.StatsFilter) (types.Counters, error) {
+func (c *DBClient) Counters(ctx context.Context, filter types.StatsFilter) (types.Counters, error) {
 	return c.DB.GetCounters(ctx, filter)
 }
