@@ -5,7 +5,6 @@ go 1.19
 require (
 	github.com/NicoNex/echotron/v3 v3.27.0
 	github.com/hashicorp/go-envparse v0.1.0
-	github.com/rs/zerolog v1.30.0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.2
 )
 
@@ -38,6 +37,7 @@ require (
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/cors v1.9.0 // indirect
+	github.com/rs/zerolog v1.30.0 // indirect
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20230809064214-d8ef5ca360eb // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.2 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.10.2 // indirect
@@ -46,8 +46,8 @@ require (
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771 // indirect
-	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/sync v0.4.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect

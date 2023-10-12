@@ -15,7 +15,10 @@ func TestParsers(t *testing.T) {
 		}
 	})
 
-	os.Create(testEnv)
+	_, err := os.Create(testEnv)
+	if err != nil {
+		t.Errorf("failed to create test file")
+	}
 
 	t.Run("test_wrong_env_missing_mnemonics", func(t *testing.T) {
 		env := ` 
@@ -23,9 +26,12 @@ func TestParsers(t *testing.T) {
 			INTERVAL= "2",
             BOT_TOKEN="token",
             `
-		os.WriteFile(testEnv, []byte(env), 0667)
-		_, err := ParseConfig(testEnv)
+		err = os.WriteFile(testEnv, []byte(env), 0667)
+		if err != nil {
+			t.Errorf("failed to write to test file")
+		}
 
+		_, err = ParseConfig(testEnv)
 		if err == nil {
 			t.Errorf("expected error, missing fields")
 		}
@@ -37,9 +43,12 @@ func TestParsers(t *testing.T) {
 			INTERVAL= "2",
             BOT_TOKEN="token",
             `
-		os.WriteFile(testEnv, []byte(env), 0667)
-		_, err := ParseConfig(testEnv)
+		err = os.WriteFile(testEnv, []byte(env), 0667)
+		if err != nil {
+			t.Errorf("failed to write to test file")
+		}
 
+		_, err = ParseConfig(testEnv)
 		if err == nil {
 			t.Errorf("expected error, missing fields")
 		}
@@ -51,8 +60,12 @@ func TestParsers(t *testing.T) {
             NETWORK="dev",
 			INTERVAL= "2",
             `
-		os.WriteFile(testEnv, []byte(env), 0667)
-		_, err := ParseConfig(testEnv)
+		err = os.WriteFile(testEnv, []byte(env), 0667)
+		if err != nil {
+			t.Errorf("failed to write to test file")
+		}
+
+		_, err = ParseConfig(testEnv)
 
 		if err == nil {
 			t.Errorf("expected error, missing fields")
@@ -64,9 +77,12 @@ func TestParsers(t *testing.T) {
             NETWORK= "test"
 		`
 
-		os.WriteFile(testEnv, []byte(env), 0667)
-		_, err := ParseConfig(testEnv)
+		err = os.WriteFile(testEnv, []byte(env), 0667)
+		if err != nil {
+			t.Errorf("failed to write to test file")
+		}
 
+		_, err = ParseConfig(testEnv)
 		if err == nil {
 			t.Errorf("expected error, invalid interval")
 		}
@@ -79,7 +95,11 @@ func TestParsers(t *testing.T) {
             MNEMONIC=  "mnemonic"
             INTERVAL=  "3"
 		`
-		os.WriteFile(testEnv, []byte(env), 0667)
+		err = os.WriteFile(testEnv, []byte(env), 0667)
+		if err != nil {
+			t.Errorf("failed to write to test file")
+		}
+
 		_, err := ParseConfig(testEnv)
 		if err != nil {
 			t.Errorf("parsing should be successful")

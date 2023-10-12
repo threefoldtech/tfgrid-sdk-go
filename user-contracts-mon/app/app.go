@@ -28,7 +28,7 @@ func Start() error {
 
 	tfPluginClient, err := deployer.NewTFPluginClient(mon.Mnemonic, "sr25519", mon.Network, "", "", "", 0, true)
 	if err != nil {
-		return errors.New("Failed to establish gird connection")
+		return errors.New("failed to establish gird connection")
 	}
 	log.Printf("grid connection established successfully")
 
@@ -37,7 +37,10 @@ func Start() error {
 			log.Printf("[%s] %s", update.Message.From.Username, update.Message.Text)
 			go mon.StartMonitoring(tfPluginClient, update.ChatID())
 		} else {
-			mon.Bot.SendMessage("to start monitoring enter /start", update.ChatID(), nil)
+			_, err = mon.Bot.SendMessage("to start monitoring enter /start", update.ChatID(), nil)
+			if err != nil {
+				return errors.New("failed to respond to the user" + update.Message.From.Username)
+			}
 		}
 	}
 	return nil

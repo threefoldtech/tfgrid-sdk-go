@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/NicoNex/echotron/v3"
@@ -39,17 +40,36 @@ func (mon Monitor) StartMonitoring(tfPluginClient deployer.TFPluginClient, chatI
 
 		contractsInGracePeriod, err := getContractsInGracePeriod(tfPluginClient)
 		if err != nil {
-			mon.Bot.SendMessage("Failed to get contracts in grace period", chatID, nil)
+			_, err := mon.Bot.SendMessage("Failed to get contracts in grace period", chatID, nil)
+			if err != nil {
+				log.Println(err)
+			}
+
 			return
 		}
-		mon.Bot.SendMessage(contractsInGracePeriod, chatID, nil)
+
+		if contractsInGracePeriod != "" {
+			_, err = mon.Bot.SendMessage(contractsInGracePeriod, chatID, nil)
+			if err != nil {
+				return
+			}
+		}
 
 		contractsAgainstDownNodes, err := getContractsAgainstDownNodes(tfPluginClient)
 		if err != nil {
-			mon.Bot.SendMessage("Failed to get contracts against down nodes", chatID, nil)
+			_, err = mon.Bot.SendMessage("Failed to get contracts against down nodes", chatID, nil)
+			if err != nil {
+				log.Println(err)
+			}
 			return
 		}
-		mon.Bot.SendMessage(contractsAgainstDownNodes, chatID, nil)
+
+		if contractsAgainstDownNodes != "" {
+			_, err = mon.Bot.SendMessage(contractsAgainstDownNodes, chatID, nil)
+			if err != nil {
+				return
+			}
+		}
 	}
 }
 
