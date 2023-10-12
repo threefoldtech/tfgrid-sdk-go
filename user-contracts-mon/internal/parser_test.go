@@ -1,45 +1,71 @@
 package monitor
 
 import (
-	"strings"
+	"os"
 	"testing"
 )
 
 func TestParsers(t *testing.T) {
+	testEnv := "test.env"
 	t.Run("test_no_file", func(t *testing.T) {
-		_, err := readFile("env")
+		_, err := ParseConfig("env")
 
 		if err == nil {
 			t.Errorf("expected error reading .env")
 		}
 	})
 
-	t.Run("test_valid_file", func(t *testing.T) {
-		_, err := readFile("parser.go")
-		if err != nil {
-			t.Errorf("expected no error, %v", err)
-		}
-	})
+	os.Create(testEnv)
 
-	t.Run("test_wrong_env_missing_fields", func(t *testing.T) {
+	t.Run("test_wrong_env_missing_mnemonics", func(t *testing.T) {
 		env := ` 
 			NETWORK=  "dev",
 			INTERVAL= "2",
+            BOT_TOKEN="token",
             `
-		_, err := ParseConfig(strings.NewReader(env))
+		os.WriteFile(testEnv, []byte(env), 0667)
+		_, err := ParseConfig(testEnv)
 
 		if err == nil {
 			t.Errorf("expected error, missing fields")
 		}
 	})
 
+	t.Run("test_wrong_env_missing_network", func(t *testing.T) {
+		env := ` 
+			MNEMONIC=  "mnemonic",
+			INTERVAL= "2",
+            BOT_TOKEN="token",
+            `
+		os.WriteFile(testEnv, []byte(env), 0667)
+		_, err := ParseConfig(testEnv)
+
+		if err == nil {
+			t.Errorf("expected error, missing fields")
+		}
+	})
+
+	t.Run("test_wrong_env_missing_bot_token", func(t *testing.T) {
+		env := ` 
+			MNEMONIC=  "mnemonic",
+            NETWORK="dev",
+			INTERVAL= "2",
+            `
+		os.WriteFile(testEnv, []byte(env), 0667)
+		_, err := ParseConfig(testEnv)
+
+		if err == nil {
+			t.Errorf("expected error, missing fields")
+		}
+	})
 	t.Run("test_wrong_env_invalid_interval", func(t *testing.T) {
 		env := `
 			BOT_TOKEN=
             NETWORK= "test"
 		`
 
-		_, err := ParseConfig(strings.NewReader(env))
+		os.WriteFile(testEnv, []byte(env), 0667)
+		_, err := ParseConfig(testEnv)
 
 		if err == nil {
 			t.Errorf("expected error, invalid interval")
@@ -53,9 +79,11 @@ func TestParsers(t *testing.T) {
             MNEMONIC=  "mnemonic"
             INTERVAL=  "3"
 		`
-		_, err := ParseConfig(strings.NewReader(env))
+		os.WriteFile(testEnv, []byte(env), 0667)
+		_, err := ParseConfig(testEnv)
 		if err != nil {
 			t.Errorf("parsing should be successful")
 		}
 	})
+	defer os.Remove(testEnv)
 }
