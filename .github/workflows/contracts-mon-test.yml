@@ -1,0 +1,34 @@
+name: contracts mon test
+
+defaults:
+  run:
+    working-directory: user-contracts-mon 
+
+on:
+  push:
+    paths:
+      - user-contracts-mon/**
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.19"
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: Get dependencies
+        run: |
+          go mod download
+
+      - name: Test
+        run: make test 
+
+      - name: Coverage
+        run: make coverage
