@@ -1,12 +1,9 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	crand "crypto/rand"
 	"math/rand"
 	"net"
-	"reflect"
-	"strings"
 )
 
 func rnd(min, max uint64) uint64 {
@@ -17,10 +14,13 @@ func flip(success float32) bool {
 	return rand.Float32() < success
 }
 
-func randomIPv4() net.IP {
+func randomIPv4() (net.IP, error) {
 	ip := make([]byte, 4)
-	rand.Read(ip)
-	return net.IP(ip)
+	if _, err := crand.Read(ip); err != nil {
+		return nil, err
+	}
+
+	return net.IP(ip), nil
 }
 
 // IPv4Subnet gets the ipv4 subnet given the ip
@@ -42,58 +42,4 @@ func max(a, b uint64) uint64 {
 		return a
 	}
 	return b
-}
-
-func insertQuery(v interface{}) string {
-	query := fmt.Sprintf("INSERT INTO %s (", reflect.Indirect(reflect.ValueOf(v)).Type().Name())
-	vals := "("
-	val := reflect.ValueOf(v).Elem()
-	for i := 0; i < val.NumField(); i++ {
-		if i == 0 {
-			v := fmt.Sprint(val.Field(i))
-			if v == "" {
-				v = "NULL"
-			}
-			if v != "NULL" && val.Field(i).Type().Name() == "string" {
-				v = fmt.Sprintf(`'%s'`, v)
-			}
-			query = fmt.Sprintf("%s%s", query, val.Type().Field(i).Name)
-			vals = fmt.Sprintf("%s%s", vals, v)
-		} else {
-			v := fmt.Sprint(val.Field(i))
-			if v == "" {
-				v = "NULL"
-			}
-			if v != "NULL" && val.Field(i).Type().Name() == "string" {
-				v = fmt.Sprintf(`'%s'`, v)
-			}
-			if v != "NULL" && val.Field(i).Type().Name() == "nodePower" {
-				// Construct the nodePower object
-				val2 := val.Field(i)
-				power := make(map[string]string)
-				for j := 0; j < val2.NumField(); j++ {
-					fieldName := strings.ToLower(val2.Type().Field(j).Name)
-					fieldValue := val2.Field(j).String()
-					power[fieldName] = fieldValue
-				}
-
-				// Marshal the power map to JSON and wrap it in quotes
-				powerJSON, err := json.Marshal(power)
-				if err != nil {
-					panic(err)
-				}
-				v = fmt.Sprintf("'%s'", string(powerJSON))
-			}
-			query = fmt.Sprintf("%s, %s", query, val.Type().Field(i).Name)
-			vals = fmt.Sprintf("%s, %s", vals, v)
-		}
-	}
-	query = fmt.Sprintf("%s) VALUES %s);", query, vals)
-	return query
-}
-func popRandom(l []uint64) ([]uint64, uint64) {
-	idx := rnd(0, uint64(len(l)-1))
-	e := l[idx]
-	l[idx], l[len(l)-1] = l[len(l)-1], l[idx]
-	return l[:len(l)-1], e
 }

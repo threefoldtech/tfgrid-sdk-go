@@ -2,13 +2,16 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
 	"time"
 
 	"github.com/google/uuid"
+	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"gorm.io/gorm"
 )
 
 var (
@@ -23,6 +26,7 @@ var (
 	renter                 = make(map[uint64]uint64)
 	billCnt                = 1
 	contractCnt            = uint64(1)
+	createBatchSize        = 5000
 )
 
 const (
@@ -35,8 +39,8 @@ const (
 	publicIPCount        = 1000
 	twinCount            = nodeCount + farmCount + normalUsers
 	contractCount        = 3000
-	rentContractCount    = 100
-	nameContractCount    = 300
+	// rentContractCount    = 100
+	nameContractCount = 300
 
 	maxContractHRU = 1024 * 1024 * 1024 * 300
 	maxContractSRU = 1024 * 1024 * 1024 * 300
@@ -60,71 +64,141 @@ func initSchema(db *sql.DB) error {
 	return nil
 }
 
-func generateTwins(db *sql.DB) error {
+func generateTwins(db *gorm.DB) error {
+	twins := make([]mock.Twin, 0, twinCount)
 	for i := uint64(1); i <= twinCount; i++ {
-		twin := twin{
-			id:           fmt.Sprintf("twin-%d", i),
-			account_id:   fmt.Sprintf("account-id-%d", i),
-			relay:        fmt.Sprintf("relay-%d", i),
-			public_key:   fmt.Sprintf("public-key-%d", i),
-			twin_id:      i,
-			grid_version: 3,
-		}
-		if _, err := db.Exec(insertQuery(&twin)); err != nil {
-			panic(err)
-		}
+		twins = append(twins, mock.Twin{
+			ID:          fmt.Sprintf("twin-%d", i),
+			AccountID:   fmt.Sprintf("account-id-%d", i),
+			Relay:       fmt.Sprintf("relay-%d", i),
+			PublicKey:   fmt.Sprintf("public-key-%d", i),
+			TwinID:      i,
+			GridVersion: 3,
+		})
 	}
-	return nil
+	db.CreateInBatches(twins, createBatchSize)
+	return db.Error
 }
 
-func generatePublicIPs(db *sql.DB) error {
+func generatePublicIPs(db *gorm.DB) error {
+	ipsMap := map[uint64][]mock.PublicIp{}
+	contractIPs := map[uint64]uint32{}
+	totalIPs := map[uint64]uint32{}
+	freeIPs := map[uint64]uint32{}
 	for i := uint64(1); i <= publicIPCount; i++ {
 		contract_id := uint64(0)
 		if flip(usedPublicIPsRatio) {
 			contract_id = createdNodeContracts[rnd(0, uint64(len(createdNodeContracts))-1)]
 		}
-		ip := randomIPv4()
-		public_ip := public_ip{
-			id:          fmt.Sprintf("public-ip-%d", i),
-			gateway:     ip.String(),
-			ip:          IPv4Subnet(ip).String(),
-			contract_id: contract_id,
-			farm_id:     fmt.Sprintf("farm-%d", rnd(1, farmCount)),
+		ip, err := randomIPv4()
+		if err != nil {
+			return fmt.Errorf("failed to create random ipv4: %w", err)
 		}
-		if _, err := db.Exec(insertQuery(&public_ip)); err != nil {
-			panic(err)
+
+		farmID := rnd(1, farmCount)
+		publicIP := mock.PublicIp{
+			ID:         fmt.Sprintf("public-ip-%d", i),
+			Gateway:    ip.String(),
+			IP:         IPv4Subnet(ip).String(),
+			ContractID: contract_id,
+			FarmID:     fmt.Sprintf("farm-%d", farmID),
 		}
-		if _, err := db.Exec(fmt.Sprintf("UPDATE node_contract set number_of_public_i_ps = number_of_public_i_ps + 1 WHERE contract_id = %d;", contract_id)); err != nil {
-			panic(err)
+		ipsMap[farmID] = append(ipsMap[farmID], publicIP)
+
+		if publicIP.ContractID != 0 {
+			contractIPs[contract_id]++
+		}
+
+		if publicIP.ContractID == 0 {
+			freeIPs[farmID]++
+		}
+		totalIPs[farmID]++
+
+	}
+
+	for farmID, ips := range ipsMap {
+		b, err := json.Marshal(ips)
+		if err != nil {
+			return err
+		}
+
+		if err := db.Create(ips).Error; err != nil {
+			return err
+		}
+
+		if err := db.Model(mock.FarmsCache{}).Where("farm_id = ?", farmID).Update("ips", string(b)).Error; err != nil {
+			return err
+		}
+
+		if err := db.Model(mock.FarmsCache{}).Where("farm_id = ?", farmID).Updates(map[string]interface{}{
+			"total_ips": gorm.Expr("total_ips + ?", totalIPs[farmID]),
+			"free_ips":  gorm.Expr("free_ips + ?", freeIPs[farmID]),
+		}).Error; err != nil {
+			return err
 		}
 	}
+
+	for contractID, ips := range contractIPs {
+		if err := db.Model(mock.GenericContract{}).Where("contract_id = ?", contractID).Updates(map[string]interface{}{
+			"number_of_public_i_ps": gorm.Expr("number_of_public_i_ps + ?", ips),
+		}).Error; err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func generateFarms(db *sql.DB) error {
+func generateFarms(db *gorm.DB) error {
+	farms := make([]mock.Farm, 0, farmCount)
+	cache := make([]mock.FarmsCache, 0, farmCount)
 	for i := uint64(1); i <= farmCount; i++ {
-		farm := farm{
-			id:                fmt.Sprintf("farm-%d", i),
-			farm_id:           i,
-			name:              fmt.Sprintf("farm-name-%d", i),
-			certification:     "Diy",
-			dedicated_farm:    flip(.1),
-			twin_id:           i,
-			pricing_policy_id: 1,
-			grid_version:      3,
-			stellar_address:   "",
+		farm := mock.Farm{
+			ID:              fmt.Sprintf("farm-%d", i),
+			FarmID:          i,
+			Name:            fmt.Sprintf("farm-name-%d", i),
+			Certification:   "Diy",
+			DedicatedFarm:   flip(.1),
+			TwinID:          i,
+			PricingPolicyID: 1,
+			GridVersion:     3,
+			StellarAddress:  "",
 		}
-		if farm.dedicated_farm {
-			dedicatedFarms[farm.farm_id] = struct{}{}
+
+		if farm.DedicatedFarm {
+			dedicatedFarms[farm.FarmID] = struct{}{}
 		}
-		if _, err := db.Exec(insertQuery(&farm)); err != nil {
-			panic(err)
-		}
+
+		cache = append(cache, mock.FarmsCache{
+			ID:       fmt.Sprintf("farm-%d", i),
+			FarmID:   i,
+			FreeIPs:  0,
+			TotalIPs: 0,
+			IPs:      "[]",
+		})
+
+		farms = append(farms, farm)
 	}
+
+	if res := db.Create(farms); res.Error != nil {
+		return res.Error
+	}
+
+	if res := db.Create(cache); res.Error != nil {
+		return res.Error
+	}
+
 	return nil
 }
 
-func generateContracts(db *sql.DB) error {
+func generateContracts(db *gorm.DB) error {
+	nodeContracts := make([]mock.GenericContract, 0, contractCount)
+	contractResources := make([]mock.ContractResources, 0, contractCount)
+	billReports := make([]*mock.ContractBillReport, 0)
+	usedHRU := map[uint64]uint64{}
+	usedMRU := map[uint64]uint64{}
+	usedSRU := map[uint64]uint64{}
+	nonDeletedContracts := uint32(0)
 	for i := uint64(1); i <= contractCount; i++ {
 		nodeID := rnd(1, nodeCount)
 		state := "Deleted"
@@ -147,65 +221,96 @@ func generateContracts(db *sql.DB) error {
 			i--
 			continue
 		}
-		contract := node_contract{
-			id:                    fmt.Sprintf("node-contract-%d", contractCnt),
-			twin_id:               twinID,
-			contract_id:           contractCnt,
-			state:                 state,
-			created_at:            uint64(time.Now().Unix()),
-			node_id:               nodeID,
-			deployment_data:       fmt.Sprintf("deployment-data-%d", contractCnt),
-			deployment_hash:       fmt.Sprintf("deployment-hash-%d", contractCnt),
-			number_of_public_i_ps: 0,
-			grid_version:          3,
-			resources_used_id:     "",
+		contract := mock.GenericContract{
+			ID:                fmt.Sprintf("node-contract-%d", contractCnt),
+			TwinID:            twinID,
+			ContractID:        contractCnt,
+			State:             state,
+			CreatedAt:         uint64(time.Now().Unix()),
+			NodeID:            nodeID,
+			DeploymentData:    fmt.Sprintf("deployment-data-%d", contractCnt),
+			DeploymentHash:    fmt.Sprintf("deployment-hash-%d", contractCnt),
+			NumberOfPublicIPs: 0,
+			GridVersion:       3,
+			ResourcesUsedID:   fmt.Sprintf("contract-resources-%d", contractCnt),
+			Name:              "",
+			Type:              "node",
 		}
+		nodeContracts = append(nodeContracts, contract)
+
 		cru := rnd(minContractCRU, maxContractCRU)
 		hru := rnd(minContractHRU, min(maxContractHRU, nodesHRU[nodeID]))
 		sru := rnd(minContractSRU, min(maxContractSRU, nodesSRU[nodeID]))
 		mru := rnd(minContractMRU, min(maxContractMRU, nodesMRU[nodeID]))
-		contract_resources := contract_resources{
-			id:          fmt.Sprintf("contract-resources-%d", contractCnt),
-			hru:         hru,
-			sru:         sru,
-			cru:         cru,
-			mru:         mru,
-			contract_id: fmt.Sprintf("node-contract-%d", contractCnt),
+		contractRes := mock.ContractResources{
+			ID:         fmt.Sprintf("contract-resources-%d", contractCnt),
+			HRU:        hru,
+			SRU:        sru,
+			CRU:        cru,
+			MRU:        mru,
+			ContractID: fmt.Sprintf("node-contract-%d", contractCnt),
 		}
-		if contract.state != "Deleted" {
+		contractResources = append(contractResources, contractRes)
+
+		if contract.State != "Deleted" {
 			nodesHRU[nodeID] -= hru
 			nodesSRU[nodeID] -= sru
 			nodesMRU[nodeID] -= mru
 			createdNodeContracts = append(createdNodeContracts, contractCnt)
+
+			usedHRU[nodeID] += hru
+			usedMRU[nodeID] += mru
+			usedSRU[nodeID] += sru
+			nonDeletedContracts++
+
 		}
-		if _, err := db.Exec(insertQuery(&contract)); err != nil {
-			panic(err)
-		}
-		if _, err := db.Exec(insertQuery(&contract_resources)); err != nil {
-			panic(err)
-		}
-		if _, err := db.Exec(fmt.Sprintf(`UPDATE node_contract SET resources_used_id = 'contract-resources-%d' WHERE id = 'node-contract-%d'`, contractCnt, contractCnt)); err != nil {
-			panic(err)
-		}
+
 		billings := rnd(0, 10)
 		for j := uint64(0); j < billings; j++ {
-			billing := contract_bill_report{
-				id:                fmt.Sprintf("contract-bill-report-%d", billCnt),
-				contract_id:       contractCnt,
-				discount_received: "Default",
-				amount_billed:     rnd(0, 100000),
-				timestamp:         uint64(time.Now().UnixNano()),
+			bill := mock.ContractBillReport{
+				ID:               fmt.Sprintf("contract-bill-report-%d", billCnt),
+				ContractID:       contractCnt,
+				DiscountReceived: "Default",
+				AmountBilled:     rnd(0, 100000),
+				Timestamp:        uint64(time.Now().UnixNano()),
 			}
 			billCnt++
-			if _, err := db.Exec(insertQuery(&billing)); err != nil {
-				panic(err)
-			}
+
+			billReports = append(billReports, &bill)
 		}
 		contractCnt++
 	}
+
+	if err := db.CreateInBatches(&nodeContracts, createBatchSize).Error; err != nil {
+		return err
+	}
+
+	if err := db.CreateInBatches(&contractResources, createBatchSize).Error; err != nil {
+		return err
+	}
+
+	if err := db.CreateInBatches(billReports, createBatchSize).Error; err != nil {
+		return err
+	}
+
+	for nodeID, hru := range usedHRU {
+		sru := usedSRU[nodeID]
+		mru := usedMRU[nodeID]
+		if err := db.Model(mock.NodesCache{}).Where("node_id = ?", nodeID).Updates(map[string]interface{}{
+			"free_sru":       gorm.Expr("free_sru - ?", sru),
+			"free_mru":       gorm.Expr("free_mru - ?", mru),
+			"free_hru":       gorm.Expr("free_hru - ?", hru),
+			"node_contracts": gorm.Expr("node_contracts + ?", nonDeletedContracts),
+		}).Error; err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
-func generateNameContracts(db *sql.DB) error {
+func generateNameContracts(db *gorm.DB) error {
+	nameContracts := make([]mock.GenericContract, 0, nameContractCount)
+	billReports := make([]mock.ContractBillReport, 0)
 	for i := uint64(1); i <= nameContractCount; i++ {
 		nodeID := rnd(1, nodeCount)
 		state := "Deleted"
@@ -224,40 +329,47 @@ func generateNameContracts(db *sql.DB) error {
 			i--
 			continue
 		}
-		contract := name_contract{
-			id:           fmt.Sprintf("node-contract-%d", contractCnt),
-			twin_id:      twinID,
-			contract_id:  contractCnt,
-			state:        state,
-			created_at:   uint64(time.Now().Unix()),
-			grid_version: 3,
-			name:         uuid.NewString(),
+		contract := mock.GenericContract{
+			ID:          fmt.Sprintf("node-contract-%d", contractCnt),
+			TwinID:      twinID,
+			ContractID:  contractCnt,
+			State:       state,
+			CreatedAt:   uint64(time.Now().Unix()),
+			GridVersion: 3,
+			Name:        uuid.NewString(),
+			Type:        "name",
 		}
-		if _, err := db.Exec(insertQuery(&contract)); err != nil {
-			panic(err)
-		}
+		nameContracts = append(nameContracts, contract)
+
 		billings := rnd(0, 10)
 		for j := uint64(0); j < billings; j++ {
-			billing := contract_bill_report{
-				id:                fmt.Sprintf("contract-bill-report-%d", billCnt),
-				contract_id:       contractCnt,
-				discount_received: "Default",
-				amount_billed:     rnd(0, 100000),
-				timestamp:         uint64(time.Now().UnixNano()),
+			billing := mock.ContractBillReport{
+				ID:               fmt.Sprintf("contract-bill-report-%d", billCnt),
+				ContractID:       contractCnt,
+				DiscountReceived: "Default",
+				AmountBilled:     rnd(0, 100000),
+				Timestamp:        uint64(time.Now().UnixNano()),
 			}
 			billCnt++
-			if _, err := db.Exec(insertQuery(&billing)); err != nil {
-				panic(err)
-			}
+			billReports = append(billReports, billing)
 		}
 		contractCnt++
 	}
+
+	if err := db.Create(nameContracts).Error; err != nil {
+		return err
+	}
+
+	if err := db.Create(billReports).Error; err != nil {
+		return err
+	}
+
 	return nil
 }
-func generateRentContracts(db *sql.DB) error {
-	for i := uint64(1); i <= rentContractCount; i++ {
-		nl, nodeID := popRandom(availableRentNodesList)
-		availableRentNodesList = nl
+func generateRentContracts(db *gorm.DB) error {
+	rentContracts := make([]mock.GenericContract, 0, len(availableRentNodesList))
+	billReports := make([]mock.ContractBillReport, 0)
+	for _, nodeID := range availableRentNodesList {
 		delete(availableRentNodes, nodeID)
 		state := "Deleted"
 		if nodeUP[nodeID] {
@@ -267,44 +379,62 @@ func generateRentContracts(db *sql.DB) error {
 				state = "GracePeriod"
 			}
 		}
-		contract := rent_contract{
-			id:           fmt.Sprintf("rent-contract-%d", contractCnt),
-			twin_id:      rnd(1100, 3100),
-			contract_id:  contractCnt,
-			state:        state,
-			created_at:   uint64(time.Now().Unix()),
-			node_id:      nodeID,
-			grid_version: 3,
+		contract := mock.GenericContract{
+			ID:          fmt.Sprintf("rent-contract-%d", contractCnt),
+			TwinID:      rnd(1100, 3100),
+			ContractID:  contractCnt,
+			State:       state,
+			CreatedAt:   uint64(time.Now().Unix()),
+			NodeID:      nodeID,
+			GridVersion: 3,
+			Type:        "rent",
 		}
 		if state != "Deleted" {
-			renter[nodeID] = contract.twin_id
+			renter[nodeID] = contract.TwinID
+			if err := db.Model(mock.NodesCache{}).Where("node_id = ?", nodeID).Updates(map[string]interface{}{
+				"renter":           contract.TwinID,
+				"rent_contract_id": contract.ContractID,
+			}).Error; err != nil {
+				return err
+			}
 		}
-		if _, err := db.Exec(insertQuery(&contract)); err != nil {
-			panic(err)
-		}
+		rentContracts = append(rentContracts, contract)
+
 		billings := rnd(0, 10)
 		for j := uint64(0); j < billings; j++ {
-			billing := contract_bill_report{
-				id:                fmt.Sprintf("contract-bill-report-%d", billCnt),
-				contract_id:       contractCnt,
-				discount_received: "Default",
-				amount_billed:     rnd(0, 100000),
-				timestamp:         uint64(time.Now().UnixNano()),
+			billing := mock.ContractBillReport{
+				ID:               fmt.Sprintf("contract-bill-report-%d", billCnt),
+				ContractID:       contractCnt,
+				DiscountReceived: "Default",
+				AmountBilled:     rnd(0, 100000),
+				Timestamp:        uint64(time.Now().UnixNano()),
 			}
 
 			billCnt++
-			if _, err := db.Exec(insertQuery(&billing)); err != nil {
-				panic(err)
-			}
+			billReports = append(billReports, billing)
 		}
 		contractCnt++
 	}
+
+	if err := db.Create(rentContracts).Error; err != nil {
+		return err
+	}
+
+	if err := db.Create(&billReports).Error; err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func generateNodes(db *sql.DB) error {
+func generateNodes(db *gorm.DB) error {
 	const NodeCount = 1000
 	powerState := []string{"Up", "Down"}
+	locations := make([]mock.Location, 0, NodeCount)
+	nodes := make([]mock.Node, 0, NodeCount)
+	caches := make([]mock.NodesCache, 0, NodeCount)
+	publicConfigs := make([]mock.PublicConfig, 0)
+
 	for i := uint64(1); i <= NodeCount; i++ {
 		mru := rnd(4, 256) * 1024 * 1024 * 1024
 		hru := rnd(100, 30*1024) * 1024 * 1024 * 1024 // 100GB -> 30TB
@@ -320,114 +450,152 @@ func generateNodes(db *sql.DB) error {
 		nodesSRU[i] = sru - 100*uint64(gridtypes.Gigabyte)
 		nodesHRU[i] = hru
 		nodeUP[i] = up
-		location := location{
-			id:        fmt.Sprintf("location-%d", i),
-			longitude: fmt.Sprintf("location--long-%d", i),
-			latitude:  fmt.Sprintf("location-lat-%d", i),
+		location := mock.Location{
+			ID:        fmt.Sprintf("location-%d", i),
+			Longitude: fmt.Sprintf("location--long-%d", i),
+			Latitude:  fmt.Sprintf("location-lat-%d", i),
 		}
-		node := node{
-			id:                fmt.Sprintf("node-%d", i),
-			location_id:       fmt.Sprintf("location-%d", i),
-			node_id:           i,
-			farm_id:           i%100 + 1,
-			twin_id:           i + 100 + 1,
-			country:           "Belgium",
-			city:              "Unknown",
-			uptime:            1000,
-			updated_at:        uint64(updatedAt),
-			created:           uint64(time.Now().Unix()),
-			created_at:        uint64(time.Now().Unix()),
-			farming_policy_id: 1,
-			grid_version:      3,
-			certification:     "Diy",
-			secure:            false,
-			virtualized:       false,
-			serial_number:     "",
-			power: nodePower{
+		locations = append(locations, location)
+
+		node := mock.Node{
+			ID:              fmt.Sprintf("node-%d", i),
+			LocationID:      fmt.Sprintf("location-%d", i),
+			NodeID:          i,
+			FarmID:          i%100 + 1,
+			TwinID:          i + 100 + 1,
+			Country:         "Belgium",
+			City:            "Unknown",
+			Uptime:          1000,
+			UpdatedAt:       uint64(updatedAt),
+			Created:         uint64(time.Now().Unix()),
+			CreatedAt:       uint64(time.Now().Unix()),
+			FarmingPolicyID: 1,
+			GridVersion:     3,
+			Certification:   "Diy",
+			Secure:          false,
+			Virtualized:     false,
+			SerialNumber:    "",
+			Power: mock.NodePower{
 				State:  powerState[rand.Intn(len(powerState))],
 				Target: powerState[rand.Intn(len(powerState))],
 			},
-			extra_fee: 0,
+			ExtraFee: 0,
+			TotalHRU: hru,
+			TotalSRU: sru,
+			TotalMRU: mru,
+			TotalCRU: cru,
 		}
-		total_resources := node_resources_total{
-			id:      fmt.Sprintf("total-resources-%d", i),
-			hru:     hru,
-			sru:     sru,
-			cru:     cru,
-			mru:     mru,
-			node_id: fmt.Sprintf("node-%d", i),
+		nodes = append(nodes, node)
+
+		isDedicatedFarm := true
+		if _, ok := dedicatedFarms[node.FarmID]; !ok {
+			isDedicatedFarm = false
 		}
-		if _, ok := dedicatedFarms[node.farm_id]; ok {
+
+		cache := mock.NodesCache{
+			ID:             fmt.Sprintf("node-%d", i),
+			NodeID:         i,
+			NodeTwinID:     node.TwinID,
+			FreeHRU:        hru,
+			FreeSRU:        sru - 107374182400,
+			FreeMRU:        mru - max(mru/10, 2147483648),
+			FreeCRU:        cru,
+			Renter:         0,
+			RentContractID: 0,
+			NodeContracts:  0,
+			FarmID:         node.FarmID,
+			DedicatedFarm:  isDedicatedFarm,
+			FreeGPUs:       0,
+		}
+		caches = append(caches, cache)
+
+		if _, ok := dedicatedFarms[node.FarmID]; ok {
 			availableRentNodes[i] = struct{}{}
 			availableRentNodesList = append(availableRentNodesList, i)
 		}
-		if _, err := db.Exec(insertQuery(&location)); err != nil {
-			panic(err)
-		}
-		if _, err := db.Exec(insertQuery(&node)); err != nil {
-			panic(err)
-		}
-		if _, err := db.Exec(insertQuery(&total_resources)); err != nil {
-			panic(err)
-		}
 
 		if flip(.1) {
-			if _, err := db.Exec(insertQuery(&public_config{
-				id:      fmt.Sprintf("public-config-%d", i),
-				ipv4:    "185.16.5.2/24",
-				gw4:     "185.16.5.2",
-				ipv6:    "::1/64",
-				gw6:     "::1",
-				domain:  "hamada.com",
-				node_id: fmt.Sprintf("node-%d", i),
-			})); err != nil {
-				panic(err)
+			publicConfigs = append(publicConfigs, mock.PublicConfig{
+				ID:     fmt.Sprintf("public-config-%d", i),
+				IPv4:   "185.16.5.2/24",
+				GW4:    "185.16.5.2",
+				IPv6:   "::1/64",
+				GW6:    "::1",
+				Domain: "hamada.com",
+				NodeID: fmt.Sprintf("node-%d", i),
+			})
+		}
+
+	}
+
+	if err := db.Create(locations).Error; err != nil {
+		return err
+	}
+
+	if err := db.Create(nodes).Error; err != nil {
+		return err
+	}
+
+	if err := db.Create(caches).Error; err != nil {
+		return err
+	}
+
+	if err := db.Create(publicConfigs).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func generateNodeGPUs(db *gorm.DB) error {
+	for i := 0; i <= 10; i++ {
+		g := mock.NodeGPU{
+			NodeTwinID: uint64(i + 100),
+			Vendor:     "Advanced Micro Devices, Inc. [AMD/ATI]",
+			Device:     "Navi 31 [Radeon RX 7900 XT/7900 XTX",
+			Contract:   i % 2,
+			ID:         "0000:0e:00.0/1002/744c",
+		}
+
+		if err := db.Create(&g).Error; err != nil {
+			return err
+		}
+
+		if g.Contract != 0 {
+			if err := db.Model(mock.NodesCache{}).Where("node_twin_id = ?", g.NodeTwinID).Updates(map[string]interface{}{
+				"free_gpus": gorm.Expr("free_gpus + 1"),
+			}).Error; err != nil {
+				return err
 			}
 		}
 	}
 	return nil
 }
 
-func generateNodeGPUs(db *sql.DB) error {
-	for i := 0; i <= 10; i++ {
-		g := node_gpu{
-			node_twin_id: uint64(i + 100),
-			vendor:       "Advanced Micro Devices, Inc. [AMD/ATI]",
-			device:       "Navi 31 [Radeon RX 7900 XT/7900 XTX",
-			contract:     i % 2,
-			id:           "0000:0e:00.0/1002/744c",
-		}
-		if _, err := db.Exec(insertQuery(&g)); err != nil {
-			panic(err)
-		}
+func generateData(gormDB *gorm.DB) error {
+	if err := generateTwins(gormDB); err != nil {
+		return err
 	}
-	return nil
-}
-
-func generateData(db *sql.DB) error {
-	if err := generateTwins(db); err != nil {
-		panic(err)
+	if err := generateFarms(gormDB); err != nil {
+		return err
 	}
-	if err := generateFarms(db); err != nil {
-		panic(err)
+	if err := generateNodes(gormDB); err != nil {
+		return err
 	}
-	if err := generateNodes(db); err != nil {
-		panic(err)
+	if err := generateRentContracts(gormDB); err != nil {
+		return err
 	}
-	if err := generateRentContracts(db); err != nil {
-		panic(err)
+	if err := generateContracts(gormDB); err != nil {
+		return err
 	}
-	if err := generateContracts(db); err != nil {
-		panic(err)
+	if err := generateNameContracts(gormDB); err != nil {
+		return err
 	}
-	if err := generateNameContracts(db); err != nil {
-		panic(err)
+	if err := generatePublicIPs(gormDB); err != nil {
+		return err
 	}
-	if err := generatePublicIPs(db); err != nil {
-		panic(err)
-	}
-	if err := generateNodeGPUs(db); err != nil {
-		panic(err)
+	if err := generateNodeGPUs(gormDB); err != nil {
+		return err
 	}
 	return nil
 }

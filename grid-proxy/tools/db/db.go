@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -10,6 +9,8 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type flags struct {
@@ -38,16 +39,23 @@ func parseCmdline() flags {
 func main() {
 	f := parseCmdline()
 	if f.seed != 0 {
-		rand.Seed(int64(f.seed))
+		rand.New(rand.NewSource(int64(f.seed)))
 	}
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB)
-	db, err := sql.Open("postgres", psqlInfo)
+
+	gormDB, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{})
 	if err != nil {
 		panic(errors.Wrap(err, "failed to open db"))
 	}
+
+	db, err := gormDB.DB()
+	if err != nil {
+		panic(err)
+	}
 	defer db.Close()
+
 	if f.reset {
 		if _, err := db.Exec(
 			`
@@ -98,7 +106,8 @@ func main() {
 		panic(err)
 	}
 	// ----
-	if err := generateData(db); err != nil {
+
+	if err := generateData(gormDB); err != nil {
 		panic(err)
 	}
 }
