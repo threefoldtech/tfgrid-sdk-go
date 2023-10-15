@@ -32,7 +32,7 @@ func init() {
 		Timestamp().
 		Logger()
 
-	rand.NewSource(time.Now().UnixNano())
+	rand.Seed(time.Now().UnixNano())
 
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "show debug level logs")
 }

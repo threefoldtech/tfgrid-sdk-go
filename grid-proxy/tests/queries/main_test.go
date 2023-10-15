@@ -46,7 +46,7 @@ func parseCmdline() {
 func TestMain(m *testing.M) {
 	parseCmdline()
 	if SEED != 0 {
-		rand.New(rand.NewSource(int64(SEED)))
+		rand.Seed(int64(SEED))
 	}
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
