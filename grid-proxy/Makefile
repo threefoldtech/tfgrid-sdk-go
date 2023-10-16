@@ -22,7 +22,8 @@ db-start: ## Start postgres server on a docker container
 		-d \
 		postgres
 
-db-fill: ## Fill the database with a randomly generated data
+db-fill: db-stop db-start sleep ## Fill the database with a randomly generated data
+
 	@echo "Loading...   It takes some time."
 	@cd ./tools/db &&\
 	go run . \
@@ -78,6 +79,16 @@ test-query: ## Run specific test query 			(Args: `t=TestName`).
 		--postgres-user postgres \
 		--endpoint http://localhost:8080 \
 		-run $(t)
+
+bench:
+	@cd tests/queries/ &&\
+	go test -v -bench Bench -run notests -count 5\
+		--seed 13 \
+		--postgres-host $(PQ_HOST) \
+		--postgres-db tfgrid-graphql \
+		--postgres-password postgres \
+		--postgres-user postgres \
+		--endpoint http://localhost:8080
 
 test-unit: ## Run only unit tests
 	@go test -v ./pkg/client
