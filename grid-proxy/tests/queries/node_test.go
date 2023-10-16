@@ -325,20 +325,6 @@ func TestNode(t *testing.T) {
 		assert.Equal(t, err.Error(), ErrNodeNotFound.Error())
 	})
 
-	t.Run("nodes test without resources view", func(t *testing.T) {
-		db := data.DB
-		_, err := db.Exec("drop view nodes_resources_view ;")
-		assert.NoError(t, err)
-
-		singleNodeCheck(t, mockClient, gridProxyClient)
-		assert.NoError(t, err)
-
-		_, err = db.Exec("drop view nodes_resources_view ;")
-		assert.NoError(t, err)
-
-		nodePaginationCheck(t, mockClient, gridProxyClient)
-	})
-
 	t.Run("nodes test certification_type filter", func(t *testing.T) {
 		certType := "Diy"
 		nodes, _, err := gridProxyClient.Nodes(proxytypes.NodeFilter{CertificationType: &certType}, proxytypes.Limit{})
@@ -505,7 +491,11 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 		cities[node.City] = struct{}{}
 		countries[node.Country] = struct{}{}
 		total := data.NodeTotalResources[node.NodeID]
-		free := calcFreeResources(total, data.NodeUsedResources[node.NodeID])
+		free := mock.NodeResourcesTotal{
+			HRU: data.NodesCacheMap[node.NodeID].FreeHRU,
+			SRU: data.NodesCacheMap[node.NodeID].FreeSRU,
+			MRU: data.NodesCacheMap[node.NodeID].FreeMRU,
+		}
 		res.maxFreeHRU = max(res.maxFreeHRU, free.HRU)
 		res.maxFreeSRU = max(res.maxFreeSRU, free.SRU)
 		res.maxFreeMRU = max(res.maxFreeMRU, free.MRU)
