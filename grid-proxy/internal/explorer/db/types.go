@@ -22,16 +22,16 @@ type ContractBilling types.ContractBilling
 
 // DBContract is contract info
 type DBContract struct {
-	ContractID        uint
-	TwinID            uint
-	State             string
-	CreatedAt         uint
-	Name              string
-	NodeID            uint
-	DeploymentData    string
-	DeploymentHash    string
-	NumberOfPublicIps uint
-	Type              string
+	ContractID        uint   `gorm:"column:contract_id"`
+	TwinID            uint   `gorm:"column:twin_id"`
+	State             string `gorm:"column:state"`
+	CreatedAt         uint   `gorm:"column:created_at"`
+	Name              string `gorm:"column:name"`
+	NodeID            uint   `gorm:"column:node_id"`
+	DeploymentData    string `gorm:"column:deployment_data"`
+	DeploymentHash    string `gorm:"column:deployment_hash"`
+	NumberOfPublicIps uint   `gorm:"column:number_of_public_ips"`
+	Type              string `gorm:"column:type"`
 }
 
 // Node data about a node which is calculated from the chain
@@ -51,10 +51,10 @@ type Node struct {
 	TotalMru        int64
 	TotalSru        int64
 	TotalHru        int64
-	UsedCru         int64
-	UsedMru         int64
-	UsedSru         int64
-	UsedHru         int64
+	FreeCru         int64
+	FreeMru         int64
+	FreeSru         int64
+	FreeHru         int64
 	Domain          string
 	Gw4             string
 	Gw6             string
@@ -63,7 +63,7 @@ type Node struct {
 	Certification   string
 	Dedicated       bool
 	RentContractID  int64
-	RentedByTwinID  int64
+	Renter          int64
 	SerialNumber    string
 	Longitude       *float64
 	Latitude        *float64

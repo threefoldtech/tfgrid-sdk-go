@@ -33,60 +33,13 @@ var (
 
 const (
 	setupPostgresql = `
-	CREATE OR REPLACE VIEW nodes_resources_view AS SELECT
-		node.node_id,
-		COALESCE(sum(contract_resources.cru), 0) as used_cru,
-		COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as used_mru,
-		COALESCE(sum(contract_resources.hru), 0) as used_hru,
-		COALESCE(sum(contract_resources.sru), 0) + 107374182400 as used_sru,
-		node_resources_total.mru - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as free_mru,
-		node_resources_total.hru - COALESCE(sum(contract_resources.hru), 0) as free_hru,
-		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 107374182400 as free_sru,
-		COALESCE(node_resources_total.cru, 0) as total_cru,
-		COALESCE(node_resources_total.mru, 0) as total_mru,
-		COALESCE(node_resources_total.hru, 0) as total_hru,
-		COALESCE(node_resources_total.sru, 0) as total_sru,
-		COALESCE(COUNT(DISTINCT state), 0) as states
-	FROM contract_resources
-	JOIN node_contract as node_contract
-	ON node_contract.resources_used_id = contract_resources.id AND node_contract.state IN ('Created', 'GracePeriod')
-	RIGHT JOIN node as node
-	ON node.node_id = node_contract.node_id
-	JOIN node_resources_total AS node_resources_total
-	ON node_resources_total.node_id = node.id
-	GROUP BY node.node_id, node_resources_total.mru, node_resources_total.sru, node_resources_total.hru, node_resources_total.cru;
-
-	DROP FUNCTION IF EXISTS node_resources(query_node_id INTEGER);
-	CREATE OR REPLACE function node_resources(query_node_id INTEGER)
-	returns table (node_id INTEGER, used_cru NUMERIC, used_mru NUMERIC, used_hru NUMERIC, used_sru NUMERIC, free_mru NUMERIC, free_hru NUMERIC, free_sru NUMERIC, total_cru NUMERIC, total_mru NUMERIC, total_hru NUMERIC, total_sru NUMERIC, states BIGINT)
-	as
-	$body$
-	SELECT
-		node.node_id,
-		COALESCE(sum(contract_resources.cru), 0) as used_cru,
-		COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as used_mru,
-		COALESCE(sum(contract_resources.hru), 0) as used_hru,
-		COALESCE(sum(contract_resources.sru), 0) + 107374182400 as used_sru,
-		node_resources_total.mru - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as free_mru,
-		node_resources_total.hru - COALESCE(sum(contract_resources.hru), 0) as free_hru,
-		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 107374182400 as free_sru,
-		COALESCE(node_resources_total.cru, 0) as total_cru,
-		COALESCE(node_resources_total.mru, 0) as total_mru,
-		COALESCE(node_resources_total.hru, 0) as total_hru,
-		COALESCE(node_resources_total.sru, 0) as total_sru,
-		COALESCE(COUNT(DISTINCT state), 0) as states
-	FROM contract_resources
-	JOIN node_contract as node_contract
-	ON node_contract.resources_used_id = contract_resources.id AND node_contract.state IN ('Created', 'GracePeriod')
-	RIGHT JOIN node as node
-	ON node.node_id = node_contract.node_id
-	JOIN node_resources_total AS node_resources_total
-	ON node_resources_total.node_id = node.id
-	WHERE node.node_id = query_node_id
-	GROUP BY node.node_id, node_resources_total.mru, node_resources_total.sru, node_resources_total.hru, node_resources_total.cru;
-	$body$
-	language sql;
-
+	CREATE INDEX IF NOT EXISTS idx_node_id ON public.node(node_id);
+	CREATE INDEX IF NOT EXISTS idx_twin_id ON public.twin(twin_id);
+	CREATE INDEX IF NOT EXISTS idx_farm_id ON public.farm(farm_id);
+	CREATE INDEX IF NOT EXISTS idx_contract_id ON public.generic_contract(contract_id);
+	CREATE INDEX IF NOT EXISTS idx_farms_cache_farm_id ON public.farms_cache(farm_id);
+	CREATE INDEX IF NOT EXISTS idx_nodes_cache_node_id ON public.nodes_cache(node_id);
+	
 	DROP FUNCTION IF EXISTS convert_to_decimal(v_input text);
 	CREATE OR REPLACE FUNCTION convert_to_decimal(v_input text)
 	RETURNS DECIMAL AS $$
@@ -160,19 +113,11 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 	if res := d.gormDB.Table("public_ip").Count(&counters.PublicIPs); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get public ip count")
 	}
-	var count int64
-	if res := d.gormDB.Table("node_contract").Count(&count); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get node contract count")
+
+	if res := d.gormDB.Table("generic_contract").Count(&counters.Contracts); res.Error != nil {
+		return counters, errors.Wrap(res.Error, "couldn't get contracts count")
 	}
-	counters.Contracts += count
-	if res := d.gormDB.Table("rent_contract").Count(&count); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get rent contract count")
-	}
-	counters.Contracts += count
-	if res := d.gormDB.Table("name_contract").Count(&count); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get name contract count")
-	}
-	counters.Contracts += count
+
 	if res := d.gormDB.Table("farm").Distinct("farm_id").Count(&counters.Farms); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get farm count")
 	}
@@ -265,7 +210,21 @@ func (d *PostgresDatabase) GetNode(nodeID uint32) (Node, error) {
 
 // GetFarm return farm info
 func (d *PostgresDatabase) GetFarm(farmID uint32) (Farm, error) {
-	q := d.farmTableQuery()
+	q := d.gormDB.Table("farm").Select(
+		"farm.id",
+		"farm.farm_id",
+		"farm.name",
+		"farm.twin_id",
+		"farm.pricing_policy_id",
+		"farm.certification",
+		"farm.stellar_address",
+		"farm.dedicated_farm as dedicated",
+		"COALESCE(farms_cache.ips, '[]') as public_ips",
+	).
+		Joins(`
+		LEFT JOIN farms_cache ON farm.farm_id = farms_cache.farm_id
+	`)
+
 	q = q.Where("farm.farm_id = ?", farmID)
 	var farm Farm
 	if res := q.Scan(&farm); res.Error != nil {
@@ -303,7 +262,7 @@ func printQuery(query string, args ...interface{}) {
 	fmt.Printf("node query: %s", query)
 }
 
-func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
+func (d *PostgresDatabase) farmTableQuery(nodeQuery *gorm.DB) *gorm.DB {
 	return d.gormDB.
 		Table("farm").
 		Select(
@@ -315,65 +274,15 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 			"farm.certification",
 			"farm.stellar_address",
 			"farm.dedicated_farm as dedicated",
-			"COALESCE(public_ips.public_ips, '[]') as public_ips",
-			"bool_or(node.rent_contract_id != 0)",
+			"COALESCE(farms_cache.ips, '[]') as public_ips",
 		).
-		Joins(
-			`left join(
-				SELECT
-					node.node_id,
-					node.twin_id,
-					node.farm_id,
-					node.power,
-					node.updated_at,
-					node.certification,
-					node.country,
-					nodes_resources_view.free_mru,
-					nodes_resources_view.free_hru,
-					nodes_resources_view.free_sru,
-					COALESCE(rent_contract.contract_id, 0) rent_contract_id,
-					COALESCE(rent_contract.twin_id, 0) renter,
-					COALESCE(node_gpu.id, '') gpu_id
-				FROM node
-				LEFT JOIN nodes_resources_view ON node.node_id = nodes_resources_view.node_id
-				LEFT JOIN rent_contract ON node.node_id = rent_contract.node_id AND rent_contract.state IN ('Created', 'GracePeriod')
-				LEFT JOIN node_gpu ON node.twin_id = node_gpu.node_twin_id
-			) node on node.farm_id = farm.farm_id`,
-		).
-		Joins(`left join(
-			SELECT
-				p1.farm_id,
-				COUNT(p1.id) total_ips,
-				COUNT(CASE WHEN p2.contract_id = 0 THEN 1 END) free_ips
-			FROM public_ip p1
-			LEFT JOIN public_ip p2 ON p1.id = p2.id
-			GROUP BY p1.farm_id
-		) public_ip_count on public_ip_count.farm_id = farm.id`).
-		Joins(`left join (
-			select 
-				farm_id,
-				jsonb_agg(jsonb_build_object('id', id, 'ip', ip, 'contract_id', contract_id, 'gateway', gateway)) as public_ips
-			from public_ip
-			GROUP BY farm_id
-		) public_ips on public_ips.farm_id = farm.id`).
-		Group(
-			`farm.id,
-			farm.farm_id,
-			farm.name,
-			farm.twin_id,
-			farm.pricing_policy_id,
-			farm.certification,
-			farm.stellar_address,
-			farm.dedicated_farm,
-			COALESCE(public_ips.public_ips, '[]')`,
-		)
+		Joins("RIGHT JOIN (?) AS node ON node.farm_id = farm.farm_id", nodeQuery).
+		Joins(`
+			LEFT JOIN farms_cache ON farm.farm_id = farms_cache.farm_id
+		`)
 }
 
 func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
-	subquery := d.gormDB.Table("node_contract").
-		Select("DISTINCT ON (node_id) node_id, contract_id").
-		Where("state IN ('Created', 'GracePeriod')")
-
 	nodeGPUQuery := `(SELECT count(node_gpu.id) FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id) as num_gpu`
 
 	return d.gormDB.
@@ -390,14 +299,14 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"node.created",
 			"node.farming_policy_id",
 			"updated_at",
-			"nodes_resources_view.total_cru",
-			"nodes_resources_view.total_sru",
-			"nodes_resources_view.total_hru",
-			"nodes_resources_view.total_mru",
-			"nodes_resources_view.used_cru",
-			"nodes_resources_view.used_sru",
-			"nodes_resources_view.used_hru",
-			"nodes_resources_view.used_mru",
+			"node.total_cru",
+			"node.total_sru",
+			"node.total_hru",
+			"node.total_mru",
+			"nodes_cache.free_cru",
+			"nodes_cache.free_sru",
+			"nodes_cache.free_hru",
+			"nodes_cache.free_mru",
 			"public_config.domain",
 			"public_config.gw4",
 			"public_config.gw6",
@@ -405,8 +314,8 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"public_config.ipv6",
 			"node.certification",
 			"farm.dedicated_farm as dedicated",
-			"rent_contract.contract_id as rent_contract_id",
-			"rent_contract.twin_id as rented_by_twin_id",
+			"nodes_cache.renter",
+			"nodes_cache.rent_contract_id",
 			"node.serial_number",
 			"convert_to_decimal(location.longitude) as longitude",
 			"convert_to_decimal(location.latitude) as latitude",
@@ -415,29 +324,29 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			nodeGPUQuery,
 		).
 		Joins(
-			"LEFT JOIN nodes_resources_view ON node.node_id = nodes_resources_view.node_id",
+			"LEFT JOIN nodes_cache ON node.node_id = nodes_cache.node_id",
 		).
 		Joins(
 			"LEFT JOIN public_config ON node.id = public_config.node_id",
-		).
-		Joins(
-			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
-		).
-		Joins(
-			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", subquery,
 		).
 		Joins(
 			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
 		).
 		Joins(
 			"LEFT JOIN location ON node.location_id = location.id",
+		).
+		Joins(
+			"LEFT JOIN node_gpu on node_gpu.node_twin_id = node.twin_id",
+		).
+		Joins(
+			"LEFT JOIN farms_cache ON node.farm_id = farms_cache.farm_id",
 		)
 }
 
 // GetNodes returns nodes filtered and paginated
 func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) ([]Node, uint, error) {
 	q := d.nodeTableQuery()
-	q = q.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
+	q = q.Session(&gorm.Session{})
 
 	condition := "TRUE"
 	if filter.Status != nil {
@@ -447,25 +356,25 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 	q = q.Where(condition)
 
 	if filter.FreeMRU != nil {
-		q = q.Where("nodes_resources_view.free_mru >= ?", *filter.FreeMRU)
+		q = q.Where("nodes_cache.free_mru >= ?", *filter.FreeMRU)
 	}
 	if filter.FreeHRU != nil {
-		q = q.Where("nodes_resources_view.free_hru >= ?", *filter.FreeHRU)
+		q = q.Where("nodes_cache.free_hru >= ?", *filter.FreeHRU)
 	}
 	if filter.FreeSRU != nil {
-		q = q.Where("nodes_resources_view.free_sru >= ?", *filter.FreeSRU)
+		q = q.Where("nodes_cache.free_sru >= ?", *filter.FreeSRU)
 	}
 	if filter.TotalCRU != nil {
-		q = q.Where("nodes_resources_view.total_cru >= ?", *filter.TotalCRU)
+		q = q.Where("node.total_cru >= ?", *filter.TotalCRU)
 	}
 	if filter.TotalHRU != nil {
-		q = q.Where("nodes_resources_view.total_hru >= ?", *filter.TotalHRU)
+		q = q.Where("node.total_hru >= ?", *filter.TotalHRU)
 	}
 	if filter.TotalMRU != nil {
-		q = q.Where("nodes_resources_view.total_mru >= ?", *filter.TotalMRU)
+		q = q.Where("node.total_mru >= ?", *filter.TotalMRU)
 	}
 	if filter.TotalSRU != nil {
-		q = q.Where("nodes_resources_view.total_sru >= ?", *filter.TotalSRU)
+		q = q.Where("node.total_sru >= ?", *filter.TotalSRU)
 	}
 	if filter.Country != nil {
 		q = q.Where("LOWER(node.country) = LOWER(?)", *filter.Country)
@@ -495,7 +404,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where("farm.name ILIKE '%' || ? || '%'", *filter.FarmNameContains)
 	}
 	if filter.FreeIPs != nil {
-		q = q.Where("(SELECT count(id) from public_ip WHERE public_ip.farm_id = farm.id AND public_ip.contract_id = 0) >= ?", *filter.FreeIPs)
+		q = q.Where("farms_cache.free_ips >= ?", *filter.FreeIPs)
 	}
 	if filter.IPv4 != nil {
 		q = q.Where("(COALESCE(public_config.ipv4, '') = '') != ?", *filter.IPv4)
@@ -510,16 +419,16 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)
 	}
 	if filter.Rentable != nil {
-		q = q.Where(`? = ((farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0) AND COALESCE(rent_contract.contract_id, 0) = 0)`, *filter.Rentable)
+		q = q.Where(`? = ((farm.dedicated_farm = true OR COALESCE(nodes_cache.node_contracts, 0) = 0) AND COALESCE(nodes_cache.renter, 0) = 0)`, *filter.Rentable)
 	}
 	if filter.RentedBy != nil {
-		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
+		q = q.Where(`COALESCE(nodes_cache.renter, 0) = ?`, *filter.RentedBy)
 	}
 	if filter.AvailableFor != nil {
-		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ? OR (COALESCE(rent_contract.twin_id, 0) = 0 AND farm.dedicated_farm = false)`, *filter.AvailableFor)
+		q = q.Where(`COALESCE(nodes_cache.renter, 0) = ? OR (COALESCE(nodes_cache.renter, 0) = 0 AND farm.dedicated_farm = false)`, *filter.AvailableFor)
 	}
 	if filter.Rented != nil {
-		q = q.Where(`? = (COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Rented)
+		q = q.Where(`? = (COALESCE(nodes_cache.renter, 0) != 0)`, *filter.Rented)
 	}
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
@@ -581,7 +490,7 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 			Offset(int(rand.Intn(int(count)) - int(limit.Size)))
 	} else {
 		if filter.AvailableFor != nil {
-			q = q.Order("(case when rent_contract is not null then 1 else 2 end)")
+			q = q.Order("(case when COALESCE(nodes_cache.renter, 0) != 0 then 1 else 2 end)")
 		}
 		q = q.Limit(int(limit.Size)).
 			Offset(int(limit.Page-1) * int(limit.Size)).
@@ -613,49 +522,57 @@ func (d *PostgresDatabase) shouldRetry(resError error) bool {
 
 // GetFarms return farms filtered and paginated
 func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
-	q := d.farmTableQuery()
+	nodeQuery := d.gormDB.Table("node").Select(
+		"node.farm_id",
+		"bool_or(COALESCE(nodes_cache.rent_contract_id, 0) != 0) as rented",
+	).Joins(`
+		LEFT JOIN nodes_cache ON node.node_id = nodes_cache.node_id
+	`).Joins(`
+		LEFT JOIN node_gpu ON node.twin_id = node_gpu.node_twin_id
+	`).Group("node.farm_id")
 
 	if filter.NodeFreeMRU != nil {
-		q = q.Where("node.free_mru >= ?", *filter.NodeFreeMRU)
+		nodeQuery = nodeQuery.Where("nodes_cache.free_mru >= ?", *filter.NodeFreeMRU)
 	}
 	if filter.NodeFreeHRU != nil {
-		q = q.Where("node.free_hru >= ?", *filter.NodeFreeHRU)
+		nodeQuery = nodeQuery.Where("nodes_cache.free_hru >= ?", *filter.NodeFreeHRU)
 	}
 	if filter.NodeFreeSRU != nil {
-		q = q.Where("node.free_sru >= ?", *filter.NodeFreeSRU)
+		nodeQuery = nodeQuery.Where("nodes_cache.free_sru >= ?", *filter.NodeFreeSRU)
 	}
 
 	if filter.NodeAvailableFor != nil {
-		q = q.Where("node.renter = ? OR (node.renter = 0 AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
-		q = q.Order("CASE WHEN bool_or(node.rent_contract_id != 0) = TRUE THEN 1 ELSE 2 END")
+		nodeQuery = nodeQuery.Where("nodes_cache.renter = ? OR (nodes_cache.renter = 0 AND nodes_cache.dedicated_farm = false)", *filter.NodeAvailableFor)
 	}
 
 	if filter.NodeHasGPU != nil {
-		q = q.Where("(node.gpu_id != '') = ?", *filter.NodeHasGPU)
+		nodeQuery = nodeQuery.Where("(COALESCE(node_gpu.id, '') != '') = ?", *filter.NodeHasGPU)
 	}
 
 	if filter.NodeRentedBy != nil {
-		q = q.Where("node.renter = ?", *filter.NodeRentedBy)
+		nodeQuery = nodeQuery.Where("nodes_cache.renter = ?", *filter.NodeRentedBy)
 	}
 
 	if filter.Country != nil {
-		q = q.Where("LOWER(node.country) = LOWER(?)", *filter.Country)
+		nodeQuery = nodeQuery.Where("LOWER(node.country) = LOWER(?)", *filter.Country)
 	}
 
 	if filter.NodeStatus != nil {
 		condition := nodestatus.DecideNodeStatusCondition(*filter.NodeStatus)
-		q = q.Where(condition)
+		nodeQuery = nodeQuery.Where(condition)
 	}
 
 	if filter.NodeCertified != nil {
-		q = q.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
+		nodeQuery = nodeQuery.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
 	}
 
+	q := d.farmTableQuery(nodeQuery)
+
 	if filter.FreeIPs != nil {
-		q = q.Where("public_ip_count.free_ips >= ?", *filter.FreeIPs)
+		q = q.Where("farms_cache.free_ips >= ?", *filter.FreeIPs)
 	}
 	if filter.TotalIPs != nil {
-		q = q.Where("public_ip_count.total_ips >= ?", *filter.TotalIPs)
+		q = q.Where("farms_cache.total_ips >= ?", *filter.TotalIPs)
 	}
 	if filter.StellarAddress != nil {
 		q = q.Where("farm.stellar_address = ?", *filter.StellarAddress)
@@ -696,6 +613,9 @@ func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) 
 		q = q.Limit(int(limit.Size)).
 			Offset(int(rand.Intn(int(count)) - int(limit.Size)))
 	} else {
+		if filter.NodeAvailableFor != nil {
+			q = q.Order("CASE WHEN node.rented = TRUE THEN 1 ELSE 2 END")
+		}
 		q = q.Limit(int(limit.Size)).
 			Offset(int(limit.Page-1) * int(limit.Size)).
 			Order("farm.farm_id")
@@ -704,6 +624,7 @@ func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) 
 	if res := q.Scan(&farms); res.Error != nil {
 		return farms, uint(count), errors.Wrap(res.Error, "failed to scan returned farm from database")
 	}
+
 	return farms, uint(count), nil
 }
 
@@ -751,30 +672,18 @@ func (d *PostgresDatabase) GetTwins(filter types.TwinFilter, limit types.Limit) 
 	return twins, uint(count), nil
 }
 
-// contractTableQuery union a contracts table from node/rent/name contracts tables
 func (d *PostgresDatabase) contractTableQuery() *gorm.DB {
-	contractTablesQuery := `(
-		SELECT contract_id, twin_id, state, created_at, '' AS name, node_id, deployment_data, deployment_hash, number_of_public_i_ps, 'node' AS type
-		FROM node_contract 
-		UNION 
-		SELECT contract_id, twin_id, state, created_at, '' AS name, node_id, '', '', 0, 'rent' AS type
-		FROM rent_contract 
-		UNION 
-		SELECT contract_id, twin_id, state, created_at, name, 0, '', '', 0, 'name' AS type
-		FROM name_contract
-	) contracts`
-
-	return d.gormDB.Table(contractTablesQuery).
+	return d.gormDB.Table("generic_contract").
 		Select(
-			"contracts.contract_id",
+			"generic_contract.contract_id",
 			"twin_id",
 			"state",
 			"created_at",
-			"name",
-			"node_id",
-			"deployment_data",
-			"deployment_hash",
-			"number_of_public_i_ps as number_of_public_ips",
+			"COALESCE(name, '') as name",
+			"COALESCE(node_id, 0) as node_id",
+			"COALESCE(deployment_data, '') as deployment_data",
+			"COALESCE(deployment_hash, '') as deployment_hash",
+			"COALESCE(number_of_public_i_ps, 0) as number_of_public_ips",
 			"type",
 		)
 }
@@ -793,7 +702,7 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 		q = q.Where("twin_id = ?", *filter.TwinID)
 	}
 	if filter.ContractID != nil {
-		q = q.Where("contracts.contract_id = ?", *filter.ContractID)
+		q = q.Where("generic_contract.contract_id = ?", *filter.ContractID)
 	}
 	if filter.NodeID != nil {
 		q = q.Where("node_id = ?", *filter.NodeID)
@@ -822,19 +731,20 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 	} else {
 		q = q.Limit(int(limit.Size)).
 			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("contract_id")
+			Order("generic_contract.contract_id")
 	}
 	var contracts []DBContract
 	if res := q.Scan(&contracts); res.Error != nil {
 		return contracts, uint(count), errors.Wrap(res.Error, "failed to scan returned contracts from database")
 	}
+
 	return contracts, uint(count), nil
 }
 
 // GetContract return a single contract info
 func (d *PostgresDatabase) GetContract(contractID uint32) (DBContract, error) {
 	q := d.contractTableQuery()
-	q = q.Where("contracts.contract_id = ?", contractID)
+	q = q.Where("generic_contract.contract_id = ?", contractID)
 
 	var contract DBContract
 	res := q.Scan(&contract)
