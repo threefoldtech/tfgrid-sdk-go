@@ -124,6 +124,125 @@
                 }
             }
         },
+        "/contracts/{contract_id}": {
+            "get": {
+                "description": "Get data about a single contract with its id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Contract"
+                ],
+                "summary": "Show single contract info",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Contract ID",
+                        "name": "contract_id",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.Contract"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/contracts/{contract_id}/bills": {
+            "get": {
+                "description": "Get all bills reports for a single contract with its id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ContractDills"
+                ],
+                "summary": "Show single contract bills",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Contract ID",
+                        "name": "contract_id",
+                        "in": "path"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max result per page",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Set bill reports' count on headers",
+                        "name": "ret_count",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.ContractBilling"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/farms": {
             "get": {
                 "description": "Get all farms on the grid, It has pagination",
@@ -1104,12 +1223,6 @@
         "types.Contract": {
             "type": "object",
             "properties": {
-                "billing": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/types.ContractBilling"
-                    }
-                },
                 "contractId": {
                     "type": "integer"
                 },

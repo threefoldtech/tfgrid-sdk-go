@@ -115,3 +115,23 @@ func (g *RetryingClient) NodeStatus(nodeID uint32) (res types.NodeStatus, err er
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("node_status"))
 	return
 }
+
+// Contract returns the contract with the give id
+func (g *RetryingClient) Contract(contractID uint32) (res types.Contract, err error) {
+	f := func() error {
+		res, err = g.cl.Contract(contractID)
+		return err
+	}
+	err = backoff.RetryNotify(f, bf(g.timeout), notify("contract"))
+	return
+}
+
+// ContractBills returns the contract bills with the give id
+func (g *RetryingClient) ContractBills(contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
+	f := func() error {
+		res, totalCount, err = g.cl.ContractBills(contractID, limit)
+		return err
+	}
+	err = backoff.RetryNotify(f, bf(g.timeout), notify("contract_bills"))
+	return
+}
