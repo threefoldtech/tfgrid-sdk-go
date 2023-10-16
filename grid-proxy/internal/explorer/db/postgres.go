@@ -27,6 +27,8 @@ var (
 	ErrFarmNotFound = errors.New("farm not found")
 	//ErrViewNotFound
 	ErrNodeResourcesViewNotFound = errors.New("ERROR: relation \"nodes_resources_view\" does not exist (SQLSTATE 42P01)")
+	// ErrContractNotFound contract not found
+	ErrContractNotFound = errors.New("contract not found")
 )
 
 const (
@@ -107,7 +109,7 @@ type PostgresDatabase struct {
 }
 
 // NewPostgresDatabase returns a new postgres db client
-func NewPostgresDatabase(host string, port int, user, password, dbname string) (Database, error) {
+func NewPostgresDatabase(host string, port int, user, password, dbname string, maxConns int) (Database, error) {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
@@ -121,7 +123,7 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string) (
 	}
 
 	sql.SetMaxIdleConns(3)
-	sql.SetMaxOpenConns(80)
+	sql.SetMaxOpenConns(maxConns)
 
 	err = gormDB.AutoMigrate(&NodeGPU{})
 	if err != nil {
@@ -429,9 +431,6 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 		).
 		Joins(
 			"LEFT JOIN location ON node.location_id = location.id",
-		).
-		Joins(
-			"LEFT JOIN node_gpu on node_gpu.node_twin_id = node.twin_id",
 		)
 }
 
@@ -526,28 +525,44 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
 	}
 
+	/*
+		used distinct selecting to avoid duplicated node after the join.
+		- postgres apply WHERE before DISTINCT so filters will still filter on the whole data.
+		- we don't return any gpu info on the node object so no worries of losing the data because DISTINCT.
+	*/
+	nodeGpuSubquery := d.gormDB.Table("node_gpu").
+		Select("DISTINCT ON (node_twin_id) node_twin_id")
+
 	if filter.HasGPU != nil {
-		q = q.Where("(COALESCE(node_gpu.id, '') != '') = ?", *filter.HasGPU)
+		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.id, '') != '') = ?", *filter.HasGPU)
 	}
 
 	if filter.GpuDeviceName != nil {
-		q = q.Where("COALESCE(node_gpu.device, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceName)
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.device, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceName)
 	}
 
 	if filter.GpuVendorName != nil {
-		q = q.Where("COALESCE(node_gpu.vendor, '') ILIKE '%' || ? || '%'", *filter.GpuVendorName)
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.vendor, '') ILIKE '%' || ? || '%'", *filter.GpuVendorName)
 	}
 
 	if filter.GpuVendorID != nil {
-		q = q.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuVendorID)
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuVendorID)
 	}
 
 	if filter.GpuDeviceID != nil {
-		q = q.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceID)
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceID)
 	}
 
 	if filter.GpuAvailable != nil {
-		q = q.Where("(COALESCE(node_gpu.contract, 0) = 0) = ?", *filter.GpuAvailable)
+		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.contract, 0) = 0) = ?", *filter.GpuAvailable)
+	}
+
+	if filter.HasGPU != nil || filter.GpuDeviceName != nil || filter.GpuVendorName != nil || filter.GpuVendorID != nil ||
+		filter.GpuDeviceID != nil || filter.GpuAvailable != nil {
+
+		q.Joins(
+			`INNER JOIN (?) AS gpu ON gpu.node_twin_id = node.twin_id`, nodeGpuSubquery,
+		)
 	}
 
 	var count int64
@@ -736,17 +751,20 @@ func (d *PostgresDatabase) GetTwins(filter types.TwinFilter, limit types.Limit) 
 	return twins, uint(count), nil
 }
 
-// GetContracts returns contracts filtered and paginated
-func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types.Limit) ([]DBContract, uint, error) {
-	q := d.gormDB.
-		Table(`(SELECT contract_id, twin_id, state, created_at, ''AS name, node_id, deployment_data, deployment_hash, number_of_public_i_ps, 'node' AS type
-	FROM node_contract 
-	UNION 
-	SELECT contract_id, twin_id, state, created_at, '' AS name, node_id, '', '', 0, 'rent' AS type
-	FROM rent_contract 
-	UNION 
-	SELECT contract_id, twin_id, state, created_at, name, 0, '', '', 0, 'name' AS type
-	FROM name_contract) contracts`).
+// contractTableQuery union a contracts table from node/rent/name contracts tables
+func (d *PostgresDatabase) contractTableQuery() *gorm.DB {
+	contractTablesQuery := `(
+		SELECT contract_id, twin_id, state, created_at, '' AS name, node_id, deployment_data, deployment_hash, number_of_public_i_ps, 'node' AS type
+		FROM node_contract 
+		UNION 
+		SELECT contract_id, twin_id, state, created_at, '' AS name, node_id, '', '', 0, 'rent' AS type
+		FROM rent_contract 
+		UNION 
+		SELECT contract_id, twin_id, state, created_at, name, 0, '', '', 0, 'name' AS type
+		FROM name_contract
+	) contracts`
+
+	return d.gormDB.Table(contractTablesQuery).
 		Select(
 			"contracts.contract_id",
 			"twin_id",
@@ -758,19 +776,13 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 			"deployment_hash",
 			"number_of_public_i_ps as number_of_public_ips",
 			"type",
-			"COALESCE(contract_billing.billings, '[]') as contract_billings",
-		).
-		Joins(
-			`LEFT JOIN (
-				SELECT 
-					contract_bill_report.contract_id,
-					COALESCE(json_agg(json_build_object('amountBilled', amount_billed, 'discountReceived', discount_received, 'timestamp', timestamp)), '[]') as billings
-				FROM
-					contract_bill_report
-				GROUP BY contract_id
-			) contract_billing
-			ON contracts.contract_id = contract_billing.contract_id`,
 		)
+}
+
+// GetContracts returns contracts filtered and paginated
+func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types.Limit) ([]DBContract, uint, error) {
+	q := d.contractTableQuery()
+
 	if filter.Type != nil {
 		q = q.Where("type = ?", *filter.Type)
 	}
@@ -817,6 +829,48 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 		return contracts, uint(count), errors.Wrap(res.Error, "failed to scan returned contracts from database")
 	}
 	return contracts, uint(count), nil
+}
+
+// GetContract return a single contract info
+func (d *PostgresDatabase) GetContract(contractID uint32) (DBContract, error) {
+	q := d.contractTableQuery()
+	q = q.Where("contracts.contract_id = ?", contractID)
+
+	var contract DBContract
+	res := q.Scan(&contract)
+
+	if res.Error != nil {
+		return DBContract{}, res.Error
+	}
+	if contract.ContractID == 0 {
+		return DBContract{}, ErrContractNotFound
+	}
+	return contract, nil
+}
+
+// GetContract return a single contract info
+func (d *PostgresDatabase) GetContractBills(contractID uint32, limit types.Limit) ([]ContractBilling, uint, error) {
+	q := d.gormDB.Table("contract_bill_report").
+		Select("amount_billed, discount_received, timestamp").
+		Where("contract_id = ?", contractID)
+
+	q = q.Limit(int(limit.Size)).
+		Offset(int(limit.Page-1) * int(limit.Size)).
+		Order("timestamp DESC")
+
+	var count int64
+	if limit.RetCount {
+		if res := q.Count(&count); res.Error != nil {
+			return nil, 0, errors.Wrap(res.Error, "couldn't get contract bills count")
+		}
+	}
+
+	var bills []ContractBilling
+	if res := q.Scan(&bills); res.Error != nil {
+		return bills, 0, errors.Wrap(res.Error, "failed to scan returned contract from database")
+	}
+
+	return bills, uint(count), nil
 }
 
 func (p *PostgresDatabase) UpsertNodesGPU(nodesGPU []types.NodeGPU) error {

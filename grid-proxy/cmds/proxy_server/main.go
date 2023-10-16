@@ -52,6 +52,7 @@ type flags struct {
 	indexerBatchSize         int
 	indexerResultWorkers     int
 	indexerBatchWorkers      int
+	maxPoolOpenConnections   int
 }
 
 func main() {
@@ -76,6 +77,7 @@ func main() {
 	flag.IntVar(&f.indexerBatchSize, "indexer-batch-size", 20, "batch size for the GPU indexer worker batch")
 	flag.IntVar(&f.indexerResultWorkers, "indexer-results-workers", 2, "number of workers to process indexer GPU info")
 	flag.IntVar(&f.indexerBatchWorkers, "indexer-batch-workers", 2, "number of workers to process batch GPU info")
+	flag.IntVar(&f.maxPoolOpenConnections, "max-open-conns", 80, "max number of db connection pool open connections")
 	flag.Parse()
 
 	// shows version and exit
@@ -110,7 +112,7 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to create relay client")
 	}
 
-	db, err := db.NewPostgresDatabase(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB)
+	db, err := db.NewPostgresDatabase(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB, f.maxPoolOpenConnections)
 	if err != nil {
 		log.Fatal().Err(err).Msg("couldn't get postgres client")
 	}

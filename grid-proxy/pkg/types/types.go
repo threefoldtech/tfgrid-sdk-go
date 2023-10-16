@@ -258,14 +258,24 @@ type RentContractDetails struct {
 	NodeID uint `json:"nodeId"`
 }
 
+// Contract represents a contract and its details after decoding to one of Details structs.
 type Contract struct {
-	ContractID uint              `json:"contractId"`
-	TwinID     uint              `json:"twinId"`
-	State      string            `json:"state"`
-	CreatedAt  uint              `json:"created_at"`
-	Type       string            `json:"type"`
-	Details    interface{}       `json:"details"`
-	Billing    []ContractBilling `json:"billing"`
+	ContractID uint        `json:"contract_id"`
+	TwinID     uint        `json:"twin_id"`
+	State      string      `json:"state"`
+	CreatedAt  uint        `json:"created_at"`
+	Type       string      `json:"type"`
+	Details    interface{} `json:"details"`
+}
+
+// RawContract represents a contract and its details in json RawMessage before decoding.
+type RawContract struct {
+	ContractID uint            `json:"contract_id"`
+	TwinID     uint            `json:"twin_id"`
+	State      string          `json:"state"`
+	CreatedAt  uint            `json:"created_at"`
+	Type       string          `json:"type"`
+	Details    json.RawMessage `json:"details"`
 }
 
 type Version struct {

@@ -308,11 +308,11 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.GpuVendorID != nil && !strings.Contains(gpu.ID, *f.GpuVendorID) {
+	if f.GpuVendorID != nil && !strings.Contains(strings.ToLower(gpu.ID), *f.GpuVendorID) {
 		return false
 	}
 
-	if f.GpuDeviceID != nil && !strings.Contains(gpu.ID, *f.GpuDeviceID) {
+	if f.GpuDeviceID != nil && !strings.Contains(strings.ToLower(gpu.ID), *f.GpuDeviceID) {
 		return false
 	}
 
@@ -320,5 +320,8 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if !ok && (f.HasGPU != nil || f.GpuDeviceName != nil || f.GpuVendorName != nil || f.GpuVendorID != nil || f.GpuDeviceID != nil || f.GpuAvailable != nil) {
+		return false
+	}
 	return true
 }

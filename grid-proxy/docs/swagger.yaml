@@ -38,10 +38,6 @@ definitions:
     type: object
   types.Contract:
     properties:
-      billing:
-        items:
-          $ref: '#/definitions/types.ContractBilling'
-        type: array
       contractId:
         type: integer
       created_at:
@@ -401,6 +397,84 @@ paths:
       summary: Show contracts on the grid
       tags:
       - GridProxy
+  /contracts/{contract_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get data about a single contract with its id
+      parameters:
+      - description: Contract ID
+        in: path
+        name: contract_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.Contract'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Show single contract info
+      tags:
+      - Contract
+  /contracts/{contract_id}/bills:
+    get:
+      consumes:
+      - application/json
+      description: Get all bills reports for a single contract with its id
+      parameters:
+      - description: Contract ID
+        in: path
+        name: contract_id
+        type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Max result per page
+        in: query
+        name: size
+        type: integer
+      - description: Set bill reports' count on headers
+        in: query
+        name: ret_count
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.ContractBilling'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Show single contract bills
+      tags:
+      - ContractDills
   /farms:
     get:
       consumes:
