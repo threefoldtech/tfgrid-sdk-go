@@ -10,23 +10,6 @@ type Result interface {
 	types.Contract | types.Farm | types.Node | types.Twin
 }
 
-func calcFreeResources(total NodeResourcesTotal, used NodeResourcesTotal) NodeResourcesTotal {
-	if total.MRU < used.MRU {
-		panic("total mru is less than mru")
-	}
-	if total.HRU < used.HRU {
-		panic("total hru is less than hru")
-	}
-	if total.SRU < used.SRU {
-		panic("total sru is less than sru")
-	}
-	return NodeResourcesTotal{
-		HRU: total.HRU - used.HRU,
-		SRU: total.SRU - used.SRU,
-		MRU: total.MRU - used.MRU,
-	}
-}
-
 func stringMatch(str string, sub_str string) bool {
 	return strings.Contains(strings.ToLower(str), strings.ToLower(sub_str))
 }

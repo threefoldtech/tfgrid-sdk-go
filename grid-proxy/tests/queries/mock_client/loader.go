@@ -2,9 +2,6 @@ package mock
 
 import (
 	"database/sql"
-	"math"
-
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 type DBData struct {
@@ -12,20 +9,22 @@ type DBData struct {
 	FarmIDMap          map[string]uint64
 	FreeIPs            map[uint64]uint64
 	TotalIPs           map[uint64]uint64
-	NodeUsedResources  map[uint64]NodeResourcesTotal
 	NodeRentedBy       map[uint64]uint64
 	NodeRentContractID map[uint64]uint64
 	FarmHasRentedNode  map[uint64]bool
 
 	Nodes               map[uint64]Node
+	NodesCacheMap       map[uint64]NodesCache
 	NodeTotalResources  map[uint64]NodeResourcesTotal
 	Farms               map[uint64]Farm
+	FarmsCacheMap       map[uint64]FarmsCache
 	Twins               map[uint64]Twin
 	PublicIPs           map[string]PublicIp
 	PublicConfigs       map[uint64]PublicConfig
-	NodeContracts       map[uint64]NodeContract
-	RentContracts       map[uint64]RentContract
-	NameContracts       map[uint64]NameContract
+	GenericContracts    map[uint64]GenericContract
+	NodeContracts       map[uint64]GenericContract
+	RentContracts       map[uint64]GenericContract
+	NameContracts       map[uint64]GenericContract
 	Billings            map[uint64][]ContractBillReport
 	ContractResources   map[string]ContractResources
 	NonDeletedContracts map[uint64][]uint64
@@ -54,7 +53,11 @@ func loadNodes(db *sql.DB, data *DBData) error {
 		COALESCE(updated_at, 0),
 		COALESCE(location_id, ''),
 		COALESCE(extra_fee, 0),
-		power
+		power,
+		total_hru,
+		total_sru,
+		total_cru,
+		total_mru
 	FROM
 		node;`)
 	if err != nil {
@@ -82,6 +85,10 @@ func loadNodes(db *sql.DB, data *DBData) error {
 			&node.LocationID,
 			&node.ExtraFee,
 			&node.Power,
+			&node.TotalHRU,
+			&node.TotalSRU,
+			&node.TotalCRU,
+			&node.TotalMRU,
 		); err != nil {
 			return err
 		}
@@ -91,32 +98,70 @@ func loadNodes(db *sql.DB, data *DBData) error {
 	return nil
 }
 
-func calcNodesUsedResources(data *DBData) error {
-
-	for _, node := range data.Nodes {
-		used := NodeResourcesTotal{
-			MRU: uint64(2 * gridtypes.Gigabyte),
-			SRU: uint64(100 * gridtypes.Gigabyte),
-		}
-		tenpercent := uint64(math.Round(float64(data.NodeTotalResources[node.NodeID].MRU) / 10))
-		if used.MRU < tenpercent {
-			used.MRU = tenpercent
-		}
-		data.NodeUsedResources[node.NodeID] = used
+func loadNodesCache(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT
+		node_id,
+		farm_id,
+		node_twin_id,
+		free_hru,
+		free_sru,
+		free_mru,
+		free_cru,
+		COALESCE(renter, 0),
+		COALESCE(rent_contract_id, 0),
+		node_contracts,
+		free_gpus
+	FROM
+		nodes_cache;`)
+	if err != nil {
+		return err
 	}
-
-	for _, contract := range data.NodeContracts {
-		if contract.State == "Deleted" {
-			continue
+	for rows.Next() {
+		var cache NodesCache
+		if err := rows.Scan(
+			&cache.NodeID,
+			&cache.FarmID,
+			&cache.NodeTwinID,
+			&cache.FreeHRU,
+			&cache.FreeSRU,
+			&cache.FreeMRU,
+			&cache.FreeCRU,
+			&cache.Renter,
+			&cache.RentContractID,
+			&cache.NodeContracts,
+			&cache.FreeGPUs,
+		); err != nil {
+			return err
 		}
-		contratResourceID := contract.ResourcesUsedID
-		data.NodeUsedResources[contract.NodeID] = NodeResourcesTotal{
-			CRU: data.ContractResources[contratResourceID].CRU + data.NodeUsedResources[contract.NodeID].CRU,
-			MRU: data.ContractResources[contratResourceID].MRU + data.NodeUsedResources[contract.NodeID].MRU,
-			HRU: data.ContractResources[contratResourceID].HRU + data.NodeUsedResources[contract.NodeID].HRU,
-			SRU: data.ContractResources[contratResourceID].SRU + data.NodeUsedResources[contract.NodeID].SRU,
-		}
+		data.NodesCacheMap[cache.NodeID] = cache
+	}
+	return nil
+}
 
+func loadFarmsCache(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT
+		farm_id,
+		free_ips,
+		total_ips,
+		COALESCE(ips, '[]')
+	FROM
+		farms_cache;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var cache FarmsCache
+		if err := rows.Scan(
+			&cache.FarmID,
+			&cache.FreeIPs,
+			&cache.TotalIPs,
+			&cache.IPs,
+		); err != nil {
+			return err
+		}
+		data.FarmsCacheMap[cache.FarmID] = cache
 	}
 	return nil
 }
@@ -305,7 +350,7 @@ func loadPublicConfigs(db *sql.DB, data *DBData) error {
 	}
 	return nil
 }
-func loadContracts(db *sql.DB, data *DBData) error {
+func loadGenericContracts(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 	SELECT
 		COALESCE(id, ''),
@@ -318,14 +363,16 @@ func loadContracts(db *sql.DB, data *DBData) error {
 		COALESCE(number_of_public_i_ps, 0),
 		COALESCE(state, ''),
 		COALESCE(created_at, 0),
-		COALESCE(resources_used_id, '')
+		COALESCE(resources_used_id, ''),
+		COALESCE(name, ''),
+		type
 	FROM
-		node_contract;`)
+		generic_contract;`)
 	if err != nil {
 		return err
 	}
 	for rows.Next() {
-		var contract NodeContract
+		var contract GenericContract
 		if err := rows.Scan(
 			&contract.ID,
 			&contract.GridVersion,
@@ -338,79 +385,25 @@ func loadContracts(db *sql.DB, data *DBData) error {
 			&contract.State,
 			&contract.CreatedAt,
 			&contract.ResourcesUsedID,
+			&contract.Name,
+			&contract.Type,
 		); err != nil {
 			return err
 		}
-		data.NodeContracts[contract.ContractID] = contract
+
+		switch contract.Type {
+		case "node":
+			data.NodeContracts[contract.ContractID] = contract
+		case "name":
+			data.NameContracts[contract.ContractID] = contract
+		case "rent":
+			data.RentContracts[contract.ContractID] = contract
+		}
+
 		if contract.State != "Deleted" {
 			data.NonDeletedContracts[contract.NodeID] = append(data.NonDeletedContracts[contract.NodeID], contract.ContractID)
 		}
 
-	}
-	return nil
-}
-func loadRentContracts(db *sql.DB, data *DBData) error {
-	rows, err := db.Query(`
-	SELECT
-		COALESCE(id, ''),
-		COALESCE(grid_version, 0),
-		COALESCE(contract_id, 0),
-		COALESCE(twin_id, 0),
-		COALESCE(node_id, 0),
-		COALESCE(state, ''),
-		COALESCE(created_at, 0)
-	FROM
-		rent_contract;`)
-	if err != nil {
-		return err
-	}
-	for rows.Next() {
-		var contract RentContract
-		if err := rows.Scan(
-
-			&contract.ID,
-			&contract.GridVersion,
-			&contract.ContractID,
-			&contract.TwinID,
-			&contract.NodeID,
-			&contract.State,
-			&contract.CreatedAt,
-		); err != nil {
-			return err
-		}
-		data.RentContracts[contract.ContractID] = contract
-	}
-	return nil
-}
-func loadNameContracts(db *sql.DB, data *DBData) error {
-	rows, err := db.Query(`
-	SELECT
-		COALESCE(id, ''),
-		COALESCE(grid_version, 0),
-		COALESCE(contract_id, 0),
-		COALESCE(twin_id, 0),
-		COALESCE(name, ''),
-		COALESCE(state, ''),
-		COALESCE(created_at, 0)
-	FROM
-		name_contract;`)
-	if err != nil {
-		return err
-	}
-	for rows.Next() {
-		var contract NameContract
-		if err := rows.Scan(
-			&contract.ID,
-			&contract.GridVersion,
-			&contract.ContractID,
-			&contract.TwinID,
-			&contract.Name,
-			&contract.State,
-			&contract.CreatedAt,
-		); err != nil {
-			return err
-		}
-		data.NameContracts[contract.ContractID] = contract
 	}
 	return nil
 }
@@ -516,24 +509,32 @@ func Load(db *sql.DB) (DBData, error) {
 		Twins:               make(map[uint64]Twin),
 		PublicIPs:           make(map[string]PublicIp),
 		PublicConfigs:       make(map[uint64]PublicConfig),
-		NodeContracts:       make(map[uint64]NodeContract),
-		RentContracts:       make(map[uint64]RentContract),
-		NameContracts:       make(map[uint64]NameContract),
+		NodeContracts:       make(map[uint64]GenericContract),
+		RentContracts:       make(map[uint64]GenericContract),
+		NameContracts:       make(map[uint64]GenericContract),
 		NodeRentedBy:        make(map[uint64]uint64),
 		NodeRentContractID:  make(map[uint64]uint64),
 		Billings:            make(map[uint64][]ContractBillReport),
 		ContractResources:   make(map[string]ContractResources),
 		NodeTotalResources:  make(map[uint64]NodeResourcesTotal),
-		NodeUsedResources:   make(map[uint64]NodeResourcesTotal),
 		NonDeletedContracts: make(map[uint64][]uint64),
 		GPUs:                make(map[uint64]NodeGPU),
 		FarmHasRentedNode:   make(map[uint64]bool),
+		NodesCacheMap:       make(map[uint64]NodesCache),
+		FarmsCacheMap:       make(map[uint64]FarmsCache),
+		GenericContracts:    make(map[uint64]GenericContract),
 		DB:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {
 		return data, err
 	}
+	if err := loadNodesCache(db, &data); err != nil {
+		return data, err
+	}
 	if err := loadFarms(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadFarmsCache(db, &data); err != nil {
 		return data, err
 	}
 	if err := loadTwins(db, &data); err != nil {
@@ -545,13 +546,7 @@ func Load(db *sql.DB) (DBData, error) {
 	if err := loadPublicIPs(db, &data); err != nil {
 		return data, err
 	}
-	if err := loadContracts(db, &data); err != nil {
-		return data, err
-	}
-	if err := loadRentContracts(db, &data); err != nil {
-		return data, err
-	}
-	if err := loadNameContracts(db, &data); err != nil {
+	if err := loadGenericContracts(db, &data); err != nil {
 		return data, err
 	}
 	if err := loadContractResources(db, &data); err != nil {
@@ -566,9 +561,9 @@ func Load(db *sql.DB) (DBData, error) {
 	if err := loadNodeGPUs(db, &data); err != nil {
 		return data, err
 	}
-	if err := calcNodesUsedResources(&data); err != nil {
-		return data, err
-	}
+	// if err := calcNodesUsedResources(&data); err != nil {
+	// 	return data, err
+	// }
 	if err := calcRentInfo(&data); err != nil {
 		return data, err
 	}

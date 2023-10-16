@@ -2,6 +2,7 @@ package mock
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -77,7 +78,7 @@ func (g *GridProxyMockClient) Contracts(filter types.ContractFilter, limit types
 	return
 }
 
-func (c *RentContract) satisfies(f types.ContractFilter) bool {
+func (c *GenericContract) satisfies(f types.ContractFilter) bool {
 	if f.ContractID != nil && *f.ContractID != c.ContractID {
 		return false
 	}
@@ -90,7 +91,7 @@ func (c *RentContract) satisfies(f types.ContractFilter) bool {
 		return false
 	}
 
-	if f.Type != nil && *f.Type != "rent" {
+	if f.Type != nil && !strings.EqualFold(*f.Type, c.Type) {
 		return false
 	}
 
@@ -98,47 +99,7 @@ func (c *RentContract) satisfies(f types.ContractFilter) bool {
 		return false
 	}
 
-	if f.Name != nil && *f.Name != "" {
-		return false
-	}
-
-	if f.NumberOfPublicIps != nil && *f.NumberOfPublicIps != 0 {
-		return false
-	}
-
-	if f.DeploymentData != nil && *f.DeploymentData != "" {
-		return false
-	}
-
-	if f.DeploymentHash != nil && *f.DeploymentHash != "" {
-		return false
-	}
-
-	return true
-}
-
-func (c *NodeContract) satisfies(f types.ContractFilter) bool {
-	if f.ContractID != nil && *f.ContractID != c.ContractID {
-		return false
-	}
-
-	if f.TwinID != nil && *f.TwinID != c.TwinID {
-		return false
-	}
-
-	if f.NodeID != nil && *f.NodeID != c.NodeID {
-		return false
-	}
-
-	if f.Type != nil && *f.Type != "node" {
-		return false
-	}
-
-	if f.State != nil && *f.State != c.State {
-		return false
-	}
-
-	if f.Name != nil && *f.Name != "" {
+	if f.Name != nil && *f.Name != c.Name {
 		return false
 	}
 
@@ -151,46 +112,6 @@ func (c *NodeContract) satisfies(f types.ContractFilter) bool {
 	}
 
 	if f.DeploymentHash != nil && *f.DeploymentHash != c.DeploymentHash {
-		return false
-	}
-
-	return true
-}
-
-func (c *NameContract) satisfies(f types.ContractFilter) bool {
-	if f.ContractID != nil && *f.ContractID != c.ContractID {
-		return false
-	}
-
-	if f.TwinID != nil && *f.TwinID != c.TwinID {
-		return false
-	}
-
-	if f.NodeID != nil && *f.NodeID != 0 {
-		return false
-	}
-
-	if f.Type != nil && *f.Type != "name" {
-		return false
-	}
-
-	if f.State != nil && *f.State != c.State {
-		return false
-	}
-
-	if f.Name != nil && *f.Name != c.Name {
-		return false
-	}
-
-	if f.NumberOfPublicIps != nil && *f.NumberOfPublicIps != 0 {
-		return false
-	}
-
-	if f.DeploymentData != nil && *f.DeploymentData != "" {
-		return false
-	}
-
-	if f.DeploymentHash != nil && *f.DeploymentHash != "" {
 		return false
 	}
 

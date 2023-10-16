@@ -26,6 +26,7 @@ func (g *GridProxyMockClient) Farms(filter types.FarmFilter, limit types.Limit) 
 			IP:         publicIP.IP,
 			ContractID: int(publicIP.ContractID),
 			Gateway:    publicIP.Gateway,
+			FarmID:     publicIP.FarmID,
 		})
 	}
 
@@ -117,9 +118,12 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			continue
 		}
 
-		total := data.NodeTotalResources[node.NodeID]
-		used := data.NodeUsedResources[node.NodeID]
-		free := calcFreeResources(total, used)
+		free := NodeResourcesTotal{
+			HRU: data.NodesCacheMap[node.NodeID].FreeHRU,
+			SRU: data.NodesCacheMap[node.NodeID].FreeSRU,
+			MRU: data.NodesCacheMap[node.NodeID].FreeMRU,
+		}
+
 		if filter.NodeFreeHRU != nil && free.HRU < *filter.NodeFreeHRU {
 			continue
 		}

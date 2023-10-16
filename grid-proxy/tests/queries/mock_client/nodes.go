@@ -43,16 +43,16 @@ func (g *GridProxyMockClient) Nodes(filter types.NodeFilter, limit types.Limit) 
 				Created:         int64(node.Created),
 				FarmingPolicyID: int(node.FarmingPolicyID),
 				TotalResources: types.Capacity{
-					CRU: g.data.NodeTotalResources[node.NodeID].CRU,
-					HRU: gridtypes.Unit(g.data.NodeTotalResources[node.NodeID].HRU),
-					MRU: gridtypes.Unit(g.data.NodeTotalResources[node.NodeID].MRU),
-					SRU: gridtypes.Unit(g.data.NodeTotalResources[node.NodeID].SRU),
+					CRU: node.TotalCRU,
+					MRU: gridtypes.Unit(node.TotalMRU),
+					SRU: gridtypes.Unit(node.TotalSRU),
+					HRU: gridtypes.Unit(node.TotalHRU),
 				},
 				UsedResources: types.Capacity{
-					CRU: g.data.NodeUsedResources[node.NodeID].CRU,
-					HRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].HRU),
-					MRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].MRU),
-					SRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].SRU),
+					CRU: 0,
+					HRU: gridtypes.Unit(node.TotalHRU - g.data.NodesCacheMap[node.NodeID].FreeHRU),
+					MRU: gridtypes.Unit(node.TotalMRU - g.data.NodesCacheMap[node.NodeID].FreeMRU),
+					SRU: gridtypes.Unit(node.TotalSRU - g.data.NodesCacheMap[node.NodeID].FreeSRU),
 				},
 				Location: types.Location{
 					Country: node.Country,
@@ -121,16 +121,16 @@ func (g *GridProxyMockClient) Node(nodeID uint32) (res types.NodeWithNestedCapac
 		FarmingPolicyID: int(node.FarmingPolicyID),
 		Capacity: types.CapacityResult{
 			Total: types.Capacity{
-				CRU: g.data.NodeTotalResources[node.NodeID].CRU,
-				HRU: gridtypes.Unit(g.data.NodeTotalResources[node.NodeID].HRU),
-				MRU: gridtypes.Unit(g.data.NodeTotalResources[node.NodeID].MRU),
-				SRU: gridtypes.Unit(g.data.NodeTotalResources[node.NodeID].SRU),
+				CRU: node.TotalCRU,
+				HRU: gridtypes.Unit(node.TotalHRU),
+				MRU: gridtypes.Unit(node.TotalMRU),
+				SRU: gridtypes.Unit(node.TotalSRU),
 			},
 			Used: types.Capacity{
-				CRU: g.data.NodeUsedResources[node.NodeID].CRU,
-				HRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].HRU),
-				MRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].MRU),
-				SRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].SRU),
+				CRU: 0,
+				HRU: gridtypes.Unit(node.TotalHRU - g.data.NodesCacheMap[node.NodeID].FreeHRU),
+				MRU: gridtypes.Unit(node.TotalMRU - g.data.NodesCacheMap[node.NodeID].FreeMRU),
+				SRU: gridtypes.Unit(node.TotalSRU - g.data.NodesCacheMap[node.NodeID].FreeSRU),
 			},
 		},
 		Location: types.Location{
@@ -178,8 +178,11 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	total := data.NodeTotalResources[n.NodeID]
-	used := data.NodeUsedResources[n.NodeID]
-	free := calcFreeResources(total, used)
+	free := NodeResourcesTotal{
+		HRU: data.NodesCacheMap[n.NodeID].FreeHRU,
+		SRU: data.NodesCacheMap[n.NodeID].FreeSRU,
+		MRU: data.NodesCacheMap[n.NodeID].FreeMRU,
+	}
 
 	if f.Status != nil && *f.Status != nodestatus.DecideNodeStatus(nodePower, int64(n.UpdatedAt)) {
 		return false
