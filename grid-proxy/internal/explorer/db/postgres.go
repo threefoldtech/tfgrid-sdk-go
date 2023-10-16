@@ -431,9 +431,6 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 		).
 		Joins(
 			"LEFT JOIN location ON node.location_id = location.id",
-		).
-		Joins(
-			"LEFT JOIN node_gpu on node_gpu.node_twin_id = node.twin_id",
 		)
 }
 
@@ -528,28 +525,44 @@ func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) 
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
 	}
 
+	/*
+		used distinct selecting to avoid duplicated node after the join.
+		- postgres apply WHERE before DISTINCT so filters will still filter on the whole data.
+		- we don't return any gpu info on the node object so no worries of losing the data because DISTINCT.
+	*/
+	nodeGpuSubquery := d.gormDB.Table("node_gpu").
+		Select("DISTINCT ON (node_twin_id) node_twin_id")
+
 	if filter.HasGPU != nil {
-		q = q.Where("(COALESCE(node_gpu.id, '') != '') = ?", *filter.HasGPU)
+		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.id, '') != '') = ?", *filter.HasGPU)
 	}
 
 	if filter.GpuDeviceName != nil {
-		q = q.Where("COALESCE(node_gpu.device, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceName)
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.device, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceName)
 	}
 
 	if filter.GpuVendorName != nil {
-		q = q.Where("COALESCE(node_gpu.vendor, '') ILIKE '%' || ? || '%'", *filter.GpuVendorName)
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.vendor, '') ILIKE '%' || ? || '%'", *filter.GpuVendorName)
 	}
 
 	if filter.GpuVendorID != nil {
-		q = q.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuVendorID)
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuVendorID)
 	}
 
 	if filter.GpuDeviceID != nil {
-		q = q.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceID)
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceID)
 	}
 
 	if filter.GpuAvailable != nil {
-		q = q.Where("(COALESCE(node_gpu.contract, 0) = 0) = ?", *filter.GpuAvailable)
+		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.contract, 0) = 0) = ?", *filter.GpuAvailable)
+	}
+
+	if filter.HasGPU != nil || filter.GpuDeviceName != nil || filter.GpuVendorName != nil || filter.GpuVendorID != nil ||
+		filter.GpuDeviceID != nil || filter.GpuAvailable != nil {
+
+		q.Joins(
+			`INNER JOIN (?) AS gpu ON gpu.node_twin_id = node.twin_id`, nodeGpuSubquery,
+		)
 	}
 
 	var count int64
