@@ -50,6 +50,16 @@ func (r *requestCounter) Counters(filter types.StatsFilter) (res types.Counters,
 	return types.Counters{}, errors.New("error")
 }
 
+func (r *requestCounter) Contract(contractID uint32) (res types.Contract, err error) {
+	r.Counter++
+	return types.Contract{}, errors.New("error")
+}
+
+func (r *requestCounter) ContractBills(contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
+	r.Counter++
+	return nil, 0, errors.New("error")
+}
+
 func retryingConstructor(u string) Client {
 	return NewRetryingClientWithTimeout(NewClient(u), 1*time.Millisecond)
 }
