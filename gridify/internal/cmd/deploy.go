@@ -54,7 +54,9 @@ func Deploy(ctx context.Context, vmSpec deployer.VMSpec, ports []uint, debug boo
 		return err
 	}
 
-	fqdns, err := deployer.Deploy(ctx, vmSpec, ports)
+	deploymentName := randName(10)
+
+	fqdns, err := deployer.Deploy(ctx, vmSpec, ports, deploymentName)
 	if err != nil {
 		return err
 	}
