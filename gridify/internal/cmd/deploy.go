@@ -3,7 +3,9 @@ package cmd
 
 import (
 	"context"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -54,7 +56,8 @@ func Deploy(ctx context.Context, vmSpec deployer.VMSpec, ports []uint, debug boo
 		return err
 	}
 
-	fqdns, err := deployer.Deploy(ctx, vmSpec, ports)
+	generator := *rand.New(rand.NewSource(time.Now().UnixNano()))
+	fqdns, err := deployer.Deploy(ctx, vmSpec, ports, generator)
 	if err != nil {
 		return err
 	}

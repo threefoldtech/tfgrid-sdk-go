@@ -3,6 +3,7 @@ package deployer
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"strings"
 
@@ -55,8 +56,8 @@ func buildNodeFilter(vmSpec VMSpec) types.NodeFilter {
 	return filter
 }
 
-func buildNetwork(projectName string, node uint32) workloads.ZNet {
-	networkName := randName(10)
+func buildNetwork(projectName string, node uint32, generator rand.Rand) workloads.ZNet {
+	networkName := randName(10, generator)
 	network := workloads.ZNet{
 		Name:  networkName,
 		Nodes: []uint32{node},
@@ -69,8 +70,8 @@ func buildNetwork(projectName string, node uint32) workloads.ZNet {
 	return network
 }
 
-func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL string, node uint32) workloads.Deployment {
-	vmName := randName(10)
+func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL string, node uint32, generator rand.Rand) workloads.Deployment {
+	vmName := randName(10, generator)
 	vm := workloads.VM{
 		Name:       vmName,
 		Flist:      vmFlist,
@@ -90,8 +91,8 @@ func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL string, no
 	return dl
 }
 
-func buildGateway(backend, projectName string, node uint32) workloads.GatewayNameProxy {
-	subdomain := randName(10)
+func buildGateway(backend, projectName string, node uint32, generator rand.Rand) workloads.GatewayNameProxy {
+	subdomain := randName(10, generator)
 	gateway := workloads.GatewayNameProxy{
 		NodeID:       node,
 		Name:         subdomain,

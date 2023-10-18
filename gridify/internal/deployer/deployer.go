@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/url"
 	"strconv"
 	"strings"
@@ -44,7 +45,7 @@ func NewDeployer(tfPluginClient tfplugin.TFPluginClientInterface, repoURL string
 }
 
 // Deploy deploys a project and map each port to a domain
-func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint) (map[uint]string, error) {
+func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint, generator rand.Rand) (map[uint]string, error) {
 
 	contracts, err := d.tfPluginClient.ListContractsOfProjectName(d.projectName)
 	if err != nil {
@@ -68,8 +69,8 @@ func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint) (map
 		)
 	}
 
-	network := buildNetwork(d.projectName, node)
-	dl := buildDeployment(vmSpec, network.Name, d.projectName, d.repoURL, node)
+	network := buildNetwork(d.projectName, node, generator)
+	dl := buildDeployment(vmSpec, network.Name, d.projectName, d.repoURL, node, generator)
 
 	d.logger.Info().Msg("deploying a network")
 	err = d.tfPluginClient.DeployNetwork(ctx, &network)
@@ -95,7 +96,7 @@ func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint) (map
 	for _, port := range ports {
 		backend := fmt.Sprintf("%s:%d", portlessBackend, port)
 		d.logger.Info().Msgf("deploying a gateway for port %d", port)
-		gateway := buildGateway(backend, d.projectName, node)
+		gateway := buildGateway(backend, d.projectName, node, generator)
 		err := d.tfPluginClient.DeployGatewayName(ctx, &gateway)
 		if err != nil {
 			return map[uint]string{}, errors.Wrapf(err, "could not deploy gateway %s on node %d", gateway.Name, node)
@@ -157,7 +158,6 @@ func (d *Deployer) Get() (map[string]string, error) {
 }
 
 func (d *Deployer) getProjectName() (string, error) {
-
 	splitURL := strings.Split(string(d.repoURL), "/")
 	projectName, _, found := strings.Cut(splitURL[len(splitURL)-1], ".git")
 	if !found {
