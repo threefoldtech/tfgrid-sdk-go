@@ -1,6 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/grid-proxy
 
-go 1.19
+go 1.20
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
