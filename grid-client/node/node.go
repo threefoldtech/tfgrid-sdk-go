@@ -396,16 +396,16 @@ func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc N
 
 // GetNodeFreeWGPort returns node free wireguard port
 func (n *NodeClient) GetNodeFreeWGPort(ctx context.Context, nodeID uint32) (int, error) {
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	freePorts, err := n.NetworkListWGPorts(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to list wg ports")
 	}
 	log.Debug().Msgf("reserved ports for node %d: %v", nodeID, freePorts)
-	p := uint(rand.Intn(6000) + 2000)
+	p := uint(r.Intn(6000) + 2000)
 
 	for contains(freePorts, uint16(p)) {
-		p = uint(rand.Intn(6000) + 2000)
+		p = uint(r.Intn(6000) + 2000)
 	}
 	log.Debug().Msgf("Selected port for node %d is %d", nodeID, p)
 	return int(p), nil
@@ -501,7 +501,6 @@ func (n *NodeClient) NetworkListAllInterfaces(ctx context.Context) (result map[s
 	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result)
 
 	return
-
 }
 
 // NetworkSetPublicExitDevice select which physical interface to use as an exit device
