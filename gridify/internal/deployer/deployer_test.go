@@ -3,7 +3,6 @@ package deployer
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -15,20 +14,20 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/mocks"
 )
 
-func TestDeploy(t *testing.T) {
-	generator := *rand.New(rand.NewSource(1))
+const deploymentName = "test"
 
+func TestDeploy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	repoURL := "https://github.com/threefoldtech/tfgrid-sdk-go/gridify.git"
 	projectName := "gridify"
 	filter := buildNodeFilter(Eco)
-	network := buildNetwork(projectName, 1, generator)
-	deployment := buildDeployment(Eco, network.Name, projectName, repoURL, 1, generator)
+	network := buildNetwork(projectName, deploymentName, 1)
+	deployment := buildDeployment(Eco, network.Name, projectName, repoURL, deploymentName, 1)
 	vmIP := "10.10.10.10/24"
-	gateway1 := buildGateway("http://10.10.10.10:80", projectName, 1, generator)
-	gateway2 := buildGateway("http://10.10.10.10:8080", projectName, 1, generator)
+	gateway1 := buildGateway("http://10.10.10.10:80", projectName, deploymentName, 1)
+	gateway2 := buildGateway("http://10.10.10.10:8080", projectName, deploymentName, 1)
 
 	clientMock := mocks.NewMockTFPluginClientInterface(ctrl)
 
@@ -41,7 +40,7 @@ func TestDeploy(t *testing.T) {
 			ListContractsOfProjectName(projectName).
 			Return(graphql.Contracts{}, errors.New("error"))
 
-		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, generator)
+		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
 		assert.Error(t, err)
 	})
 	t.Run("deployment for same project already exists", func(t *testing.T) {
@@ -50,7 +49,7 @@ func TestDeploy(t *testing.T) {
 			ListContractsOfProjectName(projectName).
 			Return(graphql.Contracts{NameContracts: []graphql.Contract{{ContractID: "10"}}}, nil)
 
-		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, generator)
+		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
 		assert.Error(t, err)
 	})
 	t.Run("error finding available nodes", func(t *testing.T) {
@@ -69,11 +68,10 @@ func TestDeploy(t *testing.T) {
 			GetGridNetwork().
 			Return("dev")
 
-		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, generator)
+		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
 		assert.Error(t, err)
 	})
 	t.Run("network deployment failed", func(t *testing.T) {
-		generator := *rand.New(rand.NewSource(1))
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -89,11 +87,10 @@ func TestDeploy(t *testing.T) {
 			DeployNetwork(gomock.Any(), &network).
 			Return(errors.New("error"))
 
-		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, generator)
+		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
 		assert.Error(t, err)
 	})
 	t.Run("vm deployment failed", func(t *testing.T) {
-		generator := *rand.New(rand.NewSource(1))
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -114,11 +111,10 @@ func TestDeploy(t *testing.T) {
 			DeployDeployment(gomock.Any(), &deployment).
 			Return(errors.New("error"))
 
-		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, generator)
+		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
 		assert.Error(t, err)
 	})
 	t.Run("loading vm failed", func(t *testing.T) {
-		generator := *rand.New(rand.NewSource(1))
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -144,11 +140,10 @@ func TestDeploy(t *testing.T) {
 			LoadVMFromGrid(gomock.Any(), deployment.Name, deployment.Name).
 			Return(workloads.VM{}, errors.New("error"))
 
-		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, generator)
+		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
 		assert.Error(t, err)
 	})
 	t.Run("gateway deployment failed", func(t *testing.T) {
-		generator := *rand.New(rand.NewSource(1))
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -179,11 +174,10 @@ func TestDeploy(t *testing.T) {
 			DeployGatewayName(gomock.Any(), &gateway1).
 			Return(errors.New("error"))
 
-		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, generator)
+		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
 		assert.Error(t, err)
 	})
 	t.Run("loading gateway failed", func(t *testing.T) {
-		generator := *rand.New(rand.NewSource(1))
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -219,11 +213,10 @@ func TestDeploy(t *testing.T) {
 			LoadGatewayNameFromGrid(gomock.Any(), gateway1.Name, gateway1.Name).
 			Return(workloads.GatewayNameProxy{}, errors.New("error"))
 
-		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, generator)
+		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
 		assert.Error(t, err)
 	})
 	t.Run("deploying using one port", func(t *testing.T) {
-		generator := *rand.New(rand.NewSource(1))
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -259,12 +252,11 @@ func TestDeploy(t *testing.T) {
 			LoadGatewayNameFromGrid(gomock.Any(), gateway1.Name, gateway1.Name).
 			Return(workloads.GatewayNameProxy{FQDN: "domain1"}, nil)
 
-		fqdns, err := deployer.Deploy(context.Background(), Eco, []uint{80}, generator)
+		fqdns, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
 		assert.NoError(t, err)
 		assert.Equal(t, fqdns, map[uint]string{80: "domain1"})
 	})
 	t.Run("deploying using multiple ports", func(t *testing.T) {
-		generator := *rand.New(rand.NewSource(1))
 		clientMock.
 			EXPECT().
 			ListContractsOfProjectName(projectName).
@@ -310,7 +302,7 @@ func TestDeploy(t *testing.T) {
 			LoadGatewayNameFromGrid(gomock.Any(), gateway2.Name, gateway2.Name).
 			Return(workloads.GatewayNameProxy{FQDN: "domain2"}, nil)
 
-		fqdns, err := deployer.Deploy(context.Background(), Eco, []uint{80, 8080}, generator)
+		fqdns, err := deployer.Deploy(context.Background(), Eco, []uint{80, 8080}, deploymentName)
 		assert.NoError(t, err)
 
 		assert.Equal(t, fqdns, map[uint]string{80: "domain1", 8080: "domain2"})

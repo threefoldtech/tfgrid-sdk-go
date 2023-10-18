@@ -396,16 +396,15 @@ func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc N
 
 // GetNodeFreeWGPort returns node free wireguard port
 func (n *NodeClient) GetNodeFreeWGPort(ctx context.Context, nodeID uint32) (int, error) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	freePorts, err := n.NetworkListWGPorts(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to list wg ports")
 	}
 	log.Debug().Msgf("reserved ports for node %d: %v", nodeID, freePorts)
-	p := uint(r.Intn(6000) + 2000)
+	p := uint(rand.Intn(6000) + 2000)
 
 	for contains(freePorts, uint16(p)) {
-		p = uint(r.Intn(6000) + 2000)
+		p = uint(rand.Intn(6000) + 2000)
 	}
 	log.Debug().Msgf("Selected port for node %d is %d", nodeID, p)
 	return int(p), nil
