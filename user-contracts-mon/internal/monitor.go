@@ -21,7 +21,7 @@ type Monitor struct {
 }
 
 // NewMonitor creates a new monitor from parsed config/env file
-func NewMonitor(conf Config) (Monitor, error) {
+func NewMonitor(conf Config) Monitor {
 	mon := Monitor{}
 	mon.Mnemonic = conf.mnemonic
 	mon.Network = conf.network
@@ -29,48 +29,45 @@ func NewMonitor(conf Config) (Monitor, error) {
 	mon.BotToken = conf.botToken
 	mon.Bot = echotron.NewAPI(mon.BotToken)
 
-	return mon, nil
+	return mon
 }
 
 // StartMonitoring starts monitoring the contracts with
-// specific mnemonics and notify them every fixed interval
-func (mon Monitor) StartMonitoring(tfPluginClient deployer.TFPluginClient, chatID int64) {
+// specific mnemonics and notify subscribed chats every fixed interval
+func (mon Monitor) StartMonitoring(tfPluginClient deployer.TFPluginClient, addChatChan chan int64, stopChatChan chan int64) {
+	chatIDs := map[int64]bool{}
 	ticker := time.NewTicker(time.Duration(mon.interval) * time.Hour)
-	for ; true; <-ticker.C {
 
-		contractsInGracePeriod, err := getContractsInGracePeriod(tfPluginClient)
-		if err != nil {
-			_, err := mon.Bot.SendMessage("Failed to get contracts in grace period", chatID, nil)
-			if err != nil {
-				log.Println(err)
-			}
+	for {
+		select {
+		case chatID := <-addChatChan:
+			chatIDs[chatID] = true
 
-			return
-		}
+		case chatID := <-stopChatChan:
+			chatIDs[chatID] = false
 
-		if contractsInGracePeriod != "" {
-			_, err = mon.Bot.SendMessage(contractsInGracePeriod, chatID, nil)
-			if err != nil {
-				return
-			}
-		}
-
-		contractsAgainstDownNodes, err := getContractsAgainstDownNodes(tfPluginClient)
-		if err != nil {
-			_, err = mon.Bot.SendMessage("Failed to get contracts against down nodes", chatID, nil)
-			if err != nil {
-				log.Println(err)
-			}
-			return
-		}
-
-		if contractsAgainstDownNodes != "" {
-			_, err = mon.Bot.SendMessage(contractsAgainstDownNodes, chatID, nil)
+		case <-ticker.C:
+			contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(tfPluginClient)
+			err = mon.sendResponse(chatIDs, contractsInGracePeriod, contractsAgainstDownNodes, err)
 			if err != nil {
 				return
 			}
 		}
 	}
+}
+
+func runMonitor(tfPluginClient deployer.TFPluginClient) (string, string, error) {
+	contractsInGracePeriod, err := getContractsInGracePeriod(tfPluginClient)
+	if err != nil {
+		return "", "", err
+	}
+
+	contractsAgainstDownNodes, err := getContractsAgainstDownNodes(tfPluginClient)
+	if err != nil {
+		return "", "", err
+	}
+
+	return contractsInGracePeriod, contractsAgainstDownNodes, nil
 }
 
 func getContractsInGracePeriod(tfPluginClient deployer.TFPluginClient) (string, error) {
@@ -143,4 +140,39 @@ func isNodeUp(tfPluginClient deployer.TFPluginClient, contract graphql.Contract,
 	}
 
 	upNodes <- ""
+}
+
+func (mon Monitor) sendResponse(chatIDs map[int64]bool, contractsInGracePeriod, contractsAgainstDownNodes string, err error) error {
+	if err != nil {
+		for chatID, ok := range chatIDs {
+			if ok {
+				_, err := mon.Bot.SendMessage("Failed to load contracts", chatID, nil)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		}
+
+		log.Println(err)
+		return err
+	}
+
+	for chatID, ok := range chatIDs {
+		if ok {
+			if contractsInGracePeriod != "" {
+				_, err := mon.Bot.SendMessage(contractsInGracePeriod, chatID, nil)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+
+			if contractsAgainstDownNodes != "" {
+				_, err := mon.Bot.SendMessage(contractsAgainstDownNodes, chatID, nil)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		}
+	}
+	return nil
 }

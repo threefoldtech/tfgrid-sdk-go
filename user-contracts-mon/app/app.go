@@ -20,10 +20,7 @@ func Start() error {
 		return err
 	}
 
-	mon, err := monitor.NewMonitor(conf)
-	if err != nil {
-		return err
-	}
+	mon := monitor.NewMonitor(conf)
 	log.Printf("monitoring bot has started and waiting for requests")
 
 	tfPluginClient, err := deployer.NewTFPluginClient(mon.Mnemonic, "sr25519", mon.Network, "", "", "", 0, true)
@@ -32,12 +29,22 @@ func Start() error {
 	}
 	log.Printf("grid connection established successfully")
 
+	addChatChan := make(chan int64)
+	stopChatChan := make(chan int64)
+	go mon.StartMonitoring(tfPluginClient, addChatChan, stopChatChan)
+
 	for update := range echotron.PollingUpdates(mon.BotToken) {
-		if update.Message.Text == "/start" {
+		switch update.Message.Text {
+		case "/start":
+			addChatChan <- update.ChatID()
 			log.Printf("[%s] %s", update.Message.From.Username, update.Message.Text)
-			go mon.StartMonitoring(tfPluginClient, update.ChatID())
-		} else {
-			_, err = mon.Bot.SendMessage("to start monitoring enter /start", update.ChatID(), nil)
+
+		case "/stop":
+			stopChatChan <- update.ChatID()
+			log.Printf("[%s] %s", update.Message.From.Username, update.Message.Text)
+
+		default:
+			_, err = mon.Bot.SendMessage("invalid message or command", update.ChatID(), nil)
 			if err != nil {
 				return errors.New("failed to respond to the user" + update.Message.From.Username)
 			}
