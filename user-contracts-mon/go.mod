@@ -1,6 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/user-contracts-mon
 
-go 1.19
+go 1.21
 
 require (
 	github.com/NicoNex/echotron/v3 v3.27.0
