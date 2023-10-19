@@ -2,7 +2,6 @@ package explorer
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -76,15 +75,10 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 		}
 		farms = append(farms, f)
 	}
-	resp := mw.Ok()
 
 	// return the number of pages and totalCount in the response headers
-	if limit.RetCount {
-		pages := math.Ceil(float64(farmsCount) / float64(limit.Size))
-		resp = resp.WithHeader("count", fmt.Sprintf("%d", farmsCount)).
-			WithHeader("size", fmt.Sprintf("%d", limit.Size)).
-			WithHeader("pages", fmt.Sprintf("%d", int(pages)))
-	}
+	resp := createResponse(farmsCount, limit)
+
 	return farms, resp
 }
 
@@ -204,15 +198,8 @@ func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 	for idx, node := range dbNodes {
 		nodes[idx] = nodeFromDBNode(node)
 	}
-	resp := mw.Ok()
 
-	// return the number of pages and totalCount in the response headers
-	if limit.RetCount {
-		pages := math.Ceil(float64(nodesCount) / float64(limit.Size))
-		resp = resp.WithHeader("count", fmt.Sprintf("%d", nodesCount)).
-			WithHeader("size", fmt.Sprintf("%d", limit.Size)).
-			WithHeader("pages", fmt.Sprintf("%d", int(pages)))
-	}
+	resp := createResponse(nodesCount, limit)
 	return nodes, resp
 }
 
@@ -303,15 +290,7 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 		return nil, mw.Error(err)
 	}
 
-	resp := mw.Ok()
-
-	// return the number of pages and totalCount in the response headers
-	if limit.RetCount {
-		pages := math.Ceil(float64(twinsCount) / float64(limit.Size))
-		resp = resp.WithHeader("count", fmt.Sprintf("%d", twinsCount)).
-			WithHeader("size", fmt.Sprintf("%d", limit.Size)).
-			WithHeader("pages", fmt.Sprintf("%d", int(pages)))
-	}
+	resp := createResponse(twinsCount, limit)
 	return twins, resp
 }
 
@@ -355,15 +334,8 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 			log.Err(err).Msg("failed to convert db contract to api contract")
 		}
 	}
-	resp := mw.Ok()
 
-	// return the number of pages and totalCount in the response headers
-	if limit.RetCount {
-		pages := math.Ceil(float64(contractsCount) / float64(limit.Size))
-		resp = resp.WithHeader("count", fmt.Sprintf("%d", contractsCount)).
-			WithHeader("size", fmt.Sprintf("%d", limit.Size)).
-			WithHeader("pages", fmt.Sprintf("%d", int(pages)))
-	}
+	resp := createResponse(contractsCount, limit)
 	return contracts, resp
 }
 
@@ -467,6 +439,61 @@ func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 	return res, mw.Ok()
 }
 
+// getContract godoc
+// @Summary Show single contract info
+// @Description Get data about a single contract with its id
+// @Tags Contract
+// @Param contract_id path int yes "Contract ID"
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} types.Contract
+// @Failure 400 {object} string
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /contracts/{contract_id} [get]
+func (a *App) getContract(r *http.Request) (interface{}, mw.Response) {
+	contractID := mux.Vars(r)["contract_id"]
+
+	contractData, err := a.getContractData(contractID)
+	if err != nil {
+		return nil, errorReply(err)
+	}
+
+	return contractData, nil
+}
+
+// getContractBills godoc
+// @Summary Show single contract bills
+// @Description Get all bills reports for a single contract with its id
+// @Tags ContractDills
+// @Param contract_id path int yes "Contract ID"
+// @Param page query int false "Page number"
+// @Param size query int false "Max result per page"
+// @Param ret_count query bool false "Set bill reports' count on headers"
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} []types.ContractBilling
+// @Failure 400 {object} string
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /contracts/{contract_id}/bills [get]
+func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
+	contractID := mux.Vars(r)["contract_id"]
+
+	limit, err := getLimit(r)
+	if err != nil {
+		return []types.ContractBilling{}, nil
+	}
+
+	contractBillsData, totalCount, err := a.getContractBillsData(contractID, limit)
+	if err != nil {
+		return nil, errorReply(err)
+	}
+
+	resp := createResponse(totalCount, limit)
+	return contractBillsData, resp
+}
+
 // Setup is the server and do initial configurations
 // @title Grid Proxy Server API
 // @version 1.0
@@ -486,19 +513,25 @@ func Setup(router *mux.Router, gitCommit string, database db.Database, relayClie
 
 	router.HandleFunc("/farms", mw.AsHandlerFunc(a.listFarms))
 	router.HandleFunc("/stats", mw.AsHandlerFunc(a.getStats))
-	router.HandleFunc("/nodes", mw.AsHandlerFunc(a.getNodes))
-	router.HandleFunc("/gateways", mw.AsHandlerFunc(a.getGateways))
 	router.HandleFunc("/twins", mw.AsHandlerFunc(a.listTwins))
-	router.HandleFunc("/contracts", mw.AsHandlerFunc(a.listContracts))
+
+	router.HandleFunc("/nodes", mw.AsHandlerFunc(a.getNodes))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getNode))
-	router.HandleFunc("/gateways/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getGateway))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/status", mw.AsHandlerFunc(a.getNodeStatus))
-	router.HandleFunc("/gateways/{node_id:[0-9]+}/status", mw.AsHandlerFunc(a.getNodeStatus))
-	router.HandleFunc("/ping", mw.AsHandlerFunc(a.ping))
-	router.HandleFunc("/", mw.AsHandlerFunc(a.indexPage(router)))
-	router.HandleFunc("/version", mw.AsHandlerFunc(a.version))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/statistics", mw.AsHandlerFunc(a.getNodeStatistics))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/gpu", mw.AsHandlerFunc(a.getNodeGpus))
+
+	router.HandleFunc("/gateways", mw.AsHandlerFunc(a.getGateways))
+	router.HandleFunc("/gateways/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getGateway))
+	router.HandleFunc("/gateways/{node_id:[0-9]+}/status", mw.AsHandlerFunc(a.getNodeStatus))
+
+	router.HandleFunc("/contracts", mw.AsHandlerFunc(a.listContracts))
+	router.HandleFunc("/contracts/{contract_id:[0-9]+}", mw.AsHandlerFunc(a.getContract))
+	router.HandleFunc("/contracts/{contract_id:[0-9]+}/bills", mw.AsHandlerFunc(a.getContractBills))
+
+	router.HandleFunc("/", mw.AsHandlerFunc(a.indexPage(router)))
+	router.HandleFunc("/ping", mw.AsHandlerFunc(a.ping))
+	router.HandleFunc("/version", mw.AsHandlerFunc(a.version))
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	return nil
