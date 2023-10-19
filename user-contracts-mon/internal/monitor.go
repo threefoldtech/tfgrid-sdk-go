@@ -71,23 +71,20 @@ func runMonitor(tfPluginClient deployer.TFPluginClient) (string, string, error) 
 }
 
 func getContractsInGracePeriod(tfPluginClient deployer.TFPluginClient) (string, error) {
-	contracts, err := tfPluginClient.ContractsGetter.ListContractsByTwinID([]string{"GracePeriod"})
+	contractsStruct, err := tfPluginClient.ContractsGetter.ListContractsByTwinID([]string{"GracePeriod"})
 	if err != nil {
 		return "", err
 	}
 
+	allContracts := contractsStruct.NameContracts
+	allContracts = append(allContracts, contractsStruct.NodeContracts...)
+	allContracts = append(allContracts, contractsStruct.RentContracts...)
+
 	info := ""
-	for _, contract := range contracts.NameContracts {
+	for _, contract := range allContracts {
 		info += fmt.Sprintf("- %s\n", contract.ContractID)
 	}
 
-	for _, contract := range contracts.NodeContracts {
-		info += fmt.Sprintf("- %s\n", contract.ContractID)
-	}
-
-	for _, contract := range contracts.RentContracts {
-		info += fmt.Sprintf("- %s\n", contract.ContractID)
-	}
 	if info == "" {
 		return "", nil
 	}
@@ -104,14 +101,14 @@ func getContractsAgainstDownNodes(tfPluginClient deployer.TFPluginClient) (strin
 	nodeContracts = append(nodeContracts, contracts.RentContracts...)
 
 	contractsIds := ""
-	upNodes := make(chan string)
+	downNodes := make(chan string)
 
 	for _, contract := range nodeContracts {
-		go isNodeUp(tfPluginClient, contract, upNodes)
+		go isNodeDown(tfPluginClient, contract, downNodes)
 	}
 
 	for range nodeContracts {
-		id := <-upNodes
+		id := <-downNodes
 		if id != "" {
 			contractsIds += fmt.Sprintf("- %s\n", id)
 		}
@@ -123,10 +120,10 @@ func getContractsAgainstDownNodes(tfPluginClient deployer.TFPluginClient) (strin
 	return "contracts against down nodes:\n" + contractsIds, nil
 }
 
-func isNodeUp(tfPluginClient deployer.TFPluginClient, contract graphql.Contract, upNodes chan string) {
+func isNodeDown(tfPluginClient deployer.TFPluginClient, contract graphql.Contract, downNodes chan string) {
 	cli, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, contract.NodeID)
 	if err != nil {
-		upNodes <- contract.ContractID
+		downNodes <- contract.ContractID
 		return
 	}
 
@@ -135,11 +132,11 @@ func isNodeUp(tfPluginClient deployer.TFPluginClient, contract graphql.Contract,
 
 	err = cli.IsNodeUp(ctx)
 	if err != nil {
-		upNodes <- contract.ContractID
+		downNodes <- contract.ContractID
 		return
 	}
 
-	upNodes <- ""
+	downNodes <- ""
 }
 
 func (mon Monitor) sendResponse(chatIDs map[int64]bool, contractsInGracePeriod, contractsAgainstDownNodes string, err error) error {
