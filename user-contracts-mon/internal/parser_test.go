@@ -2,11 +2,19 @@ package monitor
 
 import (
 	"os"
+	"path"
 	"testing"
 )
 
 func TestParsers(t *testing.T) {
-	testEnv := "test.env"
+	tempDir := t.TempDir()
+	testEnv := path.Join(tempDir, "test.env")
+
+	_, err := os.Create(testEnv)
+	if err != nil {
+		t.Errorf("failed to create test file")
+	}
+
 	t.Run("test_no_file", func(t *testing.T) {
 		_, err := ParseConfig("env")
 
@@ -14,11 +22,6 @@ func TestParsers(t *testing.T) {
 			t.Errorf("expected error reading .env")
 		}
 	})
-
-	_, err := os.Create(testEnv)
-	if err != nil {
-		t.Errorf("failed to create test file")
-	}
 
 	t.Run("test_wrong_env_missing_mnemonics", func(t *testing.T) {
 		env := ` 
@@ -95,15 +98,25 @@ func TestParsers(t *testing.T) {
             MNEMONIC=  "mnemonic"
             INTERVAL=  "3"
 		`
+		want := Config{
+			botToken: "token",
+			network:  "network",
+			mnemonic: "mnemonic",
+			interval: 3,
+		}
+
 		err = os.WriteFile(testEnv, []byte(env), 0667)
 		if err != nil {
 			t.Errorf("failed to write to test file")
 		}
 
-		_, err := ParseConfig(testEnv)
+		got, err := ParseConfig(testEnv)
 		if err != nil {
 			t.Errorf("parsing should be successful")
 		}
+
+		if want != got {
+			t.Errorf("Expected: %v\nbut got: %v", want, got)
+		}
 	})
-	defer os.Remove(testEnv)
 }

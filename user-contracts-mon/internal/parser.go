@@ -21,7 +21,7 @@ func ParseConfig(envPath string) (Config, error) {
 
 	envFile, err := os.Open(envPath)
 	if err != nil {
-		return conf, errors.New("failed to open config")
+		return conf, errors.New("failed to open config file " + envPath)
 	}
 
 	envMap, err := env.Parse(envFile)
