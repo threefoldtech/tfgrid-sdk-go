@@ -8,6 +8,7 @@ on:
   push:
     paths:
       - grid-cli/**
+      - rmb-sdk-go/**
   workflow_dispatch:
 
 jobs:

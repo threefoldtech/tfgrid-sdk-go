@@ -8,7 +8,6 @@ on:
   push:
     paths:
       - gridify/**
-      - rmb-sdk-go/**
   workflow_dispatch:
 
 jobs:
