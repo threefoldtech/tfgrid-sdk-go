@@ -10,6 +10,7 @@ on:
       - grid-cli/**
       - rmb-sdk-go/**
       - grid-proxy/**
+      - grid-client/**
   workflow_dispatch:
 
 jobs:
