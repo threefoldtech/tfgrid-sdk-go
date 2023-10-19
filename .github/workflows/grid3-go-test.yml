@@ -5,6 +5,7 @@ on:
     paths:
       - grid-client/**
       - rmb-sdk-go/**
+      - grid-proxy/**
   workflow_dispatch:
 
 defaults:

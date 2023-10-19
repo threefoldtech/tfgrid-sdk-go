@@ -9,6 +9,7 @@ on:
     paths:
       - grid-cli/**
       - rmb-sdk-go/**
+      - grid-proxy/**
   workflow_dispatch:
 
 jobs:
