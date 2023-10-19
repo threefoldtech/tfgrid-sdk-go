@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - grid-client/**
+      - rmb-sdk-go/**
   workflow_dispatch:
 
 defaults:
