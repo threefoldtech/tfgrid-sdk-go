@@ -2,9 +2,10 @@
 
 ## Overview
 
-The Contract Monitor Bot is a tool designed to monitor user contracts within ThreeFold Grid. 
+The Contract Monitor Bot is a tool designed to monitor user contracts within ThreeFold Grid.
 
 **Features**:
+
 - Monitors user contracts and nodes status.
 - Customizable alerting and notification system.
 
@@ -14,10 +15,10 @@ The Contract Monitor Bot is a tool designed to monitor user contracts within Thr
 
 Ensure that you have installed:
 
-- Go programming language (version 1.16 or higher)
+- Go programming language (version 1.19 or higher)
 - Git
 
-### How to start 
+### How to start
 
 1. Clone this repository to your local machine:
 
@@ -35,7 +36,7 @@ Ensure that you have installed:
         BOT_TOKEN=<your bot token>
         MNEMONIC=<your mnemonics>
         NETWORK=<main, dev, test, qa>
-        INTERVAL=<number of minutes between notifications>
+        INTERVAL=<number of hours between notifications>
         ```
 
 3. Run the bot:
