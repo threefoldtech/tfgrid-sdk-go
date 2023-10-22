@@ -41,9 +41,15 @@ Ensure that you have installed:
 
 3. Run the bot:
 
-    ```bash
-    go run main.go -e .env
-    ```
+   - Using go
+        ```bash
+        go run main.go -e .env
+        ```
+    - Using Docker
+        ```bash
+        docker build -t contract-mon .
+        docker run -it contract-mon -e env=.env
+        ```
 
 ## Create a bot
 
