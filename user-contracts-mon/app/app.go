@@ -1,12 +1,11 @@
 package app
 
 import (
-	"errors"
 	"flag"
+	"fmt"
 	"log"
 
-	"github.com/NicoNex/echotron/v3"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	tgapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	monitor "github.com/threefoldtech/tfgrid-sdk-go/user-contracts-mon/internal"
 )
 
@@ -20,34 +19,44 @@ func Start() error {
 		return err
 	}
 
-	mon := monitor.NewMonitor(conf)
+	mon, err := monitor.NewMonitor(conf)
+	if err != nil {
+		return err
+	}
 	log.Printf("monitoring bot has started and waiting for requests")
 
-	tfPluginClient, err := deployer.NewTFPluginClient(mon.Mnemonic, "sr25519", mon.Network, "", "", "", 0, true)
-	if err != nil {
-		return errors.New("failed to establish gird connection")
-	}
-	log.Printf("grid connection established successfully")
-
-	addChatChan := make(chan int64)
+	addChatChan := make(chan monitor.User)
 	stopChatChan := make(chan int64)
-	go mon.StartMonitoring(tfPluginClient, addChatChan, stopChatChan)
+	go mon.StartMonitoring(addChatChan, stopChatChan)
 
-	for update := range echotron.PollingUpdates(mon.BotToken) {
+	u := tgapi.NewUpdate(0)
+	u.Timeout = 60
+	updates := mon.Bot.GetUpdatesChan(u)
+
+	for update := range updates {
+		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 		switch update.Message.Text {
 		case "/start":
-			addChatChan <- update.ChatID()
-			log.Printf("[%s] %s", update.Message.From.Username, update.Message.Text)
+
+			msg := tgapi.NewMessage(update.FromChat().ID, fmt.Sprintf("Please send your network and mnemonic in the form\nnetwork=<network>\nmnemonic=<mnemonic>"))
+			_, err := mon.Bot.Send(msg)
+			if err != nil {
+				log.Println(err)
+			}
 
 		case "/stop":
-			stopChatChan <- update.ChatID()
-			log.Printf("[%s] %s", update.Message.From.Username, update.Message.Text)
+			stopChatChan <- update.FromChat().ID
 
 		default:
-			_, err = mon.Bot.SendMessage("invalid message or command", update.ChatID(), nil)
+			user, err := monitor.NewUser(update)
 			if err != nil {
-				return errors.New("failed to respond to the user" + update.Message.From.Username)
+				msg := tgapi.NewMessage(update.FromChat().ID, err.Error())
+				_, err := mon.Bot.Send(msg)
+				if err != nil {
+					log.Println(err)
+				}
 			}
+			addChatChan <- user
 		}
 	}
 	return nil
