@@ -1,8 +1,4 @@
-name: cli Testing
-
-defaults:
-  run:
-    working-directory: grid-cli
+name: SDK Tests
 
 on:
   push:
@@ -16,19 +12,26 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: "1.21"
-        id: go
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
-        with:
-          submodules: "true"
 
       - name: Get dependencies
-        run: |
-          go mod download
+        run: cd ${{ matrix.dir }} && go mod download
 
       - name: Test
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: dev
-        run: go test -v `go list ./... | grep -v integration_tests`
+        run: cd ${{ matrix.dir }} && go test -v `go list ./... | grep -v integration_tests`
+
+    strategy:
+      fail-fast: true
+      matrix:
+        dir:
+          - activation-service
+          - grid-cli
+          - grid-client
+          - gridify
+          - monitoring-bot
+          - rmb-sdk-go
