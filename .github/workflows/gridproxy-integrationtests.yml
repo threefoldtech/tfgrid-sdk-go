@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - grid-proxy/**
+      - rmb-sdk-go/**
   pull_request:
     types: [opened, reopened, review_requested]
     paths:
       - grid-proxy/**
+      - rmb-sdk-go/**
 
   workflow_dispatch:
 
@@ -37,7 +39,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.19
+          go-version: 1.21
 
       - name: Build
         run: |

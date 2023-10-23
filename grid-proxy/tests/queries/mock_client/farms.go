@@ -158,6 +158,10 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			continue
 		}
 
+		if filter.Country != nil && !strings.EqualFold(*filter.Country, node.Country) {
+			continue
+		}
+
 		return true
 	}
 	return false

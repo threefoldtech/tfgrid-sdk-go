@@ -118,7 +118,7 @@ func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
 
 	return QSFS{
 		Name:                 string(wl.Name),
-		Description:          string(wl.Description),
+		Description:          wl.Description,
 		Cache:                int(data.Cache) / int(gridtypes.Megabyte),
 		MinimalShards:        data.Config.MinimalShards,
 		ExpectedShards:       data.Config.ExpectedShards,

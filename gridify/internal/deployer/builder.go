@@ -55,10 +55,9 @@ func buildNodeFilter(vmSpec VMSpec) types.NodeFilter {
 	return filter
 }
 
-func buildNetwork(projectName string, node uint32) workloads.ZNet {
-	networkName := randName(10)
+func buildNetwork(projectName, deploymentName string, node uint32) workloads.ZNet {
 	network := workloads.ZNet{
-		Name:  networkName,
+		Name:  fmt.Sprintf("%sNetwork", deploymentName),
 		Nodes: []uint32{node},
 		IPRange: workloads.NewIPRange(net.IPNet{
 			IP:   net.IPv4(10, 20, 0, 0),
@@ -69,10 +68,9 @@ func buildNetwork(projectName string, node uint32) workloads.ZNet {
 	return network
 }
 
-func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL string, node uint32) workloads.Deployment {
-	vmName := randName(10)
+func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL, deploymentName string, node uint32) workloads.Deployment {
 	vm := workloads.VM{
-		Name:       vmName,
+		Name:       deploymentName,
 		Flist:      vmFlist,
 		CPU:        vmSpec.CPU,
 		Memory:     vmSpec.Memory * 1024,
@@ -90,11 +88,10 @@ func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL string, no
 	return dl
 }
 
-func buildGateway(backend, projectName string, node uint32) workloads.GatewayNameProxy {
-	subdomain := randName(10)
+func buildGateway(backend, projectName, deploymentName string, node uint32) workloads.GatewayNameProxy {
 	gateway := workloads.GatewayNameProxy{
 		NodeID:       node,
-		Name:         subdomain,
+		Name:         deploymentName,
 		Backends:     workloads.NewZosBackends([]string{backend}),
 		SolutionType: projectName,
 	}

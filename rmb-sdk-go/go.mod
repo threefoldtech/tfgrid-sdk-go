@@ -1,6 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go
 
-go 1.19
+go 1.21
 
 require (
 	github.com/ChainSafe/go-schnorrkel v1.1.0
@@ -30,7 +30,7 @@ require (
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 	github.com/ethereum/go-ethereum v1.11.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
 	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6 // indirect
@@ -45,8 +45,8 @@ require (
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	golang.org/x/crypto v0.13.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

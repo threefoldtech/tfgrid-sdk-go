@@ -18,7 +18,7 @@ type Zlog struct {
 // ZosWorkload generates a zlog workload
 func (zlog *Zlog) ZosWorkload() gridtypes.Workload {
 	url := []byte(zlog.Output)
-	urlHash := md5.Sum([]byte(url))
+	urlHash := md5.Sum(url)
 
 	return gridtypes.Workload{
 		Version: 0,

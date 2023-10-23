@@ -316,7 +316,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		}}
 
 		ncPool.EXPECT().
-			GetNodeClient(sub, uint32(nodeID)).
+			GetNodeClient(sub, nodeID).
 			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil)
 
 		cl.EXPECT().
@@ -492,7 +492,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		}
 
 		ncPool.EXPECT().
-			GetNodeClient(sub, uint32(nodeID)).
+			GetNodeClient(sub, nodeID).
 			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil)
 
 		cl.EXPECT().
