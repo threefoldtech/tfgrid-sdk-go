@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"math/rand"
 	"os"
 	"reflect"
 	"strings"
@@ -553,8 +552,8 @@ func generateNodes(db *sql.DB) error {
 			latitude:  fmt.Sprintf("location-lat-%d", i),
 		}
 
-		countryIndex := rand.Intn(len(countries))
-		cityIndex := rand.Intn(len(cities[countries[countryIndex]]))
+		countryIndex := r.Intn(len(countries))
+		cityIndex := r.Intn(len(cities[countries[countryIndex]]))
 		node := node{
 			id:                fmt.Sprintf("node-%d", i),
 			location_id:       fmt.Sprintf("location-%d", i),
@@ -574,8 +573,8 @@ func generateNodes(db *sql.DB) error {
 			virtualized:       false,
 			serial_number:     "",
 			power: nodePower{
-				State:  powerState[rand.Intn(len(powerState))],
-				Target: powerState[rand.Intn(len(powerState))],
+				State:  powerState[r.Intn(len(powerState))],
+				Target: powerState[r.Intn(len(powerState))],
 			},
 			extra_fee: 0,
 		}
