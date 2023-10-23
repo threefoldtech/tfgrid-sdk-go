@@ -34,9 +34,10 @@ func Start() error {
 
 	for update := range updates {
 		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-		switch update.Message.Text {
-		case "/start":
 
+		switch update.Message.Text {
+
+		case "/start":
 			msg := tgapi.NewMessage(update.FromChat().ID, "Please send your network and mnemonic in the form\nnetwork=<network>\nmnemonic=<mnemonic>")
 			_, err := mon.Bot.Send(msg)
 			if err != nil {
@@ -54,6 +55,8 @@ func Start() error {
 				if err != nil {
 					log.Println(err)
 				}
+
+				continue
 			}
 			addChatChan <- user
 		}

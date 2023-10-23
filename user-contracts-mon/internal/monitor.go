@@ -11,6 +11,7 @@ import (
 	tgapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
+	"golang.org/x/exp/slices"
 )
 
 // Monitor struct of parsed configration
@@ -21,9 +22,12 @@ type Monitor struct {
 }
 
 type User struct {
-	ChatID         int64
-	tfPluginClient deployer.TFPluginClient
+	ChatID   int64
+	network  string
+	mnemonic string
 }
+
+var validNetworks = []string{"dev", "qa", "test", "main"}
 
 // NewMonitor creates a new monitor from parsed config/env file
 func NewMonitor(conf Config) (Monitor, error) {
@@ -46,21 +50,23 @@ func NewUser(msg tgapi.Update) (User, error) {
 	user := User{}
 	info := strings.Split(msg.Message.Text, "\n")
 
-	log.Println(info)
-	if !strings.Contains(info[0], "network=") || !strings.Contains(info[1], "mnemonic=") {
+	if len(info) != 2 || !strings.Contains(info[0], "network=") || !strings.Contains(info[1], "mnemonic=") {
 		return user, errors.New("invalid format")
+	}
+
+	if len(strings.Split(info[0], "=")) != 2 || len(strings.Split(info[1], "=")) != 2 {
+		return user, errors.New("invalid mnemonic or network")
 	}
 	network := strings.Split(info[0], "=")[1]
 	mnemonic := strings.Split(info[1], "=")[1]
 
-	tfPluginClient, err := deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, true)
-	if err != nil {
-		log.Println(err)
-		return user, errors.New("failed to establish gird connection")
+	if !slices.Contains(validNetworks, network) {
+		return user, errors.New("network must be one of dev, qa, test, and main")
 	}
 
 	user.ChatID = msg.FromChat().ID
-	user.tfPluginClient = tfPluginClient
+	user.network = network
+	user.mnemonic = mnemonic
 
 	return user, nil
 }
@@ -73,21 +79,12 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 
 	for {
 		select {
-		case user := <-addChatChan:
-			if tfPluginClient, ok := users[user.ChatID]; !ok {
-				tfPluginClient.Close()
-			}
-			users[user.ChatID] = user.tfPluginClient
-			contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(user.tfPluginClient)
-			err = mon.sendResponse(user.ChatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
-			if err != nil {
-				log.Println(err)
-			}
 
 		case chatID := <-stopChatChan:
-			tfPluginClient := users[chatID]
-			tfPluginClient.Close()
-			delete(users, chatID)
+			if tfPluginClient, ok := users[chatID]; ok {
+				tfPluginClient.Close()
+				delete(users, chatID)
+			}
 
 		case <-ticker.C:
 			for chatID, tfPluginClient := range users {
@@ -96,6 +93,30 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 				if err != nil {
 					log.Println(err)
 				}
+			}
+
+		case user := <-addChatChan:
+			if tfPluginClient, ok := users[user.ChatID]; ok {
+				tfPluginClient.Close()
+			}
+
+			tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, "", "", "", 0, true)
+			if err != nil {
+				log.Println(err)
+
+				msg := tgapi.NewMessage(user.ChatID, "failed to connect to the grid, please make sure to use valid mnemonic")
+				_, err := mon.Bot.Send(msg)
+				if err != nil {
+					log.Println(err)
+				}
+				continue
+			}
+			users[user.ChatID] = tfPluginClient
+
+			contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(tfPluginClient)
+			err = mon.sendResponse(user.ChatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
+			if err != nil {
+				log.Println(err)
 			}
 		}
 	}
