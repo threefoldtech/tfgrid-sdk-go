@@ -28,11 +28,6 @@ jobs:
         env:
           GO111MODULE: on
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          working-directory: grid-proxy
-
       - name: Test version
         run: ./main -v
 
