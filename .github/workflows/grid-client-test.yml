@@ -1,17 +1,12 @@
-name: cli Testing
-
-defaults:
-  run:
-    working-directory: grid-cli
+name: Grid Client Tests
 
 on:
   push:
-    paths:
-      - grid-cli/**
-      - rmb-sdk-go/**
-      - grid-proxy/**
-      - grid-client/**
   workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: grid-client
 
 jobs:
   test:

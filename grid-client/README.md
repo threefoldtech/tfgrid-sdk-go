@@ -1,6 +1,6 @@
 # Grid3_client_go
 
-<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-64.8%25-brightgreen.svg?longCache=true&style=flat)</a> [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid3-go-test.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid3-go-test.yml) [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid3-go-lint.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid3-go-lint.yml)
+<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-64.8%25-brightgreen.svg?longCache=true&style=flat)</a> [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid-client-test.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid-client-test.yml)
 
 Grid3_client_go is a go client created to interact with threefold grid. It should manage CRUD operations for deployments on the grid.
 

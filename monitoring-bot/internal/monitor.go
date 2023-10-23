@@ -402,7 +402,7 @@ func (m *Monitor) checkNodeSystemVersion(con *client.Substrate, rmbClient rmb.Cl
 		return ver, fmt.Errorf("cannot get node %d. failed with error: %w", NodeID, err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Second*3))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
 	err = rmbClient.Call(ctx, uint32(node.TwinID), cmd, nil, &ver)

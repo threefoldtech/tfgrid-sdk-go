@@ -6,11 +6,6 @@ defaults:
 
 on:
   push:
-    paths:
-      - gridify/**
-      - rmb-sdk-go/**
-      - grid-proxy/**
-      - grid-client/**
   workflow_dispatch:
 
 jobs:
