@@ -15,7 +15,7 @@ The Contract Monitor Bot is a tool designed to monitor user contracts within Thr
 
 Ensure that you have installed:
 
-- Go programming language (version 1.19 or higher)
+- Go programming language (version 1.19 or higher if not using docker)
 - Git
 
 ### How to start
@@ -34,8 +34,6 @@ Ensure that you have installed:
 
      ```env
         BOT_TOKEN=<your bot token>
-        MNEMONIC=<your mnemonics>
-        NETWORK=<main, dev, test, qa>
         INTERVAL=<number of hours between notifications>
         ```
 
@@ -51,7 +49,7 @@ Ensure that you have installed:
 
      ```bash
         docker build -t contract-mon .
-        docker run -it contract-mon -e env=.env
+        docker run -it contract-mon
         ```
 
 ## Create a bot
