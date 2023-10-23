@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"reflect"
 	"strings"
 	"time"
 
@@ -74,6 +73,9 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 	for {
 		select {
 		case user := <-addChatChan:
+			if tfPluginClient, ok := users[user.ChatID]; !ok {
+				tfPluginClient.Close()
+			}
 			users[user.ChatID] = user.tfPluginClient
 			contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(user.tfPluginClient)
 			err = mon.sendResponse(user.ChatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
@@ -84,11 +86,11 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 		case chatID := <-stopChatChan:
 			tfPluginClient := users[chatID]
 			tfPluginClient.Close()
-			users[chatID] = deployer.TFPluginClient{}
+			delete(users, chatID)
 
 		case <-ticker.C:
 			for chatID, tfPluginClient := range users {
-				if reflect.DeepEqual(tfPluginClient, deployer.TFPluginClient{}) {
+				if _, ok := users[chatID]; ok {
 					contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(tfPluginClient)
 					err = mon.sendResponse(chatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
 					if err != nil {
