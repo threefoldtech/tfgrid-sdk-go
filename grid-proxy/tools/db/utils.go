@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net"
 	"reflect"
 	"strings"
@@ -16,19 +15,19 @@ func rnd(min, max uint64) (uint64, error) {
 	if max-min+1 <= 0 {
 		return 0, fmt.Errorf("min (%d) cannot be greater than max (%d)", min, max)
 	}
-	randomNumber := rand.Uint64()%(max-min+1) + min
+	randomNumber := r.Uint64()%(max-min+1) + min
 	return randomNumber, nil
 }
 
 // flip simulates a coin flip with a given success probability.
 func flip(success float32) bool {
-	return rand.Float32() < success
+	return r.Float32() < success
 }
 
 // randomIPv4 gets a random IPv4
 func randomIPv4() net.IP {
 	ip := make([]byte, 4)
-	rand.Read(ip)
+	r.Read(ip)
 	return net.IP(ip)
 }
 

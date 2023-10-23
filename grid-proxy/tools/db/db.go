@@ -12,6 +12,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	r *rand.Rand
+)
+
 type flags struct {
 	postgresHost     string
 	postgresPort     int
@@ -37,9 +41,8 @@ func parseCmdline() flags {
 
 func main() {
 	f := parseCmdline()
-	if f.seed != 0 {
-		rand.Seed(int64(f.seed))
-	}
+	r = rand.New(rand.NewSource(int64(f.seed)))
+
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB)
