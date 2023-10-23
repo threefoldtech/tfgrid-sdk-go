@@ -4,11 +4,13 @@ on:
   push:
     paths:
       - grid-proxy/**
+      - rmb-sdk-go/**
   pull_request:
-      types: [opened, reopened, review_requested]
-      paths:
-        - grid-proxy/**
-        
+    types: [opened, reopened, review_requested]
+    paths:
+      - grid-proxy/**
+      - rmb-sdk-go/**
+
   workflow_dispatch:
 
 jobs:
@@ -23,7 +25,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.19
+          go-version: 1.21
 
       - name: Build
         run: |
@@ -40,7 +42,7 @@ jobs:
 
       - name: Test version
         run: ./main -v
-  
+
   build-docker:
     runs-on: ubuntu-latest
     defaults:
@@ -79,6 +81,3 @@ jobs:
           #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
           build-args: |
             version=${{ github.ref_name	 }}
-
-      
-

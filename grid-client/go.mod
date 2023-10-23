@@ -1,6 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/grid-client
 
-go 1.18
+go 1.21
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
@@ -15,12 +15,12 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.10.2
 	github.com/threefoldtech/zos v0.5.6-0.20230809073554-ddb0ad98fc4c
 	golang.org/x/crypto v0.14.0
-	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
+	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b
 )
 
 require (
-	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
+	github.com/ChainSafe/go-schnorrkel v1.1.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect

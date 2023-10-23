@@ -17,7 +17,7 @@ import (
 	rmbTypes "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct/types"
 )
 
-const resultsBatcherCleanupInterval = 10 * time.Second
+const lingerBatch = 10 * time.Second
 
 type NodeGPUIndexer struct {
 	db                     db.Database
@@ -126,7 +126,7 @@ func (n *NodeGPUIndexer) gpuBatchesDBUpserter(ctx context.Context) {
 
 func (n *NodeGPUIndexer) gpuNodeResultsBatcher(ctx context.Context) {
 	nodesGPUBuffer := make([]types.NodeGPU, 0, n.batchSize)
-	ticker := time.NewTicker(resultsBatcherCleanupInterval)
+	ticker := time.NewTicker(lingerBatch)
 	for {
 		select {
 		case nodesGPU := <-n.nodesGPUResultsChan:
