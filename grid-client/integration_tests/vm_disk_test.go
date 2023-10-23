@@ -95,5 +95,5 @@ func TestVmDisk(t *testing.T) {
 	// Check that disk has been mounted successfully
 	output, err := RemoteRun("root", yggIP, "df -h | grep -w /disk", privateKey)
 	assert.NoError(t, err)
-	assert.Contains(t, string(output), fmt.Sprintf("%d.0G", disk.SizeGB))
+	assert.Contains(t, output, fmt.Sprintf("%d.0G", disk.SizeGB))
 }

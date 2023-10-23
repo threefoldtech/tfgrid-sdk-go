@@ -90,6 +90,6 @@ func TestVMDeployment(t *testing.T) {
 
 		output, err := RemoteRun("root", yggIP, "ls /", privateKey)
 		assert.NoError(t, err)
-		assert.Contains(t, string(output), "root")
+		assert.Contains(t, output, "root")
 	})
 }
