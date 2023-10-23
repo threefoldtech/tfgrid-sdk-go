@@ -1,0 +1,36 @@
+name: lint sdk
+
+on:
+  push:
+    branches: [main, development]
+
+jobs:
+  test:
+    name: Run Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.53.3
+          working-directory: ${{ matrix.dir }}
+          args: --config=../.golangci.yml
+
+    strategy:
+      fail-fast: true
+      matrix:
+        dir:
+          - activation-service
+          - grid-cli
+          - grid-client
+          - gridify
+          - monitoring-bot
+          - rmb-sdk-go
