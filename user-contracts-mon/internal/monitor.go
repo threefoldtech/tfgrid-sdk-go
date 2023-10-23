@@ -55,6 +55,7 @@ func NewUser(msg tgapi.Update) (User, error) {
 
 	tfPluginClient, err := deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, true)
 	if err != nil {
+		log.Println(err)
 		return user, errors.New("failed to establish gird connection")
 	}
 
@@ -90,12 +91,10 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 
 		case <-ticker.C:
 			for chatID, tfPluginClient := range users {
-				if _, ok := users[chatID]; ok {
-					contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(tfPluginClient)
-					err = mon.sendResponse(chatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
-					if err != nil {
-						log.Println(err)
-					}
+				contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(tfPluginClient)
+				err = mon.sendResponse(chatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
+				if err != nil {
+					log.Println(err)
 				}
 			}
 		}
