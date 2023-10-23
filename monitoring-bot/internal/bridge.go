@@ -105,34 +105,40 @@ func (m *Monitor) bridgeTXWrapper(tx bridgeTX) func(conn *client.Substrate, iden
 }
 
 func (m *Monitor) sendToTfChain(conn *client.Substrate, identity client.Identity, net network) error {
-	twinID, err := conn.GetTwinByPubKey(identity.PublicKey())
-	if err != nil {
-		return fmt.Errorf("failed to get twin id: %w", err)
-	}
-
+	// decide configs based on networks
 	strSecret := m.env.testStellarSecret
 	stellarTFTIssuerAddress := tftIssuerStellarTest
+	strClient := horizonclient.DefaultTestNetClient
+	netPassphrase := strNet.TestNetworkPassphrase
 	if net == mainNetwork || net == testNetwork {
 		strSecret = m.env.publicStellarSecret
 		stellarTFTIssuerAddress = tftIssuerStellarPublic
+		strClient = horizonclient.DefaultPublicNetClient
+		netPassphrase = strNet.PublicNetworkPassphrase
 	}
 
-	tftTrustLine := txnbuild.CreditAsset{Code: "TFT", Issuer: stellarTFTIssuerAddress}
-	strClient := horizonclient.DefaultTestNetClient
+	// Validate destination and Load source Accounts
 	destAccountRequest := horizonclient.AccountRequest{AccountID: BridgeAddresses[net]}
-
-	_, err = strClient.AccountDetail(destAccountRequest)
+	_, err := strClient.AccountDetail(destAccountRequest)
 	if err != nil {
-		return fmt.Errorf("failed to verify destination account: %w", err)
+		errMsg := getHorizonError(err)
+		return fmt.Errorf("failed to verify destination account: %s", errMsg)
 	}
 
 	sourceKP := keypair.MustParseFull(strSecret)
 	sourceAccountRequest := horizonclient.AccountRequest{AccountID: sourceKP.Address()}
 	sourceAccount, err := strClient.AccountDetail(sourceAccountRequest)
 	if err != nil {
-		return fmt.Errorf("failed to load source account: %w", err)
+		errMsg := getHorizonError(err)
+		return fmt.Errorf("failed to load source account: %s", errMsg)
 	}
 
+	// Build, Sign and Submit the txn
+	tftTrustLine := txnbuild.CreditAsset{Code: "TFT", Issuer: stellarTFTIssuerAddress}
+	twinID, err := conn.GetTwinByPubKey(identity.PublicKey())
+	if err != nil {
+		return fmt.Errorf("failed to get twin id: %w", err)
+	}
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &sourceAccount,
@@ -155,19 +161,15 @@ func (m *Monitor) sendToTfChain(conn *client.Substrate, identity client.Identity
 		return fmt.Errorf("failed to build the txn: %w", err)
 	}
 
-	netPassphrase := strNet.TestNetworkPassphrase
-	if net == mainNetwork || net == testNetwork {
-		netPassphrase = strNet.PublicNetworkPassphrase
-	}
-
 	tx, err = tx.Sign(netPassphrase, sourceKP)
 	if err != nil {
 		return fmt.Errorf("failed to sign the txn: %w", err)
 	}
 
-	_, err = horizonclient.DefaultTestNetClient.SubmitTransaction(tx)
+	_, err = strClient.SubmitTransaction(tx)
 	if err != nil {
-		return fmt.Errorf("failed to submit the txn: %w", err)
+		errMsg := getHorizonError(err)
+		return fmt.Errorf("failed to submit the txn: %s", errMsg)
 	}
 
 	return nil
@@ -184,4 +186,15 @@ func (m *Monitor) sendToStellar(conn *client.Substrate, identity client.Identity
 	}
 
 	return nil
+}
+
+func getHorizonError(err error) string {
+	errMsg := ""
+	if p := horizonclient.GetError(err); p != nil {
+		errMsg += fmt.Sprintf("  Info: %s\n", p.Problem)
+		if results, ok := p.Problem.Extras["result_codes"]; ok {
+			errMsg += fmt.Sprintf("  Extras: %s\n", results)
+		}
+	}
+	return errMsg
 }
