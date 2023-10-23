@@ -29,10 +29,10 @@ Ensure that you have installed:
 
 2. Setup your telegram bot and your env
 
-    - Create a new [telegram bot](README.md#create-a-bot) if you don't have.
-    - Create a new env file `.env`, for example:
+   - Create a new [telegram bot](README.md#create-a-bot) if you don't have.
+   - Create a new env file `.env`, for example:
 
-        ```env
+     ```env
         BOT_TOKEN=<your bot token>
         MNEMONIC=<your mnemonics>
         NETWORK=<main, dev, test, qa>
@@ -42,11 +42,14 @@ Ensure that you have installed:
 3. Run the bot:
 
    - Using go
-        ```bash
+
+     ```bash
         go run main.go -e .env
         ```
-    - Using Docker
-        ```bash
+
+   - Using Docker
+
+     ```bash
         docker build -t contract-mon .
         docker run -it contract-mon -e env=.env
         ```
@@ -56,14 +59,14 @@ Ensure that you have installed:
 - Open telegram app
 - Create a new bot
 
-    ```ordered
-    1. Find telegram bot named "@botfarther"
-    2. Type /newbot
-    ```
+  ```ordered
+     1. Find telegram bot named "@botfarther"
+     2. Type /newbot
+     ```
 
 - Get the bot token
 
-    ```ordered
+  ```ordered
     1. In the same bot named "@botfarther"
     2. Type /token
     3. Choose your bot

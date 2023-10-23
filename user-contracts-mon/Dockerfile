@@ -8,6 +8,6 @@ COPY . .
 
 RUN go mod tidy
 
-RUN go build -o contractsmon main.go 
+RUN go build -o contractsmon main.go
 
 CMD ./contractsmon -e ${env}
