@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"time"
 
@@ -21,9 +22,8 @@ type Monitor struct {
 }
 
 type User struct {
-	ChatID   int64
-	mnemonic string
-	network  string
+	ChatID         int64
+	tfPluginClient deployer.TFPluginClient
 }
 
 // NewMonitor creates a new monitor from parsed config/env file
@@ -58,11 +58,9 @@ func NewUser(msg tgapi.Update) (User, error) {
 	if err != nil {
 		return user, errors.New("failed to establish gird connection")
 	}
-	tfPluginClient.Close()
 
 	user.ChatID = msg.FromChat().ID
-	user.mnemonic = mnemonic
-	user.network = network
+	user.tfPluginClient = tfPluginClient
 
 	return user, nil
 }
@@ -70,26 +68,28 @@ func NewUser(msg tgapi.Update) (User, error) {
 // StartMonitoring starts monitoring the contracts with
 // specific mnemonics and notify subscribed chats every fixed interval
 func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int64) {
-	users := map[int64]User{}
+	users := map[int64]deployer.TFPluginClient{}
 	ticker := time.NewTicker(time.Duration(mon.interval) * time.Hour)
 
 	for {
 		select {
 		case user := <-addChatChan:
-			users[user.ChatID] = user
-			contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(user.mnemonic, user.network)
+			users[user.ChatID] = user.tfPluginClient
+			contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(user.tfPluginClient)
 			err = mon.sendResponse(user.ChatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
 			if err != nil {
 				log.Println(err)
 			}
 
 		case chatID := <-stopChatChan:
-			users[chatID] = User{}
+			tfPluginClient := users[chatID]
+			tfPluginClient.Close()
+			users[chatID] = deployer.TFPluginClient{}
 
 		case <-ticker.C:
-			for chatID, user := range users {
-				if user.mnemonic != "" {
-					contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(user.mnemonic, user.network)
+			for chatID, tfPluginClient := range users {
+				if reflect.DeepEqual(tfPluginClient, deployer.TFPluginClient{}) {
+					contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(tfPluginClient)
 					err = mon.sendResponse(chatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
 					if err != nil {
 						log.Println(err)
@@ -100,13 +100,7 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 	}
 }
 
-func runMonitor(mnemonic, network string) (string, string, error) {
-	tfPluginClient, err := deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, true)
-	if err != nil {
-		return "", "", errors.New("failed to establish gird connection")
-	}
-	defer tfPluginClient.Close()
-
+func runMonitor(tfPluginClient deployer.TFPluginClient) (string, string, error) {
 	contractsInGracePeriod, err := getContractsInGracePeriod(tfPluginClient)
 	if err != nil {
 		return "", "", err
