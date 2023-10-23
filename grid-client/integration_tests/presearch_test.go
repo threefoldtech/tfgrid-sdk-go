@@ -102,7 +102,7 @@ func TestPresearchDeployment(t *testing.T) {
 
 	output, err := RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
 	assert.NoError(t, err)
-	assert.Contains(t, string(output), "PRESEARCH_REGISTRATION_CODE=e5083a8d0a6362c6cf7a3078bfac81e3")
+	assert.Contains(t, output, "PRESEARCH_REGISTRATION_CODE=e5083a8d0a6362c6cf7a3078bfac81e3")
 
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute; {

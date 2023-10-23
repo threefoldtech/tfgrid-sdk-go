@@ -125,9 +125,9 @@ func NewTFPluginClient(
 	var identity substrate.Identity
 	switch keyType {
 	case "ed25519":
-		identity, err = substrate.NewIdentityFromEd25519Phrase(string(tfPluginClient.mnemonics))
+		identity, err = substrate.NewIdentityFromEd25519Phrase(tfPluginClient.mnemonics)
 	case "sr25519":
-		identity, err = substrate.NewIdentityFromSr25519Phrase(string(tfPluginClient.mnemonics))
+		identity, err = substrate.NewIdentityFromSr25519Phrase(tfPluginClient.mnemonics)
 	default:
 		err = errors.Errorf("key type must be one of ed25519 and sr25519 not %s", keyType)
 	}

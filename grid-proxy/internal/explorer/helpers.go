@@ -14,6 +14,8 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
+const trueStr = "true"
+
 func errorReply(err error) mw.Response {
 	if errors.Is(err, ErrNodeNotFound) {
 		return mw.NotFound(err)
@@ -66,12 +68,12 @@ func getLimit(r *http.Request) (types.Limit, error) {
 	limit.Size = parsed
 
 	limit.RetCount = false
-	if retCount == "true" {
+	if retCount == trueStr {
 		limit.RetCount = true
 	}
 
 	limit.Randomize = false
-	if randomize == "true" {
+	if randomize == trueStr {
 		limit.Randomize = true
 	}
 
@@ -109,7 +111,7 @@ func parseParams(
 	falseVal := false
 	for param, prop := range bools {
 		value := r.URL.Query().Get(param)
-		if value == "true" {
+		if value == trueStr {
 			*prop = &trueVal
 		}
 		if value == "false" {

@@ -15,13 +15,13 @@ import (
 )
 
 const deploymentName = "test"
+const repoURL = "https://github.com/threefoldtech/tfgrid-sdk-go/gridify.git"
+const projectName = "gridify"
 
 func TestDeploy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	repoURL := "https://github.com/threefoldtech/tfgrid-sdk-go/gridify.git"
-	projectName := "gridify"
 	filter := buildNodeFilter(Eco)
 	network := buildNetwork(projectName, deploymentName, 1)
 	deployment := buildDeployment(Eco, network.Name, projectName, repoURL, deploymentName, 1)
@@ -313,9 +313,6 @@ func TestDestroy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	repoURL := "https://github.com/threefoldtech/tfgrid-sdk-go/gridify.git"
-	projectName := "gridify"
-
 	clientMock := mocks.NewMockTFPluginClientInterface(ctrl)
 
 	deployer, err := NewDeployer(clientMock, repoURL, log.Logger.Level(zerolog.Disabled))
@@ -345,8 +342,6 @@ func TestGet(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	repoURL := "https://github.com/threefoldtech/tfgrid-sdk-go/gridify.git"
-	projectName := "gridify"
 	contracts := graphql.Contracts{
 		NameContracts: []graphql.Contract{{ContractID: "10"}, {ContractID: "11"}},
 		NodeContracts: []graphql.Contract{{ContractID: "20", NodeID: 14, DeploymentData: `{"name":"test", "type":"Gateway Name"}`}, {ContractID: "21", NodeID: 14, DeploymentData: "{}"}},

@@ -58,6 +58,10 @@ var (
 	}
 )
 
+const deleted = "Deleted"
+const created = "Created"
+const gracePeriod = "GracePeriod"
+
 func initSchema(db *sql.DB) error {
 	schema, err := os.ReadFile("./schema.sql")
 	if err != nil {
@@ -189,17 +193,17 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 		if err != nil {
 			return nil, contractsStartID, fmt.Errorf("failed to generate random node id: %w", err)
 		}
-		state := "Deleted"
+		state := deleted
 
 		if nodeUP[nodeID] {
 			if flip(contractCreatedRatio) {
-				state = "Created"
+				state = created
 			} else if flip(0.5) {
-				state = "GracePeriod"
+				state = gracePeriod
 			}
 		}
 
-		if state != "Deleted" && (minContractHRU > nodesHRU[nodeID] || minContractMRU > nodesMRU[nodeID] || minContractSRU > nodesSRU[nodeID]) {
+		if state != deleted && (minContractHRU > nodesHRU[nodeID] || minContractMRU > nodesMRU[nodeID] || minContractSRU > nodesSRU[nodeID]) {
 			i--
 			continue
 		}
@@ -260,7 +264,7 @@ func generateNodeContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 			mru:         mru,
 			contract_id: fmt.Sprintf("node-contract-%d", contractsStartID),
 		}
-		if contract.state != "Deleted" {
+		if contract.state != deleted {
 			nodesHRU[nodeID] -= hru
 			nodesSRU[nodeID] -= sru
 			nodesMRU[nodeID] -= mru
@@ -333,12 +337,12 @@ func generateNameContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 			return nil, contractsStartID, fmt.Errorf("failed to generate random node id: %w", err)
 		}
 
-		state := "Deleted"
+		state := deleted
 		if nodeUP[nodeID] {
 			if flip(contractCreatedRatio) {
-				state = "Created"
+				state = created
 			} else if flip(0.5) {
-				state = "GracePeriod"
+				state = gracePeriod
 			}
 		}
 
@@ -419,15 +423,19 @@ func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 
 		availableRentNodesList = nl
 		delete(availableRentNodes, nodeID)
-		state := "Deleted"
+		state := deleted
 		if nodeUP[nodeID] {
 			if flip(0.9) {
-				state = "Created"
+				state = created
 			} else if flip(0.5) {
-				state = "GracePeriod"
+				state = gracePeriod
 			}
 		}
+
 		twinID, err := rnd(1100, 3100)
+		if err != nil {
+			return nil, contractsStartID, fmt.Errorf("failed to generate a random twin id: %w", err)
+		}
 
 		contract := rent_contract{
 			id:           fmt.Sprintf("rent-contract-%d", contractsStartID),
@@ -439,7 +447,7 @@ func generateRentContracts(db *sql.DB, billsStartID, contractsStartID int) ([]st
 			grid_version: 3,
 		}
 
-		if state != "Deleted" {
+		if state != deleted {
 			renter[nodeID] = contract.twin_id
 		}
 

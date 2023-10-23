@@ -581,7 +581,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	}
 	if limit.Randomize {
 		q = q.Limit(int(limit.Size)).
-			Offset(int(rand.Intn(int(count)) - int(limit.Size)))
+			Offset(rand.Intn(int(count) - int(limit.Size)))
 	} else {
 		if filter.AvailableFor != nil {
 			q = q.Order("(case when rent_contract is not null then 1 else 2 end)")
@@ -697,7 +697,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	}
 	if limit.Randomize {
 		q = q.Limit(int(limit.Size)).
-			Offset(int(rand.Intn(int(count)) - int(limit.Size)))
+			Offset(rand.Intn(int(count) - int(limit.Size)))
 	} else {
 		q = q.Limit(int(limit.Size)).
 			Offset(int(limit.Page-1) * int(limit.Size)).
@@ -740,7 +740,7 @@ func (d *PostgresDatabase) GetTwins(ctx context.Context, filter types.TwinFilter
 	}
 	if limit.Randomize {
 		q = q.Limit(int(limit.Size)).
-			Offset(int(rand.Intn(int(count)) - int(limit.Size)))
+			Offset(rand.Intn(int(count) - int(limit.Size)))
 	} else {
 		q = q.Limit(int(limit.Size)).
 			Offset(int(limit.Page-1) * int(limit.Size)).
@@ -822,7 +822,7 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 	}
 	if limit.Randomize {
 		q = q.Limit(int(limit.Size)).
-			Offset(int(rand.Intn(int(count)) - int(limit.Size)))
+			Offset(rand.Intn(int(count) - int(limit.Size)))
 	} else {
 		q = q.Limit(int(limit.Size)).
 			Offset(int(limit.Page-1) * int(limit.Size)).

@@ -141,7 +141,7 @@ func AreWgIPsReachable(wgConfig string, ipsToCheck []string, privateKey string) 
 			if err != nil {
 				return errors.Wrapf(err, "could not connect as a root user to the machine with ip %s with output %s", ip, output)
 			}
-			if !strings.Contains(string(output), ip) {
+			if !strings.Contains(output, ip) {
 				return errors.Wrapf(err, "ip %s could not be verified. ifconfig output: %s", ip, output)
 			}
 			return nil
