@@ -8,7 +8,7 @@ import (
 	env "github.com/hashicorp/go-envparse"
 )
 
-// configrations parsed from the env file
+// Config is configurations parsed from the env file
 type Config struct {
 	botToken string `env:"BOT_TOKEN"`
 	interval int    `env:"INTERVAL"`
