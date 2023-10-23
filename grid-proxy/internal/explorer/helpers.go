@@ -1,6 +1,7 @@
 package explorer
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/http"
@@ -307,12 +308,12 @@ func (a *App) handleStatsRequestsQueryParams(r *http.Request) (types.StatsFilter
 
 // getNodeData is a helper function that wraps fetch node data
 // it caches the results in redis to save time
-func (a *App) getNodeData(nodeIDStr string) (types.NodeWithNestedCapacity, error) {
+func (a *App) getNodeData(ctx context.Context, nodeIDStr string) (types.NodeWithNestedCapacity, error) {
 	nodeID, err := strconv.Atoi(nodeIDStr)
 	if err != nil {
 		return types.NodeWithNestedCapacity{}, errors.Wrap(ErrBadGateway, fmt.Sprintf("invalid node id %d: %s", nodeID, err.Error()))
 	}
-	info, err := a.db.GetNode(uint32(nodeID))
+	info, err := a.db.GetNode(ctx, uint32(nodeID))
 	if errors.Is(err, db.ErrNodeNotFound) {
 		return types.NodeWithNestedCapacity{}, ErrNodeNotFound
 	} else if err != nil {
@@ -324,13 +325,13 @@ func (a *App) getNodeData(nodeIDStr string) (types.NodeWithNestedCapacity, error
 }
 
 // getContractData is a helper function that wraps fetch contract data
-func (a *App) getContractData(contractIDStr string) (types.Contract, error) {
+func (a *App) getContractData(ctx context.Context, contractIDStr string) (types.Contract, error) {
 	contractID, err := strconv.Atoi(contractIDStr)
 	if err != nil {
 		return types.Contract{}, errors.Wrapf(err, "invalid contract id: %s", contractIDStr)
 	}
 
-	info, err := a.db.GetContract(uint32(contractID))
+	info, err := a.db.GetContract(ctx, uint32(contractID))
 
 	if errors.Is(err, db.ErrContractNotFound) {
 		return types.Contract{}, ErrContractNotFound
@@ -347,13 +348,13 @@ func (a *App) getContractData(contractIDStr string) (types.Contract, error) {
 }
 
 // getContractBillsData is a helper function that gets bills reports for a single contract data
-func (a *App) getContractBillsData(contractIDStr string, limit types.Limit) ([]types.ContractBilling, uint, error) {
+func (a *App) getContractBillsData(ctx context.Context, contractIDStr string, limit types.Limit) ([]types.ContractBilling, uint, error) {
 	contractID, err := strconv.Atoi(contractIDStr)
 	if err != nil {
 		return []types.ContractBilling{}, 0, errors.Wrapf(err, "invalid contract id: %s", contractIDStr)
 	}
 
-	info, billsCount, err := a.db.GetContractBills(uint32(contractID), limit)
+	info, billsCount, err := a.db.GetContractBills(ctx, uint32(contractID), limit)
 	if err != nil {
 		return []types.ContractBilling{}, 0, errors.Wrapf(err, "contract not found with id: %d", contractID)
 	}

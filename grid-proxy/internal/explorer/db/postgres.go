@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -152,28 +153,28 @@ func (d *PostgresDatabase) initialize() error {
 }
 
 // GetCounters returns aggregate info about the grid
-func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters, error) {
+func (d *PostgresDatabase) GetCounters(ctx context.Context, filter types.StatsFilter) (types.Counters, error) {
 	var counters types.Counters
-	if res := d.gormDB.Table("twin").Count(&counters.Twins); res.Error != nil {
+	if res := d.gormDB.WithContext(ctx).Table("twin").Count(&counters.Twins); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get twin count")
 	}
-	if res := d.gormDB.Table("public_ip").Count(&counters.PublicIPs); res.Error != nil {
+	if res := d.gormDB.WithContext(ctx).Table("public_ip").Count(&counters.PublicIPs); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get public ip count")
 	}
 	var count int64
-	if res := d.gormDB.Table("node_contract").Count(&count); res.Error != nil {
+	if res := d.gormDB.WithContext(ctx).Table("node_contract").Count(&count); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get node contract count")
 	}
 	counters.Contracts += count
-	if res := d.gormDB.Table("rent_contract").Count(&count); res.Error != nil {
+	if res := d.gormDB.WithContext(ctx).Table("rent_contract").Count(&count); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get rent contract count")
 	}
 	counters.Contracts += count
-	if res := d.gormDB.Table("name_contract").Count(&count); res.Error != nil {
+	if res := d.gormDB.WithContext(ctx).Table("name_contract").Count(&count); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get name contract count")
 	}
 	counters.Contracts += count
-	if res := d.gormDB.Table("farm").Distinct("farm_id").Count(&counters.Farms); res.Error != nil {
+	if res := d.gormDB.WithContext(ctx).Table("farm").Distinct("farm_id").Count(&counters.Farms); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get farm count")
 	}
 
@@ -182,7 +183,7 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
 	}
 
-	if res := d.gormDB.
+	if res := d.gormDB.WithContext(ctx).
 		Table("node").
 		Select(
 			"sum(node_resources_total.cru) as total_cru",
@@ -195,15 +196,15 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 		Scan(&counters); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get nodes total resources")
 	}
-	if res := d.gormDB.Table("node").
+	if res := d.gormDB.WithContext(ctx).Table("node").
 		Where(condition).Count(&counters.Nodes); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get node count")
 	}
-	if res := d.gormDB.Table("node").
+	if res := d.gormDB.WithContext(ctx).Table("node").
 		Where(condition).Distinct("country").Count(&counters.Countries); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get country count")
 	}
-	query := d.gormDB.
+	query := d.gormDB.WithContext(ctx).
 		Table("node").
 		Joins(
 			`RIGHT JOIN public_config
@@ -218,11 +219,11 @@ func (d *PostgresDatabase) GetCounters(filter types.StatsFilter) (types.Counters
 		return counters, errors.Wrap(res.Error, "couldn't get gateway count")
 	}
 	var distribution []NodesDistribution
-	if res := d.gormDB.Table("node").
+	if res := d.gormDB.WithContext(ctx).Table("node").
 		Select("country, count(node_id) as nodes").Where(condition).Group("country").Scan(&distribution); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get nodes distribution")
 	}
-	if res := d.gormDB.Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&counters.GPUs); res.Error != nil {
+	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&counters.GPUs); res.Error != nil {
 		return counters, errors.Wrap(res.Error, "couldn't get node with GPU count")
 	}
 	nodesDistribution := map[string]int64{}
@@ -245,8 +246,9 @@ func (np *NodePower) Scan(value interface{}) error {
 }
 
 // GetNode returns node info
-func (d *PostgresDatabase) GetNode(nodeID uint32) (Node, error) {
+func (d *PostgresDatabase) GetNode(ctx context.Context, nodeID uint32) (Node, error) {
 	q := d.nodeTableQuery()
+	q = q.WithContext(ctx)
 	q = q.Where("node.node_id = ?", nodeID)
 	q = q.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
 	var node Node
@@ -264,8 +266,9 @@ func (d *PostgresDatabase) GetNode(nodeID uint32) (Node, error) {
 }
 
 // GetFarm return farm info
-func (d *PostgresDatabase) GetFarm(farmID uint32) (Farm, error) {
+func (d *PostgresDatabase) GetFarm(ctx context.Context, farmID uint32) (Farm, error) {
 	q := d.farmTableQuery()
+	q = q.WithContext(ctx)
 	q = q.Where("farm.farm_id = ?", farmID)
 	var farm Farm
 	if res := q.Scan(&farm); res.Error != nil {
@@ -435,9 +438,9 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 }
 
 // GetNodes returns nodes filtered and paginated
-func (d *PostgresDatabase) GetNodes(filter types.NodeFilter, limit types.Limit) ([]Node, uint, error) {
+func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]Node, uint, error) {
 	q := d.nodeTableQuery()
-	q = q.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
+	q = q.WithContext(ctx)
 
 	condition := "TRUE"
 	if filter.Status != nil {
@@ -612,9 +615,9 @@ func (d *PostgresDatabase) shouldRetry(resError error) bool {
 }
 
 // GetFarms return farms filtered and paginated
-func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
+func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
 	q := d.farmTableQuery()
-
+	q = q.WithContext(ctx)
 	if filter.NodeFreeMRU != nil {
 		q = q.Where("node.free_mru >= ?", *filter.NodeFreeMRU)
 	}
@@ -708,8 +711,8 @@ func (d *PostgresDatabase) GetFarms(filter types.FarmFilter, limit types.Limit) 
 }
 
 // GetTwins returns twins filtered and paginated
-func (d *PostgresDatabase) GetTwins(filter types.TwinFilter, limit types.Limit) ([]types.Twin, uint, error) {
-	q := d.gormDB.
+func (d *PostgresDatabase) GetTwins(ctx context.Context, filter types.TwinFilter, limit types.Limit) ([]types.Twin, uint, error) {
+	q := d.gormDB.WithContext(ctx).
 		Table("twin").
 		Select(
 			"twin_id",
@@ -780,8 +783,9 @@ func (d *PostgresDatabase) contractTableQuery() *gorm.DB {
 }
 
 // GetContracts returns contracts filtered and paginated
-func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types.Limit) ([]DBContract, uint, error) {
+func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.ContractFilter, limit types.Limit) ([]DBContract, uint, error) {
 	q := d.contractTableQuery()
+	q = q.WithContext(ctx)
 
 	if filter.Type != nil {
 		q = q.Where("type = ?", *filter.Type)
@@ -832,8 +836,10 @@ func (d *PostgresDatabase) GetContracts(filter types.ContractFilter, limit types
 }
 
 // GetContract return a single contract info
-func (d *PostgresDatabase) GetContract(contractID uint32) (DBContract, error) {
+func (d *PostgresDatabase) GetContract(ctx context.Context, contractID uint32) (DBContract, error) {
 	q := d.contractTableQuery()
+	q = q.WithContext(ctx)
+
 	q = q.Where("contracts.contract_id = ?", contractID)
 
 	var contract DBContract
@@ -849,8 +855,8 @@ func (d *PostgresDatabase) GetContract(contractID uint32) (DBContract, error) {
 }
 
 // GetContract return a single contract info
-func (d *PostgresDatabase) GetContractBills(contractID uint32, limit types.Limit) ([]ContractBilling, uint, error) {
-	q := d.gormDB.Table("contract_bill_report").
+func (d *PostgresDatabase) GetContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]ContractBilling, uint, error) {
+	q := d.gormDB.WithContext(ctx).Table("contract_bill_report").
 		Select("amount_billed, discount_received, timestamp").
 		Where("contract_id = ?", contractID)
 
@@ -873,13 +879,13 @@ func (d *PostgresDatabase) GetContractBills(contractID uint32, limit types.Limit
 	return bills, uint(count), nil
 }
 
-func (p *PostgresDatabase) UpsertNodesGPU(nodesGPU []types.NodeGPU) error {
+func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, nodesGPU []types.NodeGPU) error {
 	// For upsert operation
 	conflictClause := clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}, {Name: "node_twin_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"vendor", "device", "contract"}),
 	}
-	err := p.gormDB.Table("node_gpu").Clauses(conflictClause).Create(&nodesGPU).Error
+	err := p.gormDB.WithContext(ctx).Table("node_gpu").Clauses(conflictClause).Create(&nodesGPU).Error
 	if err != nil {
 		return fmt.Errorf("failed to upsert nodes GPU details: %w", err)
 	}

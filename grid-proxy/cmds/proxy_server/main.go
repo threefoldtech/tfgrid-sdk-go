@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -209,7 +210,8 @@ func createServer(f flags, db db.Database, gitCommit string, relayClient rmb.Cli
 	}
 
 	return &http.Server{
-		Handler: router,
-		Addr:    f.address,
+		Handler:           http.TimeoutHandler(router, 30*time.Second, "request timed-out. server took too long to respond"), // 30 seconds for slow sql operations
+		Addr:              f.address,
+		ReadHeaderTimeout: 5 * time.Second,
 	}, nil
 }

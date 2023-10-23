@@ -679,23 +679,23 @@ func generateNodeGPUs(db *sql.DB) error {
 }
 
 func generateContracts(db *sql.DB) error {
-	contractsStartID := 1
+	rentContractIDStart := 1
 
 	var billReports []string
 
-	rentContractsBillReports, contractCount, err := generateRentContracts(db, 1, contractsStartID)
+	rentContractsBillReports, nodeContractIDStart, err := generateRentContracts(db, 1, rentContractIDStart)
 	if err != nil {
 		return fmt.Errorf("failed to generate rent contracts: %w", err)
 	}
 	billReports = append(billReports, rentContractsBillReports...)
 
-	nodeContractsBillReports, _, err := generateNodeContracts(db, len(billReports)+1, contractCount)
+	nodeContractsBillReports, nameContractIDStart, err := generateNodeContracts(db, len(billReports)+1, nodeContractIDStart)
 	if err != nil {
 		return fmt.Errorf("failed to generate node contracts: %w", err)
 	}
 	billReports = append(billReports, nodeContractsBillReports...)
 
-	nameContractsBillReports, _, err := generateNameContracts(db, len(billReports)+1, contractCount)
+	nameContractsBillReports, _, err := generateNameContracts(db, len(billReports)+1, nameContractIDStart)
 	if err != nil {
 		return fmt.Errorf("failed to generate name contracts: %w", err)
 	}

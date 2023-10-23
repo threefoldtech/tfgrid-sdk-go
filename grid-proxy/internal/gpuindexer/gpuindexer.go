@@ -87,19 +87,18 @@ func (n *NodeGPUIndexer) runQueryGridNodes(ctx context.Context) {
 
 	hasNext := true
 	for hasNext {
-		nodes, _, err := n.db.GetNodes(filter, limit)
+		nodes, err := n.getNodes(ctx, filter, limit)
 		if err != nil {
 			log.Error().Err(err).Msg("unable to query nodes in GPU indexer")
 			return
 		}
+
 		if len(nodes) < int(limit.Size) {
 			hasNext = false
 		}
 
 		for _, node := range nodes {
-			id := uuid.NewString()
-			err = n.relayClient.Call(ctx, id, uint32(node.TwinID), "zos.gpu.list", nil)
-			if err != nil {
+			if err := n.getNodeGPUInfo(ctx, node); err != nil {
 				log.Error().Err(err).Msgf("failed to send get GPU info request from relay in GPU indexer for node %d", node.NodeID)
 			}
 		}
@@ -108,11 +107,31 @@ func (n *NodeGPUIndexer) runQueryGridNodes(ctx context.Context) {
 	}
 }
 
+func (n *NodeGPUIndexer) getNodeGPUInfo(ctx context.Context, node db.Node) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	id := uuid.NewString()
+	return n.relayClient.Call(ctx, id, uint32(node.TwinID), "zos.gpu.list", nil)
+}
+
+func (n *NodeGPUIndexer) getNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]db.Node, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+
+	nodes, _, err := n.db.GetNodes(ctx, filter, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	return nodes, nil
+}
+
 func (n *NodeGPUIndexer) gpuBatchesDBUpserter(ctx context.Context) {
 	for {
 		select {
 		case gpuBatch := <-n.nodesGPUBatchesChan:
-			err := n.db.UpsertNodesGPU(gpuBatch)
+			err := n.db.UpsertNodesGPU(ctx, gpuBatch)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to update GPU info in GPU indexer")
 				continue
