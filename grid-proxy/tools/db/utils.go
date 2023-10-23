@@ -9,8 +9,9 @@ import (
 	"strings"
 )
 
-// rnd gets a random number between min and max
+const null = "NULL"
 
+// rnd gets a random number between min and max
 func rnd(min, max uint64) (uint64, error) {
 	if max-min+1 <= 0 {
 		return 0, fmt.Errorf("min (%d) cannot be greater than max (%d)", min, max)
@@ -63,21 +64,21 @@ func objectToTupleString(v interface{}) (string, error) {
 		if i == 0 {
 			v := fmt.Sprint(val.Field(i))
 			if v == "" {
-				v = "NULL"
+				v = null
 			}
-			if v != "NULL" && val.Field(i).Type().Name() == "string" {
+			if v != null && val.Field(i).Type().Name() == "string" {
 				v = fmt.Sprintf(`'%s'`, v)
 			}
 			vals = fmt.Sprintf("%s%s", vals, v)
 		} else {
 			v := fmt.Sprint(val.Field(i))
 			if v == "" {
-				v = "NULL"
+				v = null
 			}
-			if v != "NULL" && val.Field(i).Type().Name() == "string" {
+			if v != null && val.Field(i).Type().Name() == "string" {
 				v = fmt.Sprintf(`'%s'`, v)
 			}
-			if v != "NULL" && val.Field(i).Type().Name() == "nodePower" {
+			if v != null && val.Field(i).Type().Name() == "nodePower" {
 				// Construct the nodePower object
 				val2 := val.Field(i)
 				power := make(map[string]string)

@@ -1,4 +1,4 @@
-name: SDK Tests
+name: Test sdk
 
 on:
   push:
@@ -19,11 +19,14 @@ jobs:
       - name: Get dependencies
         run: cd ${{ matrix.dir }} && go mod download
 
-      - name: Test
+      - name: Test ${{ matrix.dir }}
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: dev
         run: cd ${{ matrix.dir }} && go test -v `go list ./... | grep -v integration_tests`
+
+      - name: Test grid-proxy
+        run: cd grid-proxy && go test -v ./pkg/client
 
     strategy:
       fail-fast: true

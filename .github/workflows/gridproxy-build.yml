@@ -1,4 +1,4 @@
-name: proxy Build and lint the source code
+name: proxy Build the source code
 
 on:
   push:

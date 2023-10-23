@@ -1,4 +1,4 @@
-name: lint sdk
+name: Lint sdk
 
 on:
   push:
@@ -31,6 +31,7 @@ jobs:
           - activation-service
           - grid-cli
           - grid-client
+          - grid-proxy
           - gridify
           - monitoring-bot
           - rmb-sdk-go
