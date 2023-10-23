@@ -7,6 +7,8 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+const deleted = "Deleted"
+
 type DBData struct {
 	NodeIDMap          map[string]uint64
 	FarmIDMap          map[string]uint64
@@ -106,7 +108,7 @@ func calcNodesUsedResources(data *DBData) error {
 	}
 
 	for _, contract := range data.NodeContracts {
-		if contract.State == "Deleted" {
+		if contract.State == deleted {
 			continue
 		}
 		contratResourceID := contract.ResourcesUsedID
@@ -123,7 +125,7 @@ func calcNodesUsedResources(data *DBData) error {
 
 func calcRentInfo(data *DBData) error {
 	for _, contract := range data.RentContracts {
-		if contract.State == "Deleted" {
+		if contract.State == deleted {
 			continue
 		}
 		data.NodeRentedBy[contract.NodeID] = contract.TwinID
@@ -342,7 +344,7 @@ func loadContracts(db *sql.DB, data *DBData) error {
 			return err
 		}
 		data.NodeContracts[contract.ContractID] = contract
-		if contract.State != "Deleted" {
+		if contract.State != deleted {
 			data.NonDeletedContracts[contract.NodeID] = append(data.NonDeletedContracts[contract.NodeID], contract.ContractID)
 		}
 
