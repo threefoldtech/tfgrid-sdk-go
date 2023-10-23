@@ -39,7 +39,7 @@ func (a *App) activateHandler(r *http.Request, w http.ResponseWriter) (interface
 		return nil, badRequest(errors.New("invalid input data"))
 	}
 
-	account, err := substrate.FromAddress(string(input.SubstrateAccountID))
+	account, err := substrate.FromAddress(input.SubstrateAccountID)
 	if err != nil {
 		log.Error().Err(err).Send()
 		return nil, notFound(errors.New("substrate account is not found"))
