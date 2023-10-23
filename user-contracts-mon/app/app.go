@@ -2,7 +2,6 @@ package app
 
 import (
 	"flag"
-	"fmt"
 	"log"
 
 	tgapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -38,7 +37,7 @@ func Start() error {
 		switch update.Message.Text {
 		case "/start":
 
-			msg := tgapi.NewMessage(update.FromChat().ID, fmt.Sprintf("Please send your network and mnemonic in the form\nnetwork=<network>\nmnemonic=<mnemonic>"))
+			msg := tgapi.NewMessage(update.FromChat().ID, "Please send your network and mnemonic in the form\nnetwork=<network>\nmnemonic=<mnemonic>")
 			_, err := mon.Bot.Send(msg)
 			if err != nil {
 				log.Println(err)

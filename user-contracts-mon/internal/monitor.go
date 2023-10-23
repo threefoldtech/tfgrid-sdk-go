@@ -16,22 +16,19 @@ import (
 // Monitor struct of parsed configration
 type Monitor struct {
 	Bot      *tgapi.BotAPI
-	Mnemonic string
 	BotToken string
-	Network  string
 	interval int
 }
 
 type User struct {
-	ChatID         int64
-	tfPluginClient deployer.TFPluginClient
+	ChatID   int64
+	mnemonic string
+	network  string
 }
 
 // NewMonitor creates a new monitor from parsed config/env file
 func NewMonitor(conf Config) (Monitor, error) {
 	mon := Monitor{}
-	mon.Mnemonic = conf.mnemonic
-	mon.Network = conf.network
 	mon.interval = conf.interval
 	mon.BotToken = conf.botToken
 
@@ -45,11 +42,13 @@ func NewMonitor(conf Config) (Monitor, error) {
 	return mon, nil
 }
 
+// NewUser parses the user message to mnemonic and network and validate them
 func NewUser(msg tgapi.Update) (User, error) {
 	user := User{}
 	info := strings.Split(msg.Message.Text, "\n")
 
-	if strings.Contains(info[0], "network=") || strings.Contains(info[1], "mnemonic=") {
+	log.Println(info)
+	if !strings.Contains(info[0], "network=") || !strings.Contains(info[1], "mnemonic=") {
 		return user, errors.New("invalid format")
 	}
 	network := strings.Split(info[0], "=")[1]
@@ -59,8 +58,11 @@ func NewUser(msg tgapi.Update) (User, error) {
 	if err != nil {
 		return user, errors.New("failed to establish gird connection")
 	}
+	tfPluginClient.Close()
+
 	user.ChatID = msg.FromChat().ID
-	user.tfPluginClient = tfPluginClient
+	user.mnemonic = mnemonic
+	user.network = network
 
 	return user, nil
 }
@@ -68,29 +70,43 @@ func NewUser(msg tgapi.Update) (User, error) {
 // StartMonitoring starts monitoring the contracts with
 // specific mnemonics and notify subscribed chats every fixed interval
 func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int64) {
-	users := map[int64]deployer.TFPluginClient{}
+	users := map[int64]User{}
 	ticker := time.NewTicker(time.Duration(mon.interval) * time.Hour)
 
 	for {
 		select {
 		case user := <-addChatChan:
-			users[user.ChatID] = user.tfPluginClient
+			users[user.ChatID] = user
+			contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(user.mnemonic, user.network)
+			err = mon.sendResponse(user.ChatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
+			if err != nil {
+				log.Println(err)
+			}
 
 		case chatID := <-stopChatChan:
-            users[chatID].SubstrateConn.Close()
-			users[chatID] = deployer.TFPluginClient{}
+			users[chatID] = User{}
 
-		// case <-ticker.C:
-		// 	contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor()
-		// 	err = mon.sendResponse(users, contractsInGracePeriod, contractsAgainstDownNodes, err)
-		// 	if err != nil {
-		// 		return
-		// 	}
+		case <-ticker.C:
+			for chatID, user := range users {
+				if user.mnemonic != "" {
+					contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(user.mnemonic, user.network)
+					err = mon.sendResponse(chatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
+					if err != nil {
+						log.Println(err)
+					}
+				}
+			}
 		}
 	}
 }
 
-func runMonitor(tfPluginClient deployer.TFPluginClient) (string, string, error) {
+func runMonitor(mnemonic, network string) (string, string, error) {
+	tfPluginClient, err := deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, true)
+	if err != nil {
+		return "", "", errors.New("failed to establish gird connection")
+	}
+	defer tfPluginClient.Close()
+
 	contractsInGracePeriod, err := getContractsInGracePeriod(tfPluginClient)
 	if err != nil {
 		return "", "", err
@@ -173,39 +189,29 @@ func isNodeDown(tfPluginClient deployer.TFPluginClient, contract graphql.Contrac
 	downNodes <- ""
 }
 
-func (mon Monitor) sendResponse(chatIDs map[int64]string, contractsInGracePeriod, contractsAgainstDownNodes string, err error) error {
+func (mon Monitor) sendResponse(chatID int64, contractsInGracePeriod, contractsAgainstDownNodes string, err error) error {
 	if err != nil {
-		for chatID, mnemonic := range chatIDs {
-			if mnemonic != "" {
-				msg := tgapi.NewMessage(chatID, "Failed to load contracts")
-				_, err := mon.Bot.Send(msg)
-				if err != nil {
-					log.Println(err)
-				}
-			}
+		msg := tgapi.NewMessage(chatID, "Failed to load contracts")
+		_, err := mon.Bot.Send(msg)
+		if err != nil {
+			return err
 		}
-
-		log.Println(err)
 		return err
 	}
 
-	for chatID, menmonic := range chatIDs {
-		if menmonic != "" {
-			if contractsInGracePeriod != "" {
-				msg := tgapi.NewMessage(chatID, contractsInGracePeriod)
-				_, err := mon.Bot.Send(msg)
-				if err != nil {
-					log.Println(err)
-				}
-			}
+	if contractsInGracePeriod != "" {
+		msg := tgapi.NewMessage(chatID, contractsInGracePeriod)
+		_, err := mon.Bot.Send(msg)
+		if err != nil {
+			return err
+		}
+	}
 
-			if contractsAgainstDownNodes != "" {
-				msg := tgapi.NewMessage(chatID, contractsAgainstDownNodes)
-				_, err := mon.Bot.Send(msg)
-				if err != nil {
-					log.Println(err)
-				}
-			}
+	if contractsAgainstDownNodes != "" {
+		msg := tgapi.NewMessage(chatID, contractsAgainstDownNodes)
+		_, err := mon.Bot.Send(msg)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
