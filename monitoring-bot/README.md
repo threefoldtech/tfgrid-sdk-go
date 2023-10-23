@@ -31,6 +31,7 @@ This is a bot to monitor some TFGrid functionalities here is a list:
     TEST_STELLAR_SECRET=<stellar account secret on stellar test network>
     TEST_STELLAR_ADDRESS=<stellar account address on stellar test network>
     ```
+    | Note: wallets on stellar should have some lumons for the fees, stellar charges about 0.00001 xlm per txn.
 
 - Create a new json file `wallets.json` and add the list of addresses you want to monitor, for example:
 
