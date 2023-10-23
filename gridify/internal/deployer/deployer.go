@@ -157,7 +157,7 @@ func (d *Deployer) Get() (map[string]string, error) {
 }
 
 func (d *Deployer) getProjectName() (string, error) {
-	splitURL := strings.Split(string(d.repoURL), "/")
+	splitURL := strings.Split(d.repoURL, "/")
 	projectName, _, found := strings.Cut(splitURL[len(splitURL)-1], ".git")
 	if !found {
 		return "", fmt.Errorf("couldn't get project name")

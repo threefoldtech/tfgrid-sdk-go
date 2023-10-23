@@ -49,7 +49,7 @@ func Deploy(ctx context.Context, vmSpec deployer.VMSpec, ports []uint, debug boo
 			cfg.Network,
 		)
 	}
-	deployer, err := deployer.NewDeployer(&tfPluginClient, string(repoURL), logger)
+	deployer, err := deployer.NewDeployer(&tfPluginClient, repoURL, logger)
 	if err != nil {
 		return err
 	}

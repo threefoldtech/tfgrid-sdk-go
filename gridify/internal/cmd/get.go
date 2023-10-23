@@ -48,7 +48,7 @@ func Get(debug bool) error {
 			cfg.Network,
 		)
 	}
-	deployer, err := deployer.NewDeployer(&tfPluginClient, string(repoURL), logger)
+	deployer, err := deployer.NewDeployer(&tfPluginClient, repoURL, logger)
 	if err != nil {
 		return err
 	}
