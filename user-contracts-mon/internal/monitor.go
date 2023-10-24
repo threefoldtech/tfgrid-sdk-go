@@ -88,7 +88,7 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 			for chatID, user := range users {
 				tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, "", "", "", 0, true)
 				if err != nil {
-					log.Println(err)
+					log.Println("failed to connect")
 					mon.sendResponse(err.Error(), chatID)
 					continue
 				}
@@ -107,7 +107,7 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 		case user := <-addChatChan:
 			tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, "", "", "", 0, true)
 			if err != nil {
-				log.Println(err)
+				log.Println("failed to connect")
 				mon.sendResponse(err.Error(), user.ChatID)
 				continue
 			}
