@@ -48,7 +48,7 @@ Ensure that you have installed:
 -   Using Docker
 
      ```bash
-        docker build -t contract-mon .
+        docker build -t contract-mon -f Dockerfile ../
         docker run -it contract-mon
         ```
 
