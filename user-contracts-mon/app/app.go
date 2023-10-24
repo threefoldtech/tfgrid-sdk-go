@@ -33,11 +33,11 @@ func Start() error {
 	updates := mon.Bot.GetUpdatesChan(u)
 
 	for update := range updates {
-		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 		switch update.Message.Text {
 
 		case "/start":
+		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 			msg := tgapi.NewMessage(update.FromChat().ID, "Please send your network and mnemonic in the form\nnetwork=<network>\nmnemonic=<mnemonic>")
 			_, err := mon.Bot.Send(msg)
 			if err != nil {
@@ -45,6 +45,7 @@ func Start() error {
 			}
 
 		case "/stop":
+		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 			stopChatChan <- update.FromChat().ID
 
 		default:
