@@ -1,13 +1,23 @@
-FROM golang:1.21-alpine
+FROM golang:1.21-alpine as builder
 
-WORKDIR /contracts-mon-bot
+WORKDIR /src
 
 COPY . .
 
-WORKDIR /contracts-mon-bot/user-contracts-mon
+WORKDIR /src/user-contracts-mon
 
-RUN go mod tidy
+RUN go mod tidy 
 
 RUN go build -o contractsmon main.go
 
+
+FROM alpine
+
+WORKDIR /app
+
+COPY --from=builder /src/user-contracts-mon/contractsmon .
+
+COPY --from=builder /src/user-contracts-mon/.env .
+
 CMD ./contractsmon -e .env 
+
