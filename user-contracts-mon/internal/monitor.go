@@ -21,6 +21,7 @@ type Monitor struct {
 	interval int
 }
 
+// User struct of user info and mnemonic
 type User struct {
 	ChatID   int64
 	network  string
@@ -74,50 +75,53 @@ func NewUser(msg tgapi.Update) (User, error) {
 // StartMonitoring starts monitoring the contracts with
 // specific mnemonics and notify subscribed chats every fixed interval
 func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int64) {
-	users := map[int64]deployer.TFPluginClient{}
+	users := map[int64]User{}
 	ticker := time.NewTicker(time.Duration(mon.interval) * time.Hour)
 
 	for {
 		select {
 
 		case chatID := <-stopChatChan:
-			if tfPluginClient, ok := users[chatID]; ok {
-				tfPluginClient.Close()
-				delete(users, chatID)
-			}
+			delete(users, chatID)
 
 		case <-ticker.C:
-			for chatID, tfPluginClient := range users {
-				contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(tfPluginClient)
-				err = mon.sendResponse(chatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
+			for chatID, user := range users {
+				tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, "", "", "", 0, true)
 				if err != nil {
 					log.Println(err)
+					mon.sendResponse("failed to connect to the grid, please make sure to use valid mnemonic", chatID)
+					continue
 				}
+
+				contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(tfPluginClient)
+				tfPluginClient.Close()
+
+				if err != nil {
+					mon.sendResponse(err.Error(), chatID)
+					continue
+				}
+				mon.sendResponse(contractsInGracePeriod, chatID)
+				mon.sendResponse(contractsAgainstDownNodes, chatID)
 			}
 
 		case user := <-addChatChan:
-			if tfPluginClient, ok := users[user.ChatID]; ok {
-				tfPluginClient.Close()
-			}
-
 			tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, "", "", "", 0, true)
 			if err != nil {
 				log.Println(err)
-
-				msg := tgapi.NewMessage(user.ChatID, "failed to connect to the grid, please make sure to use valid mnemonic")
-				_, err := mon.Bot.Send(msg)
-				if err != nil {
-					log.Println(err)
-				}
+				mon.sendResponse("failed to connect to the grid, please make sure to use valid mnemonic", user.ChatID)
 				continue
 			}
-			users[user.ChatID] = tfPluginClient
+			users[user.ChatID] = user
 
 			contractsInGracePeriod, contractsAgainstDownNodes, err := runMonitor(tfPluginClient)
-			err = mon.sendResponse(user.ChatID, contractsInGracePeriod, contractsAgainstDownNodes, err)
+			tfPluginClient.Close()
+
 			if err != nil {
-				log.Println(err)
+				mon.sendResponse(err.Error(), user.ChatID)
+				continue
 			}
+			mon.sendResponse(contractsInGracePeriod, user.ChatID)
+			mon.sendResponse(contractsAgainstDownNodes, user.ChatID)
 		}
 	}
 }
@@ -205,30 +209,14 @@ func isNodeDown(tfPluginClient deployer.TFPluginClient, contract graphql.Contrac
 	downNodes <- ""
 }
 
-func (mon Monitor) sendResponse(chatID int64, contractsInGracePeriod, contractsAgainstDownNodes string, err error) error {
+func (mon Monitor) sendResponse(stringMsg string, chatID int64) {
+	if stringMsg == "" {
+		return
+	}
+
+	msg := tgapi.NewMessage(chatID, stringMsg)
+	_, err := mon.Bot.Send(msg)
 	if err != nil {
-		msg := tgapi.NewMessage(chatID, "Failed to load contracts")
-		_, err := mon.Bot.Send(msg)
-		if err != nil {
-			return err
-		}
-		return err
+		log.Println(err)
 	}
-
-	if contractsInGracePeriod != "" {
-		msg := tgapi.NewMessage(chatID, contractsInGracePeriod)
-		_, err := mon.Bot.Send(msg)
-		if err != nil {
-			return err
-		}
-	}
-
-	if contractsAgainstDownNodes != "" {
-		msg := tgapi.NewMessage(chatID, contractsAgainstDownNodes)
-		_, err := mon.Bot.Send(msg)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
