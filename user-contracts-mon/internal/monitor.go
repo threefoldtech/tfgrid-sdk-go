@@ -89,7 +89,7 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 				tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, "", "", "", 0, true)
 				if err != nil {
 					log.Println(err)
-					mon.sendResponse("failed to connect to the grid, please make sure to use valid mnemonic", chatID)
+					mon.sendResponse(err.Error(), chatID)
 					continue
 				}
 
@@ -108,7 +108,7 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 			tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, "", "", "", 0, true)
 			if err != nil {
 				log.Println(err)
-				mon.sendResponse("failed to connect to the grid, please make sure to use valid mnemonic", user.ChatID)
+				mon.sendResponse(err.Error(), user.ChatID)
 				continue
 			}
 			users[user.ChatID] = user
