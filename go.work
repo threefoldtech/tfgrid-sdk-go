@@ -8,4 +8,5 @@ use (
 	./gridify
 	./monitoring-bot
 	./rmb-sdk-go
+	./user-contracts-mon
 )
