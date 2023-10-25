@@ -4,6 +4,8 @@ on:
   push:
   pull_request:
     types: [opened, reopened, review_requested]
+  schedule:
+    - cron: "25 5 * * *"
   workflow_dispatch:
 
 jobs:
