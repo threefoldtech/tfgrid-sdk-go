@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	resultsBatcherCleanupInterval = 10 * time.Second
-	minListenerReconnectInterval  = 10 * time.Second
-	dbNotificationChannel         = "node_added"
+	resultsBatcherCleanupInterval  = 10 * time.Second
+	minListenerReconnectInterval   = 10 * time.Second
+	dbNodeAddedNotificationChannel = "node_added"
 )
 
 type NodeGPUIndexer struct {
@@ -32,7 +32,7 @@ type NodeGPUIndexer struct {
 	batchSize              int
 	nodesGPUResultsChan    chan []types.NodeGPU
 	nodesGPUBatchesChan    chan []types.NodeGPU
-	nodesChangeChan        chan int64
+	nodeAddedChan          chan uint64
 	nodesGPUResultsWorkers int
 	nodesGPUBufferWorkers  int
 }
@@ -51,7 +51,7 @@ func NewNodeGPUIndexer(
 		db:                     db,
 		nodesGPUResultsChan:    make(chan []types.NodeGPU),
 		nodesGPUBatchesChan:    make(chan []types.NodeGPU),
-		nodesChangeChan:        make(chan int64),
+		nodeAddedChan:          make(chan uint64),
 		checkInterval:          time.Duration(indexerCheckIntervalMins) * time.Minute,
 		batchSize:              batchSize,
 		nodesGPUResultsWorkers: nodesGPUResultsWorkers,
@@ -69,15 +69,15 @@ func NewNodeGPUIndexer(
 }
 
 // startDBListener sets up a PostgreSQL listener to listen for changes in the database and triggers the nodesChangeChan channel.
-func (n *NodeGPUIndexer) startDBListener(ctx context.Context, psqlInfo string) {
-	listener := pq.NewListener(psqlInfo, minListenerReconnectInterval, 6*minListenerReconnectInterval, func(ev pq.ListenerEventType, err error) {
+func (n *NodeGPUIndexer) startDBListener(ctx context.Context) {
+	listener := pq.NewListener(n.db.GetConnectionString(), minListenerReconnectInterval, 6*minListenerReconnectInterval, func(ev pq.ListenerEventType, err error) {
 		if err != nil {
 			log.Error().Err(err).Msg("failed listening to DB changes")
 		}
 	})
 	defer listener.Close()
 
-	err := listener.Listen(dbNotificationChannel)
+	err := listener.Listen(dbNodeAddedNotificationChannel)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to listen to DB changes")
 		return
@@ -96,7 +96,7 @@ func (n *NodeGPUIndexer) startDBListener(ctx context.Context, psqlInfo string) {
 			}
 
 			payload := notification.Extra
-			twinId, err := strconv.ParseInt(payload, 10, 64)
+			twinId, err := strconv.ParseUint(payload, 10, 64)
 			if err != nil {
 				log.Error().Err(err).Msgf("failed to parse twin id %v", payload)
 				continue
@@ -104,7 +104,7 @@ func (n *NodeGPUIndexer) startDBListener(ctx context.Context, psqlInfo string) {
 
 			log.Debug().Msgf("Received data from channel [%v]: twin_id: %v", notification.Channel, payload)
 
-			n.nodesChangeChan <- twinId
+			n.nodeAddedChan <- twinId
 		case <-ctx.Done():
 			log.Error().Err(ctx.Err()).Msg("context canceled")
 			return
@@ -112,7 +112,7 @@ func (n *NodeGPUIndexer) startDBListener(ctx context.Context, psqlInfo string) {
 	}
 }
 
-func (n *NodeGPUIndexer) getGPUInfo(ctx context.Context, twinId int64) {
+func (n *NodeGPUIndexer) getGPUInfo(ctx context.Context, twinId uint64) {
 	id := uuid.NewString()
 	err := n.relayClient.Call(ctx, id, uint32(twinId), "zos.gpu.list", nil)
 	if err != nil {
@@ -127,7 +127,7 @@ func (n *NodeGPUIndexer) queryGridNodes(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			n.runQueryGridNodes(ctx)
-		case addedNodeTwinId := <-n.nodesChangeChan:
+		case addedNodeTwinId := <-n.nodeAddedChan:
 			n.getGPUInfo(ctx, addedNodeTwinId)
 		case <-ctx.Done():
 			return
@@ -208,7 +208,7 @@ func (n *NodeGPUIndexer) gpuNodeResultsBatcher(ctx context.Context) {
 	}
 }
 
-func (n *NodeGPUIndexer) Start(ctx context.Context, connStr string) {
+func (n *NodeGPUIndexer) Start(ctx context.Context) {
 	for i := 0; i < n.nodesGPUResultsWorkers; i++ {
 		go n.gpuNodeResultsBatcher(ctx)
 	}
@@ -217,7 +217,7 @@ func (n *NodeGPUIndexer) Start(ctx context.Context, connStr string) {
 		go n.gpuBatchesDBUpserter(ctx)
 	}
 
-	go n.startDBListener(ctx, connStr)
+	go n.startDBListener(ctx)
 
 	go n.queryGridNodes(ctx)
 

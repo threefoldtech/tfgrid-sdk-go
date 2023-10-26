@@ -100,33 +100,35 @@ const (
 	END;
 	$$ LANGUAGE plpgsql;
 	
-	CREATE OR REPLACE FUNCTION notify_node_change() RETURNS trigger AS $notify_node_change$
+	CREATE OR REPLACE FUNCTION notify_nodes_count_changed() RETURNS trigger AS $notify_nodes_count_changed$
 	BEGIN
 		PERFORM pg_notify('node_added', NEW.twin_id);
 		RETURN NULL;
 	END;
-	$notify_node_change$ LANGUAGE plpgsql;
+	$notify_nodes_count_changed$ LANGUAGE plpgsql;
 	
 	CREATE OR REPLACE TRIGGER node_added
 	AFTER INSERT ON node
-	FOR EACH ROW EXECUTE PROCEDURE notify_node_change();
+	FOR EACH ROW EXECUTE PROCEDURE notify_nodes_count_changed();
 	`
 )
 
 // PostgresDatabase postgres db client
 type PostgresDatabase struct {
-	gormDB *gorm.DB
+	gormDB     *gorm.DB
+	connString string
 }
 
-func GetConnectionString(host string, port int, user, password, dbname string) string {
-	return fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
+func (d *PostgresDatabase) GetConnectionString() string {
+	return d.connString
 }
 
 // NewPostgresDatabase returns a new postgres db client
-func NewPostgresDatabase(psqlInfo string) (Database, error) {
-	gormDB, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{})
+func NewPostgresDatabase(host string, port int, user, password, dbname string) (Database, error) {
+	connString := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+	gormDB, err := gorm.Open(postgres.Open(connString), &gorm.Config{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create orm wrapper around db")
 	}
@@ -141,7 +143,7 @@ func NewPostgresDatabase(psqlInfo string) (Database, error) {
 		return nil, errors.Wrap(err, "failed to auto migrate DB")
 	}
 
-	res := PostgresDatabase{gormDB}
+	res := PostgresDatabase{gormDB, connString}
 	if err := res.initialize(); err != nil {
 		return nil, errors.Wrap(err, "failed to setup tables")
 	}

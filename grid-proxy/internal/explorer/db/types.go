@@ -14,6 +14,7 @@ type Database interface {
 	GetTwins(filter types.TwinFilter, limit types.Limit) ([]types.Twin, uint, error)
 	GetContracts(filter types.ContractFilter, limit types.Limit) ([]DBContract, uint, error)
 	UpsertNodesGPU(nodesGPU []types.NodeGPU) error
+	GetConnectionString() string
 }
 
 // DBContract is contract info
@@ -36,7 +37,7 @@ type Node struct {
 	ID              string
 	NodeID          int64
 	FarmID          int64
-	TwinID          int64
+	TwinID          uint64
 	Country         string
 	GridVersion     int64
 	City            string
