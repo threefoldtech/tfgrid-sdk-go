@@ -42,7 +42,7 @@ type Node struct {
 	ID              string
 	NodeID          int64
 	FarmID          int64
-	TwinID          uint64
+	TwinID          int64
 	Country         string
 	GridVersion     int64
 	City            string

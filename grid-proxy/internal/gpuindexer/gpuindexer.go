@@ -33,7 +33,7 @@ type NodeGPUIndexer struct {
 	batchSize              int
 	nodesGPUResultsChan    chan []types.NodeGPU
 	nodesGPUBatchesChan    chan []types.NodeGPU
-	nodeAddedChan          chan uint64
+	nodeAddedChan          chan uint32
 	nodesGPUResultsWorkers int
 	nodesGPUBufferWorkers  int
 }
@@ -52,7 +52,7 @@ func NewNodeGPUIndexer(
 		db:                     db,
 		nodesGPUResultsChan:    make(chan []types.NodeGPU),
 		nodesGPUBatchesChan:    make(chan []types.NodeGPU),
-		nodeAddedChan:          make(chan uint64),
+		nodeAddedChan:          make(chan uint32),
 		checkInterval:          time.Duration(indexerCheckIntervalMins) * time.Minute,
 		batchSize:              batchSize,
 		nodesGPUResultsWorkers: nodesGPUResultsWorkers,
@@ -105,7 +105,7 @@ func (n *NodeGPUIndexer) startDBListener(ctx context.Context) {
 
 			log.Debug().Msgf("Received data from channel [%v]: twin_id: %v", notification.Channel, payload)
 
-			n.nodeAddedChan <- twinId
+			n.nodeAddedChan <- uint32(twinId)
 		case <-ctx.Done():
 			log.Error().Err(ctx.Err()).Msg("context canceled")
 			return
@@ -113,9 +113,9 @@ func (n *NodeGPUIndexer) startDBListener(ctx context.Context) {
 	}
 }
 
-func (n *NodeGPUIndexer) getGPUInfo(ctx context.Context, twinId uint64) {
+func (n *NodeGPUIndexer) getGPUInfo(ctx context.Context, twinId uint32) {
 	id := uuid.NewString()
-	err := n.relayClient.Call(ctx, id, uint32(twinId), "zos.gpu.list", nil)
+	err := n.relayClient.Call(ctx, id, twinId, "zos.gpu.list", nil)
 	if err != nil {
 		log.Error().Err(err).Msgf("failed to send get GPU info request from relay in GPU indexer for node with twin %d", twinId)
 	}
