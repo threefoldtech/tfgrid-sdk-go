@@ -3,23 +3,31 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net"
 	"reflect"
 	"strings"
 )
 
-func rnd(min, max uint64) uint64 {
-	return rand.Uint64()%(max-min+1) + min
+const null = "NULL"
+
+// rnd gets a random number between min and max
+func rnd(min, max uint64) (uint64, error) {
+	if max-min+1 <= 0 {
+		return 0, fmt.Errorf("min (%d) cannot be greater than max (%d)", min, max)
+	}
+	randomNumber := r.Uint64()%(max-min+1) + min
+	return randomNumber, nil
 }
 
+// flip simulates a coin flip with a given success probability.
 func flip(success float32) bool {
-	return rand.Float32() < success
+	return r.Float32() < success
 }
 
+// randomIPv4 gets a random IPv4
 func randomIPv4() net.IP {
 	ip := make([]byte, 4)
-	rand.Read(ip)
+	r.Read(ip)
 	return net.IP(ip)
 }
 
@@ -31,12 +39,15 @@ func IPv4Subnet(ip net.IP) *net.IPNet {
 	}
 }
 
+// min gets min between 2 numbers
 func min(a, b uint64) uint64 {
 	if a < b {
 		return a
 	}
 	return b
 }
+
+// max gets max between 2 numbers
 func max(a, b uint64) uint64 {
 	if a > b {
 		return a
@@ -44,30 +55,29 @@ func max(a, b uint64) uint64 {
 	return b
 }
 
-func insertQuery(v interface{}) string {
-	query := fmt.Sprintf("INSERT INTO %s (", reflect.Indirect(reflect.ValueOf(v)).Type().Name())
+// objectToTupleString converts a object into a string representation suitable for sql query
+func objectToTupleString(v interface{}) (string, error) {
 	vals := "("
-	val := reflect.ValueOf(v).Elem()
+	val := reflect.ValueOf(v)
 	for i := 0; i < val.NumField(); i++ {
 		if i == 0 {
 			v := fmt.Sprint(val.Field(i))
 			if v == "" {
-				v = "NULL"
+				v = null
 			}
-			if v != "NULL" && val.Field(i).Type().Name() == "string" {
+			if v != null && val.Field(i).Type().Name() == "string" {
 				v = fmt.Sprintf(`'%s'`, v)
 			}
-			query = fmt.Sprintf("%s%s", query, val.Type().Field(i).Name)
 			vals = fmt.Sprintf("%s%s", vals, v)
 		} else {
 			v := fmt.Sprint(val.Field(i))
 			if v == "" {
-				v = "NULL"
+				v = null
 			}
-			if v != "NULL" && val.Field(i).Type().Name() == "string" {
+			if v != null && val.Field(i).Type().Name() == "string" {
 				v = fmt.Sprintf(`'%s'`, v)
 			}
-			if v != "NULL" && val.Field(i).Type().Name() == "nodePower" {
+			if v != null && val.Field(i).Type().Name() == "nodePower" {
 				// Construct the nodePower object
 				val2 := val.Field(i)
 				power := make(map[string]string)
@@ -80,20 +90,23 @@ func insertQuery(v interface{}) string {
 				// Marshal the power map to JSON and wrap it in quotes
 				powerJSON, err := json.Marshal(power)
 				if err != nil {
-					panic(err)
+					return "", fmt.Errorf("failed to marshal the power map to JSON: %w", err)
 				}
 				v = fmt.Sprintf("'%s'", string(powerJSON))
 			}
-			query = fmt.Sprintf("%s, %s", query, val.Type().Field(i).Name)
 			vals = fmt.Sprintf("%s, %s", vals, v)
 		}
 	}
-	query = fmt.Sprintf("%s) VALUES %s);", query, vals)
-	return query
+	return fmt.Sprintf("%s)", vals), nil
 }
-func popRandom(l []uint64) ([]uint64, uint64) {
-	idx := rnd(0, uint64(len(l)-1))
+
+// popRandom selects a random element from the given slice,
+func popRandom(l []uint64) ([]uint64, uint64, error) {
+	idx, err := rnd(0, uint64(len(l)-1))
+	if err != nil {
+		return nil, 0, err
+	}
 	e := l[idx]
 	l[idx], l[len(l)-1] = l[len(l)-1], l[idx]
-	return l[:len(l)-1], e
+	return l[:len(l)-1], e, nil
 }

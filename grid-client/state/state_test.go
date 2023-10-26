@@ -19,6 +19,7 @@ import (
 )
 
 const deploymentName = "testName"
+const invalid = "invalid"
 
 func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
 	ctrl := gomock.NewController(t)
@@ -81,7 +82,7 @@ func TestLoadDiskFromGrid(t *testing.T) {
 
 	t.Run("invalid type", func(t *testing.T) {
 		diskWlCp := diskWl
-		diskWlCp.Type = "invalid"
+		diskWlCp.Type = invalid
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{diskWlCp})
 
@@ -136,7 +137,7 @@ func TestLoadGatewayFQDNFromGrid(t *testing.T) {
 
 	t.Run("invalid type", func(t *testing.T) {
 		gatewayWlCp := gatewayWl
-		gatewayWlCp.Type = "invalid"
+		gatewayWlCp.Type = invalid
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWlCp})
 
@@ -200,7 +201,7 @@ func TestLoadGatewayNameFromGrid(t *testing.T) {
 	})
 	t.Run("invalid type", func(t *testing.T) {
 		gatewayWlCp := gatewayWl
-		gatewayWlCp.Type = "invalid"
+		gatewayWlCp.Type = invalid
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWlCp})
 
@@ -329,7 +330,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 
 	t.Run("invalid type", func(t *testing.T) {
 		k8sWorkloadCp := k8sWorkload
-		k8sWorkloadCp.Type = "invalid"
+		k8sWorkloadCp.Type = invalid
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{k8sWorkloadCp})
 
@@ -400,7 +401,7 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 
 	t.Run("invalid type", func(t *testing.T) {
 		networkWlCp := networkWl
-		networkWlCp.Type = "invalid"
+		networkWlCp.Type = invalid
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{networkWlCp})
 
@@ -513,7 +514,7 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 	})
 	t.Run("invalid type", func(t *testing.T) {
 		qsfsWlCp := qsfsWl
-		qsfsWlCp.Type = "invalid"
+		qsfsWlCp.Type = invalid
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{qsfsWlCp})
 
@@ -634,7 +635,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 
 	t.Run("invalid type", func(t *testing.T) {
 		vmWlCp := vmWl
-		vmWlCp.Type = "invalid"
+		vmWlCp.Type = invalid
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{vmWlCp})
 
@@ -719,7 +720,7 @@ func TestLoadZdbFromGrid(t *testing.T) {
 
 	t.Run("invalid type", func(t *testing.T) {
 		zdbWlCp := zdbWl
-		zdbWlCp.Type = "invalid"
+		zdbWlCp.Type = invalid
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{zdbWlCp})
 

@@ -1,21 +1,27 @@
 package db
 
 import (
+	"context"
+
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 // Database interface for storing and fetching grid info
 type Database interface {
-	GetCounters(filter types.StatsFilter) (types.Counters, error)
-	GetNode(nodeID uint32) (Node, error)
-	GetFarm(farmID uint32) (Farm, error)
-	GetNodes(filter types.NodeFilter, limit types.Limit) ([]Node, uint, error)
-	GetFarms(filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error)
-	GetTwins(filter types.TwinFilter, limit types.Limit) ([]types.Twin, uint, error)
-	GetContracts(filter types.ContractFilter, limit types.Limit) ([]DBContract, uint, error)
-	UpsertNodesGPU(nodesGPU []types.NodeGPU) error
+	GetCounters(ctx context.Context, filter types.StatsFilter) (types.Counters, error)
+	GetNode(ctx context.Context, nodeID uint32) (Node, error)
+	GetFarm(ctx context.Context, farmID uint32) (Farm, error)
+	GetNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]Node, uint, error)
+	GetFarms(ctx context.Context, filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error)
+	GetTwins(ctx context.Context, filter types.TwinFilter, limit types.Limit) ([]types.Twin, uint, error)
+	GetContracts(ctx context.Context, filter types.ContractFilter, limit types.Limit) ([]DBContract, uint, error)
+	GetContract(ctx context.Context, contractID uint32) (DBContract, error)
+	GetContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]ContractBilling, uint, error)
+	UpsertNodesGPU(ctx context.Context, nodesGPU []types.NodeGPU) error
 	GetConnectionString() string
 }
+
+type ContractBilling types.ContractBilling
 
 // DBContract is contract info
 type DBContract struct {
@@ -29,7 +35,6 @@ type DBContract struct {
 	DeploymentHash    string
 	NumberOfPublicIps uint
 	Type              string
-	ContractBillings  string
 }
 
 // Node data about a node which is calculated from the chain

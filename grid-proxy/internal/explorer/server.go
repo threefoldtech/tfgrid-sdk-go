@@ -2,7 +2,6 @@ package explorer
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -53,6 +52,7 @@ const (
 // @Param node_available_for query int false "Twin ID of user for whom there is at least one node that is available to be deployed to in the farm"
 // @Param node_has_gpu query bool false "True for farms who have at least one node with a GPU"
 // @Param node_certified query bool false "True for farms who have at least one certified node"
+// @Param country query string false "farm country"
 // @Success 200 {object} []types.Farm
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -62,7 +62,7 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	dbFarms, farmsCount, err := a.db.GetFarms(filter, limit)
+	dbFarms, farmsCount, err := a.db.GetFarms(r.Context(), filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query farm")
 		return nil, mw.Error(err)
@@ -75,15 +75,10 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 		}
 		farms = append(farms, f)
 	}
-	resp := mw.Ok()
 
 	// return the number of pages and totalCount in the response headers
-	if limit.RetCount {
-		pages := math.Ceil(float64(farmsCount) / float64(limit.Size))
-		resp = resp.WithHeader("count", fmt.Sprintf("%d", farmsCount)).
-			WithHeader("size", fmt.Sprintf("%d", limit.Size)).
-			WithHeader("pages", fmt.Sprintf("%d", int(pages)))
-	}
+	resp := createResponse(farmsCount, limit)
+
 	return farms, resp
 }
 
@@ -103,7 +98,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	counters, err := a.db.GetCounters(filter)
+	counters, err := a.db.GetCounters(r.Context(), filter)
 	if err != nil {
 		return nil, mw.Error(err)
 	}
@@ -195,7 +190,7 @@ func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	dbNodes, nodesCount, err := a.db.GetNodes(filter, limit)
+	dbNodes, nodesCount, err := a.db.GetNodes(r.Context(), filter, limit)
 	if err != nil {
 		return nil, mw.Error(err)
 	}
@@ -203,15 +198,8 @@ func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 	for idx, node := range dbNodes {
 		nodes[idx] = nodeFromDBNode(node)
 	}
-	resp := mw.Ok()
 
-	// return the number of pages and totalCount in the response headers
-	if limit.RetCount {
-		pages := math.Ceil(float64(nodesCount) / float64(limit.Size))
-		resp = resp.WithHeader("count", fmt.Sprintf("%d", nodesCount)).
-			WithHeader("size", fmt.Sprintf("%d", limit.Size)).
-			WithHeader("pages", fmt.Sprintf("%d", int(pages)))
-	}
+	resp := createResponse(nodesCount, limit)
 	return nodes, resp
 }
 
@@ -257,7 +245,7 @@ func (a *App) getGateway(r *http.Request) (interface{}, mw.Response) {
 
 func (a *App) _getNode(r *http.Request) (interface{}, mw.Response) {
 	nodeID := mux.Vars(r)["node_id"]
-	nodeData, err := a.getNodeData(nodeID)
+	nodeData, err := a.getNodeData(r.Context(), nodeID)
 	if err != nil {
 		return nil, errorReply(err)
 	}
@@ -268,7 +256,7 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 	response := types.NodeStatus{}
 	nodeID := mux.Vars(r)["node_id"]
 
-	nodeData, err := a.getNodeData(nodeID)
+	nodeData, err := a.getNodeData(r.Context(), nodeID)
 	if err != nil {
 		return nil, errorReply(err)
 	}
@@ -296,21 +284,13 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	twins, twinsCount, err := a.db.GetTwins(filter, limit)
+	twins, twinsCount, err := a.db.GetTwins(r.Context(), filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query twin")
 		return nil, mw.Error(err)
 	}
 
-	resp := mw.Ok()
-
-	// return the number of pages and totalCount in the response headers
-	if limit.RetCount {
-		pages := math.Ceil(float64(twinsCount) / float64(limit.Size))
-		resp = resp.WithHeader("count", fmt.Sprintf("%d", twinsCount)).
-			WithHeader("size", fmt.Sprintf("%d", limit.Size)).
-			WithHeader("pages", fmt.Sprintf("%d", int(pages)))
-	}
+	resp := createResponse(twinsCount, limit)
 	return twins, resp
 }
 
@@ -341,7 +321,7 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	dbContracts, contractsCount, err := a.db.GetContracts(filter, limit)
+	dbContracts, contractsCount, err := a.db.GetContracts(r.Context(), filter, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query contract")
 		return nil, mw.Error(err)
@@ -354,15 +334,8 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 			log.Err(err).Msg("failed to convert db contract to api contract")
 		}
 	}
-	resp := mw.Ok()
 
-	// return the number of pages and totalCount in the response headers
-	if limit.RetCount {
-		pages := math.Ceil(float64(contractsCount) / float64(limit.Size))
-		resp = resp.WithHeader("count", fmt.Sprintf("%d", contractsCount)).
-			WithHeader("size", fmt.Sprintf("%d", limit.Size)).
-			WithHeader("pages", fmt.Sprintf("%d", int(pages)))
-	}
+	resp := createResponse(contractsCount, limit)
 	return contracts, resp
 }
 
@@ -418,7 +391,7 @@ func (a *App) version(r *http.Request) (interface{}, mw.Response) {
 // @Router /nodes/{node_id}/statistics  [get]
 func (a *App) getNodeStatistics(r *http.Request) (interface{}, mw.Response) {
 	nodeID := mux.Vars(r)["node_id"]
-	node, err := a.getNodeData(nodeID)
+	node, err := a.getNodeData(r.Context(), nodeID)
 	if err != nil {
 		return nil, errorReply(err)
 	}
@@ -449,7 +422,7 @@ func (a *App) getNodeStatistics(r *http.Request) (interface{}, mw.Response) {
 // @Router /nodes/{node_id}/gpu  [get]
 func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 	nodeID := mux.Vars(r)["node_id"]
-	node, err := a.getNodeData(nodeID)
+	node, err := a.getNodeData(r.Context(), nodeID)
 	if err != nil {
 		return nil, errorReply(err)
 	}
@@ -464,6 +437,61 @@ func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 		return nil, mw.Error(fmt.Errorf("failed to get get node GPU information from relay: %w", err))
 	}
 	return res, mw.Ok()
+}
+
+// getContract godoc
+// @Summary Show single contract info
+// @Description Get data about a single contract with its id
+// @Tags Contract
+// @Param contract_id path int yes "Contract ID"
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} types.Contract
+// @Failure 400 {object} string
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /contracts/{contract_id} [get]
+func (a *App) getContract(r *http.Request) (interface{}, mw.Response) {
+	contractID := mux.Vars(r)["contract_id"]
+
+	contractData, err := a.getContractData(r.Context(), contractID)
+	if err != nil {
+		return nil, errorReply(err)
+	}
+
+	return contractData, nil
+}
+
+// getContractBills godoc
+// @Summary Show single contract bills
+// @Description Get all bills reports for a single contract with its id
+// @Tags ContractDills
+// @Param contract_id path int yes "Contract ID"
+// @Param page query int false "Page number"
+// @Param size query int false "Max result per page"
+// @Param ret_count query bool false "Set bill reports' count on headers"
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} []types.ContractBilling
+// @Failure 400 {object} string
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /contracts/{contract_id}/bills [get]
+func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
+	contractID := mux.Vars(r)["contract_id"]
+
+	limit, err := getLimit(r)
+	if err != nil {
+		return []types.ContractBilling{}, nil
+	}
+
+	contractBillsData, totalCount, err := a.getContractBillsData(r.Context(), contractID, limit)
+	if err != nil {
+		return nil, errorReply(err)
+	}
+
+	resp := createResponse(totalCount, limit)
+	return contractBillsData, resp
 }
 
 // Setup is the server and do initial configurations
@@ -485,19 +513,25 @@ func Setup(router *mux.Router, gitCommit string, database db.Database, relayClie
 
 	router.HandleFunc("/farms", mw.AsHandlerFunc(a.listFarms))
 	router.HandleFunc("/stats", mw.AsHandlerFunc(a.getStats))
-	router.HandleFunc("/nodes", mw.AsHandlerFunc(a.getNodes))
-	router.HandleFunc("/gateways", mw.AsHandlerFunc(a.getGateways))
 	router.HandleFunc("/twins", mw.AsHandlerFunc(a.listTwins))
-	router.HandleFunc("/contracts", mw.AsHandlerFunc(a.listContracts))
+
+	router.HandleFunc("/nodes", mw.AsHandlerFunc(a.getNodes))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getNode))
-	router.HandleFunc("/gateways/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getGateway))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/status", mw.AsHandlerFunc(a.getNodeStatus))
-	router.HandleFunc("/gateways/{node_id:[0-9]+}/status", mw.AsHandlerFunc(a.getNodeStatus))
-	router.HandleFunc("/ping", mw.AsHandlerFunc(a.ping))
-	router.HandleFunc("/", mw.AsHandlerFunc(a.indexPage(router)))
-	router.HandleFunc("/version", mw.AsHandlerFunc(a.version))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/statistics", mw.AsHandlerFunc(a.getNodeStatistics))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/gpu", mw.AsHandlerFunc(a.getNodeGpus))
+
+	router.HandleFunc("/gateways", mw.AsHandlerFunc(a.getGateways))
+	router.HandleFunc("/gateways/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getGateway))
+	router.HandleFunc("/gateways/{node_id:[0-9]+}/status", mw.AsHandlerFunc(a.getNodeStatus))
+
+	router.HandleFunc("/contracts", mw.AsHandlerFunc(a.listContracts))
+	router.HandleFunc("/contracts/{contract_id:[0-9]+}", mw.AsHandlerFunc(a.getContract))
+	router.HandleFunc("/contracts/{contract_id:[0-9]+}/bills", mw.AsHandlerFunc(a.getContractBills))
+
+	router.HandleFunc("/", mw.AsHandlerFunc(a.indexPage(router)))
+	router.HandleFunc("/ping", mw.AsHandlerFunc(a.ping))
+	router.HandleFunc("/version", mw.AsHandlerFunc(a.version))
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	return nil

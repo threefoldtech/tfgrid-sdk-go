@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/cosmos/go-bip39"
+	"github.com/stretchr/testify/assert"
 	client "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
@@ -94,7 +95,7 @@ func TestMonitor(t *testing.T) {
 		wallet := wallet{"", 1, ""}
 
 		monitor.env.botToken = ""
-		err = monitor.sendMessage(substrate[testNetwork], wallet)
+		err = monitor.monitorBalance(substrate[testNetwork], wallet)
 		if err == nil {
 			t.Errorf("sending a message should fail")
 		}
@@ -110,7 +111,7 @@ func TestMonitor(t *testing.T) {
 
 		wallet := wallet{"", 1, ""}
 
-		err = monitor.sendMessage(substrate[testNetwork], wallet)
+		err = monitor.monitorBalance(substrate[testNetwork], wallet)
 		if err == nil {
 			t.Errorf("no message should be sent")
 		}
@@ -262,10 +263,7 @@ func TestZosVersion(t *testing.T) {
 			t.Errorf("monitor should be successful")
 		}
 
-		_, err = mon.systemVersion()
-
-		if err != nil {
-			t.Errorf("getting system versions failed")
-		}
+		versions := mon.systemVersion()
+		assert.Empty(t, versions)
 	})
 }

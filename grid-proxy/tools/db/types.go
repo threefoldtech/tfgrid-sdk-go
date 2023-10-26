@@ -54,6 +54,7 @@ type twin struct {
 	relay        string
 	public_key   string
 }
+
 type public_ip struct {
 	id          string
 	gateway     string

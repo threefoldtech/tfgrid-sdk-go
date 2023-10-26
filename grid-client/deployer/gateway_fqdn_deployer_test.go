@@ -262,7 +262,7 @@ func TestFQDNDeployer(t *testing.T) {
 		err := d.syncContracts(context.Background(), &gw)
 		assert.NoError(t, err)
 		assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
-		assert.Equal(t, gw.ContractID, uint64(contractID))
+		assert.Equal(t, gw.ContractID, contractID)
 	})
 
 	t.Run("test sync contracts deleted", func(t *testing.T) {
@@ -293,7 +293,7 @@ func TestFQDNDeployer(t *testing.T) {
 		err := d.syncContracts(context.Background(), &gw)
 		assert.Error(t, err)
 		assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
-		assert.Equal(t, gw.ContractID, uint64(contractID))
+		assert.Equal(t, gw.ContractID, contractID)
 	})
 
 	t.Run("test sync contracts failed in contract", func(t *testing.T) {
@@ -307,7 +307,7 @@ func TestFQDNDeployer(t *testing.T) {
 		err := d.Sync(context.Background(), &gw)
 		assert.Error(t, err)
 		assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
-		assert.Equal(t, gw.ContractID, uint64(contractID))
+		assert.Equal(t, gw.ContractID, contractID)
 	})
 
 	t.Run("test sync", func(t *testing.T) {
@@ -336,7 +336,7 @@ func TestFQDNDeployer(t *testing.T) {
 		err = d.Sync(context.Background(), &gw)
 		assert.NoError(t, err)
 		assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
-		assert.Equal(t, gw.ContractID, uint64(contractID))
+		assert.Equal(t, gw.ContractID, contractID)
 		assert.Equal(t, gw.FQDN, "name.com")
 	})
 
@@ -364,10 +364,10 @@ func TestFQDNDeployer(t *testing.T) {
 		err = d.Sync(context.Background(), &gw)
 		assert.NoError(t, err)
 		assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
-		assert.Equal(t, gw.ContractID, uint64(contractID))
+		assert.Equal(t, gw.ContractID, contractID)
 		assert.Equal(t, gw.FQDN, "")
 		assert.Equal(t, gw.Name, "")
 		assert.Equal(t, gw.TLSPassthrough, false)
-		assert.Equal(t, gw.Backends, []zos.Backend([]zos.Backend(nil)))
+		assert.Equal(t, gw.Backends, []zos.Backend(nil))
 	})
 }

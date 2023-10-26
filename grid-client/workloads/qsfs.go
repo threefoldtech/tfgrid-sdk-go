@@ -26,7 +26,7 @@ type QSFS struct {
 	CompressionAlgorithm string   `json:"compression_algorithm"`
 	Metadata             Metadata `json:"metadata"`
 	Groups               Groups   `json:"groups"`
-	MetricsEndpoint      string   `json:"merge_endpoint"`
+	MetricsEndpoint      string   `json:"metrics_endpoint"`
 }
 
 // Metadata for QSFS
@@ -118,7 +118,7 @@ func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
 
 	return QSFS{
 		Name:                 string(wl.Name),
-		Description:          string(wl.Description),
+		Description:          wl.Description,
 		Cache:                int(data.Cache) / int(gridtypes.Megabyte),
 		MinimalShards:        data.Config.MinimalShards,
 		ExpectedShards:       data.Config.ExpectedShards,

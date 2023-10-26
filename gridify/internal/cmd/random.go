@@ -1,5 +1,5 @@
-// Package deployer for project deployment
-package deployer
+// Package cmd for handling commands
+package cmd
 
 import "math/rand"
 

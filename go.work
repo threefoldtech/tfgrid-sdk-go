@@ -1,4 +1,4 @@
-go 1.19
+go 1.21
 
 use (
 	./activation-service
@@ -8,4 +8,5 @@ use (
 	./gridify
 	./monitoring-bot
 	./rmb-sdk-go
+	./user-contracts-mon
 )

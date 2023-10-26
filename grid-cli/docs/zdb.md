@@ -19,7 +19,7 @@ tf-grid-cli deploy zdb [flags]
 - farm: farm id zdbs should be deployed on, if set choose available node from farm that fits zdbs deployment specs (default 1). note: node and farm flags cannot be set both.
 - count: count of zdbs to be deployed (default 1).
 - names: a slice of names for the number of ZDBs.
-- password: passowrd for ZDBs deployed
+- password: password for ZDBs deployed
 - description: description for your ZDBs, it's optional.
 - mode: the enumeration of the modes 0-db can operate in (default user).
 - public: if zdb gets a public ip6 (default false).

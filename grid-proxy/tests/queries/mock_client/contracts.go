@@ -16,19 +16,6 @@ func (g *GridProxyMockClient) Contracts(filter types.ContractFilter, limit types
 	if limit.Size == 0 {
 		limit.Size = 50
 	}
-	billings := make(map[uint64][]types.ContractBilling)
-	for contractID, contractBillings := range g.data.Billings {
-		for _, billing := range contractBillings {
-			billings[contractID] = append(billings[contractID], types.ContractBilling{
-				AmountBilled:     billing.AmountBilled,
-				DiscountReceived: billing.DiscountReceived,
-				Timestamp:        billing.Timestamp,
-			})
-		}
-		sort.Slice(billings[contractID], func(i, j int) bool {
-			return billings[contractID][i].Timestamp < billings[contractID][j].Timestamp
-		})
-	}
 
 	for _, contract := range g.data.NodeContracts {
 		if contract.satisfies(filter) {
@@ -44,7 +31,6 @@ func (g *GridProxyMockClient) Contracts(filter types.ContractFilter, limit types
 					DeploymentHash:    contract.DeploymentHash,
 					NumberOfPublicIps: uint(contract.NumberOfPublicIPs),
 				},
-				Billing: append([]types.ContractBilling{}, billings[contract.ContractID]...),
 			}
 			res = append(res, contract)
 		}
@@ -61,7 +47,6 @@ func (g *GridProxyMockClient) Contracts(filter types.ContractFilter, limit types
 				Details: types.RentContractDetails{
 					NodeID: uint(contract.NodeID),
 				},
-				Billing: append([]types.ContractBilling{}, billings[contract.ContractID]...),
 			}
 			res = append(res, contract)
 		}
@@ -78,7 +63,6 @@ func (g *GridProxyMockClient) Contracts(filter types.ContractFilter, limit types
 				Details: types.NameContractDetails{
 					Name: contract.Name,
 				},
-				Billing: append([]types.ContractBilling{}, billings[contract.ContractID]...),
 			}
 			res = append(res, contract)
 		}
@@ -211,4 +195,71 @@ func (c *NameContract) satisfies(f types.ContractFilter) bool {
 	}
 
 	return true
+}
+
+// Contract returns a single contract with the given contractID
+func (g *GridProxyMockClient) Contract(contractID uint32) (res types.Contract, err error) {
+	nodeContract, ok := g.data.NodeContracts[uint64(contractID)]
+	if ok {
+		return types.Contract{
+			ContractID: uint(nodeContract.ContractID),
+			TwinID:     uint(nodeContract.TwinID),
+			State:      nodeContract.State,
+			CreatedAt:  uint(nodeContract.CreatedAt),
+			Type:       "node",
+			Details: types.NodeContractDetails{
+				NodeID:            uint(nodeContract.NodeID),
+				DeploymentData:    nodeContract.DeploymentData,
+				DeploymentHash:    nodeContract.DeploymentHash,
+				NumberOfPublicIps: uint(nodeContract.NumberOfPublicIPs),
+			},
+		}, err
+	}
+
+	nameContract, ok := g.data.NameContracts[uint64(contractID)]
+	if ok {
+		return types.Contract{
+			ContractID: uint(nameContract.ContractID),
+			TwinID:     uint(nameContract.TwinID),
+			State:      nameContract.State,
+			CreatedAt:  uint(nameContract.CreatedAt),
+			Type:       "name",
+			Details: types.NameContractDetails{
+				Name: nameContract.Name,
+			},
+		}, err
+	}
+
+	rentContract, ok := g.data.RentContracts[uint64(contractID)]
+	if ok {
+		return types.Contract{
+			ContractID: uint(rentContract.ContractID),
+			TwinID:     uint(rentContract.TwinID),
+			State:      rentContract.State,
+			CreatedAt:  uint(rentContract.CreatedAt),
+			Type:       "rent",
+			Details: types.RentContractDetails{
+				NodeID: uint(rentContract.NodeID),
+			},
+		}, err
+	}
+
+	return res, err
+}
+
+// ContractBills returns all bills reports for a contract with the given contract id and pagination parameters
+func (g *GridProxyMockClient) ContractBills(contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
+	res = []types.ContractBilling{}
+	bills := g.data.Billings[uint64(contractID)]
+
+	for _, bill := range bills {
+		res = append(res, types.ContractBilling{
+			AmountBilled:     bill.AmountBilled,
+			DiscountReceived: bill.DiscountReceived,
+			Timestamp:        bill.Timestamp,
+		})
+	}
+
+	totalCount = uint(len(bills))
+	return res, totalCount, err
 }

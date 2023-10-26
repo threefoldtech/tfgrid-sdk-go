@@ -112,11 +112,11 @@ func TestVMWithTwoDisk(t *testing.T) {
 
 	output, err := RemoteRun("root", yggIP, "df -h | grep -w /disk1", privateKey)
 	assert.NoError(t, err)
-	assert.Contains(t, string(output), fmt.Sprintf("%d.0G", disk1.SizeGB))
+	assert.Contains(t, output, fmt.Sprintf("%d.0G", disk1.SizeGB))
 
 	output, err = RemoteRun("root", yggIP, "df -h | grep -w /disk2", privateKey)
 	assert.NoError(t, err)
-	assert.Contains(t, string(output), fmt.Sprintf("%d.0G", disk2.SizeGB))
+	assert.Contains(t, output, fmt.Sprintf("%d.0G", disk2.SizeGB))
 
 	// create file -> d1, check file size, move file -> d2, check file size
 

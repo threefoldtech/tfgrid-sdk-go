@@ -160,8 +160,5 @@ func contractFromDBContract(info db.DBContract) (types.Contract, error) {
 		Type:       info.Type,
 		Details:    details,
 	}
-	if err := json.Unmarshal([]byte(info.ContractBillings), &contract.Billing); err != nil {
-		return contract, errors.Wrap(err, "couldn't parse contract billing")
-	}
 	return contract, nil
 }

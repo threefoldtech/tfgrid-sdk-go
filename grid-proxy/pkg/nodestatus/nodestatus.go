@@ -46,11 +46,14 @@ func DecideNodeStatusCondition(status string) string {
 
 // return the status of the node based on the power status and the last update time.
 func DecideNodeStatus(power types.NodePower, updatedAt int64) string {
+	const down = "Down"
+	const up = "Up"
+
 	nilPower := power.State == "" && power.Target == ""
-	poweredOff := power.State == "Down" && power.Target == "Down"
-	poweredOn := power.State == "Up" && power.Target == "Up"
-	poweringOn := power.State == "Down" && power.Target == "Up"
-	poweringOff := power.State == "Up" && power.Target == "Down"
+	poweredOff := power.State == down && power.Target == down
+	poweredOn := power.State == up && power.Target == up
+	poweringOn := power.State == down && power.Target == up
+	poweringOff := power.State == up && power.Target == down
 
 	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
 	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
