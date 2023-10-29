@@ -22,7 +22,6 @@ tag_and_push() {
 tag_and_push "grid-client"
 tag_and_push "grid-proxy"
 tag_and_push "rmb-sdk-go"
-tag_and_push "activation-service"
 
 # # main
 git tag -a $VERSION -m "release $VERSION"
