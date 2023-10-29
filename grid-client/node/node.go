@@ -374,6 +374,34 @@ func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error)
 	return
 }
 
+// GetPerfTestsResults get all perf tests results
+func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result string, err error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
+	const cmd = "zos.perf.get_all"
+
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
+		return
+	}
+
+	return
+}
+
+// GetPerfTestResult get a single perf test result
+func (n *NodeClient) GetPerfTestResult(ctx context.Context, testName string) (result string, err error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
+	const cmd = "zos.perf.get"
+
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, testName, &result); err != nil {
+		return
+	}
+
+	return
+}
+
 // IsNodeUp checks if the node is up
 func (n *NodeClient) IsNodeUp(ctx context.Context) error {
 	_, err := n.SystemVersion(ctx)
