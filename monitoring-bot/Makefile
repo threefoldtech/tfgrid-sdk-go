@@ -64,7 +64,7 @@ run:
 	go run main.go
 
 build:
-	go build -o bin/tfgridmon main.go 
+	go build -o bin/monitoring-bot main.go 
 	
 clean:
 	rm ./coverage -rf

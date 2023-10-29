@@ -67,8 +67,8 @@ This is a bot to monitor some TFGrid functionalities here is a list:
     > Download the latest from the [releases page](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
 
     ```bash
-    sudo cp tfgridmon /usr/local/bin
-    tfgridmon -e .env -w wallets.json
+    sudo cp monitoring-bot /usr/local/bin
+    monitoring-bot -e .env -w wallets.json
     ```
 
     Where
