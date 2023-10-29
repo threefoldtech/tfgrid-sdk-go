@@ -1,3 +1,8 @@
+release-rmb:
+	@echo "Release RMB..." 
+	git tag -a "rmb-sdk-go/${VERSION}" -m "release rmb-sdk-go/${VERSION}" && \
+  git push origin rmb-sdk-go/${VERSION}
+
 release:
 	@echo "Running release script..." 
 	chmod +x release.sh 

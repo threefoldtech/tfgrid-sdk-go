@@ -1,12 +1,16 @@
 
 # Release
 
-- Update the helm app version for the grid proxy as described [here](../grid-proxy/docs/release.md)
+- Create a pr against development branch to update the tfchain-client with the latest commit (make sure it's merged).
 - Export `$VERSION` env variable to the version you want
+- Run `make release-rmb`
+- Update [zos](https://github.com/threefoldtech/zos) with the latest version of the rmb.
+- Create a pr against development branch to update zos with the latest commit (make sure it's merged).
+- Update the helm app version for the grid proxy as described [here](../grid-proxy/docs/release.md)
 - Run `make release`
 
 After all the release workflows are finished you should create an issue on <https://github.com/threefoldtech/tf_operations> with type of `Update Request` to use the new images/binaries.
-Make sure to speicfy the new release version in the issue name and to include any changes in the usual release(like new configuration, etc,..)
+Make sure to specify the new release version in the issue name and to include any changes in the usual release(like new configuration, etc,..)
 
 ## Release without script
 
@@ -36,6 +40,7 @@ For Further info check Grid-proxy release [docs](../grid-proxy/docs/release.md).
 - the release workflow will release the tag automatically
 
 ## Tags Convention
+
 The following convention should be followed for tagging in this project:
 
 Release Tags: For release names and GitHub tags, the tag format should be prefixed with v0.0.0. For example, a release tag could be v1.2.3, where 1.2.3 represents the version number of the release.
