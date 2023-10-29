@@ -41,8 +41,8 @@ require (
 	github.com/rs/zerolog v1.31.0 // indirect
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231017113908-9d56a805ead0 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.2 // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.10.2 // indirect
-	github.com/threefoldtech/zos v0.5.6-0.20230809073554-ddb0ad98fc4c // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4 // indirect
+	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
