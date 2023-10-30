@@ -19,7 +19,7 @@ import (
 
 // FilterNodes filters nodes using proxy
 func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64) ([]types.Node, error) {
-	nodes, _, err := tfPlugin.GridProxyClient.Nodes(options, types.Limit{})
+	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, types.Limit{})
 	if err != nil {
 		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
 	}
@@ -106,7 +106,7 @@ func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes 
 		if _, ok := nodeMap[int(node)]; ok {
 			continue
 		}
-		nodeInfo, err := tfPlugin.GridProxyClient.Node(node)
+		nodeInfo, err := tfPlugin.GridProxyClient.Node(ctx, node)
 		if err != nil {
 			log.Error().Msgf("failed to get node %d from the grid proxy", node)
 			continue
