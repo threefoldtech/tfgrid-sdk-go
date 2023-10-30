@@ -380,10 +380,7 @@ func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result string, er
 	defer cancel()
 
 	const cmd = "zos.perf.get_all"
-
-	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
-		return
-	}
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result)
 
 	return
 }
@@ -394,10 +391,7 @@ func (n *NodeClient) GetPerfTestResult(ctx context.Context, testName string) (re
 	defer cancel()
 
 	const cmd = "zos.perf.get"
-
-	if err = n.bus.Call(ctx, n.nodeTwin, cmd, testName, &result); err != nil {
-		return
-	}
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, testName, &result)
 
 	return
 }
