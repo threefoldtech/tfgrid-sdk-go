@@ -22,7 +22,7 @@ func (r *requestCounter) Ping() error {
 	r.Counter++
 	return errors.New("error")
 }
-func (r requestCounter) Nodes(ctx context.Context, filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error) {
+func (r *requestCounter) Nodes(ctx context.Context, filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error) {
 	r.Counter++
 	return nil, 0, errors.New("error")
 }

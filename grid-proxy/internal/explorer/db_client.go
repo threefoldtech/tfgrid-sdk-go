@@ -69,7 +69,7 @@ func (c *DBClient) Contracts(ctx context.Context, filter types.ContractFilter, p
 }
 
 func (c *DBClient) Contract(ctx context.Context, contractID uint32) (types.Contract, error) {
-	dbContract, err := c.DB.GetContract(ctx, uint32(contractID))
+	dbContract, err := c.DB.GetContract(ctx, contractID)
 	if err != nil {
 		return types.Contract{}, err
 	}
