@@ -2,8 +2,6 @@ name: Test sdk
 
 on:
   push:
-  schedule:
-    - cron: "25 5 * * *"
   workflow_dispatch:
 
 jobs:
