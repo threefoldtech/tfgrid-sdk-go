@@ -578,6 +578,12 @@ const docTemplate = `{
                         "description": "certificate type NotCertified, Silver or Gold",
                         "name": "certification_type",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "get nodes owned by twin id",
+                        "name": "owned_by",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -857,6 +863,12 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "filter nodes that have available GPU",
                         "name": "gpu_available",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "get nodes owned by twin id",
+                        "name": "owned_by",
                         "in": "query"
                     }
                 ],
@@ -1231,7 +1243,7 @@ const docTemplate = `{
         "types.Contract": {
             "type": "object",
             "properties": {
-                "contractId": {
+                "contract_id": {
                     "type": "integer"
                 },
                 "created_at": {
@@ -1241,7 +1253,7 @@ const docTemplate = `{
                 "state": {
                     "type": "string"
                 },
-                "twinId": {
+                "twin_id": {
                     "type": "integer"
                 },
                 "type": {

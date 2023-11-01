@@ -142,6 +142,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param gpu_vendor_id query string false "filter nodes based on GPU vendor ID"
 // @Param gpu_vendor_name query string false "filter nodes based on GPU vendor partial name"
 // @Param gpu_available query bool false "filter nodes that have available GPU"
+// @Param owned_by query int false "get nodes owned by twin id"
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -177,6 +178,7 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param available_for query int false "available for twin id"
 // @Param farm_ids query string false "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')"
 // @Param certification_type query string false "certificate type NotCertified, Silver or Gold" Enums(NotCertified, Silver, Gold)
+// @Param owned_by query int false "get nodes owned by twin id"
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string
