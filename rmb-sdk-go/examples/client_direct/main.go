@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -46,9 +45,12 @@ func app() error {
 		return fmt.Errorf("failed to create direct client: %w", err)
 	}
 
+	// <- replace this with the twin id of where the service is running
+	const dist = 7
+
 	for i := 0; i < 20; i++ {
 		data := []float64{rand.Float64(), rand.Float64()}
-		if err := client.Call(ctx, uuid.NewString(), 4973, "calculator.add", data); err != nil {
+		if err := client.Call(ctx, uuid.NewString(), dist, "calculator.add", data); err != nil {
 			return err
 		}
 	}
@@ -87,7 +89,6 @@ func (res *resultsChan) relayCallback(response *types.Envelope, callBackErr erro
 
 func main() {
 	if err := app(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal().Msg(err.Error())
 	}
 }

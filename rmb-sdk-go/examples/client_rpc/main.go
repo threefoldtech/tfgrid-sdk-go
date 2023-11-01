@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
+	"log"
 )
 
 func app() error {
@@ -19,7 +19,15 @@ func app() error {
 	}
 
 	defer sub.Close()
-	client, err := direct.NewRpcClient(context.Background(), direct.KeyTypeSr25519, mnemonics, "wss://relay.dev.grid.tf", "test-client", sub, true)
+	client, err := direct.NewRpcClient(
+		context.Background(),
+		direct.KeyTypeSr25519,
+		mnemonics,
+		"wss://relay.dev.grid.tf",
+		"test-client",
+		sub,
+		true,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create direct client: %w", err)
 	}
@@ -43,7 +51,6 @@ func app() error {
 
 func main() {
 	if err := app(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
