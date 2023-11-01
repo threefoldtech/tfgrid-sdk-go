@@ -1,6 +1,6 @@
 # Introduction
 
-This is a `GO` example for the `RMB` [rpc client](https://github.com/threefoldtech/tfgrid-sdk-go/blob/development/rmb-sdk-go/direct/rpc.go) that can send `RMB` messages through working with rmb-peer and a redis server.
+This is a `Go` example for the `RMB` [rpc client](https://github.com/threefoldtech/tfgrid-sdk-go/blob/development/rmb-sdk-go/direct/rpc.go) that can send `RMB` messages through working with rmb-peer and a redis server.
 
 ## How it works
 
