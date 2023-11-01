@@ -116,6 +116,7 @@ type NodeFilter struct {
 	GpuVendorID       *string
 	GpuVendorName     *string
 	GpuAvailable      *bool
+	OwnedBy           *uint64
 }
 
 // FarmFilter farm filters

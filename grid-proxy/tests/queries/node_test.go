@@ -226,6 +226,10 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &v
 	},
+	"OwnedBy": func(agg NodesAggregate) interface{} {
+		v := uint64(rand.Intn(110)) // 100 is number of farmers
+		return &v
+	},
 	"GpuDeviceName": func(agg NodesAggregate) interface{} {
 		deviceNames := []string{"navi", "a", "hamada"}
 		return &deviceNames[rand.Intn(len(deviceNames))]

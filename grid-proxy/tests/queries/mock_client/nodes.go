@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -288,6 +289,11 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if f.TwinID != nil && *f.TwinID != n.TwinID {
+		return false
+	}
+
+	if f.OwnedBy != nil && *f.OwnedBy != data.Farms[n.FarmID].TwinID {
+		log.Info().Msgf("requesting ownedby: %v, got: %+v", *f.OwnedBy, data.Farms[n.FarmID].TwinID)
 		return false
 	}
 

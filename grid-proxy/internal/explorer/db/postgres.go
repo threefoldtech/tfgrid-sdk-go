@@ -544,6 +544,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
 	}
+	if filter.OwnedBy != nil {
+		q = q.Where(`COALESCE(farm.twin_id, 0) = ?`, *filter.OwnedBy)
+	}
 
 	/*
 		used distinct selecting to avoid duplicated node after the join.
