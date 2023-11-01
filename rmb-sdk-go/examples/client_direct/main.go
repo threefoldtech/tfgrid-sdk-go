@@ -13,9 +13,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct/types"
 )
 
-type resultsChan struct {
-	resutls chan bool
-}
+var resultsChan = make(chan bool)
 
 func app() error {
 	mnemonics := "<mnemonics goes here>"
@@ -28,8 +26,6 @@ func app() error {
 
 	defer sub.Close()
 
-	res := resultsChan{resutls: make(chan bool)}
-
 	client, err := direct.NewClient(
 		ctx,
 		direct.KeyTypeSr25519,
@@ -38,15 +34,14 @@ func app() error {
 		"test-client",
 		sub,
 		false,
-		res.relayCallback,
+		relayCallback,
 	)
 
 	if err != nil {
 		return fmt.Errorf("failed to create direct client: %w", err)
 	}
 
-	// <- replace this with the twin id of where the service is running
-	const dist = 7
+	const dist = 7 // <- replace this with the twin id of where the service is running
 
 	for i := 0; i < 20; i++ {
 		data := []float64{rand.Float64(), rand.Float64()}
@@ -55,13 +50,13 @@ func app() error {
 		}
 	}
 	for i := 0; i < 20; i++ {
-		<-res.resutls
+		<-resultsChan
 	}
 
 	return nil
 }
 
-func (res *resultsChan) relayCallback(response *types.Envelope, callBackErr error) {
+func relayCallback(response *types.Envelope, callBackErr error) {
 
 	errResp := response.GetError()
 
@@ -84,7 +79,7 @@ func (res *resultsChan) relayCallback(response *types.Envelope, callBackErr erro
 	output := response.Payload.(*types.Envelope_Plain).Plain
 
 	fmt.Printf("output: %s\n", string(output))
-	res.resutls <- true
+	resultsChan <- true
 }
 
 func main() {
