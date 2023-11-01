@@ -248,6 +248,29 @@ func (d *PostgresDatabase) GetCounters(ctx context.Context, filter types.StatsFi
 		nodesDistribution[d.Country] = d.Nodes
 	}
 	counters.NodesDistribution = nodesDistribution
+
+	nonDeletedNodeContracts := d.gormDB.Table("node_contract").
+		Select("DISTINCT ON (node_id) node_id, contract_id").
+		Where("state IN ('Created', 'GracePeriod')")
+
+	res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
+		Joins(
+			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
+		).
+		Joins(
+			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", nonDeletedNodeContracts,
+		).
+		Joins(
+			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
+		).
+		Where(
+			"farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0",
+		).
+		Count(&counters.DedicatedNodes)
+	if res.Error != nil {
+		return counters, errors.Wrap(res.Error, "couldn't get dedicated nodes count")
+	}
+
 	return counters, nil
 }
 
