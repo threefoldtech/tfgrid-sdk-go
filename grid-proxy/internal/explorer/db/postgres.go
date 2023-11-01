@@ -424,7 +424,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"public_config.ipv4",
 			"public_config.ipv6",
 			"node.certification",
-			"farm.dedicated_farm as dedicated",
+			"farm.dedicated_farm as farm_dedicated",
 			"rent_contract.contract_id as rent_contract_id",
 			"rent_contract.twin_id as rented_by_twin_id",
 			"node.serial_number",
@@ -432,6 +432,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"convert_to_decimal(location.latitude) as latitude",
 			"node.power",
 			"node.extra_fee",
+			"node_contract.contract_id AS node_contract_count",
 			nodeGPUQuery,
 		).
 		Joins(
@@ -526,23 +527,25 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.Domain != nil {
 		q = q.Where("(COALESCE(public_config.domain, '') = '') != ?", *filter.Domain)
 	}
+	if filter.CertificationType != nil {
+		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
+	}
+
+	// Dedicated nodes filters
 	if filter.Dedicated != nil {
-		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)
+		q = q.Where(`? = (farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Dedicated)
 	}
 	if filter.Rentable != nil {
 		q = q.Where(`? = ((farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0) AND COALESCE(rent_contract.contract_id, 0) = 0)`, *filter.Rentable)
 	}
-	if filter.RentedBy != nil {
-		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
-	}
 	if filter.AvailableFor != nil {
 		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ? OR (COALESCE(rent_contract.twin_id, 0) = 0 AND farm.dedicated_farm = false)`, *filter.AvailableFor)
 	}
+	if filter.RentedBy != nil {
+		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
+	}
 	if filter.Rented != nil {
 		q = q.Where(`? = (COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Rented)
-	}
-	if filter.CertificationType != nil {
-		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
 	}
 
 	/*
