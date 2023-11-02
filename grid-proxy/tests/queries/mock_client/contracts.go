@@ -1,13 +1,14 @@
 package mock
 
 import (
+	"context"
 	"sort"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 // Contracts returns contracts with the given filters and pagination parameters
-func (g *GridProxyMockClient) Contracts(filter types.ContractFilter, limit types.Limit) (res []types.Contract, totalCount int, err error) {
+func (g *GridProxyMockClient) Contracts(ctx context.Context, filter types.ContractFilter, limit types.Limit) (res []types.Contract, totalCount int, err error) {
 	res = []types.Contract{}
 
 	if limit.Page == 0 {
@@ -198,7 +199,7 @@ func (c *NameContract) satisfies(f types.ContractFilter) bool {
 }
 
 // Contract returns a single contract with the given contractID
-func (g *GridProxyMockClient) Contract(contractID uint32) (res types.Contract, err error) {
+func (g *GridProxyMockClient) Contract(ctx context.Context, contractID uint32) (res types.Contract, err error) {
 	nodeContract, ok := g.data.NodeContracts[uint64(contractID)]
 	if ok {
 		return types.Contract{
@@ -248,7 +249,7 @@ func (g *GridProxyMockClient) Contract(contractID uint32) (res types.Contract, e
 }
 
 // ContractBills returns all bills reports for a contract with the given contract id and pagination parameters
-func (g *GridProxyMockClient) ContractBills(contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
+func (g *GridProxyMockClient) ContractBills(ctx context.Context, contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
 	res = []types.ContractBilling{}
 	bills := g.data.Billings[uint64(contractID)]
 

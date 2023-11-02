@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -130,19 +131,19 @@ func testConnectionFailures(t *testing.T, f ProxyFunc) {
 			return proxy.Ping()
 		},
 		"nodes": func() error {
-			_, _, err := proxy.Nodes(types.NodeFilter{}, types.Limit{})
+			_, _, err := proxy.Nodes(context.Background(), types.NodeFilter{}, types.Limit{})
 			return err
 		},
 		"node": func() error {
-			_, err := proxy.Node(1)
+			_, err := proxy.Node(context.Background(), 1)
 			return err
 		},
 		"farms": func() error {
-			_, _, err := proxy.Farms(types.FarmFilter{}, types.Limit{})
+			_, _, err := proxy.Farms(context.Background(), types.FarmFilter{}, types.Limit{})
 			return err
 		},
 		"node_status": func() error {
-			_, err := proxy.NodeStatus(1)
+			_, err := proxy.NodeStatus(context.Background(), 1)
 			return err
 		},
 	}
@@ -192,19 +193,19 @@ func testStatusCodeFailures(t *testing.T, f ProxyFunc) {
 	proxy := f(ts.URL)
 	endpoints := map[string]func() error{
 		"nodes": func() error {
-			_, _, err := proxy.Nodes(types.NodeFilter{}, types.Limit{})
+			_, _, err := proxy.Nodes(context.Background(), types.NodeFilter{}, types.Limit{})
 			return err
 		},
 		"node": func() error {
-			_, err := proxy.Node(1)
+			_, err := proxy.Node(context.Background(), 1)
 			return err
 		},
 		"farms": func() error {
-			_, _, err := proxy.Farms(types.FarmFilter{}, types.Limit{})
+			_, _, err := proxy.Farms(context.Background(), types.FarmFilter{}, types.Limit{})
 			return err
 		},
 		"node_status": func() error {
-			_, err := proxy.NodeStatus(1)
+			_, err := proxy.NodeStatus(context.Background(), 1)
 			return err
 		},
 	}
@@ -281,7 +282,7 @@ func testSuccess(t *testing.T, f ProxyFunc) {
 			path:     fmt.Sprintf("/nodes?%s", expectedNodesURL),
 			response: NodesExampleStr,
 			call: func(proxy Client) error {
-				res, _, err := proxy.Nodes(nodesFilter, nodesLimit)
+				res, _, err := proxy.Nodes(context.Background(), nodesFilter, nodesLimit)
 				if err != nil {
 					return err
 				}
@@ -296,7 +297,7 @@ func testSuccess(t *testing.T, f ProxyFunc) {
 			path:     "/nodes/1",
 			response: NodeExampleStr,
 			call: func(proxy Client) error {
-				res, err := proxy.Node(1)
+				res, err := proxy.Node(context.Background(), 1)
 				if err != nil {
 					return err
 				}
@@ -311,7 +312,7 @@ func testSuccess(t *testing.T, f ProxyFunc) {
 			path:     fmt.Sprintf("/farms?%s", expectedFarmsURL),
 			response: FarmsExampleStr,
 			call: func(proxy Client) error {
-				res, _, err := proxy.Farms(farmsFilter, farmsLimit)
+				res, _, err := proxy.Farms(context.Background(), farmsFilter, farmsLimit)
 				if err != nil {
 					return err
 				}
@@ -326,7 +327,7 @@ func testSuccess(t *testing.T, f ProxyFunc) {
 			path:     "/nodes/1/status",
 			response: NodeStatusExampleStr,
 			call: func(proxy Client) error {
-				res, err := proxy.NodeStatus(1)
+				res, err := proxy.NodeStatus(context.Background(), 1)
 				if err != nil {
 					return err
 				}

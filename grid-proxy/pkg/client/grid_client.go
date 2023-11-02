@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,18 +18,22 @@ import (
 
 var encoder = schema.NewEncoder()
 
+type DBClient interface {
+	Nodes(ctx context.Context, filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error)
+	Farms(ctx context.Context, filter types.FarmFilter, pagination types.Limit) (res []types.Farm, totalCount int, err error)
+	Contracts(ctx context.Context, filter types.ContractFilter, pagination types.Limit) (res []types.Contract, totalCount int, err error)
+	Contract(ctx context.Context, contractID uint32) (types.Contract, error)
+	ContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]types.ContractBilling, uint, error)
+	Twins(ctx context.Context, filter types.TwinFilter, pagination types.Limit) (res []types.Twin, totalCount int, err error)
+	Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error)
+	NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error)
+	Counters(ctx context.Context, filter types.StatsFilter) (res types.Counters, err error)
+}
+
 // Client a client to communicate with the grid proxy
 type Client interface {
 	Ping() error
-	Nodes(filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error)
-	Farms(filter types.FarmFilter, pagination types.Limit) (res []types.Farm, totalCount int, err error)
-	Contracts(filter types.ContractFilter, pagination types.Limit) (res []types.Contract, totalCount int, err error)
-	Contract(contractID uint32) (types.Contract, error)
-	ContractBills(contractID uint32, limit types.Limit) ([]types.ContractBilling, uint, error)
-	Twins(filter types.TwinFilter, pagination types.Limit) (res []types.Twin, totalCount int, err error)
-	Node(nodeID uint32) (res types.NodeWithNestedCapacity, err error)
-	NodeStatus(nodeID uint32) (res types.NodeStatus, err error)
-	Counters(filter types.StatsFilter) (res types.Counters, err error)
+	DBClient
 }
 
 // Clientimpl concrete implementation of the client to communicate with the grid proxy
@@ -98,7 +103,7 @@ func (g *Clientimpl) Ping() error {
 }
 
 // Nodes returns nodes with the given filters and pagination parameters
-func (g *Clientimpl) Nodes(filter types.NodeFilter, limit types.Limit) (nodes []types.Node, totalCount int, err error) {
+func (g *Clientimpl) Nodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) (nodes []types.Node, totalCount int, err error) {
 	client := g.newHTTPClient()
 	url, err := g.prepareURL("nodes", filter, limit)
 	if err != nil {
@@ -131,7 +136,7 @@ func (g *Clientimpl) Nodes(filter types.NodeFilter, limit types.Limit) (nodes []
 }
 
 // Farms returns farms with the given filters and pagination parameters
-func (g *Clientimpl) Farms(filter types.FarmFilter, limit types.Limit) (farms []types.Farm, totalCount int, err error) {
+func (g *Clientimpl) Farms(ctx context.Context, filter types.FarmFilter, limit types.Limit) (farms []types.Farm, totalCount int, err error) {
 	url, err := g.prepareURL("farms", filter, limit)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "failed to prepare url")
@@ -168,7 +173,7 @@ func (g *Clientimpl) Farms(filter types.FarmFilter, limit types.Limit) (farms []
 }
 
 // Twins returns twins with the given filters and pagination parameters
-func (g *Clientimpl) Twins(filter types.TwinFilter, limit types.Limit) (twins []types.Twin, totalCount int, err error) {
+func (g *Clientimpl) Twins(ctx context.Context, filter types.TwinFilter, limit types.Limit) (twins []types.Twin, totalCount int, err error) {
 	url, err := g.prepareURL("twins", filter, limit)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "failed to prepare url")
@@ -205,7 +210,7 @@ func (g *Clientimpl) Twins(filter types.TwinFilter, limit types.Limit) (twins []
 }
 
 // Contracts returns contracts with the given filters and pagination parameters
-func (g *Clientimpl) Contracts(filter types.ContractFilter, limit types.Limit) (contracts []types.Contract, totalCount int, err error) {
+func (g *Clientimpl) Contracts(ctx context.Context, filter types.ContractFilter, limit types.Limit) (contracts []types.Contract, totalCount int, err error) {
 	url, err := g.prepareURL("contracts", filter, limit)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "failed to prepare url")
@@ -239,7 +244,7 @@ func (g *Clientimpl) Contracts(filter types.ContractFilter, limit types.Limit) (
 }
 
 // Node returns the node with the give id
-func (g *Clientimpl) Node(nodeID uint32) (node types.NodeWithNestedCapacity, err error) {
+func (g *Clientimpl) Node(ctx context.Context, nodeID uint32) (node types.NodeWithNestedCapacity, err error) {
 	client := g.newHTTPClient()
 	url, err := g.prepareURL(fmt.Sprintf("nodes/%d", nodeID))
 	if err != nil {
@@ -272,7 +277,7 @@ func (g *Clientimpl) Node(nodeID uint32) (node types.NodeWithNestedCapacity, err
 }
 
 // NodeStatus returns the node status up/down
-func (g *Clientimpl) NodeStatus(nodeID uint32) (status types.NodeStatus, err error) {
+func (g *Clientimpl) NodeStatus(ctx context.Context, nodeID uint32) (status types.NodeStatus, err error) {
 	client := g.newHTTPClient()
 	url, err := g.prepareURL(fmt.Sprintf("nodes/%d/status", nodeID))
 	if err != nil {
@@ -303,7 +308,7 @@ func (g *Clientimpl) NodeStatus(nodeID uint32) (status types.NodeStatus, err err
 }
 
 // Counters return statistics about the grid
-func (g *Clientimpl) Counters(filter types.StatsFilter) (counters types.Counters, err error) {
+func (g *Clientimpl) Counters(ctx context.Context, filter types.StatsFilter) (counters types.Counters, err error) {
 	url, err := g.prepareURL("stats", filter)
 	if err != nil {
 		return types.Counters{}, errors.Wrap(err, "failed to prepare url")
@@ -334,7 +339,7 @@ func (g *Clientimpl) Counters(filter types.StatsFilter) (counters types.Counters
 }
 
 // Contract returns a single contract based on the contractID
-func (g *Clientimpl) Contract(contractID uint32) (types.Contract, error) {
+func (g *Clientimpl) Contract(ctx context.Context, contractID uint32) (types.Contract, error) {
 	client := g.newHTTPClient()
 	url, err := g.prepareURL(fmt.Sprintf("contracts/%d", contractID))
 	if err != nil {
@@ -373,7 +378,7 @@ func (g *Clientimpl) Contract(contractID uint32) (types.Contract, error) {
 }
 
 // ContractBills returns all bills for a single contract based on contractID and pagination params
-func (g *Clientimpl) ContractBills(contractID uint32, limit types.Limit) ([]types.ContractBilling, uint, error) {
+func (g *Clientimpl) ContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]types.ContractBilling, uint, error) {
 	client := g.newHTTPClient()
 	url, err := g.prepareURL(fmt.Sprintf("contracts/%d/bills", contractID), limit)
 	if err != nil {
