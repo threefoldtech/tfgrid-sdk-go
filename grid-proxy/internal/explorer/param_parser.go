@@ -13,9 +13,9 @@ func parseQueryParams(r *http.Request, values ...interface{}) error {
 	decoder := schema.NewDecoder()
 	decoder.IgnoreUnknownKeys(true)
 
-	for idx := range values {
-		if err := decoder.Decode(values[idx], params); err != nil {
-			return errors.Wrap(err, "failed to decode filter parameters")
+	for _, value := range values {
+		if err := decoder.Decode(value, params); err != nil {
+			return errors.Wrapf(err, "failed to decode %s parameter", value)
 		}
 	}
 

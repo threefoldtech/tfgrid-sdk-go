@@ -375,7 +375,7 @@ func TestPrepareURL(t *testing.T) {
 }
 
 func TestEncodeEmptyNodeFilter(t *testing.T) {
-	values := url.Values{}
+	var values url.Values
 
 	err := encoder.Encode(types.NodeFilter{}, values)
 	assert.NoError(t, err)

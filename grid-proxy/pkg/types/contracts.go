@@ -2,10 +2,12 @@ package types
 
 import "encoding/json"
 
+// ContractDetails represent details for all contract types
 type ContractDetails interface {
 	RentContractDetails | NameContractDetails | NodeContractDetails
 }
 
+// NodeContractDetails node contract details
 type NodeContractDetails struct {
 	NodeID            uint   `json:"node_id"`
 	DeploymentData    string `json:"deployment_data"`
@@ -13,10 +15,12 @@ type NodeContractDetails struct {
 	NumberOfPublicIps uint   `json:"number_of_public_ips"`
 }
 
+// NameContractDetails name contract details
 type NameContractDetails struct {
 	Name string `json:"name"`
 }
 
+// RentContractDetails rent contract details
 type RentContractDetails struct {
 	NodeID uint `json:"node_id"`
 }

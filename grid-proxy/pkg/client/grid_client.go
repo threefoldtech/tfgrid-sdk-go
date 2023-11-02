@@ -441,14 +441,13 @@ func (g *Clientimpl) prepareURL(path string, params ...interface{}) (string, err
 	}
 
 	baseURL := g.endpoint
-	resource := fmt.Sprintf("/%s", path)
 
 	u, err := url.ParseRequestURI(baseURL)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to parse request URI")
+		return "", errors.Wrapf(err, "failed to parse request URI: %s", baseURL)
 	}
 
-	u.Path = resource
+	u.Path = fmt.Sprintf("/%s", path)
 	u.RawQuery = values.Encode()
 
 	return u.String(), nil

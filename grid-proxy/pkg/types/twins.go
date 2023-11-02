@@ -1,5 +1,6 @@
 package types
 
+// Twin is the twin info
 type Twin struct {
 	TwinID    uint   `json:"twin_id"`
 	AccountID string `json:"account_id"`

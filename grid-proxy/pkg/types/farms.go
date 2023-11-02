@@ -1,5 +1,6 @@
 package types
 
+// Farm info about the farm
 type Farm struct {
 	Name              string     `json:"name"`
 	FarmID            int        `json:"farm_id"`

@@ -8,6 +8,7 @@ type Limit struct {
 	Randomize bool   `schema:"randomize"`
 }
 
+// DefaultLimit returns the default values for the pagination
 func DefaultLimit() Limit {
 	return Limit{
 		Size:      50,

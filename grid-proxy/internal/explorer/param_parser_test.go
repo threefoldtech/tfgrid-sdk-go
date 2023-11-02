@@ -39,11 +39,10 @@ func testDecode(t *testing.T, filter interface{}) {
 		var x, y reflect.Value
 		if want.Field(i).Type().Kind() == reflect.Pointer {
 			x = reflect.New(want.Field(i).Type().Elem())
-			y = x.Elem()
 		} else {
-			x = reflect.New(want.Field(i).Type()).Elem()
-			y = x
+			x = reflect.New(want.Field(i).Type())
 		}
+		y = x.Elem()
 
 		want.Field(i).Set(x)
 

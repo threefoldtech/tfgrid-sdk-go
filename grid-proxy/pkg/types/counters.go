@@ -23,6 +23,7 @@ type StatsFilter struct {
 	Status *string `schema:"status,omitempty"`
 }
 
+// NodeStatisticsResources resources returned on node statistics
 type NodeStatisticsResources struct {
 	CRU   int `json:"cru"`
 	HRU   int `json:"hru"`
@@ -31,11 +32,13 @@ type NodeStatisticsResources struct {
 	SRU   int `json:"sru"`
 }
 
+// NodeStatisticsUsers users info returned on node statistics
 type NodeStatisticsUsers struct {
 	Deployments int `json:"deployments"`
 	Workloads   int `json:"workloads"`
 }
 
+// NodeStatistics node statistics info
 type NodeStatistics struct {
 	System NodeStatisticsResources `json:"system"`
 	Total  NodeStatisticsResources `json:"total"`

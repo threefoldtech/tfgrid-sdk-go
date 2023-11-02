@@ -2,6 +2,7 @@ package types
 
 import "github.com/threefoldtech/zos/pkg/gridtypes"
 
+// Location represent the geographic info about the node
 type Location struct {
 	Country   string   `json:"country"`
 	City      string   `json:"city"`
@@ -130,6 +131,7 @@ type NodeFilter struct {
 	GpuAvailable      *bool    `schema:"gpu_available,omitempty"`
 }
 
+// NodeGPU holds the info about gpu card
 type NodeGPU struct {
 	NodeTwinID uint32 `json:"node_twin_id"`
 	ID         string `json:"id"`
