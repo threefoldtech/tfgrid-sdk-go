@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -25,10 +26,10 @@ func TestCounters(t *testing.T) {
 			Status: &STATUS_UP,
 		}
 
-		want, err := mockClient.Counters(f)
+		want, err := mockClient.Counters(context.Background(), f)
 		require.NoError(t, err)
 
-		got, err := gridProxyClient.Counters(f)
+		got, err := gridProxyClient.Counters(context.Background(), f)
 		require.NoError(t, err)
 
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
@@ -36,10 +37,10 @@ func TestCounters(t *testing.T) {
 
 	t.Run("counters all test", func(t *testing.T) {
 		f := proxytypes.StatsFilter{}
-		want, err := mockClient.Counters(f)
+		want, err := mockClient.Counters(context.Background(), f)
 		require.NoError(t, err)
 
-		got, err := gridProxyClient.Counters(f)
+		got, err := gridProxyClient.Counters(context.Background(), f)
 		require.NoError(t, err)
 
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
@@ -61,10 +62,10 @@ func TestCountersFilter(t *testing.T) {
 		}
 		v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 
-		want, err := mockClient.Counters(f)
+		want, err := mockClient.Counters(context.Background(), f)
 		require.NoError(t, err)
 
-		got, err := gridProxyClient.Counters(f)
+		got, err := gridProxyClient.Counters(context.Background(), f)
 		require.NoError(t, err)
 
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))

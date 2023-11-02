@@ -78,14 +78,14 @@ func mockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub *m
 			},
 		}, nil)
 
-	proxyCl.EXPECT().Node(nodeID).
+	proxyCl.EXPECT().Node(context.Background(), nodeID).
 		Return(proxyTypes.NodeWithNestedCapacity{
 			NodeID:       int(nodeID),
 			FarmID:       1,
 			PublicConfig: proxyTypes.PublicConfig{Ipv4: "1.1.1.1/16"},
 		}, nil)
 
-	proxyCl.EXPECT().Farms(gomock.Any(), gomock.Any()).Return([]proxyTypes.Farm{{FarmID: 1}}, 1, nil)
+	proxyCl.EXPECT().Farms(context.Background(), gomock.Any(), gomock.Any()).Return([]proxyTypes.Farm{{FarmID: 1}}, 1, nil)
 
 	ncPool.EXPECT().
 		GetNodeClient(sub, nodeID).AnyTimes().
