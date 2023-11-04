@@ -688,11 +688,10 @@ paths:
         in: query
         name: farm_ids
         type: string
-      - description: certificate type NotCertified, Silver or Gold
+      - description: certificate type
         enum:
-        - NotCertified
-        - Silver
-        - Gold
+        - Certified
+        - DIY
         in: query
         name: certification_type
         type: string
@@ -851,11 +850,10 @@ paths:
         in: query
         name: farm_ids
         type: string
-      - description: certificate type NotCertified, Silver or Gold
+      - description: certificate type
         enum:
-        - NotCertified
-        - Silver
-        - Gold
+        - Certified
+        - DIY
         in: query
         name: certification_type
         type: string
@@ -1070,9 +1068,17 @@ paths:
         in: query
         name: twin_id
         type: integer
-      - description: account address
+      - description: Account address
         in: query
         name: account_id
+        type: string
+      - description: Relay address
+        in: query
+        name: relay
+        type: string
+      - description: Twin public key
+        in: query
+        name: public_key
         type: string
       produces:
       - application/json

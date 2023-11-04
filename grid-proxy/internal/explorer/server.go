@@ -128,7 +128,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param rented_by query int false "rented by twin id"
 // @Param available_for query int false "available for twin id"
 // @Param farm_ids query string false "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')"
-// @Param certification_type query string false "certificate type NotCertified, Silver or Gold" Enums(NotCertified, Silver, Gold)
+// @Param certification_type query string false "certificate type" Enums(Certified, DIY)
 // @Param has_gpu query bool false "filter nodes on whether they have GPU support or not"
 // @Param gpu_device_id query string false "filter nodes based on GPU device ID"
 // @Param gpu_device_name query string false "filter nodes based on GPU device partial name"
@@ -169,7 +169,7 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param rented_by query int false "rented by twin id"
 // @Param available_for query int false "available for twin id"
 // @Param farm_ids query string false "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')"
-// @Param certification_type query string false "certificate type NotCertified, Silver or Gold" Enums(NotCertified, Silver, Gold)
+// @Param certification_type query string false "certificate type" Enums(Certified, DIY)
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -268,7 +268,9 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set twins' count on headers based on filter"
 // @Param twin_id query int false "twin id"
-// @Param account_id query string false "account address"
+// @Param account_id query string false "Account address"
+// @Param relay query string false "Relay address"
+// @Param public_key query string false "Twin public key"
 // @Success 200 {object} []types.Twin
 // @Failure 400 {object} string
 // @Failure 500 {object} string

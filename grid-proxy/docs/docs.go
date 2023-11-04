@@ -570,12 +570,11 @@ const docTemplate = `{
                     },
                     {
                         "enum": [
-                            "NotCertified",
-                            "Silver",
-                            "Gold"
+                            "Certified",
+                            "DIY"
                         ],
                         "type": "string",
-                        "description": "certificate type NotCertified, Silver or Gold",
+                        "description": "certificate type",
                         "name": "certification_type",
                         "in": "query"
                     }
@@ -814,12 +813,11 @@ const docTemplate = `{
                     },
                     {
                         "enum": [
-                            "NotCertified",
-                            "Silver",
-                            "Gold"
+                            "Certified",
+                            "DIY"
                         ],
                         "type": "string",
-                        "description": "certificate type NotCertified, Silver or Gold",
+                        "description": "certificate type",
                         "name": "certification_type",
                         "in": "query"
                     },
@@ -1144,8 +1142,20 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "account address",
+                        "description": "Account address",
                         "name": "account_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relay address",
+                        "name": "relay",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Twin public key",
+                        "name": "public_key",
                         "in": "query"
                     }
                 ],
