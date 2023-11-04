@@ -656,7 +656,7 @@ func generateNodeGPUs(db *sql.DB) error {
 	devices := []string{"GeForce RTX 3080", "Radeon RX 6800 XT", "Intel Iris Xe MAX"}
 
 	for i := 0; i <= 10; i++ {
-		gpuNum := len(vendors)
+		gpuNum := len(vendors) - 1
 		for j := 0; j <= gpuNum; j++ {
 			g := node_gpu{
 				node_twin_id: uint64(i + 100),
