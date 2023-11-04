@@ -5,10 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
-	cache "github.com/patrickmn/go-cache"
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
 
@@ -493,10 +491,8 @@ func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
 // @BasePath /
 func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Client) error {
 
-	c := cache.New(2*time.Minute, 3*time.Minute)
 	a := App{
 		cl:             cl,
-		lruCache:       c,
 		releaseVersion: gitCommit,
 		relayClient:    relayClient,
 	}
