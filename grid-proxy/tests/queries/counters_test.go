@@ -20,34 +20,34 @@ var statsFilterRandomValues = map[string]func() interface{}{
 	},
 }
 
-func TestCounters(t *testing.T) {
-	t.Run("counters up test", func(t *testing.T) {
+func TestStats(t *testing.T) {
+	t.Run("stats up test", func(t *testing.T) {
 		f := proxytypes.StatsFilter{
 			Status: &STATUS_UP,
 		}
 
-		want, err := mockClient.Counters(context.Background(), f)
+		want, err := mockClient.Stats(context.Background(), f)
 		require.NoError(t, err)
 
-		got, err := gridProxyClient.Counters(context.Background(), f)
+		got, err := gridProxyClient.Stats(context.Background(), f)
 		require.NoError(t, err)
 
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 
-	t.Run("counters all test", func(t *testing.T) {
+	t.Run("stats all test", func(t *testing.T) {
 		f := proxytypes.StatsFilter{}
-		want, err := mockClient.Counters(context.Background(), f)
+		want, err := mockClient.Stats(context.Background(), f)
 		require.NoError(t, err)
 
-		got, err := gridProxyClient.Counters(context.Background(), f)
+		got, err := gridProxyClient.Stats(context.Background(), f)
 		require.NoError(t, err)
 
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 }
 
-func TestCountersFilter(t *testing.T) {
+func TestStatsFilter(t *testing.T) {
 	f := proxytypes.StatsFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()
@@ -62,10 +62,10 @@ func TestCountersFilter(t *testing.T) {
 		}
 		v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 
-		want, err := mockClient.Counters(context.Background(), f)
+		want, err := mockClient.Stats(context.Background(), f)
 		require.NoError(t, err)
 
-		got, err := gridProxyClient.Counters(context.Background(), f)
+		got, err := gridProxyClient.Stats(context.Background(), f)
 		require.NoError(t, err)
 
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))

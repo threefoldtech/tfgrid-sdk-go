@@ -7,7 +7,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-func (g *GridProxyMockClient) Counters(ctx context.Context, filter types.StatsFilter) (res types.Counters, err error) {
+func (g *GridProxyMockClient) Stats(ctx context.Context, filter types.StatsFilter) (res types.Stats, err error) {
 	res.Farms = int64(len(g.data.Farms))
 	res.Twins = int64(len(g.data.Twins))
 	res.PublicIPs = int64(len(g.data.PublicIPs))

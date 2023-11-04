@@ -97,13 +97,13 @@ func (g *RetryingClient) Node(ctx context.Context, nodeID uint32) (res types.Nod
 	return
 }
 
-// Counters returns statistics about the grid
-func (g *RetryingClient) Counters(ctx context.Context, filter types.StatsFilter) (res types.Counters, err error) {
+// Stats returns statistics about the grid
+func (g *RetryingClient) Stats(ctx context.Context, filter types.StatsFilter) (res types.Stats, err error) {
 	f := func() error {
-		res, err = g.cl.Counters(ctx, filter)
+		res, err = g.cl.Stats(ctx, filter)
 		return err
 	}
-	err = backoff.RetryNotify(f, bf(g.timeout), notify("counters"))
+	err = backoff.RetryNotify(f, bf(g.timeout), notify("stats"))
 	return
 }
 

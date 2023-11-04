@@ -1077,7 +1077,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/types.Counters"
+                                "$ref": "#/definitions/types.Stats"
                             }
                         }
                     },
@@ -1223,7 +1223,7 @@
         "types.Contract": {
             "type": "object",
             "properties": {
-                "contractId": {
+                "contract_id": {
                     "type": "integer"
                 },
                 "created_at": {
@@ -1233,7 +1233,7 @@
                 "state": {
                     "type": "string"
                 },
-                "twinId": {
+                "twin_id": {
                     "type": "integer"
                 },
                 "type": {
@@ -1251,56 +1251,6 @@
                     "type": "string"
                 },
                 "timestamp": {
-                    "type": "integer"
-                }
-            }
-        },
-        "types.Counters": {
-            "type": "object",
-            "properties": {
-                "accessNodes": {
-                    "type": "integer"
-                },
-                "contracts": {
-                    "type": "integer"
-                },
-                "countries": {
-                    "type": "integer"
-                },
-                "farms": {
-                    "type": "integer"
-                },
-                "gateways": {
-                    "type": "integer"
-                },
-                "gpus": {
-                    "type": "integer"
-                },
-                "nodes": {
-                    "type": "integer"
-                },
-                "nodesDistribution": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "integer"
-                    }
-                },
-                "publicIps": {
-                    "type": "integer"
-                },
-                "totalCru": {
-                    "type": "integer"
-                },
-                "totalHru": {
-                    "type": "integer"
-                },
-                "totalMru": {
-                    "type": "integer"
-                },
-                "totalSru": {
-                    "type": "integer"
-                },
-                "twins": {
                     "type": "integer"
                 }
             }
@@ -1620,6 +1570,56 @@
                 },
                 "ip": {
                     "type": "string"
+                }
+            }
+        },
+        "types.Stats": {
+            "type": "object",
+            "properties": {
+                "accessNodes": {
+                    "type": "integer"
+                },
+                "contracts": {
+                    "type": "integer"
+                },
+                "countries": {
+                    "type": "integer"
+                },
+                "farms": {
+                    "type": "integer"
+                },
+                "gateways": {
+                    "type": "integer"
+                },
+                "gpus": {
+                    "type": "integer"
+                },
+                "nodes": {
+                    "type": "integer"
+                },
+                "nodesDistribution": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "publicIps": {
+                    "type": "integer"
+                },
+                "totalCru": {
+                    "type": "integer"
+                },
+                "totalHru": {
+                    "type": "integer"
+                },
+                "totalMru": {
+                    "type": "integer"
+                },
+                "totalSru": {
+                    "type": "integer"
+                },
+                "twins": {
+                    "type": "integer"
                 }
             }
         },

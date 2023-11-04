@@ -23,7 +23,7 @@ type DBClient interface {
 	Twins(ctx context.Context, filter types.TwinFilter, pagination types.Limit) (res []types.Twin, totalCount int, err error)
 	Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error)
 	NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error)
-	Counters(ctx context.Context, filter types.StatsFilter) (res types.Counters, err error)
+	Stats(ctx context.Context, filter types.StatsFilter) (res types.Stats, err error)
 }
 
 // Client a client to communicate with the grid proxy
@@ -276,13 +276,13 @@ func (g *Clientimpl) NodeStatus(ctx context.Context, nodeID uint32) (status type
 	return
 }
 
-// Counters return statistics about the grid
-func (g *Clientimpl) Counters(ctx context.Context, filter types.StatsFilter) (counters types.Counters, err error) {
+// Stats return statistics about the grid
+func (g *Clientimpl) Stats(ctx context.Context, filter types.StatsFilter) (stats types.Stats, err error) {
 	query := statsParams(filter)
 	client := g.newHTTPClient()
 	req, err := http.NewRequest(http.MethodGet, g.url("stats%s", query), nil)
 	if err != nil {
-		return types.Counters{}, fmt.Errorf("failed to create stats request: %w", err)
+		return types.Stats{}, fmt.Errorf("failed to create stats request: %w", err)
 	}
 
 	res, err := client.Do(req)
@@ -290,15 +290,15 @@ func (g *Clientimpl) Counters(ctx context.Context, filter types.StatsFilter) (co
 		defer res.Body.Close()
 	}
 	if err != nil {
-		return types.Counters{}, err
+		return types.Stats{}, err
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
 		return
 	}
-	if err := json.NewDecoder(res.Body).Decode(&counters); err != nil {
-		return counters, err
+	if err := json.NewDecoder(res.Body).Decode(&stats); err != nil {
+		return stats, err
 	}
 	return
 }

@@ -82,7 +82,7 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 // @Accept  json
 // @Produce  json
 // @Param status query string false "Node status filter, 'up': for only up nodes, 'down': for only down nodes & 'standby' for powered-off nodes by farmerbot."
-// @Success 200 {object} []types.Counters
+// @Success 200 {object} []types.Stats
 // @Failure 400 {object} string
 // @Failure 500 {object} string
 // @Router /stats [get]
@@ -92,12 +92,12 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 		return nil, mw.BadRequest(err)
 	}
 
-	counters, err := a.cl.Counters(r.Context(), filter)
+	stats, err := a.cl.Stats(r.Context(), filter)
 	if err != nil {
 		return nil, mw.Error(err)
 	}
 
-	return counters, nil
+	return stats, nil
 }
 
 // getNodes godoc
