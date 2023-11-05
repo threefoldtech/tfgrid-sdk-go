@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -28,9 +29,9 @@ func NewDeploymentDeployer(tfPluginClient *TFPluginClient) DeploymentDeployer {
 }
 
 // GenerateVersionlessDeployments generates a new deployment without a version
-func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context, dl *workloads.Deployment) (map[uint32]gridtypes.Deployment, error) {
+func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context, dl *workloads.Deployment, usedHosts []byte) (map[uint32]gridtypes.Deployment, error) {
 	newDl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, []gridtypes.Workload{})
-	err := d.assignNodesIPs(dl)
+	err := d.assignNodesIPs(dl, usedHosts)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to assign node ips")
 	}
@@ -69,7 +70,8 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 	// solution providers
 	newDeploymentsSolutionProvider := map[uint32]*uint64{dl.NodeID: dl.SolutionProvider}
 
-	newDeployments, err := d.GenerateVersionlessDeployments(ctx, dl)
+	network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
+	newDeployments, err := d.GenerateVersionlessDeployments(ctx, dl, network.GetUsedNetworkHostIDs(dl.NodeID))
 	if err != nil {
 		return errors.Wrap(err, "could not generate deployments data")
 	}
@@ -83,6 +85,8 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID) {
 			d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID)
 		}
+		updateNetworkUsedIPs(&network, dl)
+		d.tfPluginClient.State.Networks[dl.NetworkName] = network
 	}
 
 	return err
@@ -92,13 +96,16 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.Deployment) error {
 	newDeployments := make(map[uint32][]gridtypes.Deployment)
 	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
-
+	networkUsedIPs := make(map[string][]byte)
 	for _, dl := range dls {
 		if err := d.Validate(ctx, dl); err != nil {
 			return err
 		}
-
-		generatedDls, err := d.GenerateVersionlessDeployments(ctx, dl)
+		if _, ok := networkUsedIPs[dl.NetworkName]; !ok {
+			network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
+			networkUsedIPs[dl.NetworkName] = network.GetUsedNetworkHostIDs(dl.NodeID)
+		}
+		generatedDls, err := d.GenerateVersionlessDeployments(ctx, dl, networkUsedIPs[dl.NetworkName])
 		if err != nil {
 			return errors.Wrap(err, "could not generate deployments data")
 		}
@@ -142,8 +149,22 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, dl *workloads.Deploymen
 	delete(dl.NodeDeploymentID, dl.NodeID)
 	d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID)
 	dl.ContractID = 0
+	delete(d.tfPluginClient.State.Networks[dl.NetworkName].NodeDeploymentHostIDs[dl.NodeID], dl.ContractID)
 
 	return nil
+}
+
+func updateNetworkUsedIPs(network *state.Network, dl *workloads.Deployment) {
+	network.DeleteDeploymentHostIDs(dl.NodeID, dl.ContractID)
+	ips := make([]byte, 0)
+	for _, vm := range dl.Vms {
+		vmIP := net.ParseIP(vm.IP).To4()
+		if vmIP == nil {
+			continue
+		}
+		ips = append(ips, vmIP[3])
+	}
+	network.SetDeploymentHostIDs(dl.NodeID, dl.ContractID, ips)
 }
 
 func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl *workloads.Deployment, newDls map[uint32][]gridtypes.Deployment) error {
@@ -165,6 +186,9 @@ func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl 
 		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID) {
 			d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID)
 		}
+		network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
+		updateNetworkUsedIPs(&network, dl)
+		d.tfPluginClient.State.Networks[dl.NetworkName] = network
 	}
 
 	return nil
@@ -266,11 +290,9 @@ func (d *DeploymentDeployer) Validate(ctx context.Context, dl *workloads.Deploym
 	return dl.Validate()
 }
 
-func (d *DeploymentDeployer) assignNodesIPs(dl *workloads.Deployment) error {
+func (d *DeploymentDeployer) assignNodesIPs(dl *workloads.Deployment, usedHosts []byte) error {
 	network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
 	ipRange := network.GetNodeSubnet(dl.NodeID)
-
-	usedHosts := network.GetUsedNetworkHostIDs(dl.NodeID)
 
 	if len(dl.Vms) == 0 {
 		return nil
