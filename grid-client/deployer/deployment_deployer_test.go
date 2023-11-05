@@ -327,7 +327,8 @@ func TestDeploymentDeployer(t *testing.T) {
 				return nil
 			}).AnyTimes()
 
-		dls, err := d.GenerateVersionlessDeployments(context.Background(), &dl, make([]byte, 0))
+		ips := make([]byte, 0)
+		dls, err := d.GenerateVersionlessDeployments(context.Background(), &dl, &ips)
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(gridDl.Workloads), len(dls[dl.NodeID].Workloads))
@@ -335,7 +336,8 @@ func TestDeploymentDeployer(t *testing.T) {
 	})
 
 	t.Run("test sync", func(t *testing.T) {
-		dls, err := d.GenerateVersionlessDeployments(context.Background(), &dl, make([]byte, 0))
+		ips := make([]byte, 0)
+		dls, err := d.GenerateVersionlessDeployments(context.Background(), &dl, &ips)
 		assert.NoError(t, err)
 
 		assert.Equal(t, dls[nodeID].Metadata, "{\"type\":\"vm\",\"name\":\"test\",\"projectName\":\"Virtual Machine\"}")
@@ -503,7 +505,8 @@ func TestDeploymentDeployer(t *testing.T) {
 				return nil
 			}).AnyTimes()
 
-		dls, err := d.GenerateVersionlessDeployments(context.Background(), &dl, make([]byte, 0))
+		ips := make([]byte, 0)
+		dls, err := d.GenerateVersionlessDeployments(context.Background(), &dl, &ips)
 		assert.NoError(t, err)
 
 		gridDl := dls[dl.NodeID]
