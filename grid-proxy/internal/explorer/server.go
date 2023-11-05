@@ -109,6 +109,9 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of nodes"
+// @Param sort_by query string false "Sort by specific node filed" Enums(free_mru, total_cru, free_ips, ...)
+// @Param sort_order query string false "The sorting order, default is 'desc'" Enums(desc, asc)
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"
 // @Param free_sru query int false "Min free reservable sru in bytes"
@@ -156,6 +159,9 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of gateways"
+// @Param sort_by query string false "Sort by specific gateway filed" Enums(free_mru, total_cru, free_ips, ...)
+// @Param sort_order query string false "The sorting order, default is 'desc'" Enums(desc, asc)
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"
 // @Param free_sru query int false "Min free reservable sru in bytes"
@@ -274,6 +280,9 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set twins' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of twins"
+// @Param sort_by query string false "Sort by specific twin filed" Enums(relay, public_key, account_id, twin_id)
+// @Param sort_order query string false "The sorting order, default is 'desc'" Enums(desc, asc)
 // @Param twin_id query int false "twin id"
 // @Param account_id query string false "Account address"
 // @Param relay query string false "Relay address"
@@ -308,6 +317,9 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set contracts' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of contracts"
+// @Param sort_by query string false "Sort by specific contract filed" Enums(twin_id, node_id, type, status, ...)
+// @Param sort_order query string false "The sorting order, default is 'desc'" Enums(desc, asc)
 // @Param contract_id query int false "contract id"
 // @Param twin_id query int false "twin id"
 // @Param node_id query int false "node id which contract is deployed on in case of ('rent' or 'node' contracts)"
