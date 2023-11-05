@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"strings"
 
 	// to use for database/sql
@@ -30,6 +29,14 @@ var (
 	ErrNodeResourcesViewNotFound = errors.New("ERROR: relation \"nodes_resources_view\" does not exist (SQLSTATE 42P01)")
 	// ErrContractNotFound contract not found
 	ErrContractNotFound = errors.New("contract not found")
+
+	sortingOrder = struct {
+		Desc string
+		Asc  string
+	}{
+		Desc: "DESC",
+		Asc:  "ASC",
+	}
 )
 
 const (
@@ -596,17 +603,27 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 			return nil, 0, res.Error
 		}
 	}
+
+	// Sorting
 	if limit.Randomize {
-		q = q.Limit(int(limit.Size)).
-			Offset(rand.Intn(int(count) - int(limit.Size)))
+		q = q.Order("random()")
 	} else {
 		if filter.AvailableFor != nil {
 			q = q.Order("(case when rent_contract is not null then 1 else 2 end)")
 		}
-		q = q.Limit(int(limit.Size)).
-			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("node.node_id")
+
+		if limit.SortBy != "" {
+			order := sortingOrder.Desc
+			if strings.ToUpper(limit.SortOrder) == sortingOrder.Asc {
+				order = sortingOrder.Asc
+			}
+			q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
+		} else {
+			q = q.Order("node.node_id")
+		}
 	}
+	// Pagination
+	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
 
 	var nodes []Node
 	q = q.Session(&gorm.Session{})
@@ -712,14 +729,23 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 			return nil, 0, errors.Wrap(res.Error, "couldn't get farm count")
 		}
 	}
+
+	// Sorting
 	if limit.Randomize {
-		q = q.Limit(int(limit.Size)).
-			Offset(rand.Intn(int(count) - int(limit.Size)))
+		q = q.Order("random()")
+	} else if limit.SortBy != "" {
+		order := sortingOrder.Desc
+		if strings.ToUpper(limit.SortOrder) == sortingOrder.Asc {
+			order = sortingOrder.Asc
+		}
+		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 	} else {
-		q = q.Limit(int(limit.Size)).
-			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("farm.farm_id")
+		q = q.Order("farm.farm_id")
 	}
+
+	// Pagination
+	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
+
 	var farms []Farm
 	if res := q.Scan(&farms); res.Error != nil {
 		return farms, uint(count), errors.Wrap(res.Error, "failed to scan returned farm from database")
@@ -755,16 +781,24 @@ func (d *PostgresDatabase) GetTwins(ctx context.Context, filter types.TwinFilter
 			return nil, 0, errors.Wrap(res.Error, "couldn't get twin count")
 		}
 	}
-	if limit.Randomize {
-		q = q.Limit(int(limit.Size)).
-			Offset(rand.Intn(int(count) - int(limit.Size)))
-	} else {
-		q = q.Limit(int(limit.Size)).
-			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("twin.twin_id")
-	}
-	twins := []types.Twin{}
 
+	// Sorting
+	if limit.Randomize {
+		q = q.Order("random()")
+	} else if limit.SortBy != "" {
+		order := sortingOrder.Desc
+		if strings.ToUpper(limit.SortOrder) == sortingOrder.Asc {
+			order = sortingOrder.Asc
+		}
+		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
+	} else {
+		q = q.Order("twin.twin_id")
+	}
+
+	// Pagination
+	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
+
+	twins := []types.Twin{}
 	if res := q.Scan(&twins); res.Error != nil {
 		return twins, uint(count), errors.Wrap(res.Error, "failed to scan returned twins from database")
 	}
@@ -837,14 +871,23 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 			return nil, 0, errors.Wrap(res.Error, "couldn't get contract count")
 		}
 	}
+
+	// Sorting
 	if limit.Randomize {
-		q = q.Limit(int(limit.Size)).
-			Offset(rand.Intn(int(count) - int(limit.Size)))
+		q = q.Order("random()")
+	} else if limit.SortBy != "" {
+		order := sortingOrder.Desc
+		if strings.ToUpper(limit.SortOrder) == sortingOrder.Asc {
+			order = sortingOrder.Asc
+		}
+		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 	} else {
-		q = q.Limit(int(limit.Size)).
-			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("contract_id")
+		q = q.Order("contract_id")
 	}
+
+	// Pagination
+	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
+
 	var contracts []DBContract
 	if res := q.Scan(&contracts); res.Error != nil {
 		return contracts, uint(count), errors.Wrap(res.Error, "failed to scan returned contracts from database")

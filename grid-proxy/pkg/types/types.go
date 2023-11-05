@@ -79,6 +79,8 @@ type Limit struct {
 	Page      uint64
 	RetCount  bool
 	Randomize bool
+	SortBy    string
+	SortOrder string
 }
 
 // NodeFilter node filters

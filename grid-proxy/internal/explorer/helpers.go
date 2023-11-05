@@ -49,6 +49,11 @@ func getLimit(r *http.Request) (types.Limit, error) {
 	size := r.URL.Query().Get("size")
 	retCount := r.URL.Query().Get("ret_count")
 	randomize := r.URL.Query().Get("randomize")
+	sortBy := r.URL.Query().Get("sort_by")
+	sortOrder := r.URL.Query().Get("sort_order")
+
+	limit.SortBy = sortBy
+	limit.SortOrder = sortOrder
 	if page == "" {
 		page = "1"
 	}

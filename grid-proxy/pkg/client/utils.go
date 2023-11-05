@@ -115,6 +115,12 @@ func nodeParams(filter types.NodeFilter, limit types.Limit) string {
 	if limit.Randomize {
 		fmt.Fprintf(&builder, "randomize=true&")
 	}
+	if limit.SortBy != "" {
+		fmt.Fprintf(&builder, "sort_by=%s&", limit.SortBy)
+		if limit.SortOrder != "" {
+			fmt.Fprintf(&builder, "sort_order=%s&", limit.SortOrder)
+		}
+	}
 	if filter.CertificationType != nil && *filter.CertificationType != "" {
 		fmt.Fprintf(&builder, "certification_type=%s&", url.QueryEscape(*filter.CertificationType))
 	}
@@ -189,6 +195,12 @@ func farmParams(filter types.FarmFilter, limit types.Limit) string {
 	if limit.Randomize {
 		fmt.Fprintf(&builder, "randomize=true&")
 	}
+	if limit.SortBy != "" {
+		fmt.Fprintf(&builder, "sort_by=%s&", limit.SortBy)
+		if limit.SortOrder != "" {
+			fmt.Fprintf(&builder, "sort_order=%s&", limit.SortOrder)
+		}
+	}
 	if filter.NodeFreeMRU != nil && *filter.NodeFreeMRU != 0 {
 		fmt.Fprintf(&builder, "node_free_mru=%d&", *filter.NodeFreeMRU)
 	}
@@ -255,6 +267,12 @@ func twinParams(filter types.TwinFilter, limit types.Limit) string {
 	if limit.Randomize {
 		fmt.Fprintf(&builder, "randomize=true&")
 	}
+	if limit.SortBy != "" {
+		fmt.Fprintf(&builder, "sort_by=%s&", limit.SortBy)
+		if limit.SortOrder != "" {
+			fmt.Fprintf(&builder, "sort_order=%s&", limit.SortOrder)
+		}
+	}
 
 	res := builder.String()
 	// pop the extra ? or &
@@ -306,6 +324,12 @@ func contractParams(filter types.ContractFilter, limit types.Limit) string {
 	}
 	if limit.Randomize {
 		fmt.Fprintf(&builder, "randomize=true&")
+	}
+	if limit.SortBy != "" {
+		fmt.Fprintf(&builder, "sort_by=%s&", limit.SortBy)
+		if limit.SortOrder != "" {
+			fmt.Fprintf(&builder, "sort_order=%s&", limit.SortOrder)
+		}
 	}
 
 	res := builder.String()

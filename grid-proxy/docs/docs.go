@@ -53,6 +53,35 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Get random patch of contracts",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "twin_id",
+                            "node_id",
+                            "type",
+                            "status",
+                            "..."
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific contract filed",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'desc'",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "contract id",
                         "name": "contract_id",
@@ -467,6 +496,34 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Get random patch of gateways",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "free_mru",
+                            "total_cru",
+                            "free_ips",
+                            "..."
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific gateway filed",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'desc'",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Min free reservable mru in bytes",
                         "name": "free_mru",
@@ -684,6 +741,34 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Set nodes' count on headers based on filter",
                         "name": "ret_count",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get random patch of nodes",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "free_mru",
+                            "total_cru",
+                            "free_ips",
+                            "..."
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific node filed",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'desc'",
+                        "name": "sort_order",
                         "in": "query"
                     },
                     {
@@ -1137,6 +1222,34 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Get random patch of twins",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "relay",
+                            "public_key",
+                            "account_id",
+                            "twin_id"
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific twin filed",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'desc'",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "twin id",
                         "name": "twin_id",
@@ -1231,7 +1344,7 @@ const docTemplate = `{
         "types.Contract": {
             "type": "object",
             "properties": {
-                "contractId": {
+                "contract_id": {
                     "type": "integer"
                 },
                 "created_at": {
@@ -1241,7 +1354,7 @@ const docTemplate = `{
                 "state": {
                     "type": "string"
                 },
-                "twinId": {
+                "twin_id": {
                     "type": "integer"
                 },
                 "type": {
