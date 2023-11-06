@@ -58,7 +58,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 		ExtraFee:          info.ExtraFee,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
-	node.Dedicated = info.FarmDedicated || info.NodeContractCount == 0 || info.RentContractID != 0
+	node.Dedicated = info.FarmDedicated || !info.HasNodeContract || info.RentContractID != 0
 	return node
 }
 
@@ -129,7 +129,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		ExtraFee:          info.ExtraFee,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
-	node.Dedicated = info.FarmDedicated || info.NodeContractCount == 0 || info.RentContractID != 0
+	node.Dedicated = info.FarmDedicated || !info.HasNodeContract || info.RentContractID != 0
 	return node
 }
 

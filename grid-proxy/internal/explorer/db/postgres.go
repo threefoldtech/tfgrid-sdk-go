@@ -455,7 +455,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"convert_to_decimal(location.latitude) as latitude",
 			"node.power",
 			"node.extra_fee",
-			"node_contract.contract_id AS node_contract_count",
+			"CASE WHEN node_contract.contract_id IS NOT NULL THEN 1 ELSE 0 END AS has_node_contract",
 			nodeGPUQuery,
 		).
 		Joins(
