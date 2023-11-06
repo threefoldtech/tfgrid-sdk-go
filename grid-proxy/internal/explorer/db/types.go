@@ -64,7 +64,7 @@ type Node struct {
 	Ipv4            string
 	Ipv6            string
 	Certification   string
-	Dedicated       bool
+	FarmDedicated   bool `gorm:"farm_dedicated"`
 	RentContractID  int64
 	RentedByTwinID  int64
 	SerialNumber    string
@@ -73,6 +73,7 @@ type Node struct {
 	Power           NodePower `gorm:"type:jsonb"`
 	NumGPU          int       `gorm:"num_gpu"`
 	ExtraFee        uint64
+	HasNodeContract bool `gorm:"has_node_contract"`
 }
 
 // NodePower struct is the farmerbot report for node status
