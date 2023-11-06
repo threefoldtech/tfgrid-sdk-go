@@ -10,6 +10,9 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+const vm2Name = "vm2"
+const vm3Name = "vm3"
+
 func TestDeploymentsDeploy(t *testing.T) {
 
 	tf, err := setup()
@@ -93,9 +96,9 @@ func TestDeploymentsDeploy(t *testing.T) {
 
 	// replace first vm and add another one
 	d.Vms[0] = vm1
-	d.Vms[0].Name = "vm2"
+	d.Vms[0].Name = vm2Name
 	d.Vms = append(d.Vms, vm1)
-	d.Vms[1].Name = "vm3"
+	d.Vms[1].Name = vm3Name
 
 	err = tf.DeploymentDeployer.Deploy(context.Background(), &d)
 	if err != nil {
@@ -155,12 +158,12 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		}
 	})
 	d := workloads.NewDeployment("deployment1", node, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
-	d.Vms[1].Name = "vm2"
-	d.Vms[2].Name = "vm3"
+	d.Vms[1].Name = vm2Name
+	d.Vms[2].Name = vm3Name
 
 	d2 := workloads.NewDeployment("deployment2", node, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
-	d2.Vms[1].Name = "vm2"
-	d2.Vms[2].Name = "vm3"
+	d2.Vms[1].Name = vm2Name
+	d2.Vms[2].Name = vm3Name
 
 	err = tf.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&d, &d2})
 	if err != nil {
