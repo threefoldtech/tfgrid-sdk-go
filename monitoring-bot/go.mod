@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/go-envparse v0.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.31.0
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/stellar/go v0.0.0-20230914224101-86d1e0dbae69
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231017113908-9d56a805ead0
@@ -32,7 +32,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/uuid v1.3.1 // indirect
+	github.com/google/uuid v1.4.0 // indirect
 	github.com/gorilla/schema v1.1.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
