@@ -577,6 +577,12 @@ const docTemplate = `{
                         "description": "certificate type",
                         "name": "certification_type",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "get nodes owned by twin id",
+                        "name": "owned_by",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -855,6 +861,12 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "filter nodes that have available GPU",
                         "name": "gpu_available",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "get nodes owned by twin id",
+                        "name": "owned_by",
                         "in": "query"
                     }
                 ],
@@ -1601,6 +1613,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "countries": {
+                    "type": "integer"
+                },
+                "dedicatedNodes": {
                     "type": "integer"
                 },
                 "farms": {

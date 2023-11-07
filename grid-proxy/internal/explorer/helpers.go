@@ -155,6 +155,7 @@ func (a *App) handleNodeRequestsQueryParams(r *http.Request) (types.NodeFilter, 
 		"available_for": &filter.AvailableFor,
 		"node_id":       &filter.NodeID,
 		"twin_id":       &filter.TwinID,
+		"owned_by":      &filter.OwnedBy,
 	}
 	strs := map[string]**string{
 		"status":             &filter.Status,

@@ -276,6 +276,8 @@ definitions:
         type: integer
       countries:
         type: integer
+      dedicatedNodes:
+        type: integer
       farms:
         type: integer
       gateways:
@@ -695,6 +697,10 @@ paths:
         in: query
         name: certification_type
         type: string
+      - description: get nodes owned by twin id
+        in: query
+        name: owned_by
+        type: integer
       produces:
       - application/json
       responses:
@@ -881,6 +887,10 @@ paths:
         in: query
         name: gpu_available
         type: boolean
+      - description: get nodes owned by twin id
+        in: query
+        name: owned_by
+        type: integer
       produces:
       - application/json
       responses:

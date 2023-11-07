@@ -570,6 +570,12 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.Rented != nil {
 		q = q.Where(`? = (COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Rented)
 	}
+	if filter.CertificationType != nil {
+		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
+	}
+	if filter.OwnedBy != nil {
+		q = q.Where(`COALESCE(farm.twin_id, 0) = ?`, *filter.OwnedBy)
+	}
 
 	/*
 		used distinct selecting to avoid duplicated node after the join.
