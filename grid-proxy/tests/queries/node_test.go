@@ -228,11 +228,11 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		return &v
 	},
 	"GpuDeviceName": func(agg NodesAggregate) interface{} {
-		deviceNames := []string{"navi", "a", "hamada"}
+		deviceNames := []string{"geforce", "radeon", "a", "hamada"}
 		return &deviceNames[rand.Intn(len(deviceNames))]
 	},
 	"GpuVendorName": func(agg NodesAggregate) interface{} {
-		vendorNames := []string{"advanced", "a", "hamada"}
+		vendorNames := []string{"amd", "intel", "a", "hamada"}
 		return &vendorNames[rand.Intn(len(vendorNames))]
 	},
 	"GpuVendorID": func(agg NodesAggregate) interface{} {
@@ -356,13 +356,20 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test has_gpu filter", func(t *testing.T) {
-		hasGPU := true
-		nodes, _, err := gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{HasGPU: &hasGPU}, proxytypes.Limit{})
-		assert.NoError(t, err)
+		l := proxytypes.Limit{}
 
-		for _, node := range nodes {
-			assert.Equal(t, node.NumGPU, 1, "has_gpu filter did not work")
+		hasGPU := true
+		f := proxytypes.NodeFilter{
+			HasGPU: &hasGPU,
 		}
+
+		_, wantCount, err := mockClient.Nodes(context.Background(), f, l)
+		require.NoError(t, err)
+
+		_, gotCount, err := gridProxyClient.Nodes(context.Background(), f, l)
+		require.NoError(t, err)
+
+		assert.Equal(t, wantCount, gotCount)
 	})
 
 	t.Run("nodes test gpu vendor, device name filter", func(t *testing.T) {

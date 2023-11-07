@@ -28,10 +28,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 	}
 	for _, node := range g.data.Nodes {
 		if node.satisfies(filter, &g.data) {
-			numGPU := 0
-			if _, ok := g.data.GPUs[node.TwinID]; ok {
-				numGPU = 1
-			}
+			numGPU := len(g.data.GPUs[node.TwinID])
 
 			nodePower := types.NodePower{
 				State:  node.Power.State,
@@ -106,10 +103,8 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 
 func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
 	node := g.data.Nodes[uint64(nodeID)]
-	numGPU := 0
-	if _, ok := g.data.GPUs[node.TwinID]; ok {
-		numGPU = 1
-	}
+	numGPU := len(g.data.GPUs[node.TwinID])
+
 	nodePower := types.NodePower{
 		State:  node.Power.State,
 		Target: node.Power.Target,
@@ -302,24 +297,45 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	gpu, ok := data.GPUs[n.TwinID]
-	if f.HasGPU != nil && *f.HasGPU != ok {
+	foundGpuFilter := f.HasGPU != nil || f.GpuDeviceName != nil || f.GpuVendorName != nil || f.GpuVendorID != nil || f.GpuDeviceID != nil || f.GpuAvailable != nil
+	gpus, foundGpuCards := data.GPUs[n.TwinID]
+
+	if !foundGpuCards && foundGpuFilter {
 		return false
 	}
 
-	if f.GpuDeviceName != nil && !strings.Contains(strings.ToLower(gpu.Device), *f.GpuDeviceName) {
+	if f.HasGPU != nil && *f.HasGPU != foundGpuCards {
 		return false
 	}
 
-	if f.GpuVendorName != nil && !strings.Contains(strings.ToLower(gpu.Vendor), *f.GpuVendorName) {
+	foundSuitableCard := false
+	for _, gpu := range gpus {
+		if gpuSatisfied(gpu, f) {
+			foundSuitableCard = true
+		}
+	}
+
+	if !foundSuitableCard && foundGpuFilter {
 		return false
 	}
 
-	if f.GpuVendorID != nil && !strings.Contains(strings.ToLower(gpu.ID), *f.GpuVendorID) {
+	return true
+}
+
+func gpuSatisfied(gpu NodeGPU, f types.NodeFilter) bool {
+	if f.GpuDeviceName != nil && !contains(gpu.Device, *f.GpuDeviceName) {
 		return false
 	}
 
-	if f.GpuDeviceID != nil && !strings.Contains(strings.ToLower(gpu.ID), *f.GpuDeviceID) {
+	if f.GpuVendorName != nil && !contains(gpu.Vendor, *f.GpuVendorName) {
+		return false
+	}
+
+	if f.GpuVendorID != nil && !contains(gpu.ID, *f.GpuVendorID) {
+		return false
+	}
+
+	if f.GpuDeviceID != nil && !contains(gpu.ID, *f.GpuDeviceID) {
 		return false
 	}
 
@@ -327,8 +343,9 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if !ok && (f.HasGPU != nil || f.GpuDeviceName != nil || f.GpuVendorName != nil || f.GpuVendorID != nil || f.GpuDeviceID != nil || f.GpuAvailable != nil) {
-		return false
-	}
 	return true
+}
+
+func contains(s string, sub string) bool {
+	return strings.Contains(strings.ToLower(s), sub)
 }

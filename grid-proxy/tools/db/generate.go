@@ -652,20 +652,25 @@ func generateNodes(db *sql.DB) error {
 
 func generateNodeGPUs(db *sql.DB) error {
 	var GPUs []string
-	for i := 0; i <= 10; i++ {
-		g := node_gpu{
-			node_twin_id: uint64(i + 100),
-			vendor:       "Advanced Micro Devices, Inc. [AMD/ATI]",
-			device:       "Navi 31 [Radeon RX 7900 XT/7900 XTX",
-			contract:     i % 2,
-			id:           "0000:0e:00.0/1002/744c",
-		}
+	vendors := []string{"NVIDIA Corporation", "AMD", "Intel Corporation"}
+	devices := []string{"GeForce RTX 3080", "Radeon RX 6800 XT", "Intel Iris Xe MAX"}
 
-		gpuTuple, err := objectToTupleString(g)
-		if err != nil {
-			return fmt.Errorf("failed to convert gpu object to tuple string: %w", err)
+	for i := 0; i <= 10; i++ {
+		gpuNum := len(vendors) - 1
+		for j := 0; j <= gpuNum; j++ {
+			g := node_gpu{
+				node_twin_id: uint64(i + 100),
+				vendor:       vendors[j],
+				device:       devices[j],
+				contract:     i % 2,
+				id:           fmt.Sprintf("0000:0e:00.0/1002/744c/%d", j),
+			}
+			gpuTuple, err := objectToTupleString(g)
+			if err != nil {
+				return fmt.Errorf("failed to convert gpu object to tuple string: %w", err)
+			}
+			GPUs = append(GPUs, gpuTuple)
 		}
-		GPUs = append(GPUs, gpuTuple)
 	}
 
 	if err := insertTuples(db, node_gpu{}, GPUs); err != nil {
