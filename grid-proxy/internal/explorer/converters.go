@@ -50,7 +50,6 @@ func nodeFromDBNode(info db.Node) types.Node {
 			Ipv6:   info.Ipv6,
 		},
 		CertificationType: info.Certification,
-		Dedicated:         info.Dedicated,
 		RentContractID:    uint(info.RentContractID),
 		RentedByTwinID:    uint(info.RentedByTwinID),
 		SerialNumber:      info.SerialNumber,
@@ -59,6 +58,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 		ExtraFee:          info.ExtraFee,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
+	node.Dedicated = info.FarmDedicated || !info.HasNodeContract || info.RentContractID != 0
 	return node
 }
 
@@ -121,7 +121,6 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 			Ipv6:   info.Ipv6,
 		},
 		CertificationType: info.Certification,
-		Dedicated:         info.Dedicated,
 		RentContractID:    uint(info.RentContractID),
 		RentedByTwinID:    uint(info.RentedByTwinID),
 		SerialNumber:      info.SerialNumber,
@@ -130,6 +129,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		ExtraFee:          info.ExtraFee,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
+	node.Dedicated = info.FarmDedicated || !info.HasNodeContract || info.RentContractID != 0
 	return node
 }
 

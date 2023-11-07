@@ -30,6 +30,7 @@ type Stats struct {
 	Contracts         int64            `json:"contracts"`
 	NodesDistribution map[string]int64 `json:"nodesDistribution" gorm:"-:all"`
 	GPUs              int64            `json:"gpus"`
+	DedicatedNodes    int64            `json:"dedicatedNodes"`
 }
 
 // PublicConfig node public config

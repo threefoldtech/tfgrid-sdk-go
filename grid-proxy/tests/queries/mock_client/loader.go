@@ -31,7 +31,7 @@ type DBData struct {
 	Billings            map[uint64][]ContractBillReport
 	ContractResources   map[string]ContractResources
 	NonDeletedContracts map[uint64][]uint64
-	GPUs                map[uint64]NodeGPU
+	GPUs                map[uint64][]NodeGPU
 	DB                  *sql.DB
 }
 
@@ -502,7 +502,7 @@ func loadNodeGPUs(db *sql.DB, data *DBData) error {
 		); err != nil {
 			return err
 		}
-		data.GPUs[gpu.NodeTwinID] = gpu
+		data.GPUs[gpu.NodeTwinID] = append(data.GPUs[gpu.NodeTwinID], gpu)
 	}
 	return nil
 }
@@ -528,7 +528,7 @@ func Load(db *sql.DB) (DBData, error) {
 		NodeTotalResources:  make(map[uint64]NodeResourcesTotal),
 		NodeUsedResources:   make(map[uint64]NodeResourcesTotal),
 		NonDeletedContracts: make(map[uint64][]uint64),
-		GPUs:                make(map[uint64]NodeGPU),
+		GPUs:                make(map[uint64][]NodeGPU),
 		FarmHasRentedNode:   make(map[uint64]bool),
 		DB:                  db,
 	}
