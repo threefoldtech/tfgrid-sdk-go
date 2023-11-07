@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -9,7 +10,7 @@ import (
 )
 
 // Farms returns farms with the given filters and pagination parameters
-func (g *GridProxyMockClient) Farms(filter types.FarmFilter, limit types.Limit) (res []types.Farm, totalCount int, err error) {
+func (g *GridProxyMockClient) Farms(ctx context.Context, filter types.FarmFilter, limit types.Limit) (res []types.Farm, totalCount int, err error) {
 	res = []types.Farm{}
 	if limit.Page == 0 {
 		limit.Page = 1

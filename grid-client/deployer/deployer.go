@@ -574,7 +574,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]gridt
 	nodeMap := make(map[uint32]proxyTypes.NodeWithNestedCapacity)
 
 	for node := range oldDeployments {
-		nodeInfo, err := d.gridProxyClient.Node(node)
+		nodeInfo, err := d.gridProxyClient.Node(ctx, node)
 		if err != nil {
 			return errors.Wrapf(err, "could not get node %d data from the grid proxy", node)
 		}
@@ -586,7 +586,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]gridt
 		if _, ok := nodeMap[node]; ok {
 			continue
 		}
-		nodeInfo, err := d.gridProxyClient.Node(node)
+		nodeInfo, err := d.gridProxyClient.Node(ctx, node)
 		if err != nil {
 			return errors.Wrapf(err, "could not get node %d data from the grid proxy", node)
 		}
@@ -596,7 +596,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]gridt
 
 	for farm := range farmIPs {
 		farmUint64 := uint64(farm)
-		farmInfo, _, err := d.gridProxyClient.Farms(proxyTypes.FarmFilter{
+		farmInfo, _, err := d.gridProxyClient.Farms(ctx, proxyTypes.FarmFilter{
 			FarmID: &farmUint64,
 		}, proxyTypes.Limit{
 			Page: 1,

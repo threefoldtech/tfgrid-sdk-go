@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -80,10 +81,10 @@ func TestContracts(t *testing.T) {
 		}
 
 		for {
-			want, wantCount, err := mockClient.Contracts(f, l)
+			want, wantCount, err := mockClient.Contracts(context.Background(), f, l)
 			require.NoError(t, err)
 
-			got, gotCount, err := gridProxyClient.Contracts(f, l)
+			got, gotCount, err := gridProxyClient.Contracts(context.Background(), f, l)
 			require.NoError(t, err)
 
 			assert.Equal(t, wantCount, gotCount)
@@ -109,10 +110,10 @@ func TestContracts(t *testing.T) {
 			f, err := randomContractsFilter(&agg)
 			require.NoError(t, err)
 
-			want, wantCount, err := mockClient.Contracts(f, l)
+			want, wantCount, err := mockClient.Contracts(context.Background(), f, l)
 			require.NoError(t, err)
 
-			got, gotCount, err := gridProxyClient.Contracts(f, l)
+			got, gotCount, err := gridProxyClient.Contracts(context.Background(), f, l)
 			require.NoError(t, err)
 
 			assert.Equal(t, wantCount, gotCount)
@@ -126,10 +127,10 @@ func TestContract(t *testing.T) {
 	t.Run("single contract test", func(t *testing.T) {
 		contractID := rand.Intn(CONTRACTS_TESTS)
 
-		want, err := mockClient.Contract(uint32(contractID))
+		want, err := mockClient.Contract(context.Background(), uint32(contractID))
 		require.NoError(t, err)
 
-		got, err := gridProxyClient.Contract(uint32(contractID))
+		got, err := gridProxyClient.Contract(context.Background(), uint32(contractID))
 		require.NoError(t, err)
 
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("wanted: %+v\n got: %+v", want, got))
@@ -137,7 +138,7 @@ func TestContract(t *testing.T) {
 
 	t.Run("contract not found test", func(t *testing.T) {
 		contractID := 1000000000000
-		_, err := gridProxyClient.Contract(uint32(contractID))
+		_, err := gridProxyClient.Contract(context.Background(), uint32(contractID))
 		assert.Equal(t, err.Error(), ErrContractNotFound.Error())
 	})
 }
@@ -153,10 +154,10 @@ func TestBills(t *testing.T) {
 		}
 
 		for ; ; l.Page++ {
-			want, wantCount, err := mockClient.ContractBills(uint32(contractID), l)
+			want, wantCount, err := mockClient.ContractBills(context.Background(), uint32(contractID), l)
 			require.NoError(t, err)
 
-			got, gotCount, err := gridProxyClient.ContractBills(uint32(contractID), l)
+			got, gotCount, err := gridProxyClient.ContractBills(context.Background(), uint32(contractID), l)
 			require.NoError(t, err)
 
 			assert.Equal(t, wantCount, gotCount)
@@ -194,10 +195,10 @@ func TestContractsFilter(t *testing.T) {
 		}
 		v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 
-		want, wantCount, err := mockClient.Contracts(f, l)
+		want, wantCount, err := mockClient.Contracts(context.Background(), f, l)
 		require.NoError(t, err)
 
-		got, gotCount, err := gridProxyClient.Contracts(f, l)
+		got, gotCount, err := gridProxyClient.Contracts(context.Background(), f, l)
 		require.NoError(t, err)
 
 		assert.Equal(t, wantCount, gotCount)

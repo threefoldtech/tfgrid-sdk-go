@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -275,10 +276,10 @@ func TestNode(t *testing.T) {
 			RetCount: true,
 		}
 
-		want, wantCount, err := mockClient.Nodes(f, l)
+		want, wantCount, err := mockClient.Nodes(context.Background(), f, l)
 		require.NoError(t, err)
 
-		got, gotCount, err := gridProxyClient.Nodes(f, l)
+		got, gotCount, err := gridProxyClient.Nodes(context.Background(), f, l)
 		require.NoError(t, err)
 
 		assert.Equal(t, wantCount, gotCount)
@@ -289,10 +290,10 @@ func TestNode(t *testing.T) {
 	t.Run("node status test", func(t *testing.T) {
 		for i := 1; i <= NODE_COUNT; i++ {
 			if flip(.3) {
-				want, err := mockClient.NodeStatus(uint32(i))
+				want, err := mockClient.NodeStatus(context.Background(), uint32(i))
 				require.NoError(t, err)
 
-				got, err := gridProxyClient.NodeStatus(uint32(i))
+				got, err := gridProxyClient.NodeStatus(context.Background(), uint32(i))
 				require.NoError(t, err)
 
 				require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
@@ -311,10 +312,10 @@ func TestNode(t *testing.T) {
 			f, err := randomNodeFilter(&agg)
 			require.NoError(t, err)
 
-			want, wantCount, err := mockClient.Nodes(f, l)
+			want, wantCount, err := mockClient.Nodes(context.Background(), f, l)
 			require.NoError(t, err)
 
-			got, gotCount, err := gridProxyClient.Nodes(f, l)
+			got, gotCount, err := gridProxyClient.Nodes(context.Background(), f, l)
 			require.NoError(t, err)
 
 			assert.Equal(t, wantCount, gotCount)
@@ -325,7 +326,7 @@ func TestNode(t *testing.T) {
 
 	t.Run("node not found test", func(t *testing.T) {
 		nodeID := 1000000000
-		_, err := gridProxyClient.Node(uint32(nodeID))
+		_, err := gridProxyClient.Node(context.Background(), uint32(nodeID))
 		assert.Equal(t, err.Error(), ErrNodeNotFound.Error())
 	})
 
@@ -345,7 +346,7 @@ func TestNode(t *testing.T) {
 
 	t.Run("nodes test certification_type filter", func(t *testing.T) {
 		certType := "Diy"
-		nodes, _, err := gridProxyClient.Nodes(proxytypes.NodeFilter{CertificationType: &certType}, proxytypes.Limit{})
+		nodes, _, err := gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{CertificationType: &certType}, proxytypes.Limit{})
 		require.NoError(t, err)
 
 		for _, node := range nodes {
@@ -353,14 +354,14 @@ func TestNode(t *testing.T) {
 		}
 
 		notExistCertType := "noCert"
-		nodes, _, err = gridProxyClient.Nodes(proxytypes.NodeFilter{CertificationType: &notExistCertType}, proxytypes.Limit{})
+		nodes, _, err = gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{CertificationType: &notExistCertType}, proxytypes.Limit{})
 		assert.NoError(t, err)
 		assert.Empty(t, nodes)
 	})
 
 	t.Run("nodes test has_gpu filter", func(t *testing.T) {
 		hasGPU := true
-		nodes, _, err := gridProxyClient.Nodes(proxytypes.NodeFilter{HasGPU: &hasGPU}, proxytypes.Limit{})
+		nodes, _, err := gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{HasGPU: &hasGPU}, proxytypes.Limit{})
 		assert.NoError(t, err)
 
 		for _, node := range nodes {
@@ -371,10 +372,10 @@ func TestNode(t *testing.T) {
 	t.Run("nodes test gpu vendor, device name filter", func(t *testing.T) {
 		device := "navi"
 		vendor := "advanced"
-		nodes, _, err := gridProxyClient.Nodes(proxytypes.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, proxytypes.Limit{})
+		nodes, _, err := gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, proxytypes.Limit{})
 		assert.NoError(t, err)
 
-		localNodes, _, err := mockClient.Nodes(proxytypes.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, proxytypes.Limit{})
+		localNodes, _, err := mockClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, proxytypes.Limit{})
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(nodes), len(localNodes), "gpu_device_name, gpu_vendor_name filters did not work")
@@ -383,10 +384,10 @@ func TestNode(t *testing.T) {
 	t.Run("nodes test gpu vendor, device id filter", func(t *testing.T) {
 		device := "744c"
 		vendor := "1002"
-		nodes, _, err := gridProxyClient.Nodes(proxytypes.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, proxytypes.Limit{})
+		nodes, _, err := gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, proxytypes.Limit{})
 		assert.NoError(t, err)
 
-		localNodes, _, err := mockClient.Nodes(proxytypes.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, proxytypes.Limit{})
+		localNodes, _, err := mockClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, proxytypes.Limit{})
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(nodes), len(localNodes), "gpu_device_id, gpu_vendor_id filters did not work")
@@ -394,10 +395,10 @@ func TestNode(t *testing.T) {
 
 	t.Run("nodes test gpu available", func(t *testing.T) {
 		available := false
-		nodes, _, err := gridProxyClient.Nodes(proxytypes.NodeFilter{GpuAvailable: &available}, proxytypes.Limit{})
+		nodes, _, err := gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuAvailable: &available}, proxytypes.Limit{})
 		assert.NoError(t, err)
 
-		localNodes, _, err := mockClient.Nodes(proxytypes.NodeFilter{GpuAvailable: &available}, proxytypes.Limit{})
+		localNodes, _, err := mockClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuAvailable: &available}, proxytypes.Limit{})
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(nodes), len(localNodes), "gpu_available filter did not work")
@@ -428,10 +429,10 @@ func TestNodeFilter(t *testing.T) {
 		}
 		v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 
-		want, wantCount, err := mockClient.Nodes(f, l)
+		want, wantCount, err := mockClient.Nodes(context.Background(), f, l)
 		require.NoError(t, err)
 
-		got, gotCount, err := gridProxyClient.Nodes(f, l)
+		got, gotCount, err := gridProxyClient.Nodes(context.Background(), f, l)
 		require.NoError(t, err, SerializeFilter(f))
 
 		assert.Equal(t, wantCount, gotCount)
@@ -444,10 +445,10 @@ func TestNodeFilter(t *testing.T) {
 
 func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
 	nodeID := rand.Intn(NODE_COUNT)
-	want, err := mockClient.Node(uint32(nodeID))
+	want, err := mockClient.Node(context.Background(), uint32(nodeID))
 	require.NoError(t, err)
 
-	got, err := gridProxyClient.Node(uint32(nodeID))
+	got, err := gridProxyClient.Node(context.Background(), uint32(nodeID))
 	require.NoError(t, err)
 
 	require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
@@ -463,10 +464,10 @@ func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClie
 		RetCount: true,
 	}
 	for ; ; l.Page++ {
-		want, wantCount, err := mockClient.Nodes(f, l)
+		want, wantCount, err := mockClient.Nodes(context.Background(), f, l)
 		require.NoError(t, err)
 
-		got, gotCount, err := gridProxyClient.Nodes(f, l)
+		got, gotCount, err := gridProxyClient.Nodes(context.Background(), f, l)
 		require.NoError(t, err)
 
 		assert.Equal(t, wantCount, gotCount)

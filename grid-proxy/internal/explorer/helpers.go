@@ -314,15 +314,15 @@ func (a *App) getNodeData(ctx context.Context, nodeIDStr string) (types.NodeWith
 	if err != nil {
 		return types.NodeWithNestedCapacity{}, errors.Wrap(ErrBadGateway, fmt.Sprintf("invalid node id %d: %s", nodeID, err.Error()))
 	}
-	info, err := a.db.GetNode(ctx, uint32(nodeID))
+	info, err := a.cl.Node(ctx, uint32(nodeID))
 	if errors.Is(err, db.ErrNodeNotFound) {
 		return types.NodeWithNestedCapacity{}, ErrNodeNotFound
 	} else if err != nil {
 		// TODO: wrapping
 		return types.NodeWithNestedCapacity{}, err
 	}
-	apiNode := nodeWithNestedCapacityFromDBNode(info)
-	return apiNode, nil
+
+	return info, nil
 }
 
 // getContractData is a helper function that wraps fetch contract data
@@ -332,7 +332,7 @@ func (a *App) getContractData(ctx context.Context, contractIDStr string) (types.
 		return types.Contract{}, errors.Wrapf(err, "invalid contract id: %s", contractIDStr)
 	}
 
-	info, err := a.db.GetContract(ctx, uint32(contractID))
+	info, err := a.cl.Contract(ctx, uint32(contractID))
 
 	if errors.Is(err, db.ErrContractNotFound) {
 		return types.Contract{}, ErrContractNotFound
@@ -340,12 +340,7 @@ func (a *App) getContractData(ctx context.Context, contractIDStr string) (types.
 		return types.Contract{}, err
 	}
 
-	res, err := contractFromDBContract(info)
-	if err != nil {
-		return types.Contract{}, err
-	}
-
-	return res, nil
+	return info, nil
 }
 
 // getContractBillsData is a helper function that gets bills reports for a single contract data
@@ -355,14 +350,9 @@ func (a *App) getContractBillsData(ctx context.Context, contractIDStr string, li
 		return []types.ContractBilling{}, 0, errors.Wrapf(err, "invalid contract id: %s", contractIDStr)
 	}
 
-	info, billsCount, err := a.db.GetContractBills(ctx, uint32(contractID), limit)
+	bills, billsCount, err := a.cl.ContractBills(ctx, uint32(contractID), limit)
 	if err != nil {
 		return []types.ContractBilling{}, 0, errors.Wrapf(err, "contract not found with id: %d", contractID)
-	}
-
-	bills := []types.ContractBilling{}
-	for _, report := range info {
-		bills = append(bills, types.ContractBilling(report))
 	}
 
 	return bills, billsCount, nil

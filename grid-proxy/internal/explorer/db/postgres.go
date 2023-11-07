@@ -248,6 +248,29 @@ func (d *PostgresDatabase) GetCounters(ctx context.Context, filter types.StatsFi
 		nodesDistribution[d.Country] = d.Nodes
 	}
 	counters.NodesDistribution = nodesDistribution
+
+	nonDeletedNodeContracts := d.gormDB.Table("node_contract").
+		Select("DISTINCT ON (node_id) node_id, contract_id").
+		Where("state IN ('Created', 'GracePeriod')")
+
+	res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
+		Joins(
+			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
+		).
+		Joins(
+			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", nonDeletedNodeContracts,
+		).
+		Joins(
+			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
+		).
+		Where(
+			"farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0",
+		).
+		Count(&counters.DedicatedNodes)
+	if res.Error != nil {
+		return counters, errors.Wrap(res.Error, "couldn't get dedicated nodes count")
+	}
+
 	return counters, nil
 }
 
@@ -424,7 +447,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"public_config.ipv4",
 			"public_config.ipv6",
 			"node.certification",
-			"farm.dedicated_farm as dedicated",
+			"farm.dedicated_farm as farm_dedicated",
 			"rent_contract.contract_id as rent_contract_id",
 			"rent_contract.twin_id as rented_by_twin_id",
 			"node.serial_number",
@@ -432,6 +455,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"convert_to_decimal(location.latitude) as latitude",
 			"node.power",
 			"node.extra_fee",
+			"CASE WHEN node_contract.contract_id IS NOT NULL THEN 1 ELSE 0 END AS has_node_contract",
 			nodeGPUQuery,
 		).
 		Joins(
@@ -526,17 +550,22 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.Domain != nil {
 		q = q.Where("(COALESCE(public_config.domain, '') = '') != ?", *filter.Domain)
 	}
+	if filter.CertificationType != nil {
+		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
+	}
+
+	// Dedicated nodes filters
 	if filter.Dedicated != nil {
-		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)
+		q = q.Where(`? = (farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Dedicated)
 	}
 	if filter.Rentable != nil {
 		q = q.Where(`? = ((farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0) AND COALESCE(rent_contract.contract_id, 0) = 0)`, *filter.Rentable)
 	}
-	if filter.RentedBy != nil {
-		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
-	}
 	if filter.AvailableFor != nil {
 		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ? OR (COALESCE(rent_contract.twin_id, 0) = 0 AND farm.dedicated_farm = false)`, *filter.AvailableFor)
+	}
+	if filter.RentedBy != nil {
+		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
 	}
 	if filter.Rented != nil {
 		q = q.Where(`? = (COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Rented)

@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -10,8 +11,14 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+func isDedicatedNode(db DBData, node Node) bool {
+	return db.Farms[node.FarmID].DedicatedFarm ||
+		len(db.NonDeletedContracts[node.NodeID]) == 0 ||
+		db.NodeRentedBy[node.NodeID] != 0
+}
+
 // Nodes returns nodes with the given filters and pagination parameters
-func (g *GridProxyMockClient) Nodes(filter types.NodeFilter, limit types.Limit) (res []types.Node, totalCount int, err error) {
+func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) (res []types.Node, totalCount int, err error) {
 	res = []types.Node{}
 	if limit.Page == 0 {
 		limit.Page = 1
@@ -68,7 +75,7 @@ func (g *GridProxyMockClient) Nodes(filter types.NodeFilter, limit types.Limit) 
 				Status:            status,
 				CertificationType: node.Certification,
 				UpdatedAt:         int64(node.UpdatedAt),
-				Dedicated:         g.data.Farms[node.FarmID].DedicatedFarm,
+				Dedicated:         isDedicatedNode(g.data, node),
 				RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 				RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
 				SerialNumber:      node.SerialNumber,
@@ -97,7 +104,7 @@ func (g *GridProxyMockClient) Nodes(filter types.NodeFilter, limit types.Limit) 
 	return
 }
 
-func (g *GridProxyMockClient) Node(nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
+func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
 	node := g.data.Nodes[uint64(nodeID)]
 	numGPU := 0
 	if _, ok := g.data.GPUs[node.TwinID]; ok {
@@ -147,7 +154,7 @@ func (g *GridProxyMockClient) Node(nodeID uint32) (res types.NodeWithNestedCapac
 		Status:            status,
 		CertificationType: node.Certification,
 		UpdatedAt:         int64(node.UpdatedAt),
-		Dedicated:         g.data.Farms[node.FarmID].DedicatedFarm,
+		Dedicated:         isDedicatedNode(g.data, node),
 		RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 		RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
 		SerialNumber:      node.SerialNumber,
@@ -161,7 +168,7 @@ func (g *GridProxyMockClient) Node(nodeID uint32) (res types.NodeWithNestedCapac
 	return
 }
 
-func (g *GridProxyMockClient) NodeStatus(nodeID uint32) (res types.NodeStatus, err error) {
+func (g *GridProxyMockClient) NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error) {
 	node := g.data.Nodes[uint64(nodeID)]
 	nodePower := types.NodePower{
 		State:  node.Power.State,
@@ -257,7 +264,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.Dedicated != nil && *f.Dedicated != data.Farms[n.FarmID].DedicatedFarm {
+	if f.Dedicated != nil && *f.Dedicated != isDedicatedNode(*data, *n) {
 		return false
 	}
 

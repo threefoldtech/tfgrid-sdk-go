@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -131,10 +132,10 @@ func TestFarm(t *testing.T) {
 			RetCount: true,
 		}
 		for ; ; l.Page++ {
-			want, wantCount, err := mockClient.Farms(f, l)
+			want, wantCount, err := mockClient.Farms(context.Background(), f, l)
 			require.NoError(t, err)
 
-			got, gotCount, err := gridProxyClient.Farms(f, l)
+			got, gotCount, err := gridProxyClient.Farms(context.Background(), f, l)
 			require.NoError(t, err)
 
 			assert.Equal(t, wantCount, gotCount)
@@ -159,10 +160,10 @@ func TestFarm(t *testing.T) {
 			f, err := randomFarmsFilter(&agg)
 			require.NoError(t, err)
 
-			want, wantCount, err := mockClient.Farms(f, l)
+			want, wantCount, err := mockClient.Farms(context.Background(), f, l)
 			require.NoError(t, err)
 
-			got, gotCount, err := gridProxyClient.Farms(f, l)
+			got, gotCount, err := gridProxyClient.Farms(context.Background(), f, l)
 			require.NoError(t, err)
 
 			assert.Equal(t, wantCount, gotCount)
@@ -182,10 +183,10 @@ func TestFarm(t *testing.T) {
 			NodeFreeHRU: &aggNode.maxFreeHRU,
 		}
 
-		want, wantCount, err := mockClient.Farms(f, l)
+		want, wantCount, err := mockClient.Farms(context.Background(), f, l)
 		require.NoError(t, err)
 
-		got, gotCount, err := gridProxyClient.Farms(f, l)
+		got, gotCount, err := gridProxyClient.Farms(context.Background(), f, l)
 		require.NoError(t, err)
 
 		assert.Equal(t, wantCount, gotCount)
@@ -207,10 +208,10 @@ func TestFarm(t *testing.T) {
 			NodeFreeMRU: &aggNode.maxFreeMRU,
 		}
 
-		want, wantCount, err := mockClient.Farms(f, l)
+		want, wantCount, err := mockClient.Farms(context.Background(), f, l)
 		require.NoError(t, err)
 
-		got, gotCount, err := gridProxyClient.Farms(f, l)
+		got, gotCount, err := gridProxyClient.Farms(context.Background(), f, l)
 		require.NoError(t, err)
 
 		assert.Equal(t, wantCount, gotCount)
@@ -243,10 +244,10 @@ func TestFarmFilter(t *testing.T) {
 		}
 		v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 
-		want, wantCount, err := mockClient.Farms(f, l)
+		want, wantCount, err := mockClient.Farms(context.Background(), f, l)
 		require.NoError(t, err)
 
-		got, gotCount, err := gridProxyClient.Farms(f, l)
+		got, gotCount, err := gridProxyClient.Farms(context.Background(), f, l)
 		require.NoError(t, err)
 
 		assert.Equal(t, wantCount, gotCount)

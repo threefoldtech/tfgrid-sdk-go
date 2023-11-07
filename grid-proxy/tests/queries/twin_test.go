@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -50,10 +51,10 @@ func TestTwins(t *testing.T) {
 			RetCount: true,
 		}
 		for {
-			want, wantCount, err := mockClient.Twins(f, l)
+			want, wantCount, err := mockClient.Twins(context.Background(), f, l)
 			require.NoError(t, err)
 
-			got, gotCount, err := gridProxyClient.Twins(f, l)
+			got, gotCount, err := gridProxyClient.Twins(context.Background(), f, l)
 			require.NoError(t, err)
 
 			assert.Equal(t, wantCount, gotCount)
@@ -78,10 +79,10 @@ func TestTwins(t *testing.T) {
 			f, err := randomTwinsFilter(&agg)
 			require.NoError(t, err)
 
-			want, wantCount, err := mockClient.Twins(f, l)
+			want, wantCount, err := mockClient.Twins(context.Background(), f, l)
 			require.NoError(t, err)
 
-			got, gotCount, err := gridProxyClient.Twins(f, l)
+			got, gotCount, err := gridProxyClient.Twins(context.Background(), f, l)
 			require.NoError(t, err)
 
 			assert.Equal(t, wantCount, gotCount)
@@ -115,10 +116,10 @@ func TestTwinFilter(t *testing.T) {
 		}
 		v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 
-		want, wantCount, err := mockClient.Twins(f, l)
+		want, wantCount, err := mockClient.Twins(context.Background(), f, l)
 		require.NoError(t, err)
 
-		got, gotCount, err := gridProxyClient.Twins(f, l)
+		got, gotCount, err := gridProxyClient.Twins(context.Background(), f, l)
 		require.NoError(t, err)
 
 		assert.Equal(t, wantCount, gotCount)

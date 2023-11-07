@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -47,9 +48,9 @@ func (g *RetryingClient) Ping() error {
 }
 
 // Nodes returns nodes with the given filters and pagination parameters
-func (g *RetryingClient) Nodes(filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error) {
+func (g *RetryingClient) Nodes(ctx context.Context, filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error) {
 	f := func() error {
-		res, totalCount, err = g.cl.Nodes(filter, pagination)
+		res, totalCount, err = g.cl.Nodes(ctx, filter, pagination)
 		return err
 	}
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("nodes"))
@@ -57,9 +58,9 @@ func (g *RetryingClient) Nodes(filter types.NodeFilter, pagination types.Limit) 
 }
 
 // Twins returns twins with the given filters and pagination parameters
-func (g *RetryingClient) Twins(filter types.TwinFilter, pagination types.Limit) (res []types.Twin, totalCount int, err error) {
+func (g *RetryingClient) Twins(ctx context.Context, filter types.TwinFilter, pagination types.Limit) (res []types.Twin, totalCount int, err error) {
 	f := func() error {
-		res, totalCount, err = g.cl.Twins(filter, pagination)
+		res, totalCount, err = g.cl.Twins(ctx, filter, pagination)
 		return err
 	}
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("twins"))
@@ -67,9 +68,9 @@ func (g *RetryingClient) Twins(filter types.TwinFilter, pagination types.Limit) 
 }
 
 // Farms returns farms with the given filters and pagination parameters
-func (g *RetryingClient) Farms(filter types.FarmFilter, pagination types.Limit) (res []types.Farm, totalCount int, err error) {
+func (g *RetryingClient) Farms(ctx context.Context, filter types.FarmFilter, pagination types.Limit) (res []types.Farm, totalCount int, err error) {
 	f := func() error {
-		res, totalCount, err = g.cl.Farms(filter, pagination)
+		res, totalCount, err = g.cl.Farms(ctx, filter, pagination)
 		return err
 	}
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("farms"))
@@ -77,9 +78,9 @@ func (g *RetryingClient) Farms(filter types.FarmFilter, pagination types.Limit) 
 }
 
 // Contracts returns contracts with the given filters and pagination parameters
-func (g *RetryingClient) Contracts(filter types.ContractFilter, pagination types.Limit) (res []types.Contract, totalCount int, err error) {
+func (g *RetryingClient) Contracts(ctx context.Context, filter types.ContractFilter, pagination types.Limit) (res []types.Contract, totalCount int, err error) {
 	f := func() error {
-		res, totalCount, err = g.cl.Contracts(filter, pagination)
+		res, totalCount, err = g.cl.Contracts(ctx, filter, pagination)
 		return err
 	}
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("contracts"))
@@ -87,9 +88,9 @@ func (g *RetryingClient) Contracts(filter types.ContractFilter, pagination types
 }
 
 // Node returns the node with the give id
-func (g *RetryingClient) Node(nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
+func (g *RetryingClient) Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
 	f := func() error {
-		res, err = g.cl.Node(nodeID)
+		res, err = g.cl.Node(ctx, nodeID)
 		return err
 	}
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("node"))
@@ -97,9 +98,9 @@ func (g *RetryingClient) Node(nodeID uint32) (res types.NodeWithNestedCapacity, 
 }
 
 // Counters returns statistics about the grid
-func (g *RetryingClient) Counters(filter types.StatsFilter) (res types.Counters, err error) {
+func (g *RetryingClient) Counters(ctx context.Context, filter types.StatsFilter) (res types.Counters, err error) {
 	f := func() error {
-		res, err = g.cl.Counters(filter)
+		res, err = g.cl.Counters(ctx, filter)
 		return err
 	}
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("counters"))
@@ -107,9 +108,9 @@ func (g *RetryingClient) Counters(filter types.StatsFilter) (res types.Counters,
 }
 
 // Node returns the node with the give id
-func (g *RetryingClient) NodeStatus(nodeID uint32) (res types.NodeStatus, err error) {
+func (g *RetryingClient) NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error) {
 	f := func() error {
-		res, err = g.cl.NodeStatus(nodeID)
+		res, err = g.cl.NodeStatus(ctx, nodeID)
 		return err
 	}
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("node_status"))
@@ -117,9 +118,9 @@ func (g *RetryingClient) NodeStatus(nodeID uint32) (res types.NodeStatus, err er
 }
 
 // Contract returns the contract with the give id
-func (g *RetryingClient) Contract(contractID uint32) (res types.Contract, err error) {
+func (g *RetryingClient) Contract(ctx context.Context, contractID uint32) (res types.Contract, err error) {
 	f := func() error {
-		res, err = g.cl.Contract(contractID)
+		res, err = g.cl.Contract(ctx, contractID)
 		return err
 	}
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("contract"))
@@ -127,9 +128,9 @@ func (g *RetryingClient) Contract(contractID uint32) (res types.Contract, err er
 }
 
 // ContractBills returns the contract bills with the give id
-func (g *RetryingClient) ContractBills(contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
+func (g *RetryingClient) ContractBills(ctx context.Context, contractID uint32, limit types.Limit) (res []types.ContractBilling, totalCount uint, err error) {
 	f := func() error {
-		res, totalCount, err = g.cl.ContractBills(contractID, limit)
+		res, totalCount, err = g.cl.ContractBills(ctx, contractID, limit)
 		return err
 	}
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("contract_bills"))

@@ -88,7 +88,7 @@ func mockDeployerValidator(d *Deployer, ctrl *gomock.Controller, nodes []uint32)
 
 	for _, nodeID := range nodes {
 		proxyCl.EXPECT().
-			Node(nodeID).
+			Node(context.Background(), nodeID).
 			Return(proxyTypes.NodeWithNestedCapacity{
 				FarmID: 1,
 				PublicConfig: proxyTypes.PublicConfig{
@@ -97,7 +97,7 @@ func mockDeployerValidator(d *Deployer, ctrl *gomock.Controller, nodes []uint32)
 				},
 			}, nil)
 
-		proxyCl.EXPECT().Farms(gomock.Any(), gomock.Any()).Return([]proxyTypes.Farm{{FarmID: 1}}, 1, nil).AnyTimes()
+		proxyCl.EXPECT().Farms(context.Background(), gomock.Any(), gomock.Any()).Return([]proxyTypes.Farm{{FarmID: 1}}, 1, nil).AnyTimes()
 	}
 }
 
