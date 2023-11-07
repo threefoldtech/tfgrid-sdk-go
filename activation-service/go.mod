@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/cosmos/go-bip39 v1.0.0
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/go-envparse v0.1.0
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.8.0
