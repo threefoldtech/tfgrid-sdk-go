@@ -38,14 +38,14 @@ definitions:
     type: object
   types.Contract:
     properties:
-      contractId:
+      contract_id:
         type: integer
       created_at:
         type: integer
       details: {}
       state:
         type: string
-      twinId:
+      twin_id:
         type: integer
       type:
         type: string
@@ -696,6 +696,10 @@ paths:
         in: query
         name: certification_type
         type: string
+      - description: get nodes owned by twin id
+        in: query
+        name: owned_by
+        type: integer
       produces:
       - application/json
       responses:
@@ -883,6 +887,10 @@ paths:
         in: query
         name: gpu_available
         type: boolean
+      - description: get nodes owned by twin id
+        in: query
+        name: owned_by
+        type: integer
       produces:
       - application/json
       responses:

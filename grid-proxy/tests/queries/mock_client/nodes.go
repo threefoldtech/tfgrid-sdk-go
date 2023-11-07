@@ -293,6 +293,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.OwnedBy != nil && *f.OwnedBy != data.Farms[n.FarmID].TwinID {
+		return false
+	}
+
 	if f.CertificationType != nil && *f.CertificationType != n.Certification {
 		return false
 	}

@@ -136,6 +136,9 @@ func nodeParams(filter types.NodeFilter, limit types.Limit) string {
 	if filter.GpuVendorName != nil {
 		fmt.Fprintf(&builder, "gpu_vendor_name=%s&", *filter.GpuVendorName)
 	}
+	if filter.OwnedBy != nil {
+		fmt.Fprintf(&builder, "owned_by=%d&", *filter.OwnedBy)
+	}
 
 	res := builder.String()
 	// pop the extra ? or &
