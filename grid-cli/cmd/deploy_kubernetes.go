@@ -196,6 +196,16 @@ var deployKubernetesCmd = &cobra.Command{
 		if ygg {
 			log.Info().Msgf("master yggdrasil ip: %s", cluster.Master.YggIP)
 		}
+		if workersIPV4 {
+			for i, worker := range cluster.Workers {
+				log.Info().Msgf("worker%d ipv4: %s", i, worker.ComputedIP)
+			}
+		}
+		if workersIPV6 {
+			for i, worker := range cluster.Workers {
+				log.Info().Msgf("worker%d ipv6: %s", i, worker.ComputedIP6)
+			}
+		}
 		if workersYgg {
 			for i, worker := range cluster.Workers {
 				log.Info().Msgf("worker%d yggdrasil ip: %s", i, worker.YggIP)
