@@ -196,6 +196,11 @@ var deployKubernetesCmd = &cobra.Command{
 		if ygg {
 			log.Info().Msgf("master yggdrasil ip: %s", cluster.Master.YggIP)
 		}
+		if workersYgg {
+			for i, worker := range cluster.Workers {
+				log.Info().Msgf("worker%d yggdrasil ip: %s", i, worker.YggIP)
+			}
+		}
 		return nil
 	},
 }
