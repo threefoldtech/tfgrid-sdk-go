@@ -99,7 +99,6 @@ func RemoteRun(user string, addr string, cmd string, privateKey string) (string,
 
 // GenerateSSHKeyPair creates the public and private key for the machine
 func GenerateSSHKeyPair() (string, string, error) {
-
 	rsaKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "could not generate rsa key")

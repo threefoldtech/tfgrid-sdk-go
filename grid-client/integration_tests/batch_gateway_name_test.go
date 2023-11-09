@@ -37,7 +37,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "testingNameGatewayNetwork",
+		Name:        "testNameGWNetwork",
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID1, nodeID2},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -83,7 +83,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	backend := fmt.Sprintf("http://[%s]:9000", v.YggIP)
 	gw1 := workloads.GatewayNameProxy{
 		NodeID:         nodeID1,
-		Name:           "test",
+		Name:           "test1",
 		TLSPassthrough: false,
 		Backends:       []zos.Backend{zos.Backend(backend)},
 	}

@@ -39,7 +39,7 @@ func TestGatewayNameDeployment(t *testing.T) {
 	gwNodeID := uint32(nodes[1].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "testingNameGatewayNetwork",
+		Name:        "testNameGWNetwork",
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
 		IPRange: gridtypes.NewIPNet(net.IPNet{

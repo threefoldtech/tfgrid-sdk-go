@@ -86,7 +86,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 
 	backend := fmt.Sprintf("http://[%s]:9000", v.YggIP)
 	fqdn := "hamada1.3x0.me" // points to node 15 devnet
-	gatewayNode := uint32(15)
+	gatewayNode := nodeID
 	gw := workloads.GatewayFQDNProxy{
 		NodeID:         gatewayNode,
 		Name:           "test",

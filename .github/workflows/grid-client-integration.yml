@@ -4,6 +4,7 @@ defaults:
   run:
     working-directory: grid-client
 on:
+  push:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
