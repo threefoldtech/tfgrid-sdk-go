@@ -8,7 +8,7 @@ import (
 
 // Database interface for storing and fetching grid info
 type Database interface {
-	GetCounters(ctx context.Context, filter types.StatsFilter) (types.Counters, error)
+	GetStats(ctx context.Context, filter types.StatsFilter) (types.Stats, error)
 	GetNode(ctx context.Context, nodeID uint32) (Node, error)
 	GetFarm(ctx context.Context, farmID uint32) (Farm, error)
 	GetNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]Node, uint, error)

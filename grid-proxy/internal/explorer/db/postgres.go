@@ -169,30 +169,30 @@ func (d *PostgresDatabase) initialize() error {
 	return res.Error
 }
 
-// GetCounters returns aggregate info about the grid
-func (d *PostgresDatabase) GetCounters(ctx context.Context, filter types.StatsFilter) (types.Counters, error) {
-	var counters types.Counters
-	if res := d.gormDB.WithContext(ctx).Table("twin").Count(&counters.Twins); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get twin count")
+// GetStats returns aggregate info about the grid
+func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilter) (types.Stats, error) {
+	var stats types.Stats
+	if res := d.gormDB.WithContext(ctx).Table("twin").Count(&stats.Twins); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get twin count")
 	}
-	if res := d.gormDB.WithContext(ctx).Table("public_ip").Count(&counters.PublicIPs); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get public ip count")
+	if res := d.gormDB.WithContext(ctx).Table("public_ip").Count(&stats.PublicIPs); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get public ip count")
 	}
 	var count int64
 	if res := d.gormDB.WithContext(ctx).Table("node_contract").Count(&count); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get node contract count")
+		return stats, errors.Wrap(res.Error, "couldn't get node contract count")
 	}
-	counters.Contracts += count
+	stats.Contracts += count
 	if res := d.gormDB.WithContext(ctx).Table("rent_contract").Count(&count); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get rent contract count")
+		return stats, errors.Wrap(res.Error, "couldn't get rent contract count")
 	}
-	counters.Contracts += count
+	stats.Contracts += count
 	if res := d.gormDB.WithContext(ctx).Table("name_contract").Count(&count); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get name contract count")
+		return stats, errors.Wrap(res.Error, "couldn't get name contract count")
 	}
-	counters.Contracts += count
-	if res := d.gormDB.WithContext(ctx).Table("farm").Distinct("farm_id").Count(&counters.Farms); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get farm count")
+	stats.Contracts += count
+	if res := d.gormDB.WithContext(ctx).Table("farm").Distinct("farm_id").Count(&stats.Farms); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get farm count")
 	}
 
 	condition := "TRUE"
@@ -210,16 +210,16 @@ func (d *PostgresDatabase) GetCounters(ctx context.Context, filter types.StatsFi
 		).
 		Joins("LEFT JOIN node_resources_total ON node.id = node_resources_total.node_id").
 		Where(condition).
-		Scan(&counters); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get nodes total resources")
+		Scan(&stats); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get nodes total resources")
 	}
 	if res := d.gormDB.WithContext(ctx).Table("node").
-		Where(condition).Count(&counters.Nodes); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get node count")
+		Where(condition).Count(&stats.Nodes); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get node count")
 	}
 	if res := d.gormDB.WithContext(ctx).Table("node").
-		Where(condition).Distinct("country").Count(&counters.Countries); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get country count")
+		Where(condition).Distinct("country").Count(&stats.Countries); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get country count")
 	}
 	query := d.gormDB.WithContext(ctx).
 		Table("node").
@@ -229,25 +229,25 @@ func (d *PostgresDatabase) GetCounters(ctx context.Context, filter types.StatsFi
 			`,
 		)
 
-	if res := query.Where(condition).Where("COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != ''").Count(&counters.AccessNodes); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get access node count")
+	if res := query.Where(condition).Where("COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != ''").Count(&stats.AccessNodes); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get access node count")
 	}
-	if res := query.Where(condition).Where("COALESCE(public_config.domain, '') != '' AND (COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '')").Count(&counters.Gateways); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get gateway count")
+	if res := query.Where(condition).Where("COALESCE(public_config.domain, '') != '' AND (COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '')").Count(&stats.Gateways); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get gateway count")
 	}
 	var distribution []NodesDistribution
 	if res := d.gormDB.WithContext(ctx).Table("node").
 		Select("country, count(node_id) as nodes").Where(condition).Group("country").Scan(&distribution); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get nodes distribution")
+		return stats, errors.Wrap(res.Error, "couldn't get nodes distribution")
 	}
-	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&counters.GPUs); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get node with GPU count")
+	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&stats.GPUs); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get node with GPU count")
 	}
 	nodesDistribution := map[string]int64{}
 	for _, d := range distribution {
 		nodesDistribution[d.Country] = d.Nodes
 	}
-	counters.NodesDistribution = nodesDistribution
+	stats.NodesDistribution = nodesDistribution
 
 	nonDeletedNodeContracts := d.gormDB.Table("node_contract").
 		Select("DISTINCT ON (node_id) node_id, contract_id").
@@ -266,12 +266,12 @@ func (d *PostgresDatabase) GetCounters(ctx context.Context, filter types.StatsFi
 		Where(
 			"farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0",
 		).
-		Count(&counters.DedicatedNodes)
+		Count(&stats.DedicatedNodes)
 	if res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get dedicated nodes count")
+		return stats, errors.Wrap(res.Error, "couldn't get dedicated nodes count")
 	}
 
-	return counters, nil
+	return stats, nil
 }
 
 // Scan is a custom decoder for jsonb filed. executed while scanning the node.

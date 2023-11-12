@@ -46,9 +46,9 @@ func (r *requestCounter) NodeStatus(ctx context.Context, nodeID uint32) (res typ
 	r.Counter++
 	return types.NodeStatus{}, errors.New("error")
 }
-func (r *requestCounter) Counters(ctx context.Context, filter types.StatsFilter) (res types.Counters, err error) {
+func (r *requestCounter) Stats(ctx context.Context, filter types.StatsFilter) (res types.Stats, err error) {
 	r.Counter++
-	return types.Counters{}, errors.New("error")
+	return types.Stats{}, errors.New("error")
 }
 
 func (r *requestCounter) Contract(ctx context.Context, contractID uint32) (res types.Contract, err error) {
