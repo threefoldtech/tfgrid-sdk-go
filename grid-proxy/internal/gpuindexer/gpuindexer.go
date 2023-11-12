@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
@@ -20,10 +18,9 @@ import (
 )
 
 const (
-	resultsBatcherCleanupInterval  = 10 * time.Second
-	minListenerReconnectInterval   = 10 * time.Second
-	dbNodeAddedNotificationChannel = "node_added"
-	lingerBatch                    = 10 * time.Second
+	resultsBatcherCleanupInterval = 10 * time.Second
+	minListenerReconnectInterval  = 10 * time.Second
+	lingerBatch                   = 10 * time.Second
 )
 
 type NodeGPUIndexer struct {
@@ -33,7 +30,6 @@ type NodeGPUIndexer struct {
 	batchSize              int
 	nodesGPUResultsChan    chan []types.NodeGPU
 	nodesGPUBatchesChan    chan []types.NodeGPU
-	nodeAddedChan          chan uint32
 	nodesGPUResultsWorkers int
 	nodesGPUBufferWorkers  int
 }
@@ -52,7 +48,6 @@ func NewNodeGPUIndexer(
 		db:                     db,
 		nodesGPUResultsChan:    make(chan []types.NodeGPU),
 		nodesGPUBatchesChan:    make(chan []types.NodeGPU),
-		nodeAddedChan:          make(chan uint32),
 		checkInterval:          time.Duration(indexerCheckIntervalMins) * time.Minute,
 		batchSize:              batchSize,
 		nodesGPUResultsWorkers: nodesGPUResultsWorkers,
@@ -69,58 +64,6 @@ func NewNodeGPUIndexer(
 	return indexer, nil
 }
 
-// startDBListener sets up a PostgreSQL listener to listen for changes in the database and triggers the nodesChangeChan channel.
-func (n *NodeGPUIndexer) startDBListener(ctx context.Context) {
-	listener := pq.NewListener(n.db.GetConnectionString(), minListenerReconnectInterval, 6*minListenerReconnectInterval, func(ev pq.ListenerEventType, err error) {
-		if err != nil {
-			log.Error().Err(err).Msg("failed listening to DB changes")
-		}
-	})
-	defer listener.Close()
-
-	err := listener.Listen(dbNodeAddedNotificationChannel)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to listen to DB changes")
-		return
-	}
-
-	for {
-		select {
-		case notification, ok := <-listener.Notify:
-			if !ok {
-				log.Error().Msg("DB listener channel closed")
-				return
-			}
-			if notification == nil {
-				log.Error().Msg("received nil notification from DB listener")
-				continue
-			}
-
-			payload := notification.Extra
-			twinId, err := strconv.ParseUint(payload, 10, 64)
-			if err != nil {
-				log.Error().Err(err).Msgf("failed to parse twin id %v", payload)
-				continue
-			}
-
-			log.Debug().Msgf("Received data from channel [%v]: twin_id: %v", notification.Channel, payload)
-
-			n.nodeAddedChan <- uint32(twinId)
-		case <-ctx.Done():
-			log.Error().Err(ctx.Err()).Msg("context canceled")
-			return
-		}
-	}
-}
-
-func (n *NodeGPUIndexer) getGPUInfo(ctx context.Context, twinId uint32) {
-	id := uuid.NewString()
-	err := n.relayClient.Call(ctx, id, twinId, "zos.gpu.list", nil)
-	if err != nil {
-		log.Error().Err(err).Msgf("failed to send get GPU info request from relay in GPU indexer for node with twin %d", twinId)
-	}
-}
-
 func (n *NodeGPUIndexer) queryGridNodes(ctx context.Context) {
 	ticker := time.NewTicker(n.checkInterval)
 	n.runQueryGridNodes(ctx)
@@ -128,8 +71,6 @@ func (n *NodeGPUIndexer) queryGridNodes(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			n.runQueryGridNodes(ctx)
-		case addedNodeTwinId := <-n.nodeAddedChan:
-			n.getGPUInfo(ctx, addedNodeTwinId)
 		case <-ctx.Done():
 			return
 		}
@@ -240,8 +181,6 @@ func (n *NodeGPUIndexer) Start(ctx context.Context) {
 	for i := 0; i < n.nodesGPUBufferWorkers; i++ {
 		go n.gpuBatchesDBUpserter(ctx)
 	}
-
-	go n.startDBListener(ctx)
 
 	go n.queryGridNodes(ctx)
 
