@@ -102,6 +102,8 @@ const (
 	RETURN v_dec_value;
 	END;
 	$$ LANGUAGE plpgsql;
+
+	DROP TRIGGER IF EXISTS node_added ON node;
 	`
 )
 
