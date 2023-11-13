@@ -14,8 +14,8 @@ type ContractBilling struct {
 	Timestamp        uint64 `json:"timestamp"`
 }
 
-// Counters contains aggregate info about the grid
-type Counters struct {
+// Stats contains aggregate info about the grid
+type Stats struct {
 	Nodes             int64            `json:"nodes"`
 	Farms             int64            `json:"farms"`
 	Countries         int64            `json:"countries"`

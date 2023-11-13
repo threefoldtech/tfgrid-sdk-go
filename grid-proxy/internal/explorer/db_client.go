@@ -126,6 +126,6 @@ func (c *DBClient) NodeStatus(ctx context.Context, nodeID uint32) (types.NodeSta
 	return status, nil
 }
 
-func (c *DBClient) Counters(ctx context.Context, filter types.StatsFilter) (types.Counters, error) {
-	return c.DB.GetCounters(ctx, filter)
+func (c *DBClient) Stats(ctx context.Context, filter types.StatsFilter) (types.Stats, error) {
+	return c.DB.GetStats(ctx, filter)
 }
