@@ -374,8 +374,14 @@ func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error)
 	return
 }
 
+type TaskResult struct {
+	Name      string      `json:"name"`
+	Timestamp uint64      `json:"timestamp"`
+	Result    interface{} `json:"result"`
+}
+
 // GetPerfTestsResults get all perf tests results
-func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result string, err error) {
+func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result []TaskResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
@@ -386,7 +392,7 @@ func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result string, er
 }
 
 // GetPerfTestResult get a single perf test result
-func (n *NodeClient) GetPerfTestResult(ctx context.Context, testName string) (result string, err error) {
+func (n *NodeClient) GetPerfTestResult(ctx context.Context, testName string) (result TaskResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
