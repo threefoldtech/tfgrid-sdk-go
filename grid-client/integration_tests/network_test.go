@@ -10,15 +10,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func TestNetworkDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
+
+	nodeFilter := types.NodeFilter{
+		Status:  &statusUp,
+		FarmIDs: []uint64{1},
+		Rented:  &falseVal,
+	}
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, nil)
 	if err != nil || len(nodes) < 2 {
@@ -43,7 +52,9 @@ func TestNetworkDeployment(t *testing.T) {
 
 	t.Run("deploy network with wireguard access", func(t *testing.T) {
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		defer func() {
 			err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -58,7 +69,9 @@ func TestNetworkDeployment(t *testing.T) {
 		networkCp.Nodes = []uint32{nodeID2}
 
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &networkCp)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		_, err := tfPluginClient.State.LoadNetworkFromGrid(networkCp.Name)
 		assert.NoError(t, err)
@@ -69,7 +82,9 @@ func TestNetworkDeployment(t *testing.T) {
 		networkCp.Nodes = []uint32{nodeID2}
 
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &networkCp)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		defer func() {
 			err = tfPluginClient.NetworkDeployer.Cancel(ctx, &networkCp)

@@ -7,19 +7,28 @@ import (
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-const vm2Name = "vm2"
-const vm3Name = "vm3"
+const (
+	vm2Name = "vm2"
+	vm3Name = "vm3"
+)
 
 func TestDeploymentsDeploy(t *testing.T) {
-
 	tf, err := setup()
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	nodeFilter := types.NodeFilter{
+		Status:  &statusUp,
+		FreeSRU: convertGBToBytes(10),
+		FreeHRU: convertGBToBytes(2),
+		FreeMRU: convertGBToBytes(2),
+		FarmIDs: []uint64{1},
+		Rented:  &falseVal,
+	}
 	nodes, err := deployer.FilterNodes(context.Background(), tf, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, []uint64{minRootfs})
 	if err != nil {
 		t.Skip("no available nodes found")
@@ -124,6 +133,12 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	tf, err := setup()
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	nodeFilter := types.NodeFilter{
+		Status:  &statusUp,
+		FarmIDs: []uint64{1},
+		Rented:  &falseVal,
 	}
 
 	nodes, err := deployer.FilterNodes(context.Background(), tf, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, []uint64{minRootfs})

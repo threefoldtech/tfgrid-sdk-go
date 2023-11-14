@@ -10,18 +10,29 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func TestBatchVMDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	nodeFilter := types.NodeFilter{
+		Status:  &statusUp,
+		FarmIDs: []uint64{1},
+		Rented:  &falseVal,
+	}
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
 	if err != nil || len(nodes) < 2 {
@@ -73,7 +84,9 @@ func TestBatchVMDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.BatchDeploy(ctx, []*workloads.ZNet{&network1, &network2})
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network1)
@@ -86,7 +99,9 @@ func TestBatchVMDeployment(t *testing.T) {
 	dl1 := workloads.NewDeployment("vm1", nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil)
 	dl2 := workloads.NewDeployment("vm2", nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil)
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, []*workloads.Deployment{&dl1, &dl2})
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl1)
@@ -97,18 +112,22 @@ func TestBatchVMDeployment(t *testing.T) {
 	}()
 
 	v1, err := tfPluginClient.State.LoadVMFromGrid(nodeID1, vm1.Name, dl1.Name)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, v1.YggIP)
+	if !assert.NoError(t, err) || !assert.NotEmpty(t, v1.YggIP) {
+		return
+	}
 
 	output, err := RemoteRun("root", v1.YggIP, "ls /", privateKey)
-	assert.NoError(t, err)
-	assert.Contains(t, output, "root")
+	if !assert.NoError(t, err) || !assert.Contains(t, output, "root") {
+		return
+	}
 
 	v2, err := tfPluginClient.State.LoadVMFromGrid(nodeID2, vm2.Name, dl2.Name)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, v2.YggIP)
+	if !assert.NoError(t, err) || assert.NotEmpty(t, v2.YggIP) {
+		return
+	}
 
 	output, err = RemoteRun("root", v2.YggIP, "ls /", privateKey)
-	assert.NoError(t, err)
-	assert.Contains(t, output, "root")
+	if !assert.NoError(t, err) || assert.Contains(t, output, "root") {
+		return
+	}
 }

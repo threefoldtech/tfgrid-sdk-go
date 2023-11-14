@@ -26,13 +26,17 @@ func ConvertGPUsToStr(gpus []node.GPU) (zosGPUs []zos.GPU) {
 
 func TestVMWithGPUDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	twinID := uint64(tfPluginClient.TwinID)
 	nodeFilter := types.NodeFilter{
@@ -50,10 +54,14 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	nodeClient, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	gpus, err := nodeClient.GPUs(ctx)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	network := workloads.ZNet{
 		Name:        "gpuNetwork",
@@ -89,7 +97,9 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -98,7 +108,9 @@ func TestVMWithGPUDeployment(t *testing.T) {
 
 	dl := workloads.NewDeployment("gpu", nodeID, "", nil, network.Name, []workloads.Disk{disk}, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -106,8 +118,9 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	}()
 
 	vm, err = tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
-	assert.NoError(t, err)
-	assert.Equal(t, vm.GPUs, ConvertGPUsToStr(gpus))
+	if !assert.NoError(t, err) || !assert.Equal(t, vm.GPUs, ConvertGPUsToStr(gpus)) {
+		return
+	}
 
 	time.Sleep(30 * time.Second)
 	output, err := RemoteRun("root", vm.YggIP, "lspci -v", privateKey)

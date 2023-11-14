@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -25,17 +26,28 @@ const (
 
 func TestQSFSDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	zdbSizes := make([]uint64, 0)
 	for i := 0; i < DataZDBNum+MetaZDBNum; i++ {
 		zdbSizes = append(zdbSizes, zdbSize)
+	}
+
+	nodeFilter := types.NodeFilter{
+		Status:  &statusUp,
+		FreeHRU: convertGBToBytes(2),
+		FarmIDs: []uint64{1},
+		Rented:  &falseVal,
 	}
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, zdbSizes, []uint64{minRootfs})
@@ -84,7 +96,9 @@ func TestQSFSDeployment(t *testing.T) {
 
 	dl1 := workloads.NewDeployment("qsfs", nodeID, "", nil, "", nil, append(dataZDBs, metaZDBs...), nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl1)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl1)
@@ -96,14 +110,17 @@ func TestQSFSDeployment(t *testing.T) {
 	resMetaZDBs := []workloads.ZDB{}
 	for i := 1; i <= DataZDBNum; i++ {
 		res, err := tfPluginClient.State.LoadZdbFromGrid(nodeID, "qsfsDataZdb"+strconv.Itoa(i), dl1.Name)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		if !assert.NoError(t, err) || !assert.NotEmpty(t, res) {
+			return
+		}
+
 		resDataZDBs = append(resDataZDBs, res)
 	}
 	for i := 1; i <= MetaZDBNum; i++ {
 		res, err := tfPluginClient.State.LoadZdbFromGrid(nodeID, "qsfsMetaZdb"+strconv.Itoa(i), dl1.Name)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		if !assert.NoError(t, err) || !assert.NotEmpty(t, res) {
+			return
+		}
 		resMetaZDBs = append(resMetaZDBs, res)
 	}
 
@@ -114,13 +131,15 @@ func TestQSFSDeployment(t *testing.T) {
 		dataBackends = append(dataBackends, workloads.Backend{
 			Address:   "[" + resDataZDBs[i].IPs[1] + "]" + ":" + fmt.Sprint(resDataZDBs[i].Port),
 			Namespace: resDataZDBs[i].Namespace,
-			Password:  resDataZDBs[i].Password})
+			Password:  resDataZDBs[i].Password,
+		})
 	}
 	for i := 0; i < MetaZDBNum; i++ {
 		metaBackends = append(metaBackends, workloads.Backend{
 			Address:   "[" + resMetaZDBs[i].IPs[1] + "]" + ":" + fmt.Sprint(resMetaZDBs[i].Port),
 			Namespace: resMetaZDBs[i].Namespace,
-			Password:  resMetaZDBs[i].Password})
+			Password:  resMetaZDBs[i].Password,
+		})
 	}
 
 	qsfs := workloads.QSFS{
@@ -162,7 +181,9 @@ func TestQSFSDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -171,7 +192,9 @@ func TestQSFSDeployment(t *testing.T) {
 
 	dl2 := workloads.NewDeployment("qsfs", nodeID, "", nil, network.Name, nil, append(dataZDBs, metaZDBs...), []workloads.VM{vm}, []workloads.QSFS{qsfs})
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl2)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl2)
@@ -179,28 +202,38 @@ func TestQSFSDeployment(t *testing.T) {
 	}()
 
 	resVM, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl2.Name)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	resQSFS, err := tfPluginClient.State.LoadQSFSFromGrid(nodeID, qsfs.Name, dl2.Name)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, resQSFS.MetricsEndpoint)
+	if !assert.NoError(t, err) || !assert.NotEmpty(t, resQSFS.MetricsEndpoint) {
+		return
+	}
 
 	// Check that the outputs not empty
 	metrics := resQSFS.MetricsEndpoint
-	assert.NotEmpty(t, metrics)
+	if !assert.NotEmpty(t, metrics) {
+		return
+	}
 
 	yggIP := resVM.YggIP
-	assert.NotEmpty(t, yggIP)
+	if !assert.NotEmpty(t, yggIP) {
+		return
+	}
 
 	// get metrics
 	cmd := exec.Command("curl", metrics)
 	output, err := cmd.Output()
-	assert.NoError(t, err)
-	assert.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 0")
+	if !assert.NoError(t, err) || !assert.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 0") {
+		return
+	}
 
 	// try write to a file in mounted disk
 	_, err = RemoteRun("root", yggIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	// get metrics after write
 	cmd = exec.Command("curl", metrics)

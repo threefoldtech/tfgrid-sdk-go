@@ -9,10 +9,14 @@ import (
 
 func TestContractsGetter(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	_, err = tfPluginClient.ContractsGetter.ListContractsByTwinID([]string{"Created, GracePeriod"})
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName("badName")
 	assert.Empty(t, contracts.NameContracts)

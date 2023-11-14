@@ -14,6 +14,7 @@ import (
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -21,15 +22,23 @@ import (
 
 func TestGatewayNameDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
-
-	nodeFilter.Domain = &trueVal
+	if !assert.NoError(t, err) {
+		return
+	}
+	nodeFilter := types.NodeFilter{
+		Status:  &statusUp,
+		FarmIDs: []uint64{1},
+		Rented:  &falseVal,
+		Domain:  &trueVal,
+	}
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
 	if err != nil || len(nodes) < 2 {
 		t.Skip("no available nodes found")
@@ -63,7 +72,9 @@ func TestGatewayNameDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -72,7 +83,9 @@ func TestGatewayNameDeployment(t *testing.T) {
 
 	dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -80,7 +93,9 @@ func TestGatewayNameDeployment(t *testing.T) {
 	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	backend := fmt.Sprintf("http://[%s]:9000", v.YggIP)
 	gw := workloads.GatewayNameProxy{
@@ -91,7 +106,9 @@ func TestGatewayNameDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.GatewayNameDeployer.Deploy(ctx, &gw)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.GatewayNameDeployer.Cancel(ctx, &gw)
@@ -99,19 +116,25 @@ func TestGatewayNameDeployment(t *testing.T) {
 	}()
 
 	result, err := tfPluginClient.State.LoadGatewayNameFromGrid(gwNodeID, gw.Name, gw.Name)
-	assert.NoError(t, err)
-
-	assert.NotEmpty(t, result.FQDN)
+	if !assert.NoError(t, err) || !assert.NotEmpty(t, result.FQDN) {
+		return
+	}
 
 	_, err = RemoteRun("root", v.YggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	time.Sleep(3 * time.Second)
 	response, err := http.Get(fmt.Sprintf("https://%s", result.FQDN))
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	body, err := io.ReadAll(response.Body)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 	if body != nil {
 		defer response.Body.Close()
 	}

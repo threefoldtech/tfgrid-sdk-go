@@ -13,7 +13,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -24,15 +23,6 @@ var (
 	value1    = uint64(1)
 	minRootfs = *convertGBToBytes(2)
 )
-
-var nodeFilter = types.NodeFilter{
-	Status:  &statusUp,
-	FreeSRU: convertGBToBytes(10),
-	FreeHRU: convertGBToBytes(2),
-	FreeMRU: convertGBToBytes(2),
-	FarmIDs: []uint64{1},
-	Rented:  &falseVal,
-}
 
 func convertGBToBytes(gb uint64) *uint64 {
 	bytes := gb * 1024 * 1024 * 1024

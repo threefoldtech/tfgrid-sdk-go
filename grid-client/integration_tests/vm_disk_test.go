@@ -4,7 +4,6 @@ package integration
 import (
 	"context"
 	"fmt"
-
 	"net"
 	"testing"
 	"time"
@@ -12,19 +11,29 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func TestVmDisk(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
+	nodeFilter := types.NodeFilter{
+		Status:  &statusUp,
+		FarmIDs: []uint64{1},
+		Rented:  &falseVal,
+	}
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, []uint64{minRootfs})
 	if err != nil {
 		t.Skip("no available nodes found")
@@ -66,7 +75,9 @@ func TestVmDisk(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -75,7 +86,9 @@ func TestVmDisk(t *testing.T) {
 
 	dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, []workloads.Disk{disk}, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -83,17 +96,24 @@ func TestVmDisk(t *testing.T) {
 	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	resDisk, err := tfPluginClient.State.LoadDiskFromGrid(nodeID, disk.Name, dl.Name)
-	assert.NoError(t, err)
-	assert.Equal(t, disk, resDisk)
+	if !assert.NoError(t, err) || !assert.Equal(t, disk, resDisk) {
+		return
+	}
 
 	yggIP := v.YggIP
-	assert.NotEmpty(t, yggIP)
+	if !assert.NotEmpty(t, yggIP) {
+		return
+	}
 
 	// Check that disk has been mounted successfully
 	output, err := RemoteRun("root", yggIP, "df -h | grep -w /disk", privateKey)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 	assert.Contains(t, output, fmt.Sprintf("%d.0G", disk.SizeGB))
 }

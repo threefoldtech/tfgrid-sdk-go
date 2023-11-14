@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-
 	"net"
 	"testing"
 	"time"
@@ -10,23 +9,28 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func TestBatchK8sDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	nodes, err := deployer.FilterNodes(
 		ctx,
 		tfPluginClient,
-		nodeFilter,
+		types.NodeFilter{Status: &statusUp, FarmIDs: []uint64{1}, Rented: &falseVal},
 		[]uint64{*convertGBToBytes(1), *convertGBToBytes(1)},
 		nil,
 		[]uint64{minRootfs, minRootfs},
@@ -50,7 +54,9 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -59,7 +65,9 @@ func TestBatchK8sDeployment(t *testing.T) {
 
 	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 	flistCheckSum, err := workloads.GetFlistChecksum(flist)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	master1 := workloads.K8sNode{
 		Name:          "K8sForTesting",
@@ -146,7 +154,9 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.K8sDeployer.BatchDeploy(ctx, []*workloads.K8sCluster{&k8sCluster1, &k8sCluster2})
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster1)
@@ -158,36 +168,52 @@ func TestBatchK8sDeployment(t *testing.T) {
 
 	// cluster 1
 	result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID1}, k8sCluster1.Master.Name)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	// check workers count
-	assert.Equal(t, len(result.Workers), 1)
+	if !assert.Equal(t, len(result.Workers), 1) {
+		return
+	}
 
 	// Check that master is reachable
 	masterIP := result.Master.YggIP
-	assert.NotEmpty(t, masterIP)
+	if !assert.NotEmpty(t, masterIP) {
+		return
+	}
 
 	// Check wireguard config in output
 	wgConfig := network.AccessWGConfig
-	assert.NotEmpty(t, wgConfig)
+	if !assert.NotEmpty(t, wgConfig) {
+		return
+	}
 
 	// ssh to master node
 	AssertNodesAreReady(t, &result, privateKey)
 
 	// cluster 2
 	result, err = tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID2}, k8sCluster2.Master.Name)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	// check workers count
-	assert.Equal(t, len(result.Workers), 1)
+	if !assert.Equal(t, len(result.Workers), 1) {
+		return
+	}
 
 	// Check that master is reachable
 	masterIP = result.Master.YggIP
-	assert.NotEmpty(t, masterIP)
+	if !assert.NotEmpty(t, masterIP) {
+		return
+	}
 
 	// Check wireguard config in output
 	wgConfig = network.AccessWGConfig
-	assert.NotEmpty(t, wgConfig)
+	if !assert.NotEmpty(t, wgConfig) {
+		return
+	}
 
 	// ssh to master node
 	AssertNodesAreReady(t, &result, privateKey)

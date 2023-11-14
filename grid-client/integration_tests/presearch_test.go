@@ -11,21 +11,31 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func TestPresearchDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
+	nodeFilter := types.NodeFilter{
+		Status:  &statusUp,
+		FarmIDs: []uint64{1},
+		Rented:  &falseVal,
+		IPv4:    &trueVal,
+		FreeIPs: &value1,
+	}
 
-	nodeFilter.IPv4 = &trueVal
-	nodeFilter.FreeIPs = &value1
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, []uint64{*convertGBToBytes(20)})
 	if err != nil {
 		t.Skip("no available nodes found")
@@ -72,7 +82,9 @@ func TestPresearchDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -81,7 +93,9 @@ func TestPresearchDeployment(t *testing.T) {
 
 	dl := workloads.NewDeployment("presearch", nodeID, "", nil, network.Name, []workloads.Disk{disk}, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -89,20 +103,30 @@ func TestPresearchDeployment(t *testing.T) {
 	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	publicIP := strings.Split(v.ComputedIP, "/")[0]
-	assert.NotEmpty(t, publicIP)
+	if !assert.NotEmpty(t, publicIP) {
+		return
+	}
 	if !TestConnection(publicIP, "22") {
 		t.Errorf("public ip is not reachable")
 	}
 
 	yggIP := v.YggIP
-	assert.NotEmpty(t, yggIP)
+	if !assert.NotEmpty(t, yggIP) {
+		return
+	}
 
 	output, err := RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
-	assert.NoError(t, err)
-	assert.Contains(t, output, "PRESEARCH_REGISTRATION_CODE=e5083a8d0a6362c6cf7a3078bfac81e3")
+	if !assert.NoError(t, err) {
+		return
+	}
+	if !assert.Contains(t, output, "PRESEARCH_REGISTRATION_CODE=e5083a8d0a6362c6cf7a3078bfac81e3") {
+		return
+	}
 
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute; {

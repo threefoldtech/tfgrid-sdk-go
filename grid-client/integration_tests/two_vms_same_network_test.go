@@ -11,19 +11,29 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func TestTwoVMsSameNetwork(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
+	nodeFilter := types.NodeFilter{
+		Status:  &statusUp,
+		FarmIDs: []uint64{1},
+		Rented:  &falseVal,
+	}
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs, minRootfs})
 	if err != nil {
 		t.Skip("no available nodes found")
@@ -73,7 +83,9 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	if !assert.NoError(t, err) {
+		return
+	}
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -83,7 +95,9 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 	t.Run("public ipv6 and yggdrasil", func(t *testing.T) {
 		dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm2}, nil)
 		err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		defer func() {
 			err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -91,16 +105,21 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 		}()
 
 		v1, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm1.Name, dl.Name)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		v2, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm2.Name, dl.Name)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		yggIP1 := v1.YggIP
 		yggIP2 := v2.YggIP
 
-		assert.NotEmpty(t, yggIP1)
-		assert.NotEmpty(t, yggIP1)
+		if !assert.NotEmpty(t, yggIP1) || !assert.NotEmpty(t, yggIP1) {
+			return
+		}
 
 		privateIP1 := v1.IP
 		privateIP2 := v2.IP
@@ -109,33 +128,49 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 		publicIP6_2 := strings.Split(v2.ComputedIP6, "/")[0]
 
 		_, err = RemoteRun("root", yggIP1, "apt install -y netcat", privateKey)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		_, err = RemoteRun("root", yggIP2, "apt install -y netcat", privateKey)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		// check privateIP2 from vm1
 		_, err = RemoteRun("root", yggIP1, "nc -z "+privateIP2+" 22", privateKey)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		// check privateIP1 from vm2
 		_, err = RemoteRun("root", yggIP2, "nc -z "+privateIP1+" 22", privateKey)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		// check yggIP2 from vm1
 		_, err = RemoteRun("root", yggIP1, "nc -z "+yggIP2+" 22", privateKey)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		// check yggIP1 from vm2
 		_, err = RemoteRun("root", yggIP2, "nc -z "+yggIP1+" 22", privateKey)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		// check publicIP62 from vm1
 		_, err = RemoteRun("root", yggIP1, "nc -z "+publicIP6_2+" 22", privateKey)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 
 		// check publicIP61 from vm2
 		_, err = RemoteRun("root", yggIP2, "nc -z "+publicIP6_1+" 22", privateKey)
-		assert.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 	})
 }
