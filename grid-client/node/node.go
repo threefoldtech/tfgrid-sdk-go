@@ -374,6 +374,7 @@ func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error)
 	return
 }
 
+// TaskResult holds the perf test result
 type TaskResult struct {
 	Name      string      `json:"name"`
 	Timestamp uint64      `json:"timestamp"`
