@@ -98,7 +98,7 @@ func calcNodesUsedResources(data *DBData) error {
 	for _, node := range data.Nodes {
 		used := NodeResourcesTotal{
 			MRU: uint64(2 * gridtypes.Gigabyte),
-			SRU: uint64(100 * gridtypes.Gigabyte),
+			SRU: uint64(20 * gridtypes.Gigabyte),
 		}
 		tenpercent := uint64(math.Round(float64(data.NodeTotalResources[node.NodeID].MRU) / 10))
 		if used.MRU < tenpercent {
