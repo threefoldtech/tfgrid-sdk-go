@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -28,13 +27,8 @@ func TestPresearchDeployment(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-	nodeFilter := types.NodeFilter{
-		Status:  &statusUp,
-		FarmIDs: []uint64{1},
-		Rented:  &falseVal,
-		IPv4:    &trueVal,
-		FreeIPs: &value1,
-	}
+	nodeFilter.IPv4 = &trueVal
+	nodeFilter.FreeIPs = &value1
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, []uint64{*convertGBToBytes(20)})
 	if err != nil {

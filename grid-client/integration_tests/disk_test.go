@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 func TestDiskDeployment(t *testing.T) {
@@ -20,12 +19,7 @@ func TestDiskDeployment(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
-	nodeFilter := types.NodeFilter{
-		Status:  &statusUp,
-		FreeSRU: convertGBToBytes(10),
-		FarmIDs: []uint64{1},
-		Rented:  &falseVal,
-	}
+
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, nil)
 	if err != nil {
 		t.Skip("no available nodes found")

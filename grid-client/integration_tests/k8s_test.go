@@ -11,16 +11,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-func AssertNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, privateKey string) {
+func AssertNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, privateKey string) bool {
 	t.Helper()
 
 	masterYggIP := k8sCluster.Master.YggIP
 	if !assert.NotEmpty(t, masterYggIP) {
-		return
+		return false
 	}
 
 	// Check that the outputs not empty
@@ -28,14 +27,12 @@ func AssertNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, private
 	output, err := RemoteRun("root", masterYggIP, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
 	output = strings.TrimSpace(output)
 	if !assert.Empty(t, err) {
-		return
+		return false
 	}
 
 	nodesNumber := reflect.ValueOf(k8sCluster.Workers).Len() + 1
 	numberOfReadyNodes := strings.Count(output, "Ready")
-	if !assert.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %d nodes are ready", numberOfReadyNodes) {
-		return
-	}
+	return assert.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %d nodes are ready", numberOfReadyNodes)
 }
 
 func TestK8sDeployment(t *testing.T) {
@@ -55,7 +52,7 @@ func TestK8sDeployment(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		ctx,
 		tfPluginClient,
-		types.NodeFilter{Status: &statusUp, FarmIDs: []uint64{1}, Rented: &falseVal},
+		nodeFilter,
 		[]uint64{*convertGBToBytes(1), *convertGBToBytes(1)},
 		nil,
 		[]uint64{minRootfs},

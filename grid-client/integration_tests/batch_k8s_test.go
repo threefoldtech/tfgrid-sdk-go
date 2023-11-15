@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -30,7 +29,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		ctx,
 		tfPluginClient,
-		types.NodeFilter{Status: &statusUp, FarmIDs: []uint64{1}, Rented: &falseVal},
+		nodeFilter,
 		[]uint64{*convertGBToBytes(1), *convertGBToBytes(1)},
 		nil,
 		[]uint64{minRootfs, minRootfs},
@@ -190,7 +189,9 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	// ssh to master node
-	AssertNodesAreReady(t, &result, privateKey)
+	if !AssertNodesAreReady(t, &result, privateKey) {
+		return
+	}
 
 	// cluster 2
 	result, err = tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID2}, k8sCluster2.Master.Name)

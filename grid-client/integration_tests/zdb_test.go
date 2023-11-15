@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
@@ -21,12 +20,7 @@ func TestZDBDeployment(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
-	nodeFilter := types.NodeFilter{
-		Status:  &statusUp,
-		FreeHRU: convertGBToBytes(2),
-		FarmIDs: []uint64{1},
-		Rented:  &falseVal,
-	}
+
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, []uint64{*convertGBToBytes(10)}, nil)
 	if err != nil {
 		t.Skip("no available nodes found")

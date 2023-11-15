@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -22,12 +21,6 @@ func TestNetworkDeployment(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-
-	nodeFilter := types.NodeFilter{
-		Status:  &statusUp,
-		FarmIDs: []uint64{1},
-		Rented:  &falseVal,
-	}
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, nil)
 	if err != nil || len(nodes) < 2 {

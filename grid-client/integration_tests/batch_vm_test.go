@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -26,12 +25,6 @@ func TestBatchVMDeployment(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	if !assert.NoError(t, err) {
 		return
-	}
-
-	nodeFilter := types.NodeFilter{
-		Status:  &statusUp,
-		FarmIDs: []uint64{1},
-		Rented:  &falseVal,
 	}
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})

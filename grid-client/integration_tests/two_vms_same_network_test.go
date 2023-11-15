@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -29,11 +28,6 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	nodeFilter := types.NodeFilter{
-		Status:  &statusUp,
-		FarmIDs: []uint64{1},
-		Rented:  &falseVal,
-	}
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs, minRootfs})
 	if err != nil {
 		t.Skip("no available nodes found")
@@ -117,7 +111,7 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 		yggIP1 := v1.YggIP
 		yggIP2 := v2.YggIP
 
-		if !assert.NotEmpty(t, yggIP1) || !assert.NotEmpty(t, yggIP1) {
+		if !assert.NotEmpty(t, yggIP1) || !assert.NotEmpty(t, yggIP2) {
 			return
 		}
 

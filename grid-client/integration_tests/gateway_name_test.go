@@ -14,7 +14,6 @@ import (
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -33,12 +32,7 @@ func TestGatewayNameDeployment(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-	nodeFilter := types.NodeFilter{
-		Status:  &statusUp,
-		FarmIDs: []uint64{1},
-		Rented:  &falseVal,
-		Domain:  &trueVal,
-	}
+
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
 	if err != nil || len(nodes) < 2 {
 		t.Skip("no available nodes found")

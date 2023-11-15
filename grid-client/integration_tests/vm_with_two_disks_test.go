@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -33,8 +32,7 @@ func TestVMWithTwoDisk(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		ctx,
 		tfPluginClient,
-		types.NodeFilter{Status: &statusUp, FreeSRU: convertGBToBytes(10), FarmIDs: []uint64{1}, Rented: &falseVal},
-
+		nodeFilter,
 		[]uint64{*convertGBToBytes(2), *convertGBToBytes(1)},
 		nil,
 		[]uint64{minRootfs},

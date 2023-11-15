@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -41,13 +40,6 @@ func TestQSFSDeployment(t *testing.T) {
 	zdbSizes := make([]uint64, 0)
 	for i := 0; i < DataZDBNum+MetaZDBNum; i++ {
 		zdbSizes = append(zdbSizes, zdbSize)
-	}
-
-	nodeFilter := types.NodeFilter{
-		Status:  &statusUp,
-		FreeHRU: convertGBToBytes(2),
-		FarmIDs: []uint64{1},
-		Rented:  &falseVal,
 	}
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, zdbSizes, []uint64{minRootfs})
