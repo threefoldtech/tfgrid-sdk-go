@@ -172,14 +172,15 @@ func (a *App) handleNodeRequestsQueryParams(r *http.Request) (types.NodeFilter, 
 		"gpu_vendor_name":    &filter.GpuVendorName,
 	}
 	bools := map[string]**bool{
-		"ipv4":          &filter.IPv4,
-		"ipv6":          &filter.IPv6,
-		"domain":        &filter.Domain,
-		"dedicated":     &filter.Dedicated,
-		"rentable":      &filter.Rentable,
-		"rented":        &filter.Rented,
-		"has_gpu":       &filter.HasGPU,
-		"gpu_available": &filter.GpuAvailable,
+		"ipv4":              &filter.IPv4,
+		"ipv6":              &filter.IPv6,
+		"domain":            &filter.Domain,
+		"dedicated":         &filter.Dedicated,
+		"in_dedicated_farm": &filter.InDedicatedFarm,
+		"rentable":          &filter.Rentable,
+		"rented":            &filter.Rented,
+		"has_gpu":           &filter.HasGPU,
+		"gpu_available":     &filter.GpuAvailable,
 	}
 	listOfInts := map[string]*[]uint64{
 		"farm_ids": &filter.FarmIDs,

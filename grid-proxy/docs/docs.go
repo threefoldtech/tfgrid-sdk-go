@@ -540,6 +540,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "Set to true to get the nodes belongs to dedicated farms",
+                        "name": "in_dedicated_farm",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
                         "description": "Set to true to filter the available nodes for renting",
                         "name": "rentable",
                         "in": "query"
@@ -785,6 +791,12 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Set to true to get the dedicated nodes only",
                         "name": "dedicated",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Set to true to get the nodes belongs to dedicated farms",
+                        "name": "in_dedicated_farm",
                         "in": "query"
                     },
                     {
@@ -1367,6 +1379,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "inDedicatedFarm": {
+                    "type": "boolean"
+                },
                 "location": {
                     "$ref": "#/definitions/types.Location"
                 },
@@ -1523,6 +1538,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "inDedicatedFarm": {
+                    "type": "boolean"
                 },
                 "location": {
                     "$ref": "#/definitions/types.Location"

@@ -170,6 +170,13 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &v
 	},
+	"InDedicatedFarm": func(agg NodesAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
 	"Dedicated": func(agg NodesAggregate) interface{} {
 		v := true
 		if flip(.5) {
