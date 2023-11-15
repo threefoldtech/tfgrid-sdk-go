@@ -104,6 +104,7 @@ type NodeFilter struct {
 	IPv6              *bool
 	Domain            *bool
 	Dedicated         *bool
+	InDedicatedFarm   *bool
 	Rentable          *bool
 	Rented            *bool
 	RentedBy          *uint64
@@ -197,6 +198,7 @@ type Node struct {
 	Status            string       `json:"status"` // added node status field for up or down
 	CertificationType string       `json:"certificationType"`
 	Dedicated         bool         `json:"dedicated"`
+	InDedicatedFarm   bool         `json:"inDedicatedFarm"`
 	RentContractID    uint         `json:"rentContractId"`
 	RentedByTwinID    uint         `json:"rentedByTwinId"`
 	SerialNumber      string       `json:"serialNumber"`
@@ -230,6 +232,7 @@ type NodeWithNestedCapacity struct {
 	Status            string         `json:"status"` // added node status field for up or down
 	CertificationType string         `json:"certificationType"`
 	Dedicated         bool           `json:"dedicated"`
+	InDedicatedFarm   bool           `json:"inDedicatedFarm"`
 	RentContractID    uint           `json:"rentContractId"`
 	RentedByTwinID    uint           `json:"rentedByTwinId"`
 	SerialNumber      string         `json:"serialNumber"`

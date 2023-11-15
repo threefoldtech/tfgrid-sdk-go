@@ -72,6 +72,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				Status:            status,
 				CertificationType: node.Certification,
 				UpdatedAt:         int64(node.UpdatedAt),
+				InDedicatedFarm:   g.data.Farms[node.FarmID].DedicatedFarm,
 				Dedicated:         isDedicatedNode(g.data, node),
 				RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 				RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
@@ -149,6 +150,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		Status:            status,
 		CertificationType: node.Certification,
 		UpdatedAt:         int64(node.UpdatedAt),
+		InDedicatedFarm:   g.data.Farms[node.FarmID].DedicatedFarm,
 		Dedicated:         isDedicatedNode(g.data, node),
 		RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 		RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
@@ -256,6 +258,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if f.Domain != nil && *f.Domain == (data.PublicConfigs[n.NodeID].Domain == "") {
+		return false
+	}
+
+	if f.InDedicatedFarm != nil && *f.InDedicatedFarm != data.Farms[n.FarmID].DedicatedFarm {
 		return false
 	}
 

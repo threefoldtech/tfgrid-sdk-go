@@ -103,6 +103,9 @@ func nodeParams(filter types.NodeFilter, limit types.Limit) string {
 	if filter.Dedicated != nil {
 		fmt.Fprintf(&builder, "dedicated=%t&", *filter.Dedicated)
 	}
+	if filter.InDedicatedFarm != nil {
+		fmt.Fprintf(&builder, "in_dedicated_farm=%t&", *filter.InDedicatedFarm)
+	}
 	if limit.Page != 0 {
 		fmt.Fprintf(&builder, "page=%d&", limit.Page)
 	}

@@ -546,6 +546,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	}
 
 	// Dedicated nodes filters
+	if filter.InDedicatedFarm != nil {
+		q = q.Where(`farm.dedicated_farm = ?`, *filter.InDedicatedFarm)
+	}
 	if filter.Dedicated != nil {
 		q = q.Where(`? = (farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Dedicated)
 	}
