@@ -25,7 +25,7 @@ jobs:
           args: --config=../.golangci.yml
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         dir:
           - activation-service

@@ -540,6 +540,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "Set to true to get the nodes belongs to dedicated farms",
+                        "name": "in_dedicated_farm",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
                         "description": "Set to true to filter the available nodes for renting",
                         "name": "rentable",
                         "in": "query"
@@ -570,13 +576,18 @@ const docTemplate = `{
                     },
                     {
                         "enum": [
-                            "NotCertified",
-                            "Silver",
-                            "Gold"
+                            "Certified",
+                            "DIY"
                         ],
                         "type": "string",
-                        "description": "certificate type NotCertified, Silver or Gold",
+                        "description": "certificate type",
                         "name": "certification_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "get nodes owned by twin id",
+                        "name": "owned_by",
                         "in": "query"
                     }
                 ],
@@ -784,6 +795,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "Set to true to get the nodes belongs to dedicated farms",
+                        "name": "in_dedicated_farm",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
                         "description": "Set to true to filter the available nodes for renting",
                         "name": "rentable",
                         "in": "query"
@@ -814,12 +831,11 @@ const docTemplate = `{
                     },
                     {
                         "enum": [
-                            "NotCertified",
-                            "Silver",
-                            "Gold"
+                            "Certified",
+                            "DIY"
                         ],
                         "type": "string",
-                        "description": "certificate type NotCertified, Silver or Gold",
+                        "description": "certificate type",
                         "name": "certification_type",
                         "in": "query"
                     },
@@ -857,6 +873,12 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "filter nodes that have available GPU",
                         "name": "gpu_available",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "get nodes owned by twin id",
+                        "name": "owned_by",
                         "in": "query"
                     }
                 ],
@@ -1085,7 +1107,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/types.Counters"
+                                "$ref": "#/definitions/types.Stats"
                             }
                         }
                     },
@@ -1144,8 +1166,20 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "account address",
+                        "description": "Account address",
                         "name": "account_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relay address",
+                        "name": "relay",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Twin public key",
+                        "name": "public_key",
                         "in": "query"
                     }
                 ],
@@ -1231,7 +1265,7 @@ const docTemplate = `{
         "types.Contract": {
             "type": "object",
             "properties": {
-                "contractId": {
+                "contract_id": {
                     "type": "integer"
                 },
                 "created_at": {
@@ -1241,7 +1275,7 @@ const docTemplate = `{
                 "state": {
                     "type": "string"
                 },
-                "twinId": {
+                "twin_id": {
                     "type": "integer"
                 },
                 "type": {
@@ -1259,56 +1293,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "timestamp": {
-                    "type": "integer"
-                }
-            }
-        },
-        "types.Counters": {
-            "type": "object",
-            "properties": {
-                "accessNodes": {
-                    "type": "integer"
-                },
-                "contracts": {
-                    "type": "integer"
-                },
-                "countries": {
-                    "type": "integer"
-                },
-                "farms": {
-                    "type": "integer"
-                },
-                "gateways": {
-                    "type": "integer"
-                },
-                "gpus": {
-                    "type": "integer"
-                },
-                "nodes": {
-                    "type": "integer"
-                },
-                "nodesDistribution": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "integer"
-                    }
-                },
-                "publicIps": {
-                    "type": "integer"
-                },
-                "totalCru": {
-                    "type": "integer"
-                },
-                "totalHru": {
-                    "type": "integer"
-                },
-                "totalMru": {
-                    "type": "integer"
-                },
-                "totalSru": {
-                    "type": "integer"
-                },
-                "twins": {
                     "type": "integer"
                 }
             }
@@ -1394,6 +1378,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "inDedicatedFarm": {
+                    "type": "boolean"
                 },
                 "location": {
                     "$ref": "#/definitions/types.Location"
@@ -1552,6 +1539,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "inDedicatedFarm": {
+                    "type": "boolean"
+                },
                 "location": {
                     "$ref": "#/definitions/types.Location"
                 },
@@ -1628,6 +1618,59 @@ const docTemplate = `{
                 },
                 "ip": {
                     "type": "string"
+                }
+            }
+        },
+        "types.Stats": {
+            "type": "object",
+            "properties": {
+                "accessNodes": {
+                    "type": "integer"
+                },
+                "contracts": {
+                    "type": "integer"
+                },
+                "countries": {
+                    "type": "integer"
+                },
+                "dedicatedNodes": {
+                    "type": "integer"
+                },
+                "farms": {
+                    "type": "integer"
+                },
+                "gateways": {
+                    "type": "integer"
+                },
+                "gpus": {
+                    "type": "integer"
+                },
+                "nodes": {
+                    "type": "integer"
+                },
+                "nodesDistribution": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "publicIps": {
+                    "type": "integer"
+                },
+                "totalCru": {
+                    "type": "integer"
+                },
+                "totalHru": {
+                    "type": "integer"
+                },
+                "totalMru": {
+                    "type": "integer"
+                },
+                "totalSru": {
+                    "type": "integer"
+                },
+                "twins": {
+                    "type": "integer"
                 }
             }
         },

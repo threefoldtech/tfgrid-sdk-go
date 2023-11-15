@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -28,11 +29,11 @@ func NewDeploymentDeployer(tfPluginClient *TFPluginClient) DeploymentDeployer {
 }
 
 // GenerateVersionlessDeployments generates a new deployment without a version
-func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context, dl *workloads.Deployment) (map[uint32]gridtypes.Deployment, error) {
+func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context, dl *workloads.Deployment, usedHosts []byte) (map[uint32]gridtypes.Deployment, []byte, error) {
 	newDl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, []gridtypes.Workload{})
-	err := d.assignNodesIPs(dl)
+	usedHosts, err := d.assignNodesIPs(dl, usedHosts)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to assign node ips")
+		return nil, usedHosts, errors.Wrap(err, "failed to assign node ips")
 	}
 	for _, disk := range dl.Disks {
 		newDl.Workloads = append(newDl.Workloads, disk.ZosWorkload())
@@ -47,17 +48,17 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 	for idx, q := range dl.QSFS {
 		qsfsWorkload, err := q.ZosWorkload()
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to generate QSFS %d", idx)
+			return nil, usedHosts, errors.Wrapf(err, "failed to generate QSFS %d", idx)
 		}
 		newDl.Workloads = append(newDl.Workloads, qsfsWorkload)
 	}
 
 	newDl.Metadata, err = dl.GenerateMetadata()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate deployment %s metadata", dl.Name)
+		return nil, usedHosts, errors.Wrapf(err, "failed to generate deployment %s metadata", dl.Name)
 	}
 
-	return map[uint32]gridtypes.Deployment{dl.NodeID: newDl}, nil
+	return map[uint32]gridtypes.Deployment{dl.NodeID: newDl}, usedHosts, nil
 }
 
 // Deploy deploys a new deployment
@@ -69,7 +70,8 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 	// solution providers
 	newDeploymentsSolutionProvider := map[uint32]*uint64{dl.NodeID: dl.SolutionProvider}
 
-	newDeployments, err := d.GenerateVersionlessDeployments(ctx, dl)
+	network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
+	newDeployments, _, err := d.GenerateVersionlessDeployments(ctx, dl, network.GetUsedNetworkHostIDs(dl.NodeID))
 	if err != nil {
 		return errors.Wrap(err, "could not generate deployments data")
 	}
@@ -83,6 +85,8 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID) {
 			d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID)
 		}
+		updateNetworkUsedIPs(&network, dl)
+		d.tfPluginClient.State.Networks[dl.NetworkName] = network
 	}
 
 	return err
@@ -92,13 +96,17 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.Deployment) error {
 	newDeployments := make(map[uint32][]gridtypes.Deployment)
 	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
-
+	networkUsedIPs := make(map[string][]byte)
 	for _, dl := range dls {
 		if err := d.Validate(ctx, dl); err != nil {
 			return err
 		}
-
-		generatedDls, err := d.GenerateVersionlessDeployments(ctx, dl)
+		if _, ok := networkUsedIPs[dl.NetworkName]; !ok {
+			network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
+			networkUsedIPs[dl.NetworkName] = network.GetUsedNetworkHostIDs(dl.NodeID)
+		}
+		generatedDls, usedHosts, err := d.GenerateVersionlessDeployments(ctx, dl, networkUsedIPs[dl.NetworkName])
+		networkUsedIPs[dl.NetworkName] = usedHosts
 		if err != nil {
 			return errors.Wrap(err, "could not generate deployments data")
 		}
@@ -142,8 +150,21 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, dl *workloads.Deploymen
 	delete(dl.NodeDeploymentID, dl.NodeID)
 	d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID)
 	dl.ContractID = 0
+	delete(d.tfPluginClient.State.Networks[dl.NetworkName].NodeDeploymentHostIDs[dl.NodeID], dl.ContractID)
 
 	return nil
+}
+
+func updateNetworkUsedIPs(network *state.Network, dl *workloads.Deployment) {
+	ips := network.GetDeploymentHostIDs(dl.NodeID, dl.ContractID)
+	for _, vm := range dl.Vms {
+		vmIP := net.ParseIP(vm.IP).To4()
+		if vmIP == nil {
+			continue
+		}
+		ips = append(ips, vmIP[3])
+	}
+	network.SetDeploymentHostIDs(dl.NodeID, dl.ContractID, ips)
 }
 
 func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl *workloads.Deployment, newDls map[uint32][]gridtypes.Deployment) error {
@@ -165,6 +186,9 @@ func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl 
 		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID) {
 			d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID)
 		}
+		network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
+		updateNetworkUsedIPs(&network, dl)
+		d.tfPluginClient.State.Networks[dl.NetworkName] = network
 	}
 
 	return nil
@@ -266,18 +290,16 @@ func (d *DeploymentDeployer) Validate(ctx context.Context, dl *workloads.Deploym
 	return dl.Validate()
 }
 
-func (d *DeploymentDeployer) assignNodesIPs(dl *workloads.Deployment) error {
+func (d *DeploymentDeployer) assignNodesIPs(dl *workloads.Deployment, usedHosts []byte) ([]byte, error) {
 	network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
 	ipRange := network.GetNodeSubnet(dl.NodeID)
 
-	usedHosts := network.GetUsedNetworkHostIDs(dl.NodeID)
-
 	if len(dl.Vms) == 0 {
-		return nil
+		return usedHosts, nil
 	}
 	ip, ipRangeCIDR, err := net.ParseCIDR(ipRange)
 	if err != nil {
-		return errors.Wrapf(err, "invalid ip %s", ipRange)
+		return usedHosts, errors.Wrapf(err, "invalid ip %s", ipRange)
 	}
 	for _, vm := range dl.Vms {
 		vmIP := net.ParseIP(vm.IP).To4()
@@ -297,7 +319,7 @@ func (d *DeploymentDeployer) assignNodesIPs(dl *workloads.Deployment) error {
 
 		for workloads.Contains(usedHosts, curHostID) {
 			if curHostID == 254 {
-				return errors.New("all 253 ips of the network are exhausted")
+				return usedHosts, errors.New("all 253 ips of the network are exhausted")
 			}
 			curHostID++
 		}
@@ -307,7 +329,7 @@ func (d *DeploymentDeployer) assignNodesIPs(dl *workloads.Deployment) error {
 		dl.Vms[idx].IP = vmIP.String()
 	}
 	dl.IPrange = ipRange
-	return nil
+	return usedHosts, nil
 }
 
 func (d *DeploymentDeployer) syncContract(ctx context.Context, dl *workloads.Deployment) error {

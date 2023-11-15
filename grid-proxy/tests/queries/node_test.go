@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
 
@@ -170,6 +171,13 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &v
 	},
+	"InDedicatedFarm": func(agg NodesAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
 	"Dedicated": func(agg NodesAggregate) interface{} {
 		v := true
 		if flip(.5) {
@@ -227,12 +235,16 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &v
 	},
+	"OwnedBy": func(_ NodesAggregate) interface{} {
+		v := uint64(rand.Intn(110))
+		return &v
+	},
 	"GpuDeviceName": func(agg NodesAggregate) interface{} {
-		deviceNames := []string{"navi", "a", "hamada"}
+		deviceNames := []string{"geforce", "radeon", "a", "hamada"}
 		return &deviceNames[rand.Intn(len(deviceNames))]
 	},
 	"GpuVendorName": func(agg NodesAggregate) interface{} {
-		vendorNames := []string{"advanced", "a", "hamada"}
+		vendorNames := []string{"amd", "intel", "a", "hamada"}
 		return &vendorNames[rand.Intn(len(vendorNames))]
 	},
 	"GpuVendorID": func(agg NodesAggregate) interface{} {
@@ -356,13 +368,19 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test has_gpu filter", func(t *testing.T) {
+		l := proxytypes.Limit{}
 		hasGPU := true
-		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{HasGPU: &hasGPU}, types.DefaultLimit())
-		assert.NoError(t, err)
-
-		for _, node := range nodes {
-			assert.Equal(t, node.NumGPU, 1, "has_gpu filter did not work")
+		f := proxytypes.NodeFilter{
+			HasGPU: &hasGPU,
 		}
+
+		_, wantCount, err := mockClient.Nodes(context.Background(), f, l)
+		require.NoError(t, err)
+
+		_, gotCount, err := gridProxyClient.Nodes(context.Background(), f, l)
+		require.NoError(t, err)
+
+		assert.Equal(t, wantCount, gotCount)
 	})
 
 	t.Run("nodes test gpu vendor, device name filter", func(t *testing.T) {

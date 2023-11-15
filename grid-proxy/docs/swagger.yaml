@@ -38,14 +38,14 @@ definitions:
     type: object
   types.Contract:
     properties:
-      contractId:
+      contract_id:
         type: integer
       created_at:
         type: integer
       details: {}
       state:
         type: string
-      twinId:
+      twin_id:
         type: integer
       type:
         type: string
@@ -57,39 +57,6 @@ definitions:
       discountReceived:
         type: string
       timestamp:
-        type: integer
-    type: object
-  types.Counters:
-    properties:
-      accessNodes:
-        type: integer
-      contracts:
-        type: integer
-      countries:
-        type: integer
-      farms:
-        type: integer
-      gateways:
-        type: integer
-      gpus:
-        type: integer
-      nodes:
-        type: integer
-      nodesDistribution:
-        additionalProperties:
-          type: integer
-        type: object
-      publicIps:
-        type: integer
-      totalCru:
-        type: integer
-      totalHru:
-        type: integer
-      totalMru:
-        type: integer
-      totalSru:
-        type: integer
-      twins:
         type: integer
     type: object
   types.Farm:
@@ -146,6 +113,8 @@ definitions:
         type: integer
       id:
         type: string
+      inDedicatedFarm:
+        type: boolean
       location:
         $ref: '#/definitions/types.Location'
       nodeId:
@@ -249,6 +218,8 @@ definitions:
         type: integer
       id:
         type: string
+      inDedicatedFarm:
+        type: boolean
       location:
         $ref: '#/definitions/types.Location'
       nodeId:
@@ -300,6 +271,41 @@ definitions:
         type: string
       ip:
         type: string
+    type: object
+  types.Stats:
+    properties:
+      accessNodes:
+        type: integer
+      contracts:
+        type: integer
+      countries:
+        type: integer
+      dedicatedNodes:
+        type: integer
+      farms:
+        type: integer
+      gateways:
+        type: integer
+      gpus:
+        type: integer
+      nodes:
+        type: integer
+      nodesDistribution:
+        additionalProperties:
+          type: integer
+        type: object
+      publicIps:
+        type: integer
+      totalCru:
+        type: integer
+      totalHru:
+        type: integer
+      totalMru:
+        type: integer
+      totalSru:
+        type: integer
+      twins:
+        type: integer
     type: object
   types.Twin:
     properties:
@@ -668,6 +674,10 @@ paths:
         in: query
         name: dedicated
         type: boolean
+      - description: Set to true to get the nodes belongs to dedicated farms
+        in: query
+        name: in_dedicated_farm
+        type: boolean
       - description: Set to true to filter the available nodes for renting
         in: query
         name: rentable
@@ -688,14 +698,17 @@ paths:
         in: query
         name: farm_ids
         type: string
-      - description: certificate type NotCertified, Silver or Gold
+      - description: certificate type
         enum:
-        - NotCertified
-        - Silver
-        - Gold
+        - Certified
+        - DIY
         in: query
         name: certification_type
         type: string
+      - description: get nodes owned by twin id
+        in: query
+        name: owned_by
+        type: integer
       produces:
       - application/json
       responses:
@@ -831,6 +844,10 @@ paths:
         in: query
         name: dedicated
         type: boolean
+      - description: Set to true to get the nodes belongs to dedicated farms
+        in: query
+        name: in_dedicated_farm
+        type: boolean
       - description: Set to true to filter the available nodes for renting
         in: query
         name: rentable
@@ -851,11 +868,10 @@ paths:
         in: query
         name: farm_ids
         type: string
-      - description: certificate type NotCertified, Silver or Gold
+      - description: certificate type
         enum:
-        - NotCertified
-        - Silver
-        - Gold
+        - Certified
+        - DIY
         in: query
         name: certification_type
         type: string
@@ -883,6 +899,10 @@ paths:
         in: query
         name: gpu_available
         type: boolean
+      - description: get nodes owned by twin id
+        in: query
+        name: owned_by
+        type: integer
       produces:
       - application/json
       responses:
@@ -1035,7 +1055,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/types.Counters'
+              $ref: '#/definitions/types.Stats'
             type: array
         "400":
           description: Bad Request
@@ -1070,9 +1090,17 @@ paths:
         in: query
         name: twin_id
         type: integer
-      - description: account address
+      - description: Account address
         in: query
         name: account_id
+        type: string
+      - description: Relay address
+        in: query
+        name: relay
+        type: string
+      - description: Twin public key
+        in: query
+        name: public_key
         type: string
       produces:
       - application/json

@@ -29,7 +29,7 @@ jobs:
         run: cd grid-proxy && go test -v ./pkg/client
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         dir:
           - activation-service

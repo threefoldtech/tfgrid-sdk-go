@@ -8,7 +8,7 @@ import (
 
 // Database interface for storing and fetching grid info
 type Database interface {
-	GetCounters(ctx context.Context, filter types.StatsFilter) (types.Counters, error)
+	GetStats(ctx context.Context, filter types.StatsFilter) (types.Stats, error)
 	GetNode(ctx context.Context, nodeID uint32) (Node, error)
 	GetFarm(ctx context.Context, farmID uint32) (Farm, error)
 	GetNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]Node, uint, error)
@@ -64,7 +64,7 @@ type Node struct {
 	Ipv4            string
 	Ipv6            string
 	Certification   string
-	Dedicated       bool
+	FarmDedicated   bool `gorm:"farm_dedicated"`
 	RentContractID  int64
 	RentedByTwinID  int64
 	SerialNumber    string
@@ -73,6 +73,7 @@ type Node struct {
 	Power           NodePower `gorm:"type:jsonb"`
 	NumGPU          int       `gorm:"num_gpu"`
 	ExtraFee        uint64
+	HasNodeContract bool `gorm:"has_node_contract"`
 }
 
 // NodePower struct is the farmerbot report for node status

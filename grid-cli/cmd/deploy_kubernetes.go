@@ -187,6 +187,8 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
+
+		log.Info().Msgf("master wireguard ip: %s", cluster.Master.IP)
 		if ipv4 {
 			log.Info().Msgf("master ipv4: %s", cluster.Master.ComputedIP)
 		}
@@ -195,6 +197,25 @@ var deployKubernetesCmd = &cobra.Command{
 		}
 		if ygg {
 			log.Info().Msgf("master yggdrasil ip: %s", cluster.Master.YggIP)
+		}
+
+		for _, worker := range cluster.Workers {
+			log.Info().Msgf("%s wireguard ip: %s", worker.Name, worker.IP)
+		}
+		if workersIPV4 {
+			for _, worker := range cluster.Workers {
+				log.Info().Msgf("%s ipv4: %s", worker.Name, worker.ComputedIP)
+			}
+		}
+		if workersIPV6 {
+			for _, worker := range cluster.Workers {
+				log.Info().Msgf("%s ipv6: %s", worker.Name, worker.ComputedIP6)
+			}
+		}
+		if workersYgg {
+			for _, worker := range cluster.Workers {
+				log.Info().Msgf("%s yggdrasil ip: %s", worker.Name, worker.YggIP)
+			}
 		}
 		return nil
 	},

@@ -5,10 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
-	cache "github.com/patrickmn/go-cache"
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
 
@@ -83,7 +81,7 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 // @Accept  json
 // @Produce  json
 // @Param status query string false "Node status filter, 'up': for only up nodes, 'down': for only down nodes & 'standby' for powered-off nodes by farmerbot."
-// @Success 200 {object} []types.Counters
+// @Success 200 {object} []types.Stats
 // @Failure 400 {object} string
 // @Failure 500 {object} string
 // @Router /stats [get]
@@ -94,12 +92,12 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 		return nil, mw.BadRequest(err)
 	}
 
-	counters, err := a.cl.Counters(r.Context(), filter)
+	stats, err := a.cl.Stats(r.Context(), filter)
 	if err != nil {
 		return nil, mw.Error(err)
 	}
 
-	return counters, nil
+	return stats, nil
 }
 
 // getNodes godoc
@@ -127,18 +125,20 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param ipv6 query bool false "Set to true to filter nodes with ipv6"
 // @Param domain query bool false "Set to true to filter nodes with domain"
 // @Param dedicated query bool false "Set to true to get the dedicated nodes only"
+// @Param in_dedicated_farm query bool false "Set to true to get the nodes belongs to dedicated farms"
 // @Param rentable query bool false "Set to true to filter the available nodes for renting"
 // @Param rented query bool false "Set to true to filter rented nodes"
 // @Param rented_by query int false "rented by twin id"
 // @Param available_for query int false "available for twin id"
 // @Param farm_ids query string false "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')"
-// @Param certification_type query string false "certificate type NotCertified, Silver or Gold" Enums(NotCertified, Silver, Gold)
+// @Param certification_type query string false "certificate type" Enums(Certified, DIY)
 // @Param has_gpu query bool false "filter nodes on whether they have GPU support or not"
 // @Param gpu_device_id query string false "filter nodes based on GPU device ID"
 // @Param gpu_device_name query string false "filter nodes based on GPU device partial name"
 // @Param gpu_vendor_id query string false "filter nodes based on GPU vendor ID"
 // @Param gpu_vendor_name query string false "filter nodes based on GPU vendor partial name"
 // @Param gpu_available query bool false "filter nodes that have available GPU"
+// @Param owned_by query int false "get nodes owned by twin id"
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -168,12 +168,14 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param ipv6 query bool false "Set to true to filter nodes with ipv6"
 // @Param domain query bool false "Set to true to filter nodes with domain"
 // @Param dedicated query bool false "Set to true to get the dedicated nodes only"
+// @Param in_dedicated_farm query bool false "Set to true to get the nodes belongs to dedicated farms"
 // @Param rentable query bool false "Set to true to filter the available nodes for renting"
 // @Param rented query bool false "Set to true to filter rented nodes"
 // @Param rented_by query int false "rented by twin id"
 // @Param available_for query int false "available for twin id"
 // @Param farm_ids query string false "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')"
-// @Param certification_type query string false "certificate type NotCertified, Silver or Gold" Enums(NotCertified, Silver, Gold)
+// @Param certification_type query string false "certificate type" Enums(Certified, DIY)
+// @Param owned_by query int false "get nodes owned by twin id"
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -273,7 +275,9 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set twins' count on headers based on filter"
 // @Param twin_id query int false "twin id"
-// @Param account_id query string false "account address"
+// @Param account_id query string false "Account address"
+// @Param relay query string false "Relay address"
+// @Param public_key query string false "Twin public key"
 // @Success 200 {object} []types.Twin
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -498,10 +502,8 @@ func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
 // @BasePath /
 func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Client) error {
 
-	c := cache.New(2*time.Minute, 3*time.Minute)
 	a := App{
 		cl:             cl,
-		lruCache:       c,
 		releaseVersion: gitCommit,
 		relayClient:    relayClient,
 	}

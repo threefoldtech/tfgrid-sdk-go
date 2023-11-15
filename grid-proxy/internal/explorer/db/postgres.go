@@ -39,10 +39,10 @@ const (
 		COALESCE(sum(contract_resources.cru), 0) as used_cru,
 		COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as used_mru,
 		COALESCE(sum(contract_resources.hru), 0) as used_hru,
-		COALESCE(sum(contract_resources.sru), 0) + 107374182400 as used_sru,
+		COALESCE(sum(contract_resources.sru), 0) + 21474836480 as used_sru,
 		node_resources_total.mru - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as free_mru,
 		node_resources_total.hru - COALESCE(sum(contract_resources.hru), 0) as free_hru,
-		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 107374182400 as free_sru,
+		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 21474836480 as free_sru,
 		COALESCE(node_resources_total.cru, 0) as total_cru,
 		COALESCE(node_resources_total.mru, 0) as total_mru,
 		COALESCE(node_resources_total.hru, 0) as total_hru,
@@ -67,10 +67,10 @@ const (
 		COALESCE(sum(contract_resources.cru), 0) as used_cru,
 		COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as used_mru,
 		COALESCE(sum(contract_resources.hru), 0) as used_hru,
-		COALESCE(sum(contract_resources.sru), 0) + 107374182400 as used_sru,
+		COALESCE(sum(contract_resources.sru), 0) + 21474836480 as used_sru,
 		node_resources_total.mru - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as free_mru,
 		node_resources_total.hru - COALESCE(sum(contract_resources.hru), 0) as free_hru,
-		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 107374182400 as free_sru,
+		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 21474836480 as free_sru,
 		COALESCE(node_resources_total.cru, 0) as total_cru,
 		COALESCE(node_resources_total.mru, 0) as total_mru,
 		COALESCE(node_resources_total.hru, 0) as total_hru,
@@ -102,17 +102,8 @@ const (
 	RETURN v_dec_value;
 	END;
 	$$ LANGUAGE plpgsql;
-	
-	CREATE OR REPLACE FUNCTION notify_nodes_count_changed() RETURNS trigger AS $notify_nodes_count_changed$
-	BEGIN
-		PERFORM pg_notify('node_added', NEW.twin_id);
-		RETURN NULL;
-	END;
-	$notify_nodes_count_changed$ LANGUAGE plpgsql;
-	
-	CREATE OR REPLACE TRIGGER node_added
-	AFTER INSERT ON node
-	FOR EACH ROW EXECUTE PROCEDURE notify_nodes_count_changed();
+
+	DROP TRIGGER IF EXISTS node_added ON node;
 	`
 )
 
@@ -169,30 +160,30 @@ func (d *PostgresDatabase) initialize() error {
 	return res.Error
 }
 
-// GetCounters returns aggregate info about the grid
-func (d *PostgresDatabase) GetCounters(ctx context.Context, filter types.StatsFilter) (types.Counters, error) {
-	var counters types.Counters
-	if res := d.gormDB.WithContext(ctx).Table("twin").Count(&counters.Twins); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get twin count")
+// GetStats returns aggregate info about the grid
+func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilter) (types.Stats, error) {
+	var stats types.Stats
+	if res := d.gormDB.WithContext(ctx).Table("twin").Count(&stats.Twins); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get twin count")
 	}
-	if res := d.gormDB.WithContext(ctx).Table("public_ip").Count(&counters.PublicIPs); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get public ip count")
+	if res := d.gormDB.WithContext(ctx).Table("public_ip").Count(&stats.PublicIPs); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get public ip count")
 	}
 	var count int64
 	if res := d.gormDB.WithContext(ctx).Table("node_contract").Count(&count); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get node contract count")
+		return stats, errors.Wrap(res.Error, "couldn't get node contract count")
 	}
-	counters.Contracts += count
+	stats.Contracts += count
 	if res := d.gormDB.WithContext(ctx).Table("rent_contract").Count(&count); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get rent contract count")
+		return stats, errors.Wrap(res.Error, "couldn't get rent contract count")
 	}
-	counters.Contracts += count
+	stats.Contracts += count
 	if res := d.gormDB.WithContext(ctx).Table("name_contract").Count(&count); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get name contract count")
+		return stats, errors.Wrap(res.Error, "couldn't get name contract count")
 	}
-	counters.Contracts += count
-	if res := d.gormDB.WithContext(ctx).Table("farm").Distinct("farm_id").Count(&counters.Farms); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get farm count")
+	stats.Contracts += count
+	if res := d.gormDB.WithContext(ctx).Table("farm").Distinct("farm_id").Count(&stats.Farms); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get farm count")
 	}
 
 	condition := "TRUE"
@@ -210,16 +201,16 @@ func (d *PostgresDatabase) GetCounters(ctx context.Context, filter types.StatsFi
 		).
 		Joins("LEFT JOIN node_resources_total ON node.id = node_resources_total.node_id").
 		Where(condition).
-		Scan(&counters); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get nodes total resources")
+		Scan(&stats); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get nodes total resources")
 	}
 	if res := d.gormDB.WithContext(ctx).Table("node").
-		Where(condition).Count(&counters.Nodes); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get node count")
+		Where(condition).Count(&stats.Nodes); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get node count")
 	}
 	if res := d.gormDB.WithContext(ctx).Table("node").
-		Where(condition).Distinct("country").Count(&counters.Countries); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get country count")
+		Where(condition).Distinct("country").Count(&stats.Countries); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get country count")
 	}
 	query := d.gormDB.WithContext(ctx).
 		Table("node").
@@ -229,26 +220,49 @@ func (d *PostgresDatabase) GetCounters(ctx context.Context, filter types.StatsFi
 			`,
 		)
 
-	if res := query.Where(condition).Where("COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != ''").Count(&counters.AccessNodes); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get access node count")
+	if res := query.Where(condition).Where("COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != ''").Count(&stats.AccessNodes); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get access node count")
 	}
-	if res := query.Where(condition).Where("COALESCE(public_config.domain, '') != '' AND (COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '')").Count(&counters.Gateways); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get gateway count")
+	if res := query.Where(condition).Where("COALESCE(public_config.domain, '') != '' AND (COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '')").Count(&stats.Gateways); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get gateway count")
 	}
 	var distribution []NodesDistribution
 	if res := d.gormDB.WithContext(ctx).Table("node").
 		Select("country, count(node_id) as nodes").Where(condition).Group("country").Scan(&distribution); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get nodes distribution")
+		return stats, errors.Wrap(res.Error, "couldn't get nodes distribution")
 	}
-	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&counters.GPUs); res.Error != nil {
-		return counters, errors.Wrap(res.Error, "couldn't get node with GPU count")
+	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&stats.GPUs); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get node with GPU count")
 	}
 	nodesDistribution := map[string]int64{}
 	for _, d := range distribution {
 		nodesDistribution[d.Country] = d.Nodes
 	}
-	counters.NodesDistribution = nodesDistribution
-	return counters, nil
+	stats.NodesDistribution = nodesDistribution
+
+	nonDeletedNodeContracts := d.gormDB.Table("node_contract").
+		Select("DISTINCT ON (node_id) node_id, contract_id").
+		Where("state IN ('Created', 'GracePeriod')")
+
+	res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
+		Joins(
+			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
+		).
+		Joins(
+			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", nonDeletedNodeContracts,
+		).
+		Joins(
+			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
+		).
+		Where(
+			"farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0",
+		).
+		Count(&stats.DedicatedNodes)
+	if res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get dedicated nodes count")
+	}
+
+	return stats, nil
 }
 
 // Scan is a custom decoder for jsonb filed. executed while scanning the node.
@@ -424,7 +438,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"public_config.ipv4",
 			"public_config.ipv6",
 			"node.certification",
-			"farm.dedicated_farm as dedicated",
+			"farm.dedicated_farm as farm_dedicated",
 			"rent_contract.contract_id as rent_contract_id",
 			"rent_contract.twin_id as rented_by_twin_id",
 			"node.serial_number",
@@ -432,6 +446,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"convert_to_decimal(location.latitude) as latitude",
 			"node.power",
 			"node.extra_fee",
+			"CASE WHEN node_contract.contract_id IS NOT NULL THEN 1 ELSE 0 END AS has_node_contract",
 			nodeGPUQuery,
 		).
 		Joins(
@@ -526,23 +541,34 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.Domain != nil {
 		q = q.Where("(COALESCE(public_config.domain, '') = '') != ?", *filter.Domain)
 	}
+	if filter.CertificationType != nil {
+		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
+	}
+
+	// Dedicated nodes filters
+	if filter.InDedicatedFarm != nil {
+		q = q.Where(`farm.dedicated_farm = ?`, *filter.InDedicatedFarm)
+	}
 	if filter.Dedicated != nil {
-		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)
+		q = q.Where(`? = (farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Dedicated)
 	}
 	if filter.Rentable != nil {
 		q = q.Where(`? = ((farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0) AND COALESCE(rent_contract.contract_id, 0) = 0)`, *filter.Rentable)
 	}
-	if filter.RentedBy != nil {
-		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
-	}
 	if filter.AvailableFor != nil {
 		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ? OR (COALESCE(rent_contract.twin_id, 0) = 0 AND farm.dedicated_farm = false)`, *filter.AvailableFor)
+	}
+	if filter.RentedBy != nil {
+		q = q.Where(`COALESCE(rent_contract.twin_id, 0) = ?`, *filter.RentedBy)
 	}
 	if filter.Rented != nil {
 		q = q.Where(`? = (COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Rented)
 	}
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
+	}
+	if filter.OwnedBy != nil {
+		q = q.Where(`COALESCE(farm.twin_id, 0) = ?`, *filter.OwnedBy)
 	}
 
 	/*

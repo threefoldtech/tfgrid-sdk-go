@@ -11,6 +11,12 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+func isDedicatedNode(db DBData, node Node) bool {
+	return db.Farms[node.FarmID].DedicatedFarm ||
+		len(db.NonDeletedContracts[node.NodeID]) == 0 ||
+		db.NodeRentedBy[node.NodeID] != 0
+}
+
 // Nodes returns nodes with the given filters and pagination parameters
 func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) (res []types.Node, totalCount int, err error) {
 	res = []types.Node{}
@@ -22,10 +28,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 	}
 	for _, node := range g.data.Nodes {
 		if node.satisfies(filter, &g.data) {
-			numGPU := 0
-			if _, ok := g.data.GPUs[node.TwinID]; ok {
-				numGPU = 1
-			}
+			numGPU := len(g.data.GPUs[node.TwinID])
 
 			nodePower := types.NodePower{
 				State:  node.Power.State,
@@ -69,7 +72,8 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				Status:            status,
 				CertificationType: node.Certification,
 				UpdatedAt:         int64(node.UpdatedAt),
-				Dedicated:         g.data.Farms[node.FarmID].DedicatedFarm,
+				InDedicatedFarm:   g.data.Farms[node.FarmID].DedicatedFarm,
+				Dedicated:         isDedicatedNode(g.data, node),
 				RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 				RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
 				SerialNumber:      node.SerialNumber,
@@ -100,10 +104,8 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 
 func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
 	node := g.data.Nodes[uint64(nodeID)]
-	numGPU := 0
-	if _, ok := g.data.GPUs[node.TwinID]; ok {
-		numGPU = 1
-	}
+	numGPU := len(g.data.GPUs[node.TwinID])
+
 	nodePower := types.NodePower{
 		State:  node.Power.State,
 		Target: node.Power.Target,
@@ -148,7 +150,8 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		Status:            status,
 		CertificationType: node.Certification,
 		UpdatedAt:         int64(node.UpdatedAt),
-		Dedicated:         g.data.Farms[node.FarmID].DedicatedFarm,
+		InDedicatedFarm:   g.data.Farms[node.FarmID].DedicatedFarm,
+		Dedicated:         isDedicatedNode(g.data, node),
 		RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 		RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
 		SerialNumber:      node.SerialNumber,
@@ -258,7 +261,11 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.Dedicated != nil && *f.Dedicated != data.Farms[n.FarmID].DedicatedFarm {
+	if f.InDedicatedFarm != nil && *f.InDedicatedFarm != data.Farms[n.FarmID].DedicatedFarm {
+		return false
+	}
+
+	if f.Dedicated != nil && *f.Dedicated != isDedicatedNode(*data, *n) {
 		return false
 	}
 
@@ -292,28 +299,53 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.OwnedBy != nil && *f.OwnedBy != data.Farms[n.FarmID].TwinID {
+		return false
+	}
+
 	if f.CertificationType != nil && *f.CertificationType != n.Certification {
 		return false
 	}
 
-	gpu, ok := data.GPUs[n.TwinID]
-	if f.HasGPU != nil && *f.HasGPU != ok {
+	foundGpuFilter := f.HasGPU != nil || f.GpuDeviceName != nil || f.GpuVendorName != nil || f.GpuVendorID != nil || f.GpuDeviceID != nil || f.GpuAvailable != nil
+	gpus, foundGpuCards := data.GPUs[n.TwinID]
+
+	if !foundGpuCards && foundGpuFilter {
 		return false
 	}
 
-	if f.GpuDeviceName != nil && !strings.Contains(strings.ToLower(gpu.Device), *f.GpuDeviceName) {
+	if f.HasGPU != nil && *f.HasGPU != foundGpuCards {
 		return false
 	}
 
-	if f.GpuVendorName != nil && !strings.Contains(strings.ToLower(gpu.Vendor), *f.GpuVendorName) {
+	foundSuitableCard := false
+	for _, gpu := range gpus {
+		if gpuSatisfied(gpu, f) {
+			foundSuitableCard = true
+		}
+	}
+
+	if !foundSuitableCard && foundGpuFilter {
 		return false
 	}
 
-	if f.GpuVendorID != nil && !strings.Contains(strings.ToLower(gpu.ID), *f.GpuVendorID) {
+	return true
+}
+
+func gpuSatisfied(gpu NodeGPU, f types.NodeFilter) bool {
+	if f.GpuDeviceName != nil && !contains(gpu.Device, *f.GpuDeviceName) {
 		return false
 	}
 
-	if f.GpuDeviceID != nil && !strings.Contains(strings.ToLower(gpu.ID), *f.GpuDeviceID) {
+	if f.GpuVendorName != nil && !contains(gpu.Vendor, *f.GpuVendorName) {
+		return false
+	}
+
+	if f.GpuVendorID != nil && !contains(gpu.ID, *f.GpuVendorID) {
+		return false
+	}
+
+	if f.GpuDeviceID != nil && !contains(gpu.ID, *f.GpuDeviceID) {
 		return false
 	}
 
@@ -321,8 +353,9 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if !ok && (f.HasGPU != nil || f.GpuDeviceName != nil || f.GpuVendorName != nil || f.GpuVendorID != nil || f.GpuDeviceID != nil || f.GpuAvailable != nil) {
-		return false
-	}
 	return true
+}
+
+func contains(s string, sub string) bool {
+	return strings.Contains(strings.ToLower(s), sub)
 }
