@@ -308,7 +308,7 @@ func (g *Clientimpl) NodeStatus(ctx context.Context, nodeID uint32) (status type
 }
 
 // Stats return statistics about the grid
-func (g *Clientimpl) Stats(ctx context.Context, filter types.StatsFilter) (counters types.Stats, err error) {
+func (g *Clientimpl) Stats(ctx context.Context, filter types.StatsFilter) (stats types.Stats, err error) {
 	url, err := g.prepareURL("stats", filter)
 	if err != nil {
 		return types.Stats{}, errors.Wrap(err, "failed to prepare url")

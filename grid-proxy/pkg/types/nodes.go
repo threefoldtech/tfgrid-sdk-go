@@ -35,6 +35,7 @@ type Node struct {
 	PublicConfig      PublicConfig `json:"public_config"`
 	Status            string       `json:"status"` // added node status field for up or down
 	CertificationType string       `json:"certification_type"`
+	InDedicatedFarm   bool         `json:"in_dedicated_farm"`
 	Dedicated         bool         `json:"dedicated"`
 	RentContractID    uint         `json:"rent_contract_id"`
 	RentedByTwinID    uint         `json:"rented_by_twin_id"`
@@ -68,6 +69,7 @@ type NodeWithNestedCapacity struct {
 	PublicConfig      PublicConfig   `json:"public_config"`
 	Status            string         `json:"status"` // added node status field for up or down
 	CertificationType string         `json:"certification_type"`
+	InDedicatedFarm   bool           `json:"in_dedicated_farm"`
 	Dedicated         bool           `json:"dedicated"`
 	RentContractID    uint           `json:"rent_contract_id"`
 	RentedByTwinID    uint           `json:"rented_by_twin_id"`
@@ -116,7 +118,9 @@ type NodeFilter struct {
 	IPv6              *bool    `schema:"ipv6,omitempty"`
 	Domain            *bool    `schema:"domain,omitempty"`
 	Dedicated         *bool    `schema:"dedicated,omitempty"`
+	InDedicatedFarm   *bool    `schema:"in_dedicated_farm,omitempty"`
 	Rentable          *bool    `schema:"rentable,omitempty"`
+	OwnedBy           *uint64  `schema:"owned_by,omitempty"`
 	Rented            *bool    `schema:"rented,omitempty"`
 	RentedBy          *uint64  `schema:"rented_by,omitempty"`
 	AvailableFor      *uint64  `schema:"available_for,omitempty"`

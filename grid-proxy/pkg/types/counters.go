@@ -1,7 +1,7 @@
 package types
 
-// Counters contains aggregate info about the grid
-type Counters struct {
+// Stats contains aggregate info about the grid
+type Stats struct {
 	Nodes             int64            `json:"nodes"`
 	Farms             int64            `json:"farms"`
 	Countries         int64            `json:"countries"`
@@ -16,6 +16,7 @@ type Counters struct {
 	Contracts         int64            `json:"contracts"`
 	NodesDistribution map[string]int64 `json:"nodes_distribution" gorm:"-:all"`
 	GPUs              int64            `json:"gpus"`
+	DedicatedNodes    int64            `json:"dedicated_nodes"`
 }
 
 // StatsFilter statistics filters
