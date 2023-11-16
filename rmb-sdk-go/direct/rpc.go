@@ -70,7 +70,14 @@ func (d *RpcCLient) Call(ctx context.Context, twin uint32, fn string, data inter
 	id := uuid.NewString()
 
 	ch := make(chan incomingEnv)
-	defer close(ch)
+	defer func() {
+		close(ch)
+
+		d.m.Lock()
+		delete(d.responses, id)
+		d.m.Unlock()
+	}()
+
 	d.m.Lock()
 	d.responses[id] = ch
 	d.m.Unlock()
