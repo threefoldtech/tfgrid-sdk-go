@@ -7,6 +7,7 @@ import (
 	"net"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -48,26 +49,46 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	sort.Slice(hddDisks, func(i, j int) bool {
 		return hddDisks[i] > hddDisks[j]
 	})
+
 	// check pools
 	var nodePools []types.Node
-	for _, node := range nodes {
-		client, err := tfPlugin.NcPool.GetNodeClient(tfPlugin.SubstrateConn, uint32(node.NodeID))
-		if err != nil {
-			log.Error().Err(err).Msgf("failed to get node '%d' client", node.NodeID)
-			workloads.Delete(nodePools, node)
-			continue
-		}
+	var wg sync.WaitGroup
+	var lock sync.Mutex
 
-		pools, err := client.Pools(ctx)
-		if err != nil {
-			log.Error().Err(err).Msgf("failed to get node '%d' pools", node.NodeID)
-			workloads.Delete(nodePools, node)
-			continue
-		}
-		if hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) && hasEnoughStorage(pools, hddDisks, zos.HDDDevice) {
-			nodePools = append(nodePools, node)
-		}
+	for _, node := range nodes {
+		wg.Add(1)
+
+		go func(node types.Node) {
+			defer wg.Done()
+
+			client, err := tfPlugin.NcPool.GetNodeClient(tfPlugin.SubstrateConn, uint32(node.NodeID))
+			if err != nil {
+				log.Error().Err(err).Msgf("failed to get node '%d' client", node.NodeID)
+
+				lock.Lock()
+				workloads.Delete(nodePools, node)
+				lock.Unlock()
+				return
+			}
+
+			pools, err := client.Pools(ctx)
+			if err != nil {
+				log.Error().Err(err).Msgf("failed to get node '%d' pools", node.NodeID)
+
+				lock.Lock()
+				workloads.Delete(nodePools, node)
+				lock.Unlock()
+				return
+			}
+			if hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) && hasEnoughStorage(pools, hddDisks, zos.HDDDevice) {
+				lock.Lock()
+				nodePools = append(nodePools, node)
+				lock.Unlock()
+			}
+		}(node)
 	}
+
+	wg.Wait()
 
 	if len(nodePools) == 0 {
 		var freeSRU uint64
