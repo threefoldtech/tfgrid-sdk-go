@@ -18,8 +18,14 @@ import (
 )
 
 // FilterNodes filters nodes using proxy
-func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64) ([]types.Node, error) {
-	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, types.Limit{})
+func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64, optionalLimit ...uint64) ([]types.Node, error) {
+	limit := types.Limit{}
+
+	if len(optionalLimit) > 0 {
+		limit = types.Limit{Size: optionalLimit[0]}
+	}
+
+	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
 	if err != nil {
 		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
 	}
@@ -64,11 +70,11 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	}
 
 	if len(nodePools) == 0 {
-		freeSRU := uint64(0)
+		var freeSRU uint64
 		if options.FreeSRU != nil {
 			freeSRU = convertBytesToGB(*options.FreeSRU)
 		}
-		freeHRU := uint64(0)
+		var freeHRU uint64
 		if options.FreeHRU != nil {
 			freeHRU = convertBytesToGB(*options.FreeHRU)
 		}
