@@ -30,7 +30,7 @@ const (
 
 // Handler is a call back that is called with verified and decrypted incoming
 // messages. An error can be non-nil error if verification or decryption failed
-type Handler func(env *types.Envelope, err error)
+type Handler func(ctx context.Context, peer Peer, env *types.Envelope, err error)
 
 // Peer exposes the functionality to talk directly to an rmb relay
 type Peer struct {
@@ -207,7 +207,7 @@ func (d *Peer) process(ctx context.Context) {
 			}
 			// verify and decoding!
 			err := d.handleIncoming(&env)
-			d.handler(&env, err)
+			d.handler(ctx, *d, &env, err)
 		case <-ctx.Done():
 			return
 		}
@@ -297,14 +297,14 @@ func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string
 	}
 
 	if err != nil {
-		env.Message = &types.Envelope_Response{
-			Response: &types.Response{},
-		}
-	} else if cmd == nil {
 		env.Message = &types.Envelope_Error{
 			Error: &types.Error{
-				Message: "error message",
+				Message: err.Error(),
 			},
+		}
+	} else if cmd == nil {
+		env.Message = &types.Envelope_Response{
+			Response: &types.Response{},
 		}
 	} else {
 		env.Message = &types.Envelope_Request{
@@ -416,4 +416,27 @@ func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session
 	}
 
 	return nil
+}
+
+func (d *Peer) ParseResponse(response *types.Envelope, callBackErr error) ([]byte, error) {
+	if callBackErr != nil {
+		return []byte{}, callBackErr
+	}
+
+	errResp := response.GetError()
+	if errResp != nil {
+		return []byte{}, errors.New(errResp.Message)
+	}
+
+	resp := response.GetResponse()
+	if resp == nil {
+		return []byte{}, errors.New("received a non response envelope")
+	}
+
+	if response.Schema == nil || *response.Schema != rmb.DefaultSchema {
+		return []byte{}, fmt.Errorf("invalid schema received expected '%s'", rmb.DefaultSchema)
+	}
+
+	output := response.Payload.(*types.Envelope_Plain).Plain
+	return output, nil
 }

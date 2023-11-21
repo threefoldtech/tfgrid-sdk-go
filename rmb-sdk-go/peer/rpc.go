@@ -54,7 +54,7 @@ func NewRpcClient(
 	return &rpc, nil
 }
 
-func (d *RpcCLient) router(env *types.Envelope, err error) {
+func (d *RpcCLient) router(ctx context.Context, peer Peer, env *types.Envelope, err error) {
 	d.m.Lock()
 	defer d.m.Unlock()
 

@@ -40,11 +40,12 @@ func app() error {
 		return fmt.Errorf("failed to create direct client: %w", err)
 	}
 
-	const dist = 7 // <- replace this with the twin id of where the service is running
+	const dest = 7 // <- replace this with the twin id of where the router server is running
 
 	for i := 0; i < 20; i++ {
 		data := []float64{rand.Float64(), rand.Float64()}
-		if err := peer.SendRequest(ctx, uuid.NewString(), dist, nil, "calculator.add", data); err != nil {
+		session := "test-router"
+		if err := peer.SendRequest(ctx, uuid.NewString(), dest, &session, "calculator.add", data); err != nil {
 			return err
 		}
 	}
