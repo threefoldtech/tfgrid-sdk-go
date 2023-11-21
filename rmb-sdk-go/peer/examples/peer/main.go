@@ -9,8 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
 )
 
 var resultsChan = make(chan bool)
@@ -26,9 +26,9 @@ func app() error {
 
 	defer sub.Close()
 
-	client, err := direct.NewClient(
+	peer, err := peer.NewPeer(
 		ctx,
-		direct.KeyTypeSr25519,
+		peer.KeyTypeSr25519,
 		mnemonics,
 		"wss://relay.dev.grid.tf",
 		"test-client",
@@ -45,7 +45,7 @@ func app() error {
 
 	for i := 0; i < 20; i++ {
 		data := []float64{rand.Float64(), rand.Float64()}
-		if err := client.Call(ctx, uuid.NewString(), dist, "calculator.add", data); err != nil {
+		if err := peer.Send(ctx, uuid.NewString(), dist, "calculator.add", data); err != nil {
 			return err
 		}
 	}
