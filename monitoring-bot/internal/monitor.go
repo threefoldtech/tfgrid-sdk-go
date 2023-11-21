@@ -18,7 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
 type address string
@@ -351,7 +351,7 @@ func (m *Monitor) systemVersion() map[network]version {
 		defer con.Close()
 
 		sessionID := generateSessionID()
-		rmbClient, err := direct.NewRpcClient(context.Background(), "sr25519", m.mnemonics[network], RelayURLS[network], sessionID, con, true)
+		rmbClient, err := peer.NewRpcClient(context.Background(), "sr25519", m.mnemonics[network], RelayURLS[network], sessionID, con, true)
 		if err != nil {
 			log.Error().Err(err).Msgf("error getting relay for network %v", network)
 			continue
