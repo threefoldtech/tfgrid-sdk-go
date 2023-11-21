@@ -1,4 +1,4 @@
-package direct
+package peer
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
 )
 
 var (
@@ -21,12 +21,16 @@ type incomingEnv struct {
 	err error
 }
 
+// RpcClient is a peer connection that makes it easy to make rpc calls
 type RpcCLient struct {
-	base      *Client
+	base      *Peer
 	responses map[string]chan incomingEnv
 	m         sync.Mutex
 }
 
+// NewRpcClient create a new rpc client
+// the rpc client is a full peer, but provide a custom handler to make
+// it easy to make rpc calls
 func NewRpcClient(
 	ctx context.Context,
 	keytype string,
@@ -40,7 +44,7 @@ func NewRpcClient(
 		responses: make(map[string]chan incomingEnv),
 	}
 
-	base, err := NewClient(ctx, keytype, mnemonics, relayURL, session, sub, enableEncryption, rpc.router)
+	base, err := NewPeer(ctx, keytype, mnemonics, relayURL, session, sub, enableEncryption, rpc.router)
 
 	if err != nil {
 		return nil, err
@@ -82,7 +86,7 @@ func (d *RpcCLient) Call(ctx context.Context, twin uint32, fn string, data inter
 	d.responses[id] = ch
 	d.m.Unlock()
 
-	if err := d.base.Call(ctx, id, twin, fn, data); err != nil {
+	if err := d.base.Send(ctx, id, twin, fn, data); err != nil {
 		return err
 	}
 

@@ -13,8 +13,8 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
-	rmbTypes "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	rmbTypes "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 
 type NodeGPUIndexer struct {
 	db                     db.Database
-	relayClient            *direct.Client
+	relayPeer              *peer.Peer
 	checkInterval          time.Duration
 	batchSize              int
 	nodesGPUResultsChan    chan []types.NodeGPU
@@ -55,11 +55,11 @@ func NewNodeGPUIndexer(
 	}
 
 	sessionId := fmt.Sprintf("tfgrid_proxy_indexer-%d", os.Getpid())
-	client, err := direct.NewClient(ctx, direct.KeyTypeSr25519, mnemonics, relayURL, sessionId, sub, true, indexer.relayCallback)
+	client, err := peer.NewPeer(ctx, peer.KeyTypeSr25519, mnemonics, relayURL, sessionId, sub, true, indexer.relayCallback)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create direct RMB client: %w", err)
 	}
-	indexer.relayClient = client
+	indexer.relayPeer = client
 
 	return indexer, nil
 }
@@ -116,7 +116,7 @@ func (n *NodeGPUIndexer) getNodeGPUInfo(ctx context.Context, node db.Node) error
 	defer cancel()
 
 	id := uuid.NewString()
-	return n.relayClient.Call(ctx, id, uint32(node.TwinID), "zos.gpu.list", nil)
+	return n.relayPeer.Send(ctx, id, uint32(node.TwinID), "zos.gpu.list", nil)
 }
 
 func (n *NodeGPUIndexer) getNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]db.Node, error) {

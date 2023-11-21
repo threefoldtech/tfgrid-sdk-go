@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
 	"log"
+
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
 func app() error {
@@ -19,9 +20,9 @@ func app() error {
 	}
 
 	defer sub.Close()
-	client, err := direct.NewRpcClient(
+	client, err := peer.NewRpcClient(
 		context.Background(),
-		direct.KeyTypeSr25519,
+		peer.KeyTypeSr25519,
 		mnemonics,
 		"wss://relay.dev.grid.tf",
 		"test-client",

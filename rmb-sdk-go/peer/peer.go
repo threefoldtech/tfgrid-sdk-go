@@ -1,5 +1,5 @@
 // Package direct package provides the functionality to create a direct websocket connection to rmb relays without the need to rmb peers.
-package direct
+package peer
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
 	"github.com/tyler-smith/go-bip39"
 	"google.golang.org/protobuf/proto"
 )
@@ -32,8 +32,8 @@ const (
 // messages. An error can be non-nil error if verification or decryption failed
 type Handler func(env *types.Envelope, err error)
 
-// Client exposes the functionality to talk directly to an rmb relay
-type Client struct {
+// Peer exposes the functionality to talk directly to an rmb relay
+type Peer struct {
 	source  *types.Address
 	signer  substrate.Identity
 	twinDB  TwinDB
@@ -72,13 +72,13 @@ func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 	return identity, nil
 }
 
-// NewClient creates a new RMB direct client. It connects directly to the RMB-Relay, and tries to reconnect if the connection broke.
+// NewPeer creates a new RMB peer client. It connects directly to the RMB-Relay, and tries to reconnect if the connection broke.
 //
 // You can close the connection by canceling the passed context.
 //
 // Make sure the context passed to Call() does not outlive the directClient's context.
 // Call() will panic if called while the directClient's context is canceled.
-func NewClient(
+func NewPeer(
 	ctx context.Context,
 	keytype string,
 	mnemonics string,
@@ -86,7 +86,7 @@ func NewClient(
 	session string,
 	sub *substrate.Substrate,
 	enableEncryption bool,
-	handler Handler) (*Client, error) {
+	handler Handler) (*Peer, error) {
 	identity, err := getIdentity(keytype, mnemonics)
 	if err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func NewClient(
 		Connection: sessionP,
 	}
 
-	cl := &Client{
+	cl := &Peer{
 		source:  &source,
 		signer:  identity,
 		twinDB:  twinDB,
@@ -152,7 +152,7 @@ func NewClient(
 	return cl, nil
 }
 
-func (d Client) handleIncoming(incoming *types.Envelope) error {
+func (d Peer) handleIncoming(incoming *types.Envelope) error {
 	errResp := incoming.GetError()
 	if incoming.Source == nil {
 		// an envelope received that has NO source twin
@@ -196,7 +196,7 @@ func (d Client) handleIncoming(incoming *types.Envelope) error {
 	return nil
 }
 
-func (d *Client) process(ctx context.Context) {
+func (d *Peer) process(ctx context.Context) {
 	for {
 		select {
 		case incoming := <-d.reader:
@@ -232,12 +232,12 @@ func generateNonce(size int) ([]byte, error) {
 	return nonce, nil
 }
 
-func (d *Client) generateSharedSect(pubkey *secp256k1.PublicKey) [32]byte {
+func (d *Peer) generateSharedSect(pubkey *secp256k1.PublicKey) [32]byte {
 	point := secp256k1.GenerateSharedSecret(d.privKey, pubkey)
 	return sha256.Sum256(point)
 }
 
-func (d *Client) encrypt(data []byte, pubKey []byte) ([]byte, error) {
+func (d *Peer) encrypt(data []byte, pubKey []byte) ([]byte, error) {
 	secPubKey, err := secp256k1.ParsePubKey(pubKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not parse dest public key")
@@ -259,7 +259,7 @@ func (d *Client) encrypt(data []byte, pubKey []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
-func (d *Client) decrypt(data []byte, pubKey []byte) ([]byte, error) {
+func (d *Peer) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	secPubKey, err := secp256k1.ParsePubKey(pubKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not parse dest public key")
@@ -281,7 +281,7 @@ func (d *Client) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	return decrypted, nil
 }
 
-func (d *Client) makeRequest(id string, dest uint32, cmd string, data []byte, ttl uint64) (*types.Envelope, error) {
+func (d *Peer) makeRequest(id string, dest uint32, cmd string, data []byte, ttl uint64) (*types.Envelope, error) {
 	schema := rmb.DefaultSchema
 
 	env := types.Envelope{
@@ -336,7 +336,7 @@ func (d *Client) makeRequest(id string, dest uint32, cmd string, data []byte, tt
 
 }
 
-func (d *Client) request(ctx context.Context, request *types.Envelope) error {
+func (d *Peer) request(ctx context.Context, request *types.Envelope) error {
 
 	bytes, err := proto.Marshal(request)
 	if err != nil {
@@ -353,8 +353,8 @@ func (d *Client) request(ctx context.Context, request *types.Envelope) error {
 
 }
 
-// Call sends an rmb call to the relay
-func (d *Client) Call(ctx context.Context, id string, twin uint32, fn string, data interface{}) error {
+// Send sends an rmb message to the relay
+func (d *Peer) Send(ctx context.Context, id string, twin uint32, fn string, data interface{}) error {
 
 	payload, err := json.Marshal(data)
 	if err != nil {
