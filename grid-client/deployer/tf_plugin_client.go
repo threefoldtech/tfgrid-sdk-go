@@ -21,7 +21,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
 var (
@@ -205,7 +205,7 @@ func NewTFPluginClient(
 	ctx, cancel := context.WithCancel(context.Background())
 	tfPluginClient.cancelRelayContext = cancel
 
-	rmbClient, err := direct.NewRpcClient(ctx, keyType, tfPluginClient.mnemonics, tfPluginClient.relayURL, sessionID, sub.Substrate, true)
+	rmbClient, err := peer.NewRpcClient(ctx, keyType, tfPluginClient.mnemonics, tfPluginClient.relayURL, sessionID, sub.Substrate, true)
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not create rmb client")
 	}
