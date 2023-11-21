@@ -9,14 +9,14 @@ The RpcClient on the other hand is a thin wrapper around the Peer, that allows y
 directly. It does this by building a special handler that routes the received responses directly to the caller
 but this is completely abstract to the caller.
 
-## Fuctionality
+## Functionality
 
 The peer implements the full rmb protocol include:
 
 - Connecting/Authenticating to relay
 - Building an RMB envelope
   - The envelope type is generated from the types.proto file which is a copy
-    from the one defined by RMB.
+  from the one defined by RMB.
 - Sign the envelope
 - Send the messages to the relay.
 - Received and verify received envelopes
