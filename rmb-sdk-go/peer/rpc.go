@@ -86,7 +86,7 @@ func (d *RpcCLient) Call(ctx context.Context, twin uint32, fn string, data inter
 	d.responses[id] = ch
 	d.m.Unlock()
 
-	if err := d.base.Send(ctx, id, twin, fn, data); err != nil {
+	if err := d.base.SendRequest(ctx, id, twin, nil, fn, data); err != nil {
 		return err
 	}
 

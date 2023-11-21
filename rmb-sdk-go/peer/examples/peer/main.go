@@ -45,7 +45,7 @@ func app() error {
 
 	for i := 0; i < 20; i++ {
 		data := []float64{rand.Float64(), rand.Float64()}
-		if err := peer.Send(ctx, uuid.NewString(), dist, "calculator.add", data); err != nil {
+		if err := peer.SendRequest(ctx, uuid.NewString(), dist, nil, "calculator.add", data); err != nil {
 			return err
 		}
 	}

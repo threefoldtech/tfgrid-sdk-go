@@ -281,22 +281,37 @@ func (d *Peer) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	return decrypted, nil
 }
 
-func (d *Peer) makeRequest(id string, dest uint32, cmd string, data []byte, ttl uint64) (*types.Envelope, error) {
+func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string, err error, data []byte, ttl uint64) (*types.Envelope, error) {
 	schema := rmb.DefaultSchema
 
 	env := types.Envelope{
-		Uid:         id,
-		Timestamp:   uint64(time.Now().Unix()),
-		Expiration:  ttl,
-		Source:      d.source,
-		Destination: &types.Address{Twin: dest},
-		Schema:      &schema,
+		Uid:        id,
+		Timestamp:  uint64(time.Now().Unix()),
+		Expiration: ttl,
+		Source:     d.source,
+		Destination: &types.Address{
+			Twin:       dest,
+			Connection: session,
+		},
+		Schema: &schema,
 	}
 
-	env.Message = &types.Envelope_Request{
-		Request: &types.Request{
-			Command: cmd,
-		},
+	if err != nil {
+		env.Message = &types.Envelope_Response{
+			Response: &types.Response{},
+		}
+	} else if cmd == nil {
+		env.Message = &types.Envelope_Error{
+			Error: &types.Error{
+				Message: "error message",
+			},
+		}
+	} else {
+		env.Message = &types.Envelope_Request{
+			Request: &types.Request{
+				Command: *cmd,
+			},
+		}
 	}
 
 	destTwin, err := d.twinDB.Get(dest)
@@ -336,7 +351,7 @@ func (d *Peer) makeRequest(id string, dest uint32, cmd string, data []byte, ttl 
 
 }
 
-func (d *Peer) request(ctx context.Context, request *types.Envelope) error {
+func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 
 	bytes, err := proto.Marshal(request)
 	if err != nil {
@@ -353,9 +368,8 @@ func (d *Peer) request(ctx context.Context, request *types.Envelope) error {
 
 }
 
-// Send sends an rmb message to the relay
-func (d *Peer) Send(ctx context.Context, id string, twin uint32, fn string, data interface{}) error {
-
+// SendRequest sends an rmb message to the relay
+func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session *string, fn string, data interface{}) error {
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize request body")
@@ -367,15 +381,39 @@ func (d *Peer) Send(ctx context.Context, id string, twin uint32, fn string, data
 		ttl = uint64(time.Until(deadline).Seconds())
 	}
 
-	request, err := d.makeRequest(id, twin, fn, payload, ttl)
+	request, err := d.makeEnvelope(id, twin, session, &fn, nil, payload, ttl)
 	if err != nil {
 		return errors.Wrap(err, "failed to build request")
 	}
 
-	if err := d.request(ctx, request); err != nil {
+	if err := d.send(ctx, request); err != nil {
 		return err
 	}
 
 	return nil
+}
 
+// SendRequest sends an rmb message to the relay
+func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session *string, responseError error, data interface{}) error {
+	payload, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrap(err, "failed to serialize request body")
+	}
+
+	var ttl uint64 = 5 * 60
+	deadline, ok := ctx.Deadline()
+	if ok {
+		ttl = uint64(time.Until(deadline).Seconds())
+	}
+
+	request, err := d.makeEnvelope(id, twin, session, nil, responseError, payload, ttl)
+	if err != nil {
+		return errors.Wrap(err, "failed to build request")
+	}
+
+	if err := d.send(ctx, request); err != nil {
+		return err
+	}
+
+	return nil
 }

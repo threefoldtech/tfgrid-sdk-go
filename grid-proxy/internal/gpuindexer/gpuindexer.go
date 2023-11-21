@@ -116,7 +116,7 @@ func (n *NodeGPUIndexer) getNodeGPUInfo(ctx context.Context, node db.Node) error
 	defer cancel()
 
 	id := uuid.NewString()
-	return n.relayPeer.Send(ctx, id, uint32(node.TwinID), "zos.gpu.list", nil)
+	return n.relayPeer.SendRequest(ctx, id, uint32(node.TwinID), nil, "zos.gpu.list", nil)
 }
 
 func (n *NodeGPUIndexer) getNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]db.Node, error) {
