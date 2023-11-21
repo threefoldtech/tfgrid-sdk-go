@@ -382,7 +382,7 @@ type TaskResult struct {
 }
 
 // GetPerfTestsResults get all perf tests results
-func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result []TaskResult, err error) {
+func (n *NodeClient) GetPerfTestResults(ctx context.Context) (result []TaskResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
@@ -397,8 +397,14 @@ func (n *NodeClient) GetPerfTestResult(ctx context.Context, testName string) (re
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
+	payload := struct {
+		Name string
+	}{
+		Name: testName,
+	}
+
 	const cmd = "zos.perf.get"
-	err = n.bus.Call(ctx, n.nodeTwin, cmd, testName, &result)
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, payload, &result)
 
 	return
 }
