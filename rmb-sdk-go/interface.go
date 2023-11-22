@@ -26,7 +26,7 @@ type Router interface {
 
 // Client is an rmb abstract client interface.
 type Client interface {
-	Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error
+	Call(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error
 }
 
 // Request is an outgoing request struct used to make rpc calls over rmb
@@ -37,6 +37,7 @@ type Request struct {
 	Expiration int      `json:"exp"`
 	Data       string   `json:"dat"`
 	TwinDest   []uint32 `json:"dst"`
+	Session    *string  `json:"con"`
 	RetQueue   string   `json:"ret"`
 	Schema     string   `json:"shm"`
 	Epoch      int64    `json:"now"`

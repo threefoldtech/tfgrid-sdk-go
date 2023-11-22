@@ -67,7 +67,7 @@ func (c *redisClient) Close() error {
 
 // Call calls the twin with given function and message. Can return a RemoteError if error originated by remote peer
 // in that case it should also include extra Code
-func (c *redisClient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
+func (c *redisClient) Call(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error {
 	bytes, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize request data")
@@ -85,6 +85,7 @@ func (c *redisClient) Call(ctx context.Context, twin uint32, fn string, data int
 		Expiration: int(ttl),
 		Command:    fn,
 		TwinDest:   []uint32{twin},
+		Session:    session,
 		Data:       base64.StdEncoding.EncodeToString(bytes),
 		Schema:     DefaultSchema,
 		RetQueue:   queue,

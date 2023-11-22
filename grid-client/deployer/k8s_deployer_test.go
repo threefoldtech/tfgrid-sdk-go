@@ -75,6 +75,7 @@ func k8sMockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub
 		Call(
 			gomock.Any(),
 			nodeID,
+			nil,
 			"zos.system.version",
 			nil,
 			gomock.Any(),
