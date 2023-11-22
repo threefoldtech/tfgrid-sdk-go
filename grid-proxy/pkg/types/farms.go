@@ -3,13 +3,13 @@ package types
 // Farm info about the farm
 type Farm struct {
 	Name              string     `json:"name"`
-	FarmID            int        `json:"farm_id"`
-	TwinID            int        `json:"twin_id"`
-	PricingPolicyID   int        `json:"pricing_policty_id"`
-	CertificationType string     `json:"certification_type"`
-	StellarAddress    string     `json:"stellar_address"`
+	FarmID            int        `json:"farmId"`
+	TwinID            int        `json:"twinId"`
+	PricingPolicyID   int        `json:"pricingPolicyId"`
+	CertificationType string     `json:"certificationType"`
+	StellarAddress    string     `json:"stellarAddress"`
 	Dedicated         bool       `json:"dedicated"`
-	PublicIps         []PublicIP `json:"public_ips"`
+	PublicIps         []PublicIP `json:"publicIps"`
 }
 
 // PublicIP info about public ip in the farm

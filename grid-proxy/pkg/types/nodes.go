@@ -19,30 +19,30 @@ type NodePower struct {
 // Node is a struct holding the data for a Node for the nodes view
 type Node struct {
 	ID                string       `json:"id"`
-	NodeID            int          `json:"node_id"`
-	FarmID            int          `json:"farm_id"`
-	TwinID            int          `json:"twin_id"`
+	NodeID            int          `json:"nodeId"`
+	FarmID            int          `json:"farmId"`
+	TwinID            int          `json:"twinId"`
 	Country           string       `json:"country"`
-	GridVersion       int          `json:"grid_version"`
+	GridVersion       int          `json:"gridVersion"`
 	City              string       `json:"city"`
 	Uptime            int64        `json:"uptime"`
 	Created           int64        `json:"created"`
-	FarmingPolicyID   int          `json:"farming_policy_id"`
-	UpdatedAt         int64        `json:"updated_at"`
+	FarmingPolicyID   int          `json:"farmingPolicyId"`
+	UpdatedAt         int64        `json:"updatedAt"`
 	TotalResources    Capacity     `json:"total_resources"`
 	UsedResources     Capacity     `json:"used_resources"`
 	Location          Location     `json:"location"`
-	PublicConfig      PublicConfig `json:"public_config"`
+	PublicConfig      PublicConfig `json:"publicConfig"`
 	Status            string       `json:"status"` // added node status field for up or down
-	CertificationType string       `json:"certification_type"`
-	InDedicatedFarm   bool         `json:"in_dedicated_farm"`
+	CertificationType string       `json:"certificationType"`
 	Dedicated         bool         `json:"dedicated"`
-	RentContractID    uint         `json:"rent_contract_id"`
-	RentedByTwinID    uint         `json:"rented_by_twin_id"`
-	SerialNumber      string       `json:"serial_number"`
+	InDedicatedFarm   bool         `json:"inDedicatedFarm"`
+	RentContractID    uint         `json:"rentContractId"`
+	RentedByTwinID    uint         `json:"rentedByTwinId"`
+	SerialNumber      string       `json:"serialNumber"`
 	Power             NodePower    `json:"power"`
 	NumGPU            int          `json:"num_gpu"`
-	ExtraFee          uint64       `json:"extra_fee"`
+	ExtraFee          uint64       `json:"extraFee"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -54,29 +54,29 @@ type CapacityResult struct {
 // Node to be compatible with old view
 type NodeWithNestedCapacity struct {
 	ID                string         `json:"id"`
-	NodeID            int            `json:"node_id"`
-	FarmID            int            `json:"farm_id"`
-	TwinID            int            `json:"twin_id"`
+	NodeID            int            `json:"nodeId"`
+	FarmID            int            `json:"farmId"`
+	TwinID            int            `json:"twinId"`
 	Country           string         `json:"country"`
-	GridVersion       int            `json:"grid_version"`
+	GridVersion       int            `json:"gridVersion"`
 	City              string         `json:"city"`
 	Uptime            int64          `json:"uptime"`
 	Created           int64          `json:"created"`
-	FarmingPolicyID   int            `json:"farming_policy_id"`
-	UpdatedAt         int64          `json:"updated_at"`
+	FarmingPolicyID   int            `json:"farmingPolicyId"`
+	UpdatedAt         int64          `json:"updatedAt"`
 	Capacity          CapacityResult `json:"capacity"`
 	Location          Location       `json:"location"`
-	PublicConfig      PublicConfig   `json:"public_config"`
+	PublicConfig      PublicConfig   `json:"publicConfig"`
 	Status            string         `json:"status"` // added node status field for up or down
-	CertificationType string         `json:"certification_type"`
-	InDedicatedFarm   bool           `json:"in_dedicated_farm"`
+	CertificationType string         `json:"certificationType"`
 	Dedicated         bool           `json:"dedicated"`
-	RentContractID    uint           `json:"rent_contract_id"`
-	RentedByTwinID    uint           `json:"rented_by_twin_id"`
-	SerialNumber      string         `json:"serial_number"`
+	InDedicatedFarm   bool           `json:"inDedicatedFarm"`
+	RentContractID    uint           `json:"rentContractId"`
+	RentedByTwinID    uint           `json:"rentedByTwinId"`
+	SerialNumber      string         `json:"serialNumber"`
 	Power             NodePower      `json:"power"`
 	NumGPU            int            `json:"num_gpu"`
-	ExtraFee          uint64         `json:"extra_fee"`
+	ExtraFee          uint64         `json:"extraFee"`
 }
 
 // PublicConfig node public config

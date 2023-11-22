@@ -5,18 +5,18 @@ type Stats struct {
 	Nodes             int64            `json:"nodes"`
 	Farms             int64            `json:"farms"`
 	Countries         int64            `json:"countries"`
-	TotalCRU          int64            `json:"total_cru"`
-	TotalSRU          int64            `json:"total_sru"`
-	TotalMRU          int64            `json:"total_mru"`
-	TotalHRU          int64            `json:"total_hru"`
-	PublicIPs         int64            `json:"public_ips"`
-	AccessNodes       int64            `json:"access_nodes"`
+	TotalCRU          int64            `json:"totalCru"`
+	TotalSRU          int64            `json:"totalSru"`
+	TotalMRU          int64            `json:"totalMru"`
+	TotalHRU          int64            `json:"totalHru"`
+	PublicIPs         int64            `json:"publicIps"`
+	AccessNodes       int64            `json:"accessNodes"`
 	Gateways          int64            `json:"gateways"`
 	Twins             int64            `json:"twins"`
 	Contracts         int64            `json:"contracts"`
-	NodesDistribution map[string]int64 `json:"nodes_distribution" gorm:"-:all"`
+	NodesDistribution map[string]int64 `json:"nodesDistribution" gorm:"-:all"`
 	GPUs              int64            `json:"gpus"`
-	DedicatedNodes    int64            `json:"dedicated_nodes"`
+	DedicatedNodes    int64            `json:"dedicatedNodes"`
 }
 
 // StatsFilter statistics filters

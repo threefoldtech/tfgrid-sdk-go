@@ -9,7 +9,7 @@ type ContractDetails interface {
 
 // NodeContractDetails node contract details
 type NodeContractDetails struct {
-	NodeID            uint   `json:"node_id"`
+	NodeID            uint   `json:"nodeId"`
 	DeploymentData    string `json:"deployment_data"`
 	DeploymentHash    string `json:"deployment_hash"`
 	NumberOfPublicIps uint   `json:"number_of_public_ips"`
@@ -22,7 +22,7 @@ type NameContractDetails struct {
 
 // RentContractDetails rent contract details
 type RentContractDetails struct {
-	NodeID uint `json:"node_id"`
+	NodeID uint `json:"nodeId"`
 }
 
 // Contract represents a contract and its details after decoding to one of Details structs.
@@ -47,8 +47,8 @@ type RawContract struct {
 
 // ContractBilling is contract billing info
 type ContractBilling struct {
-	AmountBilled     uint64 `json:"amount_billed"`
-	DiscountReceived string `json:"discount_received"`
+	AmountBilled     uint64 `json:"amountBilled"`
+	DiscountReceived string `json:"discountReceived"`
 	Timestamp        uint64 `json:"timestamp"`
 }
 
