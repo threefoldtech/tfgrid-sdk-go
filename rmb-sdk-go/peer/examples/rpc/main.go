@@ -40,7 +40,12 @@ func app() error {
 	// it's okay to run both the server and the client behind the same rmb-peer
 	var output float64
 	for i := 0; i < 20; i++ {
-		if err := client.Call(ctx, dst, "calculator.add", []float64{output, float64(i)}, &output); err != nil {
+		var session *string
+		// uncomment it  you are using peer router example
+		// routerSession := "test-router"
+		// session = &routerSession
+
+		if err := client.Call(ctx, dst, session, "calculator.add", []float64{output, float64(i)}, &output); err != nil {
 			return err
 		}
 	}

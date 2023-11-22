@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
@@ -90,7 +89,7 @@ func (r *Router) Serve(ctx context.Context, peer Peer, env *types.Envelope, err 
 	response, err := r.call(ctx, cmd, payload)
 
 	// send response
-	if err := peer.SendResponse(ctx, uuid.NewString(), env.Source.Twin, env.Source.Connection, err, response); err != nil {
+	if err := peer.SendResponse(ctx, env.Uid, env.Source.Twin, env.Source.Connection, err, response); err != nil {
 		log.Error().Err(err).Msgf("failed to send response to twin id '%d'", env.Destination.Twin)
 		return
 	}

@@ -44,7 +44,12 @@ func app() error {
 
 	for i := 0; i < 20; i++ {
 		data := []float64{rand.Float64(), rand.Float64()}
-		if err := peer.SendRequest(ctx, uuid.NewString(), dist, nil, "calculator.add", data); err != nil {
+		var session *string
+		// uncomment if you are using peer router example
+		// routerSession := "test-router"
+		// session = &routerSession
+
+		if err := peer.SendRequest(ctx, uuid.NewString(), dist, session, "calculator.add", data); err != nil {
 			return err
 		}
 	}
