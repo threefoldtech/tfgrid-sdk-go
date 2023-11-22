@@ -15,6 +15,12 @@ var (
 	ErrFunctionNotFound = fmt.Errorf("function is not found")
 )
 
+// twinKeyID is where the twin key is stored
+type twinKeyID struct{}
+
+// envelopeKey is where the envelope is stored
+type envelopeKey struct{}
+
 // Handler is a handler function type
 type HandlerFunc func(ctx context.Context, payload []byte) (interface{}, error)
 
@@ -65,34 +71,39 @@ func (r *Router) Use(mw Middleware) {
 }
 
 func (r *Router) Serve(ctx context.Context, peer Peer, env *types.Envelope, err error) {
-	// parse and call request
-	errReq := env.GetError()
-	if errReq != nil {
-		log.Error().Err(err)
-		return
-	}
+	handlerCtx := context.WithValue(ctx, twinKeyID{}, env.Source.Twin)
+	handlerCtx = context.WithValue(handlerCtx, envelopeKey{}, env)
 
-	req := env.GetRequest()
-	if req == nil {
-		log.Error().Msg("received a non request envelope")
-		return
-	}
+	go func() {
+		// parse and call request
+		errReq := env.GetError()
+		if errReq != nil {
+			log.Error().Err(err)
+			return
+		}
 
-	if env.Schema == nil || *env.Schema != rmb.DefaultSchema {
-		log.Error().Msgf("invalid schema received expected '%s'", rmb.DefaultSchema)
-		return
-	}
+		req := env.GetRequest()
+		if req == nil {
+			log.Error().Msg("received a non request envelope")
+			return
+		}
 
-	payload := env.Payload.(*types.Envelope_Plain).Plain
-	cmd := env.GetRequest().Command
+		if env.Schema == nil || *env.Schema != rmb.DefaultSchema {
+			log.Error().Msgf("invalid schema received expected '%s'", rmb.DefaultSchema)
+			return
+		}
 
-	response, err := r.call(ctx, cmd, payload)
+		payload := env.Payload.(*types.Envelope_Plain).Plain
+		cmd := env.GetRequest().Command
 
-	// send response
-	if err := peer.SendResponse(ctx, env.Uid, env.Source.Twin, env.Source.Connection, err, response); err != nil {
-		log.Error().Err(err).Msgf("failed to send response to twin id '%d'", env.Destination.Twin)
-		return
-	}
+		response, err := r.call(handlerCtx, cmd, payload)
+
+		// send response
+		if err := peer.SendResponse(ctx, env.Uid, env.Source.Twin, env.Source.Connection, err, response); err != nil {
+			log.Error().Err(err).Msgf("failed to send response to twin id '%d'", env.Destination.Twin)
+			return
+		}
+	}()
 }
 
 func (r *Router) call(ctx context.Context, route string, payload []byte) (result interface{}, err error) {
@@ -129,4 +140,24 @@ func (r *Router) call(ctx context.Context, route string, payload []byte) (result
 	}
 
 	return router.call(ctx, subRoute, payload)
+}
+
+// GetTwinID returns the twin id from context.
+func GetTwinID(ctx context.Context) uint32 {
+	twin, ok := ctx.Value(twinKeyID{}).(uint32)
+	if !ok {
+		panic("failed to load twin id from context")
+	}
+
+	return twin
+}
+
+// GetEnvelope gets an envelope from the context, panics if it's not there
+func GetEnvelope(ctx context.Context) *types.Envelope {
+	envelope, ok := ctx.Value(envelopeKey{}).(*types.Envelope)
+	if !ok {
+		panic("failed to load envelope from context")
+	}
+
+	return envelope
 }
