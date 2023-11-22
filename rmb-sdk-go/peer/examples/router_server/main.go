@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
@@ -16,6 +18,16 @@ func app() error {
 
 	// this function then becomes calculator.add
 	app.WithHandler("add", func(ctx context.Context, payload []byte) (interface{}, error) {
+		env := peer.GetEnvelope(ctx)
+		envErr := env.GetError()
+		if envErr != nil {
+			return []byte{}, errors.New(envErr.Message)
+		}
+
+		if env.Schema == nil || *env.Schema != rmb.DefaultSchema {
+			return []byte{}, fmt.Errorf("invalid schema received expected '%s'", rmb.DefaultSchema)
+		}
+
 		var numbers []float64
 
 		if err := json.Unmarshal(payload, &numbers); err != nil {

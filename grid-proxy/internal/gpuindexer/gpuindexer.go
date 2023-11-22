@@ -187,8 +187,8 @@ func (n *NodeGPUIndexer) Start(ctx context.Context) {
 
 }
 
-func (n *NodeGPUIndexer) relayCallback(ctx context.Context, peer peer.Peer, response *rmbTypes.Envelope, callBackErr error) {
-	output, err := peer.ParseResponse(response, callBackErr)
+func (n *NodeGPUIndexer) relayCallback(ctx context.Context, p peer.Peer, response *rmbTypes.Envelope, callBackErr error) {
+	output, err := peer.Json(response, callBackErr)
 	if err != nil {
 		log.Error().Err(err)
 		return

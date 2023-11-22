@@ -418,7 +418,8 @@ func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session
 	return nil
 }
 
-func (d *Peer) ParseResponse(response *types.Envelope, callBackErr error) ([]byte, error) {
+// Json extracts the json payload envelope and validate the schema
+func Json(response *types.Envelope, callBackErr error) ([]byte, error) {
 	if callBackErr != nil {
 		return []byte{}, callBackErr
 	}
