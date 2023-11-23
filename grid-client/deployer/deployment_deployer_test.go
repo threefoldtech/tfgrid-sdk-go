@@ -320,8 +320,8 @@ func TestDeploymentDeployer(t *testing.T) {
 			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil)
 
 		cl.EXPECT().
-			Call(gomock.Any(), twinID, "zos.deployment.get", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			Call(gomock.Any(), twinID, nil, "zos.deployment.get", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, twin uint32, session *string, fn string, data, result interface{}) error {
 				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
 				*res = networkDl
 				return nil
@@ -498,8 +498,8 @@ func TestDeploymentDeployer(t *testing.T) {
 			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil)
 
 		cl.EXPECT().
-			Call(gomock.Any(), twinID, "zos.deployment.get", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+			Call(gomock.Any(), twinID, nil, "zos.deployment.get", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, twin uint32, session *string, fn string, data, result interface{}) error {
 				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
 				*res = networkDl
 				return nil
