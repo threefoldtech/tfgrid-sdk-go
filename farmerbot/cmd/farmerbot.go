@@ -35,7 +35,7 @@ var farmerBotCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("farmerbot failed to start")
 		}
 
-		farmerBot.Run(cmd.Context())
+		go farmerBot.Run(cmd.Context())
 		return nil
 	},
 }

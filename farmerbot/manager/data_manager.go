@@ -226,7 +226,7 @@ func (m *DataManager) updatePowerState(node models.Node, updated bool) {
 
 	// We got a response from ZOS: it is still online. If the power state is shutting down
 	// we check if the timeout has not exceeded yet. If it has we consider the attempt to shutting
-	// down the down a failure and set teh power state back to on
+	// down the down a failure and set the power state back to on
 	if node.PowerState == models.ShuttingDown {
 		if time.Since(node.LastTimePowerStateChanged) < constants.TimeoutPowerStateChange {
 			log.Info().Msgf("[DATA MANAGER] Node %d is shutting down.", node.ID)

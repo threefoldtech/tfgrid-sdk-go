@@ -23,7 +23,8 @@ func ReadFile(path string) ([]byte, string, error) {
 	if err != nil {
 		return []byte{}, "", err
 	}
-	return content, filepath.Ext(path), nil
+
+	return content, filepath.Ext(path)[1:], nil
 }
 
 // ParseIntoConfig parses the configuration
@@ -68,10 +69,10 @@ func validate(c *models.Config) error {
 	// required values for node
 	for i, n := range c.Nodes {
 		if n.ID == 0 {
-			return fmt.Errorf("node ID with index %d is required", i)
+			return fmt.Errorf("node id with index %d is required", i)
 		}
 		if n.TwinID == 0 {
-			return fmt.Errorf("node %d: twin ID is required", n.ID)
+			return fmt.Errorf("node %d: twin_id is required", n.ID)
 		}
 		if n.Resources.Total.SRU == 0 {
 			return fmt.Errorf("node %d: total SRU is required", n.ID)
@@ -87,7 +88,8 @@ func validate(c *models.Config) error {
 		}
 
 		if n.Resources.OverProvisionCPU == 0 {
-			n.Resources.OverProvisionCPU = float32(constants.DefaultCPUProvision)
+			c.Nodes[i].Resources.OverProvisionCPU = constants.DefaultCPUProvision
+			n = c.Nodes[i]
 		}
 
 		if n.Resources.OverProvisionCPU < 1 || n.Resources.OverProvisionCPU > 4 {

@@ -159,11 +159,13 @@ func (f *FarmerBot) update(ctx context.Context) {
 func (f *FarmerBot) Run(ctx context.Context) {
 	go f.update(ctx)
 
-	// run the server
 	go f.serve(ctx)
 
+	if err := f.start(ctx); err != nil {
+		log.Fatal().Err(err).Msg("[FARMERBOT] error starting")
+	}
+
 	log.Info().Msg("[FARMERBOT] up and running...")
-	f.start(ctx)
 
 	// graceful shutdown
 	log.Info().Msg("[FARMERBOT] stopped serving new requests")
@@ -180,7 +182,7 @@ func (f *FarmerBot) Run(ctx context.Context) {
 	log.Info().Msg("[FARMERBOT] graceful shutdown successful")
 }
 
-func (f *FarmerBot) serve(ctx context.Context) error {
+func (f *FarmerBot) serve(ctx context.Context) {
 	router := peer.NewRouter()
 	farmerbot := router.SubRoute("farmerbot")
 
@@ -247,7 +249,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to create farmerbot direct peer: %w", err)
+		log.Fatal().Err(err).Msg("[FARMERBOT] failed to create farmerbot direct peer")
 	}
 
 	select {}

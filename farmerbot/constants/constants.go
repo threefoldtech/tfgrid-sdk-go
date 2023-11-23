@@ -23,7 +23,7 @@ const (
 	DefaultPeriodicWakeUPLimit = 1
 
 	// DefaultCPUProvision number
-	DefaultCPUProvision = 2
+	DefaultCPUProvision = float32(2)
 
 	//DefaultWakeUpThreshold default threshold to wake up a new node
 	DefaultWakeUpThreshold = uint8(80)
