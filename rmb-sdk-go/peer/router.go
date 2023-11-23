@@ -74,26 +74,35 @@ func (r *Router) Serve(ctx context.Context, peer Peer, env *types.Envelope, err 
 	handlerCtx := context.WithValue(ctx, twinKeyID{}, env.Source.Twin)
 	handlerCtx = context.WithValue(handlerCtx, envelopeKey{}, env)
 
+	if err != nil {
+		log.Error().Err(err).Msg("bad request")
+		return
+	}
+
 	go func() {
 		// parse and call request
-		errReq := env.GetError()
-		if errReq != nil {
-			log.Error().Err(err)
-		}
-
 		req := env.GetRequest()
 		if req == nil {
 			log.Error().Msg("received a non request envelope")
+			return
 		}
 
 		if env.Schema == nil || *env.Schema != rmb.DefaultSchema {
 			log.Error().Msgf("invalid schema received expected '%s'", rmb.DefaultSchema)
+			return
 		}
 
-		payload := env.Payload.(*types.Envelope_Plain).Plain
+		payload, ok := env.Payload.(*types.Envelope_Plain)
+		if !ok {
+			// the peer makes sure at this moment, the payload is always Plain
+			// but we need this just in case so the service does not panic.
+			log.Warn().Msg("payload is not in plain format")
+			return
+		}
+
 		cmd := env.GetRequest().Command
 
-		response, err := r.call(handlerCtx, cmd, payload)
+		response, err := r.call(handlerCtx, cmd, payload.Plain)
 
 		// send response
 		if err := peer.SendResponse(ctx, env.Uid, env.Source.Twin, env.Source.Connection, err, response); err != nil {
