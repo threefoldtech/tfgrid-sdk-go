@@ -5,6 +5,12 @@ import (
 )
 
 const (
+	//TimeoutRMBResponse a timeout for rmb response
+	TimeoutRMBResponse = time.Second * 120 // in seconds
+
+	//TimeoutUpdate a timeout for farmerbot updates
+	TimeoutUpdate = time.Minute * 5
+
 	//TimeoutPowerStateChange a timeout for changing nodes power
 	TimeoutPowerStateChange = time.Minute * 30
 

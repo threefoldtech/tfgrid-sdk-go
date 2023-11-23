@@ -10,6 +10,7 @@ import (
 
 // Node represents a node type
 type Node struct {
+	// TODO: substrate.Node
 	ID                        uint32              `json:"id"`
 	TwinID                    uint32              `json:"twin_id"`
 	FarmID                    uint32              `json:"farm_id,omitempty"`
@@ -61,7 +62,7 @@ type ZosResourcesStatistics struct {
 }
 
 // UpdateResources updates the node resources from zos resources stats
-func (n *Node) updateResources(stats ZosResourcesStatistics) {
+func (n *Node) UpdateResources(stats ZosResourcesStatistics) {
 	n.Resources.Total.update(stats.Total)
 	n.Resources.Used.update(stats.Used)
 	n.Resources.System.update(stats.System)

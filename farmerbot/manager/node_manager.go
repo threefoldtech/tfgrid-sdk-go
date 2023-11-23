@@ -15,38 +15,18 @@ import (
 
 // NodeManager manages nodes
 type NodeManager struct {
-	db       models.RedisManager
+	config   *models.Config
 	identity substrate.Identity
 	subConn  Sub
 }
 
 // NewNodeManager creates a new NodeManager
-func NewNodeManager(identity substrate.Identity, subConn Sub, db models.RedisManager) NodeManager {
-	return NodeManager{db, identity, subConn}
-}
-
-// Define defines a node
-func (n *NodeManager) Define(node models.Node) error {
-	log.Debug().Msgf("[NODE MANAGER] define node %d", node.ID)
-
-	cpuProv, err := n.db.GetCPUOverProvision()
-	if err != nil {
-		return err
-	}
-
-	if node.Resources.OverProvisionCPU == 0 {
-		node.Resources.OverProvisionCPU = float32(cpuProv)
-	}
-
-	if node.Resources.OverProvisionCPU < 1 || node.Resources.OverProvisionCPU > 4 {
-		return fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", node.Resources.OverProvisionCPU)
-	}
-
-	return n.db.UpdatesNode(node)
+func NewNodeManager(identity substrate.Identity, subConn Sub, config *models.Config) NodeManager {
+	return NodeManager{config, identity, subConn}
 }
 
 // FindNode finds an available node in the farm
-func (n *NodeManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
+func (n *NodeManager) FindNode(nodeOptions models.NodeOptions, t ...Time) (uint32, error) {
 	log.Info().Msg("[NODE MANAGER] Finding a node")
 
 	if (len(nodeOptions.GPUVendors) > 0 || len(nodeOptions.GPUDevices) > 0) && nodeOptions.HasGPUs == 0 {
@@ -56,29 +36,19 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
 
 	log.Debug().Msgf("[NODE MANAGER] Requirements:\n%+v", nodeOptions)
 
-	nodes, err := n.db.GetNodes()
-	if err != nil {
-		return 0, err
-	}
-
-	farm, err := n.db.GetFarm()
-	if err != nil {
-		return 0, err
-	}
-
 	if nodeOptions.PublicIPs > 0 {
 		var publicIpsUsedByNodes uint64
-		for _, node := range nodes {
+		for _, node := range n.config.Nodes {
 			publicIpsUsedByNodes += node.PublicIPsUsed
 		}
 
-		if publicIpsUsedByNodes+nodeOptions.PublicIPs > farm.PublicIPs {
-			return 0, fmt.Errorf("not enough public ips available for farm %d", farm.ID)
+		if publicIpsUsedByNodes+nodeOptions.PublicIPs > n.config.Farm.PublicIPs {
+			return 0, fmt.Errorf("not enough public ips available for farm %d", n.config.Farm.ID)
 		}
 	}
 
 	var possibleNodes []models.Node
-	for _, node := range nodes {
+	for _, node := range n.config.Nodes {
 		gpus := node.GPUs
 		if nodeOptions.HasGPUs > 1 {
 			if len(nodeOptions.GPUVendors) > 0 {
@@ -145,7 +115,11 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
 
 	// claim the resources until next update of the data
 	// add a timeout (after 30 minutes we update the resources)
-	nodeFound.TimeoutClaimedResources = time.Now().Add(constants.TimeoutPowerStateChange)
+	if len(t) > 0 {
+		nodeFound.TimeoutClaimedResources = t[0].Now().Add(constants.TimeoutPowerStateChange)
+	} else {
+		nodeFound.TimeoutClaimedResources = time.Now().Add(constants.TimeoutPowerStateChange)
+	}
 	if nodeOptions.Dedicated || nodeOptions.HasGPUs > 0 {
 		// claim all capacity
 		nodeFound.ClaimResources(nodeFound.Resources.Total)
@@ -160,8 +134,13 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
 
 	// power on the node if it is down or if it is shutting down
 	if nodeFound.PowerState == models.OFF || nodeFound.PowerState == models.ShuttingDown {
-		powerManager := NewPowerManager(n.identity, n.subConn, n.db)
-		if err := powerManager.PowerOn(nodeFound.ID); err != nil {
+		powerManager := NewPowerManager(n.identity, n.subConn, n.config)
+
+		var otherTime Time
+		if len(t) > 0 {
+			otherTime = t[0]
+		}
+		if err := powerManager.PowerOn(nodeFound.ID, otherTime); err != nil {
 			return 0, fmt.Errorf("failed to power on found node %d", nodeFound.ID)
 		}
 	}

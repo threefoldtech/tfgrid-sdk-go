@@ -3,9 +3,9 @@ module github.com/threefoldtech/tfgrid-sdk-go/farmerbot
 go 1.21
 
 require (
+	github.com/BurntSushi/toml v1.3.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/go-bip39 v1.0.0
-	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.31.0
@@ -13,8 +13,10 @@ require (
 	github.com/stellar/go v0.0.0-20231121172327-69266de4154f
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231017113908-9d56a805ead0
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.11.7
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.7
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
@@ -63,3 +65,5 @@ require (
 )
 
 replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go => ../rmb-sdk-go
+
+replace github.com/threefoldtech/tfgrid-sdk-go/grid-client => ../grid-client

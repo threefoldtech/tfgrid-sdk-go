@@ -9,5 +9,5 @@ import (
 type Sub interface {
 	SetNodePowerState(identity substrate.Identity, up bool) (hash types.Hash, err error)
 	GetNodeRentContract(node uint32) (uint64, error)
-	NewIdentityFromSr25519Phrase(mnemonics string) (substrate.Identity, error)
+	// NewIdentityFromSr25519Phrase(mnemonics string) (substrate.Identity, error)
 }
