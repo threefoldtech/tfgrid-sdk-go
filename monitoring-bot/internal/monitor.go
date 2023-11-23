@@ -405,7 +405,7 @@ func (m *Monitor) checkNodeSystemVersion(con *client.Substrate, rmbClient rmb.Cl
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	err = rmbClient.Call(ctx, uint32(node.TwinID), cmd, nil, &ver)
+	err = rmbClient.Call(ctx, uint32(node.TwinID), nil, cmd, nil, &ver)
 	if err != nil {
 		m.notWorkingNodesPerNetwork[net] = append(m.notWorkingNodesPerNetwork[net], NodeID)
 		return ver, fmt.Errorf("proxy bus getting system version for %v network failed using node twin %v with node ID %v. failed with error: %w", net, node.TwinID, NodeID, err)

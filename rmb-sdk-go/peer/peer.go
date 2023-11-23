@@ -30,7 +30,7 @@ const (
 
 // Handler is a call back that is called with verified and decrypted incoming
 // messages. An error can be non-nil error if verification or decryption failed
-type Handler func(env *types.Envelope, err error)
+type Handler func(ctx context.Context, peer Peer, env *types.Envelope, err error)
 
 // Peer exposes the functionality to talk directly to an rmb relay
 type Peer struct {
@@ -97,6 +97,8 @@ func NewPeer(
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get twin by public key")
 	}
+
+	log.Info().Uint32("twin", id).Str("session", session).Msg("starting peer")
 
 	twin, err := twinDB.Get(id)
 	if err != nil {
@@ -178,6 +180,11 @@ func (d Peer) handleIncoming(incoming *types.Envelope) error {
 	var output []byte
 	switch payload := incoming.Payload.(type) {
 	case *types.Envelope_Cipher:
+		if d.privKey == nil {
+			// we received an encrypted message while
+			// we have no encryption enabled on that peer
+			return fmt.Errorf("received an encrypted message while encryption is not enabled")
+		}
 		twin, err := d.twinDB.Get(incoming.Source.Twin)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get twin object for %d", incoming.Source.Twin)
@@ -207,7 +214,7 @@ func (d *Peer) process(ctx context.Context) {
 			}
 			// verify and decoding!
 			err := d.handleIncoming(&env)
-			d.handler(&env, err)
+			d.handler(ctx, *d, &env, err)
 		case <-ctx.Done():
 			return
 		}
@@ -281,22 +288,37 @@ func (d *Peer) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	return decrypted, nil
 }
 
-func (d *Peer) makeRequest(id string, dest uint32, cmd string, data []byte, ttl uint64) (*types.Envelope, error) {
+func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string, err error, data []byte, ttl uint64) (*types.Envelope, error) {
 	schema := rmb.DefaultSchema
 
 	env := types.Envelope{
-		Uid:         id,
-		Timestamp:   uint64(time.Now().Unix()),
-		Expiration:  ttl,
-		Source:      d.source,
-		Destination: &types.Address{Twin: dest},
-		Schema:      &schema,
+		Uid:        id,
+		Timestamp:  uint64(time.Now().Unix()),
+		Expiration: ttl,
+		Source:     d.source,
+		Destination: &types.Address{
+			Twin:       dest,
+			Connection: session,
+		},
+		Schema: &schema,
 	}
 
-	env.Message = &types.Envelope_Request{
-		Request: &types.Request{
-			Command: cmd,
-		},
+	if err != nil {
+		env.Message = &types.Envelope_Error{
+			Error: &types.Error{
+				Message: err.Error(),
+			},
+		}
+	} else if cmd == nil {
+		env.Message = &types.Envelope_Response{
+			Response: &types.Response{},
+		}
+	} else {
+		env.Message = &types.Envelope_Request{
+			Request: &types.Request{
+				Command: *cmd,
+			},
+		}
 	}
 
 	destTwin, err := d.twinDB.Get(dest)
@@ -336,7 +358,7 @@ func (d *Peer) makeRequest(id string, dest uint32, cmd string, data []byte, ttl 
 
 }
 
-func (d *Peer) request(ctx context.Context, request *types.Envelope) error {
+func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 
 	bytes, err := proto.Marshal(request)
 	if err != nil {
@@ -353,9 +375,8 @@ func (d *Peer) request(ctx context.Context, request *types.Envelope) error {
 
 }
 
-// Send sends an rmb message to the relay
-func (d *Peer) Send(ctx context.Context, id string, twin uint32, fn string, data interface{}) error {
-
+// SendRequest sends an rmb message to the relay
+func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session *string, fn string, data interface{}) error {
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize request body")
@@ -367,15 +388,63 @@ func (d *Peer) Send(ctx context.Context, id string, twin uint32, fn string, data
 		ttl = uint64(time.Until(deadline).Seconds())
 	}
 
-	request, err := d.makeRequest(id, twin, fn, payload, ttl)
+	request, err := d.makeEnvelope(id, twin, session, &fn, nil, payload, ttl)
 	if err != nil {
 		return errors.Wrap(err, "failed to build request")
 	}
 
-	if err := d.request(ctx, request); err != nil {
+	if err := d.send(ctx, request); err != nil {
 		return err
 	}
 
 	return nil
+}
 
+// SendRequest sends an rmb message to the relay
+func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session *string, responseError error, data interface{}) error {
+	payload, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrap(err, "failed to serialize request body")
+	}
+
+	var ttl uint64 = 5 * 60
+	deadline, ok := ctx.Deadline()
+	if ok {
+		ttl = uint64(time.Until(deadline).Seconds())
+	}
+
+	request, err := d.makeEnvelope(id, twin, session, nil, responseError, payload, ttl)
+	if err != nil {
+		return errors.Wrap(err, "failed to build request")
+	}
+
+	if err := d.send(ctx, request); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Json extracts the json payload envelope and validate the schema
+func Json(response *types.Envelope, callBackErr error) ([]byte, error) {
+	if callBackErr != nil {
+		return []byte{}, callBackErr
+	}
+
+	errResp := response.GetError()
+	if errResp != nil {
+		return []byte{}, errors.New(errResp.Message)
+	}
+
+	resp := response.GetResponse()
+	if resp == nil {
+		return []byte{}, errors.New("received a non response envelope")
+	}
+
+	if response.Schema == nil || *response.Schema != rmb.DefaultSchema {
+		return []byte{}, fmt.Errorf("invalid schema received expected '%s'", rmb.DefaultSchema)
+	}
+
+	output := response.Payload.(*types.Envelope_Plain).Plain
+	return output, nil
 }

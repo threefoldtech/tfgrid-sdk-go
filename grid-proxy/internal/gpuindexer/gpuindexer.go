@@ -12,7 +12,6 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	rmbTypes "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
 )
@@ -116,7 +115,7 @@ func (n *NodeGPUIndexer) getNodeGPUInfo(ctx context.Context, node db.Node) error
 	defer cancel()
 
 	id := uuid.NewString()
-	return n.relayPeer.Send(ctx, id, uint32(node.TwinID), "zos.gpu.list", nil)
+	return n.relayPeer.SendRequest(ctx, id, uint32(node.TwinID), nil, "zos.gpu.list", nil)
 }
 
 func (n *NodeGPUIndexer) getNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]db.Node, error) {
@@ -188,30 +187,15 @@ func (n *NodeGPUIndexer) Start(ctx context.Context) {
 
 }
 
-func (n *NodeGPUIndexer) relayCallback(response *rmbTypes.Envelope, callBackErr error) {
-
-	errResp := response.GetError()
-
-	if errResp != nil {
-		log.Error().Msg(errResp.Message)
+func (n *NodeGPUIndexer) relayCallback(ctx context.Context, p peer.Peer, response *rmbTypes.Envelope, callBackErr error) {
+	output, err := peer.Json(response, callBackErr)
+	if err != nil {
+		log.Error().Err(err)
 		return
 	}
-
-	resp := response.GetResponse()
-	if resp == nil {
-		log.Error().Msg("received a non response envelope")
-		return
-	}
-
-	if response.Schema == nil || *response.Schema != rmb.DefaultSchema {
-		log.Error().Msgf("invalid schema received expected '%s'", rmb.DefaultSchema)
-		return
-	}
-
-	output := response.Payload.(*rmbTypes.Envelope_Plain).Plain
 
 	var nodesGPU []types.NodeGPU
-	err := json.Unmarshal(output, &nodesGPU)
+	err = json.Unmarshal(output, &nodesGPU)
 	if err != nil {
 		log.Error().Err(err).RawJSON("data", output).Msg("failed to unmarshal GPU information response")
 		return

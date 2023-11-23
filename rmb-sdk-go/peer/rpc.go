@@ -54,7 +54,7 @@ func NewRpcClient(
 	return &rpc, nil
 }
 
-func (d *RpcCLient) router(env *types.Envelope, err error) {
+func (d *RpcCLient) router(ctx context.Context, peer Peer, env *types.Envelope, err error) {
 	d.m.Lock()
 	defer d.m.Unlock()
 
@@ -70,7 +70,7 @@ func (d *RpcCLient) router(env *types.Envelope, err error) {
 	}
 }
 
-func (d *RpcCLient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
+func (d *RpcCLient) Call(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error {
 	id := uuid.NewString()
 
 	ch := make(chan incomingEnv)
@@ -86,7 +86,7 @@ func (d *RpcCLient) Call(ctx context.Context, twin uint32, fn string, data inter
 	d.responses[id] = ch
 	d.m.Unlock()
 
-	if err := d.base.Send(ctx, id, twin, fn, data); err != nil {
+	if err := d.base.SendRequest(ctx, id, twin, session, fn, data); err != nil {
 		return err
 	}
 
