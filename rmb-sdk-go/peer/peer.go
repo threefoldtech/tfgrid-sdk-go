@@ -98,6 +98,8 @@ func NewPeer(
 		return nil, errors.Wrapf(err, "failed to get twin by public key")
 	}
 
+	log.Info().Uint32("twin", id).Str("session", session).Msg("starting peer")
+
 	twin, err := twinDB.Get(id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get twin id: %d", id)
@@ -178,6 +180,11 @@ func (d Peer) handleIncoming(incoming *types.Envelope) error {
 	var output []byte
 	switch payload := incoming.Payload.(type) {
 	case *types.Envelope_Cipher:
+		if d.privKey == nil {
+			// we received an encrypted message while
+			// we have no encryption enabled on that peer
+			return fmt.Errorf("received an encrypted message while encryption is not enabled")
+		}
 		twin, err := d.twinDB.Get(incoming.Source.Twin)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get twin object for %d", incoming.Source.Twin)

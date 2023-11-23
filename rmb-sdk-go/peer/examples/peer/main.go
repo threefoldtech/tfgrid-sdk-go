@@ -32,7 +32,7 @@ func app() error {
 		"wss://relay.dev.grid.tf",
 		"test-client",
 		sub,
-		false,
+		true,
 		relayCallback,
 	)
 

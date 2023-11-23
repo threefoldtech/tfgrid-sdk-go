@@ -69,14 +69,17 @@ func app() error {
 
 	defer sub.Close()
 
+	// this peer will be a 'calculator' session.
+	// means other peers on the network need to know that
+	// session id to use when they are making calls
 	_, err = peer.NewPeer(
 		ctx,
 		peer.KeyTypeSr25519,
 		mnemonics,
 		"wss://relay.dev.grid.tf",
-		"test-router",
+		"calculator",
 		sub,
-		false,
+		true,
 		router.Serve,
 	)
 
