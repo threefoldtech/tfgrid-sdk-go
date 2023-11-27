@@ -31,7 +31,7 @@ func NewPowerManager(identity substrate.Identity, subConn Sub, config *models.Co
 }
 
 // PowerOn sets the node power state ON
-func (p *PowerManager) PowerOn(nodeID uint32, t ...Time) error {
+func (p *PowerManager) PowerOn(nodeID uint32) error {
 	log.Info().Msgf("[POWER MANAGER] POWER ON: %d", nodeID)
 
 	node, err := p.config.GetNode(nodeID)
@@ -49,17 +49,13 @@ func (p *PowerManager) PowerOn(nodeID uint32, t ...Time) error {
 	}
 
 	node.PowerState = models.WakingUP
-	if len(t) > 0 {
-		node.LastTimePowerStateChanged = t[0].Now()
-	} else {
-		node.LastTimePowerStateChanged = time.Now()
-	}
+	node.LastTimePowerStateChanged = time.Now()
 
 	return p.config.UpdateNode(node)
 }
 
 // PowerOff sets the node power state OFF
-func (p *PowerManager) PowerOff(nodeID uint32, t ...Time) error {
+func (p *PowerManager) PowerOff(nodeID uint32) error {
 	log.Info().Msgf("[POWER MANAGER] POWER OFF: %d", nodeID)
 
 	node, err := p.config.GetNode(nodeID)
@@ -93,11 +89,7 @@ func (p *PowerManager) PowerOff(nodeID uint32, t ...Time) error {
 	}
 
 	node.PowerState = models.ShuttingDown
-	if len(t) > 0 {
-		node.LastTimePowerStateChanged = t[0].Now()
-	} else {
-		node.LastTimePowerStateChanged = time.Now()
-	}
+	node.LastTimePowerStateChanged = time.Now()
 
 	return p.config.UpdateNode(node)
 }
@@ -119,13 +111,8 @@ func (p *PowerManager) PowerOnAllNodes() error {
 }
 
 // PeriodicWakeUp for waking up nodes daily
-func (p *PowerManager) PeriodicWakeUp(t ...Time) error {
-	var now time.Time
-	if len(t) > 0 {
-		now = t[0].Now()
-	} else {
-		now = time.Now()
-	}
+func (p *PowerManager) PeriodicWakeUp() error {
+	now := time.Now()
 
 	offNodes, err := p.config.FilterNodesPower([]models.PowerState{models.OFF})
 	if err != nil {

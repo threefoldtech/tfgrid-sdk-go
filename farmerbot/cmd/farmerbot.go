@@ -20,7 +20,7 @@ var farmerBotCmd = &cobra.Command{
 	Short: "Run farmerbot to manage your farms",
 	Long:  fmt.Sprintf(`Welcome to the farmerbot (%v). The farmerbot is a service that a farmer can run allowing him to automatically manage the nodes of his farm.`, version.Version),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		network, mnemonic, redisAddr, err := getDefaultFlags(cmd)
+		network, mnemonic, err := getDefaultFlags(cmd)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to parse flags")
 		}
@@ -30,7 +30,7 @@ var farmerBotCmd = &cobra.Command{
 			log.Fatal().Err(err).Msgf("invalid config dir path input '%s'", config)
 		}
 
-		farmerBot, err := server.NewFarmerBot(cmd.Context(), config, network, mnemonic, redisAddr)
+		farmerBot, err := server.NewFarmerBot(cmd.Context(), config, network, mnemonic)
 		if err != nil {
 			log.Fatal().Err(err).Msg("farmerbot failed to start")
 		}
@@ -56,16 +56,14 @@ func init() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	farmerBotCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs")
-	farmerBotCmd.Flags().StringP("redis", "r", "", "the address of the redis db")
-
-	farmerBotCmd.PersistentFlags().StringP("network", "n", "dev", "the grid network to use")
-	farmerBotCmd.PersistentFlags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
-	farmerBotCmd.PersistentFlags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
-	farmerBotCmd.PersistentFlags().StringP("log", "l", "farmerbot.log", "enter your log file path to debug")
+	farmerBotCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Available formats are [json, yml, toml]")
+	farmerBotCmd.Flags().StringP("network", "n", "dev", "the grid network to use")
+	farmerBotCmd.Flags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
+	farmerBotCmd.Flags().StringP("log", "l", "farmerbot.log", "enter your log file path to debug")
+	farmerBotCmd.Flags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
 }
 
-func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, redisAddr string, err error) {
+func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err error) {
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
 		err = errors.Wrapf(err, "invalid log debug mode input '%v'", debug)
@@ -96,17 +94,6 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, redis
 
 	multiWriter := zerolog.MultiLevelWriter(os.Stdout, logFile)
 	log.Logger = zerolog.New(multiWriter).With().Timestamp().Logger().Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
-	redisAddr, err = cmd.Flags().GetString("redis")
-	if err != nil {
-		err = errors.Wrapf(err, "invalid redis address input '%s'", redisAddr)
-		return
-	}
-
-	if len(strings.TrimSpace(redisAddr)) == 0 {
-		err = errors.New("redis address is required")
-		return
-	}
 
 	network, err = cmd.Flags().GetString("network")
 	if err != nil {

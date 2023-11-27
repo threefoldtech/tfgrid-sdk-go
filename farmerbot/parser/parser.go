@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -28,7 +29,7 @@ func ReadFile(path string) ([]byte, string, error) {
 }
 
 // ParseIntoConfig parses the configuration
-func ParseIntoConfig(content []byte, format string) (*models.Config, error) {
+func ParseIntoConfig(content []byte, format string) (models.Config, error) {
 	c := models.Config{}
 
 	var err error
@@ -44,15 +45,16 @@ func ParseIntoConfig(content []byte, format string) (*models.Config, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		return models.Config{}, err
 	}
 
 	err = validate(&c)
 	if err != nil {
-		return nil, err
+		return models.Config{}, err
 	}
 
-	return &c, nil
+	c.Mutex = new(sync.Mutex)
+	return c, nil
 }
 
 func validate(c *models.Config) error {

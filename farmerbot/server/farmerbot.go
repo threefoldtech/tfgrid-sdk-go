@@ -41,7 +41,7 @@ type FarmerBot struct {
 
 // TODO: seed
 // NewFarmerBot generates a new farmer bot
-func NewFarmerBot(ctx context.Context, configPath, network, mnemonic, redisAddr string) (FarmerBot, error) {
+func NewFarmerBot(ctx context.Context, configPath, network, mnemonic string) (FarmerBot, error) {
 	jsonContent, format, err := parser.ReadFile(configPath)
 	if err != nil {
 		return FarmerBot{}, err
@@ -55,7 +55,7 @@ func NewFarmerBot(ctx context.Context, configPath, network, mnemonic, redisAddr 
 	substrateManager := substrate.NewManager(constants.SubstrateURLs[network]...)
 	sub, err := substrateManager.Substrate()
 	if err != nil {
-		return FarmerBot{}, fmt.Errorf("error: %w, getting substrate connection using %s", err, constants.SubstrateURLs[network])
+		return FarmerBot{}, err
 	}
 
 	// TODO:
@@ -71,12 +71,12 @@ func NewFarmerBot(ctx context.Context, configPath, network, mnemonic, redisAddr 
 		return FarmerBot{}, err
 	}
 
-	powerManager := manager.NewPowerManager(identity, sub, config)
+	powerManager := manager.NewPowerManager(identity, sub, &config)
 	if err != nil {
 		return FarmerBot{}, err
 	}
 
-	nodeManager := manager.NewNodeManager(identity, sub, config)
+	nodeManager := manager.NewNodeManager(identity, sub, &config)
 	if err != nil {
 		return FarmerBot{}, err
 	}
@@ -86,13 +86,13 @@ func NewFarmerBot(ctx context.Context, configPath, network, mnemonic, redisAddr 
 		return FarmerBot{}, errors.Wrap(err, "could not create rmb client")
 	}
 
-	dataManager := manager.NewDataManager(identity, sub, config, rmbClient)
+	dataManager := manager.NewDataManager(identity, sub, &config, rmbClient)
 	if err != nil {
 		return FarmerBot{}, err
 	}
 
 	return FarmerBot{
-		config:       config,
+		config:       &config,
 		sub:          *sub,
 		rmbClient:    rmbClient,
 		powerManager: powerManager,

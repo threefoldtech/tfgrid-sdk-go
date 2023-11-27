@@ -14,7 +14,7 @@ type Config struct {
 	Farm  Farm   `json:"farm" yaml:"farm" toml:"farm"`
 	Nodes []Node `json:"nodes" yaml:"nodes" toml:"nodes"`
 	Power Power  `json:"power" yaml:"power" toml:"power"`
-	m     sync.Mutex
+	*sync.Mutex
 }
 
 // GetNode gets a node
@@ -32,9 +32,9 @@ func (c *Config) GetNode(nodeID uint32) (Node, error) {
 func (c *Config) UpdateNode(node Node) error {
 	for i, n := range c.Nodes {
 		if n.ID == node.ID {
-			c.m.Lock()
+			c.Lock()
 			c.Nodes[i] = node
-			c.m.Unlock()
+			c.Unlock()
 			return nil
 		}
 	}

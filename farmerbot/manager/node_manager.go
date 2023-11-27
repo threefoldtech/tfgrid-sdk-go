@@ -26,7 +26,7 @@ func NewNodeManager(identity substrate.Identity, subConn Sub, config *models.Con
 }
 
 // FindNode finds an available node in the farm
-func (n *NodeManager) FindNode(nodeOptions models.NodeOptions, t ...Time) (uint32, error) {
+func (n *NodeManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
 	log.Info().Msg("[NODE MANAGER] Finding a node")
 
 	if (len(nodeOptions.GPUVendors) > 0 || len(nodeOptions.GPUDevices) > 0) && nodeOptions.HasGPUs == 0 {
@@ -50,7 +50,7 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions, t ...Time) (uint3
 	var possibleNodes []models.Node
 	for _, node := range n.config.Nodes {
 		gpus := node.GPUs
-		if nodeOptions.HasGPUs > 1 {
+		if nodeOptions.HasGPUs > 0 {
 			if len(nodeOptions.GPUVendors) > 0 {
 				gpus = filterGPUs(gpus, nodeOptions.GPUVendors, false)
 			}
@@ -73,10 +73,6 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions, t ...Time) (uint3
 		}
 
 		if node.HasActiveRentContract {
-			continue
-		}
-
-		if nodeOptions.Dedicated && (!node.Dedicated || !node.IsUnused()) {
 			continue
 		}
 
@@ -115,11 +111,8 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions, t ...Time) (uint3
 
 	// claim the resources until next update of the data
 	// add a timeout (after 30 minutes we update the resources)
-	if len(t) > 0 {
-		nodeFound.TimeoutClaimedResources = t[0].Now().Add(constants.TimeoutPowerStateChange)
-	} else {
-		nodeFound.TimeoutClaimedResources = time.Now().Add(constants.TimeoutPowerStateChange)
-	}
+	nodeFound.TimeoutClaimedResources = time.Now().Add(constants.TimeoutPowerStateChange)
+
 	if nodeOptions.Dedicated || nodeOptions.HasGPUs > 0 {
 		// claim all capacity
 		nodeFound.ClaimResources(nodeFound.Resources.Total)
@@ -135,12 +128,7 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions, t ...Time) (uint3
 	// power on the node if it is down or if it is shutting down
 	if nodeFound.PowerState == models.OFF || nodeFound.PowerState == models.ShuttingDown {
 		powerManager := NewPowerManager(n.identity, n.subConn, n.config)
-
-		var otherTime Time
-		if len(t) > 0 {
-			otherTime = t[0]
-		}
-		if err := powerManager.PowerOn(nodeFound.ID, otherTime); err != nil {
+		if err := powerManager.PowerOn(nodeFound.ID); err != nil {
 			return 0, fmt.Errorf("failed to power on found node %d", nodeFound.ID)
 		}
 	}
