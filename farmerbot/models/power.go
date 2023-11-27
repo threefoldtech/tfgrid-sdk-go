@@ -25,7 +25,7 @@ type Power struct {
 	PeriodicWakeUpLimit uint8      `json:"periodic_wake_up_limit" yaml:"periodic_wake_up_limit" toml:"periodic_wake_up_limit"`
 }
 
-// UnmarshalJSON unmarshal the given JSON object into wakeUp date
+// UnmarshalJSON unmarshal the given JSON string into wakeUp date
 func (d *WakeUpDate) UnmarshalJSON(b []byte) error {
 	return d.Unmarshal(b)
 }
@@ -35,13 +35,9 @@ func (d WakeUpDate) MarshalJSON() ([]byte, error) {
 	return d.Marshal()
 }
 
-func (d *WakeUpDate) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var b string
-	err := unmarshal(&b)
-	if err != nil {
-		return err
-	}
-	return d.Unmarshal([]byte(b))
+// UnmarshalYAML unmarshal the given yaml string into wakeUp date
+func (d *WakeUpDate) UnmarshalYAML(s string) error {
+	return d.Unmarshal([]byte(s))
 }
 
 // MarshalYAML marshals the wake up date
@@ -49,7 +45,7 @@ func (d WakeUpDate) MarshalYAML() ([]byte, error) {
 	return d.Marshal()
 }
 
-// UnmarshalText unmarshal the given TOML object into wakeUp date
+// UnmarshalText unmarshal the given TOML string into wakeUp date
 func (d *WakeUpDate) UnmarshalText(b []byte) error {
 	return d.Unmarshal(b)
 }
@@ -59,7 +55,7 @@ func (d WakeUpDate) MarshalText() ([]byte, error) {
 	return d.Marshal()
 }
 
-// Unmarshal unmarshal the given object into wakeUp date
+// Unmarshal unmarshal the given string into wakeUp date
 func (d *WakeUpDate) Unmarshal(b []byte) error {
 	s := strings.Trim(string(b), "\"")
 	t, err := time.Parse("03:04PM", s)

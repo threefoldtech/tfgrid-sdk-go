@@ -20,7 +20,7 @@ const (
 	DefaultRandomWakeUpsAMonth = 10
 
 	// DefaultPeriodicWakeUPLimit default number of nodes will be woken up every 5 minutes during a periodic wake up
-	DefaultPeriodicWakeUPLimit = 1
+	DefaultPeriodicWakeUPLimit = uint8(1)
 
 	// DefaultCPUProvision number
 	DefaultCPUProvision = float32(2)

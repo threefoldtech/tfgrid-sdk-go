@@ -114,8 +114,9 @@ func validate(c *models.Config) error {
 		log.Warn().Msgf("[FARMERBOT] The setting wake_up_threshold should be in the range [%d, %d]", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold)
 	}
 
-	if c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().IsZero() {
+	if c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {
 		c.Power.PeriodicWakeUpStart = models.WakeUpDate(time.Now())
+		log.Warn().Msgf("[FARMERBOT] The setting periodic_wake_up_start is zero. It is set with current time '%v'", c.Power.PeriodicWakeUpStart)
 	}
 	c.Power.PeriodicWakeUpStart = models.WakeUpDate(c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime())
 
