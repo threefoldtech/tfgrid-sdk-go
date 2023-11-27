@@ -11,9 +11,9 @@ import (
 
 // Config is the configuration for farmerbot
 type Config struct {
-	Farm  Farm   `json:"farm"`
-	Nodes []Node `json:"nodes"`
-	Power Power  `json:"power"`
+	Farm  Farm   `json:"farm" yaml:"farm" toml:"farm"`
+	Nodes []Node `json:"nodes" yaml:"nodes" toml:"nodes"`
+	Power Power  `json:"power" yaml:"power" toml:"power"`
 	m     sync.Mutex
 }
 

@@ -11,45 +11,45 @@ import (
 // Node represents a node type
 type Node struct {
 	// TODO: substrate.Node
-	ID                        uint32              `json:"id"`
-	TwinID                    uint32              `json:"twin_id"`
-	FarmID                    uint32              `json:"farm_id,omitempty"`
-	Description               string              `json:"description,omitempty"`
-	Certified                 bool                `json:"certified,omitempty"`
-	Dedicated                 bool                `json:"dedicated,omitempty"`
-	PublicConfig              bool                `json:"public_config,omitempty"`
-	PublicIPsUsed             uint64              `json:"public_ips_used,omitempty"`
-	Resources                 ConsumableResources `json:"resources"`
-	Pools                     []pkg.PoolMetrics   `json:"pools,omitempty"`
-	GPUs                      []GPU               `json:"gpus,omitempty"`
-	HasActiveRentContract     bool                `json:"has_active_rent_contract,omitempty"`
-	PowerState                PowerState          `json:"power_state,omitempty"`
-	TimeoutClaimedResources   time.Time           `json:"timeout_claimed_resources,omitempty"`
-	LastTimePowerStateChanged time.Time           `json:"last_time_awake,omitempty"`
-	LastTimeAwake             time.Time           `json:"lastTimeAwake,omitempty"`
-	NeverShutDown             bool                `json:"never_shutdown,omitempty"`
-	TimesRandomWakeUps        int                 `json:"times_random_wake_ups,omitempty"`
+	ID                        uint32              `json:"id" yaml:"id" toml:"id"`
+	TwinID                    uint32              `json:"twin_id" yaml:"twin_id" toml:"twin_id"`
+	FarmID                    uint32              `json:"farm_id,omitempty" yaml:"farm_id,omitempty" toml:"farm_id,omitempty"`
+	Description               string              `json:"description,omitempty" yaml:"description,omitempty" toml:"description,omitempty"`
+	Certified                 bool                `json:"certified,omitempty" yaml:"certified,omitempty" toml:"certified,omitempty"`
+	Dedicated                 bool                `json:"dedicated,omitempty" yaml:"dedicated,omitempty" toml:"dedicated,omitempty"`
+	PublicConfig              bool                `json:"public_config,omitempty" yaml:"public_config,omitempty" toml:"public_config,omitempty"`
+	PublicIPsUsed             uint64              `json:"public_ips_used,omitempty" yaml:"public_ips_used,omitempty" toml:"public_ips_used,omitempty"`
+	Resources                 ConsumableResources `json:"resources" yaml:"resources" toml:"resources"`
+	Pools                     []pkg.PoolMetrics   `json:"pools,omitempty" yaml:"pools,omitempty" toml:"pools,omitempty"`
+	GPUs                      []GPU               `json:"gpus,omitempty" yaml:"gpus,omitempty" toml:"gpus,omitempty"`
+	HasActiveRentContract     bool                `json:"has_active_rent_contract,omitempty" yaml:"has_active_rent_contract,omitempty" toml:"has_active_rent_contract,omitempty"`
+	PowerState                PowerState          `json:"power_state,omitempty" yaml:"power_state,omitempty" toml:"power_state,omitempty"`
+	TimeoutClaimedResources   time.Time           `json:"timeout_claimed_resources,omitempty" yaml:"timeout_claimed_resources,omitempty" toml:"timeout_claimed_resources,omitempty"`
+	LastTimePowerStateChanged time.Time           `json:"last_time_power_state_changed,omitempty" yaml:"last_time_power_state_changed,omitempty" toml:"last_time_power_state_changed,omitempty"`
+	LastTimeAwake             time.Time           `json:"last_time_awake,omitempty" yaml:"last_time_awake,omitempty" toml:"last_time_awake,omitempty"`
+	NeverShutDown             bool                `json:"never_shutdown,omitempty" yaml:"never_shutdown,omitempty" toml:"never_shutdown,omitempty"`
+	TimesRandomWakeUps        int                 `json:"times_random_wake_ups,omitempty" yaml:"times_random_wake_ups,omitempty" toml:"times_random_wake_ups,omitempty"`
 }
 
 // NodeOptions represents the options to find a node
 type NodeOptions struct {
-	NodeExclude  []uint32 `json:"node_exclude,omitempty"`
-	HasGPUs      uint8    `json:"has_gpus,omitempty"`
-	GPUVendors   []string `json:"gpu_vendors,omitempty"`
-	GPUDevices   []string `json:"gpu_devices,omitempty"`
-	Certified    bool     `json:"certified,omitempty"`
-	Dedicated    bool     `json:"dedicated,omitempty"`
-	PublicConfig bool     `json:"public_config,omitempty"`
-	PublicIPs    uint64   `json:"public_ips,omitempty"`
-	Capacity     Capacity `json:"capacity,omitempty"`
+	NodeExclude  []uint32 `json:"node_exclude,omitempty" yaml:"node_exclude,omitempty" toml:"node_exclude,omitempty"`
+	HasGPUs      uint8    `json:"has_gpus,omitempty" yaml:"has_gpus,omitempty" toml:"has_gpus,omitempty"`
+	GPUVendors   []string `json:"gpu_vendors,omitempty" yaml:"gpu_vendors,omitempty" toml:"gpu_vendors,omitempty"`
+	GPUDevices   []string `json:"gpu_devices,omitempty" yaml:"gpu_devices,omitempty" toml:"gpu_devices,omitempty"`
+	Certified    bool     `json:"certified,omitempty" yaml:"certified,omitempty" toml:"certified,omitempty"`
+	Dedicated    bool     `json:"dedicated,omitempty" yaml:"dedicated,omitempty" toml:"dedicated,omitempty"`
+	PublicConfig bool     `json:"public_config,omitempty" yaml:"public_config,omitempty" toml:"public_config,omitempty"`
+	PublicIPs    uint64   `json:"public_ips,omitempty" yaml:"public_ips,omitempty" toml:"public_ips,omitempty"`
+	Capacity     Capacity `json:"capacity,omitempty" yaml:"capacity,omitempty" toml:"capacity,omitempty"`
 }
 
 // GPU information
 type GPU struct {
-	ID       string `json:"id"`
-	Vendor   string `json:"vendor"`
-	Device   string `json:"device"`
-	Contract uint64 `json:"contract"`
+	ID       string `json:"id" yaml:"id" toml:"id"`
+	Vendor   string `json:"vendor" yaml:"vendor" toml:"vendor"`
+	Device   string `json:"device" yaml:"device" toml:"device"`
+	Contract uint64 `json:"contract" yaml:"contract" toml:"contract"`
 }
 
 type ZosResourcesStatistics struct {

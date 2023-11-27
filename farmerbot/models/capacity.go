@@ -4,10 +4,10 @@ import "github.com/threefoldtech/zos/pkg/gridtypes"
 
 // ConsumableResources for node resources
 type ConsumableResources struct {
-	OverProvisionCPU float32  `json:"overprovision_cpu,omitempty"` // how much we allow over provisioning the CPU range: [1;3]
-	Total            Capacity `json:"total"`
-	Used             Capacity `json:"used,omitempty"`
-	System           Capacity `json:"system,omitempty"`
+	OverProvisionCPU float32  `json:"overprovision_cpu,omitempty" yaml:"overprovision_cpu,omitempty" toml:"overprovision_cpu,omitempty"` // how much we allow over provisioning the CPU range: [1;3]
+	Total            Capacity `json:"total" yaml:"total" toml:"total"`
+	Used             Capacity `json:"used,omitempty" yaml:"used,omitempty" toml:"used,omitempty"`
+	System           Capacity `json:"system,omitempty" yaml:"system,omitempty" toml:"system,omitempty"`
 }
 
 // Capacity is node resource capacity

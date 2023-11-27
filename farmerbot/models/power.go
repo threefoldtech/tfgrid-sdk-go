@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -21,14 +20,47 @@ const (
 
 // Power represents power configuration
 type Power struct {
-	// PeriodicWakeUp WakeUpDate `json:"periodicWakeUp"`
-	WakeUpThreshold     uint8      `json:"wake_up_threshold"`
-	PeriodicWakeUpStart WakeUpDate `json:"periodic_wake_up_start"`
-	PeriodicWakeUpLimit uint8      `json:"periodic_wake_up_limit"`
+	WakeUpThreshold     uint8      `json:"wake_up_threshold" yaml:"wake_up_threshold" toml:"wake_up_threshold"`
+	PeriodicWakeUpStart WakeUpDate `json:"periodic_wake_up_start" yaml:"periodic_wake_up_start" toml:"periodic_wake_up_start"`
+	PeriodicWakeUpLimit uint8      `json:"periodic_wake_up_limit" yaml:"periodic_wake_up_limit" toml:"periodic_wake_up_limit"`
 }
 
 // UnmarshalJSON unmarshal the given JSON object into wakeUp date
 func (d *WakeUpDate) UnmarshalJSON(b []byte) error {
+	return d.Unmarshal(b)
+}
+
+// MarshalJSON marshals the wake up date
+func (d WakeUpDate) MarshalJSON() ([]byte, error) {
+	return d.Marshal()
+}
+
+func (d *WakeUpDate) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var b string
+	err := unmarshal(&b)
+	if err != nil {
+		return err
+	}
+	return d.Unmarshal([]byte(b))
+}
+
+// MarshalYAML marshals the wake up date
+func (d WakeUpDate) MarshalYAML() ([]byte, error) {
+	return d.Marshal()
+}
+
+// UnmarshalText unmarshal the given TOML object into wakeUp date
+func (d *WakeUpDate) UnmarshalText(b []byte) error {
+	return d.Unmarshal(b)
+}
+
+// MarshalText marshals the wake up TOML date
+func (d WakeUpDate) MarshalText() ([]byte, error) {
+	return d.Marshal()
+}
+
+// Unmarshal unmarshal the given object into wakeUp date
+func (d *WakeUpDate) Unmarshal(b []byte) error {
 	s := strings.Trim(string(b), "\"")
 	t, err := time.Parse("03:04PM", s)
 	if err != nil {
@@ -38,8 +70,8 @@ func (d *WakeUpDate) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// MarshalJSON marshals the wake up date
-func (d WakeUpDate) MarshalJSON() ([]byte, error) {
+// Marshal marshals the wake up date
+func (d WakeUpDate) Marshal() ([]byte, error) {
 	date := time.Time(d)
 
 	dayTime := "AM"
@@ -49,7 +81,7 @@ func (d WakeUpDate) MarshalJSON() ([]byte, error) {
 	}
 
 	timeFormat := fmt.Sprintf("%02d:%02d%s", date.Hour(), date.Minute(), dayTime)
-	return json.Marshal(timeFormat)
+	return []byte(timeFormat), nil
 }
 
 // PeriodicWakeUpTime returns periodic wake up date
