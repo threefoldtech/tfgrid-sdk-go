@@ -2,6 +2,7 @@
 package manager
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 	"time"
@@ -34,7 +35,7 @@ func NewPowerManager(identity substrate.Identity, subConn Sub, config *models.Co
 func (p *PowerManager) PowerOn(nodeID uint32) error {
 	log.Info().Msgf("[POWER MANAGER] POWER ON: %d", nodeID)
 
-	node, err := p.config.GetNode(nodeID)
+	node, err := p.config.GetNodeByNodeID(nodeID)
 	if err != nil {
 		return err
 	}
@@ -58,7 +59,7 @@ func (p *PowerManager) PowerOn(nodeID uint32) error {
 func (p *PowerManager) PowerOff(nodeID uint32) error {
 	log.Info().Msgf("[POWER MANAGER] POWER OFF: %d", nodeID)
 
-	node, err := p.config.GetNode(nodeID)
+	node, err := p.config.GetNodeByNodeID(nodeID)
 	if err != nil {
 		return err
 	}
@@ -67,17 +68,15 @@ func (p *PowerManager) PowerOff(nodeID uint32) error {
 		return nil
 	}
 
-	if node.PublicConfig {
-		return errors.Errorf("cannot power off node, node has public config")
-	}
 	if node.NeverShutDown {
 		return errors.Errorf("cannot power off node, node is configured to never be shutdown")
 	}
 
-	onNodes, err := p.config.FilterNodesPower([]models.PowerState{models.ON})
-	if node.NeverShutDown {
-		return err
+	if node.PublicConfig {
+		return errors.Errorf("cannot power off node, node has public config")
 	}
+
+	onNodes := p.config.FilterNodesPower([]models.PowerState{models.ON})
 
 	if len(onNodes) < 2 {
 		return errors.Errorf("cannot power off node, at least one node should be on in the farm")
@@ -95,10 +94,7 @@ func (p *PowerManager) PowerOff(nodeID uint32) error {
 }
 
 func (p *PowerManager) PowerOnAllNodes() error {
-	offNodes, err := p.config.FilterNodesPower([]models.PowerState{models.OFF, models.ShuttingDown})
-	if err != nil {
-		return err
-	}
+	offNodes := p.config.FilterNodesPower([]models.PowerState{models.OFF, models.ShuttingDown})
 
 	for _, node := range offNodes {
 		err := p.PowerOn(node.ID)
@@ -114,10 +110,7 @@ func (p *PowerManager) PowerOnAllNodes() error {
 func (p *PowerManager) PeriodicWakeUp() error {
 	now := time.Now()
 
-	offNodes, err := p.config.FilterNodesPower([]models.PowerState{models.OFF})
-	if err != nil {
-		return errors.Wrap(err, "failed to get nodes from db")
-	}
+	offNodes := p.config.FilterNodesPower([]models.PowerState{models.OFF})
 
 	periodicWakeUpStart := p.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()
 
@@ -176,10 +169,7 @@ func (p *PowerManager) PeriodicWakeUp() error {
 
 // PowerManagement for power management nodes
 func (p *PowerManager) PowerManagement() error {
-	usedResources, totalResources, err := p.calculateResourceUsage()
-	if err != nil {
-		return err
-	}
+	usedResources, totalResources := p.calculateResourceUsage()
 
 	if totalResources == 0 {
 		return nil
@@ -195,14 +185,11 @@ func (p *PowerManager) PowerManagement() error {
 	return p.resourceUsageTooLow(p.config.Power, usedResources, totalResources)
 }
 
-func (p *PowerManager) calculateResourceUsage() (uint64, uint64, error) {
+func (p *PowerManager) calculateResourceUsage() (uint64, uint64) {
 	usedResources := models.Capacity{}
 	totalResources := models.Capacity{}
 
-	nodes, err := p.config.FilterNodesPower([]models.PowerState{models.ON, models.WakingUP})
-	if err != nil {
-		return 0, 0, err
-	}
+	nodes := p.config.FilterNodesPower([]models.PowerState{models.ON, models.WakingUP})
 
 	for _, node := range nodes {
 		if node.HasActiveRentContract {
@@ -216,14 +203,11 @@ func (p *PowerManager) calculateResourceUsage() (uint64, uint64, error) {
 	used := usedResources.CRU + usedResources.HRU + usedResources.MRU + usedResources.SRU
 	total := totalResources.CRU + totalResources.HRU + totalResources.MRU + totalResources.SRU
 
-	return used, total, nil
+	return used, total
 }
 
 func (p *PowerManager) resourceUsageTooHigh() error {
-	offNodes, err := p.config.FilterNodesPower([]models.PowerState{models.OFF})
-	if err != nil {
-		return err
-	}
+	offNodes := p.config.FilterNodesPower([]models.PowerState{models.OFF})
 
 	if len(offNodes) > 0 {
 		node := offNodes[0]
@@ -231,21 +215,15 @@ func (p *PowerManager) resourceUsageTooHigh() error {
 		return p.PowerOn(node.ID)
 	}
 
-	return nil
+	return fmt.Errorf("no available node to wake up, resources usage is high")
 }
 
 func (p *PowerManager) resourceUsageTooLow(power models.Power, usedResources, totalResources uint64) error {
-	onNodes, err := p.config.FilterNodesPower([]models.PowerState{models.ON})
-	if err != nil {
-		return err
-	}
+	onNodes := p.config.FilterNodesPower([]models.PowerState{models.ON})
 
 	// nodes with public config can't be shutdown
 	// Do not shutdown a node that just came up (give it some time)
-	nodesAllowedToShutdown, err := p.config.FilterAllowedNodesToShutDown()
-	if err != nil {
-		return err
-	}
+	nodesAllowedToShutdown := p.config.FilterAllowedNodesToShutDown()
 
 	if len(onNodes) > 1 {
 		newUsedResources := usedResources

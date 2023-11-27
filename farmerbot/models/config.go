@@ -17,8 +17,8 @@ type Config struct {
 	*sync.Mutex
 }
 
-// GetNode gets a node
-func (c *Config) GetNode(nodeID uint32) (Node, error) {
+// GetNodeByNodeID gets a node by id
+func (c *Config) GetNodeByNodeID(nodeID uint32) (Node, error) {
 	for _, n := range c.Nodes {
 		if n.ID == nodeID {
 			return n, nil
@@ -43,21 +43,21 @@ func (c *Config) UpdateNode(node Node) error {
 }
 
 // FilterNodesPower filters ON or OFF nodes
-func (c *Config) FilterNodesPower(states []PowerState) ([]Node, error) {
+func (c *Config) FilterNodesPower(states []PowerState) []Node {
 	filtered := make([]Node, 0)
 	for _, node := range c.Nodes {
 		if slice.Contains(states, node.PowerState) {
 			filtered = append(filtered, node)
 		}
 	}
-	return filtered, nil
+	return filtered
 }
 
 // FilterAllowedNodesToShutDown filters nodes that are allowed to shut down
 //
 // nodes with public config can't be shutdown
 // Do not shutdown a node that just came up (give it some time)
-func (c *Config) FilterAllowedNodesToShutDown() ([]Node, error) {
+func (c *Config) FilterAllowedNodesToShutDown() []Node {
 	filtered := make([]Node, 0)
 	for _, node := range c.Nodes {
 		if node.IsUnused() && !node.PublicConfig && !node.NeverShutDown &&
@@ -65,5 +65,5 @@ func (c *Config) FilterAllowedNodesToShutDown() ([]Node, error) {
 			filtered = append(filtered, node)
 		}
 	}
-	return filtered, nil
+	return filtered
 }

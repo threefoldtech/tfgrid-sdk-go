@@ -25,8 +25,8 @@ var nodeCapacity = models.Capacity{
 var configContent = `
 { 
 	"nodes": [ 
-		{ "ID": 1, "twin_id" : 1, "power_state": 1, "resources": { "total": { "SRU": 1, "CRU": 1, "HRU": 1, "MRU": 1 } } },
-		{ "ID": 2, "twin_id" : 2, "power_state": 1, "resources": { "total": { "SRU": 2, "CRU": 2, "HRU": 2, "MRU": 2 } } }
+		{ "ID": 1, "twin_id" : 1, "power_state": 0, "resources": { "total": { "SRU": 1, "CRU": 1, "HRU": 1, "MRU": 1 } } },
+		{ "ID": 2, "twin_id" : 2, "power_state": 0, "resources": { "total": { "SRU": 2, "CRU": 2, "HRU": 2, "MRU": 2 } } }
 	],
 	"farm": { "ID": 1, "public_ips": 1 }, 
 	"power": { "periodic_wake_up_start": "08:30AM", "wake_up_threshold": 30 }
