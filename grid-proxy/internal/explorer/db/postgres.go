@@ -935,8 +935,14 @@ func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, nodesGPU []types.
 	return nil
 }
 
-func (p *PostgresDatabase) GetLastNodeTwinID(ctx context.Context) (uint32, error) {
+func (p *PostgresDatabase) GetLastNodeTwinID(ctx context.Context) (int64, error) {
 	var node Node
 	err := p.gormDB.Table("node").Order("twin_id DESC").Limit(1).Scan(&node).Error
-	return uint32(node.TwinID), err
+	return node.TwinID, err
+}
+
+func (p *PostgresDatabase) GetNodeTwinIDsAfter(ctx context.Context, twinID int64) ([]int64, error) {
+	nodeTwinIDs := make([]int64, 0)
+	err := p.gormDB.Table("node").Select("twin_id").Where("twin_id > ?", twinID).Order("twin_id DESC").Scan(&nodeTwinIDs).Error
+	return nodeTwinIDs, err
 }

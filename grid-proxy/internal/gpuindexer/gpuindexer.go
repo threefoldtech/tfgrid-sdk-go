@@ -210,21 +210,21 @@ func (n *NodeGPUIndexer) watchNodeTable(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			latestID, err := n.db.GetLastNodeTwinID(ctx)
+			newIDs, err := n.db.GetNodeTwinIDsAfter(ctx, latestCheckedID)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to get last node twin id")
+				log.Error().Err(err).Msgf("failed to get node twin ids after %d", latestCheckedID)
 				continue
 			}
-			if latestID == latestCheckedID {
+			if len(newIDs) == 0 {
 				continue
 			}
-			newIDs := make([]uint32, 0)
-			for i := latestCheckedID + 1; i <= latestID; i++ {
-				newIDs = append(newIDs, i)
+			nodeTwinIDs := make([]uint32, 0)
+			for _, id := range newIDs {
+				nodeTwinIDs = append(nodeTwinIDs, uint32(id))
 			}
 
-			n.newNodeTwinIDChan <- newIDs
-			latestCheckedID = latestID
+			n.newNodeTwinIDChan <- nodeTwinIDs
+			latestCheckedID = int64(nodeTwinIDs[0])
 		case <-ctx.Done():
 			break
 		}
