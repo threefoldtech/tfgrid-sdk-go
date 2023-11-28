@@ -2,7 +2,6 @@
 package manager
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
@@ -24,11 +23,8 @@ var nodeCapacity = models.Capacity{
 
 var configContent = `
 { 
-	"nodes": [ 
-		{ "ID": 1, "twin_id" : 1, "power_state": 0, "resources": { "total": { "SRU": 1, "CRU": 1, "HRU": 1, "MRU": 1 } } },
-		{ "ID": 2, "twin_id" : 2, "power_state": 0, "resources": { "total": { "SRU": 2, "CRU": 2, "HRU": 2, "MRU": 2 } } }
-	],
-	"farm": { "ID": 1, "public_ips": 1 }, 
+	"included_nodes": [ 1, 2 ],
+	"farm_id": 1, 
 	"power": { "periodic_wake_up_start": "08:30AM", "wake_up_threshold": 30 }
 }`
 
@@ -37,12 +33,25 @@ func TestNodeManager(t *testing.T) {
 	defer ctrl.Finish()
 	sub := mocks.NewMockSub(ctrl)
 
-	var identity substrate.Identity
-	sub.EXPECT().NewIdentityFromSr25519Phrase("bad mnemonic").Return(identity, errors.New("error"))
-	identity, err := sub.NewIdentityFromSr25519Phrase("bad mnemonic")
+	identity, err := substrate.NewIdentityFromSr25519Phrase("bad mnemonic")
 	assert.Error(t, err)
 
-	config, err := parser.ParseIntoConfig([]byte(configContent), "json")
+	// configs
+	farmID := uint32(1)
+	sub.EXPECT().GetFarm(farmID).Return(&substrate.Farm{ID: 1, PublicIPs: []substrate.PublicIP{{IP: "1.1.1.1"}}}, nil)
+	nodes := []uint32{1, 2}
+	sub.EXPECT().GetNodes(farmID).Return(nodes, nil)
+	sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1, TwinID: 1, Resources: substrate.Resources{
+		HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
+	sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
+	sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2, Resources: substrate.Resources{
+		HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
+	sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+
+	inputs, err := parser.ParseIntoInputConfig([]byte(configContent), "json")
+	assert.NoError(t, err)
+
+	config, err := models.SetConfig(sub, inputs)
 	assert.NoError(t, err)
 
 	nodeManager := NewNodeManager(identity, sub, &config)
@@ -55,7 +64,7 @@ func TestNodeManager(t *testing.T) {
 	t.Run("test valid find node: found an ON node", func(t *testing.T) {
 		nodeID, err := nodeManager.FindNode(nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, config.Nodes[0].ID)
+		assert.Equal(t, nodeID, uint32(config.Nodes[0].ID))
 	})
 
 	t.Run("test valid find node: found an ON node (first is OFF)", func(t *testing.T) {
@@ -63,7 +72,7 @@ func TestNodeManager(t *testing.T) {
 
 		nodeID, err := nodeManager.FindNode(nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, config.Nodes[1].ID)
+		assert.Equal(t, nodeID, uint32(config.Nodes[1].ID))
 
 		config.Nodes[0].PowerState = models.ON
 	})
@@ -76,7 +85,7 @@ func TestNodeManager(t *testing.T) {
 
 		nodeID, err := nodeManager.FindNode(nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, config.Nodes[0].ID)
+		assert.Equal(t, nodeID, uint32(config.Nodes[0].ID))
 
 		config.Nodes[0].PowerState = models.ON
 		config.Nodes[1].PowerState = models.ON
@@ -87,7 +96,7 @@ func TestNodeManager(t *testing.T) {
 
 		nodeID, err := nodeManager.FindNode(nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, config.Nodes[1].ID)
+		assert.Equal(t, nodeID, uint32(config.Nodes[1].ID))
 
 		config.Nodes[0].HasActiveRentContract = false
 	})
@@ -98,7 +107,7 @@ func TestNodeManager(t *testing.T) {
 
 		nodeID, err := nodeManager.FindNode(nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, config.Nodes[1].ID)
+		assert.Equal(t, nodeID, uint32(config.Nodes[1].ID))
 
 		config.Nodes[0].Dedicated = false
 		config.Nodes[0].Resources.Total = nodeCapacity
@@ -110,7 +119,7 @@ func TestNodeManager(t *testing.T) {
 
 		nodeID, err := nodeManager.FindNode(nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, config.Nodes[0].ID)
+		assert.Equal(t, nodeID, uint32(config.Nodes[0].ID))
 
 		config.Nodes[0].Dedicated = false
 		config.Nodes[1].Dedicated = false
@@ -126,7 +135,7 @@ func TestNodeManager(t *testing.T) {
 
 		nodeID, err := nodeManager.FindNode(models.NodeOptions{GPUVendors: []string{"vendor"}, GPUDevices: []string{"device"}})
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, config.Nodes[1].ID)
+		assert.Equal(t, nodeID, uint32(config.Nodes[1].ID))
 
 		config.Nodes[1].GPUs = []models.GPU{}
 	})
@@ -150,12 +159,14 @@ func TestNodeManager(t *testing.T) {
 	})
 
 	t.Run("test invalid find node: no enough public ips", func(t *testing.T) {
-		config.Farm.PublicIPs = 0
+		config.Farm.PublicIPs = []substrate.PublicIP{}
 
 		_, err = nodeManager.FindNode(nodeOptions)
 		assert.Error(t, err)
 
-		config.Farm.PublicIPs = 1
+		config.Farm.PublicIPs = []substrate.PublicIP{{
+			IP: "1.1.1.1",
+		}}
 	})
 
 	t.Run("test invalid find node: certified so no nodes found", func(t *testing.T) {
@@ -174,7 +185,7 @@ func TestNodeManager(t *testing.T) {
 	})
 
 	t.Run("test invalid find node: node is excluded", func(t *testing.T) {
-		nodeOptions := models.NodeOptions{NodeExclude: []uint32{config.Nodes[0].ID, config.Nodes[1].ID}}
+		nodeOptions := models.NodeOptions{NodeExclude: []uint32{uint32(config.Nodes[0].ID), uint32(config.Nodes[1].ID)}}
 		_, err = nodeManager.FindNode(nodeOptions)
 		assert.Error(t, err)
 	})

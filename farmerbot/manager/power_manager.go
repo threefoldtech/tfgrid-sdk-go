@@ -18,7 +18,7 @@ import (
 type PowerManager struct {
 	config   *models.Config
 	identity substrate.Identity
-	subConn  Sub
+	subConn  models.Sub
 }
 
 // Time interface for testing
@@ -27,7 +27,7 @@ type Time interface {
 }
 
 // NewPowerManager creates a new Power Manager
-func NewPowerManager(identity substrate.Identity, subConn Sub, config *models.Config) PowerManager {
+func NewPowerManager(identity substrate.Identity, subConn models.Sub, config *models.Config) PowerManager {
 	return PowerManager{config, identity, subConn}
 }
 
@@ -72,7 +72,7 @@ func (p *PowerManager) PowerOff(nodeID uint32) error {
 		return errors.Errorf("cannot power off node, node is configured to never be shutdown")
 	}
 
-	if node.PublicConfig {
+	if node.PublicConfig.HasValue {
 		return errors.Errorf("cannot power off node, node has public config")
 	}
 
@@ -97,7 +97,7 @@ func (p *PowerManager) PowerOnAllNodes() error {
 	offNodes := p.config.FilterNodesPower([]models.PowerState{models.OFF, models.ShuttingDown})
 
 	for _, node := range offNodes {
-		err := p.PowerOn(node.ID)
+		err := p.PowerOn(uint32(node.ID))
 		if err != nil {
 			return err
 		}
@@ -128,7 +128,7 @@ func (p *PowerManager) PeriodicWakeUp() error {
 			// we wake up the node if the periodic wake up start time has started and only if the last time the node was awake
 			// was before the periodic wake up start of that day
 			log.Info().Msgf("[POWER MANAGER] Periodic wake up for node %d", node.ID)
-			err := p.PowerOn(node.ID)
+			err := p.PowerOn(uint32(node.ID))
 			if err != nil {
 				log.Error().Err(err).Msgf("[POWER MANAGER] failed to wake up for node %d", node.ID)
 				continue
@@ -150,7 +150,7 @@ func (p *PowerManager) PeriodicWakeUp() error {
 			// we also do not go through the code if we have woken up too many nodes at once => subtract (10 * (n-1))/min(periodic_wake up_limit, amount_of_nodes) from 8460
 			// now we can divide that by 10 and randomly generate a number in that range, if it's 0 we do the random wake up
 			log.Info().Msgf("[POWER MANAGER] Random wake up for node %d", node.ID)
-			err := p.PowerOn(node.ID)
+			err := p.PowerOn(uint32(node.ID))
 			if err != nil {
 				log.Error().Err(err).Msgf("[POWER MANAGER] failed to wake up for node %d", node.ID)
 				continue
@@ -212,7 +212,7 @@ func (p *PowerManager) resourceUsageTooHigh() error {
 	if len(offNodes) > 0 {
 		node := offNodes[0]
 		log.Info().Msgf("[POWER MANAGER] Too much resource usage. Turning on node %d", node.ID)
-		return p.PowerOn(node.ID)
+		return p.PowerOn(uint32(node.ID))
 	}
 
 	return fmt.Errorf("no available node to wake up, resources usage is high")
@@ -249,7 +249,7 @@ func (p *PowerManager) resourceUsageTooLow(power models.Power, usedResources, to
 			if newResourceUsage < power.WakeUpThreshold {
 				// we need to keep the resource percentage lower then the threshold
 				log.Info().Msgf("[POWER MANAGER] Resource usage too low: %d. Turning off unused node %d", newResourceUsage, node.ID)
-				err := p.PowerOff(node.ID)
+				err := p.PowerOff(uint32(node.ID))
 				if err != nil {
 					log.Error().Err(err).Msgf("[POWER MANAGER] Job to power off node %d failed", node.ID)
 					nodesLeftOnline += 1

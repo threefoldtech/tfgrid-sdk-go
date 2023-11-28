@@ -4,31 +4,29 @@ import (
 	"math"
 	"time"
 
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/zos/pkg"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 // Node represents a node type
 type Node struct {
-	// TODO: substrate.Node
-	ID                        uint32              `json:"id" yaml:"id" toml:"id"`
-	TwinID                    uint32              `json:"twin_id" yaml:"twin_id" toml:"twin_id"`
-	FarmID                    uint32              `json:"farm_id,omitempty" yaml:"farm_id,omitempty" toml:"farm_id,omitempty"`
-	Description               string              `json:"description,omitempty" yaml:"description,omitempty" toml:"description,omitempty"`
-	Certified                 bool                `json:"certified,omitempty" yaml:"certified,omitempty" toml:"certified,omitempty"`
-	Dedicated                 bool                `json:"dedicated,omitempty" yaml:"dedicated,omitempty" toml:"dedicated,omitempty"`
-	PublicConfig              bool                `json:"public_config,omitempty" yaml:"public_config,omitempty" toml:"public_config,omitempty"`
-	PublicIPsUsed             uint64              `json:"public_ips_used,omitempty" yaml:"public_ips_used,omitempty" toml:"public_ips_used,omitempty"`
-	Resources                 ConsumableResources `json:"resources" yaml:"resources" toml:"resources"`
-	Pools                     []pkg.PoolMetrics   `json:"pools,omitempty" yaml:"pools,omitempty" toml:"pools,omitempty"`
-	GPUs                      []GPU               `json:"gpus,omitempty" yaml:"gpus,omitempty" toml:"gpus,omitempty"`
-	HasActiveRentContract     bool                `json:"has_active_rent_contract,omitempty" yaml:"has_active_rent_contract,omitempty" toml:"has_active_rent_contract,omitempty"`
-	PowerState                PowerState          `json:"power_state,omitempty" yaml:"power_state,omitempty" toml:"power_state,omitempty"`
-	TimeoutClaimedResources   time.Time           `json:"timeout_claimed_resources,omitempty" yaml:"timeout_claimed_resources,omitempty" toml:"timeout_claimed_resources,omitempty"`
-	LastTimePowerStateChanged time.Time           `json:"last_time_power_state_changed,omitempty" yaml:"last_time_power_state_changed,omitempty" toml:"last_time_power_state_changed,omitempty"`
-	LastTimeAwake             time.Time           `json:"last_time_awake,omitempty" yaml:"last_time_awake,omitempty" toml:"last_time_awake,omitempty"`
-	NeverShutDown             bool                `json:"never_shutdown,omitempty" yaml:"never_shutdown,omitempty" toml:"never_shutdown,omitempty"`
-	TimesRandomWakeUps        int                 `json:"times_random_wake_ups,omitempty" yaml:"times_random_wake_ups,omitempty" toml:"times_random_wake_ups,omitempty"`
+	substrate.Node
+	Dedicated bool `json:"dedicated,omitempty" yaml:"dedicated,omitempty" toml:"dedicated,omitempty"`
+
+	// data manager computes
+	Resources             ConsumableResources `json:"resources" yaml:"resources" toml:"resources"`
+	PublicIPsUsed         uint64              `json:"public_ips_used,omitempty" yaml:"public_ips_used,omitempty" toml:"public_ips_used,omitempty"`
+	Pools                 []pkg.PoolMetrics   `json:"pools,omitempty" yaml:"pools,omitempty" toml:"pools,omitempty"`
+	GPUs                  []GPU               `json:"gpus,omitempty" yaml:"gpus,omitempty" toml:"gpus,omitempty"`
+	HasActiveRentContract bool                `json:"has_active_rent_contract,omitempty" yaml:"has_active_rent_contract,omitempty" toml:"has_active_rent_contract,omitempty"`
+
+	NeverShutDown             bool       `json:"never_shutdown,omitempty" yaml:"never_shutdown,omitempty" toml:"never_shutdown,omitempty"`
+	PowerState                PowerState `json:"power_state,omitempty" yaml:"power_state,omitempty" toml:"power_state,omitempty"`
+	TimeoutClaimedResources   time.Time  `json:"timeout_claimed_resources,omitempty" yaml:"timeout_claimed_resources,omitempty" toml:"timeout_claimed_resources,omitempty"`
+	LastTimePowerStateChanged time.Time  `json:"last_time_power_state_changed,omitempty" yaml:"last_time_power_state_changed,omitempty" toml:"last_time_power_state_changed,omitempty"`
+	LastTimeAwake             time.Time  `json:"last_time_awake,omitempty" yaml:"last_time_awake,omitempty" toml:"last_time_awake,omitempty"`
+	TimesRandomWakeUps        int        `json:"times_random_wake_ups,omitempty" yaml:"times_random_wake_ups,omitempty" toml:"times_random_wake_ups,omitempty"`
 }
 
 // NodeOptions represents the options to find a node

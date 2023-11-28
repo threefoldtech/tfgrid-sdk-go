@@ -8,7 +8,6 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
-	nodeClient "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/zos/pkg"
 )
@@ -17,13 +16,13 @@ import (
 type DataManager struct {
 	config     *models.Config
 	identity   substrate.Identity
-	subConn    Sub
+	subConn    models.Sub
 	rmbClient  rmb.Client
 	rmbTimeout time.Duration
 }
 
 // NewDataManager creates a new DataManager
-func NewDataManager(identity substrate.Identity, subConn Sub, config *models.Config, rmb rmb.Client) DataManager {
+func NewDataManager(identity substrate.Identity, subConn models.Sub, config *models.Config, rmb rmb.Client) DataManager {
 	return DataManager{config, identity, subConn, rmb, constants.TimeoutRMBResponse}
 }
 
@@ -79,7 +78,7 @@ func (m *DataManager) BatchBingNodes(ctx context.Context, nodes []models.Node) (
 
 	var successNodes []models.Node
 	for _, node := range nodes {
-		err := m.rmbClient.Call(ctx, node.TwinID, nil, cmd, nil, nil)
+		err := m.rmbClient.Call(ctx, uint32(node.TwinID), nil, cmd, nil, nil)
 		if err != nil {
 			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get system version of node %d", node.ID)
 			continue
@@ -101,7 +100,7 @@ func (m *DataManager) BatchStatistics(ctx context.Context, nodes []models.Node) 
 	for _, node := range nodes {
 		var result models.ZosResourcesStatistics
 
-		err := m.rmbClient.Call(ctx, node.TwinID, nil, cmd, nil, &result)
+		err := m.rmbClient.Call(ctx, uint32(node.TwinID), nil, cmd, nil, &result)
 		if err != nil {
 			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get statistics of node %d", node.ID)
 			continue
@@ -123,7 +122,7 @@ func (m *DataManager) BatchStoragePools(ctx context.Context, nodes []models.Node
 	var successNodes []models.Node
 	for _, node := range nodes {
 		var pools []pkg.PoolMetrics
-		err := m.rmbClient.Call(ctx, node.TwinID, nil, cmd, nil, &pools)
+		err := m.rmbClient.Call(ctx, uint32(node.TwinID), nil, cmd, nil, &pools)
 		if err != nil {
 			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get storage pools of node %d", node.ID)
 			continue
@@ -137,24 +136,17 @@ func (m *DataManager) BatchStoragePools(ctx context.Context, nodes []models.Node
 }
 
 func (m *DataManager) BatchPublicConfigGet(ctx context.Context, nodes []models.Node) ([]models.Node, error) {
-	ctx, cancel := context.WithTimeout(ctx, m.rmbTimeout)
-	defer cancel()
-
-	const cmd = "zos.network.public_config_get"
-
 	var successNodes []models.Node
 	for _, node := range nodes {
-		var publicConfig nodeClient.PublicConfig
-		err := m.rmbClient.Call(ctx, node.TwinID, nil, cmd, nil, &publicConfig)
+		subNode, err := m.subConn.GetNode(uint32(node.ID))
 		if err != nil {
-			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get public config of node %d", node.ID)
+			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get node %d from substrate", node.ID)
 			continue
 		}
 
-		node.PublicConfig = !publicConfig.IPv4.Nil()
+		node.PublicConfig = subNode.PublicConfig
 		successNodes = append(successNodes, node)
 	}
-
 	return successNodes, nil
 }
 
@@ -167,7 +159,7 @@ func (m *DataManager) BatchListGPUs(ctx context.Context, nodes []models.Node) ([
 	var successNodes []models.Node
 	for _, node := range nodes {
 		var gpus []models.GPU
-		err := m.rmbClient.Call(ctx, node.TwinID, nil, cmd, nil, &gpus)
+		err := m.rmbClient.Call(ctx, uint32(node.TwinID), nil, cmd, nil, &gpus)
 		if err != nil {
 			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get gpus of node %d", node.ID)
 			continue
@@ -184,7 +176,7 @@ func (m *DataManager) BatchListGPUs(ctx context.Context, nodes []models.Node) ([
 func (m *DataManager) BatchUpdateHasRentContract(ctx context.Context, nodes []models.Node) ([]models.Node, error) {
 	var successNodes []models.Node
 	for _, node := range nodes {
-		rentContract, err := m.subConn.GetNodeRentContract(node.ID)
+		rentContract, err := m.subConn.GetNodeRentContract(uint32(node.ID))
 		if err != nil {
 			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get node rent contract of node %d", node.ID)
 			continue

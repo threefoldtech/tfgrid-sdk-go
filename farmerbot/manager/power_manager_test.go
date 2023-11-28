@@ -20,25 +20,38 @@ func TestPowerManager(t *testing.T) {
 	defer ctrl.Finish()
 	sub := mocks.NewMockSub(ctrl)
 
-	var identity substrate.Identity
-	sub.EXPECT().NewIdentityFromSr25519Phrase("bad mnemonic").Return(identity, errors.New("error"))
-	identity, err := sub.NewIdentityFromSr25519Phrase("bad mnemonic")
+	identity, err := substrate.NewIdentityFromSr25519Phrase("bad mnemonic")
 	assert.Error(t, err)
 
-	config, err := parser.ParseIntoConfig([]byte(configContent), "json")
+	// configs
+	farmID := uint32(1)
+	sub.EXPECT().GetFarm(farmID).Return(&substrate.Farm{ID: 1}, nil)
+	nodes := []uint32{1, 2}
+	sub.EXPECT().GetNodes(farmID).Return(nodes, nil)
+	sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1, TwinID: 1, Resources: substrate.Resources{
+		HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
+	sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
+	sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2, Resources: substrate.Resources{
+		HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
+	sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+
+	inputs, err := parser.ParseIntoInputConfig([]byte(configContent), "json")
+	assert.NoError(t, err)
+
+	config, err := models.SetConfig(sub, inputs)
 	assert.NoError(t, err)
 
 	powerManager := NewPowerManager(identity, sub, &config)
 
 	t.Run("test valid power on: already on", func(t *testing.T) {
-		err = powerManager.PowerOn(config.Nodes[0].ID)
+		err = powerManager.PowerOn(uint32(config.Nodes[0].ID))
 		assert.NoError(t, err)
 	})
 
 	t.Run("test valid power on: already waking up", func(t *testing.T) {
 		config.Nodes[0].PowerState = models.WakingUP
 
-		err = powerManager.PowerOn(config.Nodes[0].ID)
+		err = powerManager.PowerOn(uint32(config.Nodes[0].ID))
 		assert.NoError(t, err)
 
 		config.Nodes[0].PowerState = models.ON
@@ -49,7 +62,7 @@ func TestPowerManager(t *testing.T) {
 
 		sub.EXPECT().SetNodePowerState(powerManager.identity, true).Return(types.Hash{}, nil)
 
-		err = powerManager.PowerOn(config.Nodes[0].ID)
+		err = powerManager.PowerOn(uint32(config.Nodes[0].ID))
 		assert.NoError(t, err)
 	})
 
@@ -63,7 +76,7 @@ func TestPowerManager(t *testing.T) {
 
 		sub.EXPECT().SetNodePowerState(powerManager.identity, true).Return(types.Hash{}, errors.New("error"))
 
-		err = powerManager.PowerOn(config.Nodes[0].ID)
+		err = powerManager.PowerOn(uint32(config.Nodes[0].ID))
 		assert.Error(t, err)
 
 		config.Nodes[0].PowerState = models.ON
@@ -72,7 +85,7 @@ func TestPowerManager(t *testing.T) {
 	t.Run("test valid power off: already off", func(t *testing.T) {
 		config.Nodes[0].PowerState = models.OFF
 
-		err = powerManager.PowerOff(config.Nodes[0].ID)
+		err = powerManager.PowerOff(uint32(config.Nodes[0].ID))
 		assert.NoError(t, err)
 
 		config.Nodes[0].PowerState = models.ON
@@ -81,7 +94,7 @@ func TestPowerManager(t *testing.T) {
 	t.Run("test valid power off: already shutting down", func(t *testing.T) {
 		config.Nodes[0].PowerState = models.ShuttingDown
 
-		err = powerManager.PowerOff(config.Nodes[0].ID)
+		err = powerManager.PowerOff(uint32(config.Nodes[0].ID))
 		assert.NoError(t, err)
 
 		config.Nodes[0].PowerState = models.ON
@@ -90,7 +103,7 @@ func TestPowerManager(t *testing.T) {
 	t.Run("test valid power off", func(t *testing.T) {
 		sub.EXPECT().SetNodePowerState(powerManager.identity, false).Return(types.Hash{}, nil)
 
-		err = powerManager.PowerOff(config.Nodes[0].ID)
+		err = powerManager.PowerOff(uint32(config.Nodes[0].ID))
 		assert.NoError(t, err)
 
 		config.Nodes[0].PowerState = models.ON
@@ -99,7 +112,7 @@ func TestPowerManager(t *testing.T) {
 	t.Run("test invalid power off: one node is on and cannot be off", func(t *testing.T) {
 		config.Nodes[0].PowerState = models.OFF
 
-		err = powerManager.PowerOff(config.Nodes[1].ID)
+		err = powerManager.PowerOff(uint32(config.Nodes[1].ID))
 		assert.Error(t, err)
 
 		config.Nodes[0].PowerState = models.ON
@@ -109,19 +122,19 @@ func TestPowerManager(t *testing.T) {
 	t.Run("test invalid power off: node is set to never shutdown", func(t *testing.T) {
 		config.Nodes[0].NeverShutDown = true
 
-		err = powerManager.PowerOff(config.Nodes[0].ID)
+		err = powerManager.PowerOff(uint32(config.Nodes[0].ID))
 		assert.Error(t, err)
 
 		config.Nodes[0].NeverShutDown = false
 	})
 
 	t.Run("test invalid power off: node has public config", func(t *testing.T) {
-		config.Nodes[0].PublicConfig = true
+		config.Nodes[0].PublicConfig.HasValue = true
 
-		err = powerManager.PowerOff(config.Nodes[0].ID)
+		err = powerManager.PowerOff(uint32(config.Nodes[0].ID))
 		assert.Error(t, err)
 
-		config.Nodes[0].PublicConfig = false
+		config.Nodes[0].PublicConfig.HasValue = false
 	})
 
 	t.Run("test invalid power off: node not found", func(t *testing.T) {
@@ -132,7 +145,7 @@ func TestPowerManager(t *testing.T) {
 	t.Run("test invalid power off: set node power failed", func(t *testing.T) {
 		sub.EXPECT().SetNodePowerState(powerManager.identity, false).Return(types.Hash{}, errors.New("error"))
 
-		err = powerManager.PowerOff(config.Nodes[0].ID)
+		err = powerManager.PowerOff(uint32(config.Nodes[0].ID))
 		assert.Error(t, err)
 	})
 
@@ -200,14 +213,14 @@ func TestPowerManager(t *testing.T) {
 	})
 
 	t.Run("test power management: cannot shutdown public config", func(t *testing.T) {
-		config.Nodes[0].PublicConfig = true
-		config.Nodes[1].PublicConfig = true
+		config.Nodes[0].PublicConfig.HasValue = true
+		config.Nodes[1].PublicConfig.HasValue = true
 
 		err = powerManager.PowerManagement()
 		assert.NoError(t, err)
 
-		config.Nodes[0].PublicConfig = false
-		config.Nodes[1].PublicConfig = false
+		config.Nodes[0].PublicConfig.HasValue = false
+		config.Nodes[1].PublicConfig.HasValue = false
 	})
 
 	t.Run("test power management: node is waking up", func(t *testing.T) {

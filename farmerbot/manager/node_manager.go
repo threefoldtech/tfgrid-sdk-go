@@ -17,11 +17,11 @@ import (
 type NodeManager struct {
 	config   *models.Config
 	identity substrate.Identity
-	subConn  Sub
+	subConn  models.Sub
 }
 
 // NewNodeManager creates a new NodeManager
-func NewNodeManager(identity substrate.Identity, subConn Sub, config *models.Config) NodeManager {
+func NewNodeManager(identity substrate.Identity, subConn models.Sub, config *models.Config) NodeManager {
 	return NodeManager{config, identity, subConn}
 }
 
@@ -42,7 +42,7 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
 			publicIpsUsedByNodes += node.PublicIPsUsed
 		}
 
-		if publicIpsUsedByNodes+nodeOptions.PublicIPs > n.config.Farm.PublicIPs {
+		if publicIpsUsedByNodes+nodeOptions.PublicIPs > uint64(len(n.config.Farm.PublicIPs)) {
 			return 0, fmt.Errorf("not enough public ips available for farm %d", n.config.Farm.ID)
 		}
 	}
@@ -64,11 +64,11 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
 			}
 		}
 
-		if nodeOptions.Certified && !node.Certified {
+		if nodeOptions.Certified && !node.Certification.IsCertified {
 			continue
 		}
 
-		if nodeOptions.PublicConfig && !node.PublicConfig {
+		if nodeOptions.PublicConfig && !node.PublicConfig.HasValue {
 			continue
 		}
 
@@ -86,7 +86,7 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
 			}
 		}
 
-		if slice.Contains(nodeOptions.NodeExclude, node.ID) {
+		if slice.Contains(nodeOptions.NodeExclude, uint32(node.ID)) {
 			continue
 		}
 
@@ -128,12 +128,12 @@ func (n *NodeManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
 	// power on the node if it is down or if it is shutting down
 	if nodeFound.PowerState == models.OFF || nodeFound.PowerState == models.ShuttingDown {
 		powerManager := NewPowerManager(n.identity, n.subConn, n.config)
-		if err := powerManager.PowerOn(nodeFound.ID); err != nil {
+		if err := powerManager.PowerOn(uint32(nodeFound.ID)); err != nil {
 			return 0, fmt.Errorf("failed to power on found node %d", nodeFound.ID)
 		}
 	}
 
-	return nodeFound.ID, nil
+	return uint32(nodeFound.ID), nil
 }
 
 // FilterIncludesSubStr filters a string slice according to if elements include a sub string

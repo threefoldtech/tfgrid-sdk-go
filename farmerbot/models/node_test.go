@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func TestNodeModel(t *testing.T) {
 	node := Node{
-		ID:     1,
-		TwinID: 1,
+		Node: substrate.Node{ID: 1, TwinID: 1},
 		Resources: ConsumableResources{
 			OverProvisionCPU: 1,
 			Total:            cap,

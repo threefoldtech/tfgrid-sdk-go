@@ -23,8 +23,6 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
-// TODO: get farms and nodes from substrate and rmb
-
 // FarmerBot for managing farms
 type FarmerBot struct {
 	config       *models.Config
@@ -42,12 +40,12 @@ type FarmerBot struct {
 // TODO: seed
 // NewFarmerBot generates a new farmer bot
 func NewFarmerBot(ctx context.Context, configPath, network, mnemonic string) (FarmerBot, error) {
-	jsonContent, format, err := parser.ReadFile(configPath)
+	content, format, err := parser.ReadFile(configPath)
 	if err != nil {
 		return FarmerBot{}, err
 	}
 
-	config, err := parser.ParseIntoConfig(jsonContent, format)
+	inputs, err := parser.ParseIntoInputConfig(content, format)
 	if err != nil {
 		return FarmerBot{}, err
 	}
@@ -60,6 +58,19 @@ func NewFarmerBot(ctx context.Context, configPath, network, mnemonic string) (Fa
 
 	// TODO:
 	// defer sub.Close()
+
+	config, err := models.SetConfig(sub, inputs)
+	if err != nil {
+		return FarmerBot{}, err
+	}
+
+	// print configs
+	configs, err := json.MarshalIndent(config, "", "\t")
+	if err != nil {
+		return FarmerBot{}, err
+	}
+
+	log.Debug().Msgf("[FARMERBOT] Configs set: %s", string(configs))
 
 	identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonic)
 	if err != nil {

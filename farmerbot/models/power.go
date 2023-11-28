@@ -23,6 +23,7 @@ type Power struct {
 	WakeUpThreshold     uint8      `json:"wake_up_threshold" yaml:"wake_up_threshold" toml:"wake_up_threshold"`
 	PeriodicWakeUpStart WakeUpDate `json:"periodic_wake_up_start" yaml:"periodic_wake_up_start" toml:"periodic_wake_up_start"`
 	PeriodicWakeUpLimit uint8      `json:"periodic_wake_up_limit" yaml:"periodic_wake_up_limit" toml:"periodic_wake_up_limit"`
+	OverProvisionCPU    float32    `json:"overprovision_cpu,omitempty" yaml:"overprovision_cpu,omitempty" toml:"overprovision_cpu,omitempty"` // how much we allow over provisioning the CPU range: [1;3]
 }
 
 // UnmarshalJSON unmarshal the given JSON string into wakeUp date
