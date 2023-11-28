@@ -29,6 +29,14 @@ var (
 	ErrNodeResourcesViewNotFound = errors.New("ERROR: relation \"nodes_resources_view\" does not exist (SQLSTATE 42P01)")
 	// ErrContractNotFound contract not found
 	ErrContractNotFound = errors.New("contract not found")
+
+	sortingOrder = struct {
+		Desc string
+		Asc  string
+	}{
+		Desc: "DESC",
+		Asc:  "ASC",
+	}
 )
 
 const (
