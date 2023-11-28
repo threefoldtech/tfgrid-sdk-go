@@ -29,14 +29,6 @@ var (
 	ErrNodeResourcesViewNotFound = errors.New("ERROR: relation \"nodes_resources_view\" does not exist (SQLSTATE 42P01)")
 	// ErrContractNotFound contract not found
 	ErrContractNotFound = errors.New("contract not found")
-
-	sortingOrder = struct {
-		Desc string
-		Asc  string
-	}{
-		Desc: "DESC",
-		Asc:  "ASC",
-	}
 )
 
 const (
@@ -639,9 +631,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		}
 
 		if limit.SortBy != "" {
-			order := types.SortOrderDesc
-			if limit.SortOrder == types.SortOrderAsc {
-				order = types.SortOrderAsc
+			order := types.SortOrderAsc
+			if strings.ToUpper(string(limit.SortOrder)) == string(types.SortOrderDesc) {
+				order = types.SortOrderDesc
 			}
 			q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 		} else {
@@ -760,9 +752,9 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	if limit.Randomize {
 		q = q.Order("random()")
 	} else if limit.SortBy != "" {
-		order := types.SortOrderDesc
-		if limit.SortOrder == types.SortOrderAsc {
-			order = types.SortOrderAsc
+		order := types.SortOrderAsc
+		if strings.ToUpper(string(limit.SortOrder)) == string(types.SortOrderDesc) {
+			order = types.SortOrderDesc
 		}
 		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 	} else {
@@ -812,9 +804,9 @@ func (d *PostgresDatabase) GetTwins(ctx context.Context, filter types.TwinFilter
 	if limit.Randomize {
 		q = q.Order("random()")
 	} else if limit.SortBy != "" {
-		order := types.SortOrderDesc
-		if limit.SortOrder == types.SortOrderAsc {
-			order = types.SortOrderAsc
+		order := types.SortOrderAsc
+		if strings.ToUpper(string(limit.SortOrder)) == string(types.SortOrderDesc) {
+			order = types.SortOrderDesc
 		}
 		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 	} else {
@@ -902,9 +894,9 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 	if limit.Randomize {
 		q = q.Order("random()")
 	} else if limit.SortBy != "" {
-		order := types.SortOrderDesc
-		if limit.SortOrder == types.SortOrderAsc {
-			order = types.SortOrderAsc
+		order := types.SortOrderAsc
+		if strings.ToUpper(string(limit.SortOrder)) == string(types.SortOrderDesc) {
+			order = types.SortOrderDesc
 		}
 		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 	} else {

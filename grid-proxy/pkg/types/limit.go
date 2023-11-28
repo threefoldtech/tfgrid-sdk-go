@@ -7,56 +7,16 @@ const (
 	// order
 	SortOrderAsc  SortOrder = "ASC"
 	SortOrderDesc SortOrder = "DESC"
-
-	// node
-	SortByPower    SortBy = "power"
-	SortByNodeID   SortBy = "node_id"
-	SortByCountry  SortBy = "country"
-	SortByCity     SortBy = "city"
-	SortByUptime   SortBy = "uptime"
-	SortByTotalCRU SortBy = "totalcru"
-	SortByTotalHRU SortBy = ""
-	SortByTotalMRU SortBy = ""
-	SortByTotalSRU SortBy = ""
-	SortByFreeCRU  SortBy = ""
-	SortByFreeHRU  SortBy = ""
-	SortByFreeMRU  SortBy = ""
-	SortByFreeSRU  SortBy = ""
-	SortByDomain   SortBy = ""
-
-	// twin
-	SortByAccountID SortBy = ""
-	SortByRelay     SortBy = ""
-	SortByPublicIP  SortBy = ""
-
-	// farm
-	SortByName            SortBy = ""
-	SortByPricingPolicyID SortBy = ""
-	SortByCertification   SortBy = ""
-	SortByStellarAddress  SortBy = ""
-	SortByPublicIPsCount  SortBy = ""
-
-	// contract
-	SortByType              SortBy = ""
-	SortByState             SortBy = ""
-	SortByCreatedAt         SortBy = ""
-	SortByNumberOfPublicIps SortBy = ""
-
-	// common
-	SortByDedicated SortBy = ""
-	SortByID        SortBy = ""
-	SortByFarmID    SortBy = ""
-	SortByTwinID    SortBy = ""
 )
 
 // Limit used for pagination
 type Limit struct {
-	Size      uint64
-	Page      uint64
-	RetCount  bool
-	Randomize bool
-	SortBy    string
-	SortOrder SortOrder
+	Size      uint64    `schema:"size,omitempty"`
+	Page      uint64    `schema:"page,omitempty"`
+	RetCount  bool      `schema:"ret_count,omitempty"`
+	Randomize bool      `schema:"randomize,omitempty"`
+	SortBy    SortBy    `schema:"sort_by,omitempty"`
+	SortOrder SortOrder `schema:"sort_order,omitempty"`
 }
 
 // DefaultLimit returns the default values for the pagination
@@ -66,5 +26,7 @@ func DefaultLimit() Limit {
 		Page:      1,
 		RetCount:  true,
 		Randomize: false,
+		SortBy:    "",
+		SortOrder: "",
 	}
 }
