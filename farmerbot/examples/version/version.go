@@ -1,0 +1,58 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"log"
+
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+)
+
+func version() error {
+	mnemonics := "<mnemonics goes here>"
+	subManager := substrate.NewManager("wss://tfchain.dev.grid.tf/ws")
+	sub, err := subManager.Substrate()
+	if err != nil {
+		return fmt.Errorf("failed to connect to substrate: %w", err)
+	}
+	defer sub.Close()
+
+	client, err := peer.NewRpcClient(
+		context.Background(),
+		peer.KeyTypeSr25519,
+		mnemonics,
+		"wss://relay.dev.grid.tf",
+		"test-version",
+		sub,
+		true,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create rpc client: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	farmID := 53 // <- replace this with the farm id of the farmerbot
+	service := fmt.Sprintf("farmerbot-%d", farmID)
+	const farmerbotTwinID = 164 // <- replace this with the twin id of where the farmerbot is running
+
+	var nodeID uint32
+	var version string
+	if err := client.Call(ctx, farmerbotTwinID, &service, "farmmanager.version", nodeID, &version); err != nil {
+		return err
+	}
+
+	fmt.Printf("version: %v\n", version)
+
+	return nil
+}
+
+func main() {
+	if err := version(); err != nil {
+		log.Fatal(err)
+	}
+}

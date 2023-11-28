@@ -6,8 +6,12 @@ test:
 	@echo "Running Tests"
 	go test -v ./...
 
-build: 
-	go build -o bin/farmerbot main.go
+build:
+	@echo "Running $@"
+	@go build -ldflags=\
+	"-X 'github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version.Version=$(shell git tag --sort=-version:refname | head -n 1)'"\
+	 -o bin/farmerbot main.go
+
 
 lint: 
 	@echo "Running $@"

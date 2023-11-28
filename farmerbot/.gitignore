@@ -17,4 +17,7 @@ vendor/
 
 coverage/
 *.json
+*.yml
+*.yaml
+*.toml
 *.log
