@@ -112,7 +112,7 @@ func (g *Clientimpl) Nodes(ctx context.Context, filter types.NodeFilter, limit t
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, 0, err
+		return
 	}
 
 	res, err := client.Do(req)
@@ -219,7 +219,7 @@ func (g *Clientimpl) Contracts(ctx context.Context, filter types.ContractFilter,
 	client := g.newHTTPClient()
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, 0, err
+		return
 	}
 
 	res, err := client.Do(req)
