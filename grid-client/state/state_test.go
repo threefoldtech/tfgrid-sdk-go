@@ -40,7 +40,7 @@ func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
 		Return(client.NewNodeClient(13, cl, 10), nil).AnyTimes()
 
 	cl.EXPECT().
-		Call(gomock.Any(), uint32(13), nil, "zos.deployment.get", gomock.Any(), gomock.Any()).
+		Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, session *string, fn string, data, result interface{}) error {
 			var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
 			dl1.Metadata = "{\"type\":\"\",\"name\":\"testName\",\"projectName\":\"\"}"

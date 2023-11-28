@@ -94,7 +94,6 @@ func mockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub *m
 	cl.EXPECT().Call(
 		gomock.Any(),
 		twinID,
-		nil,
 		"zos.network.public_config_get",
 		gomock.Any(),
 		gomock.Any()).
@@ -108,7 +107,6 @@ func mockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub *m
 	cl.EXPECT().Call(
 		gomock.Any(),
 		twinID,
-		nil,
 		"zos.system.version",
 		gomock.Any(),
 		gomock.Any(),
