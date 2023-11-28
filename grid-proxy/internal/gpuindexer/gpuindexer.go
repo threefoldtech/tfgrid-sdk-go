@@ -226,7 +226,7 @@ func (n *NodeGPUIndexer) watchNodeTable(ctx context.Context) {
 			n.newNodeTwinIDChan <- nodeTwinIDs
 			latestCheckedID = int64(nodeTwinIDs[0])
 		case <-ctx.Done():
-			break
+			return
 		}
 	}
 }
