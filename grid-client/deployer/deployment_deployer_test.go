@@ -321,7 +321,7 @@ func TestDeploymentDeployer(t *testing.T) {
 
 		cl.EXPECT().
 			Call(gomock.Any(), twinID, "zos.deployment.get", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, session *string, fn string, data, result interface{}) error {
+			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
 				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
 				*res = networkDl
 				return nil
@@ -499,7 +499,7 @@ func TestDeploymentDeployer(t *testing.T) {
 
 		cl.EXPECT().
 			Call(gomock.Any(), twinID, "zos.deployment.get", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, twin uint32, session *string, fn string, data, result interface{}) error {
+			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
 				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
 				*res = networkDl
 				return nil
