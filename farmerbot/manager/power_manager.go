@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -14,7 +15,6 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/slice"
 )
 
 // PowerManager manages the power of nodes
@@ -166,7 +166,7 @@ func (p *PowerManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) 
 			}
 		}
 
-		if slice.Contains(nodeOptions.NodeExclude, uint32(node.ID)) {
+		if slices.Contains(nodeOptions.NodeExclude, uint32(node.ID)) {
 			continue
 		}
 

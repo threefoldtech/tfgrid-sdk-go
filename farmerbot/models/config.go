@@ -3,13 +3,13 @@ package models
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/slice"
 )
 
 // InputConfig is the inputs for configuration for farmerbot
@@ -72,11 +72,11 @@ func (c *Config) SetConfigNodes(sub Sub, i InputConfig) error {
 	}
 
 	for _, nodeID := range farmNodes {
-		if slice.Contains(i.ExcludedNodes, nodeID) {
+		if slices.Contains(i.ExcludedNodes, nodeID) {
 			continue
 		}
 
-		if slice.Contains(i.IncludedNodes, nodeID) {
+		if slices.Contains(i.IncludedNodes, nodeID) {
 			node, err := sub.GetNode(nodeID)
 			if err != nil {
 				return err
@@ -138,7 +138,7 @@ func (c *Config) UpdateNode(node Node) error {
 func (c *Config) FilterNodesPower(states []PowerState) []Node {
 	filtered := make([]Node, 0)
 	for _, node := range c.Nodes {
-		if slice.Contains(states, node.PowerState) {
+		if slices.Contains(states, node.PowerState) {
 			filtered = append(filtered, node)
 		}
 	}
