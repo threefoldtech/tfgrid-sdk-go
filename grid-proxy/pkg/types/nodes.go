@@ -110,6 +110,7 @@ type NodeFilter struct {
 	CountryContains   *string  `schema:"country_contains,omitempty"`
 	City              *string  `schema:"city,omitempty"`
 	CityContains      *string  `schema:"city_contains,omitempty"`
+	Region            *string  `schema:"region,omitempty"`
 	FarmName          *string  `schema:"farm_name,omitempty"`
 	FarmNameContains  *string  `schema:"farm_name_contains,omitempty"`
 	FarmIDs           []uint64 `schema:"farm_ids,omitempty"`
