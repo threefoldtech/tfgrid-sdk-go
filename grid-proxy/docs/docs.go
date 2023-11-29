@@ -61,10 +61,10 @@ const docTemplate = `{
                     {
                         "enum": [
                             "twin_id",
-                            "node_id",
+                            "contract_id",
                             "type",
-                            "status",
-                            "..."
+                            "state",
+                            "created_at"
                         ],
                         "type": "string",
                         "description": "Sort by specific contract filed",
@@ -77,7 +77,7 @@ const docTemplate = `{
                             "asc"
                         ],
                         "type": "string",
-                        "description": "The sorting order, default is 'desc'",
+                        "description": "The sorting order, default is 'asc'",
                         "name": "sort_order",
                         "in": "query"
                     },
@@ -313,6 +313,35 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Get random patch of farms",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "name",
+                            "farm_id",
+                            "twin_id",
+                            "public_ips",
+                            "dedicated"
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific farm filed",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'asc'",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Min number of free ips in the farm",
                         "name": "free_ips",
@@ -503,10 +532,26 @@ const docTemplate = `{
                     },
                     {
                         "enum": [
-                            "free_mru",
+                            "node_id",
+                            "farm_id",
+                            "twin_id",
+                            "uptime",
+                            "created",
+                            "updated_at",
+                            "country",
+                            "city",
+                            "dedicated_farm",
+                            "rent_contract_id",
                             "total_cru",
-                            "free_ips",
-                            "..."
+                            "total_mru",
+                            "total_hru",
+                            "total_sru",
+                            "used_cru",
+                            "used_mru",
+                            "used_hru",
+                            "used_sru",
+                            "num_gpu",
+                            "extra_fee"
                         ],
                         "type": "string",
                         "description": "Sort by specific gateway filed",
@@ -519,7 +564,7 @@ const docTemplate = `{
                             "asc"
                         ],
                         "type": "string",
-                        "description": "The sorting order, default is 'desc'",
+                        "description": "The sorting order, default is 'asc'",
                         "name": "sort_order",
                         "in": "query"
                     },
@@ -762,10 +807,26 @@ const docTemplate = `{
                     },
                     {
                         "enum": [
-                            "free_mru",
+                            "node_id",
+                            "farm_id",
+                            "twin_id",
+                            "uptime",
+                            "created",
+                            "updated_at",
+                            "country",
+                            "city",
+                            "dedicated_farm",
+                            "rent_contract_id",
                             "total_cru",
-                            "free_ips",
-                            "..."
+                            "total_mru",
+                            "total_hru",
+                            "total_sru",
+                            "used_cru",
+                            "used_mru",
+                            "used_hru",
+                            "used_sru",
+                            "num_gpu",
+                            "extra_fee"
                         ],
                         "type": "string",
                         "description": "Sort by specific node filed",
@@ -778,7 +839,7 @@ const docTemplate = `{
                             "asc"
                         ],
                         "type": "string",
-                        "description": "The sorting order, default is 'desc'",
+                        "description": "The sorting order, default is 'asc'",
                         "name": "sort_order",
                         "in": "query"
                     },
@@ -1267,7 +1328,7 @@ const docTemplate = `{
                             "asc"
                         ],
                         "type": "string",
-                        "description": "The sorting order, default is 'desc'",
+                        "description": "The sorting order, default is 'asc'",
                         "name": "sort_order",
                         "in": "query"
                     },
@@ -1551,6 +1612,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "node_twin_id": {
+                    "type": "integer"
                 },
                 "vendor": {
                     "type": "string"

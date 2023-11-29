@@ -31,6 +31,9 @@ const (
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set farms' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of farms"
+// @Param sort_by query string false "Sort by specific farm filed" Enums(name, farm_id, twin_id, public_ips, dedicated)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_ips query int false "Min number of free ips in the farm"
 // @Param total_ips query int false "Min number of total ips in the farm"
 // @Param pricing_policy_id query int false "Pricing policy id"
@@ -59,6 +62,9 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 	filter := types.FarmFilter{}
 	limit := types.DefaultLimit()
 	if err := parseQueryParams(r, &filter, &limit); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := limit.Valid(types.Farm{}); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -110,8 +116,8 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of nodes"
-// @Param sort_by query string false "Sort by specific node filed" Enums(free_mru, total_cru, free_ips, ...)
-// @Param sort_order query string false "The sorting order, default is 'desc'" Enums(desc, asc)
+// @Param sort_by query string false "Sort by specific node filed" Enums(node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"
 // @Param free_sru query int false "Min free reservable sru in bytes"
@@ -160,8 +166,8 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of gateways"
-// @Param sort_by query string false "Sort by specific gateway filed" Enums(free_mru, total_cru, free_ips, ...)
-// @Param sort_order query string false "The sorting order, default is 'desc'" Enums(desc, asc)
+// @Param sort_by query string false "Sort by specific gateway filed" Enums(node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"
 // @Param free_sru query int false "Min free reservable sru in bytes"
@@ -194,6 +200,9 @@ func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 	filter := types.NodeFilter{}
 	limit := types.DefaultLimit()
 	if err := parseQueryParams(r, &filter, &limit); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := limit.Valid(types.Node{}); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -282,7 +291,7 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 // @Param ret_count query bool false "Set twins' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of twins"
 // @Param sort_by query string false "Sort by specific twin filed" Enums(relay, public_key, account_id, twin_id)
-// @Param sort_order query string false "The sorting order, default is 'desc'" Enums(desc, asc)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param twin_id query int false "twin id"
 // @Param account_id query string false "Account address"
 // @Param relay query string false "Relay address"
@@ -295,6 +304,9 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 	filter := types.TwinFilter{}
 	limit := types.DefaultLimit()
 	if err := parseQueryParams(r, &filter, &limit); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := limit.Valid(types.Twin{}); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -318,8 +330,8 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set contracts' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of contracts"
-// @Param sort_by query string false "Sort by specific contract filed" Enums(twin_id, node_id, type, status, ...)
-// @Param sort_order query string false "The sorting order, default is 'desc'" Enums(desc, asc)
+// @Param sort_by query string false "Sort by specific contract filed" Enums(twin_id, contract_id, type, state, created_at)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param contract_id query int false "contract id"
 // @Param twin_id query int false "twin id"
 // @Param node_id query int false "node id which contract is deployed on in case of ('rent' or 'node' contracts)"
@@ -337,6 +349,9 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 	filter := types.ContractFilter{}
 	limit := types.DefaultLimit()
 	if err := parseQueryParams(r, &filter, &limit); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := limit.Valid(types.Contract{}); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 

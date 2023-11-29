@@ -153,6 +153,8 @@ definitions:
         type: string
       id:
         type: string
+      node_twin_id:
+        type: integer
       vendor:
         type: string
     type: object
@@ -353,14 +355,14 @@ paths:
       - description: Sort by specific contract filed
         enum:
         - twin_id
-        - node_id
+        - contract_id
         - type
-        - status
-        - '...'
+        - state
+        - created_at
         in: query
         name: sort_by
         type: string
-      - description: The sorting order, default is 'desc'
+      - description: The sorting order, default is 'asc'
         enum:
         - desc
         - asc
@@ -520,6 +522,27 @@ paths:
         in: query
         name: ret_count
         type: boolean
+      - description: Get random patch of farms
+        in: query
+        name: randomize
+        type: boolean
+      - description: Sort by specific farm filed
+        enum:
+        - name
+        - farm_id
+        - twin_id
+        - public_ips
+        - dedicated
+        in: query
+        name: sort_by
+        type: string
+      - description: The sorting order, default is 'asc'
+        enum:
+        - desc
+        - asc
+        in: query
+        name: sort_order
+        type: string
       - description: Min number of free ips in the farm
         in: query
         name: free_ips
@@ -652,14 +675,30 @@ paths:
         type: boolean
       - description: Sort by specific gateway filed
         enum:
-        - free_mru
+        - node_id
+        - farm_id
+        - twin_id
+        - uptime
+        - created
+        - updated_at
+        - country
+        - city
+        - dedicated_farm
+        - rent_contract_id
         - total_cru
-        - free_ips
-        - '...'
+        - total_mru
+        - total_hru
+        - total_sru
+        - used_cru
+        - used_mru
+        - used_hru
+        - used_sru
+        - num_gpu
+        - extra_fee
         in: query
         name: sort_by
         type: string
-      - description: The sorting order, default is 'desc'
+      - description: The sorting order, default is 'asc'
         enum:
         - desc
         - asc
@@ -826,14 +865,30 @@ paths:
         type: boolean
       - description: Sort by specific node filed
         enum:
-        - free_mru
+        - node_id
+        - farm_id
+        - twin_id
+        - uptime
+        - created
+        - updated_at
+        - country
+        - city
+        - dedicated_farm
+        - rent_contract_id
         - total_cru
-        - free_ips
-        - '...'
+        - total_mru
+        - total_hru
+        - total_sru
+        - used_cru
+        - used_mru
+        - used_hru
+        - used_sru
+        - num_gpu
+        - extra_fee
         in: query
         name: sort_by
         type: string
-      - description: The sorting order, default is 'desc'
+      - description: The sorting order, default is 'asc'
         enum:
         - desc
         - asc
@@ -1160,7 +1215,7 @@ paths:
         in: query
         name: sort_by
         type: string
-      - description: The sorting order, default is 'desc'
+      - description: The sorting order, default is 'asc'
         enum:
         - desc
         - asc

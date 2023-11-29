@@ -632,7 +632,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 
 		if limit.SortBy != "" {
 			order := types.SortOrderAsc
-			if strings.ToUpper(string(limit.SortOrder)) == string(types.SortOrderDesc) {
+			if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
 				order = types.SortOrderDesc
 			}
 			q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
@@ -753,7 +753,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		q = q.Order("random()")
 	} else if limit.SortBy != "" {
 		order := types.SortOrderAsc
-		if strings.ToUpper(string(limit.SortOrder)) == string(types.SortOrderDesc) {
+		if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
 			order = types.SortOrderDesc
 		}
 		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
@@ -805,7 +805,7 @@ func (d *PostgresDatabase) GetTwins(ctx context.Context, filter types.TwinFilter
 		q = q.Order("random()")
 	} else if limit.SortBy != "" {
 		order := types.SortOrderAsc
-		if strings.ToUpper(string(limit.SortOrder)) == string(types.SortOrderDesc) {
+		if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
 			order = types.SortOrderDesc
 		}
 		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
@@ -895,7 +895,7 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 		q = q.Order("random()")
 	} else if limit.SortBy != "" {
 		order := types.SortOrderAsc
-		if strings.ToUpper(string(limit.SortOrder)) == string(types.SortOrderDesc) {
+		if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
 			order = types.SortOrderDesc
 		}
 		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
