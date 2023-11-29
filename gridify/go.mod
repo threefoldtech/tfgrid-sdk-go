@@ -60,7 +60,7 @@ require (
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231017113908-9d56a805ead0 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231129121046-56ffc1f8f5c6 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4 // indirect
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
