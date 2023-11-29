@@ -900,7 +900,7 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 		}
 		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 	} else {
-		q = q.Order("contract_id")
+		q = q.Order("contracts.contract_id")
 	}
 
 	// Pagination

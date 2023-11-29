@@ -1,10 +1,8 @@
 package types
 
 type SortOrder string
-type SortBy string
 
 const (
-	// order
 	SortOrderAsc  SortOrder = "ASC"
 	SortOrderDesc SortOrder = "DESC"
 )
@@ -15,7 +13,7 @@ type Limit struct {
 	Page      uint64    `schema:"page,omitempty"`
 	RetCount  bool      `schema:"ret_count,omitempty"`
 	Randomize bool      `schema:"randomize,omitempty"`
-	SortBy    SortBy    `schema:"sort_by,omitempty"`
+	SortBy    string    `schema:"sort_by,omitempty"`
 	SortOrder SortOrder `schema:"sort_order,omitempty"`
 }
 
