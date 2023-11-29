@@ -158,7 +158,7 @@ func (d *Deployer) deploy(
 			contractID, err := d.substrateConn.CreateNodeContract(d.identity, node, dl.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[node])
 			log.Debug().Uint64("CreateNodeContract returned id", contractID)
 			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to create contract")
+				return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d", node)
 			}
 
 			dl.ContractID = contractID
@@ -171,7 +171,7 @@ func (d *Deployer) deploy(
 				if rerr != nil {
 					return currentDeployments, errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, contractID)
 				}
-				return currentDeployments, errors.Wrap(err, "error sending deployment to the node")
+				return currentDeployments, errors.Wrapf(err, "error sending deployment to node %d", node)
 
 			}
 			currentDeployments[node] = dl.ContractID
@@ -269,7 +269,6 @@ func (d *Deployer) deploy(
 func (d *Deployer) Cancel(ctx context.Context,
 	contractID uint64,
 ) error {
-
 	err := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to delete deployment: %d", contractID)
@@ -293,7 +292,6 @@ func (d *Deployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (m
 
 		dl, err := nc.DeploymentGet(sub, dlID)
 		if err != nil {
-
 			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
 		}
 		res[nodeID] = dl
