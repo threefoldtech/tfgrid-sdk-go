@@ -35,15 +35,15 @@ func (m *RMBMockClient) EXPECT() *RMBMockClientMockRecorder {
 }
 
 // Call mocks base method.
-func (m *RMBMockClient) Call(ctx context.Context, twin uint32, session *string, fn string, data, result interface{}) error {
+func (m *RMBMockClient) Call(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Call", ctx, twin, session, fn, data, result)
+	ret := m.ctrl.Call(m, "Call", ctx, twin, fn, data, result)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Call indicates an expected call of Call.
-func (mr *RMBMockClientMockRecorder) Call(ctx, twin, session, fn, data, result interface{}) *gomock.Call {
+func (mr *RMBMockClientMockRecorder) Call(ctx, twin, fn, data, result interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*RMBMockClient)(nil).Call), ctx, twin, session, fn, data, result)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Call", reflect.TypeOf((*RMBMockClient)(nil).Call), ctx, twin, fn, data, result)
 }

@@ -395,7 +395,7 @@ func (a *App) getNodeStatistics(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	var res types.NodeStatistics
-	err = a.relayClient.Call(r.Context(), uint32(node.TwinID), nil, "zos.statistics.get", nil, &res)
+	err = a.relayClient.Call(r.Context(), uint32(node.TwinID), "zos.statistics.get", nil, &res)
 	if err != nil {
 		return nil, mw.Error(fmt.Errorf("failed to get get node statistics from relay: %w", err))
 	}
@@ -426,7 +426,7 @@ func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	var res []types.NodeGPU
-	err = a.relayClient.Call(r.Context(), uint32(node.TwinID), nil, "zos.gpu.list", nil, &res)
+	err = a.relayClient.Call(r.Context(), uint32(node.TwinID), "zos.gpu.list", nil, &res)
 	if err != nil {
 		return nil, mw.Error(fmt.Errorf("failed to get get node GPU information from relay: %w", err))
 	}

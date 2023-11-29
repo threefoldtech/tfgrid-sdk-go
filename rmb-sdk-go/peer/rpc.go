@@ -69,8 +69,11 @@ func (d *RpcCLient) router(ctx context.Context, peer Peer, env *types.Envelope, 
 		// client is not waiting anymore! just return then
 	}
 }
+func (d *RpcCLient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
+	return d.CallWithSession(ctx, twin, nil, fn, data, result)
+}
 
-func (d *RpcCLient) Call(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error {
+func (d *RpcCLient) CallWithSession(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error {
 	id := uuid.NewString()
 
 	ch := make(chan incomingEnv)

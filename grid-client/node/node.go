@@ -165,7 +165,7 @@ func (n *NodeClient) DeploymentDeploy(ctx context.Context, dl gridtypes.Deployme
 	defer cancel()
 
 	const cmd = "zos.deployment.deploy"
-	return n.bus.Call(ctx, n.nodeTwin, nil, cmd, dl, nil)
+	return n.bus.Call(ctx, n.nodeTwin, cmd, dl, nil)
 }
 
 // DeploymentUpdate update the given deployment. deployment must be a valid update for
@@ -175,7 +175,7 @@ func (n *NodeClient) DeploymentUpdate(ctx context.Context, dl gridtypes.Deployme
 	defer cancel()
 
 	const cmd = "zos.deployment.update"
-	return n.bus.Call(ctx, n.nodeTwin, nil, cmd, dl, nil)
+	return n.bus.Call(ctx, n.nodeTwin, cmd, dl, nil)
 }
 
 // DeploymentGet gets a deployment via contract ID
@@ -188,7 +188,7 @@ func (n *NodeClient) DeploymentGet(ctx context.Context, contractID uint64) (dl g
 		"contract_id": contractID,
 	}
 
-	if err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, in, &dl); err != nil {
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, in, &dl); err != nil {
 		return dl, err
 	}
 
@@ -206,7 +206,7 @@ func (n *NodeClient) DeploymentDelete(ctx context.Context, contractID uint64) er
 		"contract_id": contractID,
 	}
 
-	return n.bus.Call(ctx, n.nodeTwin, nil, cmd, in, nil)
+	return n.bus.Call(ctx, n.nodeTwin, cmd, in, nil)
 }
 
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
@@ -231,7 +231,7 @@ func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, 
 		} `json:"users"`
 	}{}
 
-	if err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &result); err != nil {
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
 		return
 	}
 
@@ -247,7 +247,7 @@ func (n *NodeClient) NetworkListWGPorts(ctx context.Context) ([]uint16, error) {
 	const cmd = "zos.network.list_wg_ports"
 	var result []uint16
 
-	if err := n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &result); err != nil {
+	if err := n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
 		return nil, err
 	}
 
@@ -262,7 +262,7 @@ func (n *NodeClient) NetworkListInterfaces(ctx context.Context) (map[string][]ne
 	const cmd = "zos.network.interfaces"
 	var result map[string][]net.IP
 
-	if err := n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &result); err != nil {
+	if err := n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
 		return nil, err
 	}
 
@@ -279,7 +279,7 @@ func (n *NodeClient) DeploymentChanges(ctx context.Context, contractID uint64) (
 		"contract_id": contractID,
 	}
 
-	if err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, in, &changes); err != nil {
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, in, &changes); err != nil {
 		return changes, err
 	}
 
@@ -294,7 +294,7 @@ func (n *NodeClient) NetworkListIPs(ctx context.Context) ([]string, error) {
 	const cmd = "zos.network.list_public_ips"
 	var result []string
 
-	if err := n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &result); err != nil {
+	if err := n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
 		return nil, err
 	}
 
@@ -309,7 +309,7 @@ func (n *NodeClient) NetworkGetPublicConfig(ctx context.Context) (cfg PublicConf
 
 	const cmd = "zos.network.public_config_get"
 
-	if err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &cfg); err != nil {
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &cfg); err != nil {
 		return
 	}
 
@@ -323,7 +323,7 @@ func (n *NodeClient) NetworkSetPublicConfig(ctx context.Context, cfg PublicConfi
 	defer cancel()
 
 	const cmd = "zos.network.public_config_set"
-	return n.bus.Call(ctx, n.nodeTwin, nil, cmd, cfg, nil)
+	return n.bus.Call(ctx, n.nodeTwin, cmd, cfg, nil)
 }
 
 // SystemDMI executes dmidecode to get dmidecode output
@@ -333,7 +333,7 @@ func (n *NodeClient) SystemDMI(ctx context.Context) (result dmi.DMI, err error) 
 
 	const cmd = "zos.system.dmi"
 
-	if err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &result); err != nil {
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
 		return
 	}
 
@@ -347,7 +347,7 @@ func (n *NodeClient) SystemHypervisor(ctx context.Context) (result string, err e
 
 	const cmd = "zos.system.hypervisor"
 
-	if err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &result); err != nil {
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
 		return
 	}
 
@@ -367,7 +367,7 @@ func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error)
 
 	const cmd = "zos.system.version"
 
-	if err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &ver); err != nil {
+	if err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &ver); err != nil {
 		return
 	}
 
@@ -380,7 +380,7 @@ func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result string, er
 	defer cancel()
 
 	const cmd = "zos.perf.get_all"
-	err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &result)
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result)
 
 	return
 }
@@ -391,7 +391,7 @@ func (n *NodeClient) GetPerfTestResult(ctx context.Context, testName string) (re
 	defer cancel()
 
 	const cmd = "zos.perf.get"
-	err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, testName, &result)
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, testName, &result)
 
 	return
 }
@@ -477,7 +477,7 @@ func (n *NodeClient) Pools(ctx context.Context) (pools []PoolMetrics, err error)
 	defer cancel()
 
 	const cmd = "zos.storage.pools"
-	err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &pools)
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &pools)
 	return
 }
 
@@ -494,7 +494,7 @@ func (n *NodeClient) GPUs(ctx context.Context) (gpus []GPU, err error) {
 	defer cancel()
 
 	const cmd = "zos.gpu.list"
-	err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &gpus)
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &gpus)
 	return
 }
 
@@ -506,7 +506,7 @@ func (n *NodeClient) HasPublicIPv6(ctx context.Context) (bool, error) {
 	const cmd = "zos.network.has_ipv6"
 	var result bool
 
-	if err := n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &result); err != nil {
+	if err := n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result); err != nil {
 		return false, err
 	}
 
@@ -519,7 +519,7 @@ func (n *NodeClient) NetworkListAllInterfaces(ctx context.Context) (result map[s
 	defer cancel()
 
 	const cmd = "zos.network.admin.interfaces"
-	err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &result)
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &result)
 
 	return
 }
@@ -531,7 +531,7 @@ func (n *NodeClient) NetworkSetPublicExitDevice(ctx context.Context, iface strin
 	defer cancel()
 
 	const cmd = "zos.network.admin.set_public_nic"
-	return n.bus.Call(ctx, n.nodeTwin, nil, cmd, iface, nil)
+	return n.bus.Call(ctx, n.nodeTwin, cmd, iface, nil)
 }
 
 // NetworkGetPublicExitDevice gets the current dual nic setup of the node.
@@ -540,7 +540,7 @@ func (n *NodeClient) NetworkGetPublicExitDevice(ctx context.Context) (exit ExitD
 	defer cancel()
 
 	const cmd = "zos.network.admin.get_public_nic"
-	err = n.bus.Call(ctx, n.nodeTwin, nil, cmd, nil, &exit)
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &exit)
 	return
 }
 
