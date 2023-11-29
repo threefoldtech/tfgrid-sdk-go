@@ -7,7 +7,7 @@ This is a `Go` example for the `RMB` [direct client](https://github.com/threefol
 To use the example, you needs to:
 
 -   Set the mnemonics variable to a valid mnemonics, with an activated account on the TFChain.
--   Set dist to the twinId of a remote calculator process that could add two integers
+-   Set dst to the twinId of a remote calculator process that could add two integers
 
 ## Usage
 
