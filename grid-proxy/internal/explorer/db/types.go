@@ -18,6 +18,8 @@ type Database interface {
 	GetContract(ctx context.Context, contractID uint32) (DBContract, error)
 	GetContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]ContractBilling, uint, error)
 	UpsertNodesGPU(ctx context.Context, nodesGPU []types.NodeGPU) error
+	GetLastNodeTwinID(ctx context.Context) (int64, error)
+	GetNodeTwinIDsAfter(ctx context.Context, twinID int64) ([]int64, error)
 	GetConnectionString() string
 }
 

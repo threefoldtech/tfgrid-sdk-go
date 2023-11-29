@@ -87,7 +87,6 @@ func TestNameDeployer(t *testing.T) {
 			Call(
 				gomock.Any(),
 				nodeID,
-				nil,
 				"zos.system.version",
 				nil,
 				gomock.Any(),

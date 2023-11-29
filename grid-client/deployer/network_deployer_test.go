@@ -76,17 +76,17 @@ func TestNetworkDeployer(t *testing.T) {
 		znet.NodeDeploymentID = map[uint32]uint64{nodeID: contractID}
 
 		cl.EXPECT().
-			Call(gomock.Any(), twinID, nil, "zos.network.public_config_get", gomock.Any(), gomock.Any()).
+			Call(gomock.Any(), twinID, "zos.network.public_config_get", gomock.Any(), gomock.Any()).
 			Return(nil).
 			AnyTimes()
 
 		cl.EXPECT().
-			Call(gomock.Any(), twinID, nil, "zos.network.interfaces", gomock.Any(), gomock.Any()).
+			Call(gomock.Any(), twinID, "zos.network.interfaces", gomock.Any(), gomock.Any()).
 			Return(nil).
 			AnyTimes()
 
 		cl.EXPECT().
-			Call(gomock.Any(), twinID, nil, "zos.network.list_wg_ports", gomock.Any(), gomock.Any()).
+			Call(gomock.Any(), twinID, "zos.network.list_wg_ports", gomock.Any(), gomock.Any()).
 			Return(nil).
 			AnyTimes()
 

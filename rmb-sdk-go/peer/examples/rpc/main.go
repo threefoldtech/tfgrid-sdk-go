@@ -47,7 +47,7 @@ func app() error {
 		// routerSession := "test-router"
 		// session = &routerSession
 
-		if err := client.Call(ctx, dst, &service, "calculator.add", []float64{output, float64(i)}, &output); err != nil {
+		if err := client.CallWithSession(ctx, dst, &service, "calculator.add", []float64{output, float64(i)}, &output); err != nil {
 			return err
 		}
 	}
