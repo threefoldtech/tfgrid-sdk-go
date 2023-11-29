@@ -10,7 +10,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/stellar/go v0.0.0-20231121172327-69266de4154f
 	github.com/stretchr/testify v1.8.4
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231017113908-9d56a805ead0
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231129121046-56ffc1f8f5c6
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.10.2
 )
 
