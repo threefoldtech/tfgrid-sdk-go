@@ -349,6 +349,10 @@ func TestFindNode(t *testing.T) {
 	config, err := models.SetConfig(sub, inputs)
 	assert.NoError(t, err)
 
+	oldNode1 := config.Nodes[0]
+	oldNode2 := config.Nodes[1]
+	oldFarm := config.Farm
+
 	powerManager := NewPowerManager(identity, sub, &config)
 
 	nodeOptions := models.NodeOptions{
@@ -360,6 +364,23 @@ func TestFindNode(t *testing.T) {
 		nodeID, err := powerManager.FindNode(nodeOptions)
 		assert.NoError(t, err)
 		assert.Equal(t, nodeID, uint32(config.Nodes[0].ID))
+
+		err = powerManager.config.UpdateNode(oldNode1)
+		assert.NoError(t, err)
+		powerManager.config.Farm = oldFarm
+	})
+
+	t.Run("test valid find node: found an ON node, trying to power off fails because resources is claimed", func(t *testing.T) {
+		nodeID, err := powerManager.FindNode(nodeOptions)
+		assert.NoError(t, err)
+		assert.Equal(t, nodeID, uint32(config.Nodes[0].ID))
+
+		err = powerManager.PowerOff(nodeID)
+		assert.Error(t, err)
+
+		err = powerManager.config.UpdateNode(oldNode1)
+		assert.NoError(t, err)
+		powerManager.config.Farm = oldFarm
 	})
 
 	t.Run("test valid find node: found an ON node (first is OFF)", func(t *testing.T) {
@@ -370,6 +391,9 @@ func TestFindNode(t *testing.T) {
 		assert.Equal(t, nodeID, uint32(config.Nodes[1].ID))
 
 		config.Nodes[0].PowerState = models.ON
+		err = powerManager.config.UpdateNode(oldNode2)
+		assert.NoError(t, err)
+		powerManager.config.Farm = oldFarm
 	})
 
 	t.Run("test valid find node: found an OFF node", func(t *testing.T) {
@@ -382,8 +406,10 @@ func TestFindNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, nodeID, uint32(config.Nodes[0].ID))
 
-		config.Nodes[0].PowerState = models.ON
 		config.Nodes[1].PowerState = models.ON
+		err = powerManager.config.UpdateNode(oldNode1)
+		assert.NoError(t, err)
+		powerManager.config.Farm = oldFarm
 	})
 
 	t.Run("test valid find node: node is rented (second node is found)", func(t *testing.T) {
@@ -394,6 +420,9 @@ func TestFindNode(t *testing.T) {
 		assert.Equal(t, nodeID, uint32(config.Nodes[1].ID))
 
 		config.Nodes[0].HasActiveRentContract = false
+		err = powerManager.config.UpdateNode(oldNode2)
+		assert.NoError(t, err)
+		powerManager.config.Farm = oldFarm
 	})
 
 	t.Run("test valid find node: node is dedicated so second node is found", func(t *testing.T) {
@@ -406,6 +435,9 @@ func TestFindNode(t *testing.T) {
 
 		config.Nodes[0].Dedicated = false
 		config.Nodes[0].Resources.Total = nodeCapacity
+		err = powerManager.config.UpdateNode(oldNode2)
+		assert.NoError(t, err)
+		powerManager.config.Farm = oldFarm
 	})
 
 	t.Run("test valid find node: options and nodes are dedicated and nodes are unused", func(t *testing.T) {

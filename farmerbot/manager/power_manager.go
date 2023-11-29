@@ -212,6 +212,12 @@ func (p *PowerManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) 
 		}
 	}
 
+	// update claimed resources
+	err := p.config.UpdateNode(nodeFound)
+	if err != nil {
+		return 0, fmt.Errorf("failed to power on found node %d", nodeFound.ID)
+	}
+
 	return uint32(nodeFound.ID), nil
 }
 
@@ -383,7 +389,7 @@ func (p *PowerManager) resourceUsageTooLow(power models.Power, usedResources, to
 			}
 		}
 	} else {
-		log.Debug().Msg("[POWER MANAGER] Nothing to shutdowp.")
+		log.Debug().Msg("[POWER MANAGER] Nothing to shutdown.")
 	}
 
 	return nil
