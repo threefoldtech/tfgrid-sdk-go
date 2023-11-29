@@ -7,8 +7,7 @@ import (
 
 // Sub is substrate client interface
 type Sub interface {
-	// TODO: check this function what it does
-	SetNodePowerState(identity substrate.Identity, up bool) (hash types.Hash, err error)
+	SetNodePowerTarget(identity substrate.Identity, nodeID uint32, up bool) (hash types.Hash, err error)
 
 	GetNodeRentContract(nodeID uint32) (uint64, error)
 	GetNode(nodeID uint32) (*substrate.Node, error)

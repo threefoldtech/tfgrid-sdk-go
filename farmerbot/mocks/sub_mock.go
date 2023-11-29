@@ -110,17 +110,17 @@ func (mr *MockSubMockRecorder) GetNodes(farmID interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodes", reflect.TypeOf((*MockSub)(nil).GetNodes), farmID)
 }
 
-// SetNodePowerState mocks base method.
-func (m *MockSub) SetNodePowerState(identity substrate.Identity, up bool) (types.Hash, error) {
+// SetNodePowerTarget mocks base method.
+func (m *MockSub) SetNodePowerTarget(identity substrate.Identity, nodeID uint32, up bool) (types.Hash, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetNodePowerState", identity, up)
+	ret := m.ctrl.Call(m, "SetNodePowerTarget", identity, nodeID, up)
 	ret0, _ := ret[0].(types.Hash)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SetNodePowerState indicates an expected call of SetNodePowerState.
-func (mr *MockSubMockRecorder) SetNodePowerState(identity, up interface{}) *gomock.Call {
+// SetNodePowerTarget indicates an expected call of SetNodePowerTarget.
+func (mr *MockSubMockRecorder) SetNodePowerTarget(identity, nodeID, up interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNodePowerState", reflect.TypeOf((*MockSub)(nil).SetNodePowerState), identity, up)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNodePowerTarget", reflect.TypeOf((*MockSub)(nil).SetNodePowerTarget), identity, nodeID, up)
 }

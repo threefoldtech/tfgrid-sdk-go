@@ -42,7 +42,7 @@ func version() error {
 
 	var nodeID uint32
 	var version string
-	if err := client.Call(ctx, farmerbotTwinID, &service, "farmmanager.version", nodeID, &version); err != nil {
+	if err := client.CallWithSession(ctx, farmerbotTwinID, &service, "farmmanager.version", nodeID, &version); err != nil {
 		return err
 	}
 

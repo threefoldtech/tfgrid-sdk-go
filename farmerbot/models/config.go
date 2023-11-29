@@ -25,7 +25,7 @@ type Config struct {
 	Farm  substrate.Farm `json:"farm" yaml:"farm" toml:"farm"`
 	Nodes []Node         `json:"nodes" yaml:"nodes" toml:"nodes"`
 	Power Power          `json:"power" yaml:"power" toml:"power"`
-	*sync.Mutex
+	m     sync.Mutex
 }
 
 // SetConfig sets the config data from configuration inputs
@@ -61,7 +61,6 @@ func SetConfig(sub Sub, i InputConfig) (c Config, err error) {
 		return
 	}
 
-	c.Mutex = new(sync.Mutex)
 	return
 }
 
@@ -122,11 +121,12 @@ func (c *Config) GetNodeByNodeID(nodeID uint32) (Node, error) {
 
 // UpdateNode updates a node in the config
 func (c *Config) UpdateNode(node Node) error {
+	c.m.Lock()
+	defer c.m.Unlock()
+
 	for i, n := range c.Nodes {
 		if n.ID == node.ID {
-			c.Lock()
 			c.Nodes[i] = node
-			c.Unlock()
 			return nil
 		}
 	}
@@ -165,7 +165,7 @@ func (c *Config) validate() error {
 	if c.Farm.ID == 0 {
 		return errors.New("farm ID is required")
 	}
-	log.Debug().Msgf("[FARMERBOT] define farm %d", c.Farm.ID)
+	log.Debug().Uint32("Defined farm ID", uint32(c.Farm.ID))
 
 	if len(c.Nodes) < 2 {
 		return fmt.Errorf("configuration should contain at least 2 nodes, found %d. if more were configured make sure to check the configuration for mistakes", len(c.Nodes))
@@ -192,7 +192,7 @@ func (c *Config) validate() error {
 			return fmt.Errorf("node %d: total HRU is required", n.ID)
 		}
 
-		log.Debug().Msgf("[FARMERBOT] define node %d", n.ID)
+		log.Debug().Uint32("Defined farm ID", uint32(n.ID))
 	}
 
 	// required values for power
@@ -202,25 +202,25 @@ func (c *Config) validate() error {
 
 	if c.Power.WakeUpThreshold < constants.MinWakeUpThreshold {
 		c.Power.WakeUpThreshold = constants.MinWakeUpThreshold
-		log.Warn().Msgf("[FARMERBOT] The setting wake_up_threshold should be in the range [%d, %d]", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold)
+		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold)
 	}
 
 	if c.Power.WakeUpThreshold > constants.MaxWakeUpThreshold {
 		c.Power.WakeUpThreshold = constants.MaxWakeUpThreshold
-		log.Warn().Msgf("[FARMERBOT] The setting wake_up_threshold should be in the range [%d, %d]", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold)
+		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold)
 	}
 
 	if c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {
 		c.Power.PeriodicWakeUpStart = WakeUpDate(time.Now())
-		log.Warn().Msgf("[FARMERBOT] The setting periodic_wake_up_start is zero. It is set with current time '%v'", c.Power.PeriodicWakeUpStart)
+		log.Warn().Time("periodic wakeup start", c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()).Msg("The setting periodic_wake_up_start is zero. It is set with current time")
 	}
 	c.Power.PeriodicWakeUpStart = WakeUpDate(c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime())
 
 	if c.Power.PeriodicWakeUpLimit == 0 {
 		c.Power.PeriodicWakeUpLimit = constants.DefaultPeriodicWakeUPLimit
-		log.Warn().Msg("[FARMERBOT] The setting periodic_wake_up_limit should be greater then 0!")
+		log.Warn().Msg("The setting periodic_wake_up_limit should be greater then 0!")
 	}
-	log.Debug().Msg("[FARMERBOT] configure power")
+	log.Debug().Msg("configure power")
 
 	return nil
 }

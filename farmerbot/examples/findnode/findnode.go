@@ -53,7 +53,7 @@ func findNode() (uint32, error) {
 		Capacity:     models.Capacity{},
 	}
 	var output uint32
-	if err := client.Call(ctx, farmerbotTwinID, &service, "nodemanager.findnode", options, &output); err != nil {
+	if err := client.CallWithSession(ctx, farmerbotTwinID, &service, "nodemanager.findnode", options, &output); err != nil {
 		return 0, err
 	}
 

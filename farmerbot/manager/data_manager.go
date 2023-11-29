@@ -27,17 +27,12 @@ func NewDataManager(identity substrate.Identity, subConn models.Sub, config *mod
 }
 
 func (m *DataManager) Update(ctx context.Context) error {
-	// we ping all nodes (even the ones with claimed resources)
-	nodesToUpdate, err := m.BatchBingNodes(ctx, m.config.Nodes)
-	if err != nil {
-		return err
-	}
-
+	// TODO: loop on nodes without batch
 	// update resources for nodes that have no claimed resources
-	noClaimedResourcesNodes := FilterNodesNoClaimedResources(nodesToUpdate)
+	noClaimedResourcesNodes := FilterNodesNoClaimedResources(m.config.Nodes)
 
 	// we do not update the resources for the nodes that have claimed resources because those resources should not be overwritten until the timeout
-	nodesToUpdate, err = m.BatchStatistics(ctx, noClaimedResourcesNodes)
+	nodesToUpdate, err := m.BatchStatistics(ctx, noClaimedResourcesNodes)
 	if err != nil {
 		return err
 	}
@@ -70,26 +65,6 @@ func (m *DataManager) Update(ctx context.Context) error {
 	return nil
 }
 
-func (m *DataManager) BatchBingNodes(ctx context.Context, nodes []models.Node) ([]models.Node, error) {
-	ctx, cancel := context.WithTimeout(ctx, m.rmbTimeout)
-	defer cancel()
-
-	const cmd = "zos.system.version"
-
-	var successNodes []models.Node
-	for _, node := range nodes {
-		err := m.rmbClient.Call(ctx, uint32(node.TwinID), nil, cmd, nil, nil)
-		if err != nil {
-			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get system version of node %d", node.ID)
-			continue
-		}
-
-		successNodes = append(successNodes, node)
-	}
-
-	return successNodes, nil
-}
-
 func (m *DataManager) BatchStatistics(ctx context.Context, nodes []models.Node) ([]models.Node, error) {
 	ctx, cancel := context.WithTimeout(ctx, m.rmbTimeout)
 	defer cancel()
@@ -100,9 +75,9 @@ func (m *DataManager) BatchStatistics(ctx context.Context, nodes []models.Node) 
 	for _, node := range nodes {
 		var result models.ZosResourcesStatistics
 
-		err := m.rmbClient.Call(ctx, uint32(node.TwinID), nil, cmd, nil, &result)
+		err := m.rmbClient.Call(ctx, uint32(node.TwinID), cmd, nil, &result)
 		if err != nil {
-			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get statistics of node %d", node.ID)
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get statistics")
 			continue
 		}
 
@@ -122,9 +97,9 @@ func (m *DataManager) BatchStoragePools(ctx context.Context, nodes []models.Node
 	var successNodes []models.Node
 	for _, node := range nodes {
 		var pools []pkg.PoolMetrics
-		err := m.rmbClient.Call(ctx, uint32(node.TwinID), nil, cmd, nil, &pools)
+		err := m.rmbClient.Call(ctx, uint32(node.TwinID), cmd, nil, &pools)
 		if err != nil {
-			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get storage pools of node %d", node.ID)
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get storage pools")
 			continue
 		}
 
@@ -140,7 +115,7 @@ func (m *DataManager) BatchPublicConfigGet(ctx context.Context, nodes []models.N
 	for _, node := range nodes {
 		subNode, err := m.subConn.GetNode(uint32(node.ID))
 		if err != nil {
-			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get node %d from substrate", node.ID)
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get node from substrate")
 			continue
 		}
 
@@ -159,9 +134,9 @@ func (m *DataManager) BatchListGPUs(ctx context.Context, nodes []models.Node) ([
 	var successNodes []models.Node
 	for _, node := range nodes {
 		var gpus []models.GPU
-		err := m.rmbClient.Call(ctx, uint32(node.TwinID), nil, cmd, nil, &gpus)
+		err := m.rmbClient.Call(ctx, uint32(node.TwinID), cmd, nil, &gpus)
 		if err != nil {
-			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get gpus of node %d", node.ID)
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get gpus")
 			continue
 		}
 
@@ -178,7 +153,7 @@ func (m *DataManager) BatchUpdateHasRentContract(ctx context.Context, nodes []mo
 	for _, node := range nodes {
 		rentContract, err := m.subConn.GetNodeRentContract(uint32(node.ID))
 		if err != nil {
-			log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get node rent contract of node %d", node.ID)
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get node rent contract")
 			continue
 		}
 
@@ -196,16 +171,16 @@ func (m *DataManager) updatePowerState(node models.Node, updated bool) {
 		switch node.PowerState {
 		case models.WakingUP:
 			if time.Since(node.LastTimePowerStateChanged) < constants.TimeoutPowerStateChange {
-				log.Info().Msgf("[DATA MANAGER] Node %d is waking up.", node.ID)
+				log.Info().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Node is waking up")
 				return
 			}
-			log.Error().Msgf("[DATA MANAGER] Node %d is wakeup was unsuccessful. Putting its state back to off.", node.ID)
+			log.Error().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Wakeup was unsuccessful. Putting its state back to off.")
 		case models.ShuttingDown:
-			log.Info().Msgf("[DATA MANAGER] Node %d is shutdown was successful.", node.ID)
+			log.Info().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Shutdown was successful.")
 		case models.ON:
-			log.Error().Msgf("[DATA MANAGER] Node %d is not responding while we expect it to.", node.ID)
+			log.Error().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Node is not responding while we expect it to.")
 		case models.OFF:
-			log.Info().Msgf("[DATA MANAGER] Node %d is OFF.", node.ID)
+			log.Info().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Node is OFF.")
 		}
 
 		if node.PowerState != models.OFF {
@@ -221,15 +196,20 @@ func (m *DataManager) updatePowerState(node models.Node, updated bool) {
 	// down the down a failure and set the power state back to on
 	if node.PowerState == models.ShuttingDown {
 		if time.Since(node.LastTimePowerStateChanged) < constants.TimeoutPowerStateChange {
-			log.Info().Msgf("[DATA MANAGER] Node %d is shutting down.", node.ID)
+			log.Info().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Node is shutting down.")
 			return
 		}
-		log.Error().Msgf("[DATA MANAGER] Node %d shutdown was unsuccessful. Putting its state back to on.", node.ID)
+		log.Error().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Shutdown was unsuccessful. Putting its state back to on.")
 	} else {
-		log.Info().Msgf("[DATA MANAGER] Node %d is ON.", node.ID)
+		log.Info().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Node is ON.")
 	}
 
-	log.Debug().Msgf("[DATA MANAGER] Capacity updated for node %d:\nresources: %+v\npools: %+v\nhas rent contract: %v", node.ID, node.Resources, node.Pools, node.HasActiveRentContract)
+	log.Debug().
+		Uint32("node ID", uint32(node.ID)).
+		Interface("resources", node.Resources).
+		Interface("pools", node.Pools).
+		Bool("has active rent contract", node.HasActiveRentContract).
+		Msg("[DATA MANAGER] Capacity updated for node")
 
 	if node.PowerState != models.ON {
 		node.LastTimePowerStateChanged = time.Now()

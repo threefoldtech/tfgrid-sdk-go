@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/support/errors"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/parser"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/server"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
 )
@@ -25,12 +26,22 @@ var farmerBotCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("failed to parse flags")
 		}
 
-		config, err := cmd.Flags().GetString("config")
+		configPath, err := cmd.Flags().GetString("config")
 		if err != nil {
-			log.Fatal().Err(err).Msgf("invalid config dir path input '%s'", config)
+			log.Fatal().Err(err).Str("config path", configPath).Msg("invalid config path")
 		}
 
-		farmerBot, err := server.NewFarmerBot(cmd.Context(), config, network, mnemonic)
+		content, format, err := parser.ReadFile(configPath)
+		if err != nil {
+			return err
+		}
+
+		inputs, err := parser.ParseIntoInputConfig(content, format)
+		if err != nil {
+			return err
+		}
+
+		farmerBot, err := server.NewFarmerBot(cmd.Context(), inputs, network, mnemonic)
 		if err != nil {
 			log.Fatal().Err(err).Msg("farmerbot failed to start")
 		}

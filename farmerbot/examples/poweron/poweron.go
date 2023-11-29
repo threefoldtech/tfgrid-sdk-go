@@ -41,7 +41,7 @@ func powerOn() error {
 	const farmerbotTwinID = 164 // <- replace this with the twin id of where the farmerbot is running
 
 	var nodeID uint32
-	if err := client.Call(ctx, farmerbotTwinID, &service, "powermanager.poweron", nodeID, nil); err != nil {
+	if err := client.CallWithSession(ctx, farmerbotTwinID, &service, "powermanager.poweron", nodeID, nil); err != nil {
 		return err
 	}
 

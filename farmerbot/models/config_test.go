@@ -3,7 +3,6 @@ package models
 
 import (
 	"errors"
-	"sync"
 	"testing"
 	"time"
 
@@ -244,21 +243,6 @@ func TestSetConfig(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	// TODO:
-	// t.Run("test invalid json node over provision CPU", func(t *testing.T) {
-	// 	nodeContent := `{ "ID": 1, "twin_id" : 1, "resources": { "overprovision_cpu": 5, "total": { "SRU": 1, "CRU": 1, "HRU": 1, "MRU": 1 } } }`
-	// 	content := fmt.Sprintf(`
-	// 	{
-	// 		"nodes": [ %v, {} ],
-	// 		"farm": %v,
-	// 		"power": {}
-	// 	}
-	// 	`, nodeContent, farmContent)
-
-	// 	_, err := ParseIntoConfig([]byte(content), "json")
-	// 	assert.Error(t, err)
-	// })
-
 	t.Run("test invalid json no farm ID", func(t *testing.T) {
 		// configs mocks
 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 0}, nil)
@@ -277,7 +261,6 @@ func TestConfigModel(t *testing.T) {
 		}, {
 			Node: substrate.Node{ID: 2},
 		}},
-		Mutex: new(sync.Mutex),
 	}
 
 	t.Run("test get node by ID", func(t *testing.T) {
