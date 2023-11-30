@@ -49,7 +49,19 @@ const (
 
 var (
 	countries = []string{"Belgium", "United States", "Egypt", "United Kingdom"}
-	cities    = map[string][]string{
+	regions   = map[string]string{
+		"Belgium":        "Europe",
+		"United States":  "Americas",
+		"Egypt":          "Africa",
+		"United Kingdom": "Europe",
+	}
+	countriesCodes = map[string]string{
+		"Belgium":        "BG",
+		"United States":  "US",
+		"Egypt":          "EG",
+		"United Kingdom": "UK",
+	}
+	cities = map[string][]string{
 		"Belgium":        {"Brussels", "Antwerp", "Ghent", "Charleroi"},
 		"United States":  {"New York", "Chicago", "Los Angeles", "San Francisco"},
 		"Egypt":          {"Cairo", "Giza", "October", "Nasr City"},
@@ -178,6 +190,37 @@ func generateFarms(db *sql.DB) error {
 		return fmt.Errorf("failed to insert farms: %w", err)
 	}
 	fmt.Println("farms generated")
+
+	return nil
+}
+
+func generateCountries(db *sql.DB) error {
+	var countriesValues []string
+	index := 0
+	for countryName, region := range regions {
+		index++
+		country := country{
+			id:         fmt.Sprintf("country-%d", index),
+			country_id: uint64(index),
+			name:       countryName,
+			code:       countriesCodes[countryName],
+			region:     "unknown",
+			subregion:  region,
+			lat:        fmt.Sprintf("%d", 0),
+			long:       fmt.Sprintf("%d", 0),
+		}
+
+		countryTuple, err := objectToTupleString(country)
+		if err != nil {
+			return fmt.Errorf("failed to convert country object to tuple string: %w", err)
+		}
+		countriesValues = append(countriesValues, countryTuple)
+	}
+
+	if err := insertTuples(db, country{}, countriesValues); err != nil {
+		return fmt.Errorf("failed to insert country: %w", err)
+	}
+	fmt.Println("countries generated")
 
 	return nil
 }
@@ -784,6 +827,10 @@ func generateData(db *sql.DB) error {
 
 	if err := generateNodeGPUs(db); err != nil {
 		return fmt.Errorf("failed to generate node gpus: %w", err)
+	}
+
+	if err := generateCountries(db); err != nil {
+		return fmt.Errorf("failed to generate countries: %w", err)
 	}
 	return nil
 }

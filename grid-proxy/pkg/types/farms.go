@@ -42,4 +42,5 @@ type FarmFilter struct {
 	NodeHasGPU        *bool   `schema:"node_has_gpu,omitempty"`
 	NodeCertified     *bool   `schema:"node_certified,omitempty"`
 	Country           *string `schema:"country,omitempty"`
+	Region            *string `schema:"region,omitempty"`
 }

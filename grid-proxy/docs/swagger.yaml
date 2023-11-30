@@ -153,6 +153,8 @@ definitions:
         type: string
       id:
         type: string
+      node_twin_id:
+        type: integer
       vendor:
         type: string
     type: object
@@ -587,6 +589,10 @@ paths:
         in: query
         name: country
         type: string
+      - description: farm region
+        in: query
+        name: region
+        type: string
       produces:
       - application/json
       responses:
@@ -653,6 +659,10 @@ paths:
       - description: Node country filter
         in: query
         name: country
+        type: string
+      - description: node region
+        in: query
+        name: region
         type: string
       - description: Get nodes for specific farm
         in: query
@@ -823,6 +833,10 @@ paths:
       - description: Node country filter
         in: query
         name: country
+        type: string
+      - description: Node region
+        in: query
+        name: region
         type: string
       - description: Get nodes for specific farm
         in: query

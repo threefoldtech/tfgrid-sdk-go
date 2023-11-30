@@ -390,6 +390,9 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 			from public_ip
 			GROUP BY farm_id
 		) public_ips on public_ips.farm_id = farm.id`).
+		Joins(
+			"LEFT JOIN country ON node.country = country.name",
+		).
 		Group(
 			`farm.id,
 			farm.farm_id,
@@ -466,6 +469,9 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 		).
 		Joins(
 			"LEFT JOIN location ON node.location_id = location.id",
+		).
+		Joins(
+			"LEFT JOIN country ON country.name = node.country",
 		)
 }
 
@@ -513,6 +519,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	}
 	if filter.CityContains != nil {
 		q = q.Where("node.city ILIKE '%' || ? || '%'", *filter.CityContains)
+	}
+	if filter.Region != nil {
+		q = q.Where("LOWER(country.subregion) = LOWER(?)", *filter.Region)
 	}
 	if filter.NodeID != nil {
 		q = q.Where("node.node_id = ?", *filter.NodeID)
@@ -686,6 +695,10 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 
 	if filter.Country != nil {
 		q = q.Where("LOWER(node.country) = LOWER(?)", *filter.Country)
+	}
+
+	if filter.Region != nil {
+		q = q.Where("LOWER(country.subregion) = LOWER(?)", *filter.Region)
 	}
 
 	if filter.NodeStatus != nil {
