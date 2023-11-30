@@ -11,8 +11,8 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
-func powerOn() error {
-	mnemonics := "<mnemonics goes here>"
+func version() error {
+	mnemonics := "winner giant reward damage expose pulse recipe manual brand volcano dry avoid"
 	subManager := substrate.NewManager("wss://tfchain.dev.grid.tf/ws")
 	sub, err := subManager.Substrate()
 	if err != nil {
@@ -25,7 +25,7 @@ func powerOn() error {
 		peer.KeyTypeSr25519,
 		mnemonics,
 		"wss://relay.dev.grid.tf",
-		"test-power-on",
+		"test-version",
 		sub,
 		true,
 	)
@@ -41,15 +41,18 @@ func powerOn() error {
 	const farmerbotTwinID = 164 // <- replace this with the twin id of where the farmerbot is running
 
 	var nodeID uint32
-	if err := client.CallWithSession(ctx, farmerbotTwinID, &service, "powermanager.poweron", nodeID, nil); err != nil {
+	var version string
+	if err := client.CallWithSession(ctx, farmerbotTwinID, &service, "farmerbot.farmmanager.version", nodeID, &version); err != nil {
 		return err
 	}
+
+	fmt.Printf("version: %v\n", version)
 
 	return nil
 }
 
 func main() {
-	if err := powerOn(); err != nil {
+	if err := version(); err != nil {
 		log.Fatal(err)
 	}
 }

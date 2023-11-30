@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/support/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/parser"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/server"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
 )
@@ -31,22 +30,12 @@ var farmerBotCmd = &cobra.Command{
 			log.Fatal().Err(err).Str("config path", configPath).Msg("invalid config path")
 		}
 
-		content, format, err := parser.ReadFile(configPath)
-		if err != nil {
-			return err
-		}
-
-		inputs, err := parser.ParseIntoInputConfig(content, format)
-		if err != nil {
-			return err
-		}
-
-		farmerBot, err := server.NewFarmerBot(cmd.Context(), inputs, network, mnemonic)
+		farmerBot, err := server.NewFarmerBot(cmd.Context(), configPath, network, mnemonic)
 		if err != nil {
 			log.Fatal().Err(err).Msg("farmerbot failed to start")
 		}
 
-		go farmerBot.Run(cmd.Context())
+		farmerBot.Run(cmd.Context())
 		return nil
 	},
 }
@@ -59,14 +48,10 @@ func Execute() {
 	err := farmerBotCmd.Execute()
 	if err != nil {
 		log.Fatal().Err(err).Send()
-		os.Exit(1)
 	}
 }
 
 func init() {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
 	farmerBotCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Available formats are [json, yml, toml]")
 	farmerBotCmd.Flags().StringP("network", "n", "dev", "the grid network to use")
 	farmerBotCmd.Flags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
@@ -81,10 +66,9 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err e
 		return
 	}
 
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
 	logPath, err := cmd.Flags().GetString("log")
@@ -103,8 +87,8 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err e
 		return
 	}
 
-	multiWriter := zerolog.MultiLevelWriter(os.Stdout, logFile)
-	log.Logger = zerolog.New(multiWriter).With().Timestamp().Logger().Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	multiWriter := zerolog.MultiLevelWriter(zerolog.ConsoleWriter{Out: os.Stderr}, logFile)
+	log.Logger = zerolog.New(multiWriter).With().Timestamp().Logger()
 
 	network, err = cmd.Flags().GetString("network")
 	if err != nil {

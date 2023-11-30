@@ -5,162 +5,92 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/zos/pkg"
 )
 
 // DataManager manages data
 type DataManager struct {
-	config     *models.Config
-	identity   substrate.Identity
-	subConn    models.Sub
-	rmbClient  rmb.Client
-	rmbTimeout time.Duration
+	config        *models.Config
+	subConn       models.Sub
+	rmbNodeClient RMB
 }
 
-// NewDataManager creates a new DataManager
-func NewDataManager(identity substrate.Identity, subConn models.Sub, config *models.Config, rmb rmb.Client) DataManager {
-	return DataManager{config, identity, subConn, rmb, constants.TimeoutRMBResponse}
+// NewDataManager creates a new Data updates Manager
+func NewDataManager(subConn models.Sub, config *models.Config, rmbNodeClient RMB) DataManager {
+	return DataManager{config, subConn, rmbNodeClient}
 }
 
 func (m *DataManager) Update(ctx context.Context) error {
-	// TODO: loop on nodes without batch
-	// update resources for nodes that have no claimed resources
-	noClaimedResourcesNodes := FilterNodesNoClaimedResources(m.config.Nodes)
-
-	// we do not update the resources for the nodes that have claimed resources because those resources should not be overwritten until the timeout
-	nodesToUpdate, err := m.BatchStatistics(ctx, noClaimedResourcesNodes)
-	if err != nil {
-		return err
-	}
-	nodesToUpdate, err = m.BatchStoragePools(ctx, nodesToUpdate)
-	if err != nil {
-		return err
-	}
-	nodesToUpdate, err = m.BatchPublicConfigGet(ctx, nodesToUpdate)
-	if err != nil {
-		return err
-	}
-	nodesToUpdate, err = m.BatchListGPUs(ctx, nodesToUpdate)
-	if err != nil {
-		return err
-	}
-	nodesToUpdate, err = m.BatchUpdateHasRentContract(ctx, nodesToUpdate)
-	if err != nil {
-		return err
-	}
-
-	// update state: if we didn't get any response => node is offline
+	var failedNodes []models.Node
 	for _, node := range m.config.Nodes {
-		if containsNode(nodesToUpdate, node) {
-			m.updatePowerState(node, true)
-		} else {
-			m.updatePowerState(node, false)
-		}
-	}
-
-	return nil
-}
-
-func (m *DataManager) BatchStatistics(ctx context.Context, nodes []models.Node) ([]models.Node, error) {
-	ctx, cancel := context.WithTimeout(ctx, m.rmbTimeout)
-	defer cancel()
-
-	const cmd = "zos.statistics.get"
-
-	var successNodes []models.Node
-	for _, node := range nodes {
-		var result models.ZosResourcesStatistics
-
-		err := m.rmbClient.Call(ctx, uint32(node.TwinID), cmd, nil, &result)
-		if err != nil {
-			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get statistics")
+		// we ping nodes (the ones with claimed resources)
+		if node.TimeoutClaimedResources.Before(time.Now()) {
+			err := m.rmbNodeClient.SystemVersion(ctx, uint32(node.TwinID))
+			if err != nil {
+				log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get system version of node %d", node.ID)
+				continue
+			}
 			continue
 		}
 
-		node.UpdateResources(result)
-		successNodes = append(successNodes, node)
-	}
+		// update resources for nodes that have no claimed resources
+		// we do not update the resources for the nodes that have claimed resources because those resources should not be overwritten until the timeout
 
-	return successNodes, nil
-}
-
-func (m *DataManager) BatchStoragePools(ctx context.Context, nodes []models.Node) ([]models.Node, error) {
-	ctx, cancel := context.WithTimeout(ctx, m.rmbTimeout)
-	defer cancel()
-
-	const cmd = "zos.storage.pools"
-
-	var successNodes []models.Node
-	for _, node := range nodes {
-		var pools []pkg.PoolMetrics
-		err := m.rmbClient.Call(ctx, uint32(node.TwinID), cmd, nil, &pools)
+		stats, err := m.rmbNodeClient.Statistics(ctx, uint32(node.TwinID))
 		if err != nil {
-			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get storage pools")
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get statistics")
+			failedNodes = append(failedNodes, node)
+			continue
+		}
+
+		node.UpdateResources(stats)
+
+		pools, err := m.rmbNodeClient.GetStoragePools(ctx, uint32(node.TwinID))
+		if err != nil {
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get pools")
+			failedNodes = append(failedNodes, node)
 			continue
 		}
 
 		node.Pools = pools
-		successNodes = append(successNodes, node)
-	}
 
-	return successNodes, nil
-}
-
-func (m *DataManager) BatchPublicConfigGet(ctx context.Context, nodes []models.Node) ([]models.Node, error) {
-	var successNodes []models.Node
-	for _, node := range nodes {
 		subNode, err := m.subConn.GetNode(uint32(node.ID))
 		if err != nil {
 			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get node from substrate")
+			failedNodes = append(failedNodes, node)
 			continue
 		}
 
 		node.PublicConfig = subNode.PublicConfig
-		successNodes = append(successNodes, node)
-	}
-	return successNodes, nil
-}
 
-func (m *DataManager) BatchListGPUs(ctx context.Context, nodes []models.Node) ([]models.Node, error) {
-	ctx, cancel := context.WithTimeout(ctx, m.rmbTimeout)
-	defer cancel()
-
-	const cmd = "zos.gpu.list"
-
-	var successNodes []models.Node
-	for _, node := range nodes {
-		var gpus []models.GPU
-		err := m.rmbClient.Call(ctx, uint32(node.TwinID), cmd, nil, &gpus)
+		gpus, err := m.rmbNodeClient.ListGPUs(ctx, uint32(node.TwinID))
 		if err != nil {
 			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get gpus")
+			failedNodes = append(failedNodes, node)
 			continue
 		}
 
 		node.GPUs = gpus
-		successNodes = append(successNodes, node)
-	}
 
-	return successNodes, nil
-}
-
-// BatchUpdateHasRentContract updates if they have rent contract (done through tfchain)
-func (m *DataManager) BatchUpdateHasRentContract(ctx context.Context, nodes []models.Node) ([]models.Node, error) {
-	var successNodes []models.Node
-	for _, node := range nodes {
 		rentContract, err := m.subConn.GetNodeRentContract(uint32(node.ID))
 		if err != nil {
 			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get node rent contract")
+			failedNodes = append(failedNodes, node)
 			continue
 		}
 
 		node.HasActiveRentContract = rentContract != 0
-		successNodes = append(successNodes, node)
+
+		m.updatePowerState(node, true)
 	}
-	return successNodes, nil
+
+	// update state: if we didn't get any response => node is offline
+	for _, node := range failedNodes {
+		m.updatePowerState(node, false)
+	}
+
+	return nil
 }
 
 func (m *DataManager) updatePowerState(node models.Node, updated bool) {
@@ -217,25 +147,4 @@ func (m *DataManager) updatePowerState(node models.Node, updated bool) {
 
 	node.PowerState = models.ON
 	node.LastTimeAwake = time.Now()
-}
-
-// ContainsNode check if a slice of nodes contains an node
-func containsNode(nodes []models.Node, node models.Node) bool {
-	for _, n := range nodes {
-		if node.ID == n.ID {
-			return true
-		}
-	}
-	return false
-}
-
-// FilterNodesClaimedResources filters nodes that have no claimed resources
-func FilterNodesNoClaimedResources(nodes []models.Node) []models.Node {
-	filtered := make([]models.Node, 0)
-	for _, node := range nodes {
-		if node.TimeoutClaimedResources.Before(time.Now()) {
-			filtered = append(filtered, node)
-		}
-	}
-	return filtered
 }

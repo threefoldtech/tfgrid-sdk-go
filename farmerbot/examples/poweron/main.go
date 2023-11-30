@@ -8,16 +8,15 @@ import (
 	"log"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
-func findNode() (uint32, error) {
+func powerOn() error {
 	mnemonics := "<mnemonics goes here>"
 	subManager := substrate.NewManager("wss://tfchain.dev.grid.tf/ws")
 	sub, err := subManager.Substrate()
 	if err != nil {
-		return 0, fmt.Errorf("failed to connect to substrate: %w", err)
+		return fmt.Errorf("failed to connect to substrate: %w", err)
 	}
 	defer sub.Close()
 
@@ -26,12 +25,12 @@ func findNode() (uint32, error) {
 		peer.KeyTypeSr25519,
 		mnemonics,
 		"wss://relay.dev.grid.tf",
-		"test-find-node",
+		"test-power-on",
 		sub,
 		true,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create rpc client: %w", err)
+		return fmt.Errorf("failed to create rpc client: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -41,30 +40,16 @@ func findNode() (uint32, error) {
 	service := fmt.Sprintf("farmerbot-%d", farmID)
 	const farmerbotTwinID = 164 // <- replace this with the twin id of where the farmerbot is running
 
-	options := models.NodeOptions{
-		NodeExclude:  []uint32{},
-		HasGPUs:      0,
-		GPUVendors:   []string{},
-		GPUDevices:   []string{},
-		Certified:    false,
-		Dedicated:    false,
-		PublicConfig: false,
-		PublicIPs:    0,
-		Capacity:     models.Capacity{},
-	}
-	var output uint32
-	if err := client.CallWithSession(ctx, farmerbotTwinID, &service, "nodemanager.findnode", options, &output); err != nil {
-		return 0, err
+	nodeID := uint32(83)
+	if err := client.CallWithSession(ctx, farmerbotTwinID, &service, "farmerbot.powermanager.poweron", nodeID, nil); err != nil {
+		return err
 	}
 
-	return 0, nil
+	return nil
 }
 
 func main() {
-	nodeID, err := findNode()
-	if err != nil {
+	if err := powerOn(); err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Printf("nodeID: %v\n", nodeID)
 }

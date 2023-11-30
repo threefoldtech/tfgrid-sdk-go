@@ -35,7 +35,8 @@ func TestSetConfig(t *testing.T) {
 			HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
 
-		c, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(c.Farm.ID), uint32(1))
 		assert.Equal(t, c.Nodes[0].Resources.OverProvisionCPU, constants.DefaultCPUProvision)
@@ -55,7 +56,6 @@ func TestSetConfig(t *testing.T) {
 		inputs.Power.WakeUpThreshold = 100
 
 		// configs mocks
-		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1, DedicatedFarm: true}, nil)
 		nodes := []uint32{1, 2}
 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1, TwinID: 1, Resources: substrate.Resources{
@@ -65,7 +65,8 @@ func TestSetConfig(t *testing.T) {
 			HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
 
-		c, err := SetConfig(sub, inputs)
+		c := Config{Farm: substrate.Farm{ID: 1, DedicatedFarm: true}}
+		err := c.Set(sub, inputs)
 		assert.NoError(t, err)
 		assert.Equal(t, c.Power.WakeUpThreshold, constants.MaxWakeUpThreshold)
 	})
@@ -84,7 +85,8 @@ func TestSetConfig(t *testing.T) {
 			HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
 
-		c, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.NoError(t, err)
 		assert.Equal(t, c.Power.WakeUpThreshold, constants.DefaultWakeUpThreshold)
 	})
@@ -92,7 +94,8 @@ func TestSetConfig(t *testing.T) {
 	t.Run("test invalid json: cpu provision out of range", func(t *testing.T) {
 		inputs.Power.OverProvisionCPU = 6
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 
 		inputs.Power.OverProvisionCPU = 0
@@ -102,7 +105,8 @@ func TestSetConfig(t *testing.T) {
 		// configs mocks
 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, errors.New("error"))
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 
@@ -112,7 +116,8 @@ func TestSetConfig(t *testing.T) {
 		nodes := []uint32{1, 2}
 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, errors.New("error"))
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 
@@ -123,7 +128,8 @@ func TestSetConfig(t *testing.T) {
 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{}, errors.New("error"))
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 
@@ -135,7 +141,8 @@ func TestSetConfig(t *testing.T) {
 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), errors.New("error"))
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 
@@ -149,7 +156,8 @@ func TestSetConfig(t *testing.T) {
 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 
 		inputs.ExcludedNodes = []uint32{}
@@ -165,7 +173,8 @@ func TestSetConfig(t *testing.T) {
 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 
@@ -179,7 +188,8 @@ func TestSetConfig(t *testing.T) {
 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 
@@ -194,7 +204,8 @@ func TestSetConfig(t *testing.T) {
 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 
@@ -209,7 +220,8 @@ func TestSetConfig(t *testing.T) {
 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 
@@ -224,7 +236,8 @@ func TestSetConfig(t *testing.T) {
 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 
@@ -239,7 +252,8 @@ func TestSetConfig(t *testing.T) {
 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2}, nil)
 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 
@@ -249,7 +263,8 @@ func TestSetConfig(t *testing.T) {
 		nodes := []uint32{}
 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
 
-		_, err := SetConfig(sub, inputs)
+		var c Config
+		err := c.Set(sub, inputs)
 		assert.Error(t, err)
 	})
 }

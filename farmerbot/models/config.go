@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -28,9 +29,15 @@ type Config struct {
 	m     sync.Mutex
 }
 
-// SetConfig sets the config data from configuration inputs
-func SetConfig(sub Sub, i InputConfig) (c Config, err error) {
-	c.Power = i.Power
+// Set sets the config data from configuration inputs
+func (c *Config) Set(sub Sub, inputs InputConfig) error {
+	log.Debug().Msg("Set power")
+
+	if !reflect.DeepEqual(c.Power, inputs.Power) {
+		c.Power = inputs.Power
+	} else {
+		log.Debug().Msg("Configuration power didn't change")
+	}
 
 	// required from power for nodes
 	if c.Power.OverProvisionCPU == 0 {
@@ -38,30 +45,29 @@ func SetConfig(sub Sub, i InputConfig) (c Config, err error) {
 	}
 
 	if c.Power.OverProvisionCPU < 1 || c.Power.OverProvisionCPU > 4 {
-		err = fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", c.Power.OverProvisionCPU)
-		return
+		return fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", c.Power.OverProvisionCPU)
 	}
 
 	// set farm
-	farm, err := sub.GetFarm(i.FarmID)
-	if err != nil {
-		return
-	}
+	log.Debug().Uint32("ID", inputs.FarmID).Msg("Set farm")
+	if inputs.FarmID != uint32(c.Farm.ID) {
+		farm, err := sub.GetFarm(inputs.FarmID)
+		if err != nil {
+			return err
+		}
 
-	c.Farm = *farm
+		c.Farm = *farm
+	} else {
+		log.Debug().Msg("Configuration farm didn't change")
+	}
 
 	// set nodes
-	err = c.SetConfigNodes(sub, i)
+	err := c.SetConfigNodes(sub, inputs)
 	if err != nil {
-		return
+		return err
 	}
 
-	err = c.validate()
-	if err != nil {
-		return
-	}
-
-	return
+	return c.validate()
 }
 
 // SetConfigNodes sets the config nodes from configuration inputs
@@ -76,7 +82,10 @@ func (c *Config) SetConfigNodes(sub Sub, i InputConfig) error {
 			continue
 		}
 
-		if slices.Contains(i.IncludedNodes, nodeID) {
+		// if the user specified included nodes or
+		// no nodes are specified so all nodes will be added (except excluded)
+		if slices.Contains(i.IncludedNodes, nodeID) || len(i.IncludedNodes) == 0 {
+			log.Debug().Uint32("ID", nodeID).Msg("Set node")
 			node, err := sub.GetNode(nodeID)
 			if err != nil {
 				return err
@@ -165,7 +174,6 @@ func (c *Config) validate() error {
 	if c.Farm.ID == 0 {
 		return errors.New("farm ID is required")
 	}
-	log.Debug().Uint32("Defined farm ID", uint32(c.Farm.ID))
 
 	if len(c.Nodes) < 2 {
 		return fmt.Errorf("configuration should contain at least 2 nodes, found %d. if more were configured make sure to check the configuration for mistakes", len(c.Nodes))
@@ -191,8 +199,6 @@ func (c *Config) validate() error {
 		if n.Resources.Total.HRU == 0 {
 			return fmt.Errorf("node %d: total HRU is required", n.ID)
 		}
-
-		log.Debug().Uint32("Defined farm ID", uint32(n.ID))
 	}
 
 	// required values for power
@@ -202,25 +208,24 @@ func (c *Config) validate() error {
 
 	if c.Power.WakeUpThreshold < constants.MinWakeUpThreshold {
 		c.Power.WakeUpThreshold = constants.MinWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold)
+		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to minimum value %d", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold, constants.MinWakeUpThreshold)
 	}
 
 	if c.Power.WakeUpThreshold > constants.MaxWakeUpThreshold {
 		c.Power.WakeUpThreshold = constants.MaxWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold)
+		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to maximum value %d", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold, constants.MinWakeUpThreshold)
 	}
 
 	if c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {
 		c.Power.PeriodicWakeUpStart = WakeUpDate(time.Now())
-		log.Warn().Time("periodic wakeup start", c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()).Msg("The setting periodic_wake_up_start is zero. It is set with current time")
+		log.Warn().Time("periodic wakeup start", c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()).Msg("The setting periodic_wake_up_start is zero. setting it with current time")
 	}
 	c.Power.PeriodicWakeUpStart = WakeUpDate(c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime())
 
 	if c.Power.PeriodicWakeUpLimit == 0 {
 		c.Power.PeriodicWakeUpLimit = constants.DefaultPeriodicWakeUPLimit
-		log.Warn().Msg("The setting periodic_wake_up_limit should be greater then 0!")
+		log.Warn().Msgf("The setting periodic_wake_up_limit should be greater then 0! setting it to %d", constants.DefaultPeriodicWakeUPLimit)
 	}
-	log.Debug().Msg("configure power")
 
 	return nil
 }

@@ -104,7 +104,6 @@ func (p *PowerManager) PowerOff(nodeID uint32) error {
 	return p.config.UpdateNode(node)
 }
 
-// TODO: find node and power management conflicts
 // FindNode finds an available node in the farm
 func (p *PowerManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
 	log.Info().Msg("[NODE MANAGER] Finding a node")

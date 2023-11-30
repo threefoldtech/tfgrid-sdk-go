@@ -53,7 +53,8 @@ func TestPowerManager(t *testing.T) {
 	inputs, err := parser.ParseIntoInputConfig([]byte(configContent), "json")
 	assert.NoError(t, err)
 
-	config, err := models.SetConfig(sub, inputs)
+	var config models.Config
+	err = config.Set(sub, inputs)
 	assert.NoError(t, err)
 
 	powerManager := NewPowerManager(identity, sub, &config)
@@ -346,7 +347,8 @@ func TestFindNode(t *testing.T) {
 	inputs, err := parser.ParseIntoInputConfig([]byte(configContent), "json")
 	assert.NoError(t, err)
 
-	config, err := models.SetConfig(sub, inputs)
+	var config models.Config
+	err = config.Set(sub, inputs)
 	assert.NoError(t, err)
 
 	oldNode1 := config.Nodes[0]
