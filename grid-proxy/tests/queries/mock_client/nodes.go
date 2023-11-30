@@ -221,6 +221,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.Region != nil && !strings.EqualFold(*f.Region, data.Regions[n.Country]) {
+		return false
+	}
+
 	if f.CountryContains != nil && !stringMatch(n.Country, *f.CountryContains) {
 		return false
 	}

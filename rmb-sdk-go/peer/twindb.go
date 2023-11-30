@@ -1,4 +1,4 @@
-package direct
+package peer
 
 import (
 	"fmt"

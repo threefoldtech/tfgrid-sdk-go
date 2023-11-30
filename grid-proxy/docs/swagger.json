@@ -399,6 +399,12 @@
                         "description": "farm country",
                         "name": "country",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "farm region",
+                        "name": "region",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -498,6 +504,12 @@
                         "type": "string",
                         "description": "Node country filter",
                         "name": "country",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "node region",
+                        "name": "region",
                         "in": "query"
                     },
                     {
@@ -753,6 +765,12 @@
                         "type": "string",
                         "description": "Node country filter",
                         "name": "country",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node region",
+                        "name": "region",
                         "in": "query"
                     },
                     {
@@ -1430,6 +1448,9 @@
                 },
                 "id": {
                     "type": "string"
+                },
+                "node_twin_id": {
+                    "type": "integer"
                 },
                 "vendor": {
                     "type": "string"
