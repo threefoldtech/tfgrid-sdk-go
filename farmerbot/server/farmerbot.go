@@ -196,7 +196,8 @@ func (f *FarmerBot) serve(ctx context.Context) {
 	nodeRouter := farmerbot.SubRoute("nodemanager")
 	powerRouter := farmerbot.SubRoute("powermanager")
 
-	powerRouter.Use(f.authorize)
+	// TODO: didn't work
+	// powerRouter.Use(f.authorize)
 
 	farmRouter.WithHandler("version", func(ctx context.Context, payload []byte) (interface{}, error) {
 		return version.Version, nil
@@ -214,8 +215,12 @@ func (f *FarmerBot) serve(ctx context.Context) {
 	})
 
 	powerRouter.WithHandler("poweroff", func(ctx context.Context, payload []byte) (interface{}, error) {
-		var nodeID uint32
+		err := f.authorize(ctx)
+		if err != nil {
+			return nil, err
+		}
 
+		var nodeID uint32
 		if err := validateAccountEnoughBalance(f.identity, f.sub); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
@@ -224,13 +229,16 @@ func (f *FarmerBot) serve(ctx context.Context) {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		err := f.powerManager.PowerOff(nodeID)
-		return nil, err
+		return nil, f.powerManager.PowerOff(nodeID)
 	})
 
 	powerRouter.WithHandler("poweron", func(ctx context.Context, payload []byte) (interface{}, error) {
-		var nodeID uint32
+		err := f.authorize(ctx)
+		if err != nil {
+			return nil, err
+		}
 
+		var nodeID uint32
 		if err := validateAccountEnoughBalance(f.identity, f.sub); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
@@ -239,7 +247,7 @@ func (f *FarmerBot) serve(ctx context.Context) {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		err := f.powerManager.PowerOn(nodeID)
+		err = f.powerManager.PowerOn(nodeID)
 		return nil, err
 	})
 
@@ -261,13 +269,12 @@ func (f *FarmerBot) serve(ctx context.Context) {
 	select {}
 }
 
-func (f *FarmerBot) authorize(ctx context.Context, payload []byte) (context.Context, error) {
+func (f *FarmerBot) authorize(ctx context.Context) error {
 	twinID := peer.GetTwinID(ctx)
-	log.Debug().Uint32("twin ID", twinID).Uint32("farmer twin ID", f.twinID).Msg("Authorize")
 	if twinID != f.twinID {
-		return ctx, fmt.Errorf("you are not authorized for this action. your twin id is `%d`, only the farm owner with twin id `%d` is authorized", twinID, f.twinID)
+		return fmt.Errorf("you are not authorized for this action. your twin id is `%d`, only the farm owner with twin id `%d` is authorized", twinID, f.twinID)
 	}
-	return ctx, nil
+	return nil
 }
 
 func validateAccountEnoughBalance(identity substrate.Identity, sub substrate.Substrate) error {
