@@ -10,6 +10,15 @@ import (
 func parseQueryParams(r *http.Request, values ...interface{}) error {
 	params := r.URL.Query()
 
+	// ignore the empty params
+	for key, val := range params {
+		for _, v := range val {
+			if v == string("") {
+				delete(params, key)
+			}
+		}
+	}
+
 	decoder := schema.NewDecoder()
 	decoder.IgnoreUnknownKeys(true)
 
