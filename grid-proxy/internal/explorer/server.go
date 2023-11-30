@@ -56,8 +56,9 @@ const (
 // @Failure 500 {object} string
 // @Router /farms [get]
 func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
-	filter, limit, err := a.handleFarmRequestsQueryParams(r)
-	if err != nil {
+	filter := types.FarmFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -85,8 +86,9 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 // @Failure 500 {object} string
 // @Router /stats [get]
 func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
-	filter, err := a.handleStatsRequestsQueryParams(r)
-	if err != nil {
+	filter := types.StatsFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -183,8 +185,9 @@ func (a *App) getGateways(r *http.Request) (interface{}, mw.Response) {
 }
 
 func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
-	filter, limit, err := a.handleNodeRequestsQueryParams(r)
-	if err != nil {
+	filter := types.NodeFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -280,8 +283,9 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 // @Failure 500 {object} string
 // @Router /twins [get]
 func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
-	filter, limit, err := a.handleTwinRequestsQueryParams(r)
-	if err != nil {
+	filter := types.TwinFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -318,8 +322,9 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 // @Failure 500 {object} string
 // @Router /contracts [get]
 func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
-	filter, limit, err := a.handleContractRequestsQueryParams(r)
-	if err != nil {
+	filter := types.ContractFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -474,9 +479,9 @@ func (a *App) getContract(r *http.Request) (interface{}, mw.Response) {
 func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
 	contractID := mux.Vars(r)["contract_id"]
 
-	limit, err := getLimit(r)
-	if err != nil {
-		return []types.ContractBilling{}, nil
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &limit); err != nil {
+		return nil, mw.BadRequest(err)
 	}
 
 	contractBillsData, totalCount, err := a.getContractBillsData(r.Context(), contractID, limit)
