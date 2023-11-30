@@ -126,6 +126,10 @@ func (f *FarmerBot) setConfig() error {
 		return err
 	}
 
+	if f.config == nil {
+		f.config = &models.Config{}
+	}
+
 	err = f.config.Set(&f.sub, inputs)
 	if err != nil {
 		return err
