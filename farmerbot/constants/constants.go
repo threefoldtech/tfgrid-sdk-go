@@ -34,24 +34,24 @@ const (
 )
 
 const (
-	mainNetwork string = "main"
-	testNetwork string = "test"
-	devNetwork  string = "dev"
-	qaNetwork   string = "qa"
+	MainNetwork string = "main"
+	TestNetwork string = "test"
+	DevNetwork  string = "dev"
+	QaNetwork   string = "qa"
 )
 
 // SubstrateURLs for substrate urls
 var SubstrateURLs = map[string][]string{
-	testNetwork: {"wss://tfchain.test.grid.tf/ws", "wss://tfchain.test.grid.tf:443"},
-	mainNetwork: {"wss://tfchain.grid.tf/ws", "wss://tfchain.grid.tf:443"},
-	devNetwork:  {"wss://tfchain.dev.grid.tf/ws", "wss://tfchain.dev.grid.tf:443"},
-	qaNetwork:   {"wss://tfchain.qa.grid.tf/ws", "wss://tfchain.qa.grid.tf:443"},
+	TestNetwork: {"wss://tfchain.test.grid.tf/ws", "wss://tfchain.test.grid.tf:443"},
+	MainNetwork: {"wss://tfchain.grid.tf/ws", "wss://tfchain.grid.tf:443"},
+	DevNetwork:  {"wss://tfchain.dev.grid.tf/ws", "wss://tfchain.dev.grid.tf:443"},
+	QaNetwork:   {"wss://tfchain.qa.grid.tf/ws", "wss://tfchain.qa.grid.tf:443"},
 }
 
 // RelayURLS relay urls
 var RelayURLS = map[string]string{
-	devNetwork:  "wss://relay.dev.grid.tf",
-	testNetwork: "wss://relay.test.grid.tf",
-	qaNetwork:   "wss://relay.qa.grid.tf",
-	mainNetwork: "wss://relay.grid.tf",
+	DevNetwork:  "wss://relay.dev.grid.tf",
+	TestNetwork: "wss://relay.test.grid.tf",
+	QaNetwork:   "wss://relay.qa.grid.tf",
+	MainNetwork: "wss://relay.grid.tf",
 }

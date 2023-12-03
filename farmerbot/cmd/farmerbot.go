@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/cosmos/go-bip39"
@@ -10,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/support/errors"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/server"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
 )
@@ -53,9 +55,8 @@ func Execute() {
 
 func init() {
 	farmerBotCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Available formats are [json, yml, toml]")
-	farmerBotCmd.Flags().StringP("network", "n", "dev", "the grid network to use")
+	farmerBotCmd.Flags().StringP("network", "n", constants.MainNetwork, "the grid network to use")
 	farmerBotCmd.Flags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
-	farmerBotCmd.Flags().StringP("log", "l", "farmerbot.log", "enter your log file path to debug")
 	farmerBotCmd.Flags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
 }
 
@@ -71,24 +72,7 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err e
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	logPath, err := cmd.Flags().GetString("log")
-	if err != nil {
-		err = errors.Wrapf(err, "invalid log file path input '%s'", logPath)
-		return
-	}
-
-	logFile, err := os.OpenFile(
-		logPath,
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0664,
-	)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to open file '%s'", logPath)
-		return
-	}
-
-	multiWriter := zerolog.MultiLevelWriter(zerolog.ConsoleWriter{Out: os.Stderr}, logFile)
-	log.Logger = zerolog.New(multiWriter).With().Timestamp().Logger()
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	network, err = cmd.Flags().GetString("network")
 	if err != nil {
@@ -96,8 +80,8 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err e
 		return
 	}
 
-	if network != "dev" && network != "qa" && network != "test" && network != "main" {
-		err = fmt.Errorf("network must be one of dev, qa, test, and main not '%s'", network)
+	if !slices.Contains([]string{constants.DevNetwork, constants.QaNetwork, constants.TestNetwork, constants.MainNetwork}, network) {
+		err = fmt.Errorf("network must be one of %s, %s, %s, and %s not '%s'", constants.DevNetwork, constants.QaNetwork, constants.TestNetwork, constants.MainNetwork, network)
 		return
 	}
 
