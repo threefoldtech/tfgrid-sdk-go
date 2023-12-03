@@ -19,7 +19,10 @@ require (
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b
 )
 
-require golang.org/x/net v0.17.0 // indirect
+require (
+	github.com/gorilla/schema v1.2.0 // indirect
+	golang.org/x/net v0.18.0 // indirect
+)
 
 require (
 	github.com/ChainSafe/go-schnorrkel v1.1.0 // indirect
