@@ -373,7 +373,7 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test has_gpu filter", func(t *testing.T) {
-		l := proxytypes.Limit{}
+		l := proxytypes.DefaultLimit()
 		hasGPU := true
 		f := proxytypes.NodeFilter{
 			HasGPU: &hasGPU,

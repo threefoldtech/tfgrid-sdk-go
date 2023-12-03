@@ -2,10 +2,10 @@ package types
 
 // Twin is the twin info
 type Twin struct {
-	TwinID    uint   `json:"twinId"`
-	AccountID string `json:"accountId"`
-	Relay     string `json:"relay"`
-	PublicKey string `json:"publicKey"`
+	TwinID    uint   `json:"twinId" sort:"twin_id"`
+	AccountID string `json:"accountId" sort:"account_id"`
+	Relay     string `json:"relay" sort:"relay"`
+	PublicKey string `json:"publicKey" sort:"public_key"`
 }
 
 // TwinFilter twin filters

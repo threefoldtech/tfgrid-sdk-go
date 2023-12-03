@@ -104,7 +104,7 @@ func TestContracts(t *testing.T) {
 			l := proxytypes.Limit{
 				Size:     9999999,
 				Page:     1,
-				RetCount: false,
+				RetCount: true,
 			}
 
 			f, err := randomContractsFilter(&agg)
