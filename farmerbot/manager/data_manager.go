@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
 )
@@ -12,23 +13,29 @@ import (
 // DataManager manages data
 type DataManager struct {
 	config        *models.Config
-	subConn       models.Sub
+	subManager    substrate.Manager
 	rmbNodeClient RMB
 }
 
 // NewDataManager creates a new Data updates Manager
-func NewDataManager(subConn models.Sub, config *models.Config, rmbNodeClient RMB) DataManager {
-	return DataManager{config, subConn, rmbNodeClient}
+func NewDataManager(subManager substrate.Manager, config *models.Config, rmbNodeClient RMB) DataManager {
+	return DataManager{config, subManager, rmbNodeClient}
 }
 
 func (m *DataManager) Update(ctx context.Context) error {
+	con, err := m.subManager.Substrate()
+	if err != nil {
+		return err
+	}
+	defer con.Close()
+
 	var failedNodes []models.Node
 	for _, node := range m.config.Nodes {
 		// we ping nodes (the ones with claimed resources)
 		if node.TimeoutClaimedResources.Before(time.Now()) {
 			err := m.rmbNodeClient.SystemVersion(ctx, uint32(node.TwinID))
 			if err != nil {
-				log.Error().Err(err).Msgf("[DATA MANAGER] Failed to get system version of node %d", node.ID)
+				log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get system version of node")
 				continue
 			}
 			continue
@@ -39,7 +46,7 @@ func (m *DataManager) Update(ctx context.Context) error {
 
 		stats, err := m.rmbNodeClient.Statistics(ctx, uint32(node.TwinID))
 		if err != nil {
-			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get statistics")
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get statistics")
 			failedNodes = append(failedNodes, node)
 			continue
 		}
@@ -48,16 +55,16 @@ func (m *DataManager) Update(ctx context.Context) error {
 
 		pools, err := m.rmbNodeClient.GetStoragePools(ctx, uint32(node.TwinID))
 		if err != nil {
-			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get pools")
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get pools")
 			failedNodes = append(failedNodes, node)
 			continue
 		}
 
 		node.Pools = pools
 
-		subNode, err := m.subConn.GetNode(uint32(node.ID))
+		subNode, err := con.GetNode(uint32(node.ID))
 		if err != nil {
-			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get node from substrate")
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get node from substrate")
 			failedNodes = append(failedNodes, node)
 			continue
 		}
@@ -66,16 +73,16 @@ func (m *DataManager) Update(ctx context.Context) error {
 
 		gpus, err := m.rmbNodeClient.ListGPUs(ctx, uint32(node.TwinID))
 		if err != nil {
-			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get gpus")
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get gpus")
 			failedNodes = append(failedNodes, node)
 			continue
 		}
 
 		node.GPUs = gpus
 
-		rentContract, err := m.subConn.GetNodeRentContract(uint32(node.ID))
+		rentContract, err := con.GetNodeRentContract(uint32(node.ID))
 		if err != nil {
-			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Failed to get node rent contract")
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get node rent contract")
 			failedNodes = append(failedNodes, node)
 			continue
 		}
@@ -101,16 +108,16 @@ func (m *DataManager) updatePowerState(node models.Node, updated bool) {
 		switch node.PowerState {
 		case models.WakingUP:
 			if time.Since(node.LastTimePowerStateChanged) < constants.TimeoutPowerStateChange {
-				log.Info().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Node is waking up")
+				log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Node is waking up")
 				return
 			}
-			log.Error().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Wakeup was unsuccessful. Putting its state back to off.")
+			log.Error().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Wakeup was unsuccessful. Putting its state back to off.")
 		case models.ShuttingDown:
-			log.Info().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Shutdown was successful.")
+			log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Shutdown was successful.")
 		case models.ON:
-			log.Error().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Node is not responding while we expect it to.")
+			log.Error().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Node is not responding while we expect it to.")
 		case models.OFF:
-			log.Info().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Node is OFF.")
+			log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Node is OFF.")
 		}
 
 		if node.PowerState != models.OFF {
@@ -126,12 +133,12 @@ func (m *DataManager) updatePowerState(node models.Node, updated bool) {
 	// down the down a failure and set the power state back to on
 	if node.PowerState == models.ShuttingDown {
 		if time.Since(node.LastTimePowerStateChanged) < constants.TimeoutPowerStateChange {
-			log.Info().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Node is shutting down.")
+			log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Node is shutting down.")
 			return
 		}
-		log.Error().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Shutdown was unsuccessful. Putting its state back to on.")
+		log.Error().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Shutdown was unsuccessful. Putting its state back to on.")
 	} else {
-		log.Info().Uint32("node ID", uint32(node.ID)).Msg("[DATA MANAGER] Node is ON.")
+		log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Node is ON.")
 	}
 
 	log.Debug().

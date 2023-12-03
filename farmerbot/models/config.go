@@ -30,7 +30,13 @@ type Config struct {
 }
 
 // Set sets the config data from configuration inputs
-func (c *Config) Set(sub Sub, inputs InputConfig) error {
+func (c *Config) Set(substrateManager substrate.Manager, inputs InputConfig) error {
+	con, err := substrateManager.Substrate()
+	if err != nil {
+		return err
+	}
+	defer con.Close()
+
 	log.Debug().Msg("Set power")
 
 	if !reflect.DeepEqual(c.Power, inputs.Power) {
@@ -51,7 +57,7 @@ func (c *Config) Set(sub Sub, inputs InputConfig) error {
 	// set farm
 	log.Debug().Uint32("ID", inputs.FarmID).Msg("Set farm")
 	if inputs.FarmID != uint32(c.Farm.ID) {
-		farm, err := sub.GetFarm(inputs.FarmID)
+		farm, err := con.GetFarm(inputs.FarmID)
 		if err != nil {
 			return err
 		}
@@ -62,7 +68,7 @@ func (c *Config) Set(sub Sub, inputs InputConfig) error {
 	}
 
 	// set nodes
-	err := c.SetConfigNodes(sub, inputs)
+	err = c.SetConfigNodes(con, inputs)
 	if err != nil {
 		return err
 	}

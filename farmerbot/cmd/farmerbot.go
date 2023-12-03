@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/support/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/parser"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/server"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
 )
@@ -24,21 +26,25 @@ var farmerBotCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		network, mnemonic, err := getDefaultFlags(cmd)
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to parse flags")
+			return err
 		}
 
 		configPath, err := cmd.Flags().GetString("config")
 		if err != nil {
-			log.Fatal().Err(err).Str("config path", configPath).Msg("invalid config path")
+			return fmt.Errorf("invalid config path '%s'", configPath)
 		}
 
-		farmerBot, err := server.NewFarmerBot(cmd.Context(), configPath, network, mnemonic)
+		inputs, err := readInputConfigs(configPath)
 		if err != nil {
-			log.Fatal().Err(err).Msg("farmerbot failed to start")
+			return err
 		}
 
-		farmerBot.Run(cmd.Context())
-		return nil
+		farmerBot, err := server.NewFarmerBot(cmd.Context(), inputs, network, mnemonic)
+		if err != nil {
+			return err
+		}
+
+		return farmerBot.Run(cmd.Context())
 	},
 }
 
@@ -101,4 +107,13 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err e
 	}
 
 	return
+}
+
+func readInputConfigs(configPath string) (models.InputConfig, error) {
+	content, format, err := parser.ReadFile(configPath)
+	if err != nil {
+		return models.InputConfig{}, err
+	}
+
+	return parser.ParseIntoInputConfig(content, format)
 }
