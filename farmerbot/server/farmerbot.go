@@ -19,7 +19,6 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-	"golang.org/x/sync/errgroup"
 )
 
 // FarmerBot for managing farms
@@ -35,15 +34,7 @@ type FarmerBot struct {
 
 // NewFarmerBot generates a new farmer bot
 func NewFarmerBot(ctx context.Context, inputs models.InputConfig, network, mnemonic string) (FarmerBot, error) {
-	farmerbot := FarmerBot{mnemonic: mnemonic, network: network}
-
 	substrateManager := substrate.NewManager(constants.SubstrateURLs[network]...)
-	farmerbot.substrateManager = substrateManager
-
-	err := farmerbot.SetConfig(inputs)
-	if err != nil {
-		return FarmerBot{}, err
-	}
 
 	// TODO: check farm hex seed if available
 	identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonic)
@@ -51,46 +42,58 @@ func NewFarmerBot(ctx context.Context, inputs models.InputConfig, network, mnemo
 		return FarmerBot{}, err
 	}
 
-	farmerbot.identity = identity
+	farmerbot := FarmerBot{
+		substrateManager: substrateManager,
+		network:          network,
+		mnemonic:         mnemonic,
+		identity:         identity,
+	}
 
-	powerManager := manager.NewPowerManager(identity, substrateManager, farmerbot.config)
-	farmerbot.powerManager = &powerManager
-
-	con, err := substrateManager.Substrate()
+	subConn, err := substrateManager.Substrate()
 	if err != nil {
 		return FarmerBot{}, err
 	}
-	// TODO:
-	// defer con.Close()
 
-	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonic, constants.RelayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", farmerbot.config.Farm.ID), con, true)
+	// TODO:
+	// defer subConn.Close()
+
+	err = farmerbot.SetConfig(inputs)
+	if err != nil {
+		return FarmerBot{}, err
+	}
+
+	powerManager := manager.NewPowerManager(identity, farmerbot.config)
+	farmerbot.powerManager = &powerManager
+
+	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonic, constants.RelayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", farmerbot.config.Farm.ID), subConn, true)
 	if err != nil {
 		return FarmerBot{}, errors.Wrap(err, "could not create rmb client")
 	}
 
 	rmbNodeClient := manager.NewRmbNodeClient(rmb)
-	farmerbot.dataManager = manager.NewDataManager(substrateManager, farmerbot.config, &rmbNodeClient)
+	farmerbot.dataManager = manager.NewDataManager(farmerbot.config, rmbNodeClient)
 
 	return farmerbot, nil
 }
 
 // Run runs farmerbot to update nodes and power management
 func (f *FarmerBot) Run(ctx context.Context) error {
-	if err := f.start(ctx); err != nil {
+	subConn, err := f.substrateManager.Substrate()
+	if err != nil {
 		return err
 	}
 
-	go f.update(ctx)
+	defer subConn.Close()
 
-	errs, ctx := errgroup.WithContext(ctx)
-	errs.Go(func() error {
-		return f.serve(ctx)
-	})
-
-	if err := errs.Wait(); err != nil {
+	if err := f.start(ctx, subConn); err != nil {
 		return err
 	}
 
+	if err := f.serve(ctx, subConn); err != nil {
+		return err
+	}
+
+	go f.update(ctx, subConn)
 	log.Info().Msg("up and running...")
 
 	// graceful shutdown
@@ -101,7 +104,7 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownRelease()
 
-	if err := f.stop(shutdownCtx); err != nil {
+	if err := f.stop(shutdownCtx, subConn); err != nil {
 		return err
 	}
 
@@ -110,39 +113,46 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 }
 
 func (f *FarmerBot) SetConfig(inputs models.InputConfig) error {
+	subConn, err := f.substrateManager.Substrate()
+	if err != nil {
+		return err
+	}
+
+	defer subConn.Close()
+
 	if f.config == nil {
 		f.config = &models.Config{}
 	}
 
-	return f.config.Set(f.substrateManager, inputs)
+	return f.config.Set(subConn, inputs)
 }
 
-func (f *FarmerBot) start(ctx context.Context) error {
-	return f.powerManager.PowerOnAllNodes()
+func (f *FarmerBot) start(ctx context.Context, sub models.Sub) error {
+	return f.powerManager.PowerOnAllNodes(sub)
 }
 
-func (f *FarmerBot) stop(ctx context.Context) error {
-	return f.powerManager.PowerOnAllNodes()
+func (f *FarmerBot) stop(ctx context.Context, sub models.Sub) error {
+	return f.powerManager.PowerOnAllNodes(sub)
 }
 
-func (f *FarmerBot) update(ctx context.Context) {
+func (f *FarmerBot) update(ctx context.Context, sub models.Sub) {
 	for {
 		startTime := time.Now()
 
 		log.Debug().Msg("data update")
-		err := f.dataManager.Update(ctx)
+		err := f.dataManager.Update(ctx, sub)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to update")
 		}
 
 		log.Debug().Msg("periodic wake up")
-		err = f.powerManager.PeriodicWakeUp()
+		err = f.powerManager.PeriodicWakeUp(sub)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to perform periodic wake up")
 		}
 
 		log.Debug().Msg("power management")
-		err = f.powerManager.PowerManagement()
+		err = f.powerManager.PowerManagement(sub)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to power management nodes")
 		}
@@ -161,13 +171,7 @@ func (f *FarmerBot) update(ctx context.Context) {
 	}
 }
 
-func (f *FarmerBot) serve(ctx context.Context) error {
-	con, err := f.substrateManager.Substrate()
-	if err != nil {
-		return err
-	}
-	defer con.Close()
-
+func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 	router := peer.NewRouter()
 	farmerbot := router.SubRoute("farmerbot")
 
@@ -178,7 +182,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	// TODO: didn't work
 	// powerRouter.Use(f.authorize)
 
-	farmerTwinID, err := con.GetTwinByPubKey(f.identity.PublicKey())
+	farmerTwinID, err := sub.GetTwinByPubKey(f.identity.PublicKey())
 	if err != nil {
 		return err
 	}
@@ -194,7 +198,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		nodeID, err := f.powerManager.FindNode(options)
+		nodeID, err := f.powerManager.FindNode(sub, options)
 		return nodeID, err
 	})
 
@@ -205,7 +209,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		}
 
 		var nodeID uint32
-		if err := f.validateAccountEnoughBalance(); err != nil {
+		if err := f.validateAccountEnoughBalance(sub); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
@@ -213,7 +217,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		return nil, f.powerManager.PowerOff(nodeID)
+		return nil, f.powerManager.PowerOff(sub, nodeID)
 	})
 
 	powerRouter.WithHandler("poweron", func(ctx context.Context, payload []byte) (interface{}, error) {
@@ -223,7 +227,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		}
 
 		var nodeID uint32
-		if err := f.validateAccountEnoughBalance(); err != nil {
+		if err := f.validateAccountEnoughBalance(sub); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
@@ -231,7 +235,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		err = f.powerManager.PowerOn(nodeID)
+		err = f.powerManager.PowerOn(sub, nodeID)
 		return nil, err
 	})
 
@@ -241,8 +245,8 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		f.mnemonic,
 		constants.RelayURLS[f.network],
 		fmt.Sprintf("farmerbot-%d", f.config.Farm.ID),
-		con,
-		false,
+		sub,
+		true,
 		router.Serve,
 	)
 
@@ -250,22 +254,16 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		return errors.New("failed to create farmerbot direct peer")
 	}
 
-	select {}
+	return nil
 }
 
-func (f *FarmerBot) validateAccountEnoughBalance() error {
-	con, err := f.substrateManager.Substrate()
-	if err != nil {
-		return err
-	}
-	defer con.Close()
-
+func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate) error {
 	accountAddress, err := substrate.FromAddress(f.identity.Address())
 	if err != nil {
 		return err
 	}
 
-	balance, err := con.GetBalance(accountAddress)
+	balance, err := sub.GetBalance(accountAddress)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
 		return errors.Wrap(err, "failed to get a valid account")
 	}

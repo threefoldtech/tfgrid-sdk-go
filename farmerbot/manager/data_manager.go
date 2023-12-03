@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
 )
@@ -13,22 +12,15 @@ import (
 // DataManager manages data
 type DataManager struct {
 	config        *models.Config
-	subManager    substrate.Manager
 	rmbNodeClient RMB
 }
 
 // NewDataManager creates a new Data updates Manager
-func NewDataManager(subManager substrate.Manager, config *models.Config, rmbNodeClient RMB) DataManager {
-	return DataManager{config, subManager, rmbNodeClient}
+func NewDataManager(config *models.Config, rmbNodeClient RMB) DataManager {
+	return DataManager{config, rmbNodeClient}
 }
 
-func (m *DataManager) Update(ctx context.Context) error {
-	con, err := m.subManager.Substrate()
-	if err != nil {
-		return err
-	}
-	defer con.Close()
-
+func (m *DataManager) Update(ctx context.Context, sub models.Sub) error {
 	var failedNodes []models.Node
 	for _, node := range m.config.Nodes {
 		// we ping nodes (the ones with claimed resources)
@@ -62,7 +54,7 @@ func (m *DataManager) Update(ctx context.Context) error {
 
 		node.Pools = pools
 
-		subNode, err := con.GetNode(uint32(node.ID))
+		subNode, err := sub.GetNode(uint32(node.ID))
 		if err != nil {
 			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get node from substrate")
 			failedNodes = append(failedNodes, node)
@@ -80,7 +72,7 @@ func (m *DataManager) Update(ctx context.Context) error {
 
 		node.GPUs = gpus
 
-		rentContract, err := con.GetNodeRentContract(uint32(node.ID))
+		rentContract, err := sub.GetNodeRentContract(uint32(node.ID))
 		if err != nil {
 			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get node rent contract")
 			failedNodes = append(failedNodes, node)

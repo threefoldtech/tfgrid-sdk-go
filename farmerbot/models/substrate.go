@@ -14,4 +14,5 @@ type Sub interface {
 	GetFarm(id uint32) (*substrate.Farm, error)
 	GetNodes(farmID uint32) ([]uint32, error)
 	GetDedicatedNodePrice(nodeID uint32) (uint64, error)
+	GetTwinByPubKey(publicKey []byte) (uint32, error)
 }

@@ -18,20 +18,20 @@ type RMB interface {
 	ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []models.GPU, err error)
 }
 
-type rmbNodeClient struct {
+type RMBNodeClient struct {
 	rmb        rmb.Client
 	rmbTimeout time.Duration
 }
 
-func NewRmbNodeClient(rmb rmb.Client) rmbNodeClient {
-	return rmbNodeClient{
+func NewRmbNodeClient(rmb rmb.Client) *RMBNodeClient {
+	return &RMBNodeClient{
 		rmb:        rmb,
 		rmbTimeout: constants.TimeoutRMBResponse,
 	}
 }
 
 // SystemVersion executes zos system version cmd
-func (n *rmbNodeClient) SystemVersion(ctx context.Context, nodeTwin uint32) error {
+func (n *RMBNodeClient) SystemVersion(ctx context.Context, nodeTwin uint32) error {
 	ctx, cancel := context.WithTimeout(ctx, n.rmbTimeout)
 	defer cancel()
 
@@ -40,7 +40,7 @@ func (n *rmbNodeClient) SystemVersion(ctx context.Context, nodeTwin uint32) erro
 }
 
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
-func (n *rmbNodeClient) Statistics(ctx context.Context, nodeTwin uint32) (stats models.ZosResourcesStatistics, err error) {
+func (n *RMBNodeClient) Statistics(ctx context.Context, nodeTwin uint32) (stats models.ZosResourcesStatistics, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.rmbTimeout)
 	defer cancel()
 
@@ -49,7 +49,7 @@ func (n *rmbNodeClient) Statistics(ctx context.Context, nodeTwin uint32) (stats 
 }
 
 // GetStoragePools executes zos system version cmd
-func (n *rmbNodeClient) GetStoragePools(ctx context.Context, nodeTwin uint32) (pools []pkg.PoolMetrics, err error) {
+func (n *RMBNodeClient) GetStoragePools(ctx context.Context, nodeTwin uint32) (pools []pkg.PoolMetrics, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.rmbTimeout)
 	defer cancel()
 
@@ -58,7 +58,7 @@ func (n *rmbNodeClient) GetStoragePools(ctx context.Context, nodeTwin uint32) (p
 }
 
 // ListGPUs return a list of all gpus on the node.
-func (n *rmbNodeClient) ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []models.GPU, err error) {
+func (n *RMBNodeClient) ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []models.GPU, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.rmbTimeout)
 	defer cancel()
 

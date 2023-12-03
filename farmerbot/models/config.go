@@ -23,20 +23,14 @@ type InputConfig struct {
 
 // Config is the configuration data for farmerbot
 type Config struct {
-	Farm  substrate.Farm `json:"farm" yaml:"farm" toml:"farm"`
-	Nodes []Node         `json:"nodes" yaml:"nodes" toml:"nodes"`
-	Power Power          `json:"power" yaml:"power" toml:"power"`
+	Farm  substrate.Farm  `json:"farm" yaml:"farm" toml:"farm"`
+	Nodes map[uint32]Node `json:"nodes" yaml:"nodes" toml:"nodes"`
+	Power Power           `json:"power" yaml:"power" toml:"power"`
 	m     sync.Mutex
 }
 
 // Set sets the config data from configuration inputs
-func (c *Config) Set(substrateManager substrate.Manager, inputs InputConfig) error {
-	con, err := substrateManager.Substrate()
-	if err != nil {
-		return err
-	}
-	defer con.Close()
-
+func (c *Config) Set(sub Sub, inputs InputConfig) error {
 	log.Debug().Msg("Set power")
 
 	if !reflect.DeepEqual(c.Power, inputs.Power) {
@@ -57,7 +51,7 @@ func (c *Config) Set(substrateManager substrate.Manager, inputs InputConfig) err
 	// set farm
 	log.Debug().Uint32("ID", inputs.FarmID).Msg("Set farm")
 	if inputs.FarmID != uint32(c.Farm.ID) {
-		farm, err := con.GetFarm(inputs.FarmID)
+		farm, err := sub.GetFarm(inputs.FarmID)
 		if err != nil {
 			return err
 		}
@@ -68,7 +62,7 @@ func (c *Config) Set(substrateManager substrate.Manager, inputs InputConfig) err
 	}
 
 	// set nodes
-	err = c.SetConfigNodes(con, inputs)
+	err := c.SetConfigNodes(sub, inputs)
 	if err != nil {
 		return err
 	}
@@ -78,6 +72,8 @@ func (c *Config) Set(substrateManager substrate.Manager, inputs InputConfig) err
 
 // SetConfigNodes sets the config nodes from configuration inputs
 func (c *Config) SetConfigNodes(sub Sub, i InputConfig) error {
+	c.Nodes = make(map[uint32]Node)
+
 	farmNodes, err := sub.GetNodes(i.FarmID)
 	if err != nil {
 		return err
@@ -116,22 +112,11 @@ func (c *Config) SetConfigNodes(sub Sub, i InputConfig) error {
 			configNode.Resources.Total.HRU = uint64(node.Resources.HRU)
 			configNode.Resources.OverProvisionCPU = c.Power.OverProvisionCPU
 
-			c.Nodes = append(c.Nodes, configNode)
+			c.Nodes[nodeID] = configNode
 		}
 	}
 
 	return nil
-}
-
-// GetNodeByNodeID gets a node by id
-func (c *Config) GetNodeByNodeID(nodeID uint32) (Node, error) {
-	for _, n := range c.Nodes {
-		if uint32(n.ID) == nodeID {
-			return n, nil
-		}
-	}
-
-	return Node{}, fmt.Errorf("node %d not found", nodeID)
 }
 
 // UpdateNode updates a node in the config
@@ -139,14 +124,14 @@ func (c *Config) UpdateNode(node Node) error {
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	for i, n := range c.Nodes {
-		if n.ID == node.ID {
-			c.Nodes[i] = node
-			return nil
-		}
+	_, ok := c.Nodes[uint32(node.ID)]
+	if !ok {
+		return fmt.Errorf("node %d is not found", uint32(node.ID))
 	}
 
-	return fmt.Errorf("node %d not found", node.ID)
+	c.Nodes[uint32(node.ID)] = node
+
+	return nil
 }
 
 // FilterNodesPower filters ON or OFF nodes

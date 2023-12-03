@@ -19,43 +19,35 @@ import (
 
 // PowerManager manages the power of nodes
 type PowerManager struct {
-	config     *models.Config
-	identity   substrate.Identity
-	subManager substrate.Manager
-	m          sync.Mutex
+	config   *models.Config
+	identity substrate.Identity
+	m        sync.Mutex
 }
 
 // NewPowerManager creates a new Power Manager
-func NewPowerManager(identity substrate.Identity, subManager substrate.Manager, config *models.Config) PowerManager {
+func NewPowerManager(identity substrate.Identity, config *models.Config) PowerManager {
 	return PowerManager{
-		config:     config,
-		identity:   identity,
-		subManager: subManager,
+		config:   config,
+		identity: identity,
 	}
 }
 
 // PowerOn sets the node power state ON
-func (p *PowerManager) PowerOn(nodeID uint32) error {
+func (p *PowerManager) PowerOn(sub models.Sub, nodeID uint32) error {
 	log.Info().Uint32("node ID", nodeID).Str("manager", "power").Msg("POWER ON")
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	node, err := p.config.GetNodeByNodeID(nodeID)
-	if err != nil {
-		return err
+	node, ok := p.config.Nodes[nodeID]
+	if !ok {
+		return fmt.Errorf("node %d is not found", nodeID)
 	}
 
 	if node.PowerState == models.ON || node.PowerState == models.WakingUP {
 		return nil
 	}
 
-	con, err := p.subManager.Substrate()
-	if err != nil {
-		return err
-	}
-	defer con.Close()
-
-	_, err = con.SetNodePowerTarget(p.identity, nodeID, true)
+	_, err := sub.SetNodePowerTarget(p.identity, nodeID, true)
 	if err != nil {
 		return err
 	}
@@ -67,14 +59,14 @@ func (p *PowerManager) PowerOn(nodeID uint32) error {
 }
 
 // PowerOff sets the node power state OFF
-func (p *PowerManager) PowerOff(nodeID uint32) error {
+func (p *PowerManager) PowerOff(sub models.Sub, nodeID uint32) error {
 	log.Info().Uint32("node ID", nodeID).Str("manager", "power").Msg("POWER OFF")
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	node, err := p.config.GetNodeByNodeID(nodeID)
-	if err != nil {
-		return err
+	node, ok := p.config.Nodes[nodeID]
+	if !ok {
+		return fmt.Errorf("node %d is not found", nodeID)
 	}
 
 	if node.PowerState == models.OFF || node.PowerState == models.ShuttingDown {
@@ -99,13 +91,7 @@ func (p *PowerManager) PowerOff(nodeID uint32) error {
 		return errors.Errorf("cannot power off node, at least one node should be on in the farm")
 	}
 
-	con, err := p.subManager.Substrate()
-	if err != nil {
-		return err
-	}
-	defer con.Close()
-
-	_, err = con.SetNodePowerTarget(p.identity, nodeID, false)
+	_, err := sub.SetNodePowerTarget(p.identity, nodeID, false)
 	if err != nil {
 		return err
 	}
@@ -117,7 +103,7 @@ func (p *PowerManager) PowerOff(nodeID uint32) error {
 }
 
 // FindNode finds an available node in the farm
-func (p *PowerManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) {
+func (p *PowerManager) FindNode(sub models.Sub, nodeOptions models.NodeOptions) (uint32, error) {
 	log.Info().Str("manager", "node").Msg("Finding a node")
 
 	if (len(nodeOptions.GPUVendors) > 0 || len(nodeOptions.GPUDevices) > 0) && nodeOptions.HasGPUs == 0 {
@@ -218,7 +204,7 @@ func (p *PowerManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) 
 
 	// power on the node if it is down or if it is shutting down
 	if nodeFound.PowerState == models.OFF || nodeFound.PowerState == models.ShuttingDown {
-		if err := p.PowerOn(uint32(nodeFound.ID)); err != nil {
+		if err := p.PowerOn(sub, uint32(nodeFound.ID)); err != nil {
 			return 0, fmt.Errorf("failed to power on found node %d", nodeFound.ID)
 		}
 	}
@@ -232,11 +218,11 @@ func (p *PowerManager) FindNode(nodeOptions models.NodeOptions) (uint32, error) 
 	return uint32(nodeFound.ID), nil
 }
 
-func (p *PowerManager) PowerOnAllNodes() error {
+func (p *PowerManager) PowerOnAllNodes(sub models.Sub) error {
 	offNodes := p.config.FilterNodesPower([]models.PowerState{models.OFF, models.ShuttingDown})
 
 	for _, node := range offNodes {
-		err := p.PowerOn(uint32(node.ID))
+		err := p.PowerOn(sub, uint32(node.ID))
 		if err != nil {
 			return err
 		}
@@ -246,7 +232,7 @@ func (p *PowerManager) PowerOnAllNodes() error {
 }
 
 // PeriodicWakeUp for waking up nodes daily
-func (p *PowerManager) PeriodicWakeUp() error {
+func (p *PowerManager) PeriodicWakeUp(sub models.Sub) error {
 	now := time.Now()
 
 	offNodes := p.config.FilterNodesPower([]models.PowerState{models.OFF})
@@ -267,7 +253,7 @@ func (p *PowerManager) PeriodicWakeUp() error {
 			// we wake up the node if the periodic wake up start time has started and only if the last time the node was awake
 			// was before the periodic wake up start of that day
 			log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Periodic wake up")
-			err := p.PowerOn(uint32(node.ID))
+			err := p.PowerOn(sub, uint32(node.ID))
 			if err != nil {
 				log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("failed to wake up")
 				continue
@@ -289,7 +275,7 @@ func (p *PowerManager) PeriodicWakeUp() error {
 			// we also do not go through the code if we have woken up too many nodes at once => subtract (10 * (n-1))/min(periodic_wake up_limit, amount_of_nodes) from 8460
 			// now we can divide that by 10 and randomly generate a number in that range, if it's 0 we do the random wake up
 			log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Random wake up")
-			err := p.PowerOn(uint32(node.ID))
+			err := p.PowerOn(sub, uint32(node.ID))
 			if err != nil {
 				log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("failed to wake up")
 				continue
@@ -307,7 +293,7 @@ func (p *PowerManager) PeriodicWakeUp() error {
 }
 
 // PowerManagement for power management nodes
-func (p *PowerManager) PowerManagement() error {
+func (p *PowerManager) PowerManagement(sub models.Sub) error {
 	usedResources, totalResources := p.calculateResourceUsage()
 
 	if totalResources == 0 {
@@ -317,11 +303,11 @@ func (p *PowerManager) PowerManagement() error {
 	resourceUsage := uint8(100 * usedResources / totalResources)
 	if resourceUsage >= p.config.Power.WakeUpThreshold {
 		log.Info().Uint8("resources usage", resourceUsage).Str("manager", "power").Msg("Too high resource usage")
-		return p.resourceUsageTooHigh()
+		return p.resourceUsageTooHigh(sub)
 	}
 
 	log.Info().Uint8("resources usage", resourceUsage).Str("manager", "power").Msg("Too low resource usage")
-	return p.resourceUsageTooLow(p.config.Power, usedResources, totalResources)
+	return p.resourceUsageTooLow(sub, usedResources, totalResources)
 }
 
 func (p *PowerManager) calculateResourceUsage() (uint64, uint64) {
@@ -345,19 +331,19 @@ func (p *PowerManager) calculateResourceUsage() (uint64, uint64) {
 	return used, total
 }
 
-func (p *PowerManager) resourceUsageTooHigh() error {
+func (p *PowerManager) resourceUsageTooHigh(sub models.Sub) error {
 	offNodes := p.config.FilterNodesPower([]models.PowerState{models.OFF})
 
 	if len(offNodes) > 0 {
 		node := offNodes[0]
 		log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Too much resource usage. Turning on node")
-		return p.PowerOn(uint32(node.ID))
+		return p.PowerOn(sub, uint32(node.ID))
 	}
 
 	return fmt.Errorf("no available node to wake up, resources usage is high")
 }
 
-func (p *PowerManager) resourceUsageTooLow(power models.Power, usedResources, totalResources uint64) error {
+func (p *PowerManager) resourceUsageTooLow(sub models.Sub, usedResources, totalResources uint64) error {
 	onNodes := p.config.FilterNodesPower([]models.PowerState{models.ON})
 
 	// nodes with public config can't be shutdown
@@ -385,10 +371,10 @@ func (p *PowerManager) resourceUsageTooLow(power models.Power, usedResources, to
 			}
 
 			newResourceUsage := uint8(100 * newUsedResources / newTotalResources)
-			if newResourceUsage < power.WakeUpThreshold {
+			if newResourceUsage < p.config.Power.WakeUpThreshold {
 				// we need to keep the resource percentage lower then the threshold
 				log.Info().Uint32("node ID", uint32(node.ID)).Uint8("resources usage", newResourceUsage).Str("manager", "power").Msg("Resource usage too low. Turning off unused node")
-				err := p.PowerOff(uint32(node.ID))
+				err := p.PowerOff(sub, uint32(node.ID))
 				if err != nil {
 					log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Power off node")
 					nodesLeftOnline += 1
