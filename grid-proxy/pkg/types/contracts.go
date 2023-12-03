@@ -27,11 +27,11 @@ type RentContractDetails struct {
 
 // Contract represents a contract and its details after decoding to one of Details structs.
 type Contract struct {
-	ContractID uint        `json:"contract_id"`
-	TwinID     uint        `json:"twin_id"`
-	State      string      `json:"state"`
-	CreatedAt  uint        `json:"created_at"`
-	Type       string      `json:"type"`
+	ContractID uint        `json:"contract_id" sort:"contract_id"`
+	TwinID     uint        `json:"twin_id" sort:"twin_id"`
+	State      string      `json:"state" sort:"state"`
+	CreatedAt  uint        `json:"created_at" sort:"created_at"`
+	Type       string      `json:"type" sort:"type"`
 	Details    interface{} `json:"details"`
 }
 

@@ -160,7 +160,7 @@ func TestFarm(t *testing.T) {
 			l := proxytypes.Limit{
 				Size:     999999999999,
 				Page:     1,
-				RetCount: false,
+				RetCount: true,
 			}
 			f, err := randomFarmsFilter(&agg)
 			require.NoError(t, err)
@@ -182,7 +182,7 @@ func TestFarm(t *testing.T) {
 		l := proxytypes.Limit{
 			Size:     999999999999,
 			Page:     1,
-			RetCount: false,
+			RetCount: true,
 		}
 		f := proxytypes.FarmFilter{
 			NodeFreeHRU: &aggNode.maxFreeHRU,
@@ -205,7 +205,7 @@ func TestFarm(t *testing.T) {
 		l := proxytypes.Limit{
 			Size:     999999999999,
 			Page:     1,
-			RetCount: false,
+			RetCount: true,
 		}
 
 		f := proxytypes.FarmFilter{

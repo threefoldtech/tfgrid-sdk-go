@@ -74,7 +74,7 @@ func TestTwins(t *testing.T) {
 			l := proxytypes.Limit{
 				Size:     999999999999,
 				Page:     1,
-				RetCount: false,
+				RetCount: true,
 			}
 			f, err := randomTwinsFilter(&agg)
 			require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestTwins(t *testing.T) {
 			got, gotCount, err := gridProxyClient.Twins(context.Background(), f, l)
 			require.NoError(t, err)
 
-			assert.Equal(t, wantCount, gotCount)
+			assert.Equal(t, wantCount, gotCount, fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)))
 
 			require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 		}

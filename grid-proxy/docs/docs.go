@@ -53,6 +53,35 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Get random patch of contracts",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "twin_id",
+                            "contract_id",
+                            "type",
+                            "state",
+                            "created_at"
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific contract filed",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'asc'",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "contract id",
                         "name": "contract_id",
@@ -284,6 +313,35 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Get random patch of farms",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "name",
+                            "farm_id",
+                            "twin_id",
+                            "public_ips",
+                            "dedicated"
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific farm filed",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'asc'",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Min number of free ips in the farm",
                         "name": "free_ips",
@@ -470,6 +528,50 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Set nodes' count on headers based on filter",
                         "name": "ret_count",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get random patch of gateways",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "node_id",
+                            "farm_id",
+                            "twin_id",
+                            "uptime",
+                            "created",
+                            "updated_at",
+                            "country",
+                            "city",
+                            "dedicated_farm",
+                            "rent_contract_id",
+                            "total_cru",
+                            "total_mru",
+                            "total_hru",
+                            "total_sru",
+                            "used_cru",
+                            "used_mru",
+                            "used_hru",
+                            "used_sru",
+                            "num_gpu",
+                            "extra_fee"
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific gateway filed",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'asc'",
+                        "name": "sort_order",
                         "in": "query"
                     },
                     {
@@ -707,6 +809,50 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Set nodes' count on headers based on filter",
                         "name": "ret_count",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get random patch of nodes",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "node_id",
+                            "farm_id",
+                            "twin_id",
+                            "uptime",
+                            "created",
+                            "updated_at",
+                            "country",
+                            "city",
+                            "dedicated_farm",
+                            "rent_contract_id",
+                            "total_cru",
+                            "total_mru",
+                            "total_hru",
+                            "total_sru",
+                            "used_cru",
+                            "used_mru",
+                            "used_hru",
+                            "used_sru",
+                            "num_gpu",
+                            "extra_fee"
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific node filed",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'asc'",
+                        "name": "sort_order",
                         "in": "query"
                     },
                     {
@@ -1174,6 +1320,34 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Set twins' count on headers based on filter",
                         "name": "ret_count",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get random patch of twins",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "relay",
+                            "public_key",
+                            "account_id",
+                            "twin_id"
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific twin filed",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'asc'",
+                        "name": "sort_order",
                         "in": "query"
                     },
                     {
