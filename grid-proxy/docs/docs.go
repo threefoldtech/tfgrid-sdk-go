@@ -465,6 +465,12 @@ const docTemplate = `{
                         "description": "farm country",
                         "name": "country",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "farm region",
+                        "name": "region",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -608,6 +614,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Node country filter",
                         "name": "country",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "node region",
+                        "name": "region",
                         "in": "query"
                     },
                     {
@@ -907,6 +919,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Node country filter",
                         "name": "country",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node region",
+                        "name": "region",
                         "in": "query"
                     },
                     {

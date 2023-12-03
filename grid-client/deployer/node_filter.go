@@ -18,8 +18,14 @@ import (
 )
 
 // FilterNodes filters nodes using proxy
-func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64) ([]types.Node, error) {
-	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, types.Limit{})
+func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64, optionalLimit ...uint64) ([]types.Node, error) {
+	limit := types.Limit{}
+
+	if len(optionalLimit) > 0 {
+		limit = types.Limit{Size: optionalLimit[0]}
+	}
+
+	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
 	if err != nil {
 		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
 	}
@@ -58,13 +64,22 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 			workloads.Delete(nodePools, node)
 			continue
 		}
-		if hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) && hasEnoughStorage(pools, ssdDisks, zos.HDDDevice) {
+		if hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) && hasEnoughStorage(pools, hddDisks, zos.HDDDevice) {
 			nodePools = append(nodePools, node)
 		}
 	}
 
 	if len(nodePools) == 0 {
-		return []types.Node{}, errors.Errorf("could not find any node with free ssd pools: %d GB", convertBytesToGB(*options.FreeSRU))
+		var freeSRU uint64
+		if options.FreeSRU != nil {
+			freeSRU = convertBytesToGB(*options.FreeSRU)
+		}
+		var freeHRU uint64
+		if options.FreeHRU != nil {
+			freeHRU = convertBytesToGB(*options.FreeHRU)
+		}
+
+		return []types.Node{}, errors.Errorf("could not find any node with free ssd pools: %d GB and free hdd pools: %d GB", freeSRU, freeHRU)
 	}
 
 	return nodePools, nil
@@ -149,6 +164,10 @@ func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes 
 
 // hasEnoughStorage checks if all deployment storage requirements can be satisfied with node's pools based on given disks order.
 func hasEnoughStorage(pools []client.PoolMetrics, storages []uint64, poolType zos.DeviceType) bool {
+	if len(storages) == 0 {
+		return true
+	}
+
 	filteredPools := make([]client.PoolMetrics, 0)
 	for _, pool := range pools {
 		if pool.Type == poolType {

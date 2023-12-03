@@ -19,6 +19,7 @@ import (
 )
 
 type NodesAggregate struct {
+	regions   []string
 	countries []string
 	cities    []string
 	farmNames []string
@@ -102,6 +103,10 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 	"Country": func(agg NodesAggregate) interface{} {
 		country := changeCase(agg.countries[rand.Intn(len(agg.countries))])
 		return &country
+	},
+	"Region": func(agg NodesAggregate) interface{} {
+		region := changeCase(agg.regions[rand.Intn(len(agg.regions))])
+		return &region
 	},
 	"CountryContains": func(agg NodesAggregate) interface{} {
 		c := agg.countries[rand.Intn(len(agg.countries))]
@@ -572,6 +577,10 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 
 	for _, cnt := range farmIPs {
 		res.maxFreeIPs = max(res.maxFreeIPs, cnt)
+	}
+
+	for _, region := range data.Regions {
+		res.regions = append(res.regions, region)
 	}
 
 	sort.Slice(res.countries, func(i, j int) bool {

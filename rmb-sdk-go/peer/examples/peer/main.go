@@ -8,9 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
 )
 
 var resultsChan = make(chan bool)
@@ -26,14 +25,14 @@ func app() error {
 
 	defer sub.Close()
 
-	client, err := direct.NewClient(
+	peer, err := peer.NewPeer(
 		ctx,
-		direct.KeyTypeSr25519,
+		peer.KeyTypeSr25519,
 		mnemonics,
 		"wss://relay.dev.grid.tf",
 		"test-client",
 		sub,
-		false,
+		true,
 		relayCallback,
 	)
 
@@ -41,11 +40,16 @@ func app() error {
 		return fmt.Errorf("failed to create direct client: %w", err)
 	}
 
-	const dist = 7 // <- replace this with the twin id of where the service is running
+	const dst = 7 // <- replace this with the twin id of where the service is running
 
 	for i := 0; i < 20; i++ {
 		data := []float64{rand.Float64(), rand.Float64()}
-		if err := client.Call(ctx, uuid.NewString(), dist, "calculator.add", data); err != nil {
+		var session *string
+		// uncomment if you are using peer router example
+		// routerSession := "test-router"
+		// session = &routerSession
+
+		if err := peer.SendRequest(ctx, uuid.NewString(), dst, session, "calculator.add", data); err != nil {
 			return err
 		}
 	}
@@ -56,27 +60,12 @@ func app() error {
 	return nil
 }
 
-func relayCallback(response *types.Envelope, callBackErr error) {
-
-	errResp := response.GetError()
-
-	if errResp != nil {
-		log.Error().Msg(errResp.Message)
+func relayCallback(ctx context.Context, p peer.Peer, response *types.Envelope, callBackErr error) {
+	output, err := peer.Json(response, callBackErr)
+	if err != nil {
+		log.Error().Err(err)
 		return
 	}
-
-	resp := response.GetResponse()
-	if resp == nil {
-		log.Error().Msg("received a non response envelope")
-		return
-	}
-
-	if response.Schema == nil || *response.Schema != rmb.DefaultSchema {
-		log.Error().Msgf("invalid schema received expected '%s'", rmb.DefaultSchema)
-		return
-	}
-
-	output := response.Payload.(*types.Envelope_Plain).Plain
 
 	fmt.Printf("output: %s\n", string(output))
 	resultsChan <- true

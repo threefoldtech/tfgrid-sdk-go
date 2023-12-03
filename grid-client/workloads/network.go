@@ -223,7 +223,7 @@ func (znet *ZNet) AssignNodesWGPort(ctx context.Context, sub subi.SubstrateExt, 
 			}
 			port, err := cl.GetNodeFreeWGPort(ctx, nodeID)
 			if err != nil {
-				return errors.Wrap(err, "failed to get node free wg ports")
+				return errors.Wrapf(err, "failed to get node %d free wg ports", nodeID)
 			}
 
 			if len(znet.WGPort) == 0 {

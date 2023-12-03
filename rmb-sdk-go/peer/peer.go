@@ -1,5 +1,5 @@
 // Package direct package provides the functionality to create a direct websocket connection to rmb relays without the need to rmb peers.
-package direct
+package peer
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
 	"github.com/tyler-smith/go-bip39"
 	"google.golang.org/protobuf/proto"
 )
@@ -30,10 +30,10 @@ const (
 
 // Handler is a call back that is called with verified and decrypted incoming
 // messages. An error can be non-nil error if verification or decryption failed
-type Handler func(env *types.Envelope, err error)
+type Handler func(ctx context.Context, peer Peer, env *types.Envelope, err error)
 
-// Client exposes the functionality to talk directly to an rmb relay
-type Client struct {
+// Peer exposes the functionality to talk directly to an rmb relay
+type Peer struct {
 	source  *types.Address
 	signer  substrate.Identity
 	twinDB  TwinDB
@@ -72,13 +72,13 @@ func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 	return identity, nil
 }
 
-// NewClient creates a new RMB direct client. It connects directly to the RMB-Relay, and tries to reconnect if the connection broke.
+// NewPeer creates a new RMB peer client. It connects directly to the RMB-Relay, and tries to reconnect if the connection broke.
 //
 // You can close the connection by canceling the passed context.
 //
 // Make sure the context passed to Call() does not outlive the directClient's context.
 // Call() will panic if called while the directClient's context is canceled.
-func NewClient(
+func NewPeer(
 	ctx context.Context,
 	keytype string,
 	mnemonics string,
@@ -86,7 +86,7 @@ func NewClient(
 	session string,
 	sub *substrate.Substrate,
 	enableEncryption bool,
-	handler Handler) (*Client, error) {
+	handler Handler) (*Peer, error) {
 	identity, err := getIdentity(keytype, mnemonics)
 	if err != nil {
 		return nil, err
@@ -97,6 +97,8 @@ func NewClient(
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get twin by public key")
 	}
+
+	log.Info().Uint32("twin", id).Str("session", session).Msg("starting peer")
 
 	twin, err := twinDB.Get(id)
 	if err != nil {
@@ -137,7 +139,7 @@ func NewClient(
 		Connection: sessionP,
 	}
 
-	cl := &Client{
+	cl := &Peer{
 		source:  &source,
 		signer:  identity,
 		twinDB:  twinDB,
@@ -152,7 +154,7 @@ func NewClient(
 	return cl, nil
 }
 
-func (d Client) handleIncoming(incoming *types.Envelope) error {
+func (d Peer) handleIncoming(incoming *types.Envelope) error {
 	errResp := incoming.GetError()
 	if incoming.Source == nil {
 		// an envelope received that has NO source twin
@@ -178,6 +180,11 @@ func (d Client) handleIncoming(incoming *types.Envelope) error {
 	var output []byte
 	switch payload := incoming.Payload.(type) {
 	case *types.Envelope_Cipher:
+		if d.privKey == nil {
+			// we received an encrypted message while
+			// we have no encryption enabled on that peer
+			return fmt.Errorf("received an encrypted message while encryption is not enabled")
+		}
 		twin, err := d.twinDB.Get(incoming.Source.Twin)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get twin object for %d", incoming.Source.Twin)
@@ -196,7 +203,7 @@ func (d Client) handleIncoming(incoming *types.Envelope) error {
 	return nil
 }
 
-func (d *Client) process(ctx context.Context) {
+func (d *Peer) process(ctx context.Context) {
 	for {
 		select {
 		case incoming := <-d.reader:
@@ -207,7 +214,7 @@ func (d *Client) process(ctx context.Context) {
 			}
 			// verify and decoding!
 			err := d.handleIncoming(&env)
-			d.handler(&env, err)
+			d.handler(ctx, *d, &env, err)
 		case <-ctx.Done():
 			return
 		}
@@ -232,12 +239,12 @@ func generateNonce(size int) ([]byte, error) {
 	return nonce, nil
 }
 
-func (d *Client) generateSharedSect(pubkey *secp256k1.PublicKey) [32]byte {
+func (d *Peer) generateSharedSect(pubkey *secp256k1.PublicKey) [32]byte {
 	point := secp256k1.GenerateSharedSecret(d.privKey, pubkey)
 	return sha256.Sum256(point)
 }
 
-func (d *Client) encrypt(data []byte, pubKey []byte) ([]byte, error) {
+func (d *Peer) encrypt(data []byte, pubKey []byte) ([]byte, error) {
 	secPubKey, err := secp256k1.ParsePubKey(pubKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not parse dest public key")
@@ -259,7 +266,7 @@ func (d *Client) encrypt(data []byte, pubKey []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
-func (d *Client) decrypt(data []byte, pubKey []byte) ([]byte, error) {
+func (d *Peer) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	secPubKey, err := secp256k1.ParsePubKey(pubKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not parse dest public key")
@@ -281,22 +288,37 @@ func (d *Client) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	return decrypted, nil
 }
 
-func (d *Client) makeRequest(id string, dest uint32, cmd string, data []byte, ttl uint64) (*types.Envelope, error) {
+func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string, err error, data []byte, ttl uint64) (*types.Envelope, error) {
 	schema := rmb.DefaultSchema
 
 	env := types.Envelope{
-		Uid:         id,
-		Timestamp:   uint64(time.Now().Unix()),
-		Expiration:  ttl,
-		Source:      d.source,
-		Destination: &types.Address{Twin: dest},
-		Schema:      &schema,
+		Uid:        id,
+		Timestamp:  uint64(time.Now().Unix()),
+		Expiration: ttl,
+		Source:     d.source,
+		Destination: &types.Address{
+			Twin:       dest,
+			Connection: session,
+		},
+		Schema: &schema,
 	}
 
-	env.Message = &types.Envelope_Request{
-		Request: &types.Request{
-			Command: cmd,
-		},
+	if err != nil {
+		env.Message = &types.Envelope_Error{
+			Error: &types.Error{
+				Message: err.Error(),
+			},
+		}
+	} else if cmd == nil {
+		env.Message = &types.Envelope_Response{
+			Response: &types.Response{},
+		}
+	} else {
+		env.Message = &types.Envelope_Request{
+			Request: &types.Request{
+				Command: *cmd,
+			},
+		}
 	}
 
 	destTwin, err := d.twinDB.Get(dest)
@@ -336,7 +358,7 @@ func (d *Client) makeRequest(id string, dest uint32, cmd string, data []byte, tt
 
 }
 
-func (d *Client) request(ctx context.Context, request *types.Envelope) error {
+func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 
 	bytes, err := proto.Marshal(request)
 	if err != nil {
@@ -353,9 +375,8 @@ func (d *Client) request(ctx context.Context, request *types.Envelope) error {
 
 }
 
-// Call sends an rmb call to the relay
-func (d *Client) Call(ctx context.Context, id string, twin uint32, fn string, data interface{}) error {
-
+// SendRequest sends an rmb message to the relay
+func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session *string, fn string, data interface{}) error {
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize request body")
@@ -367,15 +388,63 @@ func (d *Client) Call(ctx context.Context, id string, twin uint32, fn string, da
 		ttl = uint64(time.Until(deadline).Seconds())
 	}
 
-	request, err := d.makeRequest(id, twin, fn, payload, ttl)
+	request, err := d.makeEnvelope(id, twin, session, &fn, nil, payload, ttl)
 	if err != nil {
 		return errors.Wrap(err, "failed to build request")
 	}
 
-	if err := d.request(ctx, request); err != nil {
+	if err := d.send(ctx, request); err != nil {
 		return err
 	}
 
 	return nil
+}
 
+// SendRequest sends an rmb message to the relay
+func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session *string, responseError error, data interface{}) error {
+	payload, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrap(err, "failed to serialize request body")
+	}
+
+	var ttl uint64 = 5 * 60
+	deadline, ok := ctx.Deadline()
+	if ok {
+		ttl = uint64(time.Until(deadline).Seconds())
+	}
+
+	request, err := d.makeEnvelope(id, twin, session, nil, responseError, payload, ttl)
+	if err != nil {
+		return errors.Wrap(err, "failed to build request")
+	}
+
+	if err := d.send(ctx, request); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Json extracts the json payload envelope and validate the schema
+func Json(response *types.Envelope, callBackErr error) ([]byte, error) {
+	if callBackErr != nil {
+		return []byte{}, callBackErr
+	}
+
+	errResp := response.GetError()
+	if errResp != nil {
+		return []byte{}, errors.New(errResp.Message)
+	}
+
+	resp := response.GetResponse()
+	if resp == nil {
+		return []byte{}, errors.New("received a non response envelope")
+	}
+
+	if response.Schema == nil || *response.Schema != rmb.DefaultSchema {
+		return []byte{}, fmt.Errorf("invalid schema received expected '%s'", rmb.DefaultSchema)
+	}
+
+	output := response.Payload.(*types.Envelope_Plain).Plain
+	return output, nil
 }
