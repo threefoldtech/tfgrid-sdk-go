@@ -60,7 +60,7 @@ func nodesFilterValues() (types.NodeFilter, types.Limit, string) {
 		Page: 12,
 		Size: 13,
 	}
-	return f, l, "status=up&free_mru=1&free_hru=2&free_sru=3&country=Egypt&city=Mansoura&farm_name=Freefarm&farm_ids=1&farm_ids=2&free_ips=4&ipv4=true&ipv6=false&domain=true&rentable=false&rented_by=5&available_for=6&page=12&size=13&ret_count=false&randomize=false"
+	return f, l, "status=up&free_mru=1&free_hru=2&free_sru=3&country=Egypt&city=Mansoura&farm_name=Freefarm&farm_ids=1&farm_ids=2&free_ips=4&ipv4=true&ipv6=false&domain=true&rentable=false&rented_by=5&available_for=6&page=12&size=13"
 }
 
 func farmsFilterValues() (types.FarmFilter, types.Limit, string) {
@@ -89,7 +89,7 @@ func farmsFilterValues() (types.FarmFilter, types.Limit, string) {
 		Size: 13,
 	}
 
-	return f, l, "free_ips=1&total_ips=2&stellar_address=StellarAddress&pricing_policy_id=3&farm_id=5&twin_id=6&name=freefarm&name_contains=freefar&certification_type=DYI&dedicated=false&page=12&size=13&ret_count=false&randomize=false&country=Egypt"
+	return f, l, "free_ips=1&total_ips=2&stellar_address=StellarAddress&pricing_policy_id=3&farm_id=5&twin_id=6&name=freefarm&name_contains=freefar&certification_type=DYI&dedicated=false&page=12&size=13&country=Egypt"
 }
 
 func MustMarshal(data []byte, v interface{}) {
@@ -361,7 +361,7 @@ func TestPrepareURL(t *testing.T) {
 		endpoint: endpoint,
 	}
 
-	want := "http://www.gridproxy.com/nodes?status=st&free_mru=10&farm_ids=1&farm_ids=2&farm_ids=3&dedicated=true&size=50&page=1&ret_count=true&randomize=false"
+	want := "http://www.gridproxy.com/nodes?status=st&free_mru=10&farm_ids=1&farm_ids=2&farm_ids=3&dedicated=true&size=50&page=1&ret_count=true"
 	wantURL, err := url.Parse(want)
 	assert.NoError(t, err)
 
