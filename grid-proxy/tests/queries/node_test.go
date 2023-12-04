@@ -13,11 +13,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
 
 type NodesAggregate struct {
+	regions   []string
 	countries []string
 	cities    []string
 	farmNames []string
@@ -101,6 +103,10 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 	"Country": func(agg NodesAggregate) interface{} {
 		country := changeCase(agg.countries[rand.Intn(len(agg.countries))])
 		return &country
+	},
+	"Region": func(agg NodesAggregate) interface{} {
+		region := changeCase(agg.regions[rand.Intn(len(agg.regions))])
+		return &region
 	},
 	"CountryContains": func(agg NodesAggregate) interface{} {
 		c := agg.countries[rand.Intn(len(agg.countries))]
@@ -273,11 +279,11 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("node up test", func(t *testing.T) {
-		f := proxytypes.NodeFilter{
+		f := types.NodeFilter{
 			Status: &STATUS_UP,
 		}
 
-		l := proxytypes.Limit{
+		l := types.Limit{
 			Size:     999999999,
 			Page:     1,
 			RetCount: true,
@@ -311,7 +317,7 @@ func TestNode(t *testing.T) {
 	t.Run("node stress test", func(t *testing.T) {
 		agg := calcNodesAggregates(&data)
 		for i := 0; i < NODE_TESTS; i++ {
-			l := proxytypes.Limit{
+			l := types.Limit{
 				Size:     999999999999,
 				Page:     1,
 				RetCount: true,
@@ -353,7 +359,7 @@ func TestNode(t *testing.T) {
 
 	t.Run("nodes test certification_type filter", func(t *testing.T) {
 		certType := "Diy"
-		nodes, _, err := gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{CertificationType: &certType}, proxytypes.Limit{})
+		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{CertificationType: &certType}, types.DefaultLimit())
 		require.NoError(t, err)
 
 		for _, node := range nodes {
@@ -361,14 +367,13 @@ func TestNode(t *testing.T) {
 		}
 
 		notExistCertType := "noCert"
-		nodes, _, err = gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{CertificationType: &notExistCertType}, proxytypes.Limit{})
+		nodes, _, err = gridProxyClient.Nodes(context.Background(), types.NodeFilter{CertificationType: &notExistCertType}, types.DefaultLimit())
 		assert.NoError(t, err)
 		assert.Empty(t, nodes)
 	})
 
 	t.Run("nodes test has_gpu filter", func(t *testing.T) {
-		l := proxytypes.Limit{}
-
+		l := proxytypes.DefaultLimit()
 		hasGPU := true
 		f := proxytypes.NodeFilter{
 			HasGPU: &hasGPU,
@@ -386,10 +391,10 @@ func TestNode(t *testing.T) {
 	t.Run("nodes test gpu vendor, device name filter", func(t *testing.T) {
 		device := "navi"
 		vendor := "advanced"
-		nodes, _, err := gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, proxytypes.Limit{})
+		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, types.DefaultLimit())
 		assert.NoError(t, err)
 
-		localNodes, _, err := mockClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, proxytypes.Limit{})
+		localNodes, _, err := mockClient.Nodes(context.Background(), types.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, types.DefaultLimit())
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(nodes), len(localNodes), "gpu_device_name, gpu_vendor_name filters did not work")
@@ -398,10 +403,10 @@ func TestNode(t *testing.T) {
 	t.Run("nodes test gpu vendor, device id filter", func(t *testing.T) {
 		device := "744c"
 		vendor := "1002"
-		nodes, _, err := gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, proxytypes.Limit{})
+		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, types.DefaultLimit())
 		assert.NoError(t, err)
 
-		localNodes, _, err := mockClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, proxytypes.Limit{})
+		localNodes, _, err := mockClient.Nodes(context.Background(), types.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, types.DefaultLimit())
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(nodes), len(localNodes), "gpu_device_id, gpu_vendor_id filters did not work")
@@ -409,10 +414,10 @@ func TestNode(t *testing.T) {
 
 	t.Run("nodes test gpu available", func(t *testing.T) {
 		available := false
-		nodes, _, err := gridProxyClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuAvailable: &available}, proxytypes.Limit{})
+		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{GpuAvailable: &available}, types.DefaultLimit())
 		assert.NoError(t, err)
 
-		localNodes, _, err := mockClient.Nodes(context.Background(), proxytypes.NodeFilter{GpuAvailable: &available}, proxytypes.Limit{})
+		localNodes, _, err := mockClient.Nodes(context.Background(), types.NodeFilter{GpuAvailable: &available}, types.DefaultLimit())
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(nodes), len(localNodes), "gpu_available filter did not work")
@@ -421,10 +426,10 @@ func TestNode(t *testing.T) {
 
 // TestNodeFilter iterates over all NodeFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestNodeFilter(t *testing.T) {
-	f := proxytypes.NodeFilter{}
+	f := types.NodeFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()
-	l := proxytypes.Limit{
+	l := types.Limit{
 		Size:     9999999,
 		Page:     1,
 		RetCount: true,
@@ -469,10 +474,10 @@ func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient p
 }
 
 func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
-	f := proxytypes.NodeFilter{
+	f := types.NodeFilter{
 		Status: &STATUS_DOWN,
 	}
-	l := proxytypes.Limit{
+	l := types.Limit{
 		Size:     5,
 		Page:     1,
 		RetCount: true,
@@ -494,8 +499,8 @@ func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClie
 	}
 }
 
-func randomNodeFilter(agg *NodesAggregate) (proxytypes.NodeFilter, error) {
-	f := proxytypes.NodeFilter{}
+func randomNodeFilter(agg *NodesAggregate) (types.NodeFilter, error) {
+	f := types.NodeFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()
 
@@ -503,7 +508,7 @@ func randomNodeFilter(agg *NodesAggregate) (proxytypes.NodeFilter, error) {
 		if rand.Float32() > .5 {
 			_, ok := nodeFilterRandomValueGenerator[v.Type().Field(i).Name]
 			if !ok {
-				return proxytypes.NodeFilter{}, fmt.Errorf("Filter field %s has no random value generator", v.Type().Field(i).Name)
+				return types.NodeFilter{}, fmt.Errorf("Filter field %s has no random value generator", v.Type().Field(i).Name)
 			}
 
 			randomFieldValue := nodeFilterRandomValueGenerator[v.Type().Field(i).Name](*agg)
@@ -541,14 +546,12 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 		res.maxTotalHRU = max(res.maxTotalHRU, total.HRU)
 		res.totalHRUs = append(res.totalHRUs, total.HRU)
 	}
-
 	for _, contract := range data.RentContracts {
 		if contract.State == "Deleted" {
 			continue
 		}
 		res.nodeRenters = append(res.nodeRenters, contract.TwinID)
 	}
-
 	for _, twin := range data.Twins {
 		res.twins = append(res.twins, twin.TwinID)
 	}
@@ -560,7 +563,6 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 	for country := range countries {
 		res.countries = append(res.countries, country)
 	}
-
 	for _, farm := range data.Farms {
 		res.farmNames = append(res.farmNames, farm.Name)
 		res.farmIDs = append(res.farmIDs, farm.FarmID)
@@ -575,6 +577,10 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 
 	for _, cnt := range farmIPs {
 		res.maxFreeIPs = max(res.maxFreeIPs, cnt)
+	}
+
+	for _, region := range data.Regions {
+		res.regions = append(res.regions, region)
 	}
 
 	sort.Slice(res.countries, func(i, j int) bool {
