@@ -3,7 +3,6 @@ package models
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -29,54 +28,51 @@ type Config struct {
 	m     sync.Mutex
 }
 
-// Set sets the config data from configuration inputs
-func (c *Config) Set(sub Sub, inputs InputConfig) error {
-	log.Debug().Msg("Set power")
-
-	if !reflect.DeepEqual(c.Power, inputs.Power) {
-		c.Power = inputs.Power
-	} else {
-		log.Debug().Msg("Configuration power didn't change")
-	}
-
+// NewConfig creates new config from inputs
+func NewConfig(sub Sub, inputs InputConfig) (*Config, error) {
+	overProvisionCPU := inputs.Power.OverProvisionCPU
 	// required from power for nodes
-	if c.Power.OverProvisionCPU == 0 {
-		c.Power.OverProvisionCPU = constants.DefaultCPUProvision
+	if overProvisionCPU == 0 {
+		overProvisionCPU = constants.DefaultCPUProvision
 	}
 
-	if c.Power.OverProvisionCPU < 1 || c.Power.OverProvisionCPU > 4 {
-		return fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", c.Power.OverProvisionCPU)
+	if overProvisionCPU < 1 || overProvisionCPU > 4 {
+		return nil, fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", overProvisionCPU)
 	}
 
 	// set farm
-	log.Debug().Uint32("ID", inputs.FarmID).Msg("Set farm")
-	if inputs.FarmID != uint32(c.Farm.ID) {
-		farm, err := sub.GetFarm(inputs.FarmID)
-		if err != nil {
-			return err
-		}
-
-		c.Farm = *farm
-	} else {
-		log.Debug().Msg("Configuration farm didn't change")
+	farm, err := sub.GetFarm(inputs.FarmID)
+	if err != nil {
+		return nil, err
 	}
 
 	// set nodes
-	err := c.SetConfigNodes(sub, inputs)
+	nodes, err := ConvertInputsToNodes(sub, inputs, farm.DedicatedFarm, overProvisionCPU)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return c.validate()
+	config := Config{
+		Farm:  *farm,
+		Nodes: nodes,
+		Power: inputs.Power,
+	}
+
+	err = config.validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 }
 
-// SetConfigNodes sets the config nodes from configuration inputs
-func (c *Config) SetConfigNodes(sub Sub, i InputConfig) error {
-	c.Nodes = make(map[uint32]Node)
+// ConvertInputsToNodes converts the config nodes from configuration inputs
+func ConvertInputsToNodes(sub Sub, i InputConfig, dedicatedFarm bool, overProvisionCPU float32) (map[uint32]Node, error) {
+	nodes := make(map[uint32]Node)
 
 	farmNodes, err := sub.GetNodes(i.FarmID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, nodeID := range farmNodes {
@@ -90,7 +86,7 @@ func (c *Config) SetConfigNodes(sub Sub, i InputConfig) error {
 			log.Debug().Uint32("ID", nodeID).Msg("Set node")
 			node, err := sub.GetNode(nodeID)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			configNode := Node{
@@ -99,10 +95,10 @@ func (c *Config) SetConfigNodes(sub Sub, i InputConfig) error {
 
 			price, err := sub.GetDedicatedNodePrice(nodeID)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			if price != 0 || c.Farm.DedicatedFarm {
+			if price != 0 || dedicatedFarm {
 				configNode.Dedicated = true
 			}
 
@@ -110,13 +106,13 @@ func (c *Config) SetConfigNodes(sub Sub, i InputConfig) error {
 			configNode.Resources.Total.SRU = uint64(node.Resources.SRU)
 			configNode.Resources.Total.MRU = uint64(node.Resources.MRU)
 			configNode.Resources.Total.HRU = uint64(node.Resources.HRU)
-			configNode.Resources.OverProvisionCPU = c.Power.OverProvisionCPU
+			configNode.Resources.OverProvisionCPU = overProvisionCPU
 
-			c.Nodes[nodeID] = configNode
+			nodes[nodeID] = configNode
 		}
 	}
 
-	return nil
+	return nodes, nil
 }
 
 // UpdateNode updates a node in the config
@@ -171,9 +167,9 @@ func (c *Config) validate() error {
 	}
 
 	// required values for node
-	for i, n := range c.Nodes {
+	for _, n := range c.Nodes {
 		if n.ID == 0 {
-			return fmt.Errorf("node id with index %d is required", i)
+			return fmt.Errorf("node id %d is required", n.ID)
 		}
 		if n.TwinID == 0 {
 			return fmt.Errorf("node %d: twin_id is required", n.ID)

@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -92,23 +89,46 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 		return err
 	}
 
-	go f.update(ctx, subConn)
 	log.Info().Msg("up and running...")
 
-	// graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			startTime := time.Now()
 
-	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownRelease()
+			log.Debug().Msg("data update")
+			err := f.dataManager.Update(ctx, subConn)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to update")
+			}
 
-	if err := f.stop(shutdownCtx, subConn); err != nil {
-		return err
+			log.Debug().Msg("periodic wake up")
+			err = f.powerManager.PeriodicWakeUp(subConn)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to perform periodic wake up")
+			}
+
+			log.Debug().Msg("power management")
+			err = f.powerManager.PowerManagement(subConn)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to power management nodes")
+			}
+
+			delta := time.Since(startTime)
+			log.Debug().Float64("Elapsed time for updates in minutes", delta.Minutes())
+
+			// sleep if finished before the update timeout
+			var timeToSleep float64
+			if delta.Minutes() >= constants.TimeoutUpdate.Minutes() {
+				timeToSleep = 0
+			} else {
+				timeToSleep = constants.TimeoutUpdate.Minutes() - delta.Minutes()
+			}
+			time.Sleep(time.Duration(timeToSleep) * time.Minute)
+		}
 	}
-
-	log.Info().Msg("graceful shutdown successful")
-	return nil
 }
 
 func (f *FarmerBot) SetConfig(inputs models.InputConfig) error {
@@ -119,11 +139,13 @@ func (f *FarmerBot) SetConfig(inputs models.InputConfig) error {
 
 	defer subConn.Close()
 
-	if f.config == nil {
-		f.config = &models.Config{}
+	config, err := models.NewConfig(subConn, inputs)
+	if err != nil {
+		return err
 	}
 
-	return f.config.Set(subConn, inputs)
+	f.config = config
+	return nil
 }
 
 func (f *FarmerBot) start(ctx context.Context, sub models.Sub) error {
@@ -132,42 +154,6 @@ func (f *FarmerBot) start(ctx context.Context, sub models.Sub) error {
 
 func (f *FarmerBot) stop(ctx context.Context, sub models.Sub) error {
 	return f.powerManager.PowerOnAllNodes(sub)
-}
-
-func (f *FarmerBot) update(ctx context.Context, sub models.Sub) {
-	for {
-		startTime := time.Now()
-
-		log.Debug().Msg("data update")
-		err := f.dataManager.Update(ctx, sub)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to update")
-		}
-
-		log.Debug().Msg("periodic wake up")
-		err = f.powerManager.PeriodicWakeUp(sub)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to perform periodic wake up")
-		}
-
-		log.Debug().Msg("power management")
-		err = f.powerManager.PowerManagement(sub)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to power management nodes")
-		}
-
-		delta := time.Since(startTime)
-		log.Debug().Float64("Elapsed time for updates in minutes", delta.Minutes())
-
-		// sleep if finished before the update timeout
-		var timeToSleep float64
-		if delta.Minutes() >= constants.TimeoutUpdate.Minutes() {
-			timeToSleep = 0
-		} else {
-			timeToSleep = constants.TimeoutUpdate.Minutes() - delta.Minutes()
-		}
-		time.Sleep(time.Duration(timeToSleep) * time.Minute)
-	}
 }
 
 func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
