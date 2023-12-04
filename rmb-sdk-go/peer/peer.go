@@ -79,14 +79,22 @@ func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 // Call() will panic if called while the directClient's context is canceled.
 func NewPeer(
 	ctx context.Context,
-	keytype string,
 	mnemonics string,
-	relayURL string,
-	session string,
 	sub *substrate.Substrate,
-	enableEncryption bool,
-	handler Handler) (*Peer, error) {
-	identity, err := getIdentity(keytype, mnemonics)
+	handler Handler,
+	opts ...PeerOpt) (*Peer, error) {
+
+	cfg := &peerCfg{
+		relayURL:         "wss://relay.grid.tf",
+		session:          "",
+		enableEncryption: false,
+		keyType:          KeyTypeSr25519,
+	}
+	for _, o := range opts {
+		o(cfg)
+	}
+
+	identity, err := getIdentity(cfg.keyType, mnemonics)
 	if err != nil {
 		return nil, err
 	}
@@ -97,21 +105,21 @@ func NewPeer(
 		return nil, errors.Wrapf(err, "failed to get twin by public key")
 	}
 
-	log.Info().Uint32("twin", id).Str("session", session).Msg("starting peer")
+	log.Info().Uint32("twin", id).Str("session", cfg.session).Msg("starting peer")
 
 	twin, err := twinDB.Get(id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get twin id: %d", id)
 	}
 
-	url, err := url.Parse(relayURL)
+	url, err := url.Parse(cfg.relayURL)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse url: %s", relayURL)
+		return nil, errors.Wrapf(err, "failed to parse url: %s", cfg.relayURL)
 	}
 
 	var publicKey []byte
 	var privKey *secp256k1.PrivateKey
-	if enableEncryption {
+	if cfg.enableEncryption {
 		privKey, err = generateSecureKey(identity)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not generate secure key")
@@ -126,12 +134,12 @@ func NewPeer(
 			return nil, errors.Wrap(err, "could not update twin relay information")
 		}
 	}
-	conn := NewConnection(identity, relayURL, session, twin.ID)
+	conn := NewConnection(identity, cfg.relayURL, cfg.session, twin.ID)
 
 	reader, writer := conn.Start(ctx)
 	var sessionP *string
-	if session != "" {
-		sessionP = &session
+	if cfg.session != "" {
+		sessionP = &cfg.session
 	}
 	source := types.Address{
 		Twin:       id,
@@ -151,6 +159,43 @@ func NewPeer(
 	go cl.process(ctx)
 
 	return cl, nil
+}
+
+type peerCfg struct {
+	relayURL         string
+	keyType          string
+	session          string
+	enableEncryption bool
+}
+
+type PeerOpt func(*peerCfg)
+
+func WithSession(session string) PeerOpt {
+	return func(p *peerCfg) {
+		p.session = session
+	}
+}
+
+func WithEncryption(enable bool) PeerOpt {
+	return func(p *peerCfg) {
+		p.enableEncryption = enable
+	}
+}
+
+func WithRelay(url string) PeerOpt {
+	return func(p *peerCfg) {
+		p.relayURL = url
+	}
+}
+
+func WithKeyType(keyType string) PeerOpt {
+	return func(p *peerCfg) {
+		// to ensure only ed25519 and sr25519 are used
+		if keyType != KeyTypeEd25519 {
+			keyType = KeyTypeSr25519
+		}
+		p.keyType = keyType
+	}
 }
 
 func (d Peer) handleIncoming(incoming *types.Envelope) error {

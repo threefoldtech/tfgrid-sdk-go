@@ -1,0 +1,14 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "172.17.0.2",
+            "port": 5432,
+            "askForPassword": true,
+            "driver": "PostgreSQL",
+            "name": "testing",
+            "database": "tfgrid-graphql",
+            "username": "postgres"
+        }
+    ]
+}

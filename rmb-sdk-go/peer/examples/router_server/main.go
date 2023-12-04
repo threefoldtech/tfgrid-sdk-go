@@ -74,13 +74,12 @@ func app() error {
 	// session id to use when they are making calls
 	_, err = peer.NewPeer(
 		ctx,
-		peer.KeyTypeSr25519,
 		mnemonics,
-		"wss://relay.dev.grid.tf",
-		"calculator",
 		sub,
-		true,
 		router.Serve,
+		peer.WithRelay("wss://relay.dev.grid.tf"),
+		peer.WithSession("calculator"),
+		peer.WithEncryption(true),
 	)
 
 	if err != nil {
