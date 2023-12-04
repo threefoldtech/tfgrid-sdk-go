@@ -8,7 +8,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/encoder"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
 	"google.golang.org/protobuf/proto"
 )
@@ -40,6 +40,7 @@ type Peer struct {
 	reader  Reader
 	writer  Writer
 	handler Handler
+	encoder encoder.Encoder
 }
 
 func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, error) {
@@ -89,9 +90,15 @@ func NewPeer(
 		session:          "",
 		enableEncryption: false,
 		keyType:          KeyTypeSr25519,
+		schema:           encoder.DefaultSchema,
 	}
 	for _, o := range opts {
 		o(cfg)
+	}
+
+	e, err := encoder.NewEncoder(cfg.schema)
+	if err != nil {
+		return nil, err
 	}
 
 	identity, err := getIdentity(cfg.keyType, mnemonics)
@@ -154,6 +161,7 @@ func NewPeer(
 		reader:  reader,
 		writer:  writer,
 		handler: handler,
+		encoder: e,
 	}
 
 	go cl.process(ctx)
@@ -166,6 +174,7 @@ type peerCfg struct {
 	keyType          string
 	session          string
 	enableEncryption bool
+	schema           encoder.Schema
 }
 
 type PeerOpt func(*peerCfg)
@@ -195,6 +204,12 @@ func WithKeyType(keyType string) PeerOpt {
 			keyType = KeyTypeSr25519
 		}
 		p.keyType = keyType
+	}
+}
+
+func WithEncoder(schema encoder.Schema) PeerOpt {
+	return func(p *peerCfg) {
+		p.schema = schema
 	}
 }
 
@@ -333,7 +348,7 @@ func (d *Peer) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 }
 
 func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string, err error, data []byte, ttl uint64) (*types.Envelope, error) {
-	schema := rmb.DefaultSchema
+	schema := d.encoder.Schema()
 
 	env := types.Envelope{
 		Uid:        id,
@@ -421,7 +436,7 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 
 // SendRequest sends an rmb message to the relay
 func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session *string, fn string, data interface{}) error {
-	payload, err := json.Marshal(data)
+	payload, err := d.encoder.Encode(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize request body")
 	}
@@ -446,7 +461,7 @@ func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session 
 
 // SendRequest sends an rmb message to the relay
 func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session *string, responseError error, data interface{}) error {
-	payload, err := json.Marshal(data)
+	payload, err := d.encoder.Encode(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize request body")
 	}
