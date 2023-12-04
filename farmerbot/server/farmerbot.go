@@ -28,16 +28,15 @@ type FarmerBot struct {
 	powerManager     *manager.PowerManager
 	dataManager      manager.DataManager
 	network          string
-	mnemonic         string
+	mnemonicOrSeed   string
 	identity         substrate.Identity
 }
 
 // NewFarmerBot generates a new farmer bot
-func NewFarmerBot(ctx context.Context, inputs models.InputConfig, network, mnemonic string) (FarmerBot, error) {
+func NewFarmerBot(ctx context.Context, inputs models.InputConfig, network, mnemonicOrSeed string) (FarmerBot, error) {
 	substrateManager := substrate.NewManager(constants.SubstrateURLs[network]...)
 
-	// TODO: check farm hex seed if available
-	identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonic)
+	identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonicOrSeed)
 	if err != nil {
 		return FarmerBot{}, err
 	}
@@ -45,7 +44,7 @@ func NewFarmerBot(ctx context.Context, inputs models.InputConfig, network, mnemo
 	farmerbot := FarmerBot{
 		substrateManager: substrateManager,
 		network:          network,
-		mnemonic:         mnemonic,
+		mnemonicOrSeed:   mnemonicOrSeed,
 		identity:         identity,
 	}
 
@@ -65,7 +64,7 @@ func NewFarmerBot(ctx context.Context, inputs models.InputConfig, network, mnemo
 	powerManager := manager.NewPowerManager(identity, farmerbot.config)
 	farmerbot.powerManager = &powerManager
 
-	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonic, constants.RelayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", farmerbot.config.Farm.ID), subConn, true)
+	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, constants.RelayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", farmerbot.config.Farm.ID), subConn, true)
 	if err != nil {
 		return FarmerBot{}, errors.Wrap(err, "could not create rmb client")
 	}
@@ -242,7 +241,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 	_, err = peer.NewPeer(
 		ctx,
 		peer.KeyTypeSr25519,
-		f.mnemonic,
+		f.mnemonicOrSeed,
 		constants.RelayURLS[f.network],
 		fmt.Sprintf("farmerbot-%d", f.config.Farm.ID),
 		sub,

@@ -15,6 +15,8 @@ require (
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231129121046-56ffc1f8f5c6
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.7
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
+	github.com/vedhavyas/go-subkey/v2 v2.0.0
+	gopkg.in/fsnotify.v1 v1.4.7
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -50,7 +52,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
-	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/vishvananda/netlink v1.2.1-beta.2 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect

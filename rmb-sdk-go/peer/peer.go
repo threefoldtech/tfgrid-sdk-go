@@ -13,13 +13,14 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/cosmos/go-bip39"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
-	"github.com/tyler-smith/go-bip39"
+	"github.com/vedhavyas/go-subkey"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -43,11 +44,17 @@ type Peer struct {
 	handler Handler
 }
 
-func generateSecureKey(mnemonics string) (*secp256k1.PrivateKey, error) {
-	seed, err := bip39.NewSeedWithErrorChecking(mnemonics, "")
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode mnemonics")
+func generateSecureKey(mnemonicOrSeed string) (*secp256k1.PrivateKey, error) {
+	var err error
+
+	seed, ok := subkey.DecodeHex(mnemonicOrSeed)
+	if !ok {
+		seed, err = bip39.NewSeedWithErrorChecking(mnemonicOrSeed, "")
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to decode seed/mnemonic")
+		}
 	}
+
 	priv := secp256k1.PrivKeyFromBytes(seed[:32])
 	return priv, nil
 

@@ -16,6 +16,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/parser"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/server"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
+	"github.com/vedhavyas/go-subkey/v2"
 )
 
 // farmerBotCmd represents the root base command when called without any subcommands
@@ -51,6 +52,8 @@ var farmerBotCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
 	farmerBotCmd.AddCommand(versionCmd)
 
 	err := farmerBotCmd.Execute()
@@ -63,7 +66,9 @@ func init() {
 	farmerBotCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Available formats are [json, yml, toml]")
 	farmerBotCmd.Flags().StringP("network", "n", constants.MainNetwork, "the grid network to use")
 	farmerBotCmd.Flags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
+	farmerBotCmd.Flags().StringP("seed", "s", "", "the hex seed of the account of the farmer")
 	farmerBotCmd.Flags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
+	farmerBotCmd.MarkFlagsMutuallyExclusive("mnemonic", "seed")
 }
 
 func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err error) {
@@ -77,8 +82,6 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err e
 	if debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
-
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	network, err = cmd.Flags().GetString("network")
 	if err != nil {
@@ -97,15 +100,32 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err e
 		return
 	}
 
-	if len(strings.TrimSpace(mnemonic)) == 0 {
-		err = errors.New("mnemonic is required")
+	if len(strings.TrimSpace(mnemonic)) > 0 {
+		if !bip39.IsMnemonicValid(mnemonic) {
+			err = fmt.Errorf("invalid mnemonic input '%s'", mnemonic)
+			return
+		}
 		return
 	}
 
-	if !bip39.IsMnemonicValid(mnemonic) {
-		err = fmt.Errorf("mnemonic '%s' is invalid", mnemonic)
+	seed, err := cmd.Flags().GetString("seed")
+	if err != nil {
+		err = errors.Wrapf(err, "invalid seed input '%s'", seed)
+		return
 	}
 
+	if len(strings.TrimSpace(seed)) == 0 && len(strings.TrimSpace(mnemonic)) == 0 {
+		err = errors.New("seed/mnemonic is required")
+		return
+	}
+
+	_, ok := subkey.DecodeHex(seed)
+	if !ok {
+		err = fmt.Errorf("invalid seed input '%s'", seed)
+		return
+	}
+
+	mnemonic = seed
 	return
 }
 
