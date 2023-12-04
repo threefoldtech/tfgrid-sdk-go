@@ -62,13 +62,13 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 
 			client, err := tfPlugin.NcPool.GetNodeClient(tfPlugin.SubstrateConn, uint32(node.NodeID))
 			if err != nil {
-				log.Error().Err(err).Msgf("failed to get node '%d' client", node.NodeID)
+				log.Debug().Err(err).Msgf("failed to get node '%d' client", node.NodeID)
 				return
 			}
 
 			pools, err := client.Pools(ctx)
 			if err != nil {
-				log.Error().Err(err).Msgf("failed to get node '%d' pools", node.NodeID)
+				log.Debug().Err(err).Msgf("failed to get node '%d' pools", node.NodeID)
 				return
 			}
 			if hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) && hasEnoughStorage(pools, hddDisks, zos.HDDDevice) {
