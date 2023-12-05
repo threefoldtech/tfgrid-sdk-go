@@ -1,5 +1,4 @@
-// Package manager provides how to manage nodes, farms and power
-package manager
+package internal
 
 import (
 	"fmt"
@@ -14,36 +13,36 @@ import (
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
 )
 
 // PowerManager manages the power of nodes
 type PowerManager struct {
-	config   *models.Config
+	state    *state
 	identity substrate.Identity
 	m        sync.Mutex
 }
 
 // NewPowerManager creates a new Power Manager
-func NewPowerManager(identity substrate.Identity, config *models.Config) PowerManager {
+func NewPowerManager(identity substrate.Identity, state *state) PowerManager {
 	return PowerManager{
-		config:   config,
+		state:    state,
 		identity: identity,
 	}
 }
 
+// TODO: if it is updated from outside
 // PowerOn sets the node power state ON
-func (p *PowerManager) PowerOn(sub models.Sub, nodeID uint32) error {
+func (p *PowerManager) PowerOn(sub Sub, nodeID uint32) error {
 	log.Info().Uint32("node ID", nodeID).Str("manager", "power").Msg("POWER ON")
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	node, ok := p.config.Nodes[nodeID]
+	node, ok := p.state.nodes[nodeID]
 	if !ok {
 		return fmt.Errorf("node %d is not found", nodeID)
 	}
 
-	if node.PowerState == models.ON || node.PowerState == models.WakingUP {
+	if node.PowerState == ON || node.PowerState == WakingUP {
 		return nil
 	}
 
@@ -52,24 +51,24 @@ func (p *PowerManager) PowerOn(sub models.Sub, nodeID uint32) error {
 		return err
 	}
 
-	node.PowerState = models.WakingUP
+	node.PowerState = WakingUP
 	node.LastTimePowerStateChanged = time.Now()
 
-	return p.config.UpdateNode(node)
+	return p.state.updateNode(node)
 }
 
 // PowerOff sets the node power state OFF
-func (p *PowerManager) PowerOff(sub models.Sub, nodeID uint32) error {
+func (p *PowerManager) PowerOff(sub Sub, nodeID uint32) error {
 	log.Info().Uint32("node ID", nodeID).Str("manager", "power").Msg("POWER OFF")
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	node, ok := p.config.Nodes[nodeID]
+	node, ok := p.state.nodes[nodeID]
 	if !ok {
 		return fmt.Errorf("node %d is not found", nodeID)
 	}
 
-	if node.PowerState == models.OFF || node.PowerState == models.ShuttingDown {
+	if node.PowerState == OFF || node.PowerState == ShuttingDown {
 		return nil
 	}
 
@@ -85,7 +84,7 @@ func (p *PowerManager) PowerOff(sub models.Sub, nodeID uint32) error {
 		return errors.Errorf("cannot power off node, node has claimed resources")
 	}
 
-	onNodes := p.config.FilterNodesPower([]models.PowerState{models.ON})
+	onNodes := p.state.filterNodesPower([]PowerState{ON})
 
 	if len(onNodes) < 2 {
 		return errors.Errorf("cannot power off node, at least one node should be on in the farm")
@@ -96,14 +95,14 @@ func (p *PowerManager) PowerOff(sub models.Sub, nodeID uint32) error {
 		return err
 	}
 
-	node.PowerState = models.ShuttingDown
+	node.PowerState = ShuttingDown
 	node.LastTimePowerStateChanged = time.Now()
 
-	return p.config.UpdateNode(node)
+	return p.state.updateNode(node)
 }
 
 // FindNode finds an available node in the farm
-func (p *PowerManager) FindNode(sub models.Sub, nodeOptions models.NodeOptions) (uint32, error) {
+func (p *PowerManager) FindNode(sub Sub, nodeOptions nodeOptions) (uint32, error) {
 	log.Info().Str("manager", "node").Msg("Finding a node")
 
 	if (len(nodeOptions.GPUVendors) > 0 || len(nodeOptions.GPUDevices) > 0) && nodeOptions.HasGPUs == 0 {
@@ -115,17 +114,17 @@ func (p *PowerManager) FindNode(sub models.Sub, nodeOptions models.NodeOptions) 
 
 	if nodeOptions.PublicIPs > 0 {
 		var publicIpsUsedByNodes uint64
-		for _, node := range p.config.Nodes {
+		for _, node := range p.state.nodes {
 			publicIpsUsedByNodes += node.PublicIPsUsed
 		}
 
-		if publicIpsUsedByNodes+nodeOptions.PublicIPs > uint64(len(p.config.Farm.PublicIPs)) {
-			return 0, fmt.Errorf("not enough public ips available for farm %d", p.config.Farm.ID)
+		if publicIpsUsedByNodes+nodeOptions.PublicIPs > uint64(len(p.state.farm.PublicIPs)) {
+			return 0, fmt.Errorf("not enough public ips available for farm %d", p.state.farm.ID)
 		}
 	}
 
-	var possibleNodes []models.Node
-	for _, node := range p.config.Nodes {
+	var possibleNodes []node
+	for _, node := range p.state.nodes {
 		gpus := node.GPUs
 		if nodeOptions.HasGPUs > 0 {
 			if len(nodeOptions.GPUVendors) > 0 {
@@ -154,7 +153,7 @@ func (p *PowerManager) FindNode(sub models.Sub, nodeOptions models.NodeOptions) 
 		}
 
 		if nodeOptions.Dedicated {
-			if !node.Dedicated || !node.IsUnused() {
+			if !node.Dedicated || !node.isUnused() {
 				continue
 			}
 		} else {
@@ -167,7 +166,7 @@ func (p *PowerManager) FindNode(sub models.Sub, nodeOptions models.NodeOptions) 
 			continue
 		}
 
-		if !node.CanClaimResources(nodeOptions.Capacity) {
+		if !node.canClaimResources(nodeOptions.Capacity) {
 			continue
 		}
 
@@ -192,9 +191,9 @@ func (p *PowerManager) FindNode(sub models.Sub, nodeOptions models.NodeOptions) 
 
 	if nodeOptions.Dedicated || nodeOptions.HasGPUs > 0 {
 		// claim all capacity
-		nodeFound.ClaimResources(nodeFound.Resources.Total)
+		nodeFound.claimResources(nodeFound.Resources.Total)
 	} else {
-		nodeFound.ClaimResources(nodeOptions.Capacity)
+		nodeFound.claimResources(nodeOptions.Capacity)
 	}
 
 	// claim public ips until next update of the data
@@ -203,14 +202,14 @@ func (p *PowerManager) FindNode(sub models.Sub, nodeOptions models.NodeOptions) 
 	}
 
 	// power on the node if it is down or if it is shutting down
-	if nodeFound.PowerState == models.OFF || nodeFound.PowerState == models.ShuttingDown {
+	if nodeFound.PowerState == OFF || nodeFound.PowerState == ShuttingDown {
 		if err := p.PowerOn(sub, uint32(nodeFound.ID)); err != nil {
 			return 0, fmt.Errorf("failed to power on found node %d", nodeFound.ID)
 		}
 	}
 
 	// update claimed resources
-	err := p.config.UpdateNode(nodeFound)
+	err := p.state.updateNode(nodeFound)
 	if err != nil {
 		return 0, fmt.Errorf("failed to power on found node %d", nodeFound.ID)
 	}
@@ -218,8 +217,8 @@ func (p *PowerManager) FindNode(sub models.Sub, nodeOptions models.NodeOptions) 
 	return uint32(nodeFound.ID), nil
 }
 
-func (p *PowerManager) PowerOnAllNodes(sub models.Sub) error {
-	offNodes := p.config.FilterNodesPower([]models.PowerState{models.OFF, models.ShuttingDown})
+func (p *PowerManager) PowerOnAllNodes(sub Sub) error {
+	offNodes := p.state.filterNodesPower([]PowerState{OFF, ShuttingDown})
 
 	for _, node := range offNodes {
 		err := p.PowerOn(sub, uint32(node.ID))
@@ -232,15 +231,15 @@ func (p *PowerManager) PowerOnAllNodes(sub models.Sub) error {
 }
 
 // PeriodicWakeUp for waking up nodes daily
-func (p *PowerManager) PeriodicWakeUp(sub models.Sub) error {
+func (p *PowerManager) PeriodicWakeUp(sub Sub) error {
 	now := time.Now()
 
-	offNodes := p.config.FilterNodesPower([]models.PowerState{models.OFF})
+	offNodes := p.state.filterNodesPower([]PowerState{OFF})
 
-	periodicWakeUpStart := p.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()
+	periodicWakeUpStart := p.state.power.PeriodicWakeUpStart.PeriodicWakeUpTime()
 
 	var wakeUpCalls uint8
-	nodesLen := len(p.config.Nodes)
+	nodesLen := len(p.state.nodes)
 
 	for _, node := range offNodes {
 		// TODO: why??
@@ -260,13 +259,13 @@ func (p *PowerManager) PeriodicWakeUp(sub models.Sub) error {
 			}
 
 			wakeUpCalls += 1
-			if wakeUpCalls >= p.config.Power.PeriodicWakeUpLimit {
+			if wakeUpCalls >= p.state.power.PeriodicWakeUpLimit {
 				// reboot X nodes at a time others will be rebooted 5 min later
 				break
 			}
 		} else if node.TimesRandomWakeUps < constants.DefaultRandomWakeUpsAMonth &&
 			int(rand.Int31())%((8460-(constants.DefaultRandomWakeUpsAMonth*6)-
-				(constants.DefaultRandomWakeUpsAMonth*(nodesLen-1))/int(math.Min(float64(p.config.Power.PeriodicWakeUpLimit), float64(nodesLen))))/
+				(constants.DefaultRandomWakeUpsAMonth*(nodesLen-1))/int(math.Min(float64(p.state.power.PeriodicWakeUpLimit), float64(nodesLen))))/
 				constants.DefaultRandomWakeUpsAMonth) == 0 {
 			// Random periodic wake up (10 times a month on average if the node is almost always down)
 			// we execute this code every 5 minutes => 288 times a day => 8640 times a month on average (30 days)
@@ -282,7 +281,7 @@ func (p *PowerManager) PeriodicWakeUp(sub models.Sub) error {
 			}
 
 			wakeUpCalls += 1
-			if wakeUpCalls >= p.config.Power.PeriodicWakeUpLimit {
+			if wakeUpCalls >= p.state.power.PeriodicWakeUpLimit {
 				// reboot X nodes at a time others will be rebooted 5 min later
 				break
 			}
@@ -293,7 +292,7 @@ func (p *PowerManager) PeriodicWakeUp(sub models.Sub) error {
 }
 
 // PowerManagement for power management nodes
-func (p *PowerManager) PowerManagement(sub models.Sub) error {
+func (p *PowerManager) PowerManagement(sub Sub) error {
 	usedResources, totalResources := p.calculateResourceUsage()
 
 	if totalResources == 0 {
@@ -301,7 +300,7 @@ func (p *PowerManager) PowerManagement(sub models.Sub) error {
 	}
 
 	resourceUsage := uint8(100 * usedResources / totalResources)
-	if resourceUsage >= p.config.Power.WakeUpThreshold {
+	if resourceUsage >= p.state.power.WakeUpThreshold {
 		log.Info().Uint8("resources usage", resourceUsage).Str("manager", "power").Msg("Too high resource usage")
 		return p.resourceUsageTooHigh(sub)
 	}
@@ -311,18 +310,18 @@ func (p *PowerManager) PowerManagement(sub models.Sub) error {
 }
 
 func (p *PowerManager) calculateResourceUsage() (uint64, uint64) {
-	usedResources := models.Capacity{}
-	totalResources := models.Capacity{}
+	usedResources := capacity{}
+	totalResources := capacity{}
 
-	nodes := p.config.FilterNodesPower([]models.PowerState{models.ON, models.WakingUP})
+	nodes := p.state.filterNodesPower([]PowerState{ON, WakingUP})
 
 	for _, node := range nodes {
 		if node.HasActiveRentContract {
-			usedResources.Add(node.Resources.Total)
+			usedResources.add(node.Resources.Total)
 		} else {
-			usedResources.Add(node.Resources.Used)
+			usedResources.add(node.Resources.Used)
 		}
-		totalResources.Add(node.Resources.Total)
+		totalResources.add(node.Resources.Total)
 	}
 
 	used := usedResources.CRU + usedResources.HRU + usedResources.MRU + usedResources.SRU
@@ -331,8 +330,8 @@ func (p *PowerManager) calculateResourceUsage() (uint64, uint64) {
 	return used, total
 }
 
-func (p *PowerManager) resourceUsageTooHigh(sub models.Sub) error {
-	offNodes := p.config.FilterNodesPower([]models.PowerState{models.OFF})
+func (p *PowerManager) resourceUsageTooHigh(sub Sub) error {
+	offNodes := p.state.filterNodesPower([]PowerState{OFF})
 
 	if len(offNodes) > 0 {
 		node := offNodes[0]
@@ -343,12 +342,12 @@ func (p *PowerManager) resourceUsageTooHigh(sub models.Sub) error {
 	return fmt.Errorf("no available node to wake up, resources usage is high")
 }
 
-func (p *PowerManager) resourceUsageTooLow(sub models.Sub, usedResources, totalResources uint64) error {
-	onNodes := p.config.FilterNodesPower([]models.PowerState{models.ON})
+func (p *PowerManager) resourceUsageTooLow(sub Sub, usedResources, totalResources uint64) error {
+	onNodes := p.state.filterNodesPower([]PowerState{ON})
 
 	// nodes with public config can't be shutdown
 	// Do not shutdown a node that just came up (give it some time)
-	nodesAllowedToShutdown := p.config.FilterAllowedNodesToShutDown()
+	nodesAllowedToShutdown := p.state.filterAllowedNodesToShutDown()
 
 	if len(onNodes) > 1 {
 		newUsedResources := usedResources
@@ -371,7 +370,7 @@ func (p *PowerManager) resourceUsageTooLow(sub models.Sub, usedResources, totalR
 			}
 
 			newResourceUsage := uint8(100 * newUsedResources / newTotalResources)
-			if newResourceUsage < p.config.Power.WakeUpThreshold {
+			if newResourceUsage < p.state.power.WakeUpThreshold {
 				// we need to keep the resource percentage lower then the threshold
 				log.Info().Uint32("node ID", uint32(node.ID)).Uint8("resources usage", newResourceUsage).Str("manager", "power").Msg("Resource usage too low. Turning off unused node")
 				err := p.PowerOff(sub, uint32(node.ID))
@@ -393,7 +392,7 @@ func (p *PowerManager) resourceUsageTooLow(sub models.Sub, usedResources, totalR
 }
 
 // FilterIncludesSubStr filters a string slice according to if elements include a sub string
-func filterGPUs(gpus []models.GPU, vendorsOrDevices []string, device bool) (filtered []models.GPU) {
+func filterGPUs(gpus []gpu, vendorsOrDevices []string, device bool) (filtered []gpu) {
 	for _, gpu := range gpus {
 		for _, filter := range vendorsOrDevices {
 			if gpu.Device == filter && device {

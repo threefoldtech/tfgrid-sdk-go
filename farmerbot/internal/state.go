@@ -1,35 +1,27 @@
-package models
+package internal
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 )
 
-// InputConfig is the inputs for configuration for farmerbot
-type InputConfig struct {
-	FarmID        uint32   `json:"farm_id" yaml:"farm_id" toml:"farm_id"`
-	IncludedNodes []uint32 `json:"included_nodes" yaml:"included_nodes" toml:"included_nodes"`
-	ExcludedNodes []uint32 `json:"excluded_nodes" yaml:"excluded_nodes" toml:"excluded_nodes"`
-	Power         Power    `json:"power" yaml:"power" toml:"power"`
-}
-
-// Config is the configuration data for farmerbot
-type Config struct {
-	Farm  substrate.Farm  `json:"farm" yaml:"farm" toml:"farm"`
-	Nodes map[uint32]Node `json:"nodes" yaml:"nodes" toml:"nodes"`
-	Power Power           `json:"power" yaml:"power" toml:"power"`
+// state is the state data for farmerbot
+type state struct {
+	farm  substrate.Farm
+	nodes map[uint32]node
+	power Power
 	m     sync.Mutex
 }
 
-// NewConfig creates new config from inputs
-func NewConfig(sub Sub, inputs InputConfig) (*Config, error) {
+// NewState creates new state from configs
+func newState(sub Sub, inputs Config) (*state, error) {
 	overProvisionCPU := inputs.Power.OverProvisionCPU
 	// required from power for nodes
 	if overProvisionCPU == 0 {
@@ -47,15 +39,15 @@ func NewConfig(sub Sub, inputs InputConfig) (*Config, error) {
 	}
 
 	// set nodes
-	nodes, err := ConvertInputsToNodes(sub, inputs, farm.DedicatedFarm, overProvisionCPU)
+	nodes, err := convertInputsToNodes(sub, inputs, farm.DedicatedFarm, overProvisionCPU)
 	if err != nil {
 		return nil, err
 	}
 
-	config := Config{
-		Farm:  *farm,
-		Nodes: nodes,
-		Power: inputs.Power,
+	config := state{
+		farm:  *farm,
+		nodes: nodes,
+		power: inputs.Power,
 	}
 
 	err = config.validate()
@@ -67,8 +59,8 @@ func NewConfig(sub Sub, inputs InputConfig) (*Config, error) {
 }
 
 // ConvertInputsToNodes converts the config nodes from configuration inputs
-func ConvertInputsToNodes(sub Sub, i InputConfig, dedicatedFarm bool, overProvisionCPU float32) (map[uint32]Node, error) {
-	nodes := make(map[uint32]Node)
+func convertInputsToNodes(sub Sub, i Config, dedicatedFarm bool, overProvisionCPU float32) (map[uint32]node, error) {
+	nodes := make(map[uint32]node)
 
 	farmNodes, err := sub.GetNodes(i.FarmID)
 	if err != nil {
@@ -84,13 +76,13 @@ func ConvertInputsToNodes(sub Sub, i InputConfig, dedicatedFarm bool, overProvis
 		// no nodes are specified so all nodes will be added (except excluded)
 		if slices.Contains(i.IncludedNodes, nodeID) || len(i.IncludedNodes) == 0 {
 			log.Debug().Uint32("ID", nodeID).Msg("Set node")
-			node, err := sub.GetNode(nodeID)
+			nodeObj, err := sub.GetNode(nodeID)
 			if err != nil {
 				return nil, err
 			}
 
-			configNode := Node{
-				Node: *node,
+			configNode := node{
+				Node: *nodeObj,
 			}
 
 			price, err := sub.GetDedicatedNodePrice(nodeID)
@@ -102,10 +94,10 @@ func ConvertInputsToNodes(sub Sub, i InputConfig, dedicatedFarm bool, overProvis
 				configNode.Dedicated = true
 			}
 
-			configNode.Resources.Total.CRU = uint64(node.Resources.CRU)
-			configNode.Resources.Total.SRU = uint64(node.Resources.SRU)
-			configNode.Resources.Total.MRU = uint64(node.Resources.MRU)
-			configNode.Resources.Total.HRU = uint64(node.Resources.HRU)
+			configNode.Resources.Total.CRU = uint64(nodeObj.Resources.CRU)
+			configNode.Resources.Total.SRU = uint64(nodeObj.Resources.SRU)
+			configNode.Resources.Total.MRU = uint64(nodeObj.Resources.MRU)
+			configNode.Resources.Total.HRU = uint64(nodeObj.Resources.HRU)
 			configNode.Resources.OverProvisionCPU = overProvisionCPU
 
 			nodes[nodeID] = configNode
@@ -116,24 +108,24 @@ func ConvertInputsToNodes(sub Sub, i InputConfig, dedicatedFarm bool, overProvis
 }
 
 // UpdateNode updates a node in the config
-func (c *Config) UpdateNode(node Node) error {
-	c.m.Lock()
-	defer c.m.Unlock()
+func (s *state) updateNode(node node) error {
+	s.m.Lock()
+	defer s.m.Unlock()
 
-	_, ok := c.Nodes[uint32(node.ID)]
+	_, ok := s.nodes[uint32(node.ID)]
 	if !ok {
 		return fmt.Errorf("node %d is not found", uint32(node.ID))
 	}
 
-	c.Nodes[uint32(node.ID)] = node
+	s.nodes[uint32(node.ID)] = node
 
 	return nil
 }
 
 // FilterNodesPower filters ON or OFF nodes
-func (c *Config) FilterNodesPower(states []PowerState) []Node {
-	filtered := make([]Node, 0)
-	for _, node := range c.Nodes {
+func (s *state) filterNodesPower(states []PowerState) []node {
+	filtered := make([]node, 0)
+	for _, node := range s.nodes {
 		if slices.Contains(states, node.PowerState) {
 			filtered = append(filtered, node)
 		}
@@ -145,10 +137,10 @@ func (c *Config) FilterNodesPower(states []PowerState) []Node {
 //
 // nodes with public config can't be shutdown
 // Do not shutdown a node that just came up (give it some time)
-func (c *Config) FilterAllowedNodesToShutDown() []Node {
-	filtered := make([]Node, 0)
-	for _, node := range c.Nodes {
-		if node.IsUnused() && !node.PublicConfig.HasValue && !node.NeverShutDown &&
+func (s *state) filterAllowedNodesToShutDown() []node {
+	filtered := make([]node, 0)
+	for _, node := range s.nodes {
+		if node.isUnused() && !node.PublicConfig.HasValue && !node.NeverShutDown &&
 			time.Since(node.LastTimePowerStateChanged) >= constants.PeriodicWakeUpDuration {
 			filtered = append(filtered, node)
 		}
@@ -156,18 +148,18 @@ func (c *Config) FilterAllowedNodesToShutDown() []Node {
 	return filtered
 }
 
-func (c *Config) validate() error {
+func (s *state) validate() error {
 	// required values for farm
-	if c.Farm.ID == 0 {
+	if s.farm.ID == 0 {
 		return errors.New("farm ID is required")
 	}
 
-	if len(c.Nodes) < 2 {
-		return fmt.Errorf("configuration should contain at least 2 nodes, found %d. if more were configured make sure to check the configuration for mistakes", len(c.Nodes))
+	if len(s.nodes) < 2 {
+		return fmt.Errorf("configuration should contain at least 2 nodes, found %d. if more were configured make sure to check the configuration for mistakes", len(s.nodes))
 	}
 
 	// required values for node
-	for _, n := range c.Nodes {
+	for _, n := range s.nodes {
 		if n.ID == 0 {
 			return fmt.Errorf("node id %d is required", n.ID)
 		}
@@ -189,28 +181,28 @@ func (c *Config) validate() error {
 	}
 
 	// required values for power
-	if c.Power.WakeUpThreshold == 0 {
-		c.Power.WakeUpThreshold = constants.DefaultWakeUpThreshold
+	if s.power.WakeUpThreshold == 0 {
+		s.power.WakeUpThreshold = constants.DefaultWakeUpThreshold
 	}
 
-	if c.Power.WakeUpThreshold < constants.MinWakeUpThreshold {
-		c.Power.WakeUpThreshold = constants.MinWakeUpThreshold
+	if s.power.WakeUpThreshold < constants.MinWakeUpThreshold {
+		s.power.WakeUpThreshold = constants.MinWakeUpThreshold
 		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to minimum value %d", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold, constants.MinWakeUpThreshold)
 	}
 
-	if c.Power.WakeUpThreshold > constants.MaxWakeUpThreshold {
-		c.Power.WakeUpThreshold = constants.MaxWakeUpThreshold
+	if s.power.WakeUpThreshold > constants.MaxWakeUpThreshold {
+		s.power.WakeUpThreshold = constants.MaxWakeUpThreshold
 		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to maximum value %d", constants.MinWakeUpThreshold, constants.MaxWakeUpThreshold, constants.MinWakeUpThreshold)
 	}
 
-	if c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {
-		c.Power.PeriodicWakeUpStart = WakeUpDate(time.Now())
-		log.Warn().Time("periodic wakeup start", c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()).Msg("The setting periodic_wake_up_start is zero. setting it with current time")
+	if s.power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && s.power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {
+		s.power.PeriodicWakeUpStart = WakeUpDate(time.Now())
+		log.Warn().Time("periodic wakeup start", s.power.PeriodicWakeUpStart.PeriodicWakeUpTime()).Msg("The setting periodic_wake_up_start is zero. setting it with current time")
 	}
-	c.Power.PeriodicWakeUpStart = WakeUpDate(c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime())
+	s.power.PeriodicWakeUpStart = WakeUpDate(s.power.PeriodicWakeUpStart.PeriodicWakeUpTime())
 
-	if c.Power.PeriodicWakeUpLimit == 0 {
-		c.Power.PeriodicWakeUpLimit = constants.DefaultPeriodicWakeUPLimit
+	if s.power.PeriodicWakeUpLimit == 0 {
+		s.power.PeriodicWakeUpLimit = constants.DefaultPeriodicWakeUPLimit
 		log.Warn().Msgf("The setting periodic_wake_up_limit should be greater then 0! setting it to %d", constants.DefaultPeriodicWakeUPLimit)
 	}
 

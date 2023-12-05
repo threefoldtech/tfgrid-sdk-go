@@ -23,14 +23,15 @@ func ReadFile(path string) ([]byte, string, error) {
 	return content, filepath.Ext(path)[1:], nil
 }
 
-// ParseIntoInputConfig parses the configuration
-func ParseIntoInputConfig(content []byte, format string) (models.InputConfig, error) {
-	input := models.InputConfig{}
+// ParseIntoConfig parses the configuration
+func ParseIntoConfig(content []byte, format string) (models.Config, error) {
+	input := models.Config{}
 
 	var err error
 	switch {
 	case strings.ToLower(format) == "json":
 		err = json.Unmarshal(content, &input)
+		// yaml will be the format
 	case strings.ToLower(format) == "yml" || strings.ToLower(format) == "yaml":
 		err = yaml.Unmarshal(content, &input)
 	case strings.ToLower(format) == "toml":
@@ -40,13 +41,13 @@ func ParseIntoInputConfig(content []byte, format string) (models.InputConfig, er
 	}
 
 	if err != nil {
-		return models.InputConfig{}, err
+		return models.Config{}, err
 	}
 
 	for _, in := range input.IncludedNodes {
 		for _, ex := range input.ExcludedNodes {
 			if ex == in {
-				return models.InputConfig{}, fmt.Errorf("cannot include and exclude the same node '%d'", in)
+				return models.Config{}, fmt.Errorf("cannot include and exclude the same node '%d'", in)
 			}
 		}
 	}

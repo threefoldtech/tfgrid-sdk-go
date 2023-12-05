@@ -1,4 +1,4 @@
-package server
+package internal
 
 import (
 	"context"
@@ -12,25 +12,23 @@ import (
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/manager"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
 // FarmerBot for managing farms
 type FarmerBot struct {
-	config           *models.Config
+	state            *state
 	substrateManager substrate.Manager
-	powerManager     *manager.PowerManager
-	dataManager      manager.DataManager
+	powerManager     *PowerManager
+	dataManager      DataManager
 	network          string
 	mnemonicOrSeed   string
 	identity         substrate.Identity
 }
 
 // NewFarmerBot generates a new farmer bot
-func NewFarmerBot(ctx context.Context, inputs models.InputConfig, network, mnemonicOrSeed string) (FarmerBot, error) {
+func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed string) (FarmerBot, error) {
 	substrateManager := substrate.NewManager(constants.SubstrateURLs[network]...)
 
 	identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonicOrSeed)
@@ -50,24 +48,22 @@ func NewFarmerBot(ctx context.Context, inputs models.InputConfig, network, mnemo
 		return FarmerBot{}, err
 	}
 
-	// TODO:
-	// defer subConn.Close()
-
-	err = farmerbot.SetConfig(inputs)
+	state, err := newState(subConn, config)
 	if err != nil {
 		return FarmerBot{}, err
 	}
+	farmerbot.state = state
 
-	powerManager := manager.NewPowerManager(identity, farmerbot.config)
+	powerManager := NewPowerManager(identity, farmerbot.state)
 	farmerbot.powerManager = &powerManager
 
-	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, constants.RelayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", farmerbot.config.Farm.ID), subConn, true)
+	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, constants.RelayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", farmerbot.state.farm.ID), subConn, true)
 	if err != nil {
 		return FarmerBot{}, errors.Wrap(err, "could not create rmb client")
 	}
 
-	rmbNodeClient := manager.NewRmbNodeClient(rmb)
-	farmerbot.dataManager = manager.NewDataManager(farmerbot.config, rmbNodeClient)
+	rmbNodeClient := NewRmbNodeClient(rmb)
+	farmerbot.dataManager = NewDataManager(farmerbot.state, rmbNodeClient)
 
 	return farmerbot, nil
 }
@@ -131,28 +127,11 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 	}
 }
 
-func (f *FarmerBot) SetConfig(inputs models.InputConfig) error {
-	subConn, err := f.substrateManager.Substrate()
-	if err != nil {
-		return err
-	}
-
-	defer subConn.Close()
-
-	config, err := models.NewConfig(subConn, inputs)
-	if err != nil {
-		return err
-	}
-
-	f.config = config
-	return nil
-}
-
-func (f *FarmerBot) start(ctx context.Context, sub models.Sub) error {
+func (f *FarmerBot) start(ctx context.Context, sub Sub) error {
 	return f.powerManager.PowerOnAllNodes(sub)
 }
 
-func (f *FarmerBot) stop(ctx context.Context, sub models.Sub) error {
+func (f *FarmerBot) stop(ctx context.Context, sub Sub) error {
 	return f.powerManager.PowerOnAllNodes(sub)
 }
 
@@ -177,7 +156,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 	})
 
 	nodeRouter.WithHandler("findnode", func(ctx context.Context, payload []byte) (interface{}, error) {
-		var options models.NodeOptions
+		var options nodeOptions
 
 		if err := json.Unmarshal(payload, &options); err != nil {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
@@ -187,6 +166,9 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		return nodeID, err
 	})
 
+	// TODO: include a new node (handler)
+
+	// TODO: It should be excluded
 	powerRouter.WithHandler("poweroff", func(ctx context.Context, payload []byte) (interface{}, error) {
 		err := authorize(ctx, farmerTwinID)
 		if err != nil {
@@ -205,6 +187,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		return nil, f.powerManager.PowerOff(sub, nodeID)
 	})
 
+	// TODO: It should be excluded
 	powerRouter.WithHandler("poweron", func(ctx context.Context, payload []byte) (interface{}, error) {
 		err := authorize(ctx, farmerTwinID)
 		if err != nil {
@@ -229,7 +212,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		peer.KeyTypeSr25519,
 		f.mnemonicOrSeed,
 		constants.RelayURLS[f.network],
-		fmt.Sprintf("farmerbot-%d", f.config.Farm.ID),
+		fmt.Sprintf("farmerbot-%d", f.state.farm.ID),
 		sub,
 		true,
 		router.Serve,

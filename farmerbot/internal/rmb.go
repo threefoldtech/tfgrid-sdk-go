@@ -1,11 +1,10 @@
-package manager
+package internal
 
 import (
 	"context"
 	"time"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/zos/pkg"
 )
@@ -13,9 +12,9 @@ import (
 // RMB is an rmb abstract client interface.
 type RMB interface {
 	SystemVersion(ctx context.Context, nodeTwin uint32) error
-	Statistics(ctx context.Context, nodeTwin uint32) (stats models.ZosResourcesStatistics, err error)
+	Statistics(ctx context.Context, nodeTwin uint32) (stats zosResourcesStatistics, err error)
 	GetStoragePools(ctx context.Context, nodeTwin uint32) (pools []pkg.PoolMetrics, err error)
-	ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []models.GPU, err error)
+	ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []gpu, err error)
 }
 
 type RMBNodeClient struct {
@@ -40,7 +39,7 @@ func (n *RMBNodeClient) SystemVersion(ctx context.Context, nodeTwin uint32) erro
 }
 
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
-func (n *RMBNodeClient) Statistics(ctx context.Context, nodeTwin uint32) (stats models.ZosResourcesStatistics, err error) {
+func (n *RMBNodeClient) Statistics(ctx context.Context, nodeTwin uint32) (stats zosResourcesStatistics, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.rmbTimeout)
 	defer cancel()
 
@@ -58,7 +57,7 @@ func (n *RMBNodeClient) GetStoragePools(ctx context.Context, nodeTwin uint32) (p
 }
 
 // ListGPUs return a list of all gpus on the node.
-func (n *RMBNodeClient) ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []models.GPU, err error) {
+func (n *RMBNodeClient) ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []gpu, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.rmbTimeout)
 	defer cancel()
 
