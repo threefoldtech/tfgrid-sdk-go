@@ -425,13 +425,13 @@ func (g *Clientimpl) ContractBills(ctx context.Context, contractID uint32, limit
 
 func (g *Clientimpl) newHTTPClient() *http.Client {
 	return &http.Client{
-		Timeout: time.Second * 30,
+		Timeout: time.Second * 100,
 		Transport: &http.Transport{
 			DialContext: (&net.Dialer{
 				Timeout: time.Second,
 			}).DialContext,
 			TLSHandshakeTimeout:   time.Second,
-			ResponseHeaderTimeout: 5 * time.Second,
+			ResponseHeaderTimeout: 100 * time.Second,
 		},
 	}
 }
