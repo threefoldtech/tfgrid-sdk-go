@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -22,28 +23,6 @@ func NewDataManager(state *state, rmbNodeClient RMB) DataManager {
 func (m *DataManager) UpdateNodesData(ctx context.Context, sub Sub) error {
 	var failedNodes []node
 	for _, node := range m.state.nodes {
-		// we check power state for all nodes
-		// TODO: is it right?
-		powerTarget, err := sub.GetPowerTarget(uint32(node.ID))
-		if err != nil {
-			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get node power target")
-			failedNodes = append(failedNodes, node)
-			continue
-		}
-
-		if powerTarget.State.IsUp && powerTarget.Target.IsUp && node.powerState != on {
-			log.Warn().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Node power state has been updated to power on the node out of the bot. Putting its state to on.")
-			node.lastTimePowerStateChanged = time.Now()
-			node.lastTimeAwake = time.Now()
-			node.powerState = on
-		}
-
-		if powerTarget.State.IsDown && powerTarget.Target.IsDown && node.powerState != off {
-			log.Warn().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Node power state has been updated to power off the node out of the bot. Putting its state to off.")
-			node.lastTimePowerStateChanged = time.Now()
-			node.powerState = off
-		}
-
 		// we ping nodes (the ones with claimed resources)
 		if node.timeoutClaimedResources.After(time.Now()) {
 			err := m.rmbNodeClient.SystemVersion(ctx, uint32(node.TwinID))
@@ -102,12 +81,41 @@ func (m *DataManager) UpdateNodesData(ctx context.Context, sub Sub) error {
 
 		node.hasActiveRentContract = rentContract != 0
 
+		// TODO: is it right?
+		powerTarget, err := sub.GetPowerTarget(uint32(node.ID))
+		if err != nil {
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get node power target")
+			failedNodes = append(failedNodes, node)
+			continue
+		}
+
+		if powerTarget.State.IsUp && powerTarget.Target.IsUp && node.powerState != on {
+			log.Warn().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Node power state has been updated to power on the node out of the bot. Putting its state to on.")
+			node.lastTimePowerStateChanged = time.Now()
+			node.lastTimeAwake = time.Now()
+			node.powerState = on
+		}
+
+		if powerTarget.State.IsDown && powerTarget.Target.IsDown && node.powerState != off {
+			log.Warn().Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Node power state has been updated to power off the node out of the bot. Putting its state to off.")
+			node.lastTimePowerStateChanged = time.Now()
+			node.powerState = off
+		}
+
 		m.updatePowerState(node, true)
+		err = m.state.updateNode(node)
+		if err != nil {
+			return fmt.Errorf("failed to update node %d", node.ID)
+		}
 	}
 
 	// update state: if we didn't get any response => node is offline
 	for _, node := range failedNodes {
 		m.updatePowerState(node, false)
+		err := m.state.updateNode(node)
+		if err != nil {
+			return fmt.Errorf("failed to update node %d", node.ID)
+		}
 	}
 
 	return nil

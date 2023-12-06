@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"slices"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -19,7 +18,6 @@ import (
 type PowerManager struct {
 	state    *state
 	identity substrate.Identity
-	m        sync.Mutex
 }
 
 // NewPowerManager creates a new Power Manager
@@ -33,8 +31,8 @@ func NewPowerManager(identity substrate.Identity, state *state) PowerManager {
 // PowerOn sets the node power state ON
 func (p *PowerManager) PowerOn(sub Sub, nodeID uint32) error {
 	log.Info().Uint32("node ID", nodeID).Str("manager", "power").Msg("POWER ON")
-	p.m.Lock()
-	defer p.m.Unlock()
+	p.state.m.Lock()
+	defer p.state.m.Unlock()
 
 	node, ok := p.state.nodes[nodeID]
 	if !ok {
@@ -59,8 +57,8 @@ func (p *PowerManager) PowerOn(sub Sub, nodeID uint32) error {
 // PowerOff sets the node power state OFF
 func (p *PowerManager) PowerOff(sub Sub, nodeID uint32) error {
 	log.Info().Uint32("node ID", nodeID).Str("manager", "power").Msg("POWER OFF")
-	p.m.Lock()
-	defer p.m.Unlock()
+	p.state.m.Lock()
+	defer p.state.m.Unlock()
 
 	node, ok := p.state.nodes[nodeID]
 	if !ok {
