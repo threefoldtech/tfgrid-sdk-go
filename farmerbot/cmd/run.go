@@ -12,7 +12,7 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run farmerbot to manage your farm",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		network, mnemonic, err := getDefaultFlags(cmd)
+		network, mnemonicOrSeed, err := getDefaultFlags(cmd)
 		if err != nil {
 			return err
 		}
@@ -32,7 +32,7 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		farmerBot, err := internal.NewFarmerBot(cmd.Context(), config, network, mnemonic)
+		farmerBot, err := internal.NewFarmerBot(cmd.Context(), config, network, mnemonicOrSeed)
 		if err != nil {
 			return err
 		}

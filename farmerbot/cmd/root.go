@@ -31,6 +31,8 @@ func Execute() {
 
 	farmerBotCmd.AddCommand(versionCmd)
 	farmerBotCmd.AddCommand(runCmd)
+	farmerBotCmd.AddCommand(startCmd)
+	farmerBotCmd.AddCommand(startAllCmd)
 
 	err := farmerBotCmd.Execute()
 	if err != nil {
@@ -48,9 +50,11 @@ func init() {
 	runCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Available formats are [json, yml, toml]")
 
 	startCmd.Flags().Uint32("node", 0, "enter the node ID you want to use")
+
+	startAllCmd.Flags().Uint32("farm", 0, "enter the farm ID you want to start your nodes in")
 }
 
-func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err error) {
+func getDefaultFlags(cmd *cobra.Command) (network string, mnemonicOrSeed string, err error) {
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
 		err = errors.Wrapf(err, "invalid log debug mode input '%v'", debug)
@@ -73,7 +77,7 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err e
 		return
 	}
 
-	mnemonic, err = cmd.Flags().GetString("mnemonic")
+	mnemonic, err := cmd.Flags().GetString("mnemonic")
 	if err != nil {
 		err = errors.Wrapf(err, "invalid mnemonic input '%s'", mnemonic)
 		return
@@ -84,6 +88,8 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err e
 			err = fmt.Errorf("invalid mnemonic input '%s'", mnemonic)
 			return
 		}
+
+		mnemonicOrSeed = mnemonic
 		return
 	}
 
@@ -104,6 +110,6 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonic string, err e
 		return
 	}
 
-	mnemonic = seed
+	mnemonicOrSeed = seed
 	return
 }
