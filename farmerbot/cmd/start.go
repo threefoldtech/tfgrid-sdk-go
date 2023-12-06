@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
@@ -40,6 +41,7 @@ var startCmd = &cobra.Command{
 			return fmt.Errorf("failed to power on node '%d'", nodeID)
 		}
 
+		log.Info().Msgf("Node %d is started successfully", nodeID)
 		return nil
 	},
 }

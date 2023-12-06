@@ -68,10 +68,8 @@ type NodeOptions struct {
 
 // GPU information
 type gpu struct {
-	id       string
-	vendor   string
-	device   string
-	contract uint64
+	vendor string
+	device string
 }
 
 type zosResourcesStatistics struct {
@@ -175,12 +173,12 @@ type power struct {
 	OverProvisionCPU    float32    `yaml:"overprovision_cpu,omitempty"`
 }
 
-// WakeUpDate is the date to wake up all nodes
+// wakeUpDate is the date to wake up all nodes
 type wakeUpDate time.Time
 
-// UnmarshalYAML unmarshal the given yaml string into wakeUp date
-func (d *wakeUpDate) UnmarshalYAML(s string) error {
-	s = strings.Trim(s, "\"")
+// UnmarshalText unmarshal the given TOML string into wakeUp date
+func (d *wakeUpDate) UnmarshalText(b []byte) error {
+	s := strings.Trim(string(b), "\"")
 	t, err := time.Parse("03:04PM", s)
 	if err != nil {
 		return err
@@ -189,8 +187,8 @@ func (d *wakeUpDate) UnmarshalYAML(s string) error {
 	return nil
 }
 
-// MarshalYAML marshals the wake up date
-func (d wakeUpDate) MarshalYAML() ([]byte, error) {
+// MarshalText marshals the wake up TOML date
+func (d wakeUpDate) MarshalText() ([]byte, error) {
 	date := time.Time(d)
 
 	dayTime := "AM"

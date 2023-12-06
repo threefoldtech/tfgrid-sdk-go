@@ -72,14 +72,14 @@ func TestPowerModel(t *testing.T) {
 	oldPower := time.Time(power.PeriodicWakeUpStart)
 
 	// invalid date
-	err := power.PeriodicWakeUpStart.UnmarshalYAML("7:3")
+	err := power.PeriodicWakeUpStart.UnmarshalText([]byte("7:3"))
 	assert.Error(t, err)
 
 	// valid date
-	wakeUpBytes, err := power.PeriodicWakeUpStart.MarshalYAML()
+	wakeUpBytes, err := power.PeriodicWakeUpStart.MarshalText()
 	assert.NoError(t, err)
 
-	err = power.PeriodicWakeUpStart.UnmarshalYAML(string(wakeUpBytes))
+	err = power.PeriodicWakeUpStart.UnmarshalText(wakeUpBytes)
 	assert.NoError(t, err)
 
 	assert.Equal(t, time.Time(power.PeriodicWakeUpStart).Hour(), oldPower.Hour())

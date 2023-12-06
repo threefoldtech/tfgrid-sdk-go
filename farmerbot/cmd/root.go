@@ -32,7 +32,7 @@ func Execute() {
 	farmerBotCmd.AddCommand(versionCmd)
 	farmerBotCmd.AddCommand(runCmd)
 	farmerBotCmd.AddCommand(startCmd)
-	farmerBotCmd.AddCommand(startAllCmd)
+	startCmd.AddCommand(startAllCmd)
 
 	err := farmerBotCmd.Execute()
 	if err != nil {
@@ -41,13 +41,13 @@ func Execute() {
 }
 
 func init() {
-	farmerBotCmd.Flags().StringP("network", "n", constants.MainNetwork, "the grid network to use")
-	farmerBotCmd.Flags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
-	farmerBotCmd.Flags().StringP("seed", "s", "", "the hex seed of the account of the farmer")
-	farmerBotCmd.Flags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
+	farmerBotCmd.PersistentFlags().StringP("network", "n", constants.MainNetwork, "the grid network to use")
+	farmerBotCmd.PersistentFlags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
+	farmerBotCmd.PersistentFlags().StringP("seed", "s", "", "the hex seed of the account of the farmer")
+	farmerBotCmd.PersistentFlags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
 	farmerBotCmd.MarkFlagsMutuallyExclusive("mnemonic", "seed")
 
-	runCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Available formats are [json, yml, toml]")
+	runCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Available format is yml/yaml")
 
 	startCmd.Flags().Uint32("node", 0, "enter the node ID you want to use")
 

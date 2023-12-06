@@ -46,8 +46,9 @@ power:
 		c, err := ParseIntoConfig([]byte(content))
 		assert.NoError(t, err)
 		assert.Equal(t, c.FarmID, uint32(1))
-		assert.Equal(t, len(c.IncludedNodes), 2)
-		assert.Equal(t, len(c.ExcludedNodes), 1)
+		assert.Equal(t, c.IncludedNodes, []uint32{1, 2})
+		assert.Equal(t, c.ExcludedNodes, []uint32{3})
+		assert.Equal(t, c.NeverShutDownNodes, []uint32{2})
 		assert.Equal(t, c.Power.WakeUpThreshold, uint8(30))
 
 		now := time.Now()

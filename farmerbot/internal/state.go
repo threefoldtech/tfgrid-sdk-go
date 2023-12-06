@@ -76,7 +76,7 @@ func convertInputsToNodes(sub Sub, config Config, dedicatedFarm bool, overProvis
 		// no nodes are specified so all nodes will be added (except excluded)
 		if slices.Contains(config.IncludedNodes, nodeID) || len(config.IncludedNodes) == 0 {
 			neverShutDown := false
-			if slices.Contains(config.NeverShutDownNodes, uint32(nodeID)) {
+			if slices.Contains(config.NeverShutDownNodes, nodeID) {
 				neverShutDown = true
 			}
 
@@ -109,6 +109,19 @@ func includeNode(sub Sub, nodeID uint32, neverShutDown, dedicatedFarm bool, over
 
 	if price != 0 || dedicatedFarm {
 		configNode.dedicated = true
+	}
+
+	powerTarget, err := sub.GetPowerTarget(nodeID)
+	if err != nil {
+		return node{}, err
+	}
+
+	if powerTarget.State.IsUp && powerTarget.Target.IsUp {
+		configNode.powerState = on
+	}
+
+	if powerTarget.State.IsDown && powerTarget.Target.IsDown {
+		configNode.powerState = off
 	}
 
 	configNode.neverShutDown = neverShutDown

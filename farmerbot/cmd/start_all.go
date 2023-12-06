@@ -3,13 +3,14 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 )
 
 var startAllCmd = &cobra.Command{
-	Use:   "start all",
+	Use:   "all",
 	Short: "start all nodes in your farm",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		network, mnemonicOrSeed, err := getDefaultFlags(cmd)
@@ -47,6 +48,7 @@ var startAllCmd = &cobra.Command{
 			}
 		}
 
+		log.Info().Msg("All nodes are started successfully")
 		return nil
 	},
 }
