@@ -79,7 +79,7 @@ func convertInputsToNodes(ctx context.Context, sub Sub, rmbNodeClient RMB, confi
 
 			configNode, err := getNodeWithLatestChanges(ctx, sub, rmbNodeClient, nodeID, neverShutDown, false, dedicatedFarm, config.Power.OverProvisionCPU)
 			if err != nil {
-				return nil, fmt.Errorf("failed to include node with id %d", nodeID)
+				return nil, errors.Wrapf(err, "failed to include node with id %d", nodeID)
 			}
 			nodes[nodeID] = configNode
 		}
@@ -102,7 +102,7 @@ func getNodeWithLatestChanges(
 	log.Debug().Uint32("ID", nodeID).Msg("Include node")
 	nodeObj, err := sub.GetNode(nodeID)
 	if err != nil {
-		return node{}, err
+		return node{}, errors.Wrapf(err, "failed to get node %d from substrate", nodeID)
 	}
 
 	configNode := node{
@@ -114,7 +114,7 @@ func getNodeWithLatestChanges(
 
 	price, err := sub.GetDedicatedNodePrice(nodeID)
 	if err != nil {
-		return node{}, err
+		return node{}, errors.Wrapf(err, "failed to get node %d dedicated price from substrate", nodeID)
 	}
 
 	if price != 0 || dedicatedFarm {
@@ -123,14 +123,14 @@ func getNodeWithLatestChanges(
 
 	rentContract, err := sub.GetNodeRentContract(nodeID)
 	if err != nil {
-		return node{}, err
+		return node{}, errors.Wrapf(err, "failed to get node %d rent contract from substrate", nodeID)
 	}
 
 	configNode.hasActiveRentContract = rentContract != 0
 
 	powerTarget, err := sub.GetPowerTarget(nodeID)
 	if err != nil {
-		return node{}, err
+		return node{}, errors.Wrapf(err, "failed to get node %d power target from substrate", nodeID)
 	}
 
 	if powerTarget.State.IsUp && powerTarget.Target.IsUp && configNode.powerState != on {
@@ -149,20 +149,20 @@ func getNodeWithLatestChanges(
 	if !hasClaimedResources {
 		stats, err := rmbNodeClient.Statistics(ctx, uint32(configNode.TwinID))
 		if err != nil {
-			return node{}, err
+			return node{}, errors.Wrapf(err, "failed to get node %d statistics from rmb", nodeID)
 		}
 		configNode.updateResources(stats)
 	}
 
 	pools, err := rmbNodeClient.GetStoragePools(ctx, uint32(configNode.TwinID))
 	if err != nil {
-		return node{}, err
+		return node{}, errors.Wrapf(err, "failed to get node %d pools from rmb", nodeID)
 	}
 	configNode.pools = pools
 
 	gpus, err := rmbNodeClient.ListGPUs(ctx, uint32(configNode.TwinID))
 	if err != nil {
-		return node{}, err
+		return node{}, errors.Wrapf(err, "failed to get node %d gpus from rmb", nodeID)
 	}
 	configNode.gpus = gpus
 

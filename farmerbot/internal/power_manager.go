@@ -44,7 +44,7 @@ func (p *PowerManager) PowerOn(sub Sub, nodeID uint32) error {
 
 	_, err := sub.SetNodePowerTarget(p.identity, nodeID, true)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to set node %d power target to up", nodeID)
 	}
 
 	node.powerState = wakingUP
@@ -88,7 +88,7 @@ func (p *PowerManager) PowerOff(sub Sub, nodeID uint32) error {
 
 	_, err := sub.SetNodePowerTarget(p.identity, nodeID, false)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to set node %d power target to down", nodeID)
 	}
 
 	node.powerState = shuttingDown

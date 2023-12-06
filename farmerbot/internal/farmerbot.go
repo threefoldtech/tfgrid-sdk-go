@@ -46,7 +46,7 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 		return FarmerBot{}, err
 	}
 
-	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, relayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", farmerbot.state.farm.ID), subConn, true)
+	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, relayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", config.FarmID), subConn, true)
 	if err != nil {
 		return FarmerBot{}, errors.Wrap(err, "could not create rmb client")
 	}
@@ -67,6 +67,7 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 
 // Run runs farmerbot to update nodes and power management
 func (f *FarmerBot) Run(ctx context.Context) error {
+	return nil
 	subConn, err := f.substrateManager.Substrate()
 	if err != nil {
 		return err
@@ -191,7 +192,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 
 		node, err := getNodeWithLatestChanges(ctx, sub, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm, f.state.config.Power.OverProvisionCPU)
 		if err != nil {
-			return nil, fmt.Errorf("failed to include node with id %d", nodeID)
+			return nil, errors.Wrapf(err, "failed to include node with id %d", nodeID)
 		}
 
 		return nil, f.state.updateNode(node)
@@ -267,7 +268,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 	)
 
 	if err != nil {
-		return errors.New("failed to create farmerbot direct peer")
+		return errors.Wrap(err, "failed to create farmerbot direct peer")
 	}
 
 	return nil

@@ -3,20 +3,17 @@ module github.com/threefoldtech/tfgrid-sdk-go/farmerbot
 go 1.21
 
 require (
-	github.com/BurntSushi/toml v1.3.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/golang/mock v1.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.8.0
-	github.com/stellar/go v0.0.0-20231121172327-69266de4154f
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231129121046-56ffc1f8f5c6
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.7
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
 	github.com/vedhavyas/go-subkey v1.0.3
-	gopkg.in/fsnotify.v1 v1.4.7
 	gopkg.in/yaml.v3 v3.0.1
 )
 
