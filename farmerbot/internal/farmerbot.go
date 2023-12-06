@@ -67,7 +67,6 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 
 // Run runs farmerbot to update nodes and power management
 func (f *FarmerBot) Run(ctx context.Context) error {
-	return nil
 	subConn, err := f.substrateManager.Substrate()
 	if err != nil {
 		return err

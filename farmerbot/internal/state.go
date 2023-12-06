@@ -122,7 +122,9 @@ func getNodeWithLatestChanges(
 	}
 
 	rentContract, err := sub.GetNodeRentContract(nodeID)
-	if err != nil {
+	if errors.Is(err, substrate.ErrNotFound) {
+		configNode.hasActiveRentContract = false
+	} else if err != nil {
 		return node{}, errors.Wrapf(err, "failed to get node %d rent contract from substrate", nodeID)
 	}
 
@@ -202,7 +204,8 @@ func (s *state) filterNodesPower(states []powerState) []node {
 func (s *state) filterAllowedNodesToShutDown() []node {
 	filtered := make([]node, 0)
 	for _, node := range s.nodes {
-		if node.isUnused() && !node.PublicConfig.HasValue && !node.neverShutDown &&
+		if node.isUnused() && !node.PublicConfig.HasValue &&
+			!node.neverShutDown && !node.hasActiveRentContract &&
 			time.Since(node.lastTimePowerStateChanged) >= periodicWakeUpDuration {
 			filtered = append(filtered, node)
 		}
