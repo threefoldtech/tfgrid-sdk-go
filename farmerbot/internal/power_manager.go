@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 )
 
 // PowerManager manages the power of nodes
@@ -191,7 +190,7 @@ func (p *PowerManager) FindNode(sub Sub, nodeOptions NodeOptions) (uint32, error
 
 	// claim the resources until next update of the data
 	// add a timeout (after 30 minutes we update the resources)
-	nodeFound.timeoutClaimedResources = time.Now().Add(constants.TimeoutPowerStateChange)
+	nodeFound.timeoutClaimedResources = time.Now().Add(timeoutPowerStateChange)
 
 	if nodeOptions.Dedicated || nodeOptions.HasGPUs > 0 {
 		// claim all capacity
@@ -227,7 +226,7 @@ func (p *PowerManager) PeriodicWakeUp(sub Sub) error {
 
 	offNodes := p.state.filterNodesPower([]powerState{off})
 
-	periodicWakeUpStart := p.state.power.PeriodicWakeUpStart.PeriodicWakeUpTime()
+	periodicWakeUpStart := p.state.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()
 
 	var wakeUpCalls uint8
 	nodesLen := len(p.state.nodes)
@@ -250,14 +249,14 @@ func (p *PowerManager) PeriodicWakeUp(sub Sub) error {
 			}
 
 			wakeUpCalls += 1
-			if wakeUpCalls >= p.state.power.PeriodicWakeUpLimit {
+			if wakeUpCalls >= p.state.config.Power.PeriodicWakeUpLimit {
 				// reboot X nodes at a time others will be rebooted 5 min later
 				break
 			}
-		} else if node.timesRandomWakeUps < constants.DefaultRandomWakeUpsAMonth &&
-			int(rand.Int31())%((8460-(constants.DefaultRandomWakeUpsAMonth*6)-
-				(constants.DefaultRandomWakeUpsAMonth*(nodesLen-1))/int(math.Min(float64(p.state.power.PeriodicWakeUpLimit), float64(nodesLen))))/
-				constants.DefaultRandomWakeUpsAMonth) == 0 {
+		} else if node.timesRandomWakeUps < defaultRandomWakeUpsAMonth &&
+			int(rand.Int31())%((8460-(defaultRandomWakeUpsAMonth*6)-
+				(defaultRandomWakeUpsAMonth*(nodesLen-1))/int(math.Min(float64(p.state.config.Power.PeriodicWakeUpLimit), float64(nodesLen))))/
+				defaultRandomWakeUpsAMonth) == 0 {
 			// Random periodic wake up (10 times a month on average if the node is almost always down)
 			// we execute this code every 5 minutes => 288 times a day => 8640 times a month on average (30 days)
 			// but we have 30 minutes of periodic wake up every day (6 times we do not go through this code) => so 282 times a day => 8460 times a month on average (30 days)
@@ -272,7 +271,7 @@ func (p *PowerManager) PeriodicWakeUp(sub Sub) error {
 			}
 
 			wakeUpCalls += 1
-			if wakeUpCalls >= p.state.power.PeriodicWakeUpLimit {
+			if wakeUpCalls >= p.state.config.Power.PeriodicWakeUpLimit {
 				// reboot X nodes at a time others will be rebooted 5 min later
 				break
 			}
@@ -291,7 +290,7 @@ func (p *PowerManager) PowerManagement(sub Sub) error {
 	}
 
 	resourceUsage := uint8(100 * usedResources / totalResources)
-	if resourceUsage >= p.state.power.WakeUpThreshold {
+	if resourceUsage >= p.state.config.Power.WakeUpThreshold {
 		log.Info().Uint8("resources usage", resourceUsage).Str("manager", "power").Msg("Too high resource usage")
 		return p.resourceUsageTooHigh(sub)
 	}
@@ -361,7 +360,7 @@ func (p *PowerManager) resourceUsageTooLow(sub Sub, usedResources, totalResource
 			}
 
 			newResourceUsage := uint8(100 * newUsedResources / newTotalResources)
-			if newResourceUsage < p.state.power.WakeUpThreshold {
+			if newResourceUsage < p.state.config.Power.WakeUpThreshold {
 				// we need to keep the resource percentage lower then the threshold
 				log.Info().Uint32("node ID", uint32(node.ID)).Uint8("resources usage", newResourceUsage).Str("manager", "power").Msg("Resource usage too low. Turning off unused node")
 				err := p.PowerOff(sub, uint32(node.ID))

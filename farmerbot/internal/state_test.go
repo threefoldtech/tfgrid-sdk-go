@@ -39,17 +39,17 @@ package internal
 // 		err := c.Set(sub, inputs)
 // 		assert.NoError(t, err)
 // 		assert.Equal(t, uint32(c.Farm.ID), uint32(1))
-// 		assert.Equal(t, c.Nodes[0].Resources.OverProvisionCPU, constants.DefaultCPUProvision)
+// 		assert.Equal(t, c.Nodes[0].Resources.OverProvisionCPU, DefaultCPUProvision)
 // 		assert.True(t, c.Nodes[0].Dedicated)
 // 		assert.True(t, c.Nodes[1].Dedicated)
 // 		assert.Equal(t, uint32(c.Nodes[0].ID), uint32(1))
 // 		assert.Equal(t, uint32(c.Nodes[1].ID), uint32(2))
-// 		assert.Equal(t, c.Power.WakeUpThreshold, constants.MinWakeUpThreshold)
+// 		assert.Equal(t, c.Power.WakeUpThreshold, MinWakeUpThreshold)
 
 // 		now := time.Now()
 // 		assert.Equal(t, c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour(), now.Hour())
 // 		assert.Equal(t, c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute(), now.Minute())
-// 		assert.Equal(t, c.Power.PeriodicWakeUpLimit, constants.DefaultPeriodicWakeUPLimit)
+// 		assert.Equal(t, c.Power.PeriodicWakeUpLimit, DefaultPeriodicWakeUPLimit)
 // 	})
 
 // 	t.Run("test valid json: wake up threshold (> max => max)", func(t *testing.T) {
@@ -68,7 +68,7 @@ package internal
 // 		c := Config{Farm: substrate.Farm{ID: 1, DedicatedFarm: true}}
 // 		err := c.Set(sub, inputs)
 // 		assert.NoError(t, err)
-// 		assert.Equal(t, c.Power.WakeUpThreshold, constants.MaxWakeUpThreshold)
+// 		assert.Equal(t, c.Power.WakeUpThreshold, MaxWakeUpThreshold)
 // 	})
 
 // 	t.Run("test valid json: wake up threshold (is 0 => default)", func(t *testing.T) {
@@ -88,7 +88,7 @@ package internal
 // 		var c Config
 // 		err := c.Set(sub, inputs)
 // 		assert.NoError(t, err)
-// 		assert.Equal(t, c.Power.WakeUpThreshold, constants.DefaultWakeUpThreshold)
+// 		assert.Equal(t, c.Power.WakeUpThreshold, DefaultWakeUpThreshold)
 // 	})
 
 // 	t.Run("test invalid json: cpu provision out of range", func(t *testing.T) {

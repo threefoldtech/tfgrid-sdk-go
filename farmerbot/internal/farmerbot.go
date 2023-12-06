@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"slices"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
@@ -21,7 +21,7 @@ type FarmerBot struct {
 	state            *state
 	substrateManager substrate.Manager
 	powerManager     *PowerManager
-	dataManager      DataManager
+	rmbNodeClient    RMB
 	network          string
 	mnemonicOrSeed   string
 	identity         substrate.Identity
@@ -35,7 +35,7 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 	}
 
 	farmerbot := FarmerBot{
-		substrateManager: substrate.NewManager(constants.SubstrateURLs[network]...),
+		substrateManager: substrate.NewManager(SubstrateURLs[network]...),
 		network:          network,
 		mnemonicOrSeed:   mnemonicOrSeed,
 		identity:         identity,
@@ -46,7 +46,14 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 		return FarmerBot{}, err
 	}
 
-	state, err := newState(subConn, config)
+	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, relayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", farmerbot.state.farm.ID), subConn, true)
+	if err != nil {
+		return FarmerBot{}, errors.Wrap(err, "could not create rmb client")
+	}
+
+	farmerbot.rmbNodeClient = NewRmbNodeClient(rmb)
+
+	state, err := newState(ctx, subConn, farmerbot.rmbNodeClient, config)
 	if err != nil {
 		return FarmerBot{}, err
 	}
@@ -54,14 +61,6 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 
 	powerManager := NewPowerManager(identity, farmerbot.state)
 	farmerbot.powerManager = &powerManager
-
-	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, constants.RelayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", farmerbot.state.farm.ID), subConn, true)
-	if err != nil {
-		return FarmerBot{}, errors.Wrap(err, "could not create rmb client")
-	}
-
-	rmbNodeClient := NewRmbNodeClient(rmb)
-	farmerbot.dataManager = NewDataManager(farmerbot.state, rmbNodeClient)
 
 	return farmerbot, nil
 }
@@ -88,10 +87,35 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 		default:
 			startTime := time.Now()
 
-			log.Debug().Msg("update data nodes from rmb and substrate")
-			err := f.dataManager.UpdateNodesData(ctx, subConn)
-			if err != nil {
-				log.Error().Err(err).Msg("failed to update")
+			log.Debug().Msg("check nodes latest updates")
+			for _, node := range f.state.nodes {
+				neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, uint32(node.ID))
+				hasClaimedResources := node.timeoutClaimedResources.After(time.Now())
+				dedicatedFarm := f.state.farm.DedicatedFarm
+				overProvisionCPU := f.state.config.Power.OverProvisionCPU
+
+				ltsNode, err := getNodeWithLatestChanges(ctx, subConn, f.rmbNodeClient, uint32(node.ID), neverShutDown, hasClaimedResources, dedicatedFarm, overProvisionCPU)
+				if err != nil {
+					log.Error().Err(err).Uint32("node ID", uint32(ltsNode.ID)).Msg("Get latest updates for node failed")
+					if ltsNode.powerState == on {
+						log.Error().Uint32("node ID", uint32(ltsNode.ID)).Msg("Node is not responding while we expect it to.")
+					}
+				}
+
+				if ltsNode.powerState == wakingUP && time.Since(ltsNode.lastTimePowerStateChanged) > timeoutPowerStateChange {
+					log.Error().Uint32("node ID", uint32(ltsNode.ID)).Msg("Wakeup was unsuccessful. Putting its state back to off.")
+				}
+
+				if ltsNode.powerState == shuttingDown && time.Since(ltsNode.lastTimePowerStateChanged) > timeoutPowerStateChange {
+					log.Error().Uint32("node ID", uint32(ltsNode.ID)).Msg("Shutdown was unsuccessful. Putting its state back to on.")
+				}
+
+				err = f.state.updateNode(node)
+				if err != nil {
+					log.Error().Err(err).Uint32("node ID", uint32(ltsNode.ID)).Msg("failed to update node")
+				}
+
+				log.Debug().Uint32("node ID", uint32(ltsNode.ID)).Msg("Node is updated with latest changes successfully")
 			}
 
 			log.Debug().Msg("periodic wake up")
@@ -111,10 +135,10 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 
 			// sleep if finished before the update timeout
 			var timeToSleep float64
-			if delta.Minutes() >= constants.TimeoutUpdate.Minutes() {
+			if delta.Minutes() >= timeoutUpdate.Minutes() {
 				timeToSleep = 0
 			} else {
-				timeToSleep = constants.TimeoutUpdate.Minutes() - delta.Minutes()
+				timeToSleep = timeoutUpdate.Minutes() - delta.Minutes()
 			}
 			time.Sleep(time.Duration(timeToSleep) * time.Minute)
 		}
@@ -158,25 +182,19 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 			return nil, err
 		}
 
-		f.state.m.Lock()
-		defer f.state.m.Unlock()
-
-		input := struct {
-			NodeID        uint32 `json:"node_id"`
-			NeverShutDown bool   `json:"never_shutdown"`
-		}{}
-
-		if err := json.Unmarshal(payload, &input); err != nil {
+		var nodeID uint32
+		if err := json.Unmarshal(payload, &nodeID); err != nil {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		node, err := includeNode(sub, input.NodeID, input.NeverShutDown, f.state.farm.DedicatedFarm, f.state.power.OverProvisionCPU)
+		neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
+
+		node, err := getNodeWithLatestChanges(ctx, sub, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm, f.state.config.Power.OverProvisionCPU)
 		if err != nil {
-			return nil, fmt.Errorf("failed to include node with id %d", input.NodeID)
+			return nil, fmt.Errorf("failed to include node with id %d", nodeID)
 		}
 
-		f.state.nodes[uint32(node.ID)] = node
-		return nil, nil
+		return nil, f.state.updateNode(node)
 	})
 
 	powerRouter.WithHandler("poweroff", func(ctx context.Context, payload []byte) (interface{}, error) {
@@ -241,7 +259,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		ctx,
 		peer.KeyTypeSr25519,
 		f.mnemonicOrSeed,
-		constants.RelayURLS[f.network],
+		relayURLS[f.network],
 		fmt.Sprintf("farmerbot-%d", f.state.farm.ID),
 		sub,
 		true,

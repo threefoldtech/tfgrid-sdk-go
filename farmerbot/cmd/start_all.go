@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
 )
 
 var startAllCmd = &cobra.Command{
@@ -28,7 +28,7 @@ var startAllCmd = &cobra.Command{
 			return err
 		}
 
-		substrateManager := substrate.NewManager(constants.SubstrateURLs[network]...)
+		substrateManager := substrate.NewManager(internal.SubstrateURLs[network]...)
 		subConn, err := substrateManager.Substrate()
 		if err != nil {
 			return err

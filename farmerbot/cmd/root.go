@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
 	"github.com/vedhavyas/go-subkey"
 )
@@ -41,7 +41,7 @@ func Execute() {
 }
 
 func init() {
-	farmerBotCmd.PersistentFlags().StringP("network", "n", constants.MainNetwork, "the grid network to use")
+	farmerBotCmd.PersistentFlags().StringP("network", "n", internal.MainNetwork, "the grid network to use")
 	farmerBotCmd.PersistentFlags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
 	farmerBotCmd.PersistentFlags().StringP("seed", "s", "", "the hex seed of the account of the farmer")
 	farmerBotCmd.PersistentFlags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
@@ -72,8 +72,8 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonicOrSeed string,
 		return
 	}
 
-	if !slices.Contains([]string{constants.DevNetwork, constants.QaNetwork, constants.TestNetwork, constants.MainNetwork}, network) {
-		err = fmt.Errorf("network must be one of %s, %s, %s, and %s not '%s'", constants.DevNetwork, constants.QaNetwork, constants.TestNetwork, constants.MainNetwork, network)
+	if !slices.Contains([]string{internal.DevNetwork, internal.QaNetwork, internal.TestNetwork, internal.MainNetwork}, network) {
+		err = fmt.Errorf("network must be one of %s, %s, %s, and %s not '%s'", internal.DevNetwork, internal.QaNetwork, internal.TestNetwork, internal.MainNetwork, network)
 		return
 	}
 

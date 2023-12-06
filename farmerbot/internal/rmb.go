@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/zos/pkg"
 )
@@ -25,7 +24,7 @@ type RMBNodeClient struct {
 func NewRmbNodeClient(rmb rmb.Client) *RMBNodeClient {
 	return &RMBNodeClient{
 		rmb:        rmb,
-		rmbTimeout: constants.TimeoutRMBResponse,
+		rmbTimeout: timeoutRMBResponse,
 	}
 }
 
