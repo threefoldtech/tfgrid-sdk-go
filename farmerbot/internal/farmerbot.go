@@ -187,14 +187,27 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
+		_, ok := f.state.nodes[nodeID]
+		if ok {
+			return nil, fmt.Errorf("node %d already exists", nodeID)
+		}
 
+		if slices.Contains(f.state.config.ExcludedNodes, nodeID) ||
+			len(f.state.config.ExcludedNodes) == 0 && !slices.Contains(f.state.config.IncludedNodes, nodeID) {
+			return nil, fmt.Errorf("node %d is excluded, cannot add it", nodeID)
+		}
+
+		neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
 		node, err := getNodeWithLatestChanges(ctx, sub, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm, f.state.config.Power.OverProvisionCPU)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to include node with id %d", nodeID)
 		}
 
-		return nil, f.state.updateNode(node)
+		f.state.m.Lock()
+		f.state.nodes[nodeID] = node
+		f.state.m.Unlock()
+
+		return nil, nil
 	})
 
 	powerRouter.WithHandler("poweroff", func(ctx context.Context, payload []byte) (interface{}, error) {
@@ -202,9 +215,6 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		if err != nil {
 			return nil, err
 		}
-
-		f.state.m.Lock()
-		defer f.state.m.Unlock()
 
 		if err := f.validateAccountEnoughBalance(sub); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
@@ -222,7 +232,10 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		// Exclude node from farmerbot management
 		// (It is not allowed if we tried to power on a node the farmer decided to power off)
 		// the farmer should include it again if he wants to the bot to manage it
+		f.state.m.Lock()
 		delete(f.state.nodes, nodeID)
+		f.state.m.Unlock()
+
 		return nil, nil
 	})
 
@@ -231,9 +244,6 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		if err != nil {
 			return nil, err
 		}
-
-		f.state.m.Lock()
-		defer f.state.m.Unlock()
 
 		if err := f.validateAccountEnoughBalance(sub); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
@@ -251,7 +261,10 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		// Exclude node from farmerbot management
 		// (It is not allowed if we tried to power off a node the farmer decided to power on)
 		// the farmer should include it again if he wants to the bot to manage it
+		f.state.m.Lock()
 		delete(f.state.nodes, nodeID)
+		f.state.m.Unlock()
+
 		return nil, nil
 	})
 
