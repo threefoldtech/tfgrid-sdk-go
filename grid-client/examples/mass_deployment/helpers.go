@@ -20,13 +20,8 @@ var (
 var nodeFilter = types.NodeFilter{
 	Status:       &statusUp,
 	AvailableFor: &twn,
-	FreeSRU:      convertGBToBytes(5),
+	FreeSRU:      convertGBToBytes(15),
 	FreeMRU:      convertGBToBytes(1),
-}
-
-func convertGBToBytes(gb uint64) *uint64 {
-	bytes := gb * 1024 * 1024 * 1024
-	return &bytes
 }
 
 func setup() ([]deployer.TFPluginClient, error) {
@@ -40,9 +35,8 @@ func setup() ([]deployer.TFPluginClient, error) {
 	tfPluginClients := []deployer.TFPluginClient{}
 	for _, mnemonic := range mnemonics {
 		tfPluginClient, err := deployer.NewTFPluginClient(
-			mnemonic, "sr25519", network, "", "", "", 0, false)
+			mnemonic, "sr25519", network, "", "", "", 30, false)
 		if err != nil {
-			fmt.Println("invalid mnemonics: ", mnemonics)
 			return []deployer.TFPluginClient{}, err
 		}
 
@@ -51,7 +45,40 @@ func setup() ([]deployer.TFPluginClient, error) {
 	return tfPluginClients, nil
 }
 
-func getReachableNodes(nodes []types.Node, tfPluginClient deployer.TFPluginClient, ctx context.Context) []uint32 {
+func getNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, totalVMCount int) ([]uint32, error) {
+	nodes, err := deployer.FilterNodes(
+		ctx,
+		tfPluginClient,
+		nodeFilter,
+		[]uint64{*convertGBToBytes(5)},
+		nil,
+		[]uint64{minRootfs},
+		uint64(totalVMCount+200),
+	)
+	if err != nil {
+		return []uint32{}, err
+	}
+
+	if len(nodes) < totalVMCount {
+		return []uint32{}, fmt.Errorf("no available nodes found, Only found %d\n", len(nodes))
+	}
+
+	nodesIDs := make([]uint32, len(nodes))
+	for i, node := range nodes {
+		nodesIDs[i] = uint32(node.NodeID)
+	}
+
+	nodesIDs = getNodesWithValidFileSystem(nodesIDs, tfPluginClient, ctx)
+
+	if len(nodesIDs) < totalVMCount {
+		return []uint32{}, fmt.Errorf("no available nodes found, Only found %d\n", len(nodesIDs))
+	}
+
+	fmt.Printf("Found free %d nodes!\n", len(nodes))
+	return nodesIDs[:totalVMCount], nil
+}
+
+func getReachableNodes(nodes []uint32, tfPluginClient deployer.TFPluginClient, ctx context.Context) []uint32 {
 	nodesIDs := []uint32{}
 	var wg sync.WaitGroup
 	var lock sync.Mutex
@@ -60,22 +87,22 @@ func getReachableNodes(nodes []types.Node, tfPluginClient deployer.TFPluginClien
 	for _, node := range nodes {
 		wg.Add(1)
 
-		go func(node types.Node) {
+		go func(nodeID uint32) {
 			defer wg.Done()
 
-			client, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, uint32(node.NodeID))
+			client, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID)
 			if err != nil {
-				fmt.Printf("failed to get node '%d' client\n", node.NodeID)
+				fmt.Printf("failed to get node '%d' client\n", nodeID)
 				return
 			}
 			err = client.IsNodeUp(ctx)
 			if err != nil {
-				fmt.Printf("failed to get node '%d' Statistics\n", node.NodeID)
+				fmt.Printf("failed to ping node '%d'\n", nodeID)
 				return
 			}
 
 			lock.Lock()
-			nodesIDs = append(nodesIDs, uint32(node.NodeID))
+			nodesIDs = append(nodesIDs, nodeID)
 			lock.Unlock()
 		}(node)
 	}
@@ -105,4 +132,9 @@ func generateRandomString(length int) string {
 		result[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(result)
+}
+
+func convertGBToBytes(gb uint64) *uint64 {
+	bytes := gb * 1024 * 1024 * 1024
+	return &bytes
 }

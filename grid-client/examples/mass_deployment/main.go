@@ -14,26 +14,31 @@ import (
 )
 
 const (
-	totalVMCount = 50
-	batchSize    = 25
+	totalVMCount = 500
+	batchSize    = 250
 )
 
 func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Minute)
+	defer cancel()
+
 	tfPluginClients, err := setup()
 	if err != nil {
 		fmt.Println("failed to create new tfPluginClient: " + err.Error())
 		os.Exit(1)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Minute)
-	defer cancel()
+	filtrationStartTime := time.Now()
+	nodes, err := getNodes(ctx, tfPluginClients[0], totalVMCount)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	filtrationDuration := time.Since(filtrationStartTime)
 
-	nodes := getNodes(ctx, tfPluginClients[0], totalVMCount)
-
-	massSize := totalVMCount / len(tfPluginClients)
 	var passed int
-	var duration time.Duration
-
+	massSize := totalVMCount / len(tfPluginClients)
+	var deploymentDuration, cancelationDuration time.Duration
 	var wg sync.WaitGroup
 	var lock sync.Mutex
 
@@ -43,21 +48,24 @@ func main() {
 		go func(j int) {
 			defer wg.Done()
 			nodesIDs := nodes[j*massSize : (j+1)*massSize]
-			p, d := MassDeploy(ctx, tfPluginClients[j], nodesIDs)
+			p, d, c := MassDeploy(ctx, tfPluginClients[j], nodesIDs)
 
 			lock.Lock()
 			passed += p
-			duration = max(duration, d)
+			deploymentDuration = max(deploymentDuration, d)
+			cancelationDuration = max(cancelationDuration, c)
 			lock.Unlock()
 		}(i)
 	}
 	wg.Wait()
 
+	fmt.Printf("nodes filtration took %s\n", filtrationDuration)
 	fmt.Printf("deployment of %d vms passed\n", passed)
-	fmt.Printf("deployment of %d vms took %s\n", totalVMCount, duration)
+	fmt.Printf("deployment took %s\n", deploymentDuration)
+	fmt.Printf("cancelation took %s\n", cancelationDuration)
 }
 
-func MassDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodes []uint32) (int, time.Duration) {
+func MassDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodes []uint32) (int, time.Duration, time.Duration) {
 	deploymentStartTime := time.Now()
 	allNetworkDeployments := []*workloads.ZNet{}
 	allVmDeployments := []*workloads.Deployment{}
@@ -66,15 +74,16 @@ func MassDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, nod
 
 	for i := 0; i < batchCnt; i++ {
 		batchIDs := nodes[i*batchSize : (i+1)*batchSize]
+		batchIDs = getReachableNodes(batchIDs, tfPluginClient, ctx)
 
 		networkDeployments := make([]*workloads.ZNet, len(batchIDs))
 		vmDeployments := make([]*workloads.Deployment, len(batchIDs))
 
-		for j := 0; j < batchSize; j++ {
+		for j, nodeID := range batchIDs {
 			network := workloads.ZNet{
 				Name:        generateRandomString(15),
 				Description: "network for testing",
-				Nodes:       batchIDs,
+				Nodes:       []uint32{nodeID},
 				IPRange: gridtypes.NewIPNet(net.IPNet{
 					IP:   net.IPv4(10, 20, 0, 0),
 					Mask: net.CIDRMask(16, 32),
@@ -91,7 +100,7 @@ func MassDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, nod
 				Entrypoint:  "/sbin/zinit init",
 				NetworkName: network.Name,
 			}
-			deployment := workloads.NewDeployment(generateRandomString(15), batchIDs[j], "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
+			deployment := workloads.NewDeployment(generateRandomString(15), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 			vmDeployments[j] = &deployment
 			networkDeployments[j] = &network
 		}
@@ -111,53 +120,28 @@ func MassDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, nod
 			fmt.Printf("err: %s\n", err)
 			continue
 		}
+
 		allVmDeployments = append(allVmDeployments, vmDeployments...)
-
-		fmt.Printf("Done deploying %d vms\n", batchSize)
 	}
 
-	elapsedTime := time.Since(deploymentStartTime)
+	deploymentTime := time.Since(deploymentStartTime)
 
-	for i := 0; i < len(allVmDeployments); i++ {
-		err := tfPluginClient.DeploymentDeployer.Cancel(ctx, allVmDeployments[i])
-		if err != nil {
-			fmt.Println(err)
-		}
+	cleanUpStartTime := time.Now()
+	CancelDeployments(tfPluginClient)
 
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, allNetworkDeployments[i])
-		if err != nil {
-			fmt.Println(err)
-		}
-
-	}
-	return len(allVmDeployments), elapsedTime
+	return len(allVmDeployments), deploymentTime, time.Since(cleanUpStartTime)
 }
 
-func getNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, totalVMCount int) []uint32 {
-	nodes, err := deployer.FilterNodes(
-		ctx,
-		tfPluginClient,
-		nodeFilter,
-		[]uint64{*convertGBToBytes(5)},
-		nil,
-		[]uint64{minRootfs},
-		uint64(totalVMCount+200),
-	)
+func CancelDeployments(tfPluginClient deployer.TFPluginClient) {
+	contracts := tfPluginClient.State.CurrentNodeDeployments
 
-	if err != nil || len(nodes) < totalVMCount {
+	allContractsIDs := []uint64{}
+	for _, contractsID := range contracts {
+		allContractsIDs = append(allContractsIDs, contractsID...)
+	}
+
+	err := tfPluginClient.BatchCancelContract(allContractsIDs)
+	if err != nil {
 		fmt.Println(err)
-		fmt.Printf("no available nodes found, Only found %d\n", len(nodes))
-		os.Exit(1)
 	}
-
-	nodesIDs := getReachableNodes(nodes, tfPluginClient, ctx)
-	nodesIDs = getNodesWithValidFileSystem(nodesIDs, tfPluginClient, ctx)
-
-	if len(nodesIDs) < totalVMCount {
-		fmt.Printf("no available nodes found, Only found %d\n", len(nodesIDs))
-		os.Exit(1)
-	}
-
-	fmt.Printf("Found free %d nodes!\n", len(nodes))
-	return nodesIDs[:totalVMCount]
 }
