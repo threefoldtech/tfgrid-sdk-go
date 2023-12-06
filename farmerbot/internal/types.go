@@ -22,7 +22,6 @@ type Config struct {
 
 type powerState uint8
 
-// TODO:
 const (
 	on = powerState(iota)
 	wakingUP
@@ -42,9 +41,8 @@ type node struct {
 	hasActiveRentContract bool
 
 	// TODO: check if we can update
-	dedicated     bool
-	neverShutDown bool
-	// TODO: update power state
+	dedicated                 bool
+	neverShutDown             bool
 	powerState                powerState
 	timeoutClaimedResources   time.Time
 	lastTimePowerStateChanged time.Time

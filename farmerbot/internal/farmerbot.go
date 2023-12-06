@@ -88,8 +88,8 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 		default:
 			startTime := time.Now()
 
-			log.Debug().Msg("data update")
-			err := f.dataManager.Update(ctx, subConn)
+			log.Debug().Msg("update data nodes from rmb and substrate")
+			err := f.dataManager.UpdateNodesData(ctx, subConn)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to update")
 			}
@@ -119,14 +119,6 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 			time.Sleep(time.Duration(timeToSleep) * time.Minute)
 		}
 	}
-}
-
-func (f *FarmerBot) start(ctx context.Context, sub Sub) error {
-	return f.powerManager.PowerOnAllNodes(sub)
-}
-
-func (f *FarmerBot) stop(ctx context.Context, sub Sub) error {
-	return f.powerManager.PowerOnAllNodes(sub)
 }
 
 func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
@@ -160,45 +152,89 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		return nodeID, err
 	})
 
-	// TODO: include a new node (handler)
+	powerRouter.WithHandler("includenode", func(ctx context.Context, payload []byte) (interface{}, error) {
+		err := authorize(ctx, farmerTwinID)
+		if err != nil {
+			return nil, err
+		}
 
-	// TODO: It should be excluded
+		f.state.m.Lock()
+		defer f.state.m.Unlock()
+
+		input := struct {
+			NodeID        uint32 `json:"node_id"`
+			NeverShutDown bool   `json:"never_shutdown"`
+		}{}
+
+		if err := json.Unmarshal(payload, &input); err != nil {
+			return nil, fmt.Errorf("failed to load request payload: %w", err)
+		}
+
+		node, err := includeNode(sub, input.NodeID, input.NeverShutDown, f.state.farm.DedicatedFarm, f.state.power.OverProvisionCPU)
+		if err != nil {
+			return nil, fmt.Errorf("failed to include node with id %d", input.NodeID)
+		}
+
+		f.state.nodes[uint32(node.ID)] = node
+		return nil, nil
+	})
+
 	powerRouter.WithHandler("poweroff", func(ctx context.Context, payload []byte) (interface{}, error) {
 		err := authorize(ctx, farmerTwinID)
 		if err != nil {
 			return nil, err
 		}
 
-		var nodeID uint32
+		f.state.m.Lock()
+		defer f.state.m.Unlock()
+
 		if err := f.validateAccountEnoughBalance(sub); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
+		var nodeID uint32
 		if err := json.Unmarshal(payload, &nodeID); err != nil {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		return nil, f.powerManager.PowerOff(sub, nodeID)
+		if err := f.powerManager.PowerOff(sub, nodeID); err != nil {
+			return nil, fmt.Errorf("failed to power off node %d: %w", nodeID, err)
+		}
+
+		// Exclude node from farmerbot management
+		// (It is not allowed if we tried to power on a node the farmer decided to power off)
+		// the farmer should include it again if he wants to the bot to manage it
+		delete(f.state.nodes, nodeID)
+		return nil, nil
 	})
 
-	// TODO: It should be excluded
 	powerRouter.WithHandler("poweron", func(ctx context.Context, payload []byte) (interface{}, error) {
 		err := authorize(ctx, farmerTwinID)
 		if err != nil {
 			return nil, err
 		}
 
-		var nodeID uint32
+		f.state.m.Lock()
+		defer f.state.m.Unlock()
+
 		if err := f.validateAccountEnoughBalance(sub); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
+		var nodeID uint32
 		if err := json.Unmarshal(payload, &nodeID); err != nil {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		err = f.powerManager.PowerOn(sub, nodeID)
-		return nil, err
+		if err := f.powerManager.PowerOn(sub, nodeID); err != nil {
+			return nil, fmt.Errorf("failed to power on node %d: %w", nodeID, err)
+		}
+
+		// Exclude node from farmerbot management
+		// (It is not allowed if we tried to power off a node the farmer decided to power on)
+		// the farmer should include it again if he wants to the bot to manage it
+		delete(f.state.nodes, nodeID)
+		return nil, nil
 	})
 
 	_, err = peer.NewPeer(

@@ -75,40 +75,51 @@ func convertInputsToNodes(sub Sub, config Config, dedicatedFarm bool, overProvis
 		// if the user specified included nodes or
 		// no nodes are specified so all nodes will be added (except excluded)
 		if slices.Contains(config.IncludedNodes, nodeID) || len(config.IncludedNodes) == 0 {
-			log.Debug().Uint32("ID", nodeID).Msg("Set node")
-			nodeObj, err := sub.GetNode(nodeID)
+			neverShutDown := false
+			if slices.Contains(config.NeverShutDownNodes, uint32(nodeID)) {
+				neverShutDown = true
+			}
+
+			configNode, err := includeNode(sub, nodeID, neverShutDown, dedicatedFarm, overProvisionCPU)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to include node with id %d", nodeID)
 			}
-
-			configNode := node{
-				Node: *nodeObj,
-			}
-
-			price, err := sub.GetDedicatedNodePrice(nodeID)
-			if err != nil {
-				return nil, err
-			}
-
-			if price != 0 || dedicatedFarm {
-				configNode.dedicated = true
-			}
-
-			if slices.Contains(config.NeverShutDownNodes, uint32(configNode.ID)) {
-				configNode.neverShutDown = true
-			}
-
-			configNode.resources.total.cru = uint64(nodeObj.Resources.CRU)
-			configNode.resources.total.sru = uint64(nodeObj.Resources.SRU)
-			configNode.resources.total.mru = uint64(nodeObj.Resources.MRU)
-			configNode.resources.total.hru = uint64(nodeObj.Resources.HRU)
-			configNode.resources.overProvisionCPU = overProvisionCPU
-
 			nodes[nodeID] = configNode
 		}
 	}
 
 	return nodes, nil
+}
+
+func includeNode(sub Sub, nodeID uint32, neverShutDown, dedicatedFarm bool, overProvisionCPU float32) (node, error) {
+	log.Debug().Uint32("ID", nodeID).Msg("Include node")
+	nodeObj, err := sub.GetNode(nodeID)
+	if err != nil {
+		return node{}, err
+	}
+
+	configNode := node{
+		Node: *nodeObj,
+	}
+
+	price, err := sub.GetDedicatedNodePrice(nodeID)
+	if err != nil {
+		return node{}, err
+	}
+
+	if price != 0 || dedicatedFarm {
+		configNode.dedicated = true
+	}
+
+	configNode.neverShutDown = neverShutDown
+
+	configNode.resources.total.cru = uint64(nodeObj.Resources.CRU)
+	configNode.resources.total.sru = uint64(nodeObj.Resources.SRU)
+	configNode.resources.total.mru = uint64(nodeObj.Resources.MRU)
+	configNode.resources.total.hru = uint64(nodeObj.Resources.HRU)
+	configNode.resources.overProvisionCPU = overProvisionCPU
+
+	return configNode, nil
 }
 
 // UpdateNode updates a node in the config

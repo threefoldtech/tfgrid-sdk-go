@@ -110,6 +110,21 @@ func (mr *MockSubMockRecorder) GetNodes(farmID interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodes", reflect.TypeOf((*MockSub)(nil).GetNodes), farmID)
 }
 
+// GetPowerTarget mocks base method.
+func (m *MockSub) GetPowerTarget(nodeID uint32) (substrate.NodePower, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPowerTarget", nodeID)
+	ret0, _ := ret[0].(substrate.NodePower)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPowerTarget indicates an expected call of GetPowerTarget.
+func (mr *MockSubMockRecorder) GetPowerTarget(nodeID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPowerTarget", reflect.TypeOf((*MockSub)(nil).GetPowerTarget), nodeID)
+}
+
 // GetTwinByPubKey mocks base method.
 func (m *MockSub) GetTwinByPubKey(publicKey []byte) (uint32, error) {
 	m.ctrl.T.Helper()

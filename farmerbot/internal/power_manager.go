@@ -223,19 +223,6 @@ func (p *PowerManager) FindNode(sub Sub, nodeOptions NodeOptions) (uint32, error
 	return uint32(nodeFound.ID), nil
 }
 
-func (p *PowerManager) PowerOnAllNodes(sub Sub) error {
-	offNodes := p.state.filterNodesPower([]powerState{off, shuttingDown})
-
-	for _, node := range offNodes {
-		err := p.PowerOn(sub, uint32(node.ID))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // PeriodicWakeUp for waking up nodes daily
 func (p *PowerManager) PeriodicWakeUp(sub Sub) error {
 	now := time.Now()
