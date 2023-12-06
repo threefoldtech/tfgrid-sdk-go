@@ -16,7 +16,7 @@ import (
 type state struct {
 	farm  substrate.Farm
 	nodes map[uint32]node
-	power Power
+	power power
 	m     sync.Mutex
 }
 
@@ -59,22 +59,22 @@ func newState(sub Sub, inputs Config) (*state, error) {
 }
 
 // ConvertInputsToNodes converts the config nodes from configuration inputs
-func convertInputsToNodes(sub Sub, i Config, dedicatedFarm bool, overProvisionCPU float32) (map[uint32]node, error) {
+func convertInputsToNodes(sub Sub, config Config, dedicatedFarm bool, overProvisionCPU float32) (map[uint32]node, error) {
 	nodes := make(map[uint32]node)
 
-	farmNodes, err := sub.GetNodes(i.FarmID)
+	farmNodes, err := sub.GetNodes(config.FarmID)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, nodeID := range farmNodes {
-		if slices.Contains(i.ExcludedNodes, nodeID) {
+		if slices.Contains(config.ExcludedNodes, nodeID) {
 			continue
 		}
 
 		// if the user specified included nodes or
 		// no nodes are specified so all nodes will be added (except excluded)
-		if slices.Contains(i.IncludedNodes, nodeID) || len(i.IncludedNodes) == 0 {
+		if slices.Contains(config.IncludedNodes, nodeID) || len(config.IncludedNodes) == 0 {
 			log.Debug().Uint32("ID", nodeID).Msg("Set node")
 			nodeObj, err := sub.GetNode(nodeID)
 			if err != nil {
@@ -91,14 +91,18 @@ func convertInputsToNodes(sub Sub, i Config, dedicatedFarm bool, overProvisionCP
 			}
 
 			if price != 0 || dedicatedFarm {
-				configNode.Dedicated = true
+				configNode.dedicated = true
 			}
 
-			configNode.Resources.Total.CRU = uint64(nodeObj.Resources.CRU)
-			configNode.Resources.Total.SRU = uint64(nodeObj.Resources.SRU)
-			configNode.Resources.Total.MRU = uint64(nodeObj.Resources.MRU)
-			configNode.Resources.Total.HRU = uint64(nodeObj.Resources.HRU)
-			configNode.Resources.OverProvisionCPU = overProvisionCPU
+			if slices.Contains(config.NeverShutDownNodes, uint32(configNode.ID)) {
+				configNode.neverShutDown = true
+			}
+
+			configNode.resources.total.cru = uint64(nodeObj.Resources.CRU)
+			configNode.resources.total.sru = uint64(nodeObj.Resources.SRU)
+			configNode.resources.total.mru = uint64(nodeObj.Resources.MRU)
+			configNode.resources.total.hru = uint64(nodeObj.Resources.HRU)
+			configNode.resources.overProvisionCPU = overProvisionCPU
 
 			nodes[nodeID] = configNode
 		}
@@ -123,10 +127,10 @@ func (s *state) updateNode(node node) error {
 }
 
 // FilterNodesPower filters ON or OFF nodes
-func (s *state) filterNodesPower(states []PowerState) []node {
+func (s *state) filterNodesPower(states []powerState) []node {
 	filtered := make([]node, 0)
 	for _, node := range s.nodes {
-		if slices.Contains(states, node.PowerState) {
+		if slices.Contains(states, node.powerState) {
 			filtered = append(filtered, node)
 		}
 	}
@@ -140,8 +144,8 @@ func (s *state) filterNodesPower(states []PowerState) []node {
 func (s *state) filterAllowedNodesToShutDown() []node {
 	filtered := make([]node, 0)
 	for _, node := range s.nodes {
-		if node.isUnused() && !node.PublicConfig.HasValue && !node.NeverShutDown &&
-			time.Since(node.LastTimePowerStateChanged) >= constants.PeriodicWakeUpDuration {
+		if node.isUnused() && !node.PublicConfig.HasValue && !node.neverShutDown &&
+			time.Since(node.lastTimePowerStateChanged) >= constants.PeriodicWakeUpDuration {
 			filtered = append(filtered, node)
 		}
 	}
@@ -166,16 +170,16 @@ func (s *state) validate() error {
 		if n.TwinID == 0 {
 			return fmt.Errorf("node %d: twin_id is required", n.ID)
 		}
-		if n.Resources.Total.SRU == 0 {
+		if n.resources.total.sru == 0 {
 			return fmt.Errorf("node %d: total SRU is required", n.ID)
 		}
-		if n.Resources.Total.CRU == 0 {
+		if n.resources.total.cru == 0 {
 			return fmt.Errorf("node %d: total CRU is required", n.ID)
 		}
-		if n.Resources.Total.MRU == 0 {
+		if n.resources.total.mru == 0 {
 			return fmt.Errorf("node %d: total MRU is required", n.ID)
 		}
-		if n.Resources.Total.HRU == 0 {
+		if n.resources.total.hru == 0 {
 			return fmt.Errorf("node %d: total HRU is required", n.ID)
 		}
 	}
@@ -196,10 +200,10 @@ func (s *state) validate() error {
 	}
 
 	if s.power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && s.power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {
-		s.power.PeriodicWakeUpStart = WakeUpDate(time.Now())
+		s.power.PeriodicWakeUpStart = wakeUpDate(time.Now())
 		log.Warn().Time("periodic wakeup start", s.power.PeriodicWakeUpStart.PeriodicWakeUpTime()).Msg("The setting periodic_wake_up_start is zero. setting it with current time")
 	}
-	s.power.PeriodicWakeUpStart = WakeUpDate(s.power.PeriodicWakeUpStart.PeriodicWakeUpTime())
+	s.power.PeriodicWakeUpStart = wakeUpDate(s.power.PeriodicWakeUpStart.PeriodicWakeUpTime())
 
 	if s.power.PeriodicWakeUpLimit == 0 {
 		s.power.PeriodicWakeUpLimit = constants.DefaultPeriodicWakeUPLimit

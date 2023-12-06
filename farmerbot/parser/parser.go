@@ -1,53 +1,36 @@
-// Package parser for parsing cmd configs
 package parser
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 
-	"github.com/BurntSushi/toml"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
 	"gopkg.in/yaml.v3"
 )
 
 // ReadFile reads a file and returns its contents
-func ReadFile(path string) ([]byte, string, error) {
+func ReadFile(path string) ([]byte, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return []byte{}, "", err
+		return []byte{}, err
 	}
 
-	return content, filepath.Ext(path)[1:], nil
+	return content, nil
 }
 
 // ParseIntoConfig parses the configuration
-func ParseIntoConfig(content []byte, format string) (models.Config, error) {
-	input := models.Config{}
+func ParseIntoConfig(content []byte) (internal.Config, error) {
+	input := internal.Config{}
 
-	var err error
-	switch {
-	case strings.ToLower(format) == "json":
-		err = json.Unmarshal(content, &input)
-		// yaml will be the format
-	case strings.ToLower(format) == "yml" || strings.ToLower(format) == "yaml":
-		err = yaml.Unmarshal(content, &input)
-	case strings.ToLower(format) == "toml":
-		err = toml.Unmarshal(content, &input)
-	default:
-		err = fmt.Errorf("invalid config file format '%s'", format)
-	}
-
+	err := yaml.Unmarshal(content, &input)
 	if err != nil {
-		return models.Config{}, err
+		return internal.Config{}, err
 	}
 
 	for _, in := range input.IncludedNodes {
 		for _, ex := range input.ExcludedNodes {
 			if ex == in {
-				return models.Config{}, fmt.Errorf("cannot include and exclude the same node '%d'", in)
+				return internal.Config{}, fmt.Errorf("cannot include and exclude the same node '%d'", in)
 			}
 		}
 	}

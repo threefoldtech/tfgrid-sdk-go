@@ -8,7 +8,7 @@ import (
 	"log"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/models"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
@@ -41,7 +41,7 @@ func findNode() (uint32, error) {
 	service := fmt.Sprintf("farmerbot-%d", farmID)
 	const farmerbotTwinID = 164 // <- replace this with the twin id of where the farmerbot is running
 
-	options := models.NodeOptions{
+	options := internal.NodeOptions{
 		NodeExclude:  []uint32{},
 		HasGPUs:      0,
 		GPUVendors:   []string{},
@@ -50,7 +50,10 @@ func findNode() (uint32, error) {
 		Dedicated:    false,
 		PublicConfig: false,
 		PublicIPs:    0,
-		Capacity:     models.Capacity{},
+		HRU:          0,
+		SRU:          0,
+		CRU:          0,
+		MRU:          0,
 	}
 	var output uint32
 	if err := client.CallWithSession(ctx, farmerbotTwinID, &service, "farmerbot.nodemanager.findnode", options, &output); err != nil {

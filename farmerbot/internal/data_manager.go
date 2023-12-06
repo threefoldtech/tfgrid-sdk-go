@@ -23,7 +23,7 @@ func (m *DataManager) Update(ctx context.Context, sub Sub) error {
 	var failedNodes []node
 	for _, node := range m.state.nodes {
 		// we ping nodes (the ones with claimed resources)
-		if node.TimeoutClaimedResources.Before(time.Now()) {
+		if node.timeoutClaimedResources.Before(time.Now()) {
 			err := m.rmbNodeClient.SystemVersion(ctx, uint32(node.TwinID))
 			if err != nil {
 				log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "data").Msg("Failed to get system version of node")
@@ -51,7 +51,7 @@ func (m *DataManager) Update(ctx context.Context, sub Sub) error {
 			continue
 		}
 
-		node.Pools = pools
+		node.pools = pools
 
 		subNode, err := sub.GetNode(uint32(node.ID))
 		if err != nil {
@@ -69,7 +69,7 @@ func (m *DataManager) Update(ctx context.Context, sub Sub) error {
 			continue
 		}
 
-		node.GPUs = gpus
+		node.gpus = gpus
 
 		rentContract, err := sub.GetNodeRentContract(uint32(node.ID))
 		if err != nil {
@@ -78,7 +78,7 @@ func (m *DataManager) Update(ctx context.Context, sub Sub) error {
 			continue
 		}
 
-		node.HasActiveRentContract = rentContract != 0
+		node.hasActiveRentContract = rentContract != 0
 
 		m.updatePowerState(node, true)
 	}
@@ -96,34 +96,34 @@ func (m *DataManager) updatePowerState(nodeObj node, updated bool) {
 		// No response from ZOS node: if the state is waking up we wait for either the node to come up or the
 		// timeout to hit. If the time out hits we change the state to off (AKA unsuccessful wakeup)
 		// If the state was not waking up the node is considered off
-		switch nodeObj.PowerState {
-		case WakingUP:
-			if time.Since(nodeObj.LastTimePowerStateChanged) < constants.TimeoutPowerStateChange {
+		switch nodeObj.powerState {
+		case wakingUP:
+			if time.Since(nodeObj.lastTimePowerStateChanged) < constants.TimeoutPowerStateChange {
 				log.Info().Uint32("node ID", uint32(nodeObj.ID)).Str("manager", "data").Msg("Node is waking up")
 				return
 			}
 			log.Error().Uint32("node ID", uint32(nodeObj.ID)).Str("manager", "data").Msg("Wakeup was unsuccessful. Putting its state back to off.")
-		case ShuttingDown:
+		case shuttingDown:
 			log.Info().Uint32("node ID", uint32(nodeObj.ID)).Str("manager", "data").Msg("Shutdown was successful.")
-		case ON:
+		case on:
 			log.Error().Uint32("node ID", uint32(nodeObj.ID)).Str("manager", "data").Msg("Node is not responding while we expect it to.")
-		case OFF:
+		case off:
 			log.Info().Uint32("node ID", uint32(nodeObj.ID)).Str("manager", "data").Msg("Node is OFF.")
 		}
 
-		if nodeObj.PowerState != OFF {
-			nodeObj.LastTimePowerStateChanged = time.Now()
+		if nodeObj.powerState != off {
+			nodeObj.lastTimePowerStateChanged = time.Now()
 		}
 
-		nodeObj.PowerState = OFF
+		nodeObj.powerState = off
 		return
 	}
 
 	// We got a response from ZOS: it is still online. If the power state is shutting down
 	// we check if the timeout has not exceeded yet. If it has we consider the attempt to shutting
 	// down the down a failure and set the power state back to on
-	if nodeObj.PowerState == ShuttingDown {
-		if time.Since(nodeObj.LastTimePowerStateChanged) < constants.TimeoutPowerStateChange {
+	if nodeObj.powerState == shuttingDown {
+		if time.Since(nodeObj.lastTimePowerStateChanged) < constants.TimeoutPowerStateChange {
 			log.Info().Uint32("node ID", uint32(nodeObj.ID)).Str("manager", "data").Msg("Node is shutting down.")
 			return
 		}
@@ -135,14 +135,14 @@ func (m *DataManager) updatePowerState(nodeObj node, updated bool) {
 	log.Debug().
 		Uint32("node ID", uint32(nodeObj.ID)).
 		Interface("resources", nodeObj.Resources).
-		Interface("pools", nodeObj.Pools).
-		Bool("has active rent contract", nodeObj.HasActiveRentContract).
+		Interface("pools", nodeObj.pools).
+		Bool("has active rent contract", nodeObj.hasActiveRentContract).
 		Msg("[DATA MANAGER] Capacity updated for node")
 
-	if nodeObj.PowerState != ON {
-		nodeObj.LastTimePowerStateChanged = time.Now()
+	if nodeObj.powerState != on {
+		nodeObj.lastTimePowerStateChanged = time.Now()
 	}
 
-	nodeObj.PowerState = ON
-	nodeObj.LastTimeAwake = time.Now()
+	nodeObj.powerState = on
+	nodeObj.lastTimeAwake = time.Now()
 }

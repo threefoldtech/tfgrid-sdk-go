@@ -1,7 +1,9 @@
 package internal
 
 import (
+	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -11,60 +13,67 @@ import (
 
 // Config is the inputs for configuration for farmerbot
 type Config struct {
-	FarmID        uint32   `json:"farm_id" yaml:"farm_id" toml:"farm_id"`
-	IncludedNodes []uint32 `json:"included_nodes" yaml:"included_nodes" toml:"included_nodes"`
-	ExcludedNodes []uint32 `json:"excluded_nodes" yaml:"excluded_nodes" toml:"excluded_nodes"`
-	Power         Power    `json:"power" yaml:"power" toml:"power"`
+	FarmID             uint32   `yaml:"farm_id"`
+	IncludedNodes      []uint32 `yaml:"included_nodes"`
+	ExcludedNodes      []uint32 `yaml:"excluded_nodes"`
+	NeverShutDownNodes []uint32 `yaml:"never_shutdown_nodes"`
+	Power              power    `yaml:"power"`
 }
 
-// Farm of the farmer
-type farm struct {
-	ID          uint32 `json:"id" yaml:"id" toml:"id"`
-	Description string `json:"description,omitempty" yaml:"description,omitempty" toml:"description,omitempty"`
-	PublicIPs   uint64 `json:"public_ips,omitempty" yaml:"public_ips,omitempty" toml:"public_ips,omitempty"`
-}
+type powerState uint8
+
+// TODO:
+const (
+	on = powerState(iota)
+	wakingUP
+	off
+	shuttingDown
+)
 
 // Node represents a node type
 type node struct {
 	substrate.Node
-	Dedicated bool `json:"dedicated,omitempty" yaml:"dedicated,omitempty" toml:"dedicated,omitempty"`
 
 	// data manager computes
-	Resources             ConsumableResources `json:"resources" yaml:"resources" toml:"resources"`
-	PublicIPsUsed         uint64              `json:"public_ips_used,omitempty" yaml:"public_ips_used,omitempty" toml:"public_ips_used,omitempty"`
-	Pools                 []pkg.PoolMetrics   `json:"pools,omitempty" yaml:"pools,omitempty" toml:"pools,omitempty"`
-	GPUs                  []gpu               `json:"gpus,omitempty" yaml:"gpus,omitempty" toml:"gpus,omitempty"`
-	HasActiveRentContract bool                `json:"has_active_rent_contract,omitempty" yaml:"has_active_rent_contract,omitempty" toml:"has_active_rent_contract,omitempty"`
+	resources             consumableResources
+	publicIPsUsed         uint64
+	pools                 []pkg.PoolMetrics
+	gpus                  []gpu
+	hasActiveRentContract bool
 
-	// TODO:
-	NeverShutDown bool `json:"never_shutdown,omitempty" yaml:"never_shutdown,omitempty" toml:"never_shutdown,omitempty"`
-
-	PowerState                PowerState `json:"power_state,omitempty" yaml:"power_state,omitempty" toml:"power_state,omitempty"`
-	TimeoutClaimedResources   time.Time  `json:"timeout_claimed_resources,omitempty" yaml:"timeout_claimed_resources,omitempty" toml:"timeout_claimed_resources,omitempty"`
-	LastTimePowerStateChanged time.Time  `json:"last_time_power_state_changed,omitempty" yaml:"last_time_power_state_changed,omitempty" toml:"last_time_power_state_changed,omitempty"`
-	LastTimeAwake             time.Time  `json:"last_time_awake,omitempty" yaml:"last_time_awake,omitempty" toml:"last_time_awake,omitempty"`
-	TimesRandomWakeUps        int        `json:"times_random_wake_ups,omitempty" yaml:"times_random_wake_ups,omitempty" toml:"times_random_wake_ups,omitempty"`
+	// TODO: check if we can update
+	dedicated     bool
+	neverShutDown bool
+	// TODO: update power state
+	powerState                powerState
+	timeoutClaimedResources   time.Time
+	lastTimePowerStateChanged time.Time
+	lastTimeAwake             time.Time
+	timesRandomWakeUps        int
 }
 
 // NodeOptions represents the options to find a node
-type nodeOptions struct {
-	NodeExclude  []uint32 `json:"node_exclude,omitempty" yaml:"node_exclude,omitempty" toml:"node_exclude,omitempty"`
-	HasGPUs      uint8    `json:"has_gpus,omitempty" yaml:"has_gpus,omitempty" toml:"has_gpus,omitempty"`
-	GPUVendors   []string `json:"gpu_vendors,omitempty" yaml:"gpu_vendors,omitempty" toml:"gpu_vendors,omitempty"`
-	GPUDevices   []string `json:"gpu_devices,omitempty" yaml:"gpu_devices,omitempty" toml:"gpu_devices,omitempty"`
-	Certified    bool     `json:"certified,omitempty" yaml:"certified,omitempty" toml:"certified,omitempty"`
-	Dedicated    bool     `json:"dedicated,omitempty" yaml:"dedicated,omitempty" toml:"dedicated,omitempty"`
-	PublicConfig bool     `json:"public_config,omitempty" yaml:"public_config,omitempty" toml:"public_config,omitempty"`
-	PublicIPs    uint64   `json:"public_ips,omitempty" yaml:"public_ips,omitempty" toml:"public_ips,omitempty"`
-	Capacity     capacity `json:"capacity,omitempty" yaml:"capacity,omitempty" toml:"capacity,omitempty"`
+type NodeOptions struct {
+	NodeExclude  []uint32 `json:"node_exclude,omitempty"`
+	HasGPUs      uint8    `json:"has_gpus,omitempty"`
+	GPUVendors   []string `json:"gpu_vendors,omitempty"`
+	GPUDevices   []string `json:"gpu_devices,omitempty"`
+	Certified    bool     `json:"certified,omitempty"`
+	Dedicated    bool     `json:"dedicated,omitempty"`
+	PublicConfig bool     `json:"public_config,omitempty"`
+	PublicIPs    uint64   `json:"public_ips,omitempty"`
+	HRU          uint64   `json:"hru,omitempty"`
+	SRU          uint64   `json:"sru,omitempty"`
+	CRU          uint64   `json:"cru,omitempty"`
+	MRU          uint64   `json:"mru,omitempty"`
 }
 
 // GPU information
 type gpu struct {
-	ID       string `json:"id" yaml:"id" toml:"id"`
-	Vendor   string `json:"vendor" yaml:"vendor" toml:"vendor"`
-	Device   string `json:"device" yaml:"device" toml:"device"`
-	Contract uint64 `json:"contract" yaml:"contract" toml:"contract"`
+	id       string
+	vendor   string
+	device   string
+	contract uint64
 }
 
 type zosResourcesStatistics struct {
@@ -78,78 +87,78 @@ type zosResourcesStatistics struct {
 
 // UpdateResources updates the node resources from zos resources stats
 func (n *node) updateResources(stats zosResourcesStatistics) {
-	n.Resources.Total.update(stats.Total)
-	n.Resources.Used.update(stats.Used)
-	n.Resources.System.update(stats.System)
-	n.PublicIPsUsed = stats.Used.IPV4U
+	n.resources.total.update(stats.Total)
+	n.resources.used.update(stats.Used)
+	n.resources.system.update(stats.System)
+	n.publicIPsUsed = stats.Used.IPV4U
 }
 
 // IsUnused node is an empty node
 func (n *node) isUnused() bool {
-	resources := n.Resources.Used.subtract(n.Resources.System)
-	return resources.isEmpty() && !n.HasActiveRentContract
+	resources := n.resources.used.subtract(n.resources.system)
+	return resources.isEmpty() && !n.hasActiveRentContract
 }
 
 // CanClaimResources checks if a node can claim some resources
 func (n *node) canClaimResources(cap capacity) bool {
 	free := n.freeCapacity()
-	return n.Resources.Total.CRU >= cap.CRU && free.CRU >= cap.CRU && free.MRU >= cap.MRU && free.HRU >= cap.HRU && free.SRU >= cap.SRU
+	return n.resources.total.cru >= cap.cru && free.cru >= cap.cru && free.mru >= cap.mru && free.hru >= cap.hru && free.sru >= cap.sru
 }
 
 // ClaimResources claims the resources from a node
 func (n *node) claimResources(c capacity) {
-	n.Resources.Used.add(c)
+	n.resources.used.add(c)
 }
 
 // FreeCapacity calculates the free capacity of a node
 func (n *node) freeCapacity() capacity {
-	total := n.Resources.Total
-	total.CRU = uint64(math.Ceil(float64(total.CRU) * float64(n.Resources.OverProvisionCPU)))
-	return total.subtract(n.Resources.Used)
+	total := n.resources.total
+	total.cru = uint64(math.Ceil(float64(total.cru) * float64(n.resources.overProvisionCPU)))
+	return total.subtract(n.resources.used)
 }
 
 // ConsumableResources for node resources
-type ConsumableResources struct {
-	OverProvisionCPU float32  `json:"overprovision_cpu,omitempty" yaml:"overprovision_cpu,omitempty" toml:"overprovision_cpu,omitempty"` // how much we allow over provisioning the CPU range: [1;3]
-	Total            capacity `json:"total" yaml:"total" toml:"total"`
-	Used             capacity `json:"used,omitempty" yaml:"used,omitempty" toml:"used,omitempty"`
-	System           capacity `json:"system,omitempty" yaml:"system,omitempty" toml:"system,omitempty"`
+type consumableResources struct {
+	overProvisionCPU float32
+	total            capacity
+	used             capacity
+	system           capacity
 }
 
 // Capacity is node resource capacity
 type capacity struct {
-	HRU uint64 `json:"HRU"`
-	SRU uint64 `json:"SRU"`
-	CRU uint64 `json:"CRU"`
-	MRU uint64 `json:"MRU"`
+	hru uint64
+	sru uint64
+	cru uint64
+	mru uint64
 }
 
 // IsEmpty checks empty capacity
 func (cap *capacity) isEmpty() bool {
-	return cap.CRU == 0 && cap.MRU == 0 && cap.SRU == 0 && cap.HRU == 0
+	return cap.cru == 0 && cap.mru == 0 && cap.sru == 0 && cap.hru == 0
 }
 
 func (cap *capacity) update(c gridtypes.Capacity) {
-	cap.CRU = c.CRU
-	cap.MRU = uint64(c.MRU)
-	cap.SRU = uint64(c.SRU)
-	cap.HRU = uint64(c.HRU)
+	cap.cru = c.CRU
+	cap.mru = uint64(c.MRU)
+	cap.sru = uint64(c.SRU)
+	cap.hru = uint64(c.HRU)
 }
 
 // Add adds a new for capacity
 func (cap *capacity) add(c capacity) {
-	cap.CRU += c.CRU
-	cap.MRU += c.MRU
-	cap.SRU += c.SRU
-	cap.HRU += c.HRU
+	cap.cru += c.cru
+	cap.mru += c.mru
+	cap.sru += c.sru
+	cap.hru += c.hru
 }
 
 // Subtract subtracts a new capacity
 func (cap *capacity) subtract(c capacity) (result capacity) {
-	result.CRU = subtract(cap.CRU, c.CRU)
-	result.MRU = subtract(cap.MRU, c.MRU)
-	result.SRU = subtract(cap.SRU, c.SRU)
-	result.HRU = subtract(cap.HRU, c.HRU)
+	result.cru = subtract(cap.cru, c.cru)
+	result.mru = subtract(cap.mru, c.mru)
+	result.sru = subtract(cap.sru, c.sru)
+	result.hru = subtract(cap.hru, c.hru)
 	return result
 }
 
@@ -158,4 +167,50 @@ func subtract(a uint64, b uint64) uint64 {
 		return a - b
 	}
 	return 0
+}
+
+// Power represents power configuration
+type power struct {
+	WakeUpThreshold     uint8      `yaml:"wake_up_threshold"`
+	PeriodicWakeUpStart wakeUpDate `yaml:"periodic_wake_up_start"`
+	PeriodicWakeUpLimit uint8      `yaml:"periodic_wake_up_limit"`
+	OverProvisionCPU    float32    `yaml:"overprovision_cpu,omitempty"`
+}
+
+// WakeUpDate is the date to wake up all nodes
+type wakeUpDate time.Time
+
+// UnmarshalYAML unmarshal the given yaml string into wakeUp date
+func (d *wakeUpDate) UnmarshalYAML(s string) error {
+	s = strings.Trim(s, "\"")
+	t, err := time.Parse("03:04PM", s)
+	if err != nil {
+		return err
+	}
+	*d = wakeUpDate(t)
+	return nil
+}
+
+// MarshalYAML marshals the wake up date
+func (d wakeUpDate) MarshalYAML() ([]byte, error) {
+	date := time.Time(d)
+
+	dayTime := "AM"
+	if date.Hour() >= 12 {
+		dayTime = "PM"
+		date = date.Add(time.Duration(-12) * time.Hour)
+	}
+
+	timeFormat := fmt.Sprintf("%02d:%02d%s", date.Hour(), date.Minute(), dayTime)
+	return []byte(timeFormat), nil
+}
+
+// PeriodicWakeUpTime returns periodic wake up date
+func (d wakeUpDate) PeriodicWakeUpTime() time.Time {
+	date := time.Time(d)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	return today.Local().Add(time.Hour*time.Duration(date.Hour()) +
+		time.Minute*time.Duration(date.Minute()) +
+		0)
 }

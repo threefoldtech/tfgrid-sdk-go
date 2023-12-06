@@ -29,21 +29,19 @@ type FarmerBot struct {
 
 // NewFarmerBot generates a new farmer bot
 func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed string) (FarmerBot, error) {
-	substrateManager := substrate.NewManager(constants.SubstrateURLs[network]...)
-
 	identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonicOrSeed)
 	if err != nil {
 		return FarmerBot{}, err
 	}
 
 	farmerbot := FarmerBot{
-		substrateManager: substrateManager,
+		substrateManager: substrate.NewManager(constants.SubstrateURLs[network]...),
 		network:          network,
 		mnemonicOrSeed:   mnemonicOrSeed,
 		identity:         identity,
 	}
 
-	subConn, err := substrateManager.Substrate()
+	subConn, err := farmerbot.substrateManager.Substrate()
 	if err != nil {
 		return FarmerBot{}, err
 	}
@@ -76,10 +74,6 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 	}
 
 	defer subConn.Close()
-
-	if err := f.start(ctx, subConn); err != nil {
-		return err
-	}
 
 	if err := f.serve(ctx, subConn); err != nil {
 		return err
@@ -156,7 +150,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 	})
 
 	nodeRouter.WithHandler("findnode", func(ctx context.Context, payload []byte) (interface{}, error) {
-		var options nodeOptions
+		var options NodeOptions
 
 		if err := json.Unmarshal(payload, &options); err != nil {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
