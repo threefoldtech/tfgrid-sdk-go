@@ -82,8 +82,8 @@ func (n *node) isUnused() bool {
 }
 
 // CanClaimResources checks if a node can claim some resources
-func (n *node) canClaimResources(cap capacity) bool {
-	free := n.freeCapacity()
+func (n *node) canClaimResources(cap capacity, overProvisionCPU float32) bool {
+	free := n.freeCapacity(overProvisionCPU)
 	return n.resources.total.cru >= cap.cru && free.cru >= cap.cru && free.mru >= cap.mru && free.hru >= cap.hru && free.sru >= cap.sru
 }
 
@@ -93,18 +93,17 @@ func (n *node) claimResources(c capacity) {
 }
 
 // FreeCapacity calculates the free capacity of a node
-func (n *node) freeCapacity() capacity {
+func (n *node) freeCapacity(overProvisionCPU float32) capacity {
 	total := n.resources.total
-	total.cru = uint64(math.Ceil(float64(total.cru) * float64(n.resources.overProvisionCPU)))
+	total.cru = uint64(math.Ceil(float64(total.cru) * float64(overProvisionCPU)))
 	return total.subtract(n.resources.used)
 }
 
 // ConsumableResources for node resources
 type consumableResources struct {
-	overProvisionCPU float32
-	total            capacity
-	used             capacity
-	system           capacity
+	total  capacity
+	used   capacity
+	system capacity
 }
 
 // Capacity is node resource capacity

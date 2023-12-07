@@ -22,14 +22,13 @@ type state struct {
 
 // NewState creates new state from configs
 func newState(ctx context.Context, sub Sub, rmbNodeClient RMB, inputs Config) (*state, error) {
-	overProvisionCPU := inputs.Power.OverProvisionCPU
 	// required from power for nodes
-	if overProvisionCPU == 0 {
-		overProvisionCPU = defaultCPUProvision
+	if inputs.Power.OverProvisionCPU == 0 {
+		inputs.Power.OverProvisionCPU = defaultCPUProvision
 	}
 
-	if overProvisionCPU < 1 || overProvisionCPU > 4 {
-		return nil, fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", overProvisionCPU)
+	if inputs.Power.OverProvisionCPU < 1 || inputs.Power.OverProvisionCPU > 4 {
+		return nil, fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", inputs.Power.OverProvisionCPU)
 	}
 
 	// set farm
@@ -77,7 +76,7 @@ func convertInputsToNodes(ctx context.Context, sub Sub, rmbNodeClient RMB, confi
 		if slices.Contains(config.IncludedNodes, nodeID) || len(config.IncludedNodes) == 0 {
 			neverShutDown := slices.Contains(config.NeverShutDownNodes, nodeID)
 
-			configNode, err := getNodeWithLatestChanges(ctx, sub, rmbNodeClient, nodeID, neverShutDown, false, dedicatedFarm, config.Power.OverProvisionCPU)
+			configNode, err := getNodeWithLatestChanges(ctx, sub, rmbNodeClient, nodeID, neverShutDown, false, dedicatedFarm)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to include node with id %d", nodeID)
 			}
@@ -96,7 +95,6 @@ func getNodeWithLatestChanges(
 	neverShutDown,
 	hasClaimedResources,
 	dedicatedFarm bool,
-	overProvisionCPU float32,
 ) (node, error) {
 
 	log.Debug().Uint32("ID", nodeID).Msg("Include node")
@@ -110,7 +108,6 @@ func getNodeWithLatestChanges(
 	}
 
 	configNode.neverShutDown = neverShutDown
-	configNode.resources.overProvisionCPU = overProvisionCPU
 
 	price, err := sub.GetDedicatedNodePrice(nodeID)
 	if err != nil {

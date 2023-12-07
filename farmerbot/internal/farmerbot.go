@@ -92,9 +92,8 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 				neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, uint32(node.ID))
 				hasClaimedResources := node.timeoutClaimedResources.After(time.Now())
 				dedicatedFarm := f.state.farm.DedicatedFarm
-				overProvisionCPU := f.state.config.Power.OverProvisionCPU
 
-				ltsNode, err := getNodeWithLatestChanges(ctx, subConn, f.rmbNodeClient, uint32(node.ID), neverShutDown, hasClaimedResources, dedicatedFarm, overProvisionCPU)
+				ltsNode, err := getNodeWithLatestChanges(ctx, subConn, f.rmbNodeClient, uint32(node.ID), neverShutDown, hasClaimedResources, dedicatedFarm)
 				if err != nil {
 					log.Error().Err(err).Uint32("node ID", uint32(ltsNode.ID)).Msg("Get latest updates for node failed")
 					if ltsNode.powerState == on {
@@ -205,7 +204,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		}
 
 		neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
-		node, err := getNodeWithLatestChanges(ctx, sub, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm, f.state.config.Power.OverProvisionCPU)
+		node, err := getNodeWithLatestChanges(ctx, sub, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to include node with id %d", nodeID)
 		}

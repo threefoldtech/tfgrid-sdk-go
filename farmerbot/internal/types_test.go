@@ -31,8 +31,7 @@ func TestNodeModel(t *testing.T) {
 	node := node{
 		Node: substrate.Node{ID: 1, TwinID: 1},
 		resources: consumableResources{
-			overProvisionCPU: 1,
-			total:            cap,
+			total: cap,
 		},
 		powerState: on,
 	}
@@ -53,13 +52,12 @@ func TestNodeModel(t *testing.T) {
 		node.updateResources(zosResources)
 		assert.True(t, node.resources.used.isEmpty())
 		assert.True(t, node.isUnused())
-		assert.Equal(t, node.resources.overProvisionCPU, float32(1))
-		assert.True(t, node.canClaimResources(node.resources.total))
+		assert.True(t, node.canClaimResources(node.resources.total, 1))
 
 		node.claimResources(node.resources.total)
 		assert.False(t, node.resources.used.isEmpty())
 		assert.False(t, node.isUnused())
-		assert.False(t, node.canClaimResources(node.resources.total))
+		assert.False(t, node.canClaimResources(node.resources.total, 1))
 
 		node.resources.used = capacity{}
 	})

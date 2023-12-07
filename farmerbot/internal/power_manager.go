@@ -170,7 +170,7 @@ func (p *PowerManager) FindNode(sub Sub, nodeOptions NodeOptions) (uint32, error
 			continue
 		}
 
-		if !node.canClaimResources(nodeOptionsCapacity) {
+		if !node.canClaimResources(nodeOptionsCapacity, p.state.config.Power.OverProvisionCPU) {
 			continue
 		}
 
