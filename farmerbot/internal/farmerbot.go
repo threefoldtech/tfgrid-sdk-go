@@ -100,19 +100,26 @@ func (f *FarmerBot) Run(ctx context.Context) error {
 					if ltsNode.powerState == on {
 						log.Error().Uint32("node ID", uint32(ltsNode.ID)).Msg("Node is not responding while we expect it to.")
 					}
+					continue
 				}
 
 				if ltsNode.powerState == wakingUP && time.Since(ltsNode.lastTimePowerStateChanged) > timeoutPowerStateChange {
-					log.Error().Uint32("node ID", uint32(ltsNode.ID)).Msg("Wakeup was unsuccessful. Putting its state back to off.")
+					log.Warn().Uint32("node ID", uint32(ltsNode.ID)).Msg("Wakeup was unsuccessful. Putting its state back to off.")
+					ltsNode.powerState = off
+					ltsNode.lastTimePowerStateChanged = time.Now()
 				}
 
 				if ltsNode.powerState == shuttingDown && time.Since(ltsNode.lastTimePowerStateChanged) > timeoutPowerStateChange {
-					log.Error().Uint32("node ID", uint32(ltsNode.ID)).Msg("Shutdown was unsuccessful. Putting its state back to on.")
+					log.Warn().Uint32("node ID", uint32(ltsNode.ID)).Msg("Shutdown was unsuccessful. Putting its state back to on.")
+					ltsNode.powerState = on
+					ltsNode.lastTimeAwake = time.Now()
+					ltsNode.lastTimePowerStateChanged = time.Now()
 				}
 
 				err = f.state.updateNode(node)
 				if err != nil {
 					log.Error().Err(err).Uint32("node ID", uint32(ltsNode.ID)).Msg("failed to update node")
+					continue
 				}
 
 				log.Debug().Uint32("node ID", uint32(ltsNode.ID)).Msg("Node is updated with latest changes successfully")

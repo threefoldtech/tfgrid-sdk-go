@@ -25,7 +25,7 @@ func powerOn() error {
 		peer.KeyTypeSr25519,
 		mnemonics,
 		"wss://relay.dev.grid.tf",
-		"test-power-on",
+		"test-include",
 		sub,
 		true,
 	)
@@ -33,7 +33,7 @@ func powerOn() error {
 		return fmt.Errorf("failed to create rpc client: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	farmID := 53 // <- replace this with the farm id of the farmerbot
