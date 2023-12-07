@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	zos "github.com/threefoldtech/zos/client"
 )
 
 // PowerManager manages the power of nodes
@@ -382,14 +383,14 @@ func (p *PowerManager) resourceUsageTooLow(sub Sub, usedResources, totalResource
 }
 
 // FilterIncludesSubStr filters a string slice according to if elements include a sub string
-func filterGPUs(gpus []gpu, vendorsOrDevices []string, device bool) (filtered []gpu) {
+func filterGPUs(gpus []zos.GPU, vendorsOrDevices []string, device bool) (filtered []zos.GPU) {
 	for _, gpu := range gpus {
 		for _, filter := range vendorsOrDevices {
-			if gpu.device == filter && device {
+			if gpu.Device == filter && device {
 				filtered = append(filtered, gpu)
 			}
 
-			if gpu.vendor == filter && !device {
+			if gpu.Vendor == filter && !device {
 				filtered = append(filtered, gpu)
 			}
 		}

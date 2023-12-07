@@ -56,4 +56,17 @@ power:
 		assert.Equal(t, c.Power.PeriodicWakeUpLimit, uint8(2))
 		assert.Equal(t, c.Power.OverProvisionCPU, float32(2))
 	})
+
+	t.Run("test invalid yaml: node is included and excluded", func(t *testing.T) {
+		content := `
+farm_id: 1
+included_nodes:
+  - 1
+  - 2
+excluded_nodes:
+  - 2`
+
+		_, err := ParseIntoConfig([]byte(content))
+		assert.Error(t, err)
+	})
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	zos "github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -37,7 +38,7 @@ type node struct {
 	resources             consumableResources
 	publicIPsUsed         uint64
 	pools                 []pkg.PoolMetrics
-	gpus                  []gpu
+	gpus                  []zos.GPU
 	hasActiveRentContract bool
 
 	// TODO: check if we can update
@@ -66,23 +67,8 @@ type NodeOptions struct {
 	MRU          uint64   `json:"mru,omitempty"`
 }
 
-// GPU information
-type gpu struct {
-	vendor string
-	device string
-}
-
-type zosResourcesStatistics struct {
-	// Total system capacity
-	Total gridtypes.Capacity `json:"total"`
-	// Used capacity this include user + system resources
-	Used gridtypes.Capacity `json:"used"`
-	// System resource reserved by zos
-	System gridtypes.Capacity `json:"system"`
-}
-
 // UpdateResources updates the node resources from zos resources stats
-func (n *node) updateResources(stats zosResourcesStatistics) {
+func (n *node) updateResources(stats zos.Counters) {
 	n.resources.total.update(stats.Total)
 	n.resources.used.update(stats.Used)
 	n.resources.system.update(stats.System)

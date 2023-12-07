@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	zos "github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -37,7 +38,7 @@ func TestNodeModel(t *testing.T) {
 	}
 
 	t.Run("test update node resources", func(t *testing.T) {
-		zosResources := zosResourcesStatistics{
+		zosResources := zos.Counters{
 			Total: gridtypes.Capacity{
 				CRU:   cap.cru,
 				SRU:   gridtypes.Unit(cap.sru),
