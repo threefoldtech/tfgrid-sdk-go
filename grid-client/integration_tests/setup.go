@@ -28,7 +28,9 @@ var (
 var nodeFilter = types.NodeFilter{
 	Status:  &statusUp,
 	FreeSRU: convertGBToBytes(10),
+	FreeHRU: convertGBToBytes(2),
 	FreeMRU: convertGBToBytes(2),
+	FarmIDs: []uint64{1},
 	Rented:  &falseVal,
 }
 

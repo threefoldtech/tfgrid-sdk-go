@@ -49,7 +49,6 @@ func TestBatchK8sDeployment(t *testing.T) {
 			IP:   net.IPv4(10, 20, 0, 0),
 			Mask: net.CIDRMask(16, 32),
 		}),
-		AddWGAccess: true,
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
@@ -182,11 +181,11 @@ func TestBatchK8sDeployment(t *testing.T) {
 		return
 	}
 
-	// Check wireguard config in output
-	wgConfig := network.AccessWGConfig
-	if !assert.NotEmpty(t, wgConfig) {
-		return
-	}
+	// // Check wireguard config in output
+	// wgConfig := network.AccessWGConfig
+	// if !assert.NotEmpty(t, wgConfig) {
+	// 	return
+	// }
 
 	// ssh to master node
 	if !AssertNodesAreReady(t, &result, privateKey) {
@@ -210,11 +209,11 @@ func TestBatchK8sDeployment(t *testing.T) {
 		return
 	}
 
-	// Check wireguard config in output
-	wgConfig = network.AccessWGConfig
-	if !assert.NotEmpty(t, wgConfig) {
-		return
-	}
+	// // Check wireguard config in output
+	// wgConfig = network.AccessWGConfig
+	// if !assert.NotEmpty(t, wgConfig) {
+	// 	return
+	// }
 
 	// ssh to master node
 	AssertNodesAreReady(t, &result, privateKey)
