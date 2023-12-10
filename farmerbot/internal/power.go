@@ -10,7 +10,7 @@ import (
 
 // PowerOn sets the node power state ON
 func (f *FarmerBot) powerOn(sub Sub, nodeID uint32) error {
-	log.Info().Uint32("node ID", nodeID).Str("manager", "power").Msg("POWER ON")
+	log.Info().Uint32("nodeID", nodeID).Msg("POWER ON")
 	f.m.Lock()
 	defer f.m.Unlock()
 
@@ -37,7 +37,7 @@ func (f *FarmerBot) powerOn(sub Sub, nodeID uint32) error {
 
 // PowerOff sets the node power state OFF
 func (f *FarmerBot) powerOff(sub Sub, nodeID uint32) error {
-	log.Info().Uint32("node ID", nodeID).Str("manager", "power").Msg("POWER OFF")
+	log.Info().Uint32("nodeID", nodeID).Msg("POWER OFF")
 	f.m.Lock()
 	defer f.m.Unlock()
 
@@ -60,6 +60,18 @@ func (f *FarmerBot) powerOff(sub Sub, nodeID uint32) error {
 
 	if node.timeoutClaimedResources.After(time.Now()) {
 		return errors.Errorf("cannot power off node, node has claimed resources")
+	}
+
+	if node.hasActiveRentContract {
+		return errors.Errorf("cannot power off node, node has a rent contract")
+	}
+
+	if !node.isUnused() {
+		return errors.Errorf("cannot power off node, node is used")
+	}
+
+	if time.Since(node.lastTimePowerStateChanged) < periodicWakeUpDuration {
+		return errors.Errorf("cannot power off node, node is still in its wakeup duration")
 	}
 
 	onNodes := f.filterNodesPower([]powerState{on})
@@ -90,11 +102,11 @@ func (f *FarmerBot) manageNodesPower(sub Sub) error {
 
 	resourceUsage := uint8(100 * usedResources / totalResources)
 	if resourceUsage >= f.config.Power.WakeUpThreshold {
-		log.Info().Uint8("resources usage", resourceUsage).Str("manager", "power").Msg("Too high resource usage")
+		log.Info().Uint8("resources usage", resourceUsage).Msg("Too high resource usage")
 		return f.resourceUsageTooHigh(sub)
 	}
 
-	log.Info().Uint8("resources usage", resourceUsage).Str("manager", "power").Msg("Too low resource usage")
+	log.Info().Uint8("resources usage", resourceUsage).Msg("Too low resource usage")
 	return f.resourceUsageTooLow(sub, usedResources, totalResources)
 }
 
@@ -122,7 +134,7 @@ func (f *FarmerBot) resourceUsageTooHigh(sub Sub) error {
 
 	if len(offNodes) > 0 {
 		node := offNodes[0]
-		log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Too much resource usage. Turning on node")
+		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Too much resource usage. Turning on node")
 		return f.powerOn(sub, uint32(node.ID))
 	}
 
@@ -159,10 +171,10 @@ func (f *FarmerBot) resourceUsageTooLow(sub Sub, usedResources, totalResources u
 			newResourceUsage := uint8(100 * newUsedResources / newTotalResources)
 			if newResourceUsage < f.config.Power.WakeUpThreshold {
 				// we need to keep the resource percentage lower then the threshold
-				log.Info().Uint32("node ID", uint32(node.ID)).Uint8("resources usage", newResourceUsage).Str("manager", "power").Msg("Resource usage too low. Turning off unused node")
+				log.Info().Uint32("nodeID", uint32(node.ID)).Uint8("resources usage", newResourceUsage).Msg("Resource usage too low. Turning off unused node")
 				err := f.powerOff(sub, uint32(node.ID))
 				if err != nil {
-					log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Power off node")
+					log.Error().Err(err).Uint32("nodeID", uint32(node.ID)).Msg("Power off node")
 					nodesLeftOnline += 1
 					newUsedResources += node.resources.used.hru + node.resources.used.sru +
 						node.resources.used.mru + node.resources.used.cru
@@ -172,7 +184,7 @@ func (f *FarmerBot) resourceUsageTooLow(sub Sub, usedResources, totalResources u
 			}
 		}
 	} else {
-		log.Debug().Str("manager", "power").Msg("Nothing to shutdown.")
+		log.Debug().Msg("Nothing to shutdown.")
 	}
 
 	return nil

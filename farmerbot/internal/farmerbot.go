@@ -224,13 +224,16 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 }
 
 func (f *FarmerBot) iterateOnNodes(ctx context.Context) error {
+	roundStart := time.Now()
+	var wakeUpCalls uint8
+
 	subConn, err := f.substrateManager.Substrate()
 	if err != nil {
 		return err
 	}
 	defer subConn.Close()
 
-	log.Debug().Msg("fetch nodes")
+	log.Debug().Msg("Fetch nodes")
 	farmNodes, err := subConn.GetNodes(uint32(f.state.farm.ID))
 	if err != nil {
 		return err
@@ -248,45 +251,36 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context) error {
 			continue
 		}
 
-		// TODO:
-		var node node
-
 		// if the user specified included nodes or
 		// no nodes are specified so all nodes will be added (except excluded)
-		if slices.Contains(f.state.config.IncludedNodes, nodeID) || len(f.state.config.IncludedNodes) == 0 {
-			neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
-
-			oldNode, nodeExists := f.state.nodes[nodeID]
-			if nodeExists {
-				node, err = f.updateNodeWithLatestState(ctx, nodeID, oldNode, neverShutDown)
-				if err != nil {
-					log.Error().Err(err).Uint32("node ID", uint32(nodeID)).Msg("Failed to update node")
-					continue
-				}
-
-				log.Debug().Uint32("node ID", uint32(nodeID)).Msg("Node is updated with latest changes successfully")
-				continue
-			}
-
-			// if node doesn't exist
-			node, err = getNode(ctx, subConn, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm, on)
-			if err != nil {
-				if node.powerState == on {
-					log.Error().Err(err).Uint32("node ID", uint32(nodeID)).Msg("Node is not responding while we expect it to")
-				}
-				log.Error().Err(err).Uint32("node ID", uint32(nodeID)).Msg("Failed to get node")
-				continue
-			}
-
-			f.state.addNode(node)
-			log.Debug().Uint32("node ID", uint32(node.ID)).Msg("Node is added with latest changes successfully")
+		if !slices.Contains(f.state.config.IncludedNodes, nodeID) && len(f.state.config.IncludedNodes) > 0 {
+			continue
 		}
-	}
 
-	log.Debug().Msg("periodic wake up")
-	err = f.periodicWakeUp(subConn)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to perform periodic wake up")
+		log.Debug().Uint32("nodeID", nodeID).Msg("Add/update node")
+		node, err := f.addOrUpdateNode(ctx, subConn, nodeID)
+		if err != nil {
+			log.Error().Err(err).Send()
+			continue
+		}
+
+		if roundStart.Day() == 1 && roundStart.Hour() == 1 && roundStart.Minute() < int(timeoutUpdate.Minutes()) {
+			log.Debug().Uint32("nodeID", nodeID).Msg("Reset random wake-up times the first day of the month")
+			node.timesRandomWakeUps = 0
+		}
+
+		log.Debug().Uint32("nodeID", nodeID).Msg("Periodic wake-up")
+		if f.shouldWakeUp(subConn, node, roundStart) && wakeUpCalls < defaultPeriodicWakeUPLimit {
+			log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Power on node")
+			err := f.powerOn(subConn, uint32(node.ID))
+			if err != nil {
+				log.Error().Err(err).Uint32("nodeID", uint32(node.ID)).Msg("failed to power on node")
+				continue
+			}
+
+			wakeUpCalls++
+		}
+
 	}
 
 	log.Debug().Msg("power management")
@@ -296,6 +290,37 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Sub, nodeID uint32) (node, error) {
+	neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
+
+	oldNode, nodeExists := f.state.nodes[nodeID]
+	if nodeExists {
+		nodeObj, err := f.updateNodeWithLatestState(ctx, nodeID, oldNode, neverShutDown)
+		if err != nil {
+			log.Error().Err(err).Uint32("nodeID", uint32(nodeID)).Msg("Failed to update node")
+			return node{}, fmt.Errorf("failed to update node %d: %w", nodeID, err)
+
+		}
+
+		log.Debug().Uint32("nodeID", uint32(nodeID)).Msg("Node is updated with latest changes successfully")
+		return nodeObj, nil
+	}
+
+	// if node doesn't exist, we should add it
+	nodeObj, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm, on)
+	if err != nil {
+		if nodeObj.powerState == on {
+			return node{}, fmt.Errorf("node %d is not responding while we expect it to: %w", nodeID, err)
+		}
+		log.Error().Err(err).Uint32("nodeID", uint32(nodeID)).Msg("Failed to get node")
+		return node{}, fmt.Errorf("failed to get node %d: %w", nodeID, err)
+	}
+
+	f.state.addNode(nodeObj)
+	log.Debug().Uint32("nodeID", uint32(nodeID)).Msg("Node is added with latest changes successfully")
+	return nodeObj, nil
 }
 
 func (f *FarmerBot) updateNodeWithLatestState(ctx context.Context, nodeID uint32, oldNode node, neverShutDown bool) (node, error) {
@@ -312,7 +337,7 @@ func (f *FarmerBot) updateNodeWithLatestState(ctx context.Context, nodeID uint32
 		if nodeObj.powerState == on {
 			return node{}, fmt.Errorf("failed to get node %d, node is not responding while we expect it to", nodeID)
 		}
-		return node{}, fmt.Errorf("failed to get node %d", nodeID)
+		return node{}, fmt.Errorf("failed to get node %d %w", nodeID, err)
 	}
 
 	// get old node state
@@ -322,13 +347,13 @@ func (f *FarmerBot) updateNodeWithLatestState(ctx context.Context, nodeID uint32
 	nodeObj.timesRandomWakeUps = oldNode.timesRandomWakeUps
 
 	if nodeObj.powerState == wakingUP && time.Since(nodeObj.lastTimePowerStateChanged) > timeoutPowerStateChange {
-		log.Warn().Uint32("node ID", uint32(nodeObj.ID)).Msg("Wakeup was unsuccessful. Putting its state back to off.")
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Wakeup was unsuccessful. Putting its state back to off.")
 		nodeObj.powerState = off
 		nodeObj.lastTimePowerStateChanged = time.Now()
 	}
 
 	if nodeObj.powerState == shuttingDown && time.Since(nodeObj.lastTimePowerStateChanged) > timeoutPowerStateChange {
-		log.Warn().Uint32("node ID", uint32(nodeObj.ID)).Msg("Shutdown was unsuccessful. Putting its state back to on.")
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Shutdown was unsuccessful. Putting its state back to on.")
 		nodeObj.powerState = on
 		nodeObj.lastTimeAwake = time.Now()
 		nodeObj.lastTimePowerStateChanged = time.Now()
@@ -342,66 +367,38 @@ func (f *FarmerBot) updateNodeWithLatestState(ctx context.Context, nodeID uint32
 	return nodeObj, nil
 }
 
-// PeriodicWakeUp for waking up nodes daily
-func (f *FarmerBot) periodicWakeUp(sub Sub) error {
-	now := time.Now()
-
-	offNodes := f.filterNodesPower([]powerState{off})
+func (f *FarmerBot) shouldWakeUp(sub Sub, node node, roundStart time.Time) bool {
+	if node.powerState != off {
+		return false
+	}
 
 	periodicWakeUpStart := f.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()
 
-	var wakeUpCalls uint8
-	nodesLen := len(f.nodes)
-
-	for _, node := range offNodes {
-		// TODO: why??
-		if now.Day() == 1 && now.Hour() == 1 && now.Minute() >= 0 && now.Minute() < 5 {
-			node.timesRandomWakeUps = 0
-		}
-
-		if periodicWakeUpStart.Before(now) && node.lastTimeAwake.Before(periodicWakeUpStart) {
-			// Fixed periodic wake up (once a day)
-			// we wake up the node if the periodic wake up start time has started and only if the last time the node was awake
-			// was before the periodic wake up start of that day
-			log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Periodic wake up")
-			err := f.powerOn(sub, uint32(node.ID))
-			if err != nil {
-				log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("failed to wake up")
-				continue
-			}
-
-			wakeUpCalls += 1
-			if wakeUpCalls >= f.config.Power.PeriodicWakeUpLimit {
-				// reboot X nodes at a time others will be rebooted 5 min later
-				break
-			}
-		} else if node.timesRandomWakeUps < defaultRandomWakeUpsAMonth &&
-			int(rand.Int31())%((8460-(defaultRandomWakeUpsAMonth*6)-
-				(defaultRandomWakeUpsAMonth*(nodesLen-1))/int(math.Min(float64(f.config.Power.PeriodicWakeUpLimit), float64(nodesLen))))/
-				defaultRandomWakeUpsAMonth) == 0 {
-			// TODO:
-			// Random periodic wake up (10 times a month on average if the node is almost always down)
-			// we execute this code every 5 minutes => 288 times a day => 8640 times a month on average (30 days)
-			// but we have 30 minutes of periodic wake up every day (6 times we do not go through this code) => so 282 times a day => 8460 times a month on average (30 days)
-			// as we do a random wake up 10 times a month we know the node will be on for 30 minutes 10 times a month so we can subtract 6 times the amount of random wake ups a month
-			// we also do not go through the code if we have woken up too many nodes at once => subtract (10 * (n-1))/min(periodic_wake up_limit, amount_of_nodes) from 8460
-			// now we can divide that by 10 and randomly generate a number in that range, if it's 0 we do the random wake up
-			log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Random wake up")
-			err := f.powerOn(sub, uint32(node.ID))
-			if err != nil {
-				log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("failed to wake up")
-				continue
-			}
-
-			wakeUpCalls += 1
-			if wakeUpCalls >= f.config.Power.PeriodicWakeUpLimit {
-				// reboot X nodes at a time others will be rebooted 5 min later
-				break
-			}
-		}
+	if periodicWakeUpStart.Before(roundStart) && node.lastTimeAwake.Before(periodicWakeUpStart) {
+		// we wake up the node if the periodic wake up start time has started and only if the last time the node was awake
+		// was before the periodic wake up start of that day
+		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Periodic wake up")
+		return true
 	}
 
-	return nil
+	nodesLen := len(f.nodes)
+
+	// TODO:
+	if node.timesRandomWakeUps < defaultRandomWakeUpsAMonth &&
+		int(rand.Int31())%((8460-(defaultRandomWakeUpsAMonth*6)-
+			(defaultRandomWakeUpsAMonth*(nodesLen-1))/int(math.Min(float64(f.config.Power.PeriodicWakeUpLimit), float64(nodesLen))))/
+			defaultRandomWakeUpsAMonth) == 0 {
+		// Random periodic wake up (10 times a month on average if the node is almost always down)
+		// we execute this code every 5 minutes => 288 times a day => 8640 times a month on average (30 days)
+		// but we have 30 minutes of periodic wake up every day (6 times we do not go through this code) => so 282 times a day => 8460 times a month on average (30 days)
+		// as we do a random wake up 10 times a month we know the node will be on for 30 minutes 10 times a month so we can subtract 6 times the amount of random wake ups a month
+		// we also do not go through the code if we have woken up too many nodes at once => subtract (10 * (n-1))/min(periodic_wake up_limit, amount_of_nodes) from 8460
+		// now we can divide that by 10 and randomly generate a number in that range, if it's 0 we do the random wake up
+		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Random wake up")
+		return true
+	}
+
+	return false
 }
 
 func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate) error {

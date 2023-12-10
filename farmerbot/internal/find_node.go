@@ -12,7 +12,7 @@ import (
 
 // FindNode finds an available node in the farm
 func (f *FarmerBot) findNode(sub Sub, nodeOptions NodeOptions) (uint32, error) {
-	log.Info().Str("manager", "node").Msg("Finding a node")
+	log.Info().Msg("Finding a node")
 
 	nodeOptionsCapacity := capacity{
 		hru: nodeOptions.HRU,
@@ -99,7 +99,7 @@ func (f *FarmerBot) findNode(sub Sub, nodeOptions NodeOptions) (uint32, error) {
 	})
 
 	nodeFound := possibleNodes[0]
-	log.Debug().Str("manager", "node").Uint32("node ID", uint32(nodeFound.ID)).Msg("Found a node")
+	log.Debug().Uint32("nodeID", uint32(nodeFound.ID)).Msg("Found a node")
 
 	// claim the resources until next update of the data
 	// add a timeout (after 30 minutes we update the resources)
