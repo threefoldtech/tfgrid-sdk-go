@@ -124,3 +124,13 @@ spelling:
 staticcheck:
 	@echo "Running $@"
 	@$(shell go env GOPATH)/bin/staticcheck -- ./...
+
+bench:
+	@cd tests/queries/ &&\
+	go test -v -bench Bench -run notests -count 5\
+		--seed 13 \
+		--postgres-host $(PQ_HOST) \
+		--postgres-db tfgrid-graphql \
+		--postgres-password postgres \
+		--postgres-user postgres \
+		--endpoint http://localhost:8080

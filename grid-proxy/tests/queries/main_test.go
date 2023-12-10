@@ -12,6 +12,8 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
+	proxyDB "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
@@ -30,6 +32,7 @@ var (
 	mockClient      proxyclient.Client
 	data            mock.DBData
 	gridProxyClient proxyclient.Client
+	DBClient        db.Database
 )
 
 func parseCmdline() {
@@ -59,6 +62,10 @@ func TestMain(m *testing.M) {
 	defer db.Close()
 
 	data, err = mock.Load(db)
+	if err != nil {
+		panic(err)
+	}
+	DBClient, err = proxyDB.NewPostgresDatabase(POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB, 80)
 	if err != nil {
 		panic(err)
 	}
