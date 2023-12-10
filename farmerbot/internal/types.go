@@ -33,17 +33,14 @@ const (
 // Node represents a node type
 type node struct {
 	substrate.Node
-
-	// data manager computes
 	resources             consumableResources
 	publicIPsUsed         uint64
 	pools                 []pkg.PoolMetrics
 	gpus                  []zos.GPU
 	hasActiveRentContract bool
+	dedicated             bool
+	neverShutDown         bool
 
-	// TODO: check if we can update
-	dedicated                 bool
-	neverShutDown             bool
 	powerState                powerState
 	timeoutClaimedResources   time.Time
 	lastTimePowerStateChanged time.Time

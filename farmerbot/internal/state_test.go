@@ -1,317 +1,302 @@
 package internal
 
-// TODO:
-// import (
-// 	"errors"
-// 	"testing"
-// 	"time"
+import (
+	"context"
+	"slices"
+	"testing"
+	"time"
 
-// 	"github.com/golang/mock/gomock"
-// 	"github.com/stretchr/testify/assert"
-// 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-// 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/constants"
-// 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
-// )
+	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
+	zos "github.com/threefoldtech/zos/client"
+	"github.com/threefoldtech/zos/pkg"
+	"github.com/threefoldtech/zos/pkg/gridtypes"
+)
 
-// func TestSetConfig(t *testing.T) {
-// 	ctrl := gomock.NewController(t)
-// 	defer ctrl.Finish()
-// 	sub := mocks.NewMockSub(ctrl)
+func mockRMBAndSubstrateCalls(
+	ctx context.Context, sub *mocks.MockSub, rmb *mocks.MockRMB,
+	farmID uint32, nodes []uint32,
+	resources gridtypes.Capacity, errs []string, emptyNode, emptyTwin bool,
+) {
+	farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, powerErr, statsErr, poolsErr, gpusErr := mocksErr(errs)
 
-// 	inputs := InputConfig{
-// 		FarmID:        1,
-// 		IncludedNodes: []uint32{1, 2},
-// 		Power:         Power{WakeUpThreshold: 30},
-// 	}
+	// farm calls
+	sub.EXPECT().GetFarm(farmID).Return(&substrate.Farm{ID: 1, DedicatedFarm: true}, farmErr)
+	if farmErr != nil {
+		return
+	}
+	sub.EXPECT().GetNodes(farmID).Return(nodes, nodesErr)
+	if nodesErr != nil {
+		return
+	}
 
-// 	t.Run("test valid json: no periodic wake up start, wakeup threshold (< min => min)", func(t *testing.T) {
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1, DedicatedFarm: true}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1, TwinID: 1, Resources: substrate.Resources{
-// 			HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
-// 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2, Resources: substrate.Resources{
-// 			HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+	// node calls
+	for _, nodeID := range nodes {
+		nodeIDVal := types.U32(nodeID)
+		if emptyNode {
+			nodeIDVal = 0
+		}
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, uint32(c.Farm.ID), uint32(1))
-// 		assert.Equal(t, c.Nodes[0].Resources.OverProvisionCPU, DefaultCPUProvision)
-// 		assert.True(t, c.Nodes[0].Dedicated)
-// 		assert.True(t, c.Nodes[1].Dedicated)
-// 		assert.Equal(t, uint32(c.Nodes[0].ID), uint32(1))
-// 		assert.Equal(t, uint32(c.Nodes[1].ID), uint32(2))
-// 		assert.Equal(t, c.Power.WakeUpThreshold, MinWakeUpThreshold)
+		twinIDVal := types.U32(nodeID)
+		if emptyTwin {
+			twinIDVal = 0
+		}
 
-// 		now := time.Now()
-// 		assert.Equal(t, c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour(), now.Hour())
-// 		assert.Equal(t, c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute(), now.Minute())
-// 		assert.Equal(t, c.Power.PeriodicWakeUpLimit, DefaultPeriodicWakeUPLimit)
-// 	})
+		sub.EXPECT().GetNode(nodeID).Return(&substrate.Node{ID: nodeIDVal, TwinID: twinIDVal}, nodeErr)
+		if nodeErr != nil {
+			return
+		}
 
-// 	t.Run("test valid json: wake up threshold (> max => max)", func(t *testing.T) {
-// 		inputs.Power.WakeUpThreshold = 100
+		sub.EXPECT().GetDedicatedNodePrice(nodeID).Return(uint64(0), dedicatedErr)
+		if dedicatedErr != nil {
+			return
+		}
 
-// 		// configs mocks
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1, TwinID: 1, Resources: substrate.Resources{
-// 			HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
-// 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2, Resources: substrate.Resources{
-// 			HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+		sub.EXPECT().GetNodeRentContract(nodeID).Return(uint64(0), rentErr)
+		if rentErr != nil {
+			return
+		}
 
-// 		c := Config{Farm: substrate.Farm{ID: 1, DedicatedFarm: true}}
-// 		err := c.Set(sub, inputs)
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, c.Power.WakeUpThreshold, MaxWakeUpThreshold)
-// 	})
+		sub.EXPECT().GetPowerTarget(nodeID).Return(substrate.NodePower{
+			State: substrate.PowerState{
+				IsUp: true,
+			},
+			Target: substrate.Power{
+				IsUp: true,
+			},
+		}, powerErr)
+		if powerErr != nil {
+			return
+		}
 
-// 	t.Run("test valid json: wake up threshold (is 0 => default)", func(t *testing.T) {
-// 		inputs.Power.WakeUpThreshold = 0
+		rmb.EXPECT().Statistics(ctx, nodeID).Return(zos.Counters{Total: resources}, statsErr)
+		if statsErr != nil {
+			return
+		}
 
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1, DedicatedFarm: true}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1, TwinID: 1, Resources: substrate.Resources{
-// 			HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
-// 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2, Resources: substrate.Resources{
-// 			HRU: 1, SRU: 1, CRU: 1, MRU: 1}}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+		rmb.EXPECT().GetStoragePools(ctx, nodeID).Return([]pkg.PoolMetrics{}, poolsErr)
+		if poolsErr != nil {
+			return
+		}
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, c.Power.WakeUpThreshold, DefaultWakeUpThreshold)
-// 	})
+		rmb.EXPECT().ListGPUs(ctx, nodeID).Return([]zos.GPU{}, gpusErr)
+		if gpusErr != nil {
+			return
+		}
+	}
+}
 
-// 	t.Run("test invalid json: cpu provision out of range", func(t *testing.T) {
-// 		inputs.Power.OverProvisionCPU = 6
+func TestSetConfig(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	sub := mocks.NewMockSub(ctrl)
+	rmb := mocks.NewMockRMB(ctrl)
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
+	ctx := context.Background()
 
-// 		inputs.Power.OverProvisionCPU = 0
-// 	})
+	inputs := Config{
+		FarmID:        1,
+		IncludedNodes: []uint32{1, 2},
+		Power:         power{WakeUpThreshold: 30},
+	}
 
-// 	t.Run("test invalid json: failed to get farm", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, errors.New("error"))
+	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
+	t.Run("test valid state: no periodic wake up start, wakeup threshold (< min => min)", func(t *testing.T) {
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
 
-// 	t.Run("test invalid json: failed to get nodes", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, errors.New("error"))
+		state, err := newState(ctx, sub, rmb, inputs)
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(state.farm.ID), uint32(1))
+		assert.True(t, state.nodes[1].dedicated)
+		assert.True(t, state.nodes[2].dedicated)
+		assert.Equal(t, uint32(state.nodes[1].ID), uint32(1))
+		assert.Equal(t, uint32(state.nodes[2].ID), uint32(2))
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
+		now := time.Now()
+		assert.Equal(t, state.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour(), now.Hour())
+		assert.Equal(t, state.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute(), now.Minute())
+		assert.Equal(t, state.config.Power.PeriodicWakeUpLimit, defaultPeriodicWakeUPLimit)
+		assert.Equal(t, state.config.Power.OverProvisionCPU, defaultCPUProvision)
+		assert.Equal(t, state.config.Power.WakeUpThreshold, minWakeUpThreshold)
+	})
 
-// 	t.Run("test invalid json: failed to get node", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{}, errors.New("error"))
+	t.Run("test valid state: wake up threshold (> max => max)", func(t *testing.T) {
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
+		inputs.Power.WakeUpThreshold = 100
 
-// 	t.Run("test invalid json: failed to get dedicated price", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), errors.New("error"))
+		state, err := newState(ctx, sub, rmb, inputs)
+		assert.NoError(t, err)
+		assert.Equal(t, state.config.Power.WakeUpThreshold, MaxWakeUpThreshold)
+	})
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
+	t.Run("test valid state: wake up threshold (is 0 => default)", func(t *testing.T) {
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
 
-// 	t.Run("test invalid json < 2 nodes are provided", func(t *testing.T) {
-// 		inputs.ExcludedNodes = append(inputs.ExcludedNodes, 2)
+		inputs.Power.WakeUpThreshold = 0
 
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
+		state, err := newState(ctx, sub, rmb, inputs)
+		assert.NoError(t, err)
+		assert.Equal(t, state.config.Power.WakeUpThreshold, defaultWakeUpThreshold)
+	})
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
+	t.Run("test invalid state: cpu provision out of range", func(t *testing.T) {
+		inputs.Power.OverProvisionCPU = 6
 
-// 		inputs.ExcludedNodes = []uint32{}
-// 	})
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.Error(t, err)
 
-// 	t.Run("test invalid json no node ID", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 0}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
-// 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+		inputs.Power.OverProvisionCPU = 0
+	})
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
+	t.Run("test invalid state: failed substrate and rmb calls", func(t *testing.T) {
+		calls := []string{"farm", "nodes", "node", "dedicated", "rent", "power", "stats", "pools", "gpus"}
 
-// 	t.Run("test invalid json no node twin ID", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
-// 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+		for _, call := range calls {
+			mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{call}, false, false)
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
+			_, err := newState(ctx, sub, rmb, inputs)
+			assert.Error(t, err)
+		}
+	})
 
-// 	t.Run("test invalid json no node sru", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1, TwinID: 1, Resources: substrate.Resources{
-// 			HRU: 1, SRU: 0, CRU: 1, MRU: 1}}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
-// 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+	t.Run("test invalid state < 2 nodes are provided", func(t *testing.T) {
+		inputs.ExcludedNodes = append(inputs.ExcludedNodes, 2)
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, []uint32{1}, resources, []string{}, false, false)
 
-// 	t.Run("test invalid json no cru", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1, TwinID: 1, Resources: substrate.Resources{
-// 			HRU: 1, SRU: 1, CRU: 0, MRU: 1}}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
-// 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.Error(t, err)
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
+		inputs.ExcludedNodes = []uint32{}
+	})
 
-// 	t.Run("test invalid json no mru", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1, TwinID: 1, Resources: substrate.Resources{
-// 			HRU: 1, SRU: 1, CRU: 1, MRU: 0}}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
-// 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+	t.Run("test invalid state no farm ID", func(t *testing.T) {
+		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 0}, nil)
+		sub.EXPECT().GetNodes(inputs.FarmID).Return([]uint32{}, nil)
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.Error(t, err)
+	})
 
-// 	t.Run("test invalid json no hru", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1}, nil)
-// 		nodes := []uint32{1, 2}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
-// 		sub.EXPECT().GetNode(nodes[0]).Return(&substrate.Node{ID: 1, TwinID: 1, Resources: substrate.Resources{
-// 			HRU: 0, SRU: 1, CRU: 1, MRU: 1}}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[0]).Return(uint64(0), nil)
-// 		sub.EXPECT().GetNode(nodes[1]).Return(&substrate.Node{ID: 2, TwinID: 2}, nil)
-// 		sub.EXPECT().GetDedicatedNodePrice(nodes[1]).Return(uint64(0), nil)
+	t.Run("test invalid state no node ID", func(t *testing.T) {
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, true, false)
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.Error(t, err)
+	})
 
-// 	t.Run("test invalid json no farm ID", func(t *testing.T) {
-// 		// configs mocks
-// 		sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 0}, nil)
-// 		nodes := []uint32{}
-// 		sub.EXPECT().GetNodes(inputs.FarmID).Return(nodes, nil)
+	t.Run("test invalid state no node sru", func(t *testing.T) {
+		resources := gridtypes.Capacity{HRU: 1, SRU: 0, CRU: 1, MRU: 1}
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
 
-// 		var c Config
-// 		err := c.Set(sub, inputs)
-// 		assert.Error(t, err)
-// 	})
-// }
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.Error(t, err)
+	})
 
-// func TestConfigModel(t *testing.T) {
-// 	config := Config{
-// 		Nodes: []Node{{
-// 			Node: substrate.Node{ID: 1},
-// 		}, {
-// 			Node: substrate.Node{ID: 2},
-// 		}},
-// 	}
+	t.Run("test invalid state no cru", func(t *testing.T) {
+		resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 0, MRU: 1}
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
 
-// 	t.Run("test get node by ID", func(t *testing.T) {
-// 		node, err := config.GetNodeByNodeID(1)
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, node.ID, config.Nodes[0].ID)
-// 	})
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.Error(t, err)
+	})
 
-// 	t.Run("test get node by ID (not found)", func(t *testing.T) {
-// 		_, err := config.GetNodeByNodeID(10)
-// 		assert.Error(t, err)
-// 	})
+	t.Run("test invalid state no mru", func(t *testing.T) {
+		resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 0}
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
 
-// 	t.Run("test update node", func(t *testing.T) {
-// 		err := config.UpdateNode(Node{Node: substrate.Node{ID: 1, TwinID: 1}})
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, uint32(config.Nodes[0].TwinID), uint32(1))
-// 	})
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.Error(t, err)
+	})
 
-// 	t.Run("test update node (not found)", func(t *testing.T) {
-// 		err := config.UpdateNode(Node{Node: substrate.Node{ID: 10}})
-// 		assert.Error(t, err)
-// 	})
+	t.Run("test invalid state no hru", func(t *testing.T) {
+		resources := gridtypes.Capacity{HRU: 0, SRU: 1, CRU: 1, MRU: 1}
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
 
-// 	t.Run("test filter nodes (power state)", func(t *testing.T) {
-// 		nodes := config.FilterNodesPower([]PowerState{on})
-// 		assert.Equal(t, len(nodes), len(config.Nodes))
-// 	})
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.Error(t, err)
+	})
+}
 
-// 	t.Run("test filter nodes (power state)", func(t *testing.T) {
-// 		nodes := config.FilterNodesPower([]PowerState{shuttingDown})
-// 		assert.Empty(t, nodes)
-// 	})
+func TestStateModel(t *testing.T) {
+	state := state{
+		nodes: map[uint32]node{1: {
+			Node: substrate.Node{ID: 1},
+		}, 2: {
+			Node: substrate.Node{ID: 2},
+		}},
+	}
 
-// 	t.Run("test filter allowed nodes to shut down", func(t *testing.T) {
-// 		nodes := config.FilterAllowedNodesToShutDown()
-// 		assert.Equal(t, len(nodes), len(config.Nodes))
-// 	})
-// }
+	t.Run("test update node", func(t *testing.T) {
+		err := state.updateNode(node{Node: substrate.Node{ID: 1, TwinID: 1}})
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(state.nodes[1].TwinID), uint32(1))
+	})
+
+	t.Run("test update node (not found)", func(t *testing.T) {
+		err := state.updateNode(node{Node: substrate.Node{ID: 10}})
+		assert.Error(t, err)
+	})
+
+	t.Run("test filter nodes (power state)", func(t *testing.T) {
+		nodes := state.filterNodesPower([]powerState{on})
+		assert.Equal(t, len(nodes), len(state.nodes))
+	})
+
+	t.Run("test filter nodes (power state)", func(t *testing.T) {
+		nodes := state.filterNodesPower([]powerState{shuttingDown})
+		assert.Empty(t, nodes)
+	})
+
+	t.Run("test filter allowed nodes to shut down", func(t *testing.T) {
+		nodes := state.filterAllowedNodesToShutDown()
+		assert.Equal(t, len(nodes), len(state.nodes))
+	})
+}
+
+func mocksErr(errs []string) (farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, powerErr, statsErr, poolsErr, gpusErr error) {
+	// errors
+	if slices.Contains(errs, "farm") {
+		farmErr = errors.Errorf("error")
+	}
+
+	if slices.Contains(errs, "nodes") {
+		nodesErr = errors.Errorf("error")
+	}
+
+	if slices.Contains(errs, "node") {
+		nodeErr = errors.Errorf("error")
+	}
+
+	if slices.Contains(errs, "dedicated") {
+		dedicatedErr = errors.Errorf("error")
+	}
+
+	if slices.Contains(errs, "rent") {
+		rentErr = errors.Errorf("error")
+	}
+
+	if slices.Contains(errs, "power") {
+		powerErr = errors.Errorf("error")
+	}
+
+	if slices.Contains(errs, "stats") {
+		statsErr = errors.Errorf("error")
+	}
+
+	if slices.Contains(errs, "pools") {
+		poolsErr = errors.Errorf("error")
+	}
+
+	if slices.Contains(errs, "gpus") {
+		gpusErr = errors.Errorf("error")
+	}
+
+	return
+}

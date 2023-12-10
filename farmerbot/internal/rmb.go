@@ -11,7 +11,6 @@ import (
 
 // RMB is an rmb abstract client interface.
 type RMB interface {
-	SystemVersion(ctx context.Context, nodeTwin uint32) error
 	Statistics(ctx context.Context, nodeTwin uint32) (stats zos.Counters, err error)
 	GetStoragePools(ctx context.Context, nodeTwin uint32) (pools []pkg.PoolMetrics, err error)
 	ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []zos.GPU, err error)
@@ -27,15 +26,6 @@ func NewRmbNodeClient(rmb rmb.Client) *RMBNodeClient {
 		rmb:        rmb,
 		rmbTimeout: timeoutRMBResponse,
 	}
-}
-
-// SystemVersion executes zos system version cmd
-func (n *RMBNodeClient) SystemVersion(ctx context.Context, nodeTwin uint32) error {
-	ctx, cancel := context.WithTimeout(ctx, n.rmbTimeout)
-	defer cancel()
-
-	const cmd = "zos.system.version"
-	return n.rmb.Call(ctx, nodeTwin, cmd, nil, nil)
 }
 
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...

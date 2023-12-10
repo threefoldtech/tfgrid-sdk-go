@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"math/rand"
 	"slices"
 	"time"
 
@@ -18,9 +19,8 @@ import (
 
 // FarmerBot for managing farms
 type FarmerBot struct {
-	state            *state
+	*state
 	substrateManager substrate.Manager
-	powerManager     *PowerManager
 	rmbNodeClient    RMB
 	network          string
 	mnemonicOrSeed   string
@@ -59,99 +59,32 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 	}
 	farmerbot.state = state
 
-	powerManager := NewPowerManager(identity, farmerbot.state)
-	farmerbot.powerManager = &powerManager
-
 	return farmerbot, nil
 }
 
 // Run runs farmerbot to update nodes and power management
 func (f *FarmerBot) Run(ctx context.Context) error {
-	subConn, err := f.substrateManager.Substrate()
-	if err != nil {
-		return err
-	}
-
-	defer subConn.Close()
-
-	if err := f.serve(ctx, subConn); err != nil {
+	if err := f.serve(ctx); err != nil {
 		return err
 	}
 
 	log.Info().Msg("up and running...")
 
 	for {
+		err := f.iterateOnNodes(ctx)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to iterate on nodes")
+		}
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
-			startTime := time.Now()
-
-			log.Debug().Msg("check nodes latest updates")
-			for _, node := range f.state.nodes {
-				neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, uint32(node.ID))
-				hasClaimedResources := node.timeoutClaimedResources.After(time.Now())
-				dedicatedFarm := f.state.farm.DedicatedFarm
-
-				ltsNode, err := getNodeWithLatestChanges(ctx, subConn, f.rmbNodeClient, uint32(node.ID), neverShutDown, hasClaimedResources, dedicatedFarm)
-				if err != nil {
-					log.Error().Err(err).Uint32("node ID", uint32(ltsNode.ID)).Msg("Get latest updates for node failed")
-					if ltsNode.powerState == on {
-						log.Error().Uint32("node ID", uint32(ltsNode.ID)).Msg("Node is not responding while we expect it to.")
-					}
-					continue
-				}
-
-				if ltsNode.powerState == wakingUP && time.Since(ltsNode.lastTimePowerStateChanged) > timeoutPowerStateChange {
-					log.Warn().Uint32("node ID", uint32(ltsNode.ID)).Msg("Wakeup was unsuccessful. Putting its state back to off.")
-					ltsNode.powerState = off
-					ltsNode.lastTimePowerStateChanged = time.Now()
-				}
-
-				if ltsNode.powerState == shuttingDown && time.Since(ltsNode.lastTimePowerStateChanged) > timeoutPowerStateChange {
-					log.Warn().Uint32("node ID", uint32(ltsNode.ID)).Msg("Shutdown was unsuccessful. Putting its state back to on.")
-					ltsNode.powerState = on
-					ltsNode.lastTimeAwake = time.Now()
-					ltsNode.lastTimePowerStateChanged = time.Now()
-				}
-
-				err = f.state.updateNode(node)
-				if err != nil {
-					log.Error().Err(err).Uint32("node ID", uint32(ltsNode.ID)).Msg("failed to update node")
-					continue
-				}
-
-				log.Debug().Uint32("node ID", uint32(ltsNode.ID)).Msg("Node is updated with latest changes successfully")
-			}
-
-			log.Debug().Msg("periodic wake up")
-			err = f.powerManager.PeriodicWakeUp(subConn)
-			if err != nil {
-				log.Error().Err(err).Msg("failed to perform periodic wake up")
-			}
-
-			log.Debug().Msg("power management")
-			err = f.powerManager.PowerManagement(subConn)
-			if err != nil {
-				log.Error().Err(err).Msg("failed to power management nodes")
-			}
-
-			delta := time.Since(startTime)
-			log.Debug().Float64("Elapsed time for updates in minutes", delta.Minutes())
-
-			// sleep if finished before the update timeout
-			var timeToSleep float64
-			if delta.Minutes() >= timeoutUpdate.Minutes() {
-				timeToSleep = 0
-			} else {
-				timeToSleep = timeoutUpdate.Minutes() - delta.Minutes()
-			}
-			time.Sleep(time.Duration(timeToSleep) * time.Minute)
+		case <-time.After(timeoutUpdate):
 		}
 	}
 }
 
-func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
+func (f *FarmerBot) serve(ctx context.Context) error {
 	router := peer.NewRouter()
 	farmerbot := router.SubRoute("farmerbot")
 
@@ -162,7 +95,14 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 	// TODO: didn't work
 	// powerRouter.Use(f.authorize)
 
-	farmerTwinID, err := sub.GetTwinByPubKey(f.identity.PublicKey())
+	subConn, err := f.substrateManager.Substrate()
+	if err != nil {
+		return err
+	}
+
+	defer subConn.Close()
+
+	farmerTwinID, err := subConn.GetTwinByPubKey(f.identity.PublicKey())
 	if err != nil {
 		return err
 	}
@@ -178,7 +118,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		nodeID, err := f.powerManager.FindNode(sub, options)
+		nodeID, err := f.findNode(subConn, options)
 		return nodeID, err
 	})
 
@@ -193,26 +133,23 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		_, ok := f.state.nodes[nodeID]
+		_, ok := f.nodes[nodeID]
 		if ok {
 			return nil, fmt.Errorf("node %d already exists", nodeID)
 		}
 
-		if slices.Contains(f.state.config.ExcludedNodes, nodeID) ||
-			len(f.state.config.ExcludedNodes) == 0 && !slices.Contains(f.state.config.IncludedNodes, nodeID) {
+		if slices.Contains(f.config.ExcludedNodes, nodeID) ||
+			len(f.config.ExcludedNodes) == 0 && !slices.Contains(f.config.IncludedNodes, nodeID) {
 			return nil, fmt.Errorf("node %d is excluded, cannot add it", nodeID)
 		}
 
-		neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
-		node, err := getNodeWithLatestChanges(ctx, sub, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm)
+		neverShutDown := slices.Contains(f.config.NeverShutDownNodes, nodeID)
+		node, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, neverShutDown, false, f.farm.DedicatedFarm, on)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to include node with id %d", nodeID)
 		}
 
-		f.state.m.Lock()
-		f.state.nodes[nodeID] = node
-		f.state.m.Unlock()
-
+		f.state.addNode(node)
 		return nil, nil
 	})
 
@@ -222,7 +159,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 			return nil, err
 		}
 
-		if err := f.validateAccountEnoughBalance(sub); err != nil {
+		if err := f.validateAccountEnoughBalance(subConn); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
@@ -231,17 +168,14 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		if err := f.powerManager.PowerOff(sub, nodeID); err != nil {
+		if err := f.powerOff(subConn, nodeID); err != nil {
 			return nil, fmt.Errorf("failed to power off node %d: %w", nodeID, err)
 		}
 
 		// Exclude node from farmerbot management
 		// (It is not allowed if we tried to power on a node the farmer decided to power off)
 		// the farmer should include it again if he wants to the bot to manage it
-		f.state.m.Lock()
-		delete(f.state.nodes, nodeID)
-		f.state.m.Unlock()
-
+		f.state.deleteNode(nodeID)
 		return nil, nil
 	})
 
@@ -251,7 +185,7 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 			return nil, err
 		}
 
-		if err := f.validateAccountEnoughBalance(sub); err != nil {
+		if err := f.validateAccountEnoughBalance(subConn); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
@@ -260,17 +194,14 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		if err := f.powerManager.PowerOn(sub, nodeID); err != nil {
+		if err := f.powerOn(subConn, nodeID); err != nil {
 			return nil, fmt.Errorf("failed to power on node %d: %w", nodeID, err)
 		}
 
 		// Exclude node from farmerbot management
 		// (It is not allowed if we tried to power off a node the farmer decided to power on)
 		// the farmer should include it again if he wants to the bot to manage it
-		f.state.m.Lock()
-		delete(f.state.nodes, nodeID)
-		f.state.m.Unlock()
-
+		f.state.deleteNode(nodeID)
 		return nil, nil
 	})
 
@@ -279,14 +210,195 @@ func (f *FarmerBot) serve(ctx context.Context, sub *substrate.Substrate) error {
 		peer.KeyTypeSr25519,
 		f.mnemonicOrSeed,
 		relayURLS[f.network],
-		fmt.Sprintf("farmerbot-%d", f.state.farm.ID),
-		sub,
+		fmt.Sprintf("farmerbot-%d", f.farm.ID),
+		subConn,
 		true,
 		router.Serve,
 	)
 
 	if err != nil {
 		return errors.Wrap(err, "failed to create farmerbot direct peer")
+	}
+
+	return nil
+}
+
+func (f *FarmerBot) iterateOnNodes(ctx context.Context) error {
+	subConn, err := f.substrateManager.Substrate()
+	if err != nil {
+		return err
+	}
+	defer subConn.Close()
+
+	log.Debug().Msg("fetch nodes")
+	farmNodes, err := subConn.GetNodes(uint32(f.state.farm.ID))
+	if err != nil {
+		return err
+	}
+
+	// remove nodes that doesn't exist anymore in the farm
+	for nodeID := range f.state.nodes {
+		if !slices.Contains(farmNodes, nodeID) {
+			f.state.deleteNode(nodeID)
+		}
+	}
+
+	for _, nodeID := range farmNodes {
+		if slices.Contains(f.state.config.ExcludedNodes, nodeID) {
+			continue
+		}
+
+		// TODO:
+		var node node
+
+		// if the user specified included nodes or
+		// no nodes are specified so all nodes will be added (except excluded)
+		if slices.Contains(f.state.config.IncludedNodes, nodeID) || len(f.state.config.IncludedNodes) == 0 {
+			neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
+
+			oldNode, nodeExists := f.state.nodes[nodeID]
+			if nodeExists {
+				node, err = f.updateNodeWithLatestState(ctx, nodeID, oldNode, neverShutDown)
+				if err != nil {
+					log.Error().Err(err).Uint32("node ID", uint32(nodeID)).Msg("Failed to update node")
+					continue
+				}
+
+				log.Debug().Uint32("node ID", uint32(nodeID)).Msg("Node is updated with latest changes successfully")
+				continue
+			}
+
+			// if node doesn't exist
+			node, err = getNode(ctx, subConn, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm, on)
+			if err != nil {
+				if node.powerState == on {
+					log.Error().Err(err).Uint32("node ID", uint32(nodeID)).Msg("Node is not responding while we expect it to")
+				}
+				log.Error().Err(err).Uint32("node ID", uint32(nodeID)).Msg("Failed to get node")
+				continue
+			}
+
+			f.state.addNode(node)
+			log.Debug().Uint32("node ID", uint32(node.ID)).Msg("Node is added with latest changes successfully")
+		}
+	}
+
+	log.Debug().Msg("periodic wake up")
+	err = f.periodicWakeUp(subConn)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to perform periodic wake up")
+	}
+
+	log.Debug().Msg("power management")
+	err = f.manageNodesPower(subConn)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to power management nodes")
+	}
+
+	return nil
+}
+
+func (f *FarmerBot) updateNodeWithLatestState(ctx context.Context, nodeID uint32, oldNode node, neverShutDown bool) (node, error) {
+	subConn, err := f.substrateManager.Substrate()
+	if err != nil {
+		return node{}, err
+	}
+	defer subConn.Close()
+
+	hasClaimedResources := f.state.nodes[nodeID].timeoutClaimedResources.After(time.Now())
+
+	nodeObj, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, neverShutDown, hasClaimedResources, f.state.farm.DedicatedFarm, oldNode.powerState)
+	if err != nil {
+		if nodeObj.powerState == on {
+			return node{}, fmt.Errorf("failed to get node %d, node is not responding while we expect it to", nodeID)
+		}
+		return node{}, fmt.Errorf("failed to get node %d", nodeID)
+	}
+
+	// get old node state
+	nodeObj.timeoutClaimedResources = oldNode.timeoutClaimedResources
+	nodeObj.lastTimePowerStateChanged = oldNode.lastTimePowerStateChanged
+	nodeObj.lastTimeAwake = oldNode.lastTimeAwake
+	nodeObj.timesRandomWakeUps = oldNode.timesRandomWakeUps
+
+	if nodeObj.powerState == wakingUP && time.Since(nodeObj.lastTimePowerStateChanged) > timeoutPowerStateChange {
+		log.Warn().Uint32("node ID", uint32(nodeObj.ID)).Msg("Wakeup was unsuccessful. Putting its state back to off.")
+		nodeObj.powerState = off
+		nodeObj.lastTimePowerStateChanged = time.Now()
+	}
+
+	if nodeObj.powerState == shuttingDown && time.Since(nodeObj.lastTimePowerStateChanged) > timeoutPowerStateChange {
+		log.Warn().Uint32("node ID", uint32(nodeObj.ID)).Msg("Shutdown was unsuccessful. Putting its state back to on.")
+		nodeObj.powerState = on
+		nodeObj.lastTimeAwake = time.Now()
+		nodeObj.lastTimePowerStateChanged = time.Now()
+	}
+
+	err = f.state.updateNode(nodeObj)
+	if err != nil {
+		return node{}, err
+	}
+
+	return nodeObj, nil
+}
+
+// PeriodicWakeUp for waking up nodes daily
+func (f *FarmerBot) periodicWakeUp(sub Sub) error {
+	now := time.Now()
+
+	offNodes := f.filterNodesPower([]powerState{off})
+
+	periodicWakeUpStart := f.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()
+
+	var wakeUpCalls uint8
+	nodesLen := len(f.nodes)
+
+	for _, node := range offNodes {
+		// TODO: why??
+		if now.Day() == 1 && now.Hour() == 1 && now.Minute() >= 0 && now.Minute() < 5 {
+			node.timesRandomWakeUps = 0
+		}
+
+		if periodicWakeUpStart.Before(now) && node.lastTimeAwake.Before(periodicWakeUpStart) {
+			// Fixed periodic wake up (once a day)
+			// we wake up the node if the periodic wake up start time has started and only if the last time the node was awake
+			// was before the periodic wake up start of that day
+			log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Periodic wake up")
+			err := f.powerOn(sub, uint32(node.ID))
+			if err != nil {
+				log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("failed to wake up")
+				continue
+			}
+
+			wakeUpCalls += 1
+			if wakeUpCalls >= f.config.Power.PeriodicWakeUpLimit {
+				// reboot X nodes at a time others will be rebooted 5 min later
+				break
+			}
+		} else if node.timesRandomWakeUps < defaultRandomWakeUpsAMonth &&
+			int(rand.Int31())%((8460-(defaultRandomWakeUpsAMonth*6)-
+				(defaultRandomWakeUpsAMonth*(nodesLen-1))/int(math.Min(float64(f.config.Power.PeriodicWakeUpLimit), float64(nodesLen))))/
+				defaultRandomWakeUpsAMonth) == 0 {
+			// TODO:
+			// Random periodic wake up (10 times a month on average if the node is almost always down)
+			// we execute this code every 5 minutes => 288 times a day => 8640 times a month on average (30 days)
+			// but we have 30 minutes of periodic wake up every day (6 times we do not go through this code) => so 282 times a day => 8460 times a month on average (30 days)
+			// as we do a random wake up 10 times a month we know the node will be on for 30 minutes 10 times a month so we can subtract 6 times the amount of random wake ups a month
+			// we also do not go through the code if we have woken up too many nodes at once => subtract (10 * (n-1))/min(periodic_wake up_limit, amount_of_nodes) from 8460
+			// now we can divide that by 10 and randomly generate a number in that range, if it's 0 we do the random wake up
+			log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Random wake up")
+			err := f.powerOn(sub, uint32(node.ID))
+			if err != nil {
+				log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("failed to wake up")
+				continue
+			}
+
+			wakeUpCalls += 1
+			if wakeUpCalls >= f.config.Power.PeriodicWakeUpLimit {
+				// reboot X nodes at a time others will be rebooted 5 min later
+				break
+			}
+		}
 	}
 
 	return nil

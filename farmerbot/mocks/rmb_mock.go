@@ -80,17 +80,3 @@ func (mr *MockRMBMockRecorder) Statistics(ctx, nodeTwin interface{}) *gomock.Cal
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Statistics", reflect.TypeOf((*MockRMB)(nil).Statistics), ctx, nodeTwin)
 }
-
-// SystemVersion mocks base method.
-func (m *MockRMB) SystemVersion(ctx context.Context, nodeTwin uint32) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SystemVersion", ctx, nodeTwin)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SystemVersion indicates an expected call of SystemVersion.
-func (mr *MockRMBMockRecorder) SystemVersion(ctx, nodeTwin interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SystemVersion", reflect.TypeOf((*MockRMB)(nil).SystemVersion), ctx, nodeTwin)
-}

@@ -1,0 +1,179 @@
+package internal
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+)
+
+// PowerOn sets the node power state ON
+func (f *FarmerBot) powerOn(sub Sub, nodeID uint32) error {
+	log.Info().Uint32("node ID", nodeID).Str("manager", "power").Msg("POWER ON")
+	f.m.Lock()
+	defer f.m.Unlock()
+
+	node, ok := f.nodes[nodeID]
+	if !ok {
+		return fmt.Errorf("node %d is not found", nodeID)
+	}
+
+	if node.powerState == on || node.powerState == wakingUP {
+		return nil
+	}
+
+	_, err := sub.SetNodePowerTarget(f.identity, nodeID, true)
+	if err != nil {
+		return errors.Wrapf(err, "failed to set node %d power target to up", nodeID)
+	}
+
+	node.powerState = wakingUP
+	node.lastTimeAwake = time.Now()
+	node.lastTimePowerStateChanged = time.Now()
+
+	return f.updateNode(node)
+}
+
+// PowerOff sets the node power state OFF
+func (f *FarmerBot) powerOff(sub Sub, nodeID uint32) error {
+	log.Info().Uint32("node ID", nodeID).Str("manager", "power").Msg("POWER OFF")
+	f.m.Lock()
+	defer f.m.Unlock()
+
+	node, ok := f.nodes[nodeID]
+	if !ok {
+		return fmt.Errorf("node %d is not found", nodeID)
+	}
+
+	if node.powerState == off || node.powerState == shuttingDown {
+		return nil
+	}
+
+	if node.neverShutDown {
+		return errors.Errorf("cannot power off node, node is configured to never be shutdown")
+	}
+
+	if node.PublicConfig.HasValue {
+		return errors.Errorf("cannot power off node, node has public config")
+	}
+
+	if node.timeoutClaimedResources.After(time.Now()) {
+		return errors.Errorf("cannot power off node, node has claimed resources")
+	}
+
+	onNodes := f.filterNodesPower([]powerState{on})
+
+	if len(onNodes) < 2 {
+		return errors.Errorf("cannot power off node, at least one node should be on in the farm")
+	}
+
+	_, err := sub.SetNodePowerTarget(f.identity, nodeID, false)
+	if err != nil {
+		return errors.Wrapf(err, "failed to set node %d power target to down", nodeID)
+	}
+
+	node.powerState = shuttingDown
+	node.lastTimePowerStateChanged = time.Now()
+
+	return f.updateNode(node)
+}
+
+// manageNodesPower for power management nodes
+func (f *FarmerBot) manageNodesPower(sub Sub) error {
+	nodes := f.filterNodesPower([]powerState{on, wakingUP})
+
+	usedResources, totalResources := calculateResourceUsage(nodes)
+	if totalResources == 0 {
+		return nil
+	}
+
+	resourceUsage := uint8(100 * usedResources / totalResources)
+	if resourceUsage >= f.config.Power.WakeUpThreshold {
+		log.Info().Uint8("resources usage", resourceUsage).Str("manager", "power").Msg("Too high resource usage")
+		return f.resourceUsageTooHigh(sub)
+	}
+
+	log.Info().Uint8("resources usage", resourceUsage).Str("manager", "power").Msg("Too low resource usage")
+	return f.resourceUsageTooLow(sub, usedResources, totalResources)
+}
+
+func calculateResourceUsage(nodes []node) (uint64, uint64) {
+	usedResources := capacity{}
+	totalResources := capacity{}
+
+	for _, node := range nodes {
+		if node.hasActiveRentContract {
+			usedResources.add(node.resources.total)
+		} else {
+			usedResources.add(node.resources.used)
+		}
+		totalResources.add(node.resources.total)
+	}
+
+	used := usedResources.cru + usedResources.hru + usedResources.mru + usedResources.sru
+	total := totalResources.cru + totalResources.hru + totalResources.mru + totalResources.sru
+
+	return used, total
+}
+
+func (f *FarmerBot) resourceUsageTooHigh(sub Sub) error {
+	offNodes := f.filterNodesPower([]powerState{off})
+
+	if len(offNodes) > 0 {
+		node := offNodes[0]
+		log.Info().Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Too much resource usage. Turning on node")
+		return f.powerOn(sub, uint32(node.ID))
+	}
+
+	return fmt.Errorf("no available node to wake up, resources usage is high")
+}
+
+func (f *FarmerBot) resourceUsageTooLow(sub Sub, usedResources, totalResources uint64) error {
+	onNodes := f.filterNodesPower([]powerState{on})
+
+	// nodes with public config can't be shutdown
+	// Do not shutdown a node that just came up (give it some time)
+	nodesAllowedToShutdown := f.filterAllowedNodesToShutDown()
+
+	if len(onNodes) > 1 {
+		newUsedResources := usedResources
+		newTotalResources := totalResources
+		nodesLeftOnline := len(onNodes)
+
+		// shutdown a node if there is more then 1 unused node (aka keep at least one node online)
+		for _, node := range nodesAllowedToShutdown {
+			if nodesLeftOnline == 1 {
+				break
+			}
+			nodesLeftOnline -= 1
+			newUsedResources -= node.resources.used.hru + node.resources.used.sru +
+				node.resources.used.mru + node.resources.used.cru
+			newTotalResources -= node.resources.total.hru + node.resources.total.sru +
+				node.resources.total.mru + node.resources.total.cru
+
+			if newTotalResources == 0 {
+				break
+			}
+
+			newResourceUsage := uint8(100 * newUsedResources / newTotalResources)
+			if newResourceUsage < f.config.Power.WakeUpThreshold {
+				// we need to keep the resource percentage lower then the threshold
+				log.Info().Uint32("node ID", uint32(node.ID)).Uint8("resources usage", newResourceUsage).Str("manager", "power").Msg("Resource usage too low. Turning off unused node")
+				err := f.powerOff(sub, uint32(node.ID))
+				if err != nil {
+					log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Str("manager", "power").Msg("Power off node")
+					nodesLeftOnline += 1
+					newUsedResources += node.resources.used.hru + node.resources.used.sru +
+						node.resources.used.mru + node.resources.used.cru
+					newTotalResources += node.resources.total.hru + node.resources.total.sru +
+						node.resources.total.mru + node.resources.total.cru
+				}
+			}
+		}
+	} else {
+		log.Debug().Str("manager", "power").Msg("Nothing to shutdown.")
+	}
+
+	return nil
+}

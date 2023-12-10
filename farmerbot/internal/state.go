@@ -22,6 +22,8 @@ type state struct {
 
 // NewState creates new state from configs
 func newState(ctx context.Context, sub Sub, rmbNodeClient RMB, inputs Config) (*state, error) {
+	state := state{config: inputs}
+
 	// required from power for nodes
 	if inputs.Power.OverProvisionCPU == 0 {
 		inputs.Power.OverProvisionCPU = defaultCPUProvision
@@ -37,28 +39,24 @@ func newState(ctx context.Context, sub Sub, rmbNodeClient RMB, inputs Config) (*
 		return nil, err
 	}
 
-	// set nodes
-	nodes, err := convertInputsToNodes(ctx, sub, rmbNodeClient, inputs, farm.DedicatedFarm)
+	state.farm = *farm
+
+	nodes, err := fetchNodes(ctx, sub, rmbNodeClient, inputs, farm.DedicatedFarm)
 	if err != nil {
 		return nil, err
 	}
 
-	config := state{
-		farm:   *farm,
-		nodes:  nodes,
-		config: inputs,
-	}
+	state.nodes = nodes
 
-	err = config.validate()
+	err = state.validate()
 	if err != nil {
 		return nil, err
 	}
 
-	return &config, nil
+	return &state, nil
 }
 
-// ConvertInputsToNodes converts the config nodes from configuration inputs
-func convertInputsToNodes(ctx context.Context, sub Sub, rmbNodeClient RMB, config Config, dedicatedFarm bool) (map[uint32]node, error) {
+func fetchNodes(ctx context.Context, sub Sub, rmbNodeClient RMB, config Config, dedicatedFarm bool) (map[uint32]node, error) {
 	nodes := make(map[uint32]node)
 
 	farmNodes, err := sub.GetNodes(config.FarmID)
@@ -76,9 +74,9 @@ func convertInputsToNodes(ctx context.Context, sub Sub, rmbNodeClient RMB, confi
 		if slices.Contains(config.IncludedNodes, nodeID) || len(config.IncludedNodes) == 0 {
 			neverShutDown := slices.Contains(config.NeverShutDownNodes, nodeID)
 
-			configNode, err := getNodeWithLatestChanges(ctx, sub, rmbNodeClient, nodeID, neverShutDown, false, dedicatedFarm)
+			configNode, err := getNode(ctx, sub, rmbNodeClient, nodeID, neverShutDown, false, dedicatedFarm, on)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to include node with id %d", nodeID)
+				return nil, errors.Wrapf(err, "failed to add node with id %d", nodeID)
 			}
 			nodes[nodeID] = configNode
 		}
@@ -87,7 +85,7 @@ func convertInputsToNodes(ctx context.Context, sub Sub, rmbNodeClient RMB, confi
 	return nodes, nil
 }
 
-func getNodeWithLatestChanges(
+func getNode(
 	ctx context.Context,
 	sub Sub,
 	rmbNodeClient RMB,
@@ -95,6 +93,7 @@ func getNodeWithLatestChanges(
 	neverShutDown,
 	hasClaimedResources,
 	dedicatedFarm bool,
+	oldPowerState powerState,
 ) (node, error) {
 
 	log.Debug().Uint32("ID", nodeID).Msg("Include node")
@@ -132,6 +131,7 @@ func getNodeWithLatestChanges(
 		return node{}, errors.Wrapf(err, "failed to get node %d power target from substrate", nodeID)
 	}
 
+	configNode.powerState = oldPowerState
 	if powerTarget.State.IsUp && powerTarget.Target.IsUp && configNode.powerState != on {
 		configNode.powerState = on
 		configNode.lastTimeAwake = time.Now()
@@ -166,6 +166,21 @@ func getNodeWithLatestChanges(
 	configNode.gpus = gpus
 
 	return configNode, nil
+}
+
+// addNode adds a node in the config
+func (s *state) addNode(node node) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	s.nodes[uint32(node.ID)] = node
+}
+
+func (s *state) deleteNode(nodeID uint32) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	delete(s.nodes, nodeID)
 }
 
 // UpdateNode updates a node in the config
