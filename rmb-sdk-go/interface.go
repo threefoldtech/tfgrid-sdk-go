@@ -37,6 +37,7 @@ type Request struct {
 	Expiration int      `json:"exp"`
 	Data       string   `json:"dat"`
 	TwinDest   []uint32 `json:"dst"`
+	Session    *string  `json:"con"`
 	RetQueue   string   `json:"ret"`
 	Schema     string   `json:"shm"`
 	Epoch      int64    `json:"now"`

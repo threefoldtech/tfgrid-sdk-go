@@ -47,6 +47,10 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		country := changeCase(aggNode.countries[rand.Intn(len(aggNode.countries))])
 		return &country
 	},
+	"Region": func(agg FarmsAggregate) interface{} {
+		region := changeCase(agg.regions[rand.Intn(len(agg.regions))])
+		return &region
+	},
 	"NameContains": func(agg FarmsAggregate) interface{} {
 		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
 		a, b := rand.Intn(len(c)), rand.Intn(len(c))
@@ -108,6 +112,7 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 }
 
 type FarmsAggregate struct {
+	regions          []string
 	stellarAddresses []string
 	pricingPolicyIDs []uint64
 	farmNames        []string
@@ -155,7 +160,7 @@ func TestFarm(t *testing.T) {
 			l := proxytypes.Limit{
 				Size:     999999999999,
 				Page:     1,
-				RetCount: false,
+				RetCount: true,
 			}
 			f, err := randomFarmsFilter(&agg)
 			require.NoError(t, err)
@@ -177,7 +182,7 @@ func TestFarm(t *testing.T) {
 		l := proxytypes.Limit{
 			Size:     999999999999,
 			Page:     1,
-			RetCount: false,
+			RetCount: true,
 		}
 		f := proxytypes.FarmFilter{
 			NodeFreeHRU: &aggNode.maxFreeHRU,
@@ -200,7 +205,7 @@ func TestFarm(t *testing.T) {
 		l := proxytypes.Limit{
 			Size:     999999999999,
 			Page:     1,
-			RetCount: false,
+			RetCount: true,
 		}
 
 		f := proxytypes.FarmFilter{
@@ -271,6 +276,10 @@ func calcFarmsAggregates(data *mock.DBData) (res FarmsAggregate) {
 
 	for _, contract := range data.RentContracts {
 		res.rentersTwinIDs = append(res.rentersTwinIDs, contract.TwinID)
+	}
+
+	for _, region := range data.Regions {
+		res.regions = append(res.regions, region)
 	}
 
 	farmIPs := make(map[uint64]uint64)

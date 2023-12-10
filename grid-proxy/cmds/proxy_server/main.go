@@ -19,7 +19,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/gpuindexer"
 	logging "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg"
 	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
 const (
@@ -194,7 +194,7 @@ func app(s *http.Server, f flags) error {
 
 func createRPCRMBClient(ctx context.Context, relayURL, mnemonics string, sub *substrate.Substrate) (rmb.Client, error) {
 	sessionId := fmt.Sprintf("tfgrid_proxy-%d", os.Getpid())
-	client, err := direct.NewRpcClient(ctx, direct.KeyTypeSr25519, mnemonics, relayURL, sessionId, sub, true)
+	client, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonics, relayURL, sessionId, sub, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create direct RPC RMB client: %w", err)
 	}

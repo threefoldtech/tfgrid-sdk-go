@@ -147,3 +147,14 @@ type NodeGPU struct {
 	Device     string
 	Contract   int
 }
+
+type Country struct {
+	ID        string
+	CountryID uint64
+	Code      string
+	Name      string
+	Region    string
+	Subregion string
+	Lat       string
+	Long      string
+}

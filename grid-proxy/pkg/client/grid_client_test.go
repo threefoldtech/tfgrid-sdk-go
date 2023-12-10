@@ -7,9 +7,11 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
@@ -28,6 +30,67 @@ var (
 	FarmsExample      = []types.Farm{FarmExample}
 	NodeStatusExample = MarshalNodeStatus([]byte(NodeStatusExampleStr))
 )
+
+func nodesFilterValues() (types.NodeFilter, types.Limit, string) {
+	Up := "up"
+	Egypt := "Egypt"
+	Mansoura := "Mansoura"
+	Freefarm := "Freefarm"
+	trueVal := true
+	falseVal := false
+	ints := []uint64{0, 1, 2, 3, 4, 5, 6}
+	f := types.NodeFilter{
+		Status:       &Up,
+		FreeMRU:      &ints[1],
+		FreeHRU:      &ints[2],
+		FreeSRU:      &ints[3],
+		Country:      &Egypt,
+		City:         &Mansoura,
+		FarmName:     &Freefarm,
+		FarmIDs:      []uint64{1, 2},
+		FreeIPs:      &ints[4],
+		IPv4:         &trueVal,
+		IPv6:         &falseVal,
+		Domain:       &trueVal,
+		Rentable:     &falseVal,
+		RentedBy:     &ints[5],
+		AvailableFor: &ints[6],
+	}
+	l := types.Limit{
+		Page: 12,
+		Size: 13,
+	}
+	return f, l, "status=up&free_mru=1&free_hru=2&free_sru=3&country=Egypt&city=Mansoura&farm_name=Freefarm&farm_ids=1&farm_ids=2&free_ips=4&ipv4=true&ipv6=false&domain=true&rentable=false&rented_by=5&available_for=6&page=12&size=13"
+}
+
+func farmsFilterValues() (types.FarmFilter, types.Limit, string) {
+	StellarAddress := "StellarAddress"
+	FreeFarm := "freefarm"
+	FreeFar := "freefar"
+	DYI := "DYI"
+	Dedicated := false
+	ints := []uint64{0, 1, 2, 3, 4, 5, 6}
+	country := "Egypt"
+	f := types.FarmFilter{
+		FreeIPs:           &ints[1],
+		TotalIPs:          &ints[2],
+		StellarAddress:    &StellarAddress,
+		PricingPolicyID:   &ints[3],
+		FarmID:            &ints[5],
+		TwinID:            &ints[6],
+		Name:              &FreeFarm,
+		NameContains:      &FreeFar,
+		CertificationType: &DYI,
+		Dedicated:         &Dedicated,
+		Country:           &country,
+	}
+	l := types.Limit{
+		Page: 12,
+		Size: 13,
+	}
+
+	return f, l, "free_ips=1&total_ips=2&stellar_address=StellarAddress&pricing_policy_id=3&farm_id=5&twin_id=6&name=freefarm&name_contains=freefar&certification_type=DYI&dedicated=false&page=12&size=13&country=Egypt"
+}
 
 func MustMarshal(data []byte, v interface{}) {
 	if err := json.Unmarshal(data, v); err != nil {
@@ -167,10 +230,18 @@ func AssertHTTPRequest(
 ) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		expectedURL := r.URL.Path
+		foundURL := r.URL
+		parsedPath, err := url.Parse(path)
+		if err != nil {
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"error": "failed to parse expected path: %s"}`, err.Error())))
+			return
+		}
+
 		if r.URL.RawQuery != "" {
 			expectedURL = fmt.Sprintf("%s?%s", expectedURL, r.URL.RawQuery)
 		}
-		if expectedURL == path && r.Method == method {
+
+		if reflect.DeepEqual(foundURL.Query(), parsedPath.Query()) && r.Method == method {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(response))
 		} else {
@@ -208,7 +279,7 @@ func testSuccess(t *testing.T, f ProxyFunc) {
 	}{
 		"nodes": {
 			method:   "GET",
-			path:     fmt.Sprintf("/nodes%s", expectedNodesURL),
+			path:     fmt.Sprintf("/nodes?%s", expectedNodesURL),
 			response: NodesExampleStr,
 			call: func(proxy Client) error {
 				res, _, err := proxy.Nodes(context.Background(), nodesFilter, nodesLimit)
@@ -238,7 +309,7 @@ func testSuccess(t *testing.T, f ProxyFunc) {
 		},
 		"farms": {
 			method:   "GET",
-			path:     fmt.Sprintf("/farms%s", expectedFarmsURL),
+			path:     fmt.Sprintf("/farms?%s", expectedFarmsURL),
 			response: FarmsExampleStr,
 			call: func(proxy Client) error {
 				res, _, err := proxy.Farms(context.Background(), farmsFilter, farmsLimit)
@@ -270,4 +341,63 @@ func testSuccess(t *testing.T, f ProxyFunc) {
 	for _, endpoint := range endpoints {
 		AssertHTTPRequest(t, f, endpoint.method, endpoint.path, endpoint.response, endpoint.call)
 	}
+}
+
+func TestPrepareURL(t *testing.T) {
+	status := "st"
+	freeMRU := uint64(10)
+	farmIDs := []uint64{1, 2, 3}
+	dedicated := true
+	filter := types.NodeFilter{
+		Status:    &status,
+		FreeMRU:   &freeMRU,
+		FarmIDs:   farmIDs,
+		Dedicated: &dedicated,
+	}
+	limit := types.DefaultLimit()
+
+	endpoint := "http://www.gridproxy.com"
+	client := Clientimpl{
+		endpoint: endpoint,
+	}
+
+	want := "http://www.gridproxy.com/nodes?status=st&free_mru=10&farm_ids=1&farm_ids=2&farm_ids=3&dedicated=true&size=50&page=1&ret_count=true"
+	wantURL, err := url.Parse(want)
+	assert.NoError(t, err)
+
+	got, err := client.prepareURL("nodes", filter, limit)
+	assert.NoError(t, err)
+
+	gotURL, err := url.Parse(got)
+	assert.NoError(t, err)
+
+	assert.Equal(t, wantURL.Path, gotURL.Path)
+	assert.True(t, reflect.DeepEqual(wantURL.Query(), gotURL.Query()))
+}
+
+func TestEncodeEmptyNodeFilter(t *testing.T) {
+	var values url.Values
+
+	err := encoder.Encode(types.NodeFilter{}, values)
+	assert.NoError(t, err)
+
+	got := values.Encode()
+	want := ""
+	assert.Equal(t, want, got)
+}
+
+func TestEncodeFarmFilter(t *testing.T) {
+	values := url.Values{}
+	f, l, want := farmsFilterValues()
+
+	err := encoder.Encode(f, values)
+	assert.NoError(t, err)
+
+	err = encoder.Encode(l, values)
+	assert.NoError(t, err)
+
+	wantV, err := url.Parse(fmt.Sprintf("https://www.gridproxy.com/farms?%s", want))
+	assert.NoError(t, err)
+
+	assert.Equal(t, wantV.Query(), values)
 }

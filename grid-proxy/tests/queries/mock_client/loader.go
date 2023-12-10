@@ -32,6 +32,7 @@ type DBData struct {
 	ContractResources   map[string]ContractResources
 	NonDeletedContracts map[uint64][]uint64
 	GPUs                map[uint64][]NodeGPU
+	Regions             map[string]string
 	DB                  *sql.DB
 }
 
@@ -98,7 +99,7 @@ func calcNodesUsedResources(data *DBData) error {
 	for _, node := range data.Nodes {
 		used := NodeResourcesTotal{
 			MRU: uint64(2 * gridtypes.Gigabyte),
-			SRU: uint64(100 * gridtypes.Gigabyte),
+			SRU: uint64(20 * gridtypes.Gigabyte),
 		}
 		tenpercent := uint64(math.Round(float64(data.NodeTotalResources[node.NodeID].MRU) / 10))
 		if used.MRU < tenpercent {
@@ -478,6 +479,43 @@ func loadContractBillingReports(db *sql.DB, data *DBData) error {
 	return nil
 }
 
+func loadCountries(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT
+		COALESCE(id, ''),
+		COALESCE(country_id, 0),
+		COALESCE(code, ''),
+		COALESCE(name, ''),
+		COALESCE(region, ''),
+		COALESCE(subregion, ''),
+		COALESCE(lat, ''),
+		COALESCE(long, '')
+	FROM
+		country;
+	`)
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		var country Country
+		if err := rows.Scan(
+			&country.ID,
+			&country.CountryID,
+			&country.Code,
+			&country.Name,
+			&country.Region,
+			&country.Subregion,
+			&country.Lat,
+			&country.Long,
+		); err != nil {
+			return err
+		}
+		data.Regions[country.Name] = country.Subregion
+	}
+
+	return nil
+}
 func loadNodeGPUs(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 	SELECT 
@@ -530,6 +568,7 @@ func Load(db *sql.DB) (DBData, error) {
 		NonDeletedContracts: make(map[uint64][]uint64),
 		GPUs:                make(map[uint64][]NodeGPU),
 		FarmHasRentedNode:   make(map[uint64]bool),
+		Regions:             make(map[string]string),
 		DB:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {
@@ -566,6 +605,9 @@ func Load(db *sql.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadNodeGPUs(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadCountries(db, &data); err != nil {
 		return data, err
 	}
 	if err := calcNodesUsedResources(&data); err != nil {

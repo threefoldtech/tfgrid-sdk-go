@@ -12,24 +12,25 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct"
-	rmbTypes "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/direct/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	rmbTypes "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
 )
 
 const (
 	resultsBatcherCleanupInterval = 10 * time.Second
 	minListenerReconnectInterval  = 10 * time.Second
 	lingerBatch                   = 10 * time.Second
+	newNodesCheckInterval         = 5 * time.Minute
 )
 
 type NodeGPUIndexer struct {
 	db                     db.Database
-	relayClient            *direct.Client
+	relayPeer              *peer.Peer
 	checkInterval          time.Duration
 	batchSize              int
 	nodesGPUResultsChan    chan []types.NodeGPU
 	nodesGPUBatchesChan    chan []types.NodeGPU
+	newNodeTwinIDChan      chan []uint32
 	nodesGPUResultsWorkers int
 	nodesGPUBufferWorkers  int
 }
@@ -48,6 +49,7 @@ func NewNodeGPUIndexer(
 		db:                     db,
 		nodesGPUResultsChan:    make(chan []types.NodeGPU),
 		nodesGPUBatchesChan:    make(chan []types.NodeGPU),
+		newNodeTwinIDChan:      make(chan []uint32),
 		checkInterval:          time.Duration(indexerCheckIntervalMins) * time.Minute,
 		batchSize:              batchSize,
 		nodesGPUResultsWorkers: nodesGPUResultsWorkers,
@@ -55,11 +57,11 @@ func NewNodeGPUIndexer(
 	}
 
 	sessionId := fmt.Sprintf("tfgrid_proxy_indexer-%d", os.Getpid())
-	client, err := direct.NewClient(ctx, direct.KeyTypeSr25519, mnemonics, relayURL, sessionId, sub, true, indexer.relayCallback)
+	client, err := peer.NewPeer(ctx, peer.KeyTypeSr25519, mnemonics, relayURL, sessionId, sub, true, indexer.relayCallback)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create direct RMB client: %w", err)
 	}
-	indexer.relayClient = client
+	indexer.relayPeer = client
 
 	return indexer, nil
 }
@@ -71,9 +73,18 @@ func (n *NodeGPUIndexer) queryGridNodes(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			n.runQueryGridNodes(ctx)
+		case twinIDs := <-n.newNodeTwinIDChan:
+			n.queryNewNodes(ctx, twinIDs)
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+func (n *NodeGPUIndexer) queryNewNodes(ctx context.Context, twinIDs []uint32) {
+	for _, twinID := range twinIDs {
+		err := n.getNodeGPUInfo(ctx, twinID)
+		log.Error().Err(err).Msgf("failed to send get GPU info request from relay in GPU indexer for node %d", twinID)
 	}
 }
 
@@ -102,7 +113,7 @@ func (n *NodeGPUIndexer) runQueryGridNodes(ctx context.Context) {
 		}
 
 		for _, node := range nodes {
-			if err := n.getNodeGPUInfo(ctx, node); err != nil {
+			if err := n.getNodeGPUInfo(ctx, uint32(node.TwinID)); err != nil {
 				log.Error().Err(err).Msgf("failed to send get GPU info request from relay in GPU indexer for node %d", node.NodeID)
 			}
 		}
@@ -111,12 +122,12 @@ func (n *NodeGPUIndexer) runQueryGridNodes(ctx context.Context) {
 	}
 }
 
-func (n *NodeGPUIndexer) getNodeGPUInfo(ctx context.Context, node db.Node) error {
+func (n *NodeGPUIndexer) getNodeGPUInfo(ctx context.Context, nodeTwinID uint32) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	id := uuid.NewString()
-	return n.relayClient.Call(ctx, id, uint32(node.TwinID), "zos.gpu.list", nil)
+	return n.relayPeer.SendRequest(ctx, id, nodeTwinID, nil, "zos.gpu.list", nil)
 }
 
 func (n *NodeGPUIndexer) getNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]db.Node, error) {
@@ -184,34 +195,51 @@ func (n *NodeGPUIndexer) Start(ctx context.Context) {
 
 	go n.queryGridNodes(ctx)
 
+	go n.watchNodeTable(ctx)
+
 	log.Info().Msg("GPU indexer started")
 
 }
 
-func (n *NodeGPUIndexer) relayCallback(response *rmbTypes.Envelope, callBackErr error) {
+func (n *NodeGPUIndexer) watchNodeTable(ctx context.Context) {
+	ticker := time.NewTicker(newNodesCheckInterval)
+	latestCheckedID, err := n.db.GetLastNodeTwinID(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get last node twin id")
+	}
+	for {
+		select {
+		case <-ticker.C:
+			newIDs, err := n.db.GetNodeTwinIDsAfter(ctx, latestCheckedID)
+			if err != nil {
+				log.Error().Err(err).Msgf("failed to get node twin ids after %d", latestCheckedID)
+				continue
+			}
+			if len(newIDs) == 0 {
+				continue
+			}
+			nodeTwinIDs := make([]uint32, 0)
+			for _, id := range newIDs {
+				nodeTwinIDs = append(nodeTwinIDs, uint32(id))
+			}
 
-	errResp := response.GetError()
+			n.newNodeTwinIDChan <- nodeTwinIDs
+			latestCheckedID = int64(nodeTwinIDs[0])
+		case <-ctx.Done():
+			return
+		}
+	}
+}
 
-	if errResp != nil {
-		log.Error().Msg(errResp.Message)
+func (n *NodeGPUIndexer) relayCallback(ctx context.Context, p peer.Peer, response *rmbTypes.Envelope, callBackErr error) {
+	output, err := peer.Json(response, callBackErr)
+	if err != nil {
+		log.Error().Err(err)
 		return
 	}
-
-	resp := response.GetResponse()
-	if resp == nil {
-		log.Error().Msg("received a non response envelope")
-		return
-	}
-
-	if response.Schema == nil || *response.Schema != rmb.DefaultSchema {
-		log.Error().Msgf("invalid schema received expected '%s'", rmb.DefaultSchema)
-		return
-	}
-
-	output := response.Payload.(*rmbTypes.Envelope_Plain).Plain
 
 	var nodesGPU []types.NodeGPU
-	err := json.Unmarshal(output, &nodesGPU)
+	err = json.Unmarshal(output, &nodesGPU)
 	if err != nil {
 		log.Error().Err(err).RawJSON("data", output).Msg("failed to unmarshal GPU information response")
 		return

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"strings"
 
 	// to use for database/sql
@@ -39,10 +38,10 @@ const (
 		COALESCE(sum(contract_resources.cru), 0) as used_cru,
 		COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as used_mru,
 		COALESCE(sum(contract_resources.hru), 0) as used_hru,
-		COALESCE(sum(contract_resources.sru), 0) + 107374182400 as used_sru,
+		COALESCE(sum(contract_resources.sru), 0) + 21474836480 as used_sru,
 		node_resources_total.mru - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as free_mru,
 		node_resources_total.hru - COALESCE(sum(contract_resources.hru), 0) as free_hru,
-		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 107374182400 as free_sru,
+		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 21474836480 as free_sru,
 		COALESCE(node_resources_total.cru, 0) as total_cru,
 		COALESCE(node_resources_total.mru, 0) as total_mru,
 		COALESCE(node_resources_total.hru, 0) as total_hru,
@@ -67,10 +66,10 @@ const (
 		COALESCE(sum(contract_resources.cru), 0) as used_cru,
 		COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as used_mru,
 		COALESCE(sum(contract_resources.hru), 0) as used_hru,
-		COALESCE(sum(contract_resources.sru), 0) + 107374182400 as used_sru,
+		COALESCE(sum(contract_resources.sru), 0) + 21474836480 as used_sru,
 		node_resources_total.mru - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as free_mru,
 		node_resources_total.hru - COALESCE(sum(contract_resources.hru), 0) as free_hru,
-		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 107374182400 as free_sru,
+		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 21474836480 as free_sru,
 		COALESCE(node_resources_total.cru, 0) as total_cru,
 		COALESCE(node_resources_total.mru, 0) as total_mru,
 		COALESCE(node_resources_total.hru, 0) as total_hru,
@@ -390,6 +389,9 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 			from public_ip
 			GROUP BY farm_id
 		) public_ips on public_ips.farm_id = farm.id`).
+		Joins(
+			"LEFT JOIN country ON node.country = country.name",
+		).
 		Group(
 			`farm.id,
 			farm.farm_id,
@@ -466,6 +468,9 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 		).
 		Joins(
 			"LEFT JOIN location ON node.location_id = location.id",
+		).
+		Joins(
+			"LEFT JOIN country ON country.name = node.country",
 		)
 }
 
@@ -514,6 +519,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.CityContains != nil {
 		q = q.Where("node.city ILIKE '%' || ? || '%'", *filter.CityContains)
 	}
+	if filter.Region != nil {
+		q = q.Where("LOWER(country.subregion) = LOWER(?)", *filter.Region)
+	}
 	if filter.NodeID != nil {
 		q = q.Where("node.node_id = ?", *filter.NodeID)
 	}
@@ -546,6 +554,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	}
 
 	// Dedicated nodes filters
+	if filter.InDedicatedFarm != nil {
+		q = q.Where(`farm.dedicated_farm = ?`, *filter.InDedicatedFarm)
+	}
 	if filter.Dedicated != nil {
 		q = q.Where(`? = (farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0)`, *filter.Dedicated)
 	}
@@ -619,17 +630,27 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 			return nil, 0, res.Error
 		}
 	}
+
+	// Sorting
 	if limit.Randomize {
-		q = q.Limit(int(limit.Size)).
-			Offset(rand.Intn(int(count) - int(limit.Size)))
+		q = q.Order("random()")
 	} else {
 		if filter.AvailableFor != nil {
 			q = q.Order("(case when rent_contract is not null then 1 else 2 end)")
 		}
-		q = q.Limit(int(limit.Size)).
-			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("node.node_id")
+
+		if limit.SortBy != "" {
+			order := types.SortOrderAsc
+			if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
+				order = types.SortOrderDesc
+			}
+			q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
+		} else {
+			q = q.Order("node.node_id")
+		}
 	}
+	// Pagination
+	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
 
 	var nodes []Node
 	q = q.Session(&gorm.Session{})
@@ -685,6 +706,10 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		q = q.Where("LOWER(node.country) = LOWER(?)", *filter.Country)
 	}
 
+	if filter.Region != nil {
+		q = q.Where("LOWER(country.subregion) = LOWER(?)", *filter.Region)
+	}
+
 	if filter.NodeStatus != nil {
 		condition := nodestatus.DecideNodeStatusCondition(*filter.NodeStatus)
 		q = q.Where(condition)
@@ -735,14 +760,23 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 			return nil, 0, errors.Wrap(res.Error, "couldn't get farm count")
 		}
 	}
+
+	// Sorting
 	if limit.Randomize {
-		q = q.Limit(int(limit.Size)).
-			Offset(rand.Intn(int(count) - int(limit.Size)))
+		q = q.Order("random()")
+	} else if limit.SortBy != "" {
+		order := types.SortOrderAsc
+		if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
+			order = types.SortOrderDesc
+		}
+		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 	} else {
-		q = q.Limit(int(limit.Size)).
-			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("farm.farm_id")
+		q = q.Order("farm.farm_id")
 	}
+
+	// Pagination
+	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
+
 	var farms []Farm
 	if res := q.Scan(&farms); res.Error != nil {
 		return farms, uint(count), errors.Wrap(res.Error, "failed to scan returned farm from database")
@@ -778,16 +812,24 @@ func (d *PostgresDatabase) GetTwins(ctx context.Context, filter types.TwinFilter
 			return nil, 0, errors.Wrap(res.Error, "couldn't get twin count")
 		}
 	}
-	if limit.Randomize {
-		q = q.Limit(int(limit.Size)).
-			Offset(rand.Intn(int(count) - int(limit.Size)))
-	} else {
-		q = q.Limit(int(limit.Size)).
-			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("twin.twin_id")
-	}
-	twins := []types.Twin{}
 
+	// Sorting
+	if limit.Randomize {
+		q = q.Order("random()")
+	} else if limit.SortBy != "" {
+		order := types.SortOrderAsc
+		if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
+			order = types.SortOrderDesc
+		}
+		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
+	} else {
+		q = q.Order("twin.twin_id")
+	}
+
+	// Pagination
+	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
+
+	twins := []types.Twin{}
 	if res := q.Scan(&twins); res.Error != nil {
 		return twins, uint(count), errors.Wrap(res.Error, "failed to scan returned twins from database")
 	}
@@ -860,14 +902,23 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 			return nil, 0, errors.Wrap(res.Error, "couldn't get contract count")
 		}
 	}
+
+	// Sorting
 	if limit.Randomize {
-		q = q.Limit(int(limit.Size)).
-			Offset(rand.Intn(int(count) - int(limit.Size)))
+		q = q.Order("random()")
+	} else if limit.SortBy != "" {
+		order := types.SortOrderAsc
+		if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
+			order = types.SortOrderDesc
+		}
+		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 	} else {
-		q = q.Limit(int(limit.Size)).
-			Offset(int(limit.Page-1) * int(limit.Size)).
-			Order("contract_id")
+		q = q.Order("contracts.contract_id")
 	}
+
+	// Pagination
+	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
+
 	var contracts []DBContract
 	if res := q.Scan(&contracts); res.Error != nil {
 		return contracts, uint(count), errors.Wrap(res.Error, "failed to scan returned contracts from database")
@@ -930,4 +981,16 @@ func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, nodesGPU []types.
 		return fmt.Errorf("failed to upsert nodes GPU details: %w", err)
 	}
 	return nil
+}
+
+func (p *PostgresDatabase) GetLastNodeTwinID(ctx context.Context) (int64, error) {
+	var node Node
+	err := p.gormDB.Table("node").Order("twin_id DESC").Limit(1).Scan(&node).Error
+	return node.TwinID, err
+}
+
+func (p *PostgresDatabase) GetNodeTwinIDsAfter(ctx context.Context, twinID int64) ([]int64, error) {
+	nodeTwinIDs := make([]int64, 0)
+	err := p.gormDB.Table("node").Select("twin_id").Where("twin_id > ?", twinID).Order("twin_id DESC").Scan(&nodeTwinIDs).Error
+	return nodeTwinIDs, err
 }
