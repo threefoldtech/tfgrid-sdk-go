@@ -28,9 +28,7 @@ var (
 var nodeFilter = types.NodeFilter{
 	Status:  &statusUp,
 	FreeSRU: convertGBToBytes(10),
-	FreeHRU: convertGBToBytes(2),
 	FreeMRU: convertGBToBytes(2),
-	FarmIDs: []uint64{1},
 	Rented:  &falseVal,
 }
 
@@ -46,7 +44,7 @@ func setup() (deployer.TFPluginClient, error) {
 	network := os.Getenv("NETWORK")
 	log.Printf("network: %s", network)
 
-	return deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 100, false)
+	return deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, false)
 }
 
 // TestConnection used to test connection

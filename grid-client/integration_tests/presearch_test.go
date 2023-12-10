@@ -27,6 +27,7 @@ func TestPresearchDeployment(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
+	nodeFilter := nodeFilter
 	nodeFilter.IPv4 = &trueVal
 	nodeFilter.FreeIPs = &value1
 

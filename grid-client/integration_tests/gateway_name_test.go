@@ -33,6 +33,9 @@ func TestGatewayNameDeployment(t *testing.T) {
 		return
 	}
 
+	nodeFilter := nodeFilter
+	nodeFilter.Domain = &trueVal
+
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
 	if err != nil || len(nodes) < 2 {
 		t.Skip("no available nodes found")

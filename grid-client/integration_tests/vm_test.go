@@ -28,6 +28,10 @@ func TestVMDeployment(t *testing.T) {
 		return
 	}
 
+	nodeFilter := nodeFilter
+	nodeFilter.IPv4 = &trueVal
+	nodeFilter.FreeIPs = &value1
+
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
 	if err != nil {
 		t.Skip("no available nodes found")

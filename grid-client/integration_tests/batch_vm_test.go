@@ -115,12 +115,12 @@ func TestBatchVMDeployment(t *testing.T) {
 	}
 
 	v2, err := tfPluginClient.State.LoadVMFromGrid(nodeID2, vm2.Name, dl2.Name)
-	if !assert.NoError(t, err) || assert.NotEmpty(t, v2.YggIP) {
+	if !assert.NoError(t, err) || !assert.NotEmpty(t, v2.YggIP) {
 		return
 	}
 
 	output, err = RemoteRun("root", v2.YggIP, "ls /", privateKey)
-	if !assert.NoError(t, err) || assert.Contains(t, output, "root") {
+	if !assert.NoError(t, err) || !assert.Contains(t, output, "root") {
 		return
 	}
 }
