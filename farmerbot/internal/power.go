@@ -110,7 +110,7 @@ func (f *FarmerBot) manageNodesPower(sub Sub) error {
 	return f.resourceUsageTooLow(sub, usedResources, totalResources)
 }
 
-func calculateResourceUsage(nodes []node) (uint64, uint64) {
+func calculateResourceUsage(nodes map[uint32]node) (uint64, uint64) {
 	usedResources := capacity{}
 	totalResources := capacity{}
 

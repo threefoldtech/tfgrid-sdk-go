@@ -25,12 +25,12 @@ func newState(ctx context.Context, sub Sub, rmbNodeClient RMB, inputs Config) (*
 	state := state{config: inputs}
 
 	// required from power for nodes
-	if inputs.Power.OverProvisionCPU == 0 {
-		inputs.Power.OverProvisionCPU = defaultCPUProvision
+	if state.config.Power.OverProvisionCPU == 0 {
+		state.config.Power.OverProvisionCPU = defaultCPUProvision
 	}
 
-	if inputs.Power.OverProvisionCPU < 1 || inputs.Power.OverProvisionCPU > 4 {
-		return nil, fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", inputs.Power.OverProvisionCPU)
+	if state.config.Power.OverProvisionCPU < 1 || state.config.Power.OverProvisionCPU > 4 {
+		return nil, fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", state.config.Power.OverProvisionCPU)
 	}
 
 	// set farm
@@ -199,11 +199,11 @@ func (s *state) updateNode(node node) error {
 }
 
 // FilterNodesPower filters ON or OFF nodes
-func (s *state) filterNodesPower(states []powerState) []node {
-	filtered := make([]node, 0)
-	for _, node := range s.nodes {
+func (s *state) filterNodesPower(states []powerState) map[uint32]node {
+	filtered := make(map[uint32]node, 0)
+	for nodeID, node := range s.nodes {
 		if slices.Contains(states, node.powerState) {
-			filtered = append(filtered, node)
+			filtered[nodeID] = node
 		}
 	}
 	return filtered
@@ -213,13 +213,13 @@ func (s *state) filterNodesPower(states []powerState) []node {
 //
 // nodes with public config can't be shutdown
 // Do not shutdown a node that just came up (give it some time)
-func (s *state) filterAllowedNodesToShutDown() []node {
-	filtered := make([]node, 0)
-	for _, node := range s.nodes {
+func (s *state) filterAllowedNodesToShutDown() map[uint32]node {
+	filtered := make(map[uint32]node, 0)
+	for nodeID, node := range s.nodes {
 		if node.isUnused() && !node.PublicConfig.HasValue &&
 			!node.neverShutDown && !node.hasActiveRentContract &&
 			time.Since(node.lastTimePowerStateChanged) >= periodicWakeUpDuration {
-			filtered = append(filtered, node)
+			filtered[nodeID] = node
 		}
 	}
 	return filtered
