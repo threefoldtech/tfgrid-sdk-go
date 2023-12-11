@@ -64,7 +64,6 @@ func NewNodeGPUIndexer(
 		indexer.relayCallback,
 		peer.WithRelay(relayURL),
 		peer.WithSession(sessionId),
-		peer.WithEncryption(true),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create direct RMB client: %w", err)

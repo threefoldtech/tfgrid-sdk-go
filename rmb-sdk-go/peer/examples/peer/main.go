@@ -32,7 +32,6 @@ func app() error {
 		relayCallback,
 		peer.WithRelay("wss://relay.dev.grid.tf"),
 		peer.WithSession("test-client"),
-		peer.WithEncryption(true),
 	)
 
 	if err != nil {

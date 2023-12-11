@@ -16,6 +16,7 @@ func (e *jsonEncoder) Decode(data []byte, out interface{}) error {
 	return json.Unmarshal(data, out)
 }
 
-func newJSONEncoder() Encoder {
+// NewJSONEncoder returns a JSON encoder.
+func NewJSONEncoder() Encoder {
 	return &jsonEncoder{}
 }

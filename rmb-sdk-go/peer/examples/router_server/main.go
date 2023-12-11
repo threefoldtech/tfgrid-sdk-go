@@ -79,7 +79,6 @@ func app() error {
 		router.Serve,
 		peer.WithRelay("wss://relay.dev.grid.tf"),
 		peer.WithSession("calculator"),
-		peer.WithEncryption(true),
 	)
 
 	if err != nil {

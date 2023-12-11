@@ -88,19 +88,16 @@ func NewPeer(
 	cfg := &peerCfg{
 		relayURL:         "wss://relay.grid.tf",
 		session:          "",
-		enableEncryption: false,
+		enableEncryption: true,
 		keyType:          KeyTypeSr25519,
-		schema:           encoder.DefaultSchema,
 	}
 	for _, o := range opts {
 		o(cfg)
 	}
 
-	e, err := encoder.NewEncoder(cfg.schema)
-	if err != nil {
-		return nil, err
+	if cfg.encoder == nil {
+		cfg.encoder = encoder.NewJSONEncoder()
 	}
-
 	identity, err := getIdentity(cfg.keyType, mnemonics)
 	if err != nil {
 		return nil, err
@@ -161,7 +158,7 @@ func NewPeer(
 		reader:  reader,
 		writer:  writer,
 		handler: handler,
-		encoder: e,
+		encoder: cfg.encoder,
 	}
 
 	go cl.process(ctx)
@@ -169,12 +166,17 @@ func NewPeer(
 	return cl, nil
 }
 
+// Encoder returns the peer's encoder.
+func (p *Peer) Encoder() encoder.Encoder {
+	return p.encoder
+}
+
 type peerCfg struct {
 	relayURL         string
 	keyType          string
 	session          string
 	enableEncryption bool
-	schema           encoder.Schema
+	encoder          encoder.Encoder
 }
 
 type PeerOpt func(*peerCfg)
@@ -207,9 +209,9 @@ func WithKeyType(keyType string) PeerOpt {
 	}
 }
 
-func WithEncoder(schema encoder.Schema) PeerOpt {
+func WithEncoder(encoder encoder.Encoder) PeerOpt {
 	return func(p *peerCfg) {
-		p.schema = schema
+		p.encoder = encoder
 	}
 }
 
