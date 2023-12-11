@@ -25,7 +25,7 @@ var getContractCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		contractID, err := strconv.Atoi(args[0])
+		contractID, err := strconv.ParseUint(args[0], 10, 32)
 		if err != nil {
 			log.Fatal().Err(err).Msg("not a valid contract id")
 		}
