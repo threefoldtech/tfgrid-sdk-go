@@ -299,12 +299,12 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Sub, nodeID uin
 	if nodeExists {
 		nodeObj, err := f.updateNodeWithLatestState(ctx, nodeID, oldNode, neverShutDown)
 		if err != nil {
-			log.Error().Err(err).Uint32("nodeID", uint32(nodeID)).Msg("Failed to update node")
+			log.Error().Err(err).Uint32("nodeID", nodeID).Msg("Failed to update node")
 			return node{}, fmt.Errorf("failed to update node %d: %w", nodeID, err)
 
 		}
 
-		log.Debug().Uint32("nodeID", uint32(nodeID)).Msg("Node is updated with latest changes successfully")
+		log.Debug().Uint32("nodeID", nodeID).Msg("Node is updated with latest changes successfully")
 		return nodeObj, nil
 	}
 
@@ -314,12 +314,12 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Sub, nodeID uin
 		if nodeObj.powerState == on {
 			return node{}, fmt.Errorf("node %d is not responding while we expect it to: %w", nodeID, err)
 		}
-		log.Error().Err(err).Uint32("nodeID", uint32(nodeID)).Msg("Failed to get node")
+		log.Error().Err(err).Uint32("nodeID", nodeID).Msg("Failed to get node")
 		return node{}, fmt.Errorf("failed to get node %d: %w", nodeID, err)
 	}
 
 	f.state.addNode(nodeObj)
-	log.Debug().Uint32("nodeID", uint32(nodeID)).Msg("Node is added with latest changes successfully")
+	log.Debug().Uint32("nodeID", nodeID).Msg("Node is added with latest changes successfully")
 	return nodeObj, nil
 }
 
