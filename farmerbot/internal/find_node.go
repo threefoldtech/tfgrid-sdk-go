@@ -90,10 +90,14 @@ func (f *FarmerBot) findNode(sub Sub, nodeOptions NodeOptions) (uint32, error) {
 	}
 
 	if len(possibleNodes) == 0 {
-		return 0, fmt.Errorf("could not find a suitable node with the given options: %+v", possibleNodes)
+		return 0, fmt.Errorf("could not find a suitable node with the given options: %+v", nodeOptions)
 	}
 
 	// Sort the nodes on power state (the ones that are ON first then waking up, off, shutting down)
+	sort.Slice(possibleNodes, func(i, j int) bool {
+		return possibleNodes[i].ID < possibleNodes[j].ID
+	})
+
 	sort.Slice(possibleNodes, func(i, j int) bool {
 		return possibleNodes[i].powerState < possibleNodes[j].powerState
 	})

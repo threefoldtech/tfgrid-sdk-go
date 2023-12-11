@@ -19,23 +19,23 @@ import (
 
 func mockRMBAndSubstrateCalls(
 	ctx context.Context, sub *mocks.MockSub, rmb *mocks.MockRMB,
-	farmID uint32, nodes []uint32,
+	inputs Config,
 	resources gridtypes.Capacity, errs []string, emptyNode, emptyTwin bool,
 ) {
 	farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, powerErr, statsErr, poolsErr, gpusErr := mocksErr(errs)
 
 	// farm calls
-	sub.EXPECT().GetFarm(farmID).Return(&substrate.Farm{ID: 1, DedicatedFarm: true}, farmErr)
+	sub.EXPECT().GetFarm(inputs.FarmID).Return(&substrate.Farm{ID: 1, DedicatedFarm: true, PublicIPs: []substrate.PublicIP{{IP: "1.1.1.1"}}}, farmErr)
 	if farmErr != nil {
 		return
 	}
-	sub.EXPECT().GetNodes(farmID).Return(nodes, nodesErr)
+	sub.EXPECT().GetNodes(inputs.FarmID).Return(append(inputs.IncludedNodes, inputs.ExcludedNodes...), nodesErr)
 	if nodesErr != nil {
 		return
 	}
 
 	// node calls
-	for _, nodeID := range nodes {
+	for _, nodeID := range inputs.IncludedNodes {
 		nodeIDVal := types.U32(nodeID)
 		if emptyNode {
 			nodeIDVal = 0
@@ -57,7 +57,7 @@ func mockRMBAndSubstrateCalls(
 		}
 
 		sub.EXPECT().GetNodeRentContract(nodeID).Return(uint64(0), rentErr)
-		if rentErr != nil {
+		if rentErr != nil && rentErr != substrate.ErrNotFound {
 			return
 		}
 
@@ -73,17 +73,17 @@ func mockRMBAndSubstrateCalls(
 			return
 		}
 
-		rmb.EXPECT().Statistics(ctx, nodeID).Return(zos.Counters{Total: resources}, statsErr)
+		rmb.EXPECT().Statistics(ctx, uint32(twinIDVal)).Return(zos.Counters{Total: resources}, statsErr)
 		if statsErr != nil {
 			return
 		}
 
-		rmb.EXPECT().GetStoragePools(ctx, nodeID).Return([]pkg.PoolMetrics{}, poolsErr)
+		rmb.EXPECT().GetStoragePools(ctx, uint32(twinIDVal)).Return([]pkg.PoolMetrics{}, poolsErr)
 		if poolsErr != nil {
 			return
 		}
 
-		rmb.EXPECT().ListGPUs(ctx, nodeID).Return([]zos.GPU{}, gpusErr)
+		rmb.EXPECT().ListGPUs(ctx, uint32(twinIDVal)).Return([]zos.GPU{}, gpusErr)
 		if gpusErr != nil {
 			return
 		}
@@ -107,7 +107,7 @@ func TestSetConfig(t *testing.T) {
 	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
 
 	t.Run("test valid state: no periodic wake up start, wakeup threshold (< min => min)", func(t *testing.T) {
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
 
 		state, err := newState(ctx, sub, rmb, inputs)
 		assert.NoError(t, err)
@@ -126,7 +126,7 @@ func TestSetConfig(t *testing.T) {
 	})
 
 	t.Run("test valid state: wake up threshold (> max => max)", func(t *testing.T) {
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
 
 		inputs.Power.WakeUpThreshold = 100
 
@@ -136,7 +136,7 @@ func TestSetConfig(t *testing.T) {
 	})
 
 	t.Run("test valid state: wake up threshold (is 0 => default)", func(t *testing.T) {
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
 
 		inputs.Power.WakeUpThreshold = 0
 
@@ -158,22 +158,43 @@ func TestSetConfig(t *testing.T) {
 		calls := []string{"farm", "nodes", "node", "dedicated", "rent", "power", "stats", "pools", "gpus"}
 
 		for _, call := range calls {
-			mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{call}, false, false)
+			mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{call}, false, false)
 
 			_, err := newState(ctx, sub, rmb, inputs)
 			assert.Error(t, err)
 		}
 	})
 
+	t.Run("test invalid state: rent contract doesn't exist", func(t *testing.T) {
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{"rentNotExist"}, false, false)
+
+		state, err := newState(ctx, sub, rmb, inputs)
+		assert.NoError(t, err)
+		assert.False(t, state.nodes[1].hasActiveRentContract)
+	})
+
+	t.Run("test valid excluded node", func(t *testing.T) {
+		inputs.ExcludedNodes = append(inputs.ExcludedNodes, 3)
+
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.NoError(t, err)
+
+		inputs.ExcludedNodes = []uint32{}
+	})
+
 	t.Run("test invalid state < 2 nodes are provided", func(t *testing.T) {
 		inputs.ExcludedNodes = append(inputs.ExcludedNodes, 2)
+		inputs.IncludedNodes = []uint32{1}
 
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, []uint32{1}, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
 
 		inputs.ExcludedNodes = []uint32{}
+		inputs.IncludedNodes = []uint32{1, 2}
 	})
 
 	t.Run("test invalid state no farm ID", func(t *testing.T) {
@@ -185,7 +206,14 @@ func TestSetConfig(t *testing.T) {
 	})
 
 	t.Run("test invalid state no node ID", func(t *testing.T) {
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, true, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, true, false)
+
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.Error(t, err)
+	})
+
+	t.Run("test invalid state no twin ID", func(t *testing.T) {
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, true)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
@@ -193,7 +221,7 @@ func TestSetConfig(t *testing.T) {
 
 	t.Run("test invalid state no node sru", func(t *testing.T) {
 		resources := gridtypes.Capacity{HRU: 1, SRU: 0, CRU: 1, MRU: 1}
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
@@ -201,7 +229,7 @@ func TestSetConfig(t *testing.T) {
 
 	t.Run("test invalid state no cru", func(t *testing.T) {
 		resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 0, MRU: 1}
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
@@ -209,7 +237,7 @@ func TestSetConfig(t *testing.T) {
 
 	t.Run("test invalid state no mru", func(t *testing.T) {
 		resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 0}
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
@@ -217,7 +245,7 @@ func TestSetConfig(t *testing.T) {
 
 	t.Run("test invalid state no hru", func(t *testing.T) {
 		resources := gridtypes.Capacity{HRU: 0, SRU: 1, CRU: 1, MRU: 1}
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs.FarmID, inputs.IncludedNodes, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
@@ -258,6 +286,14 @@ func TestStateModel(t *testing.T) {
 		nodes := state.filterAllowedNodesToShutDown()
 		assert.Equal(t, len(nodes), len(state.nodes))
 	})
+
+	t.Run("test update node", func(t *testing.T) {
+		state.addNode(node{Node: substrate.Node{ID: 1, TwinID: 1}})
+		assert.Equal(t, uint32(state.nodes[1].TwinID), uint32(1))
+
+		state.deleteNode(1)
+		assert.Empty(t, state.nodes[1])
+	})
 }
 
 func mocksErr(errs []string) (farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, powerErr, statsErr, poolsErr, gpusErr error) {
@@ -280,6 +316,10 @@ func mocksErr(errs []string) (farmErr, nodesErr, nodeErr, dedicatedErr, rentErr,
 
 	if slices.Contains(errs, "rent") {
 		rentErr = errors.Errorf("error")
+	}
+
+	if slices.Contains(errs, "rentNotExist") {
+		rentErr = substrate.ErrNotFound
 	}
 
 	if slices.Contains(errs, "power") {
