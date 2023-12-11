@@ -32,7 +32,6 @@ var (
 )
 
 var views = []string{
-	// Node view needed for join on farm
 	`
 	CREATE MATERIALIZED VIEW node_materialized_view AS
 	SELECT
@@ -73,7 +72,6 @@ var views = []string{
 	-- trigger a backup refresh each 6 hours
 	SELECT cron.schedule('0 */6 * * *', 'SELECT refresh_node_materialized_view()');
 	`,
-	// Farm view
 	`
 	CREATE MATERIALIZED VIEW farm_materialized_view AS
 	SELECT
@@ -259,9 +257,10 @@ func (d *PostgresDatabase) Close() error {
 
 func (d *PostgresDatabase) initialize() error {
 	err := d.gormDB.Exec(setupPostgresql).Error
-	for _, view := range views {
-		err = d.gormDB.Exec(view).Error
-	}
+	// concatenate in one string before exec
+	// for _, view := range views {
+	// 	err = d.gormDB.Exec(view).Error
+	// }
 
 	return err
 }
@@ -320,11 +319,7 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 	}
 	query := d.gormDB.WithContext(ctx).
 		Table("node").
-		Joins(
-			`RIGHT JOIN public_config
-			ON node.id = public_config.node_id
-			`,
-		)
+		Joins("RIGHT JOIN public_config ON node.id = public_config.node_id")
 
 	if res := query.Where(condition).Where("COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != ''").Count(&stats.AccessNodes); res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get access node count")
@@ -404,7 +399,9 @@ func (d *PostgresDatabase) GetNode(ctx context.Context, nodeID uint32) (Node, er
 
 // GetFarm return farm info
 func (d *PostgresDatabase) GetFarm(ctx context.Context, farmID uint32) (Farm, error) {
-	q := d.farmTableQuery()
+	//TODO: make a quick table here without needs to joins
+	// q := d.farmTableQuery()
+	q := d.gormDB
 	q = q.WithContext(ctx)
 	q = q.Where("farm.farm_id = ?", farmID)
 	var farm Farm
@@ -443,7 +440,7 @@ func printQuery(query string, args ...interface{}) {
 	fmt.Printf("node query: %s", query)
 }
 
-func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
+func (d *PostgresDatabase) farmTableQuery(nodeQuery *gorm.DB) *gorm.DB {
 	return d.gormDB.
 		Table("farm").
 		Select(
@@ -456,30 +453,9 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 			"farm.stellar_address",
 			"farm.dedicated_farm as dedicated",
 			"COALESCE(public_ips.public_ips, '[]') as public_ips",
-			"bool_or(node.rent_contract_id != 0)",
+			"node.rented",
 		).
-		Joins(
-			`left join(
-				SELECT
-					node.node_id,
-					node.twin_id,
-					node.farm_id,
-					node.power,
-					node.updated_at,
-					node.certification,
-					node.country,
-					nodes_resources_view.free_mru,
-					nodes_resources_view.free_hru,
-					nodes_resources_view.free_sru,
-					COALESCE(rent_contract.contract_id, 0) rent_contract_id,
-					COALESCE(rent_contract.twin_id, 0) renter,
-					COALESCE(node_gpu.id, '') gpu_id
-				FROM node
-				LEFT JOIN nodes_resources_view ON node.node_id = nodes_resources_view.node_id
-				LEFT JOIN rent_contract ON node.node_id = rent_contract.node_id AND rent_contract.state IN ('Created', 'GracePeriod')
-				LEFT JOIN node_gpu ON node.twin_id = node_gpu.node_twin_id
-			) node on node.farm_id = farm.farm_id`,
-		).
+		Joins("LEFT JOIN (?) AS node ON farm.farm_id = node.farm_id", nodeQuery).
 		Joins(`left join(
 			SELECT
 				p1.farm_id,
@@ -489,26 +465,26 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 			LEFT JOIN public_ip p2 ON p1.id = p2.id
 			GROUP BY p1.farm_id
 		) public_ip_count on public_ip_count.farm_id = farm.id`).
-		// Joins(`left join (
-		// 	select
-		// 		farm_id,
-		// 		jsonb_agg(jsonb_build_object('id', id, 'ip', ip, 'contract_id', contract_id, 'gateway', gateway)) as public_ips
-		// 	from public_ip
-		// 	GROUP BY farm_id
-		// ) public_ips on public_ips.farm_id = farm.id`).
+		Joins(`left join (
+			select
+				farm_id,
+				jsonb_agg(jsonb_build_object('id', id, 'ip', ip, 'contract_id', contract_id, 'gateway', gateway)) as public_ips
+			from public_ip
+			GROUP BY farm_id
+		) public_ips on public_ips.farm_id = farm.id`).
 		Joins(
 			"LEFT JOIN country ON node.country = country.name",
 		).
 		Group(
 			`farm.id,
-			farm.farm_id,
-			farm.name,
-			farm.twin_id,
-			farm.pricing_policy_id,
-			farm.certification,
-			farm.stellar_address,
-			farm.dedicated_farm,
-			COALESCE(public_ips.public_ips, '[]')`,
+		farm.farm_id,
+		farm.name,
+		farm.twin_id,
+		farm.pricing_policy_id,
+		farm.certification,
+		farm.stellar_address,
+		farm.dedicated_farm,
+		COALESCE(public_ips.public_ips, '[]')`,
 		)
 }
 
@@ -784,47 +760,70 @@ func (d *PostgresDatabase) shouldRetry(resError error) bool {
 
 // GetFarms return farms filtered and paginated
 func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
-	q := d.farmTableQuery()
-	q = q.WithContext(ctx)
+	// filter the nodes first
+	nodeQuery := d.gormDB.Table("node").
+		Select(
+			"node.farm_id",
+			"country",
+			"certification",
+			"rent_contract.twin_id as renter",
+			// check using the aggregated function
+			"CASE WHEN rent_contract.contract_id IS NOT NULL AND rent_contract.contract_id <> 0 THEN true ELSE false  END AS rented",
+			"COALESCE(node_gpu.id, '') as gpu_id",
+		).Joins(
+		"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
+		"LEFT JOIN nodes_resources_view ON nodes_resources_view.node_id = node.node_id",
+		"LEFT JOIN country ON country.name = node.country",
+		"LEFT JOIN node_gpu ON node.twin_id = node_gpu.node_twin_id",
+	).Group(
+		`node.farm_id,
+		rent_contract.twin_id,
+		node_gpu.id,
+		node.certification,
+		node.country`,
+	)
+
 	if filter.NodeFreeMRU != nil {
-		q = q.Where("node.free_mru >= ?", *filter.NodeFreeMRU)
+		nodeQuery = nodeQuery.Where("nodes_resources_view.free_mru >= ?", *filter.NodeFreeMRU)
 	}
 	if filter.NodeFreeHRU != nil {
-		q = q.Where("node.free_hru >= ?", *filter.NodeFreeHRU)
+		nodeQuery = nodeQuery.Where("nodes_resources_view.free_hru >= ?", *filter.NodeFreeHRU)
 	}
 	if filter.NodeFreeSRU != nil {
-		q = q.Where("node.free_sru >= ?", *filter.NodeFreeSRU)
+		nodeQuery = nodeQuery.Where("nodes_resources_view.free_sru >= ?", *filter.NodeFreeSRU)
 	}
 
 	if filter.NodeAvailableFor != nil {
-		q = q.Where("node.renter = ? OR (node.renter = 0 AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
-		q = q.Order("CASE WHEN bool_or(node.rent_contract_id != 0) = TRUE THEN 1 ELSE 2 END")
+		nodeQuery = nodeQuery.Where("node.renter = ? OR (node.renter = 0 AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
+		// nodeQuery = nodeQuery.Order("CASE WHEN bool_or(node.rent_contract_id != 0) = TRUE THEN 1 ELSE 2 END")
 	}
 
 	if filter.NodeHasGPU != nil {
-		q = q.Where("(node.gpu_id != '') = ?", *filter.NodeHasGPU)
+		nodeQuery = nodeQuery.Where("(node.gpu_id != '') = ?", *filter.NodeHasGPU)
 	}
 
 	if filter.NodeRentedBy != nil {
-		q = q.Where("node.renter = ?", *filter.NodeRentedBy)
+		nodeQuery = nodeQuery.Where("node.renter = ?", *filter.NodeRentedBy)
 	}
 
 	if filter.Country != nil {
-		q = q.Where("LOWER(node.country) = LOWER(?)", *filter.Country)
+		nodeQuery = nodeQuery.Where("LOWER(node.country) = LOWER(?)", *filter.Country)
 	}
 
 	if filter.Region != nil {
-		q = q.Where("LOWER(country.subregion) = LOWER(?)", *filter.Region)
+		nodeQuery = nodeQuery.Where("LOWER(country.subregion) = LOWER(?)", *filter.Region)
 	}
 
 	if filter.NodeStatus != nil {
 		condition := nodestatus.DecideNodeStatusCondition(*filter.NodeStatus)
-		q = q.Where(condition)
+		nodeQuery = nodeQuery.Where(condition)
 	}
 
 	if filter.NodeCertified != nil {
-		q = q.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
+		nodeQuery = nodeQuery.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
 	}
+
+	q := d.farmTableQuery(nodeQuery)
 
 	if filter.FreeIPs != nil {
 		q = q.Where("public_ip_count.free_ips >= ?", *filter.FreeIPs)
@@ -862,13 +861,14 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)
 	}
 	var count int64
-	if limit.Randomize || limit.RetCount {
-		if res := q.Count(&count); res.Error != nil {
-			return nil, 0, errors.Wrap(res.Error, "couldn't get farm count")
-		}
-	}
+	// if limit.Randomize || limit.RetCount {
+	// 	if res := q.Count(&count); res.Error != nil {
+	// 		return nil, 0, errors.Wrap(res.Error, "couldn't get farm count")
+	// 	}
+	// }
 
 	// Sorting
+	//TODO: sort with available for
 	if limit.Randomize {
 		q = q.Order("random()")
 	} else if limit.SortBy != "" {
@@ -885,8 +885,12 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
 
 	var farms []Farm
-	if res := q.Scan(&farms); res.Error != nil {
-		return farms, uint(count), errors.Wrap(res.Error, "failed to scan returned farm from database")
+	err := q.Scan(&farms).Error
+	if d.shouldRetry(err) {
+		err = q.Scan(&farms).Error
+	}
+	if err != nil {
+		return farms, 0, errors.Wrap(err, "failed to scan returned farm from database")
 	}
 	return farms, uint(count), nil
 }
