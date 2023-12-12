@@ -361,7 +361,7 @@ func TestPrepareURL(t *testing.T) {
 		endpoint: endpoint,
 	}
 
-	want := "http://www.gridproxy.com/nodes?status=st&free_mru=10&farm_ids=1&farm_ids=2&farm_ids=3&dedicated=true&size=50&page=1&ret_count=true"
+	want := "http://www.gridproxy.com/nodes?status=st&free_mru=10&farm_ids=1&farm_ids=2&farm_ids=3&dedicated=true&size=50&page=1"
 	wantURL, err := url.Parse(want)
 	assert.NoError(t, err)
 
