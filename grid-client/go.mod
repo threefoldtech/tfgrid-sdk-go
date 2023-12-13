@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
+	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/golang/mock v1.6.0
 	github.com/pkg/errors v0.9.1
@@ -22,6 +22,7 @@ require (
 
 require (
 	github.com/gorilla/schema v1.2.0 // indirect
+	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
 	golang.org/x/net v0.18.0 // indirect
 )
 
