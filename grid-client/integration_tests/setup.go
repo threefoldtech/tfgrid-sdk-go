@@ -19,7 +19,6 @@ import (
 
 var (
 	trueVal   = true
-	falseVal  = false
 	statusUp  = "up"
 	value1    = uint64(1)
 	minRootfs = *convertGBToBytes(2)
@@ -31,7 +30,6 @@ var nodeFilter = types.NodeFilter{
 	FreeHRU: convertGBToBytes(2),
 	FreeMRU: convertGBToBytes(2),
 	FarmIDs: []uint64{1},
-	Rented:  &falseVal,
 }
 
 func convertGBToBytes(gb uint64) *uint64 {
@@ -46,7 +44,10 @@ func setup() (deployer.TFPluginClient, error) {
 	network := os.Getenv("NETWORK")
 	log.Printf("network: %s", network)
 
-	return deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, false)
+	tf, err := deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 50, false)
+	twinID := uint64(tf.TwinID)
+	nodeFilter.AvailableFor = &twinID
+	return tf, err
 }
 
 // TestConnection used to test connection
