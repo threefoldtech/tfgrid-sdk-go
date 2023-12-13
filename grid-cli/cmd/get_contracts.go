@@ -41,7 +41,7 @@ func init() {
 }
 
 func printContractTables(contracts graphql.Contracts, writer io.Writer) {
-	fmt.Println("Node contracts:")
+	fmt.Fprintln(writer, "Node contracts:")
 
 	nodeTable := tabwriter.NewWriter(writer, 0, 0, 4, ' ', 0)
 	fmt.Fprintln(nodeTable, "ID\tNode ID\tType\tName\tProject Name")
@@ -53,8 +53,8 @@ func printContractTables(contracts graphql.Contracts, writer io.Writer) {
 	}
 	nodeTable.Flush()
 
-	fmt.Println()
-	fmt.Println("Name contracts:")
+	fmt.Fprintln(writer)
+	fmt.Fprintln(writer, "Name contracts:")
 
 	nameTable := tabwriter.NewWriter(writer, 0, 0, 4, ' ', 0)
 	fmt.Fprintln(nameTable, "ID\tName")
