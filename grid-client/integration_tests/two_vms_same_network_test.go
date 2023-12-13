@@ -3,6 +3,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
 	"testing"
@@ -132,39 +133,27 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 		}
 
 		// check privateIP2 from vm1
-		_, err = RemoteRun("root", yggIP1, "nc -z "+privateIP2+" 22", privateKey)
-		if !assert.NoError(t, err) {
-			return
-		}
+		_, err = RemoteRun("root", yggIP1, fmt.Sprintf("nc -z %s 22", privateIP2), privateKey)
+		assert.NoError(t, err)
 
 		// check privateIP1 from vm2
-		_, err = RemoteRun("root", yggIP2, "nc -z "+privateIP1+" 22", privateKey)
-		if !assert.NoError(t, err) {
-			return
-		}
+		_, err = RemoteRun("root", yggIP2, fmt.Sprintf("nc -z %s 22", privateIP1), privateKey)
+		assert.NoError(t, err)
 
 		// check yggIP2 from vm1
-		_, err = RemoteRun("root", yggIP1, "nc -z "+yggIP2+" 22", privateKey)
-		if !assert.NoError(t, err) {
-			return
-		}
+		_, err = RemoteRun("root", yggIP1, fmt.Sprintf("nc -z %s 22", yggIP2), privateKey)
+		assert.NoError(t, err)
 
 		// check yggIP1 from vm2
-		_, err = RemoteRun("root", yggIP2, "nc -z "+yggIP1+" 22", privateKey)
-		if !assert.NoError(t, err) {
-			return
-		}
+		_, err = RemoteRun("root", yggIP2, fmt.Sprintf("nc -z %s 22", yggIP1), privateKey)
+		assert.NoError(t, err)
 
 		// check publicIP62 from vm1
-		_, err = RemoteRun("root", yggIP1, "nc -z "+publicIP6_2+" 22", privateKey)
-		if !assert.NoError(t, err) {
-			return
-		}
+		_, err = RemoteRun("root", yggIP1, fmt.Sprintf("nc -z %s 22", publicIP6_2), privateKey)
+		assert.NoError(t, err)
 
 		// check publicIP61 from vm2
-		_, err = RemoteRun("root", yggIP2, "nc -z "+publicIP6_1+" 22", privateKey)
-		if !assert.NoError(t, err) {
-			return
-		}
+		_, err = RemoteRun("root", yggIP2, fmt.Sprintf("nc -z %s 22", publicIP6_1), privateKey)
+		assert.NoError(t, err)
 	})
 }
