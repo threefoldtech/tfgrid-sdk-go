@@ -1,4 +1,4 @@
-name: proxy Integration tests
+name: Proxy integration tests
 
 on:
   push:
