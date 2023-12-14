@@ -24,7 +24,7 @@ import (
 )
 
 // MockDeployer to be used for any deployer in mock testing
-type MockDeployer interface { //TODO: Change Name && separate them
+type MockDeployer interface { // TODO: Change Name && separate them
 	Deploy(ctx context.Context,
 		oldDeploymentIDs map[uint32]uint64,
 		newDeployments map[uint32]gridtypes.Deployment,
@@ -57,7 +57,6 @@ func NewDeployer(
 	tfPluginClient TFPluginClient,
 	revertOnFailure bool,
 ) Deployer {
-
 	return Deployer{
 		tfPluginClient.Identity,
 		tfPluginClient.TwinID,
@@ -158,6 +157,9 @@ func (d *Deployer) deploy(
 			contractID, err := d.substrateConn.CreateNodeContract(d.identity, node, dl.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[node])
 			log.Debug().Uint64("CreateNodeContract returned id", contractID)
 			if err != nil {
+				if strings.Contains(err.Error(), "NodeNotAvailableToDeploy") {
+					err = errors.Wrap(err, "tring to deploy on a rented node")
+				}
 				return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d", node)
 			}
 
