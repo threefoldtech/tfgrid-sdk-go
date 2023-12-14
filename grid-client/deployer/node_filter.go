@@ -26,6 +26,11 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		limit = types.Limit{Size: optionalLimit[0]}
 	}
 
+	if options.AvailableFor == nil {
+		twinID := uint64(tfPlugin.TwinID)
+		options.AvailableFor = &twinID
+	}
+
 	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
 	if err != nil {
 		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
