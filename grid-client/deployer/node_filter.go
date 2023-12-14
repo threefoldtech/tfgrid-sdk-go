@@ -262,8 +262,12 @@ func serializeOptions(options types.NodeFilter) string {
 	if options.IPv4 != nil {
 		fmt.Fprintf(&filterStringBuilder, "ipv4: %t, ", *options.IPv4)
 	}
+
 	filterString := filterStringBuilder.String()
-	return filterString[:len(filterString)-2]
+	if len(filterString) >= 2 {
+		filterString = filterString[:len(filterString)-2]
+	}
+	return filterString
 }
 
 func convertBytesToGB(bytes uint64) uint64 {
