@@ -3,12 +3,12 @@ package deployer
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"net"
 	"sort"
-	"strings"
 	"sync"
 
+	"github.com/gorilla/schema"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
@@ -37,7 +37,11 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	}
 
 	if len(nodes) == 0 {
-		return []types.Node{}, errors.Errorf("could not find any node with options: %+v", serializeOptions(options))
+		options, err := serializeOptions(options)
+		if err != nil {
+			log.Debug().Msg(err.Error())
+		}
+		return []types.Node{}, errors.Errorf("could not find any node with options: %s", options)
 	}
 
 	// if no storage needed
@@ -236,38 +240,17 @@ func hasEnoughStorage(pools []client.PoolMetrics, storages []uint64, poolType zo
 	return true
 }
 
-func serializeOptions(options types.NodeFilter) string {
-	var filterStringBuilder strings.Builder
-	if options.FarmIDs != nil {
-		fmt.Fprintf(&filterStringBuilder, "farm ids: %v, ", options.FarmIDs)
+func serializeOptions(options types.NodeFilter) (string, error) {
+	params := make(map[string][]string)
+	err := schema.NewEncoder().Encode(options, params)
+	if err != nil {
+		return "", nil
 	}
-	if options.FarmName != nil {
-		fmt.Fprintf(&filterStringBuilder, "farm name: %v, ", options.FarmName)
+	filterString, err := json.Marshal(params)
+	if err != nil {
+		return "", nil
 	}
-	if options.FreeMRU != nil {
-		fmt.Fprintf(&filterStringBuilder, "mru: %d GB, ", convertBytesToGB(*options.FreeMRU))
-	}
-	if options.FreeSRU != nil {
-		fmt.Fprintf(&filterStringBuilder, "sru: %d GB, ", convertBytesToGB(*options.FreeSRU))
-	}
-	if options.FreeHRU != nil {
-		fmt.Fprintf(&filterStringBuilder, "hru: %d GB, ", convertBytesToGB(*options.FreeHRU))
-	}
-	if options.FreeIPs != nil {
-		fmt.Fprintf(&filterStringBuilder, "free ips: %d, ", *options.FreeIPs)
-	}
-	if options.Domain != nil {
-		fmt.Fprintf(&filterStringBuilder, "domain: %t, ", *options.Domain)
-	}
-	if options.IPv4 != nil {
-		fmt.Fprintf(&filterStringBuilder, "ipv4: %t, ", *options.IPv4)
-	}
-
-	filterString := filterStringBuilder.String()
-	if len(filterString) >= 2 {
-		filterString = filterString[:len(filterString)-2]
-	}
-	return filterString
+	return string(filterString), nil
 }
 
 func convertBytesToGB(bytes uint64) uint64 {
