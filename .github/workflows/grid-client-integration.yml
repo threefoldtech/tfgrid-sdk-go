@@ -1,4 +1,4 @@
-name: Grid3 Go Integration tests
+name: Grid client integration tests
 
 defaults:
   run:

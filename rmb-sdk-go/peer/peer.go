@@ -13,14 +13,12 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/cosmos/go-bip39"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
-	"github.com/vedhavyas/go-subkey"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -44,20 +42,14 @@ type Peer struct {
 	handler Handler
 }
 
-func generateSecureKey(mnemonicOrSeed string) (*secp256k1.PrivateKey, error) {
-	var err error
-
-	seed, ok := subkey.DecodeHex(mnemonicOrSeed)
-	if !ok {
-		seed, err = bip39.NewSeedWithErrorChecking(mnemonicOrSeed, "")
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to decode seed/mnemonic")
-		}
+func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, error) {
+	keyPair, err := identity.KeyPair()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate identity key pair")
 	}
 
-	priv := secp256k1.PrivKeyFromBytes(seed[:32])
+	priv := secp256k1.PrivKeyFromBytes(keyPair.Seed())
 	return priv, nil
-
 }
 
 func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
@@ -120,7 +112,7 @@ func NewPeer(
 	var publicKey []byte
 	var privKey *secp256k1.PrivateKey
 	if enableEncryption {
-		privKey, err = generateSecureKey(mnemonics)
+		privKey, err = generateSecureKey(identity)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not generate secure key")
 

@@ -84,7 +84,7 @@ func DefaultLimit() Limit {
 	return Limit{
 		Size:      50,
 		Page:      1,
-		RetCount:  true,
+		RetCount:  false,
 		Randomize: false,
 		SortBy:    "",
 		SortOrder: "",

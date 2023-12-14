@@ -364,6 +364,7 @@ func (d *PostgresDatabase) farmTableQuery() *gorm.DB {
 					nodes_resources_view.free_mru,
 					nodes_resources_view.free_hru,
 					nodes_resources_view.free_sru,
+					nodes_resources_view.total_cru,
 					COALESCE(rent_contract.contract_id, 0) rent_contract_id,
 					COALESCE(rent_contract.twin_id, 0) renter,
 					COALESCE(node_gpu.id, '') gpu_id
@@ -687,6 +688,9 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	}
 	if filter.NodeFreeSRU != nil {
 		q = q.Where("node.free_sru >= ?", *filter.NodeFreeSRU)
+	}
+	if filter.NodeTotalCRU != nil {
+		q = q.Where("node.total_cru >= ?", *filter.NodeTotalCRU)
 	}
 
 	if filter.NodeAvailableFor != nil {

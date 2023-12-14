@@ -133,6 +133,10 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			continue
 		}
 
+		if filter.NodeTotalCRU != nil && total.CRU < *filter.NodeTotalCRU {
+			continue
+		}
+
 		if filter.NodeAvailableFor != nil && ((data.NodeRentedBy[node.NodeID] != 0 && data.NodeRentedBy[node.NodeID] != *filter.NodeAvailableFor) ||
 			(data.NodeRentedBy[node.NodeID] != *filter.NodeAvailableFor && data.Farms[node.FarmID].DedicatedFarm)) {
 			continue

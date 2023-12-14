@@ -36,6 +36,7 @@ type FarmFilter struct {
 	NodeFreeMRU       *uint64 `schema:"node_free_mru,omitempty"`
 	NodeFreeHRU       *uint64 `schema:"node_free_hru,omitempty"`
 	NodeFreeSRU       *uint64 `schema:"node_free_sru,omitempty"`
+	NodeTotalCRU      *uint64 `schema:"node_total_cru,omitempty"`
 	NodeStatus        *string `schema:"node_status,omitempty"`
 	NodeRentedBy      *uint64 `schema:"node_rented_by,omitempty"`
 	NodeAvailableFor  *uint64 `schema:"node_available_for,omitempty"`
