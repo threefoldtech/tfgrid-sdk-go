@@ -32,13 +32,17 @@ func (g *GridProxyMockClient) Farms(ctx context.Context, filter types.FarmFilter
 
 	for _, farm := range g.data.Farms {
 		if farm.satisfies(filter, &g.data) {
+			ips := []types.PublicIP{}
+			if pubIPs, ok := publicIPs[farm.FarmID]; ok {
+				ips = pubIPs
+			}
 			res = append(res, types.Farm{
 				Name:              farm.Name,
 				FarmID:            int(farm.FarmID),
 				TwinID:            int(farm.TwinID),
 				PricingPolicyID:   int(farm.PricingPolicyID),
 				StellarAddress:    farm.StellarAddress,
-				PublicIps:         publicIPs[farm.FarmID],
+				PublicIps:         ips,
 				Dedicated:         farm.DedicatedFarm,
 				CertificationType: farm.Certification,
 			})
@@ -105,8 +109,13 @@ func (f *Farm) satisfies(filter types.FarmFilter, data *DBData) bool {
 		return false
 	}
 
-	if !f.satisfyFarmNodesFilter(data, filter) {
-		return false
+	if filter.NodeAvailableFor != nil || filter.NodeCertified != nil || filter.NodeFreeHRU != nil ||
+		filter.NodeFreeMRU != nil || filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
+		filter.NodeRentedBy != nil || filter.NodeStatus != nil || filter.Country != nil || filter.Region != nil {
+
+		if !f.satisfyFarmNodesFilter(data, filter) {
+			return false
+		}
 	}
 
 	return true
