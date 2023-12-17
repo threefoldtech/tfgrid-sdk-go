@@ -3,9 +3,10 @@ package deployer
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"net"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/schema"
@@ -246,11 +247,17 @@ func serializeOptions(options types.NodeFilter) (string, error) {
 	if err != nil {
 		return "", nil
 	}
-	filterString, err := json.Marshal(params)
-	if err != nil {
-		return "", nil
+
+	var filterStringBuilder strings.Builder
+	for key, val := range params {
+		fmt.Fprintf(&filterStringBuilder, "%s: %v, ", key, val)
 	}
-	return string(filterString), nil
+
+	filterString := filterStringBuilder.String()
+	if len(filterString) > 2 {
+		filterString = filterString[:len(filterString)-2]
+	}
+	return filterString, nil
 }
 
 func convertBytesToGB(bytes uint64) uint64 {
