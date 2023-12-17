@@ -20,18 +20,69 @@ import (
 )
 
 // FilterNodes filters nodes using proxy
-func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64, optionalLimit ...uint64) ([]types.Node, error) {
-	limit := types.Limit{}
-
-	if len(optionalLimit) > 0 {
-		limit = types.Limit{Size: optionalLimit[0]}
-	}
+func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64, optionalLimit ...int) ([]types.Node, error) {
+	limit := types.Limit{Randomize: true}
 
 	if options.AvailableFor == nil {
-		twinID := uint64(tfPlugin.TwinID)
+		twinID := uint64(tf.TwinID)
 		options.AvailableFor = &twinID
 	}
 
+	if len(optionalLimit) == 0 {
+		return filterNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, limit)
+	}
+
+	pagesCount := 2
+	cnt := optionalLimit[0]
+	limit.Size = uint64(cnt)
+
+	if cnt < 100 {
+		pagesCount = 3
+	}
+
+	var nodes []types.Node
+	var allErrors error
+	var wg sync.WaitGroup
+	var lock sync.Mutex
+
+	for i := 0; i < pagesCount; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			if len(nodes) >= cnt {
+				return
+			}
+
+			limit.Page = uint64(i)
+			nodesFounds, err := filterNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, limit)
+			if err != nil {
+				lock.Lock()
+				allErrors = errors.Wrap(allErrors, err.Error())
+				lock.Unlock()
+
+				return
+			}
+
+			lock.Lock()
+			nodes = append(nodes, nodesFounds...)
+			lock.Unlock()
+		}(i)
+	}
+	wg.Wait()
+
+	if len(nodes) < cnt {
+		options, err := serializeOptions(options)
+		if err != nil {
+			log.Debug().Msg(err.Error())
+		}
+		return []types.Node{}, errors.Errorf("could not find enough node with options: %s", options)
+	}
+
+	return nodes[:cnt], allErrors
+}
+
+func filterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64, limit types.Limit) ([]types.Node, error) {
 	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
 	if err != nil {
 		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
