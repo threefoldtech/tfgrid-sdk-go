@@ -241,6 +241,8 @@ func hasEnoughStorage(pools []client.PoolMetrics, storages []uint64, poolType zo
 	return true
 }
 
+// serializeOptions used to encode a struct of NodeFilter type and convert it to string
+// with only non-zero values and drop any field with zero-value
 func serializeOptions(options types.NodeFilter) (string, error) {
 	params := make(map[string][]string)
 	err := schema.NewEncoder().Encode(options, params)
@@ -248,16 +250,21 @@ func serializeOptions(options types.NodeFilter) (string, error) {
 		return "", nil
 	}
 
-	var filterStringBuilder strings.Builder
+	// convert the map to string with `key: value` format
+	//
+	// example:
+	//
+	// map[string][]string{Status: [up]} -> "Status: [up]"
+	var sb strings.Builder
 	for key, val := range params {
-		fmt.Fprintf(&filterStringBuilder, "%s: %v, ", key, val)
+		fmt.Fprintf(&sb, "%s: %v, ", key, val[0])
 	}
 
-	filterString := filterStringBuilder.String()
-	if len(filterString) > 2 {
-		filterString = filterString[:len(filterString)-2]
+	filter := sb.String()
+	if len(filter) > 2 {
+		filter = filter[:len(filter)-2]
 	}
-	return filterString, nil
+	return filter, nil
 }
 
 func convertBytesToGB(bytes uint64) uint64 {
