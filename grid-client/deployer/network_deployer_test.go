@@ -125,8 +125,8 @@ func TestNetworkDeployer(t *testing.T) {
 }
 
 func (d *NetworkDeployer) ExampleDeploy() {
-	mnemonic := "<mnemonics goes here>"
-	network := "<dev, test, qa, main>"
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 	if err != nil {
@@ -143,8 +143,8 @@ func (d *NetworkDeployer) ExampleDeploy() {
 }
 
 func (d *NetworkDeployer) ExampleBatchDeploy() {
-	mnemonic := "<mnemonics goes here>"
-	network := "<dev, test, qa, main>"
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 	if err != nil {
@@ -162,8 +162,8 @@ func (d *NetworkDeployer) ExampleBatchDeploy() {
 }
 
 func (d *NetworkDeployer) ExampleCancel() {
-	mnemonic := "<mnemonics goes here>"
-	network := "<dev, test, qa, main>"
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 	if err != nil {
