@@ -28,12 +28,12 @@ func TestDiskDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	disk := workloads.Disk{
-		Name:        "testName",
+		Name:        generateRandString(10),
 		SizeGB:      1,
 		Description: "disk test",
 	}
 
-	dl := workloads.NewDeployment("disk", nodeID, "", nil, "", []workloads.Disk{disk}, nil, nil, nil)
+	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, "", []workloads.Disk{disk}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	if !assert.NoError(t, err) {
 		return

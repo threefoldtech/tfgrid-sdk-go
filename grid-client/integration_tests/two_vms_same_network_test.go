@@ -37,7 +37,7 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "vmsTestingNetwork",
+		Name:        generateRandString(10),
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -88,7 +88,7 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 	}()
 
 	t.Run("public ipv6 and yggdrasil", func(t *testing.T) {
-		dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm2}, nil)
+		dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm2}, nil)
 		err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 		if !assert.NoError(t, err) {
 			return

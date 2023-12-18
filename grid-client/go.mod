@@ -7,6 +7,7 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/golang/mock v1.6.0
+	github.com/gorilla/schema v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.31.0
 	github.com/stretchr/testify v1.8.4
@@ -20,10 +21,7 @@ require (
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b
 )
 
-require (
-	github.com/gorilla/schema v1.2.0 // indirect
-	golang.org/x/net v0.18.0 // indirect
-)
+require golang.org/x/net v0.18.0 // indirect
 
 require (
 	github.com/ChainSafe/go-schnorrkel v1.1.0 // indirect
@@ -52,7 +50,6 @@ require (
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/cors v1.10.1 // indirect
-	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.15.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect

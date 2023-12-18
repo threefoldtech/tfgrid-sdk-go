@@ -45,7 +45,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "fqdnTestingNetwork",
+		Name:        generateRandString(10),
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -78,7 +78,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	if !assert.NoError(t, err) {
 		return
@@ -99,7 +99,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	gatewayNode := nodeID
 	gw := workloads.GatewayFQDNProxy{
 		NodeID:         gatewayNode,
-		Name:           "test",
+		Name:           generateRandString(10),
 		TLSPassthrough: false,
 		Backends:       []zos.Backend{zos.Backend(backend)},
 		FQDN:           fqdn,

@@ -42,7 +42,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "k8sTestingNetwork",
+		Name:        generateRandString(10),
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID1, nodeID2},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -69,7 +69,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	master1 := workloads.K8sNode{
-		Name:          "K8sForTesting",
+		Name:          generateRandString(10),
 		Node:          nodeID1,
 		DiskSize:      1,
 		PublicIP:      false,
@@ -86,7 +86,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	master2 := workloads.K8sNode{
-		Name:          "K8sForTesting2",
+		Name:          generateRandString(10),
 		Node:          nodeID2,
 		DiskSize:      1,
 		PublicIP:      false,
@@ -103,7 +103,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	workerNodeData1 := workloads.K8sNode{
-		Name:          "worker1",
+		Name:          generateRandString(10),
 		Node:          nodeID1,
 		DiskSize:      1,
 		PublicIP:      false,
@@ -120,7 +120,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	workerNodeData2 := workloads.K8sNode{
-		Name:          "worker2",
+		Name:          generateRandString(10),
 		Node:          nodeID2,
 		DiskSize:      1,
 		PublicIP:      false,

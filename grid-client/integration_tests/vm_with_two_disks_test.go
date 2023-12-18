@@ -44,7 +44,7 @@ func TestVMWithTwoDisk(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "vmsDiskTestingNetwork",
+		Name:        generateRandString(10),
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -91,7 +91,7 @@ func TestVMWithTwoDisk(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, []workloads.Disk{disk1, disk2}, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, network.Name, []workloads.Disk{disk1, disk2}, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	if !assert.NoError(t, err) {
 		return

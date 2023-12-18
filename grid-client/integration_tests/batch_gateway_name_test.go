@@ -43,7 +43,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "testNameGWNetwork",
+		Name:        generateRandString(10),
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID1, nodeID2},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -76,7 +76,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	dl := workloads.NewDeployment("vm", nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(generateRandString(10), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	if !assert.NoError(t, err) {
 		return
@@ -95,14 +95,14 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	backend := fmt.Sprintf("http://[%s]:9000", v.YggIP)
 	gw1 := workloads.GatewayNameProxy{
 		NodeID:         nodeID1,
-		Name:           "test1",
+		Name:           generateRandString(10),
 		TLSPassthrough: false,
 		Backends:       []zos.Backend{zos.Backend(backend)},
 	}
 
 	gw2 := workloads.GatewayNameProxy{
 		NodeID:         nodeID2,
-		Name:           "test2",
+		Name:           generateRandString(10),
 		TLSPassthrough: false,
 		Backends:       []zos.Backend{zos.Backend(backend)},
 	}

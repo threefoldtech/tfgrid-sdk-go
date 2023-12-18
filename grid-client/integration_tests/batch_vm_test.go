@@ -36,7 +36,7 @@ func TestBatchVMDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network1 := workloads.ZNet{
-		Name:        "vmTestingNetwork",
+		Name:        generateRandString(10),
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID1},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -89,8 +89,8 @@ func TestBatchVMDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	dl1 := workloads.NewDeployment("vm1", nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil)
-	dl2 := workloads.NewDeployment("vm2", nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil)
+	dl1 := workloads.NewDeployment(generateRandString(10), nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil)
+	dl2 := workloads.NewDeployment(generateRandString(10), nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil)
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, []*workloads.Deployment{&dl1, &dl2})
 	if !assert.NoError(t, err) {
 		return

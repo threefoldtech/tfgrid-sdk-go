@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"log"
+	mrand "math/rand"
 	"net"
 	"os"
 	"time"
@@ -114,4 +115,13 @@ func GenerateSSHKeyPair() (string, string, error) {
 	}
 	authorizedKey := ssh.MarshalAuthorizedKey(pub)
 	return string(authorizedKey), string(privateKey), nil
+}
+
+func generateRandString(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyz123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[mrand.Intn(len(letters))]
+	}
+	return string(b)
 }

@@ -27,7 +27,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 	}
 	node := uint32(nodes[0].NodeID)
 	network := workloads.ZNet{
-		Name:  "network_two_deployments",
+		Name:  generateRandString(10),
 		Nodes: []uint32{node},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
@@ -54,7 +54,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 			t.Log(err)
 		}
 	})
-	d := workloads.NewDeployment("deployment1", node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
+	d := workloads.NewDeployment(generateRandString(10), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
 	err = tf.DeploymentDeployer.Deploy(context.Background(), &d)
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 		}
 	})
 
-	d2 := workloads.NewDeployment("deployment2", node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
+	d2 := workloads.NewDeployment(generateRandString(10), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
 	err = tf.DeploymentDeployer.Deploy(context.Background(), &d2)
 	if err != nil {
 		t.Fatal(err)
@@ -78,11 +78,11 @@ func TestDeploymentsDeploy(t *testing.T) {
 			t.Log(err)
 		}
 	})
-	dl, err := tf.State.LoadDeploymentFromGrid(node, "deployment1")
+	dl, err := tf.State.LoadDeploymentFromGrid(node, d.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	dl2, err := tf.State.LoadDeploymentFromGrid(node, "deployment2")
+	dl2, err := tf.State.LoadDeploymentFromGrid(node, d2.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dl, err = tf.State.LoadDeploymentFromGrid(node, "deployment1")
+	dl, err = tf.State.LoadDeploymentFromGrid(node, d.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,11 +158,11 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 			t.Log(err)
 		}
 	})
-	d := workloads.NewDeployment("deployment1", node, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
+	d := workloads.NewDeployment(generateRandString(10), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
 	d.Vms[1].Name = vm2Name
 	d.Vms[2].Name = vm3Name
 
-	d2 := workloads.NewDeployment("deployment2", node, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
+	d2 := workloads.NewDeployment(generateRandString(10), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
 	d2.Vms[1].Name = vm2Name
 	d2.Vms[2].Name = vm3Name
 
@@ -184,11 +184,11 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		t.Fatalf("expected 6 used IPs but got %d", len(usedIPs))
 	}
 
-	dl, err := tf.State.LoadDeploymentFromGrid(node, "deployment1")
+	dl, err := tf.State.LoadDeploymentFromGrid(node, d.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	dl2, err := tf.State.LoadDeploymentFromGrid(node, "deployment2")
+	dl2, err := tf.State.LoadDeploymentFromGrid(node, d2.Name)
 	if err != nil {
 		t.Fatal(err)
 	}

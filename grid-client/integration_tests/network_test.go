@@ -31,7 +31,7 @@ func TestNetworkDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "net1",
+		Name:        generateRandString(10),
 		Description: "not skynet",
 		Nodes:       []uint32{nodeID1},
 		IPRange: gridtypes.NewIPNet(net.IPNet{

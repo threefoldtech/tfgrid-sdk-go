@@ -29,7 +29,7 @@ func TestZDBDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	zdb := workloads.ZDB{
-		Name:        "testName",
+		Name:        generateRandString(10),
 		Password:    "password",
 		Public:      true,
 		Size:        10,
@@ -37,7 +37,7 @@ func TestZDBDeployment(t *testing.T) {
 		Mode:        zos.ZDBModeUser,
 	}
 
-	dl := workloads.NewDeployment("zdb", nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
+	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	if !assert.NoError(t, err) {
 		return

@@ -64,7 +64,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	}
 
 	network := workloads.ZNet{
-		Name:        "gpuNetwork",
+		Name:        generateRandString(10),
 		Description: "network for testing gpu",
 		Nodes:       []uint32{nodeID},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -106,7 +106,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	dl := workloads.NewDeployment("gpu", nodeID, "", nil, network.Name, []workloads.Disk{disk}, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, network.Name, []workloads.Disk{disk}, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	if !assert.NoError(t, err) {
 		return

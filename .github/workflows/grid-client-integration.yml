@@ -12,7 +12,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -54,4 +54,4 @@ jobs:
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
-        run: go test -v ./integration_tests
+        run: go test -v ./integration_tests -timeout 1800s
