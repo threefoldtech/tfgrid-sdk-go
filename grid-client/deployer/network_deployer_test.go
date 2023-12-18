@@ -4,6 +4,7 @@ package deployer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"testing"
 
@@ -121,4 +122,59 @@ func TestNetworkDeployer(t *testing.T) {
 			nodeID: networkDl,
 		})
 	})
+}
+
+func (d *NetworkDeployer) ExampleDeploy() {
+	mnemonic := "<mnemonics goes here>"
+	network := "<dev, test, qa, main>"
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	n := workloads.ZNet{Name: "network", Description: "network for testing", Nodes: []uint32{nodeID}}
+
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &n)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func (d *NetworkDeployer) ExampleBatchDeploy() {
+	mnemonic := "<mnemonics goes here>"
+	network := "<dev, test, qa, main>"
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	n1 := workloads.ZNet{Name: "network1", Description: "network for testing", Nodes: []uint32{nodeID}}
+	n2 := workloads.ZNet{Name: "network2", Description: "network for testing", Nodes: []uint32{nodeID}}
+
+	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []*workloads.ZNet{&n1, &n2})
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func (d *NetworkDeployer) ExampleCancel() {
+	mnemonic := "<mnemonics goes here>"
+	network := "<dev, test, qa, main>"
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	n := workloads.ZNet{Name: "network", Description: "network for testing", Nodes: []uint32{nodeID}}
+
+	err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &n)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
