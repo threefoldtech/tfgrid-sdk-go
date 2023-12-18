@@ -199,6 +199,14 @@ func (m *Monitor) Start() {
 			log.Error().Err(err).Msg("monitoring networks failed with error")
 		}
 
+		if len(strings.TrimSpace(m.env.publicStellarAddress)) == 0 ||
+			len(strings.TrimSpace(m.env.publicStellarSecret)) == 0 ||
+			len(strings.TrimSpace(m.env.testStellarAddress)) == 0 ||
+			len(strings.TrimSpace(m.env.testStellarSecret)) == 0 {
+			log.Info().Msg("No monitoring for stellar bridges. If you want to monitor it please set the stellar configs")
+			continue
+		}
+
 		log.Debug().Msg("monitoring stellar bridges")
 		if err := m.monitorBridges(); err != nil {
 			log.Error().Err(err).Msg("monitoring bridges failed")
