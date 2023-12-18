@@ -20,80 +20,98 @@ import (
 )
 
 // FilterNodes filters nodes using proxy
-func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64, optionalLimit ...int) ([]types.Node, error) {
-	limit := types.Limit{Randomize: true}
-
+func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, optionalLimit ...int) ([]types.Node, error) {
 	if options.AvailableFor == nil {
 		twinID := uint64(tf.TwinID)
 		options.AvailableFor = &twinID
 	}
 
 	if len(optionalLimit) == 0 {
-		return filterNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, limit)
-	}
-
-	pagesCount := 2
-	cnt := optionalLimit[0]
-	limit.Size = uint64(cnt)
-
-	if cnt < 100 {
-		pagesCount = 3
+		nodes, err := getNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, types.Limit{Randomize: true})
+		if err == nil && len(nodes) == 0 {
+			options, err := serializeOptions(options)
+			if err != nil {
+				log.Debug().Msg(err.Error())
+			}
+			return []types.Node{}, errors.Errorf("could not find any nodes with options: %s", options)
+		}
+		return nodes, err
 	}
 
 	var nodes []types.Node
 	var allErrors error
+
 	var wg sync.WaitGroup
 	var lock sync.Mutex
 
-	for i := 0; i < pagesCount; i++ {
+	nodesCount := optionalLimit[0]
+	limit := types.Limit{Randomize: true, Size: uint64(nodesCount), RetCount: true}
+
+	// totalPagesCount would be initialized to the total number of pages with the specified filter and limit
+	totalPagesCount := 5
+
+	for pageCount := 1; pageCount <= totalPagesCount; pageCount++ {
+
 		wg.Add(1)
-		go func(i int) {
+		go func(page int) {
 			defer wg.Done()
 
-			if len(nodes) >= cnt {
+			lock.Lock()
+			lenNodes := len(nodes)
+			lock.Unlock()
+
+			if lenNodes >= nodesCount {
 				return
 			}
 
-			limit.Page = uint64(i)
-			nodesFounds, err := filterNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, limit)
+			limit.Page = uint64(page)
+			nodesFounds, err := getNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, limit)
 			if err != nil {
 				lock.Lock()
-				allErrors = errors.Wrap(allErrors, err.Error())
-				lock.Unlock()
+				defer lock.Unlock()
 
+				if allErrors == nil {
+					allErrors = err
+				} else {
+					allErrors = errors.Wrap(allErrors, err.Error())
+				}
 				return
 			}
 
 			lock.Lock()
+			defer lock.Unlock()
+
+			if len(nodes) >= nodesCount {
+				return
+			}
 			nodes = append(nodes, nodesFounds...)
-			lock.Unlock()
-		}(i)
+		}(pageCount)
 	}
 	wg.Wait()
 
-	if len(nodes) < cnt {
+	if allErrors != nil {
+		return []types.Node{}, allErrors
+	}
+
+	if len(nodes) < nodesCount {
 		options, err := serializeOptions(options)
 		if err != nil {
 			log.Debug().Msg(err.Error())
 		}
-		return []types.Node{}, errors.Errorf("could not find enough node with options: %s", options)
+		return []types.Node{}, errors.Errorf("could not find enough nodes with options: %s", options)
 	}
 
-	return nodes[:cnt], allErrors
+	return nodes[:nodesCount], allErrors
 }
 
-func filterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64, limit types.Limit) ([]types.Node, error) {
+func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, limit types.Limit) ([]types.Node, error) {
 	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
 	if err != nil {
 		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
 	}
 
 	if len(nodes) == 0 {
-		options, err := serializeOptions(options)
-		if err != nil {
-			log.Debug().Msg(err.Error())
-		}
-		return []types.Node{}, errors.Errorf("could not find any node with options: %s", options)
+		return []types.Node{}, nil
 	}
 
 	// if no storage needed
@@ -143,19 +161,6 @@ func filterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	}
 
 	wg.Wait()
-
-	if len(nodePools) == 0 {
-		var freeSRU uint64
-		if options.FreeSRU != nil {
-			freeSRU = convertBytesToGB(*options.FreeSRU)
-		}
-		var freeHRU uint64
-		if options.FreeHRU != nil {
-			freeHRU = convertBytesToGB(*options.FreeHRU)
-		}
-
-		return []types.Node{}, errors.Errorf("could not find any node with free ssd pools: %d GB and free hdd pools: %d GB", freeSRU, freeHRU)
-	}
 
 	return nodePools, nil
 }
@@ -316,9 +321,4 @@ func serializeOptions(options types.NodeFilter) (string, error) {
 		filter = filter[:len(filter)-2]
 	}
 	return filter, nil
-}
-
-func convertBytesToGB(bytes uint64) uint64 {
-	gb := bytes / (1024 * 1024 * 1024)
-	return gb
 }
