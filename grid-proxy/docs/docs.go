@@ -431,6 +431,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Min total cpu cores for at least a single node that belongs to the farm",
+                        "name": "node_total_cru",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Node status for at least a single node that belongs to the farm",
                         "name": "node_status",
