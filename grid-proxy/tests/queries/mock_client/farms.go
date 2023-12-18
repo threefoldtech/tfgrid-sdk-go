@@ -109,10 +109,12 @@ func (f *Farm) satisfies(filter types.FarmFilter, data *DBData) bool {
 		return false
 	}
 
-	if filter.NodeAvailableFor != nil || filter.NodeCertified != nil || filter.NodeFreeHRU != nil ||
-		filter.NodeFreeMRU != nil || filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
-		filter.NodeRentedBy != nil || filter.NodeStatus != nil || filter.Country != nil || filter.Region != nil {
-
+	if filter.NodeAvailableFor != nil || filter.NodeCertified != nil ||
+		filter.NodeFreeHRU != nil || filter.NodeFreeMRU != nil ||
+		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
+		filter.NodeRentedBy != nil || filter.NodeStatus != nil ||
+		filter.Country != nil || filter.Region != nil ||
+		filter.NodeTotalCRU != nil {
 		if !f.satisfyFarmNodesFilter(data, filter) {
 			return false
 		}
@@ -139,6 +141,10 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 		}
 
 		if filter.NodeFreeSRU != nil && free.SRU < *filter.NodeFreeSRU {
+			continue
+		}
+
+		if filter.NodeTotalCRU != nil && total.CRU < *filter.NodeTotalCRU {
 			continue
 		}
 

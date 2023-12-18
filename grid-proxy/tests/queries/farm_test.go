@@ -85,6 +85,11 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		sru := uint64(rand.Int63n(int64(aggNode.maxFreeSRU)))
 		return &sru
 	},
+	"NodeTotalCRU": func(agg FarmsAggregate) interface{} {
+		aggNode := calcNodesAggregates(&data)
+		cru := uint64(rand.Int63n(int64(aggNode.maxTotalCRU)))
+		return &cru
+	},
 	"NodeStatus": func(agg FarmsAggregate) interface{} {
 		nodeStatuses := []string{"up", "down", "standby"}
 		return &nodeStatuses[rand.Intn(len(nodeStatuses))]

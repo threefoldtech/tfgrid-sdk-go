@@ -589,10 +589,13 @@ func generateNodes(db *sql.DB) error {
 		nodesHRU[i] = hru
 		nodeUP[i] = up
 
+		// location latitue and longitue needs to be castable to decimal
+		// if not, the convert_to_decimal function will raise a notice
+		// reporting the incident, which downgrades performance
 		location := location{
 			id:        fmt.Sprintf("location-%d", i),
-			longitude: fmt.Sprintf("location--long-%d", i),
-			latitude:  fmt.Sprintf("location-lat-%d", i),
+			longitude: fmt.Sprintf("%d", i),
+			latitude:  fmt.Sprintf("%d", i),
 		}
 
 		countryIndex := r.Intn(len(countries))
