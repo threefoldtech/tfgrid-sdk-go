@@ -56,7 +56,6 @@ require (
 	github.com/stellar/go-xdr v0.0.0-20230919160922-6c7b68458206 // indirect
 	github.com/stretchr/objx v0.5.1 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
-	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/valyala/fasthttp v1.40.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
