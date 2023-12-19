@@ -373,7 +373,7 @@ func TestFQDNDeployer(t *testing.T) {
 	})
 }
 
-func (d *GatewayFQDNDeployer) ExampleDeploy() {
+func ExampleGatewayFQDNDeployer_Deploy() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
 
@@ -395,9 +395,10 @@ func (d *GatewayFQDNDeployer) ExampleDeploy() {
 		fmt.Println(err)
 		return
 	}
+	fmt.Println("deployment is done successfully")
 }
 
-func (d *GatewayFQDNDeployer) ExampleBatchDeploy() {
+func ExampleGatewayFQDNDeployer_BatchDeploy() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
 
@@ -426,9 +427,10 @@ func (d *GatewayFQDNDeployer) ExampleBatchDeploy() {
 		fmt.Println(err)
 		return
 	}
+	fmt.Println("batch deployment is done successfully")
 }
 
-func (d *GatewayFQDNDeployer) ExampleCancel() {
+func ExampleGatewayFQDNDeployer_Cancel() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
 
@@ -450,4 +452,5 @@ func (d *GatewayFQDNDeployer) ExampleCancel() {
 		fmt.Println(err)
 		return
 	}
+	fmt.Println("deployment is canceled successfully")
 }

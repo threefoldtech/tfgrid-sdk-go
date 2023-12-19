@@ -657,7 +657,7 @@ func TestDeploymentDeployer(t *testing.T) {
 	})
 }
 
-func (d *DeploymentDeployer) ExampleDeploy() {
+func ExampleDeploymentDeployer_Deploy() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
 
@@ -691,9 +691,11 @@ func (d *DeploymentDeployer) ExampleDeploy() {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	fmt.Println("deployment done successfully")
 }
 
-func (d *DeploymentDeployer) ExampleBatchDeploy() {
+func ExampleDeploymentDeployer_BatchDeploy() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
 
@@ -737,9 +739,10 @@ func (d *DeploymentDeployer) ExampleBatchDeploy() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Println("batch deployment is done successfully")
 }
 
-func (d *DeploymentDeployer) ExampleCancel() {
+func ExampleDeploymentDeployer_Cancel() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
 
@@ -756,4 +759,5 @@ func (d *DeploymentDeployer) ExampleCancel() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Println("deployment is canceled successfully")
 }

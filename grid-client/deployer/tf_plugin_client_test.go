@@ -13,10 +13,10 @@ func ExampleNewTFPluginClient() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(tfPluginClient)
+	fmt.Println("tfPluginClient is created successfully ", tfPluginClient)
 }
 
-func (t *TFPluginClient) ExampleBatchCancelContract() {
+func ExampleTFPluginClient_BatchCancelContract() {
 	mnemonic := "<mnemonics goes here>"
 	network := "<dev, test, qa, main>"
 
@@ -33,4 +33,5 @@ func (t *TFPluginClient) ExampleBatchCancelContract() {
 		fmt.Println(err)
 		return
 	}
+	fmt.Println("all contracts were deleted successfully")
 }
