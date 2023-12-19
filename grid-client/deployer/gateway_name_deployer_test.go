@@ -430,7 +430,7 @@ func ExampleGatewayNameDeployer_Deploy() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println("batch deployment is done successfully")
+	fmt.Println("deployment is done successfully")
 }
 
 func ExampleGatewayNameDeployer_BatchDeploy() {

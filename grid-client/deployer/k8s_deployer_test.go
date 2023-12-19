@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"net"
 	"testing"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -315,6 +316,7 @@ func TestK8sDeployer(t *testing.T) {
 func ExampleK8sDeployer_Deploy() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
+
 	const flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 	flistCheckSum, err := workloads.GetFlistChecksum(flist)
 	if err != nil {
@@ -328,7 +330,16 @@ func ExampleK8sDeployer_Deploy() {
 		return
 	}
 
-	n := workloads.ZNet{Name: "network", Description: "network for testing", Nodes: []uint32{nodeID}}
+	n := workloads.ZNet{
+		Name:        "network",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
 
 	master := workloads.K8sNode{
 		Name:          "K8sForTesting",
@@ -377,6 +388,7 @@ func ExampleK8sDeployer_Deploy() {
 func ExampleK8sDeployer_BatchDeploy() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
+
 	const flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 	flistCheckSum, err := workloads.GetFlistChecksum(flist)
 	if err != nil {
@@ -390,7 +402,16 @@ func ExampleK8sDeployer_BatchDeploy() {
 		return
 	}
 
-	n := workloads.ZNet{Name: "network1", Description: "network for testing", Nodes: []uint32{nodeID}}
+	n := workloads.ZNet{
+		Name:        "network",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
 
 	master := workloads.K8sNode{
 		Name:          "mr1",

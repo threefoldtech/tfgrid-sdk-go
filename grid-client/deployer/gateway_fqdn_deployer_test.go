@@ -386,7 +386,7 @@ func ExampleGatewayFQDNDeployer_Deploy() {
 		NodeID:         nodeID,
 		Name:           "test1",
 		TLSPassthrough: false,
-		Backends:       []zos.Backend{"http://1.1.1.1", "http://2.2.2.2"},
+		Backends:       []zos.Backend{"http://1.1.1.1"},
 		FQDN:           "name.com",
 	}
 

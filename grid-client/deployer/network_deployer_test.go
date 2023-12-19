@@ -134,11 +134,21 @@ func ExampleNetworkDeployer_Deploy() {
 		return
 	}
 
-	n := workloads.ZNet{Name: "network", Description: "network for testing", Nodes: []uint32{nodeID}}
+	n := workloads.ZNet{
+		Name:        "network",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &n)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	fmt.Println("deployment is done successfully")
@@ -154,12 +164,31 @@ func ExampleNetworkDeployer_BatchDeploy() {
 		return
 	}
 
-	n1 := workloads.ZNet{Name: "network1", Description: "network for testing", Nodes: []uint32{nodeID}}
-	n2 := workloads.ZNet{Name: "network2", Description: "network for testing", Nodes: []uint32{nodeID}}
+	n1 := workloads.ZNet{
+		Name:        "network1",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
+	n2 := workloads.ZNet{
+		Name:        "network2",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
 
 	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []*workloads.ZNet{&n1, &n2})
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	fmt.Println("batch deployment is done successfully")
 }
@@ -174,11 +203,21 @@ func ExampleNetworkDeployer_Cancel() {
 		return
 	}
 
-	n := workloads.ZNet{Name: "network", Description: "network for testing", Nodes: []uint32{nodeID}}
+	n := workloads.ZNet{
+		Name:        "network",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
 
 	err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &n)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	fmt.Println("deployment is canceled successfully")
 }

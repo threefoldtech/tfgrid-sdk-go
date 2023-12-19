@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"net"
 	"testing"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -667,7 +668,16 @@ func ExampleDeploymentDeployer_Deploy() {
 		return
 	}
 
-	n := workloads.ZNet{Name: "network", Description: "network for testing", Nodes: []uint32{nodeID}}
+	n := workloads.ZNet{
+		Name:        "network",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
 
 	vm := workloads.VM{
 		Name:        "vm",
@@ -705,7 +715,17 @@ func ExampleDeploymentDeployer_BatchDeploy() {
 		return
 	}
 
-	n := workloads.ZNet{Name: "network1", Description: "network for testing", Nodes: []uint32{nodeID}}
+	n := workloads.ZNet{
+		Name:        "network",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
+
 	vm1 := workloads.VM{
 		Name:        "vm1",
 		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
