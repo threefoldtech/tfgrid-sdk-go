@@ -19,7 +19,6 @@ import (
 	client "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-	zos "github.com/threefoldtech/zos/client"
 )
 
 type address string
@@ -312,9 +311,14 @@ func (m *Monitor) monitorRelay(ctx context.Context) error {
 	return m.sendBotMessage(message)
 }
 
+type version struct {
+	ZOS   string `json:"zos"`
+	ZInit string `json:"zinit"`
+}
+
 // systemVersion executes system version cmd
-func (m *Monitor) systemVersion(ctx context.Context) (map[network]zos.Version, map[network][]uint32, map[network][]uint32) {
-	versions := map[network]zos.Version{}
+func (m *Monitor) systemVersion(ctx context.Context) (map[network]version, map[network][]uint32, map[network][]uint32) {
+	versions := map[network]version{}
 	workingNodes := make(map[network][]uint32)
 	failedNodes := make(map[network][]uint32)
 
@@ -372,22 +376,22 @@ func (m *Monitor) systemVersion(ctx context.Context) (map[network]zos.Version, m
 	return versions, workingNodes, failedNodes
 }
 
-func (m *Monitor) checkNodeSystemVersion(ctx context.Context, rmbClient rmb.Client, NodeID uint32, net network) (zos.Version, []uint32, []uint32, error) {
+func (m *Monitor) checkNodeSystemVersion(ctx context.Context, rmbClient rmb.Client, NodeID uint32, net network) (version, []uint32, []uint32, error) {
 	const cmd = "zos.system.version"
-	var ver zos.Version
+	var ver version
 	var workingNodes []uint32
 	var failedNodes []uint32
 
 	con, err := m.managers[net].Substrate()
 	if err != nil {
-		return zos.Version{}, []uint32{}, []uint32{}, fmt.Errorf("substrate connection for %v network failed with error: %w", NodeID, err)
+		return version{}, []uint32{}, []uint32{}, fmt.Errorf("substrate connection for %v network failed with error: %w", NodeID, err)
 	}
 	defer con.Close()
 
 	node, err := con.GetNode(NodeID)
 	if err != nil {
 		failedNodes = append(failedNodes, NodeID)
-		return zos.Version{}, []uint32{}, failedNodes, fmt.Errorf("cannot get node %d. failed with error: %w", NodeID, err)
+		return version{}, []uint32{}, failedNodes, fmt.Errorf("cannot get node %d. failed with error: %w", NodeID, err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
@@ -396,7 +400,7 @@ func (m *Monitor) checkNodeSystemVersion(ctx context.Context, rmbClient rmb.Clie
 	err = rmbClient.Call(ctx, uint32(node.TwinID), cmd, nil, &ver)
 	if err != nil {
 		failedNodes = append(failedNodes, NodeID)
-		return zos.Version{}, []uint32{}, failedNodes, fmt.Errorf("rmb version call in %s failed using node twin %d with node ID %d: %w", net, node.TwinID, NodeID, err)
+		return version{}, []uint32{}, failedNodes, fmt.Errorf("rmb version call in %s failed using node twin %d with node ID %d: %w", net, node.TwinID, NodeID, err)
 	}
 
 	workingNodes = append(workingNodes, NodeID)
