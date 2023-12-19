@@ -27,13 +27,11 @@ func app() error {
 
 	peer, err := peer.NewPeer(
 		ctx,
-		peer.KeyTypeSr25519,
 		mnemonics,
-		"wss://relay.dev.grid.tf",
-		"test-client",
 		sub,
-		true,
 		relayCallback,
+		peer.WithRelay("wss://relay.dev.grid.tf"),
+		peer.WithSession("test-client"),
 	)
 
 	if err != nil {
