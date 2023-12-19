@@ -224,8 +224,7 @@ func (d *PostgresDatabase) GetNode(ctx context.Context, nodeID uint32) (Node, er
 
 // GetFarm return farm info
 func (d *PostgresDatabase) GetFarm(ctx context.Context, farmID uint32) (Farm, error) {
-	q := d.farmTableQuery(types.FarmFilter{})
-	q = q.WithContext(ctx)
+	q := d.gormDB.WithContext(ctx).Table("farm")
 	q = q.Where("farm.farm_id = ?", farmID)
 	var farm Farm
 	if res := q.Scan(&farm); res.Error != nil {
@@ -312,7 +311,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 		)
 }
 
-func (d *PostgresDatabase) farmTableQuery(filter types.FarmFilter) *gorm.DB {
+func (d *PostgresDatabase) farmTableQuery(filter types.FarmFilter, nodeQuery *gorm.DB) *gorm.DB {
 	q := d.gormDB.
 		Table("farm").
 		Select(
@@ -337,8 +336,7 @@ func (d *PostgresDatabase) farmTableQuery(filter types.FarmFilter) *gorm.DB {
 		filter.NodeTotalCRU != nil || filter.Country != nil ||
 		filter.Region != nil {
 		q.
-			Joins(`RIGHT JOIN resources_cache ON resources_cache.farm_id = farm.farm_id
-				LEFT JOIN node ON node.farm_id = farm.farm_id`).
+			Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
 			Group(`
 			farm.id,
 			farm.farm_id,
@@ -356,49 +354,54 @@ func (d *PostgresDatabase) farmTableQuery(filter types.FarmFilter) *gorm.DB {
 
 // GetFarms return farms filtered and paginated
 func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
-	q := d.farmTableQuery(filter)
-	q = q.WithContext(ctx)
+	q := d.gormDB.WithContext(ctx)
+	nodeQuery := d.gormDB.Table("resources_cache").
+		Select("resources_cache.farm_id", "renter").
+		Joins("LEFT JOIN node ON node.node_id = resources_cache.node_id").
+		Group(`resources_cache.farm_id, renter`)
 
 	if filter.NodeFreeMRU != nil {
-		q = q.Where("resources_cache.free_mru >= ?", *filter.NodeFreeMRU)
+		nodeQuery = nodeQuery.Where("resources_cache.free_mru >= ?", *filter.NodeFreeMRU)
 	}
 	if filter.NodeFreeHRU != nil {
-		q = q.Where("resources_cache.free_hru >= ?", *filter.NodeFreeHRU)
+		nodeQuery = nodeQuery.Where("resources_cache.free_hru >= ?", *filter.NodeFreeHRU)
 	}
 	if filter.NodeFreeSRU != nil {
-		q = q.Where("resources_cache.free_sru >= ?", *filter.NodeFreeSRU)
+		nodeQuery = nodeQuery.Where("resources_cache.free_sru >= ?", *filter.NodeFreeSRU)
 	}
 	if filter.NodeTotalCRU != nil {
-		q = q.Where("resources_cache.total_cru >= ?", *filter.NodeTotalCRU)
-	}
-
-	if filter.NodeAvailableFor != nil {
-		q = q.Where("COALESCE(resources_cache.renter, 0) = ? OR (resources_cache.renter IS NULL AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
+		nodeQuery = nodeQuery.Where("resources_cache.total_cru >= ?", *filter.NodeTotalCRU)
 	}
 
 	if filter.NodeHasGPU != nil {
-		q = q.Where("(resources_cache.node_gpu_count > 0) = ?", *filter.NodeHasGPU)
+		nodeQuery = nodeQuery.Where("(resources_cache.node_gpu_count > 0) = ?", *filter.NodeHasGPU)
 	}
 
 	if filter.NodeRentedBy != nil {
-		q = q.Where("COALESCE(resources_cache.renter, 0) = ?", *filter.NodeRentedBy)
+		nodeQuery = nodeQuery.Where("COALESCE(resources_cache.renter, 0) = ?", *filter.NodeRentedBy)
 	}
 
 	if filter.Country != nil {
-		q = q.Where("LOWER(resources_cache.country) = LOWER(?)", *filter.Country)
+		nodeQuery = nodeQuery.Where("LOWER(resources_cache.country) = LOWER(?)", *filter.Country)
 	}
 
 	if filter.Region != nil {
-		q = q.Where("LOWER(resources_cache.region) = LOWER(?)", *filter.Region)
+		nodeQuery = nodeQuery.Where("LOWER(resources_cache.region) = LOWER(?)", *filter.Region)
 	}
 
 	if filter.NodeStatus != nil {
 		condition := nodestatus.DecideNodeStatusCondition(*filter.NodeStatus)
-		q = q.Where(condition)
+		nodeQuery = nodeQuery.Where(condition)
 	}
 
 	if filter.NodeCertified != nil {
-		q = q.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
+		nodeQuery = nodeQuery.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
+	}
+
+	q = d.farmTableQuery(filter, nodeQuery)
+
+	if filter.NodeAvailableFor != nil {
+		q = q.Where("COALESCE(resources_cache.renter, 0) = ? OR (resources_cache.renter IS NULL AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
 	}
 
 	if filter.FreeIPs != nil {
@@ -448,7 +451,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		q = q.Order("random()")
 	} else {
 		if filter.NodeAvailableFor != nil {
-			q = q.Order("(case when bool_or(resources_cache.renter is not null) then 1 else 2 end)")
+			q = q.Order("(bool_or(resources_cache.renter IS NOT NULL)) DESC")
 		}
 		if limit.SortBy != "" {
 			order := types.SortOrderAsc
