@@ -439,13 +439,9 @@ func ExampleGatewayFQDNDeployer_Cancel() {
 		fmt.Println(err)
 		return
 	}
-	g := workloads.GatewayFQDNProxy{
-		NodeID:         nodeID,
-		Name:           "test",
-		TLSPassthrough: false,
-		Backends:       []zos.Backend{"http://1.1.1.1"},
-		FQDN:           "test.com",
-	}
+
+	// should be a valid and existing gateway fqdn
+	g := workloads.GatewayFQDNProxy{}
 
 	err = tfPluginClient.GatewayFQDNDeployer.Cancel(context.Background(), &g)
 	if err != nil {

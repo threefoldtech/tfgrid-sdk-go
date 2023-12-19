@@ -478,7 +478,7 @@ func ExampleK8sDeployer_Cancel() {
 		return
 	}
 
-	// cluster should be a valid and existing k8s deployment
+	// should be a valid and existing k8s cluster
 	cluster := workloads.K8sCluster{}
 
 	err = tfPluginClient.K8sDeployer.Cancel(context.Background(), &cluster)

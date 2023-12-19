@@ -700,9 +700,10 @@ func ExampleDeploymentDeployer_Deploy() {
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
-	fmt.Println("deployment done successfully")
+	fmt.Println("deployment is done successfully")
 }
 
 func ExampleDeploymentDeployer_BatchDeploy() {
@@ -758,6 +759,7 @@ func ExampleDeploymentDeployer_BatchDeploy() {
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&d1, &d2})
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	fmt.Println("batch deployment is done successfully")
 }
@@ -778,6 +780,7 @@ func ExampleDeploymentDeployer_Cancel() {
 	err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	fmt.Println("deployment is canceled successfully")
 }

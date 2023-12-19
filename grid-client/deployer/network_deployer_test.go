@@ -203,16 +203,8 @@ func ExampleNetworkDeployer_Cancel() {
 		return
 	}
 
-	n := workloads.ZNet{
-		Name:        "network",
-		Description: "network for testing",
-		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
-			IP:   net.IPv4(10, 1, 0, 0),
-			Mask: net.CIDRMask(16, 32),
-		}),
-		AddWGAccess: false,
-	}
+	// should be a valid and existing network
+	n := workloads.ZNet{}
 
 	err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &n)
 	if err != nil {
