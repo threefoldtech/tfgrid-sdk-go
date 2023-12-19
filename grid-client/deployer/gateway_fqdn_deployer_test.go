@@ -3,6 +3,7 @@ package deployer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net"
 	"testing"
@@ -370,4 +371,83 @@ func TestFQDNDeployer(t *testing.T) {
 		assert.Equal(t, gw.TLSPassthrough, false)
 		assert.Equal(t, gw.Backends, []zos.Backend(nil))
 	})
+}
+
+func (d *GatewayFQDNDeployer) ExampleDeploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	g := workloads.GatewayFQDNProxy{
+		NodeID:         nodeID,
+		Name:           "test1",
+		TLSPassthrough: false,
+		Backends:       []zos.Backend{"http://1.1.1.1", "http://2.2.2.2"},
+		FQDN:           "name.com",
+	}
+
+	err = tfPluginClient.GatewayFQDNDeployer.Deploy(context.Background(), &g)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+}
+
+func (d *GatewayFQDNDeployer) ExampleBatchDeploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	g1 := workloads.GatewayFQDNProxy{
+		NodeID:         nodeID,
+		Name:           "test1",
+		TLSPassthrough: false,
+		Backends:       []zos.Backend{"http://1.1.1.1"},
+		FQDN:           "test1.com",
+	}
+	g2 := workloads.GatewayFQDNProxy{
+		NodeID:         nodeID,
+		Name:           "test2",
+		TLSPassthrough: false,
+		Backends:       []zos.Backend{"http://2.2.2.2"},
+		FQDN:           "test2.com",
+	}
+
+	err = tfPluginClient.GatewayFQDNDeployer.BatchDeploy(context.Background(), []*workloads.GatewayFQDNProxy{&g1, &g2})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+}
+
+func (d *GatewayFQDNDeployer) ExampleCancel() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	g := workloads.GatewayFQDNProxy{
+		NodeID:         nodeID,
+		Name:           "test",
+		TLSPassthrough: false,
+		Backends:       []zos.Backend{"http://1.1.1.1"},
+		FQDN:           "test.com",
+	}
+
+	err = tfPluginClient.GatewayFQDNDeployer.Cancel(context.Background(), &g)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
