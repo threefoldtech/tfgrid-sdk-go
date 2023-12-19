@@ -16,6 +16,7 @@ import (
 	proxyDB "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
+	"gorm.io/gorm/logger"
 )
 
 var (
@@ -65,7 +66,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	DBClient, err = proxyDB.NewPostgresDatabase(POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB, 80)
+	DBClient, err = proxyDB.NewPostgresDatabase(POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB, 80, logger.Error)
 	if err != nil {
 		panic(err)
 	}

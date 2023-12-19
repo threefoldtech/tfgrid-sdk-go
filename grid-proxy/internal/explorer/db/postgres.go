@@ -28,88 +28,13 @@ var (
 	// ErrFarmNotFound farm not found
 	ErrFarmNotFound = errors.New("farm not found")
 	//ErrViewNotFound
-	ErrNodeResourcesViewNotFound = errors.New("ERROR: relation \"nodes_resources_view\" does not exist (SQLSTATE 42P01)")
+	ErrResourcesCacheTableNotFound = errors.New("ERROR: relation \"resources_cache\" does not exist (SQLSTATE 42P01)")
 	// ErrContractNotFound contract not found
 	ErrContractNotFound = errors.New("contract not found")
 )
 
-const (
-	setupPostgresql = `
-	CREATE INDEX IF NOT EXISTS idx_node_id ON public.node(node_id);
-	CREATE INDEX IF NOT EXISTS idx_twin_id ON public.twin(twin_id);
-	CREATE INDEX IF NOT EXISTS idx_farm_id ON public.farm(farm_id);
-	CREATE INDEX IF NOT EXISTS idx_contract_id ON public.node_contract(contract_id);
-
-	CREATE OR REPLACE VIEW nodes_resources_view AS SELECT
-		node.node_id,
-		COALESCE(sum(contract_resources.cru), 0) as used_cru,
-		COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as used_mru,
-		COALESCE(sum(contract_resources.hru), 0) as used_hru,
-		COALESCE(sum(contract_resources.sru), 0) + 21474836480 as used_sru,
-		node_resources_total.mru - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as free_mru,
-		node_resources_total.hru - COALESCE(sum(contract_resources.hru), 0) as free_hru,
-		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 21474836480 as free_sru,
-		COALESCE(node_resources_total.cru, 0) as total_cru,
-		COALESCE(node_resources_total.mru, 0) as total_mru,
-		COALESCE(node_resources_total.hru, 0) as total_hru,
-		COALESCE(node_resources_total.sru, 0) as total_sru
-	FROM contract_resources
-	JOIN node_contract as node_contract
-	ON node_contract.resources_used_id = contract_resources.id AND node_contract.state IN ('Created', 'GracePeriod')
-	RIGHT JOIN node as node
-	ON node.node_id = node_contract.node_id
-	JOIN node_resources_total AS node_resources_total
-	ON node_resources_total.node_id = node.id
-	GROUP BY node.node_id, node_resources_total.mru, node_resources_total.sru, node_resources_total.hru, node_resources_total.cru;
-
-	DROP FUNCTION IF EXISTS node_resources(query_node_id INTEGER);
-	CREATE OR REPLACE function node_resources(query_node_id INTEGER)
-	returns table (node_id INTEGER, used_cru NUMERIC, used_mru NUMERIC, used_hru NUMERIC, used_sru NUMERIC, free_mru NUMERIC, free_hru NUMERIC, free_sru NUMERIC, total_cru NUMERIC, total_mru NUMERIC, total_hru NUMERIC, total_sru NUMERIC)
-	as
-	$body$
-	SELECT
-		node.node_id,
-		COALESCE(sum(contract_resources.cru), 0) as used_cru,
-		COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as used_mru,
-		COALESCE(sum(contract_resources.hru), 0) as used_hru,
-		COALESCE(sum(contract_resources.sru), 0) + 21474836480 as used_sru,
-		node_resources_total.mru - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as free_mru,
-		node_resources_total.hru - COALESCE(sum(contract_resources.hru), 0) as free_hru,
-		node_resources_total.sru - COALESCE(sum(contract_resources.sru), 0) - 21474836480 as free_sru,
-		COALESCE(node_resources_total.cru, 0) as total_cru,
-		COALESCE(node_resources_total.mru, 0) as total_mru,
-		COALESCE(node_resources_total.hru, 0) as total_hru,
-		COALESCE(node_resources_total.sru, 0) as total_sru
-	FROM contract_resources
-	JOIN node_contract as node_contract
-	ON node_contract.resources_used_id = contract_resources.id AND node_contract.state IN ('Created', 'GracePeriod')
-	RIGHT JOIN node as node
-	ON node.node_id = node_contract.node_id
-	JOIN node_resources_total AS node_resources_total
-	ON node_resources_total.node_id = node.id
-	WHERE node.node_id = query_node_id
-	GROUP BY node.node_id, node_resources_total.mru, node_resources_total.sru, node_resources_total.hru, node_resources_total.cru;
-	$body$
-	language sql;
-
-	DROP FUNCTION IF EXISTS convert_to_decimal(v_input text);
-	CREATE OR REPLACE FUNCTION convert_to_decimal(v_input text)
-	RETURNS DECIMAL AS $$
-	DECLARE v_dec_value DECIMAL DEFAULT NULL;
-	BEGIN
-		BEGIN
-			v_dec_value := v_input::DECIMAL;
-		EXCEPTION WHEN OTHERS THEN
-			RAISE NOTICE 'Invalid decimal value: "%".  Returning NULL.', v_input;
-			RETURN NULL;
-		END;
-	RETURN v_dec_value;
-	END;
-	$$ LANGUAGE plpgsql;
-
-	DROP TRIGGER IF EXISTS node_added ON node;
-	`
-)
+//go:embed setup.sql
+var setupFile string
 
 // PostgresDatabase postgres db client
 type PostgresDatabase struct {
@@ -122,12 +47,12 @@ func (d *PostgresDatabase) GetConnectionString() string {
 }
 
 // NewPostgresDatabase returns a new postgres db client
-func NewPostgresDatabase(host string, port int, user, password, dbname string, maxConns int) (Database, error) {
+func NewPostgresDatabase(host string, port int, user, password, dbname string, maxConns int, logLevel logger.LogLevel) (Database, error) {
 	connString := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
 	gormDB, err := gorm.Open(postgres.Open(connString), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logLevel),
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create orm wrapper around db")
@@ -162,13 +87,7 @@ func (d *PostgresDatabase) Close() error {
 }
 
 func (d *PostgresDatabase) initialize() error {
-	err := d.gormDB.Exec(setupPostgresql).Error
-	// concatenate in one string before exec
-	// for _, view := range views {
-	// 	err = d.gormDB.Exec(view).Error
-	// }
-
-	return err
+	return d.gormDB.Exec(setupFile).Error
 }
 
 // GetStats returns aggregate info about the grid
@@ -305,9 +224,7 @@ func (d *PostgresDatabase) GetNode(ctx context.Context, nodeID uint32) (Node, er
 
 // GetFarm return farm info
 func (d *PostgresDatabase) GetFarm(ctx context.Context, farmID uint32) (Farm, error) {
-	//TODO: make a quick table here without needs to joins
-	// q := d.farmTableQuery()
-	q := d.gormDB
+	q := d.farmTableQuery(types.FarmFilter{})
 	q = q.WithContext(ctx)
 	q = q.Where("farm.farm_id = ?", farmID)
 	var farm Farm
@@ -347,12 +264,6 @@ func printQuery(query string, args ...interface{}) {
 }
 
 func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
-	// subquery := d.gormDB.Table("node_contract").
-	// 	Select("DISTINCT ON (node_id) node_id, contract_id").
-	// 	Where("state IN ('Created', 'GracePeriod')")
-
-	nodeGPUQuery := `(SELECT count(node_gpu.id) FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id) as num_gpu`
-
 	return d.gormDB.
 		Table("node").
 		Select(
@@ -366,7 +277,7 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"node.uptime",
 			"node.created",
 			"node.farming_policy_id",
-			"updated_at",
+			"node.updated_at",
 			"resources_cache.total_cru",
 			"resources_cache.total_sru",
 			"resources_cache.total_hru",
@@ -390,23 +301,14 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"node.power",
 			"node.extra_fee",
 			"resources_cache.node_contracts_count",
-			// "CASE WHEN node_contract.contract_id IS NOT NULL THEN 1 ELSE 0 END AS has_node_contract",
-			nodeGPUQuery,
+			"resources_cache.node_gpu_count AS num_gpu",
 		).
 		Joins(
-			"LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id",
-		).
-		Joins(
-			"LEFT JOIN public_config ON node.id = public_config.node_id",
-		).
-		Joins(
-			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
-		).
-		Joins(
-			"LEFT JOIN location ON node.location_id = location.id",
-		).
-		Joins(
-			"LEFT JOIN country ON country.name = node.country",
+			`LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id
+			LEFT JOIN public_config ON node.id = public_config.node_id
+			LEFT JOIN farm ON node.farm_id = farm.farm_id
+			LEFT JOIN location ON node.location_id = location.id
+			LEFT JOIN public_ips_cache ON public_ips_cache.farm_id = node.farm_id`,
 		)
 }
 
@@ -422,26 +324,23 @@ func (d *PostgresDatabase) farmTableQuery(filter types.FarmFilter) *gorm.DB {
 			"farm.certification",
 			"farm.stellar_address",
 			"farm.dedicated_farm as dedicated",
-			"COALESCE(public_ips.public_ips, '[]') as public_ips",
+			"public_ips_cache.ips as public_ips",
 		).
-		Joins(`left join(
-			SELECT
-				p1.farm_id,
-				COUNT(p1.id) total_ips,
-				COUNT(CASE WHEN p2.contract_id = 0 THEN 1 END) free_ips
-			FROM public_ip p1
-			LEFT JOIN public_ip p2 ON p1.id = p2.id
-			GROUP BY p1.farm_id
-		) public_ip_count on public_ip_count.farm_id = farm.id`).
-		Joins(`left join (
-			select 
-				farm_id,
-				jsonb_agg(jsonb_build_object('id', id, 'ip', ip, 'contract_id', contract_id, 'gateway', gateway)) as public_ips
-			from public_ip
-			GROUP BY farm_id
-		) public_ips on public_ips.farm_id = farm.id`).
-		Group(
-			`farm.id,
+		Joins(
+			"LEFT JOIN public_ips_cache ON public_ips_cache.farm_id = farm.farm_id",
+		)
+
+	if filter.NodeAvailableFor != nil || filter.NodeFreeHRU != nil ||
+		filter.NodeCertified != nil || filter.NodeFreeMRU != nil ||
+		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
+		filter.NodeRentedBy != nil || filter.NodeStatus != nil ||
+		filter.NodeTotalCRU != nil || filter.Country != nil ||
+		filter.Region != nil {
+		q.
+			Joins(`RIGHT JOIN resources_cache ON resources_cache.farm_id = farm.farm_id
+				LEFT JOIN node ON node.farm_id = farm.farm_id`).
+			Group(`
+			farm.id,
 			farm.farm_id,
 			farm.name,
 			farm.twin_id,
@@ -449,19 +348,7 @@ func (d *PostgresDatabase) farmTableQuery(filter types.FarmFilter) *gorm.DB {
 			farm.certification,
 			farm.stellar_address,
 			farm.dedicated_farm,
-			COALESCE(public_ips.public_ips, '[]')`,
-		)
-	if filter.NodeAvailableFor != nil || filter.NodeFreeHRU != nil ||
-		filter.NodeCertified != nil || filter.NodeFreeMRU != nil ||
-		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
-		filter.NodeRentedBy != nil || filter.NodeStatus != nil ||
-		filter.NodeTotalCRU != nil || filter.Country != nil ||
-		filter.Region != nil {
-		q.Joins(`
-			RIGHT JOIN resources_cache ON resources_cache.farm_id = farm.farm_id
-			LEFT JOIN node ON node.node_id = resources_cache.node_id
-			LEFT JOIN country ON node.country = country.name
-			`)
+			public_ips_cache.ips`)
 	}
 
 	return q
@@ -498,11 +385,11 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	}
 
 	if filter.Country != nil {
-		q = q.Where("LOWER(node.country) = LOWER(?)", *filter.Country)
+		q = q.Where("LOWER(resources_cache.country) = LOWER(?)", *filter.Country)
 	}
 
 	if filter.Region != nil {
-		q = q.Where("LOWER(country.subregion) = LOWER(?)", *filter.Region)
+		q = q.Where("LOWER(resources_cache.region) = LOWER(?)", *filter.Region)
 	}
 
 	if filter.NodeStatus != nil {
@@ -515,10 +402,10 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	}
 
 	if filter.FreeIPs != nil {
-		q = q.Where("COALESCE(public_ip_count.free_ips, 0) >= ?", *filter.FreeIPs)
+		q = q.Where("public_ips_cache.free_ips >= ?", *filter.FreeIPs)
 	}
 	if filter.TotalIPs != nil {
-		q = q.Where("COALESCE(public_ip_count.total_ips, 0) >= ?", *filter.TotalIPs)
+		q = q.Where("public_ips_cache.total_ips >= ?", *filter.TotalIPs)
 	}
 	if filter.StellarAddress != nil {
 		q = q.Where("farm.stellar_address = ?", *filter.StellarAddress)
@@ -630,7 +517,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where("node.city ILIKE '%' || ? || '%'", *filter.CityContains)
 	}
 	if filter.Region != nil {
-		q = q.Where("LOWER(country.subregion) = LOWER(?)", *filter.Region)
+		q = q.Where("LOWER(resources_cache.subregion) = LOWER(?)", *filter.Region)
 	}
 	if filter.NodeID != nil {
 		q = q.Where("node.node_id = ?", *filter.NodeID)
@@ -648,7 +535,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where("farm.name ILIKE '%' || ? || '%'", *filter.FarmNameContains)
 	}
 	if filter.FreeIPs != nil {
-		q = q.Where("(SELECT count(id) from public_ip WHERE public_ip.farm_id = farm.id AND public_ip.contract_id = 0) >= ?", *filter.FreeIPs)
+		q = q.Where("public_ips_cache.free_ips >= ?", *filter.FreeIPs)
 	}
 	if filter.IPv4 != nil {
 		q = q.Where("(COALESCE(public_config.ipv4, '') = '') != ?", *filter.IPv4)
@@ -775,7 +662,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 }
 
 func (d *PostgresDatabase) shouldRetry(resError error) bool {
-	if resError != nil && resError.Error() == ErrNodeResourcesViewNotFound.Error() {
+	if resError != nil && resError.Error() == ErrResourcesCacheTableNotFound.Error() {
 		if err := d.initialize(); err != nil {
 			log.Logger.Err(err).Msg("failed to reinitialize database")
 		} else {

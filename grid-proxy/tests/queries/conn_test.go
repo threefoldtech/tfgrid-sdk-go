@@ -12,10 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 	db "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"gorm.io/gorm/logger"
 )
 
 func TestDBManyOpenConnections(t *testing.T) {
-	p, err := db.NewPostgresDatabase(POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB, 80)
+	p, err := db.NewPostgresDatabase(POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB, 80, logger.Error)
 	require.NoError(t, err)
 
 	gotQueriesCnt := atomic.Int32{}
