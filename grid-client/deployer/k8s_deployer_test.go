@@ -3,6 +3,7 @@ package deployer
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -85,7 +86,6 @@ func k8sMockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub
 			gomock.Any(),
 			nodeID,
 		).Return(client.NewNodeClient(nodeID, cl, d.tfPluginClient.RMBTimeout), nil)
-
 }
 
 func constructK8sCluster() (workloads.K8sCluster, error) {
@@ -223,7 +223,8 @@ func TestK8sDeployer(t *testing.T) {
 						Node:           types.U32(nodeID),
 						PublicIPsCount: 0,
 					},
-				}},
+				},
+			},
 		}, nil)
 
 		deployer.EXPECT().Deploy(
@@ -259,7 +260,8 @@ func TestK8sDeployer(t *testing.T) {
 						Node:           types.U32(nodeID),
 						PublicIPsCount: 0,
 					},
-				}},
+				},
+			},
 		}, nil)
 
 		deployer.EXPECT().Deploy(
@@ -308,4 +310,159 @@ func TestK8sDeployer(t *testing.T) {
 		assert.Equal(t, k8sCluster.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
 		assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {contractID}})
 	})
+}
+
+func ExampleK8sDeployer_Deploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
+	flistCheckSum, err := workloads.GetFlistChecksum(flist)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	n := workloads.ZNet{Name: "network", Description: "network for testing", Nodes: []uint32{nodeID}}
+
+	master := workloads.K8sNode{
+		Name:          "K8sForTesting",
+		Node:          nodeID,
+		Flist:         flist,
+		FlistChecksum: flistCheckSum,
+		CPU:           2,
+		DiskSize:      5,
+		Memory:        1024,
+	}
+
+	worker := workloads.K8sNode{
+		Name:          "worker1",
+		Node:          nodeID,
+		Flist:         flist,
+		FlistChecksum: flistCheckSum,
+		DiskSize:      5,
+		CPU:           2,
+		Memory:        1024,
+	}
+
+	cluster := workloads.K8sCluster{
+		Master:       &master,
+		Workers:      []workloads.K8sNode{worker},
+		Token:        "tokens",
+		SSHKey:       "<ssh key goes here>",
+		NetworkName:  n.Name,
+		NodesIPRange: make(map[uint32]gridtypes.IPNet),
+	}
+
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &n)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = tfPluginClient.K8sDeployer.Deploy(context.Background(), &cluster)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("deployment done successfully")
+}
+
+func ExampleK8sDeployer_BatchDeploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
+	flistCheckSum, err := workloads.GetFlistChecksum(flist)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	n := workloads.ZNet{Name: "network1", Description: "network for testing", Nodes: []uint32{nodeID}}
+
+	master := workloads.K8sNode{
+		Name:          "mr1",
+		Node:          nodeID,
+		Flist:         flist,
+		FlistChecksum: flistCheckSum,
+		CPU:           2,
+		DiskSize:      5,
+		Memory:        1024,
+	}
+
+	worker := workloads.K8sNode{
+		Name:          "worker1",
+		Node:          nodeID,
+		Flist:         flist,
+		FlistChecksum: flistCheckSum,
+		DiskSize:      5,
+		CPU:           2,
+		Memory:        1024,
+	}
+
+	cluster1 := workloads.K8sCluster{
+		Master:       &master,
+		Workers:      []workloads.K8sNode{worker},
+		Token:        "tokens",
+		SSHKey:       "<ssh key goes here>",
+		NetworkName:  n.Name,
+		NodesIPRange: make(map[uint32]gridtypes.IPNet),
+	}
+
+	master.Name = "mr2"
+	worker.Name = "worker2"
+	cluster2 := workloads.K8sCluster{
+		Master:       &master,
+		Workers:      []workloads.K8sNode{worker},
+		Token:        "tokens",
+		SSHKey:       "<ssh key goes here>",
+		NetworkName:  n.Name,
+		NodesIPRange: make(map[uint32]gridtypes.IPNet),
+	}
+
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &n)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = tfPluginClient.K8sDeployer.BatchDeploy(context.Background(), []*workloads.K8sCluster{&cluster1, &cluster2})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("batch deployment is done successfully")
+}
+
+func ExampleK8sDeployer_Cancel() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// cluster should be a valid and existing k8s deployment
+	cluster := workloads.K8sCluster{}
+
+	err = tfPluginClient.K8sDeployer.Cancel(context.Background(), &cluster)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("deployment is canceled successfully")
 }
