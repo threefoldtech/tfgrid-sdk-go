@@ -33,6 +33,7 @@ type DBData struct {
 	NonDeletedContracts map[uint64][]uint64
 	GPUs                map[uint64][]NodeGPU
 	Regions             map[string]string
+	Locations           map[string]Location
 	DB                  *sql.DB
 }
 
@@ -516,6 +517,37 @@ func loadCountries(db *sql.DB, data *DBData) error {
 
 	return nil
 }
+
+func loadLocations(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT 
+		COALESCE(id, ''),
+		COALESCE(longitude, ''),
+		COALESCE(latitude, '')
+	FROM
+		location;
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		var location Location
+		if err := rows.Scan(
+			&location.ID,
+			&location.Longitude,
+			&location.Latitude,
+		); err != nil {
+			return err
+		}
+
+		data.Locations[location.ID] = location
+	}
+
+	return nil
+}
+
 func loadNodeGPUs(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 	SELECT 
@@ -569,6 +601,7 @@ func Load(db *sql.DB) (DBData, error) {
 		GPUs:                make(map[uint64][]NodeGPU),
 		FarmHasRentedNode:   make(map[uint64]bool),
 		Regions:             make(map[string]string),
+		Locations:           make(map[string]Location),
 		DB:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {
@@ -608,6 +641,9 @@ func Load(db *sql.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadCountries(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadLocations(db, &data); err != nil {
 		return data, err
 	}
 	if err := calcNodesUsedResources(&data); err != nil {

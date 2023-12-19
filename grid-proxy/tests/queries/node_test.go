@@ -343,20 +343,6 @@ func TestNode(t *testing.T) {
 		assert.Equal(t, err.Error(), ErrNodeNotFound.Error())
 	})
 
-	t.Run("nodes test without resources view", func(t *testing.T) {
-		db := data.DB
-		_, err := db.Exec("drop view nodes_resources_view ;")
-		assert.NoError(t, err)
-
-		singleNodeCheck(t, mockClient, gridProxyClient)
-		assert.NoError(t, err)
-
-		_, err = db.Exec("drop view nodes_resources_view ;")
-		assert.NoError(t, err)
-
-		nodePaginationCheck(t, mockClient, gridProxyClient)
-	})
-
 	t.Run("nodes test certification_type filter", func(t *testing.T) {
 		certType := "Diy"
 		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{CertificationType: &certType}, types.DefaultLimit())

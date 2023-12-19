@@ -158,3 +158,9 @@ type Country struct {
 	Lat       string
 	Long      string
 }
+
+type Location struct {
+	ID        string
+	Longitude *float64
+	Latitude  *float64
+}

@@ -204,10 +204,9 @@ func (np *NodePower) Scan(value interface{}) error {
 
 // GetNode returns node info
 func (d *PostgresDatabase) GetNode(ctx context.Context, nodeID uint32) (Node, error) {
-	q := d.nodeTableQuery()
+	q := d.nodeTableQuery(types.NodeFilter{}, &gorm.DB{})
 	q = q.WithContext(ctx)
 	q = q.Where("node.node_id = ?", nodeID)
-	q = q.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
 	var node Node
 	res := q.Scan(&node)
 	if d.shouldRetry(res.Error) {
@@ -262,8 +261,8 @@ func printQuery(query string, args ...interface{}) {
 	fmt.Printf("node query: %s", query)
 }
 
-func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
-	return d.gormDB.
+func (d *PostgresDatabase) nodeTableQuery(filter types.NodeFilter, nodeGpuSubquery *gorm.DB) *gorm.DB {
+	q := d.gormDB.
 		Table("node").
 		Select(
 			"node.id",
@@ -302,13 +301,23 @@ func (d *PostgresDatabase) nodeTableQuery() *gorm.DB {
 			"resources_cache.node_contracts_count",
 			"resources_cache.node_gpu_count AS num_gpu",
 		).
-		Joins(
-			`LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id
+		Joins(`
+			LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id
+			LEFT JOIN public_ips_cache ON public_ips_cache.farm_id = node.farm_id
 			LEFT JOIN public_config ON node.id = public_config.node_id
 			LEFT JOIN farm ON node.farm_id = farm.farm_id
 			LEFT JOIN location ON node.location_id = location.id
-			LEFT JOIN public_ips_cache ON public_ips_cache.farm_id = node.farm_id`,
+		`)
+
+	if filter.HasGPU != nil || filter.GpuDeviceName != nil ||
+		filter.GpuVendorName != nil || filter.GpuVendorID != nil ||
+		filter.GpuDeviceID != nil || filter.GpuAvailable != nil {
+		q.Joins(
+			`RIGHT JOIN (?) AS gpu ON gpu.node_twin_id = node.twin_id`, nodeGpuSubquery,
 		)
+	}
+
+	return q
 }
 
 func (d *PostgresDatabase) farmTableQuery(filter types.FarmFilter, nodeQuery *gorm.DB) *gorm.DB {
@@ -335,18 +344,18 @@ func (d *PostgresDatabase) farmTableQuery(filter types.FarmFilter, nodeQuery *go
 		filter.NodeRentedBy != nil || filter.NodeStatus != nil ||
 		filter.NodeTotalCRU != nil || filter.Country != nil ||
 		filter.Region != nil {
-		q.
-			Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
+		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
 			Group(`
-			farm.id,
-			farm.farm_id,
-			farm.name,
-			farm.twin_id,
-			farm.pricing_policy_id,
-			farm.certification,
-			farm.stellar_address,
-			farm.dedicated_farm,
-			public_ips_cache.ips`)
+				farm.id,
+				farm.farm_id,
+				farm.name,
+				farm.twin_id,
+				farm.pricing_policy_id,
+				farm.certification,
+				farm.stellar_address,
+				farm.dedicated_farm,
+				public_ips_cache.ips
+			`)
 	}
 
 	return q
@@ -476,8 +485,40 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 
 // GetNodes returns nodes filtered and paginated
 func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]Node, uint, error) {
-	q := d.nodeTableQuery()
-	q = q.WithContext(ctx)
+	q := d.gormDB.WithContext(ctx)
+	/*
+		used distinct selecting to avoid duplicated node after the join.
+		- postgres apply WHERE before DISTINCT so filters will still filter on the whole data.
+		- we don't return any gpu info on the node object so no worries of losing the data because DISTINCT.
+	*/
+	nodeGpuSubquery := d.gormDB.Table("node_gpu").
+		Select("DISTINCT ON (node_twin_id) node_twin_id")
+
+	if filter.HasGPU != nil {
+		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.id, '') != '') = ?", *filter.HasGPU)
+	}
+
+	if filter.GpuDeviceName != nil {
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.device, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceName)
+	}
+
+	if filter.GpuVendorName != nil {
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.vendor, '') ILIKE '%' || ? || '%'", *filter.GpuVendorName)
+	}
+
+	if filter.GpuVendorID != nil {
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuVendorID)
+	}
+
+	if filter.GpuDeviceID != nil {
+		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceID)
+	}
+
+	if filter.GpuAvailable != nil {
+		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.contract, 0) = 0) = ?", *filter.GpuAvailable)
+	}
+
+	q = d.nodeTableQuery(filter, nodeGpuSubquery)
 
 	condition := "TRUE"
 	if filter.Status != nil {
@@ -520,7 +561,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where("node.city ILIKE '%' || ? || '%'", *filter.CityContains)
 	}
 	if filter.Region != nil {
-		q = q.Where("LOWER(resources_cache.subregion) = LOWER(?)", *filter.Region)
+		q = q.Where("LOWER(resources_cache.region) = LOWER(?)", *filter.Region)
 	}
 	if filter.NodeID != nil {
 		q = q.Where("node.node_id = ?", *filter.NodeID)
@@ -577,46 +618,6 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	}
 	if filter.OwnedBy != nil {
 		q = q.Where(`COALESCE(farm.twin_id, 0) = ?`, *filter.OwnedBy)
-	}
-
-	/*
-		used distinct selecting to avoid duplicated node after the join.
-		- postgres apply WHERE before DISTINCT so filters will still filter on the whole data.
-		- we don't return any gpu info on the node object so no worries of losing the data because DISTINCT.
-	*/
-	nodeGpuSubquery := d.gormDB.Table("node_gpu").
-		Select("DISTINCT ON (node_twin_id) node_twin_id")
-
-	if filter.HasGPU != nil {
-		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.id, '') != '') = ?", *filter.HasGPU)
-	}
-
-	if filter.GpuDeviceName != nil {
-		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.device, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceName)
-	}
-
-	if filter.GpuVendorName != nil {
-		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.vendor, '') ILIKE '%' || ? || '%'", *filter.GpuVendorName)
-	}
-
-	if filter.GpuVendorID != nil {
-		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuVendorID)
-	}
-
-	if filter.GpuDeviceID != nil {
-		nodeGpuSubquery = nodeGpuSubquery.Where("COALESCE(node_gpu.id, '') ILIKE '%' || ? || '%'", *filter.GpuDeviceID)
-	}
-
-	if filter.GpuAvailable != nil {
-		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.contract, 0) = 0) = ?", *filter.GpuAvailable)
-	}
-
-	if filter.HasGPU != nil || filter.GpuDeviceName != nil || filter.GpuVendorName != nil || filter.GpuVendorID != nil ||
-		filter.GpuDeviceID != nil || filter.GpuAvailable != nil {
-
-		q.Joins(
-			`INNER JOIN (?) AS gpu ON gpu.node_twin_id = node.twin_id`, nodeGpuSubquery,
-		)
 	}
 
 	var count int64

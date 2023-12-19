@@ -59,8 +59,10 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 					SRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].SRU),
 				},
 				Location: types.Location{
-					Country: node.Country,
-					City:    node.City,
+					Country:   node.Country,
+					City:      node.City,
+					Longitude: g.data.Locations[node.LocationID].Longitude,
+					Latitude:  g.data.Locations[node.LocationID].Latitude,
 				},
 				PublicConfig: types.PublicConfig{
 					Domain: g.data.PublicConfigs[node.NodeID].Domain,
@@ -137,8 +139,10 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 			},
 		},
 		Location: types.Location{
-			Country: node.Country,
-			City:    node.City,
+			Country:   node.Country,
+			City:      node.City,
+			Longitude: g.data.Locations[node.LocationID].Longitude,
+			Latitude:  g.data.Locations[node.LocationID].Latitude,
 		},
 		PublicConfig: types.PublicConfig{
 			Domain: g.data.PublicConfigs[node.NodeID].Domain,
