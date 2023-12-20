@@ -17,6 +17,8 @@ import (
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 	"gorm.io/gorm/logger"
+
+	_ "embed"
 )
 
 var (
@@ -35,6 +37,9 @@ var (
 	gridProxyClient proxyclient.Client
 	DBClient        db.Database
 )
+
+//go:embed modifiers.sql
+var modifiersFile string
 
 func parseCmdline() {
 	flag.StringVar(&POSTGRES_HOST, "postgres-host", "", "postgres host")
@@ -76,11 +81,21 @@ func TestMain(m *testing.M) {
 	gridProxyClient = proxyclient.NewClient(ENDPOINT)
 
 	exitcode := m.Run()
-	if exitcode == 0 {
-		exitcode = m.Run()
+	if exitcode != 0 {
+		os.Exit(exitcode)
 	}
-	// trigger
-	// load
-	// m.Run()
+
+	_, err = db.Exec(modifiersFile)
+	if err != nil {
+		panic(err)
+	}
+
+	data, err = mock.Load(db)
+	if err != nil {
+		panic(err)
+	}
+	mockClient = mock.NewGridProxyMockClient(data)
+
+	exitcode = m.Run()
 	os.Exit(exitcode)
 }
