@@ -58,22 +58,9 @@ SELECT
     COALESCE(node_resources_total.mru, 0) as total_mru,
     COALESCE(node_resources_total.sru, 0) as total_sru,
     COALESCE(node_resources_total.cru, 0) as total_cru,
-    node_resources_total.hru - COALESCE(
-        sum(contract_resources.hru),
-        0
-    ) as free_hru,
-    node_resources_total.mru - COALESCE(
-        sum(contract_resources.mru),
-        0
-    ) - GREATEST(
-        CAST( (node_resources_total.mru / 10) AS bigint
-        ),
-        2147483648
-    ) as free_mru,
-    node_resources_total.sru - COALESCE(
-        sum(contract_resources.sru),
-        0
-    ) - 21474836480 as free_sru,
+    COALESCE(node_resources_total.hru, 0) - COALESCE(sum(contract_resources.hru), 0) as free_hru,
+    COALESCE(node_resources_total.mru, 0) - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as free_mru,
+    COALESCE(node_resources_total.sru, 0) - COALESCE(sum(contract_resources.sru), 0) - 21474836480 as free_sru,
     COALESCE(
         sum(contract_resources.hru),
         0
@@ -100,12 +87,12 @@ SELECT
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     country.name as country,
     country.subregion as region
-FROM contract_resources
-    JOIN node_contract as node_contract ON node_contract.resources_used_id = contract_resources.id AND node_contract.state IN ('Created', 'GracePeriod')
-    RIGHT JOIN node as node ON node.node_id = node_contract.node_id
-    JOIN node_resources_total AS node_resources_total ON node_resources_total.node_id = node.id
+FROM node
+    LEFT JOIN node_contract ON node.node_id = node_contract.node_id
+    LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id AND node_contract.state IN ('Created', 'GracePeriod')
+    LEFT JOIN node_resources_total AS node_resources_total ON node_resources_total.node_id = node.id
     LEFT JOIN rent_contract on node.node_id = rent_contract.node_id AND rent_contract.state IN ('Created', 'GracePeriod')
-    Left JOIN(
+    LEFT JOIN(
         SELECT
             node_twin_id,
             COUNT(id) as node_gpu_count
@@ -127,30 +114,31 @@ GROUP BY
     country.name,
     country.subregion;
 
-CREATE TABLE
-    IF NOT EXISTS resources_cache(
-        node_id INTEGER PRIMARY KEY,
-        farm_id INTEGER NOT NULL,
-        total_hru NUMERIC NOT NULL,
-        total_mru NUMERIC NOT NULL,
-        total_sru NUMERIC NOT NULL,
-        total_cru NUMERIC NOT NULL,
-        free_hru NUMERIC NOT NULL,
-        free_mru NUMERIC NOT NULL,
-        free_sru NUMERIC NOT NULL,
-        used_hru NUMERIC NOT NULL,
-        used_mru NUMERIC NOT NULL,
-        used_sru NUMERIC NOT NULL,
-        used_cru NUMERIC NOT NULL,
-        renter INTEGER,
-        rent_contract_id INTEGER,
-        node_contracts_count INTEGER NOT NULL,
-        node_gpu_count INTEGER NOT NULL,
-        country TEXT,
-        region TEXT
+CREATE TABLE IF NOT EXISTS resources_cache(
+    node_id INTEGER PRIMARY KEY,
+    farm_id INTEGER NOT NULL,
+    total_hru NUMERIC NOT NULL,
+    total_mru NUMERIC NOT NULL,
+    total_sru NUMERIC NOT NULL,
+    total_cru NUMERIC NOT NULL,
+    free_hru NUMERIC NOT NULL,
+    free_mru NUMERIC NOT NULL,
+    free_sru NUMERIC NOT NULL,
+    used_hru NUMERIC NOT NULL,
+    used_mru NUMERIC NOT NULL,
+    used_sru NUMERIC NOT NULL,
+    used_cru NUMERIC NOT NULL,
+    renter INTEGER,
+    rent_contract_id INTEGER,
+    node_contracts_count INTEGER NOT NULL,
+    node_gpu_count INTEGER NOT NULL,
+    country TEXT,
+    region TEXT
     );
 
-INSERT INTO resources_cache SELECT * FROM resources_cache_view;
+INSERT INTO resources_cache 
+SELECT * 
+FROM resources_cache_view;
 
 ----
 -- PublicIpsCache table
@@ -233,275 +221,268 @@ CREATE INDEX
 --create triggers
 ----
 
+
 /*
- node trigger
- */
-
+ Node Trigger:
+    - Insert node record > Insert new resources_cache record
+    - Update node country > update resources_cache country/region
+*/
 CREATE OR REPLACE FUNCTION node_upsert() RETURNS TRIGGER AS 
-    $$ 
+$$ 
+BEGIN
+    IF (TG_OP = 'UPDATE') THEN
         BEGIN
-            IF (TG_OP = 'UPDATE') THEN
-                UPDATE resources_cache
-                    SET country = NEW.country,
-                        region = (
-                            Select subregion from country where country.name = NEW.country
-                        )
-                WHERE
-                    resources_cache.node_id = NEW.node_id;
-                
-            ELSIF (TG_OP = 'INSERT') THEN
-                INSERT INTO
-                    resources_cache
-                SELECT *
-                FROM resources_cache_view WHERE resources_cache_view.node_id = NEW.node_id;
-            END IF;
+            UPDATE resources_cache
+            SET 
+                country = NEW.country,
+                region = (
+                    SELECT subregion FROM country WHERE country.name = NEW.country
+                )
+            WHERE
+                resources_cache.node_id = NEW.node_id;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE 'Error updating resources_cache: %', SQLERRM;
         END;
-	$$ LANGUAGE plpgsql;
 
+    ELSIF (TG_OP = 'INSERT') THEN
+        BEGIN
+            INSERT INTO resources_cache
+            SELECT *
+            FROM resources_cache_view 
+            WHERE resources_cache_view.node_id = 99995;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE 'Error inserting resources_cache: %', SQLERRM;
+        END;
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER node_trigger
     AFTER INSERT OR UPDATE OF country 
-        ON node 
+    ON node 
     FOR EACH ROW EXECUTE PROCEDURE node_upsert();
 
-
 /*
- total resources trigger
+ Total resources trigger
+    - Insert/Update node_resources_total > Update equivalent resources_cache record.
  */
-CREATE OR REPLACE FUNCTION node_resources_total_upsert() 
-RETURNS TRIGGER AS $$ 
-	BEGIN
+CREATE OR REPLACE FUNCTION node_resources_total_upsert() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    BEGIN
         UPDATE resources_cache
         SET
             total_cru = NEW.cru,
             total_mru = NEW.mru,
             total_sru = NEW.sru,
             total_hru = NEW.hru,
-            free_mru = free_mru + (NEW.mru-OLD.mru),
-            free_hru = free_hru + (NEW.hru-OLD.hru),
-            free_sru = free_sru + (NEW.sru-OLD.sru)
+            free_mru = free_mru + (NEW.mru-COALESCE(OLD.mru, 0)),
+            free_hru = free_hru + (NEW.hru-COALESCE(OLD.hru, 0)),
+            free_sru = free_sru + (NEW.sru-COALESCE(OLD.sru, 0))
         WHERE
-            resources_cache.id = NEW.node_id;
-	END;
-	$$ LANGUAGE plpgsql;
+            resources_cache.node_id = (
+                SELECT node.node_id FROM node WHERE node.id = New.node_id
+            );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error reflecting total_resources changes %', SQLERRM;
+    END;    
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER node_resources_total_trigger 
+	AFTER INSERT OR UPDATE 
+    ON node_resources_total FOR EACH ROW
+	EXECUTE PROCEDURE node_resources_total_upsert();
 
 
 /*
-    trigger works only after updates because new records in total resources 
-    must also have new node records, which is monitored
-*/
-CREATE OR REPLACE TRIGGER node_resources_total_trigger AFTER
-	UPDATE
-	    ON node_resources_total FOR EACH ROW
-	EXECUTE
-	    PROCEDURE node_resources_total_upsert();
-
-
-/*
- contract resources
+ Contract resources
+    - Insert/Update contract_resources report > update resources_cache used/free fields
  */
-CREATE OR REPLACE FUNCTION contract_resources_upsert() 
-RETURNS TRIGGER AS 
-	$$ 
-        BEGIN
-            IF (TG_OP = 'UPDATE') THEN
-                UPDATE resources_cache
-                    SET used_cru = used_cru + (NEW.cru - OLD.cru),
-                        used_mru = used_mru + (NEW.mru - OLD.mru),
-                        used_sru = used_sru + (NEW.sru - OLD.sru),
-                        used_hru = used_hru + (NEW.hru - OLD.hru),
-                        free_mru = free_mru - (NEW.mru - OLD.mru),
-                        free_hru = free_hru - (NEW.hru - OLD.hru),
-                        free_sru = free_sru - (NEW.sru - OLD.sru)
-                WHERE
-                    resources_cache.node_id = (
-                        Select node.node_id from node 
-                            left join node_contract on node.node_id = node_contract.node_id
-                            left join contract_resources on contract_resources.contract_id = node_contract.id
-                        where contract_resources.contract_id = NEW.contract_id
-                    );
-            ELSIF (TG_OP = 'INSERT') THEN
-                UPDATE resources_cache
-                    SET used_cru = used_cru + NEW.cru,
-                        used_mru = used_mru + NEW.mru,
-                        used_sru = used_sru + NEW.sru,
-                        used_hru = used_hru + NEW.hru,
-                        free_mru = free_mru - NEW.mru,
-                        free_hru = free_hru - NEW.hru,
-                        free_sru = free_sru - NEW.sru
-                WHERE
-                    resources_cache.node_id = (
-                        Select node.node_id from node 
-                            left join node_contract on node.node_id = node_contract.node_id
-                            left join contract_resources on contract_resources.contract_id = node_contract.id
-                        where contract_resources.contract_id = NEW.contract_id
-                    );
-            END IF;
-        END;
-	$$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION contract_resources_upsert() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    BEGIN
+        UPDATE resources_cache
+        SET used_cru = used_cru + (NEW.cru - COALESCE(OLD.cru, 0)),
+            used_mru = used_mru + (NEW.mru - COALESCE(OLD.mru, 0)),
+            used_sru = used_sru + (NEW.sru - COALESCE(OLD.sru, 0)),
+            used_hru = used_hru + (NEW.hru - COALESCE(OLD.hru, 0)),
+            free_mru = free_mru - (NEW.mru - COALESCE(OLD.mru, 0)),
+            free_hru = free_hru - (NEW.hru - COALESCE(OLD.hru, 0)),
+            free_sru = free_sru - (NEW.sru - COALESCE(OLD.sru, 0))
+        WHERE
+            resources_cache.node_id = (
+                SELECT node_id FROM node_contract WHERE node_contract.id = NEW.contract_id
+            );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error reflecting contract_resources changes %', SQLERRM;
+    END;       
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER contract_resources_trigger AFTER
-	INSERT OR UPDATE ON contract_resources 
-    FOR EACH ROW EXECUTE PROCEDURE contract_resources_upsert();
+CREATE OR REPLACE TRIGGER contract_resources_trigger 
+    AFTER INSERT OR UPDATE ON contract_resources FOR EACH ROW 
+    EXECUTE PROCEDURE contract_resources_upsert();
 
 /*
-    node_contract_trigger
+    Node contract trigger
+     - Insert new contract > increment resources_cache node_contract_count
+     - Update contract state to 'Deleted' > decrement used an increment free fields on resources_cache
 */
 CREATE OR REPLACE FUNCTION node_contract_upsert() RETURNS TRIGGER AS 
-    $$ 
+$$ 
+BEGIN
+    IF (TG_OP = 'UPDATE' AND NEW.state = 'Deleted') THEN
         BEGIN
-            IF (TG_OP = 'UPDATE' AND NEW.state = 'Deleted') THEN
-                UPDATE resources_cache
-                    SET (used_cru, used_mru, used_sru, used_hru, free_mru, free_sru, free_hru, node_contracts_count) = 
-                    (
-                        select resources_cache.used_cru - cru,
-                            resources_cache.used_mru - mru,
-                            resources_cache.used_sru - sru,
-                            resources_cache.used_hru - hru,
-                            resources_cache.free_mru + mru,
-                            resources_cache.free_sru + sru,
-                            resources_cache.free_hru + hru,
-                            resources_cache.node_contract_count - 1
-                        from resources_cache
-                            left join node_contract on resources_cache.node_id = node_contract.node_id
-                            left join contract_resources on node_contract.id = contract_resources.contract_id 
-                        where resources_cache.node_id = NEW.node_id and node_contract.contract_id = NEW.contract_id
-                    ) where resources_cache.node_id = NEW.node_id;
-                
-            ELSIF (TG_OP = 'INSERT') THEN
-                UPDATE resources_cache 
-                SET node_contracts_count = node_contracts_count + 1 
-                WHERE resources_cache.node_id = NEW.node_id;
-            END IF;
-        END;
-	$$ LANGUAGE plpgsql;
+            UPDATE resources_cache
+            SET (used_cru, used_mru, used_sru, used_hru, free_mru, free_sru, free_hru, node_contracts_count) = 
+            (
+                SELECT
+                    resources_cache.used_cru - cru,
+                    resources_cache.used_mru - mru,
+                    resources_cache.used_sru - sru,
+                    resources_cache.used_hru - hru,
+                    resources_cache.free_mru + mru,
+                    resources_cache.free_sru + sru,
+                    resources_cache.free_hru + hru,
+                    resources_cache.node_contracts_count - 1
+                FROM resources_cache
+                    LEFT JOIN contract_resources ON contract_resources.contract_id = NEW.id 
+                    WHERE resources_cache.node_id = NEW.node_id
+            ) WHERE resources_cache.node_id = NEW.node_id;
+        EXCEPTION
+            WHEN OTHERS THEN
+            RAISE NOTICE 'Error reflecting node_contract updates %', SQLERRM;
+        END;    
 
+    ELSIF (TG_OP = 'INSERT') THEN
+        BEGIN
+            UPDATE resources_cache 
+            SET node_contracts_count = node_contracts_count + 1 
+            WHERE resources_cache.node_id = NEW.node_id;
+        EXCEPTION
+            WHEN OTHERS THEN
+            RAISE NOTICE 'Error incrementing node_contract_count %', SQLERRM;
+        END; 
+    END IF;
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER node_contract_trigger
-    AFTER INSERT OR UPDATE OF state
-        ON node_contract
-    FOR EACH ROW EXECUTE PROCEDURE node_contract_upsert();
-
-
-CREATE OR REPLACE FUNCTION rent_contract_upsert() RETURNS TRIGGER AS 
-    $$ 
-        BEGIN
-            IF (TG_OP = 'UPDATE' AND NEW.state = 'Deleted') THEN
-                UPDATE resources_cache
-                    SET renter = NULL,
-                        rent_contract_id = NULL
-                WHERE
-                    resources_cache.node_id = NEW.node_id;
-                
-            ELSIF (TG_OP = 'INSERT') THEN
-                UPDATE resources_cache 
-                    SET renter = NEW.twin_id,
-                        rent_contract_id = NEW.contract_id
-                WHERE
-                    resources_cache.node_id = NEW.node_id;
-
-            END IF;
-        END;
-	$$ LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE TRIGGER rent_contract_trigger
-    AFTER INSERT OR UPDATE OF state 
-        ON rent_contract
-    FOR EACH ROW EXECUTE PROCEDURE rent_contract_upsert();
+    AFTER INSERT OR UPDATE OF state ON node_contract FOR EACH ROW 
+    EXECUTE PROCEDURE node_contract_upsert();
 
 /*
-    public ips trigger
--- */
-CREATE OR REPLACE FUNCTION public_ip_upsert() RETURNS TRIGGER AS 
-    $$ 
-        BEGIN
-            IF (TG_OP = 'UPDATE') THEN
-                UPDATE public_ips_cache
-                    SET free_ips = free_ips + (CASE WHEN NEW.contract_id = 0 THEN 1 ELSE -1 END),
-                        ips = (
-                            select jsonb_agg(
-                                jsonb_build_object(
-                                    'id',
-                                    public_ip.id,
-                                    'ip',
-                                    public_ip.ip,
-                                    'contract_id',
-                                    public_ip.contract_id,
-                                    'gateway',
-                                    public_ip.gateway
-                                )
-                            )
-                            from public_ip where farm_id = NEW.farm_id
-                        )
-                WHERE
-                    public_ips_cache.farm_id = (
-                        SELECT farm.farm_id from public_ip 
-                        LEFT JOIN farm ON farm.id = public_ip.farm_id 
-                        WHERE public_ip.id = NEW.id
-                    );
-                
-            ELSIF (TG_OP = 'INSERT') THEN
-                UPDATE public_ips_cache
-                    SET free_ips = free_ips + 1,
-                        total_ips = total_ips + 1,
-                        ips = (
-                            select jsonb_agg(
-                                jsonb_build_object(
-                                    'id',
-                                    public_ip.id,
-                                    'ip',
-                                    public_ip.ip,
-                                    'contract_id',
-                                    public_ip.contract_id,
-                                    'gateway',
-                                    public_ip.gateway
-                                )
-                            )
-                            from public_ip where farm_id = NEW.farm_id
-                        )
-                WHERE
-                    public_ips_cache.farm_id = (
-                        SELECT farm.farm_id from public_ip 
-                        LEFT JOIN farm ON farm.id = public_ip.farm_id 
-                        WHERE public_ip.id = NEW.id
-                    );
-                
-                ELSIF (TG_OP = 'DELETE') THEN
-                UPDATE public_ips_cache
-                    SET free_ips = free_ips - (CASE WHEN OLD.contract_id = 0 THEN 1 ELSE 0 END),
-                        total_ips = total_ips - 1,
-                        ips = (
-                            select jsonb_agg(
-                                jsonb_build_object(
-                                    'id',
-                                    public_ip.id,
-                                    'ip',
-                                    public_ip.ip,
-                                    'contract_id',
-                                    public_ip.contract_id,
-                                    'gateway',
-                                    public_ip.gateway
-                                )
-                            )
-                            from public_ip where farm_id = OLD.farm_id
-                        )
-                WHERE
-                    public_ips_cache.farm_id = (
-                        SELECT farm.farm_id from public_ip 
-                        LEFT JOIN farm ON farm.id = public_ip.farm_id 
-                        WHERE public_ip.id = OLD.id
-                    );
-            END IF;
-        END;
-	$$ LANGUAGE plpgsql;
+ Rent contract trigger
+    - Insert new rent contract > Update resources_cache renter/rent_contract_id
+    - Update (state to 'Deleted') > nullify resources_cache renter/rent_contract_id
+*/
 
+CREATE OR REPLACE FUNCTION rent_contract_upsert() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    IF (TG_OP = 'UPDATE' AND NEW.state = 'Deleted') THEN
+        BEGIN
+            UPDATE resources_cache
+            SET renter = NULL,
+                rent_contract_id = NULL
+            WHERE
+                resources_cache.node_id = NEW.node_id;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE 'Error removing resources_cache rent fields %', SQLERRM;
+        END; 
+    ELSIF (TG_OP = 'INSERT') THEN
+        BEGIN
+            UPDATE resources_cache 
+            SET renter = NEW.twin_id,
+                rent_contract_id = NEW.contract_id
+            WHERE
+                resources_cache.node_id = NEW.node_id;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE 'Error reflecting rent_contract changes %', SQLERRM;
+        END; 
+    END IF;
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER rent_contract_trigger
+    AFTER INSERT OR UPDATE OF state ON rent_contract FOR EACH ROW
+    EXECUTE PROCEDURE rent_contract_upsert();
+
+/*
+ Public ips trigger
+  - Insert new ip > increment free/total ips + re-aggregate ips object
+  - Deleted > decrement total, decrement free ips (if it was used) + re-aggregate ips object
+  - Update > increment/decrement free ips based on usage + re-aggregate ips object
+*/
+CREATE OR REPLACE FUNCTION public_ip_upsert() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    BEGIN 
+        UPDATE public_ips_cache
+        SET free_ips = free_ips + (
+            CASE 
+            -- handles insertion/update by freeing ip
+            WHEN TG_OP != 'DELETE' AND NEW.contract_id = 0
+                THEN 1 
+            -- handles deletion/update by reserving ip
+            WHEN COALESCE(OLD.contract_id, 0) = 0
+                THEN -1
+            -- handles delete reserved ips
+            ELSE 0
+            END ),
+            total_ips = total_ips + (
+            CASE 
+            WHEN TG_OP = 'INSERT' 
+                THEN 1 
+            WHEn TG_OP = 'DELETE'
+                THEN -1
+            ELSE 0
+            END ),
+            ips = (
+                select jsonb_agg(
+                    jsonb_build_object(
+                        'id',
+                        public_ip.id,
+                        'ip',
+                        public_ip.ip,
+                        'contract_id',
+                        public_ip.contract_id,
+                        'gateway',
+                        public_ip.gateway
+                    )
+                )
+                -- old/new farm_id are the same
+                from public_ip where farm_id = COALESCE(NEW.farm_id, OLD.farm_id)
+            )
+        WHERE
+            public_ips_cache.farm_id = (
+                SELECT farm_id FROM farm WHERE farm.id = COALESCE(NEW.farm_id, OLD.farm_id)
+            );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error reflect public_ips changes %s', SQLERRM;
+    END;
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER public_ip_trigger
-    AFTER INSERT OR DELETE OR UPDATE OF contract_id
-        ON public_ip
-    FOR EACH ROW EXECUTE PROCEDURE public_ip_upsert();
-
+    AFTER INSERT OR DELETE OR UPDATE OF contract_id ON public_ip FOR EACH ROW 
+    EXECUTE PROCEDURE public_ip_upsert();
 
 COMMIT;
