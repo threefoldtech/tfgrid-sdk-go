@@ -330,7 +330,6 @@ func (m *Monitor) systemVersion(ctx context.Context) (map[network]version, map[n
 			log.Error().Err(err).Msgf("substrate connection for %v network failed", network)
 			continue
 		}
-		defer con.Close()
 
 		sessionID := fmt.Sprintf("monbot-%d", os.Getpid())
 		rmbClient, err := peer.NewRpcClient(ctx, "sr25519", m.mnemonics[network], RelayURLS[network], sessionID, con, true)
