@@ -19,7 +19,7 @@ type balanceReport struct {
 	afterSendingToStellar float64
 }
 
-type bridgeTX func(*client.Substrate, client.Identity, network) error
+type bridgeTX func(client.Identity, network) error
 
 func (m *Monitor) monitorBridges() error {
 	message := strings.Builder{}
@@ -52,7 +52,7 @@ func (m *Monitor) monitorBridges() error {
 }
 
 func (m *Monitor) monitorBridge(net network) (balanceReport, error) {
-	conn, err := m.substrate[net].Substrate()
+	conn, err := m.managers[net].Substrate()
 	if err != nil {
 		return balanceReport{}, fmt.Errorf("failed to create substrate connection for %s: %w", net, err)
 	}
@@ -64,17 +64,17 @@ func (m *Monitor) monitorBridge(net network) (balanceReport, error) {
 	}
 
 	// get current balance
-	originalBalance, err := m.getBalance(conn, address(identity.Address()))
+	originalBalance, err := m.getBalance(m.managers[net], address(identity.Address()))
 	if err != nil {
 		return balanceReport{}, fmt.Errorf("failed to get balance for account: %w", err)
 	}
 
-	balanceAfterChain, err := m.bridgeTXWrapper(m.sendToTfChain)(conn, identity, net)
+	balanceAfterChain, err := m.bridgeTXWrapper(m.sendToTfChain)(identity, net)
 	if err != nil {
 		return balanceReport{}, err
 	}
 
-	balanceAfterStellar, err := m.bridgeTXWrapper(m.sendToStellar)(conn, identity, net)
+	balanceAfterStellar, err := m.bridgeTXWrapper(m.sendToStellar)(identity, net)
 	if err != nil {
 		return balanceReport{}, err
 	}
@@ -87,15 +87,21 @@ func (m *Monitor) monitorBridge(net network) (balanceReport, error) {
 }
 
 // bridgeTXWrapper does the bridge transaction, and get the balance after waiting a period of time
-func (m *Monitor) bridgeTXWrapper(tx bridgeTX) func(conn *client.Substrate, identity client.Identity, net network) (float64, error) {
-	return func(conn *client.Substrate, identity client.Identity, net network) (float64, error) {
-		if err := tx(conn, identity, net); err != nil {
+func (m *Monitor) bridgeTXWrapper(tx bridgeTX) func(identity client.Identity, net network) (float64, error) {
+	return func(identity client.Identity, net network) (float64, error) {
+		conn, err := m.managers[net].Substrate()
+		if err != nil {
+			return 0, fmt.Errorf("failed to create substrate connection for %s: %w", net, err)
+		}
+		defer conn.Close()
+
+		if err := tx(identity, net); err != nil {
 			return 0, err
 		}
 
 		<-time.After(balanceWaitIntervalSeconds * time.Second)
 
-		balanceAfterChain, err := m.getBalance(conn, address(identity.Address()))
+		balanceAfterChain, err := m.getBalance(m.managers[net], address(identity.Address()))
 		if err != nil {
 			return 0, fmt.Errorf("failed to get balance for account: %w", err)
 		}
@@ -104,7 +110,13 @@ func (m *Monitor) bridgeTXWrapper(tx bridgeTX) func(conn *client.Substrate, iden
 	}
 }
 
-func (m *Monitor) sendToTfChain(conn *client.Substrate, identity client.Identity, net network) error {
+func (m *Monitor) sendToTfChain(identity client.Identity, net network) error {
+	conn, err := m.managers[net].Substrate()
+	if err != nil {
+		return fmt.Errorf("failed to create substrate connection for %s: %w", net, err)
+	}
+	defer conn.Close()
+
 	// decide configs based on networks
 	strSecret := m.env.testStellarSecret
 	stellarTFTIssuerAddress := tftIssuerStellarTest
@@ -119,13 +131,17 @@ func (m *Monitor) sendToTfChain(conn *client.Substrate, identity client.Identity
 
 	// Validate destination and Load source Accounts
 	destAccountRequest := horizonclient.AccountRequest{AccountID: BridgeAddresses[net]}
-	_, err := strClient.AccountDetail(destAccountRequest)
+	_, err = strClient.AccountDetail(destAccountRequest)
 	if err != nil {
 		errMsg := getHorizonError(err)
 		return fmt.Errorf("failed to verify destination account: %s", errMsg)
 	}
 
-	sourceKP := keypair.MustParseFull(strSecret)
+	sourceKP, err := keypair.ParseFull(strSecret)
+	if err != nil {
+		return fmt.Errorf("failed to parse secret address: %w", err)
+	}
+
 	sourceAccountRequest := horizonclient.AccountRequest{AccountID: sourceKP.Address()}
 	sourceAccount, err := strClient.AccountDetail(sourceAccountRequest)
 	if err != nil {
@@ -175,7 +191,13 @@ func (m *Monitor) sendToTfChain(conn *client.Substrate, identity client.Identity
 	return nil
 }
 
-func (m *Monitor) sendToStellar(conn *client.Substrate, identity client.Identity, net network) error {
+func (m *Monitor) sendToStellar(identity client.Identity, net network) error {
+	conn, err := m.managers[net].Substrate()
+	if err != nil {
+		return fmt.Errorf("failed to create substrate connection for %s: %w", net, err)
+	}
+	defer conn.Close()
+
 	strAddress := m.env.testStellarAddress
 	if net == mainNetwork || net == testNetwork {
 		strAddress = m.env.publicStellarAddress

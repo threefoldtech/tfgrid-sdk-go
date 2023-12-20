@@ -21,7 +21,7 @@ var cancelContracts = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 		if len(args) == 0 && !all {
-			log.Info().Msg("please specify contracts to cancel or use -a to cancel all")
+			log.Error().Msg("please specify contracts to cancel or use -a to cancel all")
 			return
 		}
 

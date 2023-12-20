@@ -11,7 +11,7 @@ import (
 	env "github.com/hashicorp/go-envparse"
 )
 
-func readFile(path string) ([]byte, error) {
+func ReadFile(path string) ([]byte, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return []byte{}, err
@@ -20,7 +20,8 @@ func readFile(path string) ([]byte, error) {
 	return content, nil
 }
 
-func parseJSONIntoWallets(content []byte) (w wallets, err error) {
+// ParseJSONIntoWallets parses bytes content to wallets
+func ParseJSONIntoWallets(content []byte) (w wallets, err error) {
 	w = wallets{}
 	err = json.Unmarshal(content, &w)
 
@@ -28,10 +29,12 @@ func parseJSONIntoWallets(content []byte) (w wallets, err error) {
 		return
 	}
 
+	// TODO: validate
 	return
 }
 
-func parseEnv(content string) (config, error) {
+// ParseEnv parses string content to monitor configs
+func ParseEnv(content string) (config, error) {
 	cfg := config{}
 
 	configMap, err := env.Parse(strings.NewReader(content))
