@@ -100,7 +100,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		return err
 	}
 
-	defer subConn.Close()
+	// defer subConn.Close()
 
 	farmerTwinID, err := subConn.GetTwinByPubKey(f.identity.PublicKey())
 	if err != nil {
@@ -207,13 +207,11 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 
 	_, err = peer.NewPeer(
 		ctx,
-		peer.KeyTypeSr25519,
 		f.mnemonicOrSeed,
-		relayURLS[f.network],
-		fmt.Sprintf("farmerbot-%d", f.farm.ID),
 		subConn,
-		true,
 		router.Serve,
+		peer.WithRelay(relayURLS[f.network]),
+		peer.WithSession(fmt.Sprintf("farmerbot-%d", f.farm.ID)),
 	)
 
 	if err != nil {
@@ -301,7 +299,6 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Sub, nodeID uin
 		if err != nil {
 			log.Error().Err(err).Uint32("nodeID", nodeID).Msg("Failed to update node")
 			return node{}, fmt.Errorf("failed to update node %d: %w", nodeID, err)
-
 		}
 
 		log.Debug().Uint32("nodeID", nodeID).Msg("Node is updated with latest changes successfully")

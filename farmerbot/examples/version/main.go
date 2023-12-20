@@ -12,7 +12,7 @@ import (
 )
 
 func version() error {
-	mnemonics := "winner giant reward damage expose pulse recipe manual brand volcano dry avoid"
+	mnemonics := "<Enter MNEMONIC here>"
 	subManager := substrate.NewManager("wss://tfchain.dev.grid.tf/ws")
 	sub, err := subManager.Substrate()
 	if err != nil {
