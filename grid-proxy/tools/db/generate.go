@@ -705,7 +705,7 @@ func generateNodeGPUs(db *sql.DB) error {
 		gpuNum := len(vendors) - 1
 		for j := 0; j <= gpuNum; j++ {
 			g := node_gpu{
-				node_twin_id: uint64(i + 100),
+				node_twin_id: uint64(i + 100 + 2), // node twin ids start from 102
 				vendor:       vendors[j],
 				device:       devices[j],
 				contract:     i % 2,

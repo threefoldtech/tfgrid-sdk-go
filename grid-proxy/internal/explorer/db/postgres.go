@@ -313,7 +313,7 @@ func (d *PostgresDatabase) nodeTableQuery(filter types.NodeFilter, nodeGpuSubque
 		filter.GpuVendorName != nil || filter.GpuVendorID != nil ||
 		filter.GpuDeviceID != nil || filter.GpuAvailable != nil {
 		q.Joins(
-			`INNER JOIN (?) AS gpu ON gpu.node_twin_id = node.twin_id`, nodeGpuSubquery,
+			`RIGHT JOIN (?) AS gpu ON gpu.node_twin_id = node.twin_id`, nodeGpuSubquery,
 		)
 	}
 
