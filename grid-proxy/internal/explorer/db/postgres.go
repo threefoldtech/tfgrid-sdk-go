@@ -47,7 +47,7 @@ func (d *PostgresDatabase) GetConnectionString() string {
 }
 
 // NewPostgresDatabase returns a new postgres db client
-func NewPostgresDatabase(host string, port int, user, password, dbname string, maxConns int, logLevel logger.LogLevel) (Database, error) {
+func NewPostgresDatabase(host string, port int, user, password, dbname string, maxConns int, logLevel logger.LogLevel) (PostgresDatabase, error) {
 	connString := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
@@ -55,11 +55,11 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string, m
 		Logger: logger.Default.LogMode(logLevel),
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create orm wrapper around db")
+		return PostgresDatabase{}, errors.Wrap(err, "failed to create orm wrapper around db")
 	}
 	sql, err := gormDB.DB()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to configure DB connection")
+		return PostgresDatabase{}, errors.Wrap(err, "failed to configure DB connection")
 	}
 
 	sql.SetMaxIdleConns(3)
@@ -67,14 +67,11 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string, m
 
 	err = gormDB.AutoMigrate(&NodeGPU{})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to auto migrate DB")
+		return PostgresDatabase{}, errors.Wrap(err, "failed to auto migrate DB")
 	}
 
 	res := PostgresDatabase{gormDB, connString}
-	if err := res.initialize(); err != nil {
-		return nil, errors.Wrap(err, "failed to setup tables")
-	}
-	return &res, nil
+	return res, nil
 }
 
 // Close the db connection
@@ -86,7 +83,7 @@ func (d *PostgresDatabase) Close() error {
 	return db.Close()
 }
 
-func (d *PostgresDatabase) initialize() error {
+func (d *PostgresDatabase) Initialize() error {
 	return d.gormDB.Exec(setupFile).Error
 }
 
@@ -664,7 +661,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 
 func (d *PostgresDatabase) shouldRetry(resError error) bool {
 	if resError != nil && resError.Error() == ErrResourcesCacheTableNotFound.Error() {
-		if err := d.initialize(); err != nil {
+		if err := d.Initialize(); err != nil {
 			log.Logger.Err(err).Msg("failed to reinitialize database")
 		} else {
 			return true

@@ -66,14 +66,21 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	DBClient, err = proxyDB.NewPostgresDatabase(POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB, 80, logger.Error)
+	dbClient, err := proxyDB.NewPostgresDatabase(POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB, 80, logger.Error)
 	if err != nil {
 		panic(err)
 	}
+	DBClient = &dbClient
 
 	mockClient = mock.NewGridProxyMockClient(data)
 	gridProxyClient = proxyclient.NewClient(ENDPOINT)
 
 	exitcode := m.Run()
+	if exitcode == 0 {
+		exitcode = m.Run()
+	}
+	// trigger
+	// load
+	// m.Run()
 	os.Exit(exitcode)
 }

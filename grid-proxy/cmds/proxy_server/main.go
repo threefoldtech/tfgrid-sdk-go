@@ -121,13 +121,17 @@ func main() {
 		log.Fatal().Err(err).Msg("couldn't get postgres client")
 	}
 
-	dbClient := explorer.DBClient{DB: db}
+	if err := db.Initialize(); err != nil {
+		log.Fatal().Err(err).Msg("failed to initialize database")
+	}
+
+	dbClient := explorer.DBClient{DB: &db}
 
 	indexer, err := gpuindexer.NewNodeGPUIndexer(
 		ctx,
 		f.relayURL,
 		f.mnemonics,
-		sub, db,
+		sub, &db,
 		f.indexerCheckIntervalMins,
 		f.indexerBatchSize,
 		f.indexerResultWorkers,
