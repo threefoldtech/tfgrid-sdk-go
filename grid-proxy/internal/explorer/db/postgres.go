@@ -313,7 +313,7 @@ func (d *PostgresDatabase) nodeTableQuery(filter types.NodeFilter, nodeGpuSubque
 		filter.GpuVendorName != nil || filter.GpuVendorID != nil ||
 		filter.GpuDeviceID != nil || filter.GpuAvailable != nil {
 		q.Joins(
-			`RIGHT JOIN (?) AS gpu ON gpu.node_twin_id = node.twin_id`, nodeGpuSubquery,
+			`INNER JOIN (?) AS gpu ON gpu.node_twin_id = node.twin_id`, nodeGpuSubquery,
 		)
 	}
 
@@ -582,13 +582,13 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where("public_ips_cache.free_ips >= ?", *filter.FreeIPs)
 	}
 	if filter.IPv4 != nil {
-		q = q.Where("(COALESCE(public_config.ipv4, '') = '') != ?", *filter.IPv4)
+		q = q.Where("(public_config.ipv4 IS NULL) != ?", *filter.IPv4)
 	}
 	if filter.IPv6 != nil {
-		q = q.Where("(COALESCE(public_config.ipv6, '') = '') != ?", *filter.IPv6)
+		q = q.Where("(public_config.ipv6 IS NULL) != ?", *filter.IPv6)
 	}
 	if filter.Domain != nil {
-		q = q.Where("(COALESCE(public_config.domain, '') = '') != ?", *filter.Domain)
+		q = q.Where("(public_config.domain IS NULL) != ?", *filter.Domain)
 	}
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
@@ -612,9 +612,6 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	}
 	if filter.Rented != nil {
 		q = q.Where(`? = (resources_cache.renter is not null)`, *filter.Rented)
-	}
-	if filter.CertificationType != nil {
-		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
 	}
 	if filter.OwnedBy != nil {
 		q = q.Where(`COALESCE(farm.twin_id, 0) = ?`, *filter.OwnedBy)
