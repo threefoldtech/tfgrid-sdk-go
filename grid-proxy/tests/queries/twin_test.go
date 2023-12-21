@@ -43,10 +43,14 @@ var twinFilterRandomValueGenerator = map[string]func(agg TwinsAggregate) interfa
 }
 
 func TestTwins(t *testing.T) {
+	t.Parallel()
+
 	t.Run("twins pagination test", func(t *testing.T) {
+		t.Parallel()
+
 		f := proxytypes.TwinFilter{}
 		l := proxytypes.Limit{
-			Size:     5,
+			Size:     100,
 			Page:     1,
 			RetCount: true,
 		}
@@ -69,6 +73,8 @@ func TestTwins(t *testing.T) {
 	})
 
 	t.Run("twins stress test", func(t *testing.T) {
+		t.Parallel()
+
 		agg := calcTwinsAggregates(&data)
 		for i := 0; i < TWINS_TESTS; i++ {
 			l := proxytypes.Limit{
@@ -94,6 +100,8 @@ func TestTwins(t *testing.T) {
 
 // TestTwinFilter iterates over all TwinFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestTwinFilter(t *testing.T) {
+	t.Parallel()
+
 	f := proxytypes.TwinFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()

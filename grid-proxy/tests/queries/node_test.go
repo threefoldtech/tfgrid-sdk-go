@@ -270,6 +270,7 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 }
 
 func TestNode(t *testing.T) {
+	t.Parallel()
 	t.Run("node pagination test", func(t *testing.T) {
 		nodePaginationCheck(t, mockClient, gridProxyClient)
 	})
@@ -279,6 +280,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("node up test", func(t *testing.T) {
+		t.Parallel()
+
 		f := types.NodeFilter{
 			Status: &STATUS_UP,
 		}
@@ -301,6 +304,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("node status test", func(t *testing.T) {
+		t.Parallel()
+
 		for i := 1; i <= NODE_COUNT; i++ {
 			if flip(.3) {
 				want, err := mockClient.NodeStatus(context.Background(), uint32(i))
@@ -315,6 +320,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("node stress test", func(t *testing.T) {
+		t.Parallel()
+
 		agg := calcNodesAggregates(&data)
 		for i := 0; i < NODE_TESTS; i++ {
 			l := types.Limit{
@@ -338,12 +345,16 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("node not found test", func(t *testing.T) {
+		t.Parallel()
+
 		nodeID := 1000000000
 		_, err := gridProxyClient.Node(context.Background(), uint32(nodeID))
 		assert.Equal(t, err.Error(), ErrNodeNotFound.Error())
 	})
 
 	t.Run("nodes test certification_type filter", func(t *testing.T) {
+		t.Parallel()
+
 		certType := "Diy"
 		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{CertificationType: &certType}, types.DefaultLimit())
 		require.NoError(t, err)
@@ -359,6 +370,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test has_gpu filter", func(t *testing.T) {
+		t.Parallel()
+
 		l := proxytypes.DefaultLimit()
 		hasGPU := true
 		f := proxytypes.NodeFilter{
@@ -375,6 +388,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test gpu vendor, device name filter", func(t *testing.T) {
+		t.Parallel()
+
 		device := "navi"
 		vendor := "advanced"
 		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, types.DefaultLimit())
@@ -387,6 +402,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test gpu vendor, device id filter", func(t *testing.T) {
+		t.Parallel()
+
 		device := "744c"
 		vendor := "1002"
 		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, types.DefaultLimit())
@@ -399,6 +416,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test gpu available", func(t *testing.T) {
+		t.Parallel()
+
 		available := false
 		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{GpuAvailable: &available}, types.DefaultLimit())
 		assert.NoError(t, err)
@@ -412,6 +431,8 @@ func TestNode(t *testing.T) {
 
 // TestNodeFilter iterates over all NodeFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestNodeFilter(t *testing.T) {
+	t.Parallel()
+
 	f := types.NodeFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()
@@ -449,6 +470,7 @@ func TestNodeFilter(t *testing.T) {
 }
 
 func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
+	t.Parallel()
 	nodeID := rand.Intn(NODE_COUNT)
 	want, err := mockClient.Node(context.Background(), uint32(nodeID))
 	require.NoError(t, err)
@@ -464,7 +486,7 @@ func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClie
 		Status: &STATUS_DOWN,
 	}
 	l := types.Limit{
-		Size:     5,
+		Size:     100,
 		Page:     1,
 		RetCount: true,
 	}

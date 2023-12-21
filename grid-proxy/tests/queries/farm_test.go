@@ -131,13 +131,16 @@ type FarmsAggregate struct {
 }
 
 func TestFarm(t *testing.T) {
+	t.Parallel()
 	t.Run("farms pagination test", func(t *testing.T) {
+		t.Parallel()
+
 		one := uint64(1)
 		f := proxytypes.FarmFilter{
 			TotalIPs: &one,
 		}
 		l := proxytypes.Limit{
-			Size:     5,
+			Size:     100,
 			Page:     1,
 			RetCount: true,
 		}
@@ -160,6 +163,8 @@ func TestFarm(t *testing.T) {
 	})
 
 	t.Run("farms stress test", func(t *testing.T) {
+		t.Parallel()
+
 		agg := calcFarmsAggregates(&data)
 		for i := 0; i < FARM_TESTS; i++ {
 			l := proxytypes.Limit{
@@ -183,6 +188,8 @@ func TestFarm(t *testing.T) {
 		}
 	})
 	t.Run("farms list node free hru", func(t *testing.T) {
+		t.Parallel()
+
 		aggNode := calcNodesAggregates(&data)
 		l := proxytypes.Limit{
 			Size:     999999999999,
@@ -205,6 +212,8 @@ func TestFarm(t *testing.T) {
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 	t.Run("farms list node free hru, mru", func(t *testing.T) {
+		t.Parallel()
+
 		aggNode := calcNodesAggregates(&data)
 
 		l := proxytypes.Limit{
@@ -233,6 +242,8 @@ func TestFarm(t *testing.T) {
 
 // TestFarmFilter iterates over all FarmFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestFarmFilter(t *testing.T) {
+	t.Parallel()
+
 	f := proxytypes.FarmFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()

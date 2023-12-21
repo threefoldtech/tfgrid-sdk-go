@@ -68,14 +68,17 @@ var contractFilterRandomValueGenerator = map[string]func(agg ContractsAggregate)
 }
 
 func TestContracts(t *testing.T) {
+	t.Parallel()
 	t.Run("contracts pagination test", func(t *testing.T) {
+		t.Parallel()
+
 		node := "node"
 		f := proxytypes.ContractFilter{
 			Type: &node,
 		}
 
 		l := proxytypes.Limit{
-			Size:     5,
+			Size:     100,
 			Page:     1,
 			RetCount: true,
 		}
@@ -99,6 +102,8 @@ func TestContracts(t *testing.T) {
 	})
 
 	t.Run("contracts stress test", func(t *testing.T) {
+		t.Parallel()
+
 		agg := calcContractsAggregates(&data)
 		for i := 0; i < CONTRACTS_TESTS; i++ {
 			l := proxytypes.Limit{
@@ -124,7 +129,10 @@ func TestContracts(t *testing.T) {
 }
 
 func TestContract(t *testing.T) {
+	t.Parallel()
 	t.Run("single contract test", func(t *testing.T) {
+		t.Parallel()
+
 		contractID := rand.Intn(CONTRACTS_TESTS)
 
 		want, err := mockClient.Contract(context.Background(), uint32(contractID))
@@ -137,6 +145,8 @@ func TestContract(t *testing.T) {
 	})
 
 	t.Run("contract not found test", func(t *testing.T) {
+		t.Parallel()
+
 		contractID := 1000000000000
 		_, err := gridProxyClient.Contract(context.Background(), uint32(contractID))
 		assert.Equal(t, err.Error(), ErrContractNotFound.Error())
@@ -145,6 +155,8 @@ func TestContract(t *testing.T) {
 
 func TestBills(t *testing.T) {
 	t.Run("contract bills test", func(t *testing.T) {
+		t.Parallel()
+
 		contractID := rand.Intn(CONTRACTS_TESTS)
 
 		l := proxytypes.Limit{
@@ -174,6 +186,8 @@ func TestBills(t *testing.T) {
 
 // TestContractsFilter iterates over all ContractFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestContractsFilter(t *testing.T) {
+	t.Parallel()
+
 	f := proxytypes.ContractFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()
