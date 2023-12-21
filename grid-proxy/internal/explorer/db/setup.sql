@@ -88,8 +88,8 @@ SELECT
     country.name as country,
     country.subregion as region
 FROM node
-    LEFT JOIN node_contract ON node.node_id = node_contract.node_id
-    LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id AND node_contract.state IN ('Created', 'GracePeriod')
+    LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
+    LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id 
     LEFT JOIN node_resources_total AS node_resources_total ON node_resources_total.node_id = node.id
     LEFT JOIN rent_contract on node.node_id = rent_contract.node_id AND rent_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN(
@@ -250,7 +250,7 @@ BEGIN
             INSERT INTO resources_cache
             SELECT *
             FROM resources_cache_view 
-            WHERE resources_cache_view.node_id = 99995;
+            WHERE resources_cache_view.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
                 RAISE NOTICE 'Error inserting resources_cache: %', SQLERRM;
@@ -280,9 +280,12 @@ BEGIN
             total_mru = NEW.mru,
             total_sru = NEW.sru,
             total_hru = NEW.hru,
-            free_mru = free_mru + (NEW.mru-COALESCE(OLD.mru, 0)),
+            free_mru = free_mru + GREATEST(CAST((OLD.mru / 10) AS bigint), 2147483648) -
+                                    GREATEST(CAST((NEW.mru / 10) AS bigint), 2147483648) + (NEW.mru-COALESCE(OLD.mru, 0)),
             free_hru = free_hru + (NEW.hru-COALESCE(OLD.hru, 0)),
-            free_sru = free_sru + (NEW.sru-COALESCE(OLD.sru, 0))
+            free_sru = free_sru + (NEW.sru-COALESCE(OLD.sru, 0)),
+            used_mru = used_mru - GREATEST(CAST((OLD.mru / 10) AS bigint), 2147483648) +
+                                    GREATEST(CAST((NEW.mru / 10) AS bigint), 2147483648)
         WHERE
             resources_cache.node_id = (
                 SELECT node.node_id FROM node WHERE node.id = New.node_id
