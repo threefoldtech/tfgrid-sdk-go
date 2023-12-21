@@ -158,6 +158,8 @@ VALUES (
     1,
     'node-contract-999998'
   );
+update node_contract set resources_used_id = 'contract-resources-999999' where contract_id = 999999;
+update node_contract set resources_used_id = 'contract-resources-999998' where contract_id = 999998;
 UPDATE contract_resources
 SET cru = 1
 where contract_id = 'node-contract-999999';
