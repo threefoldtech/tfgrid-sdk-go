@@ -17,7 +17,7 @@ type DBData struct {
 	NodeUsedResources  map[uint64]NodeResourcesTotal
 	NodeRentedBy       map[uint64]uint64
 	NodeRentContractID map[uint64]uint64
-	FarmHasRentedNode  map[uint64]bool
+	FarmHasRentedNode  map[uint64]map[uint64]bool
 
 	Nodes               map[uint64]Node
 	NodeTotalResources  map[uint64]NodeResourcesTotal
@@ -133,7 +133,7 @@ func calcRentInfo(data *DBData) error {
 		data.NodeRentedBy[contract.NodeID] = contract.TwinID
 		data.NodeRentContractID[contract.NodeID] = contract.ContractID
 		farmID := data.Nodes[contract.NodeID].FarmID
-		data.FarmHasRentedNode[farmID] = true
+		data.FarmHasRentedNode[farmID][contract.TwinID] = true
 	}
 	return nil
 }
@@ -213,6 +213,7 @@ func loadFarms(db *sql.DB, data *DBData) error {
 		}
 		data.Farms[farm.FarmID] = farm
 		data.FarmIDMap[farm.ID] = farm.FarmID
+		data.FarmHasRentedNode[farm.FarmID] = map[uint64]bool{}
 	}
 	return nil
 }
@@ -599,7 +600,7 @@ func Load(db *sql.DB) (DBData, error) {
 		NodeUsedResources:   make(map[uint64]NodeResourcesTotal),
 		NonDeletedContracts: make(map[uint64][]uint64),
 		GPUs:                make(map[uint64][]NodeGPU),
-		FarmHasRentedNode:   make(map[uint64]bool),
+		FarmHasRentedNode:   make(map[uint64]map[uint64]bool),
 		Regions:             make(map[string]string),
 		Locations:           make(map[string]Location),
 		DB:                  db,

@@ -51,8 +51,8 @@ func (g *GridProxyMockClient) Farms(ctx context.Context, filter types.FarmFilter
 
 	if filter.NodeAvailableFor != nil {
 		sort.Slice(res, func(i, j int) bool {
-			f1 := g.data.FarmHasRentedNode[uint64(res[i].FarmID)]
-			f2 := g.data.FarmHasRentedNode[uint64(res[j].FarmID)]
+			f1 := g.data.FarmHasRentedNode[uint64(res[i].FarmID)][*filter.NodeAvailableFor]
+			f2 := g.data.FarmHasRentedNode[uint64(res[j].FarmID)][*filter.NodeAvailableFor]
 			lessFarmID := res[i].FarmID < res[j].FarmID
 
 			return f1 && !f2 || f1 && f2 && lessFarmID || !f1 && !f2 && lessFarmID
