@@ -589,7 +589,7 @@ func generateNodes(db *sql.DB) error {
 		nodesHRU[i] = hru
 		nodeUP[i] = up
 
-		// location latitue and longitue needs to be castable to decimal
+		// location latitude and longitue needs to be castable to decimal
 		// if not, the convert_to_decimal function will raise a notice
 		// reporting the incident, which downgrades performance
 		location := location{
@@ -604,8 +604,8 @@ func generateNodes(db *sql.DB) error {
 			id:                fmt.Sprintf("node-%d", i),
 			location_id:       fmt.Sprintf("location-%d", i),
 			node_id:           i,
-			farm_id:           i%100 + 1,
-			twin_id:           i + 100 + 1,
+			farm_id:           i%farmCount + 1,
+			twin_id:           i + farmCount + 1,
 			country:           countries[countryIndex],
 			city:              cities[countries[countryIndex]][cityIndex],
 			uptime:            1000,

@@ -201,8 +201,7 @@ func (np *NodePower) Scan(value interface{}) error {
 
 // GetNode returns node info
 func (d *PostgresDatabase) GetNode(ctx context.Context, nodeID uint32) (Node, error) {
-	q := d.nodeTableQuery(types.NodeFilter{}, &gorm.DB{})
-	q = q.WithContext(ctx)
+	q := d.nodeTableQuery(ctx, types.NodeFilter{}, &gorm.DB{})
 	q = q.Where("node.node_id = ?", nodeID)
 	var node Node
 	res := q.Scan(&node)
@@ -258,8 +257,8 @@ func printQuery(query string, args ...interface{}) {
 	fmt.Printf("node query: %s", query)
 }
 
-func (d *PostgresDatabase) nodeTableQuery(filter types.NodeFilter, nodeGpuSubquery *gorm.DB) *gorm.DB {
-	q := d.gormDB.
+func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.NodeFilter, nodeGpuSubquery *gorm.DB) *gorm.DB {
+	q := d.gormDB.WithContext(ctx).
 		Table("node").
 		Select(
 			"node.id",
@@ -317,8 +316,8 @@ func (d *PostgresDatabase) nodeTableQuery(filter types.NodeFilter, nodeGpuSubque
 	return q
 }
 
-func (d *PostgresDatabase) farmTableQuery(filter types.FarmFilter, nodeQuery *gorm.DB) *gorm.DB {
-	q := d.gormDB.
+func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.FarmFilter, nodeQuery *gorm.DB) *gorm.DB {
+	q := d.gormDB.WithContext(ctx).
 		Table("farm").
 		Select(
 			"farm.id",
@@ -360,7 +359,6 @@ func (d *PostgresDatabase) farmTableQuery(filter types.FarmFilter, nodeQuery *go
 
 // GetFarms return farms filtered and paginated
 func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
-	q := d.gormDB.WithContext(ctx)
 	nodeQuery := d.gormDB.Table("resources_cache").
 		Select("resources_cache.farm_id", "renter").
 		Joins("LEFT JOIN node ON node.node_id = resources_cache.node_id").
@@ -404,7 +402,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		nodeQuery = nodeQuery.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
 	}
 
-	q = d.farmTableQuery(filter, nodeQuery)
+	q := d.farmTableQuery(ctx, filter, nodeQuery)
 
 	if filter.NodeAvailableFor != nil {
 		q = q.Where("COALESCE(resources_cache.renter, 0) = ? OR (resources_cache.renter IS NULL AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
@@ -482,7 +480,6 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 
 // GetNodes returns nodes filtered and paginated
 func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]Node, uint, error) {
-	q := d.gormDB.WithContext(ctx)
 	/*
 		used distinct selecting to avoid duplicated node after the join.
 		- postgres apply WHERE before DISTINCT so filters will still filter on the whole data.
@@ -515,7 +512,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.contract, 0) = 0) = ?", *filter.GpuAvailable)
 	}
 
-	q = d.nodeTableQuery(filter, nodeGpuSubquery)
+	q := d.nodeTableQuery(ctx, filter, nodeGpuSubquery)
 
 	condition := "TRUE"
 	if filter.Status != nil {
