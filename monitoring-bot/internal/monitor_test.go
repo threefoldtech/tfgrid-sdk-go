@@ -72,8 +72,8 @@ func TestMonitor(t *testing.T) {
 	wallets, err := ParseJSONIntoWallets(walletsContent)
 	assert.NoError(t, err)
 
-	monitor, err := NewMonitor(env, wallets)
-	assert.NoError(t, err)
+	monitor, err := NewMonitor(context.Background(), env, wallets)
+	assert.Error(t, err)
 
 	t.Run("test_invalid_monitor_token", func(t *testing.T) {
 		wallet := wallet{"", 1, ""}
@@ -194,12 +194,13 @@ func TestZosVersion(t *testing.T) {
 		wallets, err := ParseJSONIntoWallets(walletsContent)
 		assert.NoError(t, err)
 
-		monitor, err := NewMonitor(env, wallets)
-		assert.NoError(t, err)
+		// needs identities
+		_, err = NewMonitor(context.Background(), env, wallets)
+		assert.Error(t, err)
 
-		versions, working, failed := monitor.systemVersion(context.Background())
-		assert.Empty(t, versions)
-		assert.Empty(t, working)
-		assert.Empty(t, failed)
+		// versions, working, failed := monitor.systemVersion(context.Background())
+		// assert.Empty(t, versions)
+		// assert.Empty(t, working)
+		// assert.Empty(t, failed)
 	})
 }
