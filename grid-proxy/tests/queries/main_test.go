@@ -97,5 +97,31 @@ func TestMain(m *testing.M) {
 	mockClient = mock.NewGridProxyMockClient(data)
 
 	exitcode = m.Run()
+
+	// cleanup modified data
 	os.Exit(exitcode)
+}
+
+func modifyDataToFireTriggers(d *sql.DB) {
+	/*
+		- insert nodes - y
+			- should be on new/old farms
+			- should be on new/old locations
+		- insert node total resources - y
+		- insert node contracts - y
+		- insert contract resources - y
+		- insert rent contracts - y
+		- insert public ips - y
+
+		- update node country - y
+		- update node total resources - y
+		- update contract_resources - y
+		- update node contract state - y
+		- update rent contract state - y
+		- update public ip contract id - y
+
+		- delete node - y
+		- delete public ip - y
+	*/
+	// modifiers.GenerateTwins(db)
 }

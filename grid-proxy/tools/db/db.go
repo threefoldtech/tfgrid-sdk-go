@@ -41,7 +41,6 @@ func parseCmdline() flags {
 
 func main() {
 	f := parseCmdline()
-	r = rand.New(rand.NewSource(int64(f.seed)))
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
@@ -101,7 +100,7 @@ func main() {
 		panic(err)
 	}
 	// ----
-	if err := generateData(db); err != nil {
+	if err := generateData(db, f.seed); err != nil {
 		panic(err)
 	}
 }
