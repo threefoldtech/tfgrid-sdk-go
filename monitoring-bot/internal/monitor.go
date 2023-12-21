@@ -99,8 +99,7 @@ func NewMonitor(ctx context.Context, env config, wallets wallets) (Monitor, erro
 
 		con, err := mon.managers[network].Substrate()
 		if err != nil {
-			log.Error().Err(err).Msgf("substrate connection for %s network failed", network)
-			continue
+			return mon, fmt.Errorf("substrate connection for %s network failed with error: %w", network, err)
 		}
 
 		sessionID := fmt.Sprintf("monbot-%d", os.Getpid())
