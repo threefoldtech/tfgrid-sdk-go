@@ -8,7 +8,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"time"
@@ -18,8 +17,8 @@ import (
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/encoder"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
-	"github.com/tyler-smith/go-bip39"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -41,16 +40,17 @@ type Peer struct {
 	reader  Reader
 	writer  Writer
 	handler Handler
+	encoder encoder.Encoder
 }
 
-func generateSecureKey(mnemonics string) (*secp256k1.PrivateKey, error) {
-	seed, err := bip39.NewSeedWithErrorChecking(mnemonics, "")
+func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, error) {
+	keyPair, err := identity.KeyPair()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode mnemonics")
+		return nil, errors.Wrap(err, "failed to generate identity key pair")
 	}
-	priv := secp256k1.PrivKeyFromBytes(seed[:32])
-	return priv, nil
 
+	priv := secp256k1.PrivKeyFromBytes(keyPair.Seed())
+	return priv, nil
 }
 
 func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
@@ -80,14 +80,25 @@ func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 // Call() will panic if called while the directClient's context is canceled.
 func NewPeer(
 	ctx context.Context,
-	keytype string,
 	mnemonics string,
-	relayURL string,
-	session string,
 	sub *substrate.Substrate,
-	enableEncryption bool,
-	handler Handler) (*Peer, error) {
-	identity, err := getIdentity(keytype, mnemonics)
+	handler Handler,
+	opts ...PeerOpt) (*Peer, error) {
+
+	cfg := &peerCfg{
+		relayURL:         "wss://relay.grid.tf",
+		session:          "",
+		enableEncryption: true,
+		keyType:          KeyTypeSr25519,
+	}
+	for _, o := range opts {
+		o(cfg)
+	}
+
+	if cfg.encoder == nil {
+		cfg.encoder = encoder.NewJSONEncoder()
+	}
+	identity, err := getIdentity(cfg.keyType, mnemonics)
 	if err != nil {
 		return nil, err
 	}
@@ -98,22 +109,22 @@ func NewPeer(
 		return nil, errors.Wrapf(err, "failed to get twin by public key")
 	}
 
-	log.Info().Uint32("twin", id).Str("session", session).Msg("starting peer")
+	log.Info().Uint32("twin", id).Str("session", cfg.session).Msg("starting peer")
 
 	twin, err := twinDB.Get(id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get twin id: %d", id)
 	}
 
-	url, err := url.Parse(relayURL)
+	url, err := url.Parse(cfg.relayURL)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse url: %s", relayURL)
+		return nil, errors.Wrapf(err, "failed to parse url: %s", cfg.relayURL)
 	}
 
 	var publicKey []byte
 	var privKey *secp256k1.PrivateKey
-	if enableEncryption {
-		privKey, err = generateSecureKey(mnemonics)
+	if cfg.enableEncryption {
+		privKey, err = generateSecureKey(identity)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not generate secure key")
 
@@ -127,12 +138,12 @@ func NewPeer(
 			return nil, errors.Wrap(err, "could not update twin relay information")
 		}
 	}
-	conn := NewConnection(identity, relayURL, session, twin.ID)
+	conn := NewConnection(identity, cfg.relayURL, cfg.session, twin.ID)
 
 	reader, writer := conn.Start(ctx)
 	var sessionP *string
-	if session != "" {
-		sessionP = &session
+	if cfg.session != "" {
+		sessionP = &cfg.session
 	}
 	source := types.Address{
 		Twin:       id,
@@ -147,11 +158,61 @@ func NewPeer(
 		reader:  reader,
 		writer:  writer,
 		handler: handler,
+		encoder: cfg.encoder,
 	}
 
 	go cl.process(ctx)
 
 	return cl, nil
+}
+
+// Encoder returns the peer's encoder.
+func (p *Peer) Encoder() encoder.Encoder {
+	return p.encoder
+}
+
+type peerCfg struct {
+	relayURL         string
+	keyType          string
+	session          string
+	enableEncryption bool
+	encoder          encoder.Encoder
+}
+
+type PeerOpt func(*peerCfg)
+
+func WithSession(session string) PeerOpt {
+	return func(p *peerCfg) {
+		p.session = session
+	}
+}
+
+func WithEncryption(enable bool) PeerOpt {
+	return func(p *peerCfg) {
+		p.enableEncryption = enable
+	}
+}
+
+func WithRelay(url string) PeerOpt {
+	return func(p *peerCfg) {
+		p.relayURL = url
+	}
+}
+
+func WithKeyType(keyType string) PeerOpt {
+	return func(p *peerCfg) {
+		// to ensure only ed25519 and sr25519 are used
+		if keyType != KeyTypeEd25519 {
+			keyType = KeyTypeSr25519
+		}
+		p.keyType = keyType
+	}
+}
+
+func WithEncoder(encoder encoder.Encoder) PeerOpt {
+	return func(p *peerCfg) {
+		p.encoder = encoder
+	}
 }
 
 func (d Peer) handleIncoming(incoming *types.Envelope) error {
@@ -289,7 +350,7 @@ func (d *Peer) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 }
 
 func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string, err error, data []byte, ttl uint64) (*types.Envelope, error) {
-	schema := rmb.DefaultSchema
+	schema := d.encoder.Schema()
 
 	env := types.Envelope{
 		Uid:        id,
@@ -377,7 +438,7 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 
 // SendRequest sends an rmb message to the relay
 func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session *string, fn string, data interface{}) error {
-	payload, err := json.Marshal(data)
+	payload, err := d.encoder.Encode(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize request body")
 	}
@@ -402,7 +463,7 @@ func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session 
 
 // SendRequest sends an rmb message to the relay
 func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session *string, responseError error, data interface{}) error {
-	payload, err := json.Marshal(data)
+	payload, err := d.encoder.Encode(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize request body")
 	}

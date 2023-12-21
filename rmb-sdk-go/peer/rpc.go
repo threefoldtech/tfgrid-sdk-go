@@ -44,7 +44,16 @@ func NewRpcClient(
 		responses: make(map[string]chan incomingEnv),
 	}
 
-	base, err := NewPeer(ctx, keytype, mnemonics, relayURL, session, sub, enableEncryption, rpc.router)
+	base, err := NewPeer(
+		ctx,
+		mnemonics,
+		sub,
+		rpc.router,
+		WithEncryption(enableEncryption),
+		WithKeyType(keytype),
+		WithRelay(relayURL),
+		WithSession(session),
+	)
 
 	if err != nil {
 		return nil, err

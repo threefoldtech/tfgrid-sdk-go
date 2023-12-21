@@ -7,7 +7,7 @@ import (
 
 func TestParsers(t *testing.T) {
 	t.Run("test_no_file", func(t *testing.T) {
-		_, err := readFile("env.env")
+		_, err := ReadFile("env.env")
 
 		if err == nil {
 			t.Errorf("expected error reading env.env")
@@ -15,7 +15,7 @@ func TestParsers(t *testing.T) {
 	})
 
 	t.Run("test_valid_file", func(t *testing.T) {
-		_, err := readFile("monitor.go")
+		_, err := ReadFile("monitor.go")
 
 		if err != nil {
 			t.Errorf("expected no error, %v", err)
@@ -33,7 +33,7 @@ func TestParsers(t *testing.T) {
 			MINS=1
 		`
 
-		_, err := parseEnv(envContent)
+		_, err := ParseEnv(envContent)
 
 		if err == nil {
 			t.Errorf("expected error, no TESTNET_MNEMONIC")
@@ -51,7 +51,7 @@ func TestParsers(t *testing.T) {
 			MINS=1
 		`
 
-		_, err := parseEnv(envContent)
+		_, err := ParseEnv(envContent)
 
 		if err == nil {
 			t.Errorf("expected error, no MAINNET_MNEMONIC")
@@ -69,7 +69,7 @@ func TestParsers(t *testing.T) {
 			MINS=1
 		`
 
-		_, err := parseEnv(envContent)
+		_, err := ParseEnv(envContent)
 
 		if err == nil {
 			t.Errorf("expected error, no QANET_MNEMONIC")
@@ -87,7 +87,7 @@ func TestParsers(t *testing.T) {
 			MINS=1
 		`
 
-		_, err := parseEnv(envContent)
+		_, err := ParseEnv(envContent)
 
 		if err == nil {
 			t.Errorf("expected error, BOT_TOKEN is missing")
@@ -105,7 +105,7 @@ func TestParsers(t *testing.T) {
 			MINS=1
 		`
 
-		_, err := parseEnv(envContent)
+		_, err := ParseEnv(envContent)
 
 		if err == nil {
 			t.Errorf("expected error, CHAT_ID is missing")
@@ -123,7 +123,7 @@ func TestParsers(t *testing.T) {
 			MINS=0
 		`
 
-		_, err := parseEnv(envContent)
+		_, err := ParseEnv(envContent)
 
 		if err == nil {
 			t.Errorf("expected error, MINS is 0")
@@ -139,7 +139,7 @@ func TestParsers(t *testing.T) {
 			MINS=min
 		`
 
-		_, err := parseEnv(envContent)
+		_, err := ParseEnv(envContent)
 
 		if err == nil {
 			t.Errorf("expected error, MINS is string")
@@ -155,7 +155,7 @@ func TestParsers(t *testing.T) {
 			CHAT_ID=id
 			MINS=10
 		`
-		_, err := parseEnv(envContent)
+		_, err := ParseEnv(envContent)
 
 		if err == nil {
 			t.Errorf("expected error, key is invalid")
@@ -176,7 +176,7 @@ func TestParsers(t *testing.T) {
 			CHAT_ID=id
 			MINS=10
 		`
-		_, err := parseEnv(envContent)
+		_, err := ParseEnv(envContent)
 
 		if err != nil {
 			t.Errorf("parsing should be successful")
@@ -186,7 +186,7 @@ func TestParsers(t *testing.T) {
 	t.Run("test_invalid_env", func(t *testing.T) {
 		envContent := `mnemonic`
 
-		_, err := parseEnv(envContent)
+		_, err := ParseEnv(envContent)
 
 		if err == nil {
 			t.Errorf("parsing should fail")
@@ -197,10 +197,12 @@ func TestParsers(t *testing.T) {
 		content := `
 		{ 
 			"mainnet": [ { "name": "name", "address": "address", "threshold": 1} ],
-			"testnet": [ { "name": "name-test", "address": "address", "threshold": 1} ]   
+			"testnet": [ { "name": "name-test", "address": "address", "threshold": 1} ], 
+			"devnet": [ { "name": "name-dev", "address": "address", "threshold": 1} ],
+			"qanet": [ { "name": "name-qa", "address": "address", "threshold": 1} ]   
 		}
 		`
-		_, err := parseJSONIntoWallets([]byte(content))
+		_, err := ParseJSONIntoWallets([]byte(content))
 
 		if err != nil {
 			t.Errorf("parsing should be successful")
@@ -209,7 +211,7 @@ func TestParsers(t *testing.T) {
 
 	t.Run("test_invalid_json", func(t *testing.T) {
 		content := `[]`
-		_, err := parseJSONIntoWallets([]byte(content))
+		_, err := ParseJSONIntoWallets([]byte(content))
 
 		if err == nil {
 			t.Errorf("parsing should fail")

@@ -57,7 +57,14 @@ func NewNodeGPUIndexer(
 	}
 
 	sessionId := fmt.Sprintf("tfgrid_proxy_indexer-%d", os.Getpid())
-	client, err := peer.NewPeer(ctx, peer.KeyTypeSr25519, mnemonics, relayURL, sessionId, sub, true, indexer.relayCallback)
+	client, err := peer.NewPeer(
+		ctx,
+		mnemonics,
+		sub,
+		indexer.relayCallback,
+		peer.WithRelay(relayURL),
+		peer.WithSession(sessionId),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create direct RMB client: %w", err)
 	}
