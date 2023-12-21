@@ -255,6 +255,14 @@ BEGIN
             WHEN OTHERS THEN
                 RAISE NOTICE 'Error inserting resources_cache: %', SQLERRM;
         END;
+    
+    ELSIF (TG_OP = 'DELETE') THEN
+        BEGIN
+            DELETE FROM resources_cache WHERE node_id = OLD.node_id;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE 'Error deleting node from resources_cache: %', SQLERRM;
+        END;
     END IF;
 
     RETURN NULL;
@@ -262,7 +270,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER node_trigger
-    AFTER INSERT OR UPDATE OF country 
+    AFTER INSERT OR DELETE OR UPDATE OF country 
     ON node 
     FOR EACH ROW EXECUTE PROCEDURE node_upsert();
 
