@@ -5,6 +5,8 @@ import (
 	"math/rand"
 )
 
+var r *rand.Rand
+
 type Generator struct {
 	db *sql.DB
 

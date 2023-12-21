@@ -16,9 +16,9 @@ import (
 	proxyDB "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tools/db/modifiers"
 	"gorm.io/gorm/logger"
-
-	_ "embed"
+	// _ "embed"
 )
 
 var (
@@ -38,8 +38,8 @@ var (
 	DBClient        db.Database
 )
 
-//go:embed modifiers.sql
-var modifiersFile string
+// //go:embed modifiers.sql
+// var modifiersFile string
 
 func parseCmdline() {
 	flag.StringVar(&POSTGRES_HOST, "postgres-host", "", "postgres host")
@@ -85,24 +85,24 @@ func TestMain(m *testing.M) {
 		os.Exit(exitcode)
 	}
 
-	_, err = db.Exec(modifiersFile)
-	if err != nil {
-		panic(err)
-	}
+	// err = modifyDataToFireTriggers(db)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	data, err = mock.Load(db)
-	if err != nil {
-		panic(err)
-	}
-	mockClient = mock.NewGridProxyMockClient(data)
+	// data, err = mock.Load(db)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// mockClient = mock.NewGridProxyMockClient(data)
 
-	exitcode = m.Run()
+	// exitcode = m.Run()
 
 	// cleanup modified data
-	os.Exit(exitcode)
+	// os.Exit(exitcode)
 }
 
-func modifyDataToFireTriggers(d *sql.DB) {
+func modifyDataToFireTriggers(db *sql.DB) error {
 	/*
 		- insert nodes - y
 			- should be on new/old farms
@@ -124,4 +124,63 @@ func modifyDataToFireTriggers(d *sql.DB) {
 		- delete public ip - y
 	*/
 	// modifiers.GenerateTwins(db)
+
+	generator := modifiers.NewGenerator(db, SEED)
+
+	// insertion
+	// if err := generator.GenerateTwins(); err != nil {
+	// 	return fmt.Errorf("failed to genrate twins: %w", err)
+	// }
+
+	// if err := generator.GenerateFarms(); err != nil {
+	// 	return fmt.Errorf("failed to generate farms: %w", err)
+	// }
+
+	// if err := generator.GenerateNodes(); err != nil {
+	// 	return fmt.Errorf("failed to generate nodes: %w", err)
+	// }
+
+	// if err := generator.GenerateContracts(); err != nil {
+	// 	return fmt.Errorf("failed to generate contracts: %w", err)
+	// }
+
+	// if err := generator.GeneratePublicIPs(); err != nil {
+	// 	return fmt.Errorf("failed to generate public ips: %w", err)
+	// }
+
+	// updates
+	if err := generator.UpdateNodeCountry(); err != nil {
+		return fmt.Errorf("failed to update node country: %w", err)
+	}
+
+	if err := generator.UpdateNodeTotalResources(); err != nil {
+		return fmt.Errorf("failed to update node total resources: %w", err)
+	}
+
+	if err := generator.UpdateContractResources(); err != nil {
+		return fmt.Errorf("failed to update contract resources: %w", err)
+	}
+
+	if err := generator.UpdateNodeContractState(); err != nil {
+		return fmt.Errorf("failed to update node node contract: %w", err)
+	}
+
+	if err := generator.UpdateRentContract(); err != nil {
+		return fmt.Errorf("failed to update rent contract: %w", err)
+	}
+
+	if err := generator.UpdatePublicIps(); err != nil {
+		return fmt.Errorf("failed to update public ips: %w", err)
+	}
+
+	// deletions
+	if err := generator.DeleteNode(); err != nil {
+		return fmt.Errorf("failed to delete node: %w", err)
+	}
+
+	if err := generator.DeletePublicIps(); err != nil {
+		return fmt.Errorf("failed to delete node: %w", err)
+	}
+
+	return nil
 }

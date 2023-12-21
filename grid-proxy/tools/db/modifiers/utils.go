@@ -3,15 +3,12 @@ package modifiers
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net"
 	"reflect"
 	"strings"
 )
 
 const null = "NULL"
-
-var r *rand.Rand
 
 // rnd gets a random number between min and max
 func rnd(min, max uint64) (uint64, error) {
