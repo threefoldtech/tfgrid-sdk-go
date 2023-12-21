@@ -144,10 +144,10 @@ func TestFarm(t *testing.T) {
 		for ; ; l.Page++ {
 			want, wantCount, err := mockClient.Farms(context.Background(), f, l)
 			require.NoError(t, err)
-			// log.Printf("want: %+v", want)
+
 			got, gotCount, err := gridProxyClient.Farms(context.Background(), f, l)
 			require.NoError(t, err)
-			// log.Printf("got: %+v", got)
+
 			assert.Equal(t, wantCount, gotCount)
 
 			sortPublicIPs(want, got)
@@ -172,10 +172,9 @@ func TestFarm(t *testing.T) {
 
 			want, wantCount, err := mockClient.Farms(context.Background(), f, l)
 			require.NoError(t, err)
-			// log.Printf("want: %+v", want)
+
 			got, gotCount, err := gridProxyClient.Farms(context.Background(), f, l)
 			require.NoError(t, err)
-			// log.Printf("got: %+v", got)
 
 			assert.Equal(t, wantCount, gotCount)
 
@@ -196,10 +195,9 @@ func TestFarm(t *testing.T) {
 
 		want, wantCount, err := mockClient.Farms(context.Background(), f, l)
 		require.NoError(t, err)
-		// log.Printf("want: %+v", want)
+
 		got, gotCount, err := gridProxyClient.Farms(context.Background(), f, l)
 		require.NoError(t, err)
-		// log.Printf("got: %+v", got)
 
 		assert.Equal(t, wantCount, gotCount)
 
