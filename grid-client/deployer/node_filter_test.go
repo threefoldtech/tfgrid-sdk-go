@@ -82,7 +82,20 @@ func ExampleFilterNodes() {
 		return
 	}
 
-	_, err = FilterNodes(context.Background(), tfPluginClient, types.NodeFilter{}, nil, nil, nil)
+	trueVal := true
+	statusUp := "up"
+	freeMRU := uint64(2048)
+	freeSRU := uint64(2048)
+
+	filter := types.NodeFilter{
+		Status:  &statusUp,
+		IPv4:    &trueVal,
+		FreeMRU: &freeMRU,
+		FreeSRU: &freeSRU,
+		FarmIDs: []uint64{uint64(1)},
+	}
+
+	_, err = FilterNodes(context.Background(), tfPluginClient, filter, []uint64{freeSRU}, nil, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
