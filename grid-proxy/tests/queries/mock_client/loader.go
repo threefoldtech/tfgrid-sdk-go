@@ -29,6 +29,7 @@ type DBData struct {
 	RentContracts       map[uint64]RentContract
 	NameContracts       map[uint64]NameContract
 	Billings            map[uint64][]ContractBillReport
+	BillReports         uint32
 	ContractResources   map[string]ContractResources
 	NonDeletedContracts map[uint64][]uint64
 	GPUs                map[uint64][]NodeGPU
@@ -477,6 +478,7 @@ func loadContractBillingReports(db *sql.DB, data *DBData) error {
 			return err
 		}
 		data.Billings[contractBillReport.ContractID] = append(data.Billings[contractBillReport.ContractID], contractBillReport)
+		data.BillReports++
 	}
 	return nil
 }
@@ -595,6 +597,7 @@ func Load(db *sql.DB) (DBData, error) {
 		NodeRentedBy:        make(map[uint64]uint64),
 		NodeRentContractID:  make(map[uint64]uint64),
 		Billings:            make(map[uint64][]ContractBillReport),
+		BillReports:         0,
 		ContractResources:   make(map[string]ContractResources),
 		NodeTotalResources:  make(map[uint64]NodeResourcesTotal),
 		NodeUsedResources:   make(map[uint64]NodeResourcesTotal),

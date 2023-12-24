@@ -80,29 +80,27 @@ func TestMain(m *testing.M) {
 	mockClient = mock.NewGridProxyMockClient(data)
 	gridProxyClient = proxyclient.NewClient(ENDPOINT)
 
-	exitcode := m.Run()
-	if exitcode != 0 {
-		os.Exit(exitcode)
+	// exitcode := m.Run()
+	// if exitcode != 0 {
+	// 	os.Exit(exitcode)
+	// }
+
+	err = modifyDataToFireTriggers(db, data)
+	if err != nil {
+		panic(err)
 	}
 
-	// err = modifyDataToFireTriggers(db)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	data, err = mock.Load(db)
+	if err != nil {
+		panic(err)
+	}
+	mockClient = mock.NewGridProxyMockClient(data)
 
-	// data, err = mock.Load(db)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// mockClient = mock.NewGridProxyMockClient(data)
-
-	// exitcode = m.Run()
-
-	// cleanup modified data
-	// os.Exit(exitcode)
+	exitcode := m.Run()
+	os.Exit(exitcode)
 }
 
-func modifyDataToFireTriggers(db *sql.DB) error {
+func modifyDataToFireTriggers(db *sql.DB, data mock.DBData) error {
 	/*
 		- insert nodes - y
 			- should be on new/old farms
@@ -127,60 +125,65 @@ func modifyDataToFireTriggers(db *sql.DB) error {
 
 	generator := modifiers.NewGenerator(db, SEED)
 
+	twinStart := len(data.Twins) + 1
+	farmStart := len(data.Farms) + 1
+	nodeStart := len(data.Nodes) + 1
+	contractStart := len(data.NodeContracts) + len(data.RentContracts) + len(data.NameContracts) + 1
+	billStart := data.BillReports + 1
+	publicIpStart := len(data.PublicIPs) + 1
+	size := 10
+
 	// insertion
-	// if err := generator.GenerateTwins(); err != nil {
-	// 	return fmt.Errorf("failed to genrate twins: %w", err)
+	if err := generator.GenerateFarms(farmStart, 100, twinStart); err != nil {
+		return fmt.Errorf("failed to generate farms: %w", err)
+	}
+
+	if err := generator.GenerateNodes(nodeStart, 600, farmStart, 100, twinStart); err != nil {
+		return fmt.Errorf("failed to generate nodes: %w", err)
+	}
+
+	// rentCount is 1 because the generate method have .1 percent of 10 farms to be dedicated
+	if err := generator.GenerateContracts(int(billStart), contractStart, 50, size, 1, nodeStart, 600); err != nil {
+		return fmt.Errorf("failed to generate contracts: %w", err)
+	}
+
+	if err := generator.GeneratePublicIPs(publicIpStart, size); err != nil {
+		return fmt.Errorf("failed to generate public ips: %w", err)
+	}
+
+	// // updates
+	// if err := generator.UpdateNodeCountry(); err != nil {
+	// 	return fmt.Errorf("failed to update node country: %w", err)
 	// }
 
-	// if err := generator.GenerateFarms(); err != nil {
-	// 	return fmt.Errorf("failed to generate farms: %w", err)
+	// if err := generator.UpdateNodeTotalResources(); err != nil {
+	// 	return fmt.Errorf("failed to update node total resources: %w", err)
 	// }
 
-	// if err := generator.GenerateNodes(); err != nil {
-	// 	return fmt.Errorf("failed to generate nodes: %w", err)
+	// if err := generator.UpdateContractResources(); err != nil {
+	// 	return fmt.Errorf("failed to update contract resources: %w", err)
 	// }
 
-	// if err := generator.GenerateContracts(); err != nil {
-	// 	return fmt.Errorf("failed to generate contracts: %w", err)
+	// if err := generator.UpdateNodeContractState(); err != nil {
+	// 	return fmt.Errorf("failed to update node node contract: %w", err)
 	// }
 
-	// if err := generator.GeneratePublicIPs(); err != nil {
-	// 	return fmt.Errorf("failed to generate public ips: %w", err)
+	// if err := generator.UpdateRentContract(); err != nil {
+	// 	return fmt.Errorf("failed to update rent contract: %w", err)
 	// }
 
-	// updates
-	if err := generator.UpdateNodeCountry(); err != nil {
-		return fmt.Errorf("failed to update node country: %w", err)
-	}
+	// if err := generator.UpdatePublicIps(); err != nil {
+	// 	return fmt.Errorf("failed to update public ips: %w", err)
+	// }
 
-	if err := generator.UpdateNodeTotalResources(); err != nil {
-		return fmt.Errorf("failed to update node total resources: %w", err)
-	}
+	// // deletions
+	// if err := generator.DeleteNodes(); err != nil {
+	// 	return fmt.Errorf("failed to delete node: %w", err)
+	// }
 
-	if err := generator.UpdateContractResources(); err != nil {
-		return fmt.Errorf("failed to update contract resources: %w", err)
-	}
-
-	if err := generator.UpdateNodeContractState(); err != nil {
-		return fmt.Errorf("failed to update node node contract: %w", err)
-	}
-
-	if err := generator.UpdateRentContract(); err != nil {
-		return fmt.Errorf("failed to update rent contract: %w", err)
-	}
-
-	if err := generator.UpdatePublicIps(); err != nil {
-		return fmt.Errorf("failed to update public ips: %w", err)
-	}
-
-	// deletions
-	if err := generator.DeleteNode(); err != nil {
-		return fmt.Errorf("failed to delete node: %w", err)
-	}
-
-	if err := generator.DeletePublicIps(); err != nil {
-		return fmt.Errorf("failed to delete node: %w", err)
-	}
+	// if err := generator.DeletePublicIps(); err != nil {
+	// 	return fmt.Errorf("failed to delete node: %w", err)
+	// }
 
 	return nil
 }

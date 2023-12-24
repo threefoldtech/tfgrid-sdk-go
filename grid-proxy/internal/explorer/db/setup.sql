@@ -443,6 +443,22 @@ CREATE OR REPLACE TRIGGER rent_contract_trigger
 CREATE OR REPLACE FUNCTION public_ip_upsert() RETURNS TRIGGER AS 
 $$ 
 BEGIN
+    
+    BEGIN
+        IF TG_OP = 'INSERT' AND NEW.farm_id NOT IN (select farm_id from public_ips_cache) THEN
+            INSERT INTO public_ips_cache VALUES(
+                NEW.farm_id,
+                0,
+                0,
+                '[]'
+            );
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error inserting public_ips_cache record %s', SQLERRM;
+    END;
+       
+
     BEGIN 
         UPDATE public_ips_cache
         SET free_ips = free_ips + (
@@ -456,6 +472,7 @@ BEGIN
             -- handles delete reserved ips
             ELSE 0
             END ),
+
             total_ips = total_ips + (
             CASE 
             WHEN TG_OP = 'INSERT' 
@@ -464,6 +481,7 @@ BEGIN
                 THEN -1
             ELSE 0
             END ),
+
             ips = (
                 select jsonb_agg(
                     jsonb_build_object(
@@ -488,6 +506,18 @@ BEGIN
         WHEN OTHERS THEN
             RAISE NOTICE 'Error reflect public_ips changes %s', SQLERRM;
     END;
+
+    BEGIN
+        IF TG_OP = 'DELETE' THEN
+            -- delete if exists
+            DELETE FROM public_ips_cache WHERE public_ips_cache.total_ips = 0 AND
+                public_ips_cache.farm_id = (select farm_id from farm where farm.id = OLD.farm_id);
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error deleting public_ips_cache record %s', SQLERRM;
+    END;
+
 RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;

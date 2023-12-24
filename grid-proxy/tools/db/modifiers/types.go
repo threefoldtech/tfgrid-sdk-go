@@ -7,31 +7,52 @@ import (
 
 var r *rand.Rand
 
+const (
+	contractCreatedRatio = .1 // from devnet
+	usedPublicIPsRatio   = .9
+	nodeUpRatio          = .5
+	NodeCount            = 6000
+	FarmCount            = 600
+	NormalUsersCount     = 6000
+	PublicIPCount        = 1000
+	TwinCount            = 6000 + 600 + 6000 // nodes + farms + normal users
+	NodeContractCount    = 9000
+	RentContractCount    = 100
+	NameContractCount    = 300
+	maxContractHRU       = 1024 * 1024 * 1024 * 300
+	maxContractSRU       = 1024 * 1024 * 1024 * 300
+	maxContractMRU       = 1024 * 1024 * 1024 * 16
+	maxContractCRU       = 16
+	minContractHRU       = 0
+	minContractSRU       = 1024 * 1024 * 256
+	minContractMRU       = 1024 * 1024 * 256
+	minContractCRU       = 1
+)
+
+var (
+	countries = []string{"Belgium", "United States", "Egypt", "United Kingdom"}
+	regions   = map[string]string{
+		"Belgium":        "Europe",
+		"United States":  "Americas",
+		"Egypt":          "Africa",
+		"United Kingdom": "Europe",
+	}
+	countriesCodes = map[string]string{
+		"Belgium":        "BG",
+		"United States":  "US",
+		"Egypt":          "EG",
+		"United Kingdom": "UK",
+	}
+	cities = map[string][]string{
+		"Belgium":        {"Brussels", "Antwerp", "Ghent", "Charleroi"},
+		"United States":  {"New York", "Chicago", "Los Angeles", "San Francisco"},
+		"Egypt":          {"Cairo", "Giza", "October", "Nasr City"},
+		"United Kingdom": {"London", "Liverpool", "Manchester", "Cambridge"},
+	}
+)
+
 type Generator struct {
-	db *sql.DB
-
-	NodeCount         uint32
-	FarmCount         uint32
-	TwinCount         uint32
-	NodeContractCount uint32
-	RentContractCount uint32
-	NameContractCount uint32
-	PublicIPCount     uint32
-	NormalUsersCount  uint32
-
-	maxContractHRU uint64
-	maxContractSRU uint64
-	maxContractMRU uint64
-	maxContractCRU uint64
-	minContractHRU uint64
-	minContractSRU uint64
-	minContractMRU uint64
-	minContractCRU uint64
-
-	contractCreatedRatio float32
-	usedPublicIPsRatio   float32
-	nodeUpRatio          float32
-
+	db                     *sql.DB
 	nodesMRU               map[uint64]uint64
 	nodesSRU               map[uint64]uint64
 	nodesHRU               map[uint64]uint64
@@ -41,37 +62,13 @@ type Generator struct {
 	availableRentNodes     map[uint64]struct{}
 	availableRentNodesList []uint64
 	renter                 map[uint64]uint64
-	countries              []string
-	regions                map[string]string
-	countriesCodes         map[string]string
-	cities                 map[string][]string
 }
 
 func NewGenerator(db *sql.DB, seed int) Generator {
 	r = rand.New(rand.NewSource(int64(seed)))
 
 	return Generator{
-		db:                   db,
-		contractCreatedRatio: .1, // from devnet
-		usedPublicIPsRatio:   .9,
-		nodeUpRatio:          .5,
-		NodeCount:            6000,
-		FarmCount:            600,
-		NormalUsersCount:     6000,
-		PublicIPCount:        1000,
-		TwinCount:            6000 + 600 + 6000, // nodes + farms + normal users
-		NodeContractCount:    9000,
-		RentContractCount:    100,
-		NameContractCount:    300,
-
-		maxContractHRU:         1024 * 1024 * 1024 * 300,
-		maxContractSRU:         1024 * 1024 * 1024 * 300,
-		maxContractMRU:         1024 * 1024 * 1024 * 16,
-		maxContractCRU:         16,
-		minContractHRU:         0,
-		minContractSRU:         1024 * 1024 * 256,
-		minContractMRU:         1024 * 1024 * 256,
-		minContractCRU:         1,
+		db:                     db,
 		nodesMRU:               make(map[uint64]uint64),
 		nodesSRU:               make(map[uint64]uint64),
 		nodesHRU:               make(map[uint64]uint64),
@@ -81,25 +78,6 @@ func NewGenerator(db *sql.DB, seed int) Generator {
 		availableRentNodes:     make(map[uint64]struct{}),
 		availableRentNodesList: make([]uint64, 0),
 		renter:                 make(map[uint64]uint64),
-		countries:              []string{"Belgium", "United States", "Egypt", "United Kingdom"},
-		regions: map[string]string{
-			"Belgium":        "Europe",
-			"United States":  "Americas",
-			"Egypt":          "Africa",
-			"United Kingdom": "Europe",
-		},
-		countriesCodes: map[string]string{
-			"Belgium":        "BG",
-			"United States":  "US",
-			"Egypt":          "EG",
-			"United Kingdom": "UK",
-		},
-		cities: map[string][]string{
-			"Belgium":        {"Brussels", "Antwerp", "Ghent", "Charleroi"},
-			"United States":  {"New York", "Chicago", "Los Angeles", "San Francisco"},
-			"Egypt":          {"Cairo", "Giza", "October", "Nasr City"},
-			"United Kingdom": {"London", "Liverpool", "Manchester", "Cambridge"},
-		},
 	}
 }
 

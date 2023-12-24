@@ -13,10 +13,10 @@ const deleted = "Deleted"
 const created = "Created"
 const gracePeriod = "GracePeriod"
 
-func (g *Generator) GenerateTwins() error {
+func (g *Generator) GenerateTwins(start, size int) error {
 	var twins []string
 
-	for i := uint64(1); i <= uint64(g.TwinCount); i++ {
+	for i := uint64(start); i < uint64(start+size); i++ {
 		twin := twin{
 			id:           fmt.Sprintf("twin-%d", i),
 			account_id:   fmt.Sprintf("account-id-%d", i),
@@ -40,17 +40,17 @@ func (g *Generator) GenerateTwins() error {
 	return nil
 }
 
-func (g *Generator) GenerateFarms() error {
+func (g *Generator) GenerateFarms(start, size, twinStart int) error {
 	var farms []string
 
-	for i := uint64(1); i <= uint64(g.FarmCount); i++ {
+	for i := uint64(start); i < uint64(start+size); i++ {
 		farm := farm{
 			id:                fmt.Sprintf("farm-%d", i),
 			farm_id:           i,
 			name:              fmt.Sprintf("farm-name-%d", i),
 			certification:     "Diy",
 			dedicated_farm:    flip(.1),
-			twin_id:           i,
+			twin_id:           uint64(twinStart) + (i - uint64(start)),
 			pricing_policy_id: 1,
 			grid_version:      3,
 			stellar_address:   "",
@@ -75,13 +75,13 @@ func (g *Generator) GenerateFarms() error {
 	return nil
 }
 
-func (g *Generator) GenerateNodes() error {
+func (g *Generator) GenerateNodes(start, size, farmStart, farmSize, twinStart int) error {
 	powerState := []string{"Up", "Down"}
 	var locations []string
 	var nodes []string
 	var totalResources []string
 	var publicConfigs []string
-	for i := uint64(1); i <= uint64(g.NodeCount); i++ {
+	for i := uint64(start); i < uint64(start+size); i++ {
 		mru, err := rnd(4, 256)
 		if err != nil {
 			return fmt.Errorf("failed to generate random mru: %w", err)
@@ -105,7 +105,7 @@ func (g *Generator) GenerateNodes() error {
 			return fmt.Errorf("failed to generate random cru: %w", err)
 		}
 
-		up := flip(g.nodeUpRatio)
+		up := flip(nodeUpRatio)
 		periodFromLatestUpdate, err := rnd(60*40*3, 60*60*24*30*12)
 		if err != nil {
 			return fmt.Errorf("failed to generate random period from latest update: %w", err)
@@ -134,16 +134,18 @@ func (g *Generator) GenerateNodes() error {
 			latitude:  fmt.Sprintf("%d", i),
 		}
 
-		countryIndex := r.Intn(len(g.countries))
-		cityIndex := r.Intn(len(g.cities[g.countries[countryIndex]]))
+		countryIndex := r.Intn(len(countries))
+		cityIndex := r.Intn(len(cities[countries[countryIndex]]))
+		farmId := r.Intn((farmStart+farmSize)-farmStart) + farmStart
+		twinId := twinStart + farmSize + (int(i) - start)
 		node := node{
 			id:                fmt.Sprintf("node-%d", i),
 			location_id:       fmt.Sprintf("location-%d", i),
 			node_id:           i,
-			farm_id:           i%100 + 1,
-			twin_id:           i + 100 + 1,
-			country:           g.countries[countryIndex],
-			city:              g.cities[g.countries[countryIndex]][cityIndex],
+			farm_id:           uint64(farmId),
+			twin_id:           uint64(twinId),
+			country:           countries[countryIndex],
+			city:              cities[countries[countryIndex]][cityIndex],
 			uptime:            1000,
 			updated_at:        uint64(updatedAt),
 			created:           uint64(time.Now().Unix()),
@@ -232,24 +234,22 @@ func (g *Generator) GenerateNodes() error {
 	return nil
 }
 
-func (g *Generator) GenerateContracts() error {
-	rentContractIDStart := 1
-
+func (g *Generator) GenerateContracts(billStart, contractStart, nodeConCount, nameConCount, rentConCount, nodeStart, nodeSize int) error {
 	var billReports []string
 
-	rentContractsBillReports, nodeContractIDStart, err := g.GenerateRentContracts(1, rentContractIDStart)
+	rentContractsBillReports, nodeContractIDStart, err := g.GenerateRentContracts(billStart, contractStart, rentConCount)
 	if err != nil {
 		return fmt.Errorf("failed to generate rent contracts: %w", err)
 	}
 	billReports = append(billReports, rentContractsBillReports...)
 
-	nodeContractsBillReports, nameContractIDStart, err := g.generateNodeContracts(len(billReports)+1, nodeContractIDStart)
+	nodeContractsBillReports, nameContractIDStart, err := g.generateNodeContracts(len(billReports)+billStart, nodeContractIDStart, nodeConCount, nodeStart, nodeSize)
 	if err != nil {
 		return fmt.Errorf("failed to generate node contracts: %w", err)
 	}
 	billReports = append(billReports, nodeContractsBillReports...)
 
-	nameContractsBillReports, _, err := g.GenerateNameContracts(len(billReports)+1, nameContractIDStart)
+	nameContractsBillReports, _, err := g.GenerateNameContracts(len(billReports)+billStart, nameContractIDStart, nameConCount)
 	if err != nil {
 		return fmt.Errorf("failed to generate name contracts: %w", err)
 	}
@@ -261,34 +261,33 @@ func (g *Generator) GenerateContracts() error {
 	return nil
 }
 
-func (g *Generator) generateNodeContracts(billsStartID, contractsStartID int) ([]string, int, error) {
+func (g *Generator) generateNodeContracts(billsStartID, contractsStartID, contractCount, nodeStart, nodeSize int) ([]string, int, error) {
+	end := contractsStartID + contractCount
+
 	var contracts []string
 	var contractResources []string
 	var billingReports []string
 
-	for i := uint64(1); i <= uint64(g.NodeContractCount); i++ {
-		nodeID, err := rnd(1, uint64(g.NodeCount))
-		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random node id: %w", err)
-		}
+	for i := contractsStartID; i < end; i++ {
+		nodeID := uint64(r.Intn((nodeStart+nodeSize)-nodeStart) + nodeStart)
 		state := deleted
 
 		if g.nodeUP[nodeID] {
-			if flip(g.contractCreatedRatio) {
+			if flip(contractCreatedRatio) {
 				state = created
 			} else if flip(0.5) {
 				state = gracePeriod
 			}
 		}
 
-		if state != deleted && (g.minContractHRU > g.nodesHRU[nodeID] || g.minContractMRU > g.nodesMRU[nodeID] || g.minContractSRU > g.nodesSRU[nodeID]) {
+		if state != deleted && (minContractHRU > g.nodesHRU[nodeID] || minContractMRU > g.nodesMRU[nodeID] || minContractSRU > g.nodesSRU[nodeID]) {
 			i--
 			continue
 		}
 
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random twin id: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random twin id: %w", err)
 		}
 
 		if renter, ok := g.renter[nodeID]; ok {
@@ -301,79 +300,79 @@ func (g *Generator) generateNodeContracts(billsStartID, contractsStartID int) ([
 		}
 
 		contract := node_contract{
-			id:                    fmt.Sprintf("node-contract-%d", contractsStartID),
+			id:                    fmt.Sprintf("node-contract-%d", i),
 			twin_id:               twinID,
-			contract_id:           uint64(contractsStartID),
+			contract_id:           uint64(i),
 			state:                 state,
 			created_at:            uint64(time.Now().Unix()),
 			node_id:               nodeID,
-			deployment_data:       fmt.Sprintf("deployment-data-%d", contractsStartID),
-			deployment_hash:       fmt.Sprintf("deployment-hash-%d", contractsStartID),
+			deployment_data:       fmt.Sprintf("deployment-data-%d", i),
+			deployment_hash:       fmt.Sprintf("deployment-hash-%d", i),
 			number_of_public_i_ps: 0,
 			grid_version:          3,
 			resources_used_id:     "",
 		}
 
-		cru, err := rnd(g.minContractCRU, g.maxContractCRU)
+		cru, err := rnd(minContractCRU, maxContractCRU)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random cru: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random cru: %w", err)
 		}
 
-		hru, err := rnd(g.minContractHRU, min(g.maxContractHRU, g.nodesHRU[nodeID]))
+		hru, err := rnd(minContractHRU, min(maxContractHRU, g.nodesHRU[nodeID]))
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random hru: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random hru: %w", err)
 		}
 
-		sru, err := rnd(g.minContractSRU, min(g.maxContractSRU, g.nodesSRU[nodeID]))
+		sru, err := rnd(minContractSRU, min(maxContractSRU, g.nodesSRU[nodeID]))
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random sru: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random sru: %w", err)
 		}
 
-		mru, err := rnd(g.minContractMRU, min(g.maxContractMRU, g.nodesMRU[nodeID]))
+		mru, err := rnd(minContractMRU, min(maxContractMRU, g.nodesMRU[nodeID]))
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random mru: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random mru: %w", err)
 		}
 
 		contract_resources := contract_resources{
-			id:          fmt.Sprintf("contract-resources-%d", contractsStartID),
+			id:          fmt.Sprintf("contract-resources-%d", i),
 			hru:         hru,
 			sru:         sru,
 			cru:         cru,
 			mru:         mru,
-			contract_id: fmt.Sprintf("node-contract-%d", contractsStartID),
+			contract_id: fmt.Sprintf("node-contract-%d", i),
 		}
 		if contract.state != deleted {
 			g.nodesHRU[nodeID] -= hru
 			g.nodesSRU[nodeID] -= sru
 			g.nodesMRU[nodeID] -= mru
-			g.createdNodeContracts = append(g.createdNodeContracts, uint64(contractsStartID))
+			g.createdNodeContracts = append(g.createdNodeContracts, uint64(i))
 		}
 
 		contractTuple, err := objectToTupleString(contract)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to convert contract object to tuple string: %w", err)
+			return nil, i, fmt.Errorf("failed to convert contract object to tuple string: %w", err)
 		}
 		contracts = append(contracts, contractTuple)
 
 		contractResourcesTuple, err := objectToTupleString(contract_resources)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to convert contract resources object to tuple string: %w", err)
+			return nil, i, fmt.Errorf("failed to convert contract resources object to tuple string: %w", err)
 		}
 		contractResources = append(contractResources, contractResourcesTuple)
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random billing count: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random billing count: %w", err)
 		}
 
 		amountBilled, err := rnd(0, 100000)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random amount billed: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random amount billed: %w", err)
 		}
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
 				id:                fmt.Sprintf("contract-bill-report-%d", billsStartID),
-				contract_id:       uint64(contractsStartID),
+				contract_id:       uint64(i),
 				discount_received: "Default",
 				amount_billed:     amountBilled,
 				timestamp:         uint64(time.Now().UnixNano()),
@@ -382,28 +381,27 @@ func (g *Generator) generateNodeContracts(billsStartID, contractsStartID int) ([
 
 			billTuple, err := objectToTupleString(billing)
 			if err != nil {
-				return nil, contractsStartID, fmt.Errorf("failed to convert contract bill report object to tuple string: %w", err)
+				return nil, i, fmt.Errorf("failed to convert contract bill report object to tuple string: %w", err)
 			}
 			billingReports = append(billingReports, billTuple)
 		}
-		contractsStartID++
 	}
 
 	if err := g.insertTuples(node_contract{}, contracts); err != nil {
-		return nil, contractsStartID, fmt.Errorf("failed to insert node contracts: %w", err)
+		return nil, end, fmt.Errorf("failed to insert node contracts: %w", err)
 	}
 
 	if err := g.insertTuples(contract_resources{}, contractResources); err != nil {
-		return nil, contractsStartID, fmt.Errorf("failed to insert contract resources: %w", err)
+		return nil, end, fmt.Errorf("failed to insert contract resources: %w", err)
 	}
 
-	if err := g.updateNodeContractResourceID(contractsStartID-int(g.NodeContractCount), contractsStartID); err != nil {
-		return nil, contractsStartID, fmt.Errorf("failed to update node contract resources id: %w", err)
+	if err := g.updateNodeContractResourceID(contractsStartID, end); err != nil {
+		return nil, end, fmt.Errorf("failed to update node contract resources id: %w", err)
 	}
 
 	fmt.Println("node contracts generated")
 
-	return billingReports, contractsStartID, nil
+	return billingReports, end, nil
 }
 
 func (g *Generator) updateNodeContractResourceID(min, max int) error {
@@ -415,18 +413,19 @@ func (g *Generator) updateNodeContractResourceID(min, max int) error {
 	return nil
 }
 
-func (g *Generator) GenerateNameContracts(billsStartID, contractsStartID int) ([]string, int, error) {
+func (g *Generator) GenerateNameContracts(billsStartID, contractsStartID, contractCount int) ([]string, int, error) {
+	end := contractsStartID + contractCount
 	var contracts []string
 	var billReports []string
-	for i := uint64(1); i <= uint64(g.NameContractCount); i++ {
-		nodeID, err := rnd(1, uint64(g.NodeCount))
+	for i := contractsStartID; i < end; i++ {
+		nodeID, err := rnd(1, uint64(NodeCount))
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random node id: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random node id: %w", err)
 		}
 
 		state := deleted
 		if g.nodeUP[nodeID] {
-			if flip(g.contractCreatedRatio) {
+			if flip(contractCreatedRatio) {
 				state = created
 			} else if flip(0.5) {
 				state = gracePeriod
@@ -435,7 +434,7 @@ func (g *Generator) GenerateNameContracts(billsStartID, contractsStartID int) ([
 
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random twin id: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random twin id: %w", err)
 		}
 
 		if renter, ok := g.renter[nodeID]; ok {
@@ -448,9 +447,9 @@ func (g *Generator) GenerateNameContracts(billsStartID, contractsStartID int) ([
 		}
 
 		contract := name_contract{
-			id:           fmt.Sprintf("name-contract-%d", contractsStartID),
+			id:           fmt.Sprintf("name-contract-%d", i),
 			twin_id:      twinID,
-			contract_id:  uint64(contractsStartID),
+			contract_id:  uint64(i),
 			state:        state,
 			created_at:   uint64(time.Now().Unix()),
 			grid_version: 3,
@@ -459,23 +458,23 @@ func (g *Generator) GenerateNameContracts(billsStartID, contractsStartID int) ([
 
 		contractTuple, err := objectToTupleString(contract)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to convert contract object to tuple string: %w", err)
+			return nil, i, fmt.Errorf("failed to convert contract object to tuple string: %w", err)
 		}
 		contracts = append(contracts, contractTuple)
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random billings count: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random billings count: %w", err)
 		}
 		amountBilled, err := rnd(0, 100000)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate random amount billed: %w", err)
+			return nil, i, fmt.Errorf("failed to generate random amount billed: %w", err)
 		}
 
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
 				id:                fmt.Sprintf("contract-bill-report-%d", billsStartID),
-				contract_id:       uint64(contractsStartID),
+				contract_id:       uint64(i),
 				discount_received: "Default",
 				amount_billed:     amountBilled,
 				timestamp:         uint64(time.Now().UnixNano()),
@@ -484,29 +483,30 @@ func (g *Generator) GenerateNameContracts(billsStartID, contractsStartID int) ([
 
 			billTuple, err := objectToTupleString(billing)
 			if err != nil {
-				return nil, contractsStartID, fmt.Errorf("failed to convert contract bill report object to tuple string: %w", err)
+				return nil, i, fmt.Errorf("failed to convert contract bill report object to tuple string: %w", err)
 			}
 			billReports = append(billReports, billTuple)
 		}
-		contractsStartID++
 	}
 
 	if err := g.insertTuples(name_contract{}, contracts); err != nil {
-		return nil, contractsStartID, fmt.Errorf("failed to insert name contracts: %w", err)
+		return nil, end, fmt.Errorf("failed to insert name contracts: %w", err)
 	}
 
 	fmt.Println("name contracts generated")
 
-	return billReports, contractsStartID, nil
+	return billReports, end, nil
 }
 
-func (g *Generator) GenerateRentContracts(billsStartID, contractsStartID int) ([]string, int, error) {
+func (g *Generator) GenerateRentContracts(billsStart, contractStart, rentConCount int) ([]string, int, error) {
+	end := contractStart + rentConCount
+
 	var contracts []string
 	var billReports []string
-	for i := uint64(1); i <= uint64(g.RentContractCount); i++ {
+	for i := contractStart; i < end; i++ {
 		nl, nodeID, err := popRandom(g.availableRentNodesList)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to select random element from the gives slice: %w", err)
+			return nil, i, fmt.Errorf("failed to select random element from the given slice: %w", err)
 		}
 
 		g.availableRentNodesList = nl
@@ -522,13 +522,13 @@ func (g *Generator) GenerateRentContracts(billsStartID, contractsStartID int) ([
 
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate a random twin id: %w", err)
+			return nil, i, fmt.Errorf("failed to generate a random twin id: %w", err)
 		}
 
 		contract := rent_contract{
-			id:           fmt.Sprintf("rent-contract-%d", contractsStartID),
+			id:           fmt.Sprintf("rent-contract-%d", i),
 			twin_id:      twinID,
-			contract_id:  uint64(contractsStartID),
+			contract_id:  uint64(i),
 			state:        state,
 			created_at:   uint64(time.Now().Unix()),
 			node_id:      nodeID,
@@ -541,57 +541,56 @@ func (g *Generator) GenerateRentContracts(billsStartID, contractsStartID int) ([
 
 		contractTuple, err := objectToTupleString(contract)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to convert contract object to tuple string: %w", err)
+			return nil, i, fmt.Errorf("failed to convert contract object to tuple string: %w", err)
 		}
 		contracts = append(contracts, contractTuple)
 
 		billings, err := rnd(0, 10)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate billings count: %w", err)
+			return nil, i, fmt.Errorf("failed to generate billings count: %w", err)
 		}
 
 		amountBilled, err := rnd(0, 100000)
 		if err != nil {
-			return nil, contractsStartID, fmt.Errorf("failed to generate amount billed: %w", err)
+			return nil, i, fmt.Errorf("failed to generate amount billed: %w", err)
 		}
 
 		for j := uint64(0); j < billings; j++ {
 			billing := contract_bill_report{
-				id:                fmt.Sprintf("contract-bill-report-%d", billsStartID),
-				contract_id:       uint64(contractsStartID),
+				id:                fmt.Sprintf("contract-bill-report-%d", billsStart),
+				contract_id:       uint64(i),
 				discount_received: "Default",
 				amount_billed:     amountBilled,
 				timestamp:         uint64(time.Now().UnixNano()),
 			}
 
-			billsStartID++
+			billsStart++
 
 			billTuple, err := objectToTupleString(billing)
 			if err != nil {
-				return nil, contractsStartID, fmt.Errorf("failed to convert contract bill report object to tuple string: %w", err)
+				return nil, i, fmt.Errorf("failed to convert contract bill report object to tuple string: %w", err)
 			}
 			billReports = append(billReports, billTuple)
 
 		}
-		contractsStartID++
 	}
 
 	if err := g.insertTuples(rent_contract{}, contracts); err != nil {
-		return nil, contractsStartID, fmt.Errorf("failed to insert rent contracts: %w", err)
+		return nil, end, fmt.Errorf("failed to insert rent contracts: %w", err)
 	}
 
 	fmt.Println("rent contracts generated")
 
-	return billReports, contractsStartID, nil
+	return billReports, end, nil
 }
 
-func (g *Generator) GeneratePublicIPs() error {
+func (g *Generator) GeneratePublicIPs(start, size int) error {
 	var publicIPs []string
 	var nodeContracts []uint64
 
-	for i := uint64(1); i <= uint64(g.PublicIPCount); i++ {
+	for i := uint64(start); i < uint64(start+size); i++ {
 		contract_id := uint64(0)
-		if flip(g.usedPublicIPsRatio) {
+		if flip(usedPublicIPsRatio) {
 			idx, err := rnd(0, uint64(len(g.createdNodeContracts))-1)
 			if err != nil {
 				return fmt.Errorf("failed to generate random index: %w", err)
@@ -599,7 +598,7 @@ func (g *Generator) GeneratePublicIPs() error {
 			contract_id = g.createdNodeContracts[idx]
 		}
 		ip := randomIPv4()
-		farmID, err := rnd(1, uint64(g.FarmCount))
+		farmID, err := rnd(1, uint64(FarmCount))
 		if err != nil {
 			return fmt.Errorf("failed to generate random farm id: %w", err)
 		}
@@ -659,7 +658,7 @@ func (g *Generator) GenerateNodeGPUs() error {
 		gpuNum := len(vendors) - 1
 		for j := 0; j <= gpuNum; j++ {
 			g := node_gpu{
-				node_twin_id: uint64(i + 100 + 2), // node twin ids start from 102
+				node_twin_id: uint64(i + FarmCount + 2), // node twin ids start from 102
 				vendor:       vendors[j],
 				device:       devices[j],
 				contract:     i % 2,
@@ -685,13 +684,13 @@ func (g *Generator) GenerateNodeGPUs() error {
 func (g *Generator) GenerateCountries() error {
 	var countriesValues []string
 	index := 0
-	for countryName, region := range g.regions {
+	for countryName, region := range regions {
 		index++
 		country := country{
 			id:         fmt.Sprintf("country-%d", index),
 			country_id: uint64(index),
 			name:       countryName,
-			code:       g.countriesCodes[countryName],
+			code:       countriesCodes[countryName],
 			region:     "unknown",
 			subregion:  region,
 			lat:        fmt.Sprintf("%d", 0),
