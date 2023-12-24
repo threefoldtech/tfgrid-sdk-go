@@ -1,4 +1,3 @@
-// Package provider is the terraform provider
 package deployer
 
 import (

@@ -1,4 +1,3 @@
-// Package deployer is grid deployer
 package deployer
 
 import (
