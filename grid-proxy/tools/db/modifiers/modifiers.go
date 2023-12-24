@@ -98,17 +98,65 @@ func (g *Generator) UpdateRentContract() error {
 }
 
 func (g *Generator) UpdatePublicIps() error {
+	updatesCount := 10
+	query := ""
 
-	return nil
+	for i := 0; i < updatesCount; i++ {
+		idx := r.Intn(len(g.createdNodeContracts))
+		contractID := g.createdNodeContracts[idx]
+		publicIPID := r.Intn(int(g.PublicIPCount))
+
+		query += fmt.Sprintf("UPDATE public_ip SET contract_id = (CASE WHEN contract_id = 0 THEN %d ELSE 0 END) WHERE id = 'public-ip-%d';", contractID, publicIPID)
+	}
+
+	log.Debug().Str("query", query).Msg("update public ip contract_id")
+
+	_, err := g.db.Exec(query)
+	return err
 }
 
 // deletions
-func (g *Generator) DeleteNode() error {
+func (g *Generator) DeleteNodes() error {
+	// delete node contracts on this node
+	// free public ips that are assigned to the deleted contracts
+	// delete rent contracts on this node
+	// delete node
+	updatesCount := r.Intn(10) + 1
+	query := ""
 
-	return nil
+	for i := 0; i < updatesCount; i++ {
+		nodeID := r.Intn(int(g.NodeCount)) + 1
+		g.NodeCount--
+
+		query += fmt.Sprintf("UPDATE public_ip SET contract_id = 0 WHERE contract_id IN (SELECT contract_id FROM node_contract WHERE node_id = %d);", nodeID)
+		query += fmt.Sprintf("UPDATE node_contract SET state = 'Deleted' WHERE node_id = %d;", nodeID)
+		query += fmt.Sprintf("UPDATE rent_contract set state = 'Deleted' WHERE node_id = %d;", nodeID)
+		query += fmt.Sprintf("DELETE FROM node_resources_total WHERE node_id = (SELECT id FROM node WHERE node_id = %d);", nodeID)
+		query += fmt.Sprintf("DELETE FROM node WHERE node_id = %d;", nodeID)
+	}
+
+	log.Debug().Str("query", query).Msg("delete nodes")
+
+	_, err := g.db.Exec(query)
+	return err
 }
 
 func (g *Generator) DeletePublicIps() error {
+	maxDeleteCount := r.Intn(10) + 1
+	query := fmt.Sprintf("DELETE FROM public_ip WHERE id in (SELECT id FROM public_ip WHERE contract_id = 0 LIMIT %d);", maxDeleteCount)
+
+	res, err := g.db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("failed to delete public ips: %w", err)
+	}
+
+	rowsAffercted, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected by public ips delete: %w", err)
+	}
+	g.PublicIPCount -= uint32(rowsAffercted)
+
+	log.Debug().Str("query", query).Msg("delete public ips")
 
 	return nil
 }
