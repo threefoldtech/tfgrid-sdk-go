@@ -660,6 +660,7 @@ func TestDeploymentDeployer(t *testing.T) {
 func ExampleDeploymentDeployer_Deploy() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 	if err != nil {
@@ -708,6 +709,7 @@ func ExampleDeploymentDeployer_Deploy() {
 func ExampleDeploymentDeployer_BatchDeploy() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 	if err != nil {

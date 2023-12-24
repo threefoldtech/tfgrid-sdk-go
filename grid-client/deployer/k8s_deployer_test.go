@@ -315,6 +315,7 @@ func TestK8sDeployer(t *testing.T) {
 func ExampleK8sDeployer_Deploy() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
 	const flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 	flistCheckSum, err := workloads.GetFlistChecksum(flist)
@@ -387,6 +388,7 @@ func ExampleK8sDeployer_Deploy() {
 func ExampleK8sDeployer_BatchDeploy() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
 	const flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 	flistCheckSum, err := workloads.GetFlistChecksum(flist)

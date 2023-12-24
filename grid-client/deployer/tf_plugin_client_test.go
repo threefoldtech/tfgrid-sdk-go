@@ -17,8 +17,8 @@ func ExampleNewTFPluginClient() {
 }
 
 func ExampleTFPluginClient_BatchCancelContract() {
-	mnemonic := "<mnemonics goes here>"
-	network := "<dev, test, qa, main>"
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 	if err != nil {
