@@ -269,7 +269,7 @@ func (g *Generator) generateNodeContracts(billsStartID, contractsStartID, contra
 	var billingReports []string
 	toDelete := ""
 	toGracePeriod := ""
-
+	contractToResource := map[uint64]string{}
 	for i := contractsStartID; i < end; i++ {
 		nodeID := uint64(r.Intn((nodeStart+nodeSize)-nodeStart) + nodeStart)
 		state := deleted
@@ -356,6 +356,8 @@ func (g *Generator) generateNodeContracts(billsStartID, contractsStartID, contra
 			mru:         mru,
 			contract_id: fmt.Sprintf("node-contract-%d", i),
 		}
+		contractToResource[contract.contract_id] = contract_resources.id
+
 		if state != deleted {
 			g.nodesHRU[nodeID] -= hru
 			g.nodesSRU[nodeID] -= sru
@@ -410,7 +412,7 @@ func (g *Generator) generateNodeContracts(billsStartID, contractsStartID, contra
 		return nil, end, fmt.Errorf("failed to insert contract resources: %w", err)
 	}
 
-	if err := g.updateNodeContractResourceID(contractsStartID, end); err != nil {
+	if err := g.updateNodeContractResourceID(contractToResource); err != nil {
 		return nil, end, fmt.Errorf("failed to update node contract resources id: %w", err)
 	}
 
@@ -431,9 +433,12 @@ func (g *Generator) generateNodeContracts(billsStartID, contractsStartID, contra
 	return billingReports, end, nil
 }
 
-func (g *Generator) updateNodeContractResourceID(min, max int) error {
-	query := fmt.Sprintf(`UPDATE node_contract SET resources_used_id = CONCAT('contract-resources-',split_part(id, '-', -1))
-		WHERE CAST(split_part(id, '-', -1) AS INTEGER) BETWEEN %d AND %d;`, min, max)
+func (g *Generator) updateNodeContractResourceID(contractToResource map[uint64]string) error {
+	query := ""
+	for contractID, ResourceID := range contractToResource {
+		query += fmt.Sprintf("UPDATE node_contract SET resources_used_id = '%s' WHERE contract_id = %d;", ResourceID, contractID)
+	}
+
 	if _, err := g.db.Exec(query); err != nil {
 		return fmt.Errorf("failed to update node contract resource id: %w", err)
 	}

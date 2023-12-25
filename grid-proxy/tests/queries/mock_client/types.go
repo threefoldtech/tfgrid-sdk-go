@@ -49,6 +49,7 @@ type Node struct {
 	Power           NodePower `gorm:"type:jsonb"`
 	HasGPU          bool
 	ExtraFee        uint64
+	Dedicated       bool
 }
 
 type NodePower struct {

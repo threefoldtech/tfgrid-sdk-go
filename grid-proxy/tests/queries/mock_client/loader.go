@@ -525,8 +525,8 @@ func loadLocations(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 	SELECT 
 		COALESCE(id, ''),
-		COALESCE(longitude, ''),
-		COALESCE(latitude, '')
+		case when longitude = '' then '0' else longitude end,
+		case when latitude = '' then '0' else latitude end
 	FROM
 		location;
 	`)

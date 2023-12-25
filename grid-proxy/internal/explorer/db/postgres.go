@@ -65,11 +65,6 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string, m
 	sql.SetMaxIdleConns(3)
 	sql.SetMaxOpenConns(maxConns)
 
-	err = gormDB.AutoMigrate(&NodeGPU{})
-	if err != nil {
-		return PostgresDatabase{}, errors.Wrap(err, "failed to auto migrate DB")
-	}
-
 	res := PostgresDatabase{gormDB, connString}
 	return res, nil
 }
@@ -415,7 +410,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		q = q.Where("COALESCE(public_ips_cache.total_ips, 0) >= ?", *filter.TotalIPs)
 	}
 	if filter.StellarAddress != nil {
-		q = q.Where("farm.stellar_address = ?", *filter.StellarAddress)
+		q = q.Where("COALESCE(farm.stellar_address, '') = ?", *filter.StellarAddress)
 	}
 	if filter.PricingPolicyID != nil {
 		q = q.Where("farm.pricing_policy_id = ?", *filter.PricingPolicyID)

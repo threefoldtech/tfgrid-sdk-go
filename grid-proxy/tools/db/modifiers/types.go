@@ -121,6 +121,7 @@ type node struct {
 	location_id       string
 	power             nodePower `gorm:"type:jsonb"`
 	extra_fee         uint64
+	dedicated         bool
 }
 
 type nodePower struct {

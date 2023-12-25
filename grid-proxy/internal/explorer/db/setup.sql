@@ -43,6 +43,15 @@ TEXT) RETURNS DECIMAL AS $$
 ----
 DROP TRIGGER IF EXISTS node_added ON node;
 
+CREATE TABLE IF NOT EXISTS node_gpu (
+    id text PRIMARY KEY,
+    node_twin_id bigint NOT NULL,
+    vendor text,
+    device text,
+    contract bigint
+);
+
+
 ----
 -- Resources cache table
 ----
@@ -100,7 +109,7 @@ FROM node
         GROUP BY
             node_twin_id
     ) AS node_gpu ON node.twin_id = node_gpu.node_twin_id
-    LEFT JOIN country ON node.country = country.name
+    LEFT JOIN country ON LOWER(node.country) = LOWER(country.name)
 GROUP BY
     node.node_id,
     node_resources_total.mru,

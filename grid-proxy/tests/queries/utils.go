@@ -61,6 +61,10 @@ func min(a, b uint64) uint64 {
 }
 
 func changeCase(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+
 	idx := rand.Intn(len(s))
 	return strings.Replace(s, string(s[idx]), strings.ToUpper(string(s[idx])), 1)
 }
