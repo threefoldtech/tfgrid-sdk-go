@@ -63,7 +63,7 @@ var rootCmd = &cobra.Command{
 			return errors.Wrap(err, "failed to parse wallets content")
 		}
 
-		monitor, err := internal.NewMonitor(env, wallets)
+		monitor, err := internal.NewMonitor(cmd.Context(), env, wallets)
 		if err != nil {
 			return errors.Wrap(err, "failed to create a new monitor")
 		}

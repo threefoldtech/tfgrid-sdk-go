@@ -52,12 +52,6 @@ func (m *Monitor) monitorBridges() error {
 }
 
 func (m *Monitor) monitorBridge(net network) (balanceReport, error) {
-	conn, err := m.managers[net].Substrate()
-	if err != nil {
-		return balanceReport{}, fmt.Errorf("failed to create substrate connection for %s: %w", net, err)
-	}
-	defer conn.Close()
-
 	identity, err := client.NewIdentityFromSr25519Phrase(m.mnemonics[net])
 	if err != nil {
 		return balanceReport{}, err
@@ -89,12 +83,6 @@ func (m *Monitor) monitorBridge(net network) (balanceReport, error) {
 // bridgeTXWrapper does the bridge transaction, and get the balance after waiting a period of time
 func (m *Monitor) bridgeTXWrapper(tx bridgeTX) func(identity client.Identity, net network) (float64, error) {
 	return func(identity client.Identity, net network) (float64, error) {
-		conn, err := m.managers[net].Substrate()
-		if err != nil {
-			return 0, fmt.Errorf("failed to create substrate connection for %s: %w", net, err)
-		}
-		defer conn.Close()
-
 		if err := tx(identity, net); err != nil {
 			return 0, err
 		}
