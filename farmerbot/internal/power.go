@@ -31,7 +31,8 @@ func (f *FarmerBot) powerOn(sub Substrate, nodeID uint32) error {
 	node.lastTimeAwake = time.Now()
 	node.lastTimePowerStateChanged = time.Now()
 
-	return f.updateNode(node)
+	f.nodes[nodeID] = node
+	return nil
 }
 
 // powerOff sets the node power state OFF
@@ -87,7 +88,8 @@ func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 	node.powerState = shuttingDown
 	node.lastTimePowerStateChanged = time.Now()
 
-	return f.updateNode(node)
+	f.nodes[nodeID] = node
+	return nil
 }
 
 // manageNodesPower for power management nodes
@@ -129,12 +131,11 @@ func calculateResourceUsage(nodes map[uint32]node) (uint64, uint64) {
 }
 
 func (f *FarmerBot) resourceUsageTooHigh(sub Substrate) error {
-	offNodes := f.filterNodesPower([]powerState{off})
-
-	if len(offNodes) > 0 {
-		node := offNodes[0]
-		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Too much resource usage. Turning on node")
-		return f.powerOn(sub, uint32(node.ID))
+	for nodeID, node := range f.nodes {
+		if node.powerState == off {
+			log.Info().Uint32("nodeID", nodeID).Msg("Too much resource usage. Turning on node")
+			return f.powerOn(sub, nodeID)
+		}
 	}
 
 	return fmt.Errorf("no available node to wake up, resources usage is high")
@@ -169,16 +170,6 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 
 		if newTotalResources == 0 {
 			break
-		}
-
-		if totalResources == 0 {
-			log.Error().Uint32("nodeID", uint32(node.ID)).Msg("cannot calculate resources usage after removing node resources, nodes total resources is 0")
-			nodesLeftOnline += 1
-			newUsedResources += node.resources.used.hru + node.resources.used.sru +
-				node.resources.used.mru + node.resources.used.cru
-			newTotalResources += node.resources.total.hru + node.resources.total.sru +
-				node.resources.total.mru + node.resources.total.cru
-			continue
 		}
 
 		newResourceUsage := uint8(100 * newUsedResources / newTotalResources)

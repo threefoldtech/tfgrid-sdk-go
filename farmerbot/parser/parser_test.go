@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
 )
 
 func TestFileReader(t *testing.T) {
@@ -67,6 +68,71 @@ excluded_nodes:
   - 2`
 
 		_, err := ParseIntoConfig([]byte(content))
+		assert.Error(t, err)
+	})
+}
+
+func TestEnvParser(t *testing.T) {
+	t.Run("test invalid env", func(t *testing.T) {
+		content := `invalid`
+
+		_, _, err := ParseEnv(content)
+		assert.Error(t, err)
+	})
+
+	t.Run("test invalid env key", func(t *testing.T) {
+		content := `invalid=invalid`
+
+		_, _, err := ParseEnv(content)
+		assert.Error(t, err)
+	})
+
+	t.Run("test valid env", func(t *testing.T) {
+		content := `
+NETWORK=dev
+MNEMONIC_OR_SEED=0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a`
+
+		net, seed, err := ParseEnv(content)
+		assert.NoError(t, err)
+		assert.Equal(t, net, internal.DevNetwork)
+		assert.Equal(t, seed, "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a")
+	})
+
+	t.Run("test valid env: network is missing", func(t *testing.T) {
+		content := `
+NETWORK=
+MNEMONIC_OR_SEED=0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a`
+
+		net, seed, err := ParseEnv(content)
+		assert.NoError(t, err)
+		assert.Equal(t, net, internal.MainNetwork)
+		assert.Equal(t, seed, "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a")
+	})
+
+	t.Run("test invalid env: network is invalid", func(t *testing.T) {
+		content := `
+NETWORK=qenet
+MNEMONIC_OR_SEED=0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a`
+
+		_, _, err := ParseEnv(content)
+		assert.Error(t, err)
+	})
+
+	t.Run("test invalid env: mnemonic is missing", func(t *testing.T) {
+		content := `
+NETWORK=
+MNEMONIC_OR_SEED=`
+
+		_, _, err := ParseEnv(content)
+		assert.Error(t, err)
+	})
+
+	t.Run("test invalid env: mnemonic is invalid", func(t *testing.T) {
+		content := `
+NETWORK=
+MNEMONIC_OR_SEED=//alice`
+
+		_, _, err := ParseEnv(content)
 		assert.Error(t, err)
 	})
 }

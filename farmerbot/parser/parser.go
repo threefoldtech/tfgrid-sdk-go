@@ -63,10 +63,11 @@ func ParseEnv(content string) (network string, mnemonicOrSeed string, err error)
 		}
 	}
 
-	switch {
-	case network == "":
+	if len(strings.TrimSpace(network)) == 0 {
 		network = internal.MainNetwork
-	case mnemonicOrSeed == "":
+	}
+
+	if len(strings.TrimSpace(mnemonicOrSeed)) == 0 {
 		return "", "", fmt.Errorf("MNEMONIC_OR_SEED is required")
 	}
 

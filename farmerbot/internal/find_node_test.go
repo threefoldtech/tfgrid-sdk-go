@@ -35,7 +35,7 @@ func TestFindNode(t *testing.T) {
 
 	// mock state
 	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
-	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
 
 	state, err := newState(ctx, sub, rmb, inputs)
 	assert.NoError(t, err)
@@ -101,27 +101,6 @@ func TestFindNode(t *testing.T) {
 		farmerbot.farm = oldFarm
 	})
 
-	// t.Run("test valid find node: found an OFF node", func(t *testing.T) {
-	// 	node := farmerbot.nodes[1]
-	// 	node.powerState = off
-	// 	node2 := farmerbot.nodes[2]
-	// 	node2.powerState = off
-	// 	farmerbot.nodes[1] = node
-	// 	farmerbot.nodes[2] = node2
-
-	// 	sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(farmerbot.nodes[1].ID), true).Return(types.Hash{}, nil)
-
-	// 	nodeID, err := farmerbot.findNode(sub, nodeOptions)
-	// 	assert.NoError(t, err)
-	// 	assert.Equal(t, nodeID, uint32(farmerbot.nodes[1].ID))
-
-	// 	err = farmerbot.updateNode(oldNode1)
-	// 	assert.NoError(t, err)
-	// 	err = farmerbot.updateNode(oldNode2)
-	// 	assert.NoError(t, err)
-	// 	farmerbot.farm = oldFarm
-	// })
-
 	t.Run("test valid find node: node is rented (second node is found)", func(t *testing.T) {
 		node := farmerbot.nodes[1]
 		node.hasActiveRentContract = true
@@ -138,7 +117,7 @@ func TestFindNode(t *testing.T) {
 		farmerbot.farm = oldFarm
 	})
 
-	t.Run("test valid find node: node is dedicated so second node is found", func(t *testing.T) {
+	t.Run("test valid find node: node is dedicated so node is found", func(t *testing.T) {
 		node := farmerbot.nodes[1]
 		node.dedicated = true
 		farmerbot.nodes[1] = node

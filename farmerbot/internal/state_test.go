@@ -19,7 +19,7 @@ import (
 
 func mockRMBAndSubstrateCalls(
 	ctx context.Context, sub *mocks.MockSubstrate, rmb *mocks.MockRMB,
-	inputs Config,
+	inputs Config, on bool,
 	resources gridtypes.Capacity, errs []string, emptyNode, emptyTwin bool,
 ) {
 	farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, powerErr, statsErr, poolsErr, gpusErr := mocksErr(errs)
@@ -63,10 +63,12 @@ func mockRMBAndSubstrateCalls(
 
 		sub.EXPECT().GetPowerTarget(nodeID).Return(substrate.NodePower{
 			State: substrate.PowerState{
-				IsUp: true,
+				IsUp:   on,
+				IsDown: !on,
 			},
 			Target: substrate.Power{
-				IsUp: true,
+				IsUp:   on,
+				IsDown: !on,
 			},
 		}, powerErr)
 		if powerErr != nil {
@@ -107,7 +109,7 @@ func TestSetConfig(t *testing.T) {
 	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
 
 	t.Run("test valid state: no periodic wake up start, wakeup threshold (< min => min)", func(t *testing.T) {
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
 
 		state, err := newState(ctx, sub, rmb, inputs)
 		assert.NoError(t, err)
@@ -126,7 +128,7 @@ func TestSetConfig(t *testing.T) {
 	})
 
 	t.Run("test valid state: wake up threshold (> max => max)", func(t *testing.T) {
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
 
 		inputs.Power.WakeUpThreshold = 100
 
@@ -136,13 +138,30 @@ func TestSetConfig(t *testing.T) {
 	})
 
 	t.Run("test valid state: wake up threshold (is 0 => default)", func(t *testing.T) {
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
 
 		inputs.Power.WakeUpThreshold = 0
 
 		state, err := newState(ctx, sub, rmb, inputs)
 		assert.NoError(t, err)
 		assert.Equal(t, state.config.Power.WakeUpThreshold, defaultWakeUpThreshold)
+	})
+
+	t.Run("test valid state: invalid wake up threshold", func(t *testing.T) {
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
+		inputs.Power.WakeUpThreshold = 110
+
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.Error(t, err)
+
+		inputs.Power.WakeUpThreshold = defaultWakeUpThreshold
+	})
+
+	t.Run("test valid state: nodes are off in substrate", func(t *testing.T) {
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, false, resources, []string{}, false, false)
+
+		_, err := newState(ctx, sub, rmb, inputs)
+		assert.NoError(t, err)
 	})
 
 	t.Run("test invalid state: cpu provision out of range", func(t *testing.T) {
@@ -158,7 +177,7 @@ func TestSetConfig(t *testing.T) {
 		calls := []string{"farm", "nodes", "node", "dedicated", "rent", "power", "stats", "pools", "gpus"}
 
 		for _, call := range calls {
-			mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{call}, false, false)
+			mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{call}, false, false)
 
 			_, err := newState(ctx, sub, rmb, inputs)
 			assert.Error(t, err)
@@ -166,7 +185,7 @@ func TestSetConfig(t *testing.T) {
 	})
 
 	t.Run("test invalid state: rent contract doesn't exist", func(t *testing.T) {
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{"rentNotExist"}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{"rentNotExist"}, false, false)
 
 		state, err := newState(ctx, sub, rmb, inputs)
 		assert.NoError(t, err)
@@ -176,7 +195,7 @@ func TestSetConfig(t *testing.T) {
 	t.Run("test valid excluded node", func(t *testing.T) {
 		inputs.ExcludedNodes = append(inputs.ExcludedNodes, 3)
 
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.NoError(t, err)
@@ -188,7 +207,7 @@ func TestSetConfig(t *testing.T) {
 		inputs.ExcludedNodes = append(inputs.ExcludedNodes, 2)
 		inputs.IncludedNodes = []uint32{1}
 
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
@@ -206,14 +225,14 @@ func TestSetConfig(t *testing.T) {
 	})
 
 	t.Run("test invalid state no node ID", func(t *testing.T) {
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, true, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, true, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
 	})
 
 	t.Run("test invalid state no twin ID", func(t *testing.T) {
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, true)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, true)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
@@ -221,7 +240,7 @@ func TestSetConfig(t *testing.T) {
 
 	t.Run("test invalid state no node sru", func(t *testing.T) {
 		resources := gridtypes.Capacity{HRU: 1, SRU: 0, CRU: 1, MRU: 1}
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
@@ -229,7 +248,7 @@ func TestSetConfig(t *testing.T) {
 
 	t.Run("test invalid state no cru", func(t *testing.T) {
 		resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 0, MRU: 1}
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
@@ -237,7 +256,7 @@ func TestSetConfig(t *testing.T) {
 
 	t.Run("test invalid state no mru", func(t *testing.T) {
 		resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 0}
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
@@ -245,7 +264,7 @@ func TestSetConfig(t *testing.T) {
 
 	t.Run("test invalid state no hru", func(t *testing.T) {
 		resources := gridtypes.Capacity{HRU: 0, SRU: 1, CRU: 1, MRU: 1}
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, resources, []string{}, false, false)
+		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)

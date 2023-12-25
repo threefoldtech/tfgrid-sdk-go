@@ -10,7 +10,7 @@ COPY /farmerbot .
 
 RUN go build -o bin/farmerbot main.go
 
-FROM alpine
+FROM alpine:3.19
 
 WORKDIR /app
 
