@@ -21,3 +21,4 @@ coverage/
 *.yaml
 *.toml
 *.log
+*.env

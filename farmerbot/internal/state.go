@@ -21,42 +21,41 @@ type state struct {
 }
 
 // NewState creates new state from configs
-func newState(ctx context.Context, sub Sub, rmbNodeClient RMB, inputs Config) (*state, error) {
-	state := state{config: inputs}
+func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config) (*state, error) {
+	s := state{config: cfg}
 
 	// required from power for nodes
-	if state.config.Power.OverProvisionCPU == 0 {
-		state.config.Power.OverProvisionCPU = defaultCPUProvision
+	if s.config.Power.OverProvisionCPU == 0 {
+		s.config.Power.OverProvisionCPU = defaultCPUProvision
 	}
 
-	if state.config.Power.OverProvisionCPU < 1 || state.config.Power.OverProvisionCPU > 4 {
-		return nil, fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", state.config.Power.OverProvisionCPU)
+	if s.config.Power.OverProvisionCPU < 1 || s.config.Power.OverProvisionCPU > 4 {
+		return nil, fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", s.config.Power.OverProvisionCPU)
 	}
 
 	// set farm
-	farm, err := sub.GetFarm(inputs.FarmID)
+	farm, err := sub.GetFarm(cfg.FarmID)
 	if err != nil {
 		return nil, err
 	}
 
-	state.farm = *farm
+	s.farm = *farm
 
-	nodes, err := fetchNodes(ctx, sub, rmbNodeClient, inputs, farm.DedicatedFarm)
+	nodes, err := fetchNodes(ctx, sub, rmbNodeClient, cfg, farm.DedicatedFarm)
 	if err != nil {
 		return nil, err
 	}
 
-	state.nodes = nodes
+	s.nodes = nodes
 
-	err = state.validate()
-	if err != nil {
+	if err := s.validate(); err != nil {
 		return nil, err
 	}
 
-	return &state, nil
+	return &s, nil
 }
 
-func fetchNodes(ctx context.Context, sub Sub, rmbNodeClient RMB, config Config, dedicatedFarm bool) (map[uint32]node, error) {
+func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Config, dedicatedFarm bool) (map[uint32]node, error) {
 	nodes := make(map[uint32]node)
 
 	farmNodes, err := sub.GetNodes(config.FarmID)
@@ -87,7 +86,7 @@ func fetchNodes(ctx context.Context, sub Sub, rmbNodeClient RMB, config Config, 
 
 func getNode(
 	ctx context.Context,
-	sub Sub,
+	sub Substrate,
 	rmbNodeClient RMB,
 	nodeID uint32,
 	neverShutDown,
@@ -96,7 +95,6 @@ func getNode(
 	oldPowerState powerState,
 ) (node, error) {
 
-	log.Debug().Uint32("ID", nodeID).Msg("Include node")
 	nodeObj, err := sub.GetNode(nodeID)
 	if err != nil {
 		return node{}, errors.Wrapf(err, "failed to get node %d from substrate", nodeID)

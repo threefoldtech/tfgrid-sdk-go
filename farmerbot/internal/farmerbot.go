@@ -112,7 +112,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	nodeRouter.WithHandler("findnode", func(ctx context.Context, payload []byte) (interface{}, error) {
-		var options NodeOptions
+		var options NodeFilterOption
 
 		if err := json.Unmarshal(payload, &options); err != nil {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
@@ -290,7 +290,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context) error {
 	return nil
 }
 
-func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Sub, nodeID uint32) (node, error) {
+func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, nodeID uint32) (node, error) {
 	neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
 
 	oldNode, nodeExists := f.state.nodes[nodeID]
@@ -364,7 +364,7 @@ func (f *FarmerBot) updateNodeWithLatestState(ctx context.Context, nodeID uint32
 	return nodeObj, nil
 }
 
-func (f *FarmerBot) shouldWakeUp(sub Sub, node node, roundStart time.Time) bool {
+func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time) bool {
 	if node.powerState != off {
 		return false
 	}

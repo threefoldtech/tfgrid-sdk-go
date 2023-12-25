@@ -28,7 +28,13 @@ power:
 - Run the bot
 
 ```bash
-farmerbot run -c config.json -m <mnemonic> -n dev -d
+farmerbot run -c config.yml -m <mnemonic> -n dev -d
+```
+
+- OR
+
+```bash
+farmerbot run -c config.yml -e .env -d
 ```
 
 Where:
@@ -39,12 +45,15 @@ Flags:
 
 Global Flags:
 -d, --debug             by setting this flag the farmerbot will print debug logs too
+-e, --env string        enter your env file that includes your NETWORK and MNEMONIC_OR_SEED
 -m, --mnemonic string   the mnemonic of the account of the farmer
 -n, --network string    the grid network to use (default "main")
 -s, --seed string       the hex seed of the account of the farmer
 ```
 
 > Note: you should only provide **`mnemonic`** or **`seed`**
+
+> Note: If you provided **`env`** flag, you shouldn't provide **`seed`**, **`mnemonic`**, or **`network`** flags
 
 ## Download
 

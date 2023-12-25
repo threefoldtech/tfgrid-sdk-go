@@ -17,7 +17,7 @@ import (
 func TestFindNode(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	sub := mocks.NewMockSub(ctrl)
+	sub := mocks.NewMockSubstrate(ctrl)
 	rmb := mocks.NewMockRMB(ctrl)
 
 	ctx := context.Background()
@@ -52,7 +52,7 @@ func TestFindNode(t *testing.T) {
 	oldNode2 := farmerbot.nodes[2]
 	oldFarm := farmerbot.farm
 
-	nodeOptions := NodeOptions{
+	nodeOptions := NodeFilterOption{
 		PublicIPs: 1,
 		SRU:       1,
 		MRU:       1,
@@ -172,7 +172,7 @@ func TestFindNode(t *testing.T) {
 		}
 		farmerbot.nodes[2] = node2
 
-		nodeID, err := farmerbot.findNode(sub, NodeOptions{GPUVendors: []string{"vendor"}, GPUDevices: []string{"device"}})
+		nodeID, err := farmerbot.findNode(sub, NodeFilterOption{GPUVendors: []string{"vendor"}, GPUDevices: []string{"device"}})
 		assert.NoError(t, err)
 		assert.Equal(t, nodeID, uint32(farmerbot.nodes[2].ID))
 
@@ -181,7 +181,7 @@ func TestFindNode(t *testing.T) {
 	})
 
 	t.Run("test invalid find node: no gpus in nodes", func(t *testing.T) {
-		_, err := farmerbot.findNode(sub, NodeOptions{GPUVendors: []string{"vendor"}, GPUDevices: []string{"device"}})
+		_, err := farmerbot.findNode(sub, NodeFilterOption{GPUVendors: []string{"vendor"}, GPUDevices: []string{"device"}})
 		assert.Error(t, err)
 	})
 
@@ -214,17 +214,17 @@ func TestFindNode(t *testing.T) {
 	})
 
 	t.Run("test invalid find node: certified so no nodes found", func(t *testing.T) {
-		_, err := farmerbot.findNode(sub, NodeOptions{Certified: true})
+		_, err := farmerbot.findNode(sub, NodeFilterOption{Certified: true})
 		assert.Error(t, err)
 	})
 
 	t.Run("test invalid find node: publicConfig so no nodes found", func(t *testing.T) {
-		_, err := farmerbot.findNode(sub, NodeOptions{PublicConfig: true})
+		_, err := farmerbot.findNode(sub, NodeFilterOption{PublicConfig: true})
 		assert.Error(t, err)
 	})
 
 	t.Run("test invalid find node: dedicated so no nodes found", func(t *testing.T) {
-		_, err := farmerbot.findNode(sub, NodeOptions{Dedicated: true})
+		_, err := farmerbot.findNode(sub, NodeFilterOption{Dedicated: true})
 		assert.Error(t, err)
 	})
 
@@ -236,7 +236,7 @@ func TestFindNode(t *testing.T) {
 		node2.dedicated = true
 		farmerbot.nodes[2] = node2
 
-		_, err := farmerbot.findNode(sub, NodeOptions{})
+		_, err := farmerbot.findNode(sub, NodeFilterOption{})
 		assert.Error(t, err)
 
 		err = farmerbot.updateNode(oldNode1)
@@ -247,7 +247,7 @@ func TestFindNode(t *testing.T) {
 	})
 
 	t.Run("test invalid find node: node is excluded", func(t *testing.T) {
-		_, err := farmerbot.findNode(sub, NodeOptions{NodeExclude: []uint32{uint32(farmerbot.nodes[1].ID), uint32(farmerbot.nodes[2].ID)}})
+		_, err := farmerbot.findNode(sub, NodeFilterOption{NodesExcluded: []uint32{uint32(farmerbot.nodes[1].ID), uint32(farmerbot.nodes[2].ID)}})
 		assert.Error(t, err)
 	})
 

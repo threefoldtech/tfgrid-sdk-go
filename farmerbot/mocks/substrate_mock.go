@@ -12,31 +12,31 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
-// MockSub is a mock of Sub interface.
-type MockSub struct {
+// MockSubstrate is a mock of Substrate interface.
+type MockSubstrate struct {
 	ctrl     *gomock.Controller
-	recorder *MockSubMockRecorder
+	recorder *MockSubstrateMockRecorder
 }
 
-// MockSubMockRecorder is the mock recorder for MockSub.
-type MockSubMockRecorder struct {
-	mock *MockSub
+// MockSubstrateMockRecorder is the mock recorder for MockSubstrate.
+type MockSubstrateMockRecorder struct {
+	mock *MockSubstrate
 }
 
-// NewMockSub creates a new mock instance.
-func NewMockSub(ctrl *gomock.Controller) *MockSub {
-	mock := &MockSub{ctrl: ctrl}
-	mock.recorder = &MockSubMockRecorder{mock}
+// NewMockSubstrate creates a new mock instance.
+func NewMockSubstrate(ctrl *gomock.Controller) *MockSubstrate {
+	mock := &MockSubstrate{ctrl: ctrl}
+	mock.recorder = &MockSubstrateMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockSub) EXPECT() *MockSubMockRecorder {
+func (m *MockSubstrate) EXPECT() *MockSubstrateMockRecorder {
 	return m.recorder
 }
 
 // GetDedicatedNodePrice mocks base method.
-func (m *MockSub) GetDedicatedNodePrice(nodeID uint32) (uint64, error) {
+func (m *MockSubstrate) GetDedicatedNodePrice(nodeID uint32) (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDedicatedNodePrice", nodeID)
 	ret0, _ := ret[0].(uint64)
@@ -45,13 +45,13 @@ func (m *MockSub) GetDedicatedNodePrice(nodeID uint32) (uint64, error) {
 }
 
 // GetDedicatedNodePrice indicates an expected call of GetDedicatedNodePrice.
-func (mr *MockSubMockRecorder) GetDedicatedNodePrice(nodeID interface{}) *gomock.Call {
+func (mr *MockSubstrateMockRecorder) GetDedicatedNodePrice(nodeID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDedicatedNodePrice", reflect.TypeOf((*MockSub)(nil).GetDedicatedNodePrice), nodeID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDedicatedNodePrice", reflect.TypeOf((*MockSubstrate)(nil).GetDedicatedNodePrice), nodeID)
 }
 
 // GetFarm mocks base method.
-func (m *MockSub) GetFarm(id uint32) (*substrate.Farm, error) {
+func (m *MockSubstrate) GetFarm(id uint32) (*substrate.Farm, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetFarm", id)
 	ret0, _ := ret[0].(*substrate.Farm)
@@ -60,13 +60,13 @@ func (m *MockSub) GetFarm(id uint32) (*substrate.Farm, error) {
 }
 
 // GetFarm indicates an expected call of GetFarm.
-func (mr *MockSubMockRecorder) GetFarm(id interface{}) *gomock.Call {
+func (mr *MockSubstrateMockRecorder) GetFarm(id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFarm", reflect.TypeOf((*MockSub)(nil).GetFarm), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFarm", reflect.TypeOf((*MockSubstrate)(nil).GetFarm), id)
 }
 
 // GetNode mocks base method.
-func (m *MockSub) GetNode(nodeID uint32) (*substrate.Node, error) {
+func (m *MockSubstrate) GetNode(nodeID uint32) (*substrate.Node, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNode", nodeID)
 	ret0, _ := ret[0].(*substrate.Node)
@@ -75,13 +75,13 @@ func (m *MockSub) GetNode(nodeID uint32) (*substrate.Node, error) {
 }
 
 // GetNode indicates an expected call of GetNode.
-func (mr *MockSubMockRecorder) GetNode(nodeID interface{}) *gomock.Call {
+func (mr *MockSubstrateMockRecorder) GetNode(nodeID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNode", reflect.TypeOf((*MockSub)(nil).GetNode), nodeID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNode", reflect.TypeOf((*MockSubstrate)(nil).GetNode), nodeID)
 }
 
 // GetNodeRentContract mocks base method.
-func (m *MockSub) GetNodeRentContract(nodeID uint32) (uint64, error) {
+func (m *MockSubstrate) GetNodeRentContract(nodeID uint32) (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNodeRentContract", nodeID)
 	ret0, _ := ret[0].(uint64)
@@ -90,13 +90,13 @@ func (m *MockSub) GetNodeRentContract(nodeID uint32) (uint64, error) {
 }
 
 // GetNodeRentContract indicates an expected call of GetNodeRentContract.
-func (mr *MockSubMockRecorder) GetNodeRentContract(nodeID interface{}) *gomock.Call {
+func (mr *MockSubstrateMockRecorder) GetNodeRentContract(nodeID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeRentContract", reflect.TypeOf((*MockSub)(nil).GetNodeRentContract), nodeID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeRentContract", reflect.TypeOf((*MockSubstrate)(nil).GetNodeRentContract), nodeID)
 }
 
 // GetNodes mocks base method.
-func (m *MockSub) GetNodes(farmID uint32) ([]uint32, error) {
+func (m *MockSubstrate) GetNodes(farmID uint32) ([]uint32, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetNodes", farmID)
 	ret0, _ := ret[0].([]uint32)
@@ -105,13 +105,13 @@ func (m *MockSub) GetNodes(farmID uint32) ([]uint32, error) {
 }
 
 // GetNodes indicates an expected call of GetNodes.
-func (mr *MockSubMockRecorder) GetNodes(farmID interface{}) *gomock.Call {
+func (mr *MockSubstrateMockRecorder) GetNodes(farmID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodes", reflect.TypeOf((*MockSub)(nil).GetNodes), farmID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodes", reflect.TypeOf((*MockSubstrate)(nil).GetNodes), farmID)
 }
 
 // GetPowerTarget mocks base method.
-func (m *MockSub) GetPowerTarget(nodeID uint32) (substrate.NodePower, error) {
+func (m *MockSubstrate) GetPowerTarget(nodeID uint32) (substrate.NodePower, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPowerTarget", nodeID)
 	ret0, _ := ret[0].(substrate.NodePower)
@@ -120,13 +120,13 @@ func (m *MockSub) GetPowerTarget(nodeID uint32) (substrate.NodePower, error) {
 }
 
 // GetPowerTarget indicates an expected call of GetPowerTarget.
-func (mr *MockSubMockRecorder) GetPowerTarget(nodeID interface{}) *gomock.Call {
+func (mr *MockSubstrateMockRecorder) GetPowerTarget(nodeID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPowerTarget", reflect.TypeOf((*MockSub)(nil).GetPowerTarget), nodeID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPowerTarget", reflect.TypeOf((*MockSubstrate)(nil).GetPowerTarget), nodeID)
 }
 
 // GetTwinByPubKey mocks base method.
-func (m *MockSub) GetTwinByPubKey(publicKey []byte) (uint32, error) {
+func (m *MockSubstrate) GetTwinByPubKey(publicKey []byte) (uint32, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTwinByPubKey", publicKey)
 	ret0, _ := ret[0].(uint32)
@@ -135,13 +135,13 @@ func (m *MockSub) GetTwinByPubKey(publicKey []byte) (uint32, error) {
 }
 
 // GetTwinByPubKey indicates an expected call of GetTwinByPubKey.
-func (mr *MockSubMockRecorder) GetTwinByPubKey(publicKey interface{}) *gomock.Call {
+func (mr *MockSubstrateMockRecorder) GetTwinByPubKey(publicKey interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwinByPubKey", reflect.TypeOf((*MockSub)(nil).GetTwinByPubKey), publicKey)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwinByPubKey", reflect.TypeOf((*MockSubstrate)(nil).GetTwinByPubKey), publicKey)
 }
 
 // SetNodePowerTarget mocks base method.
-func (m *MockSub) SetNodePowerTarget(identity substrate.Identity, nodeID uint32, up bool) (types.Hash, error) {
+func (m *MockSubstrate) SetNodePowerTarget(identity substrate.Identity, nodeID uint32, up bool) (types.Hash, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetNodePowerTarget", identity, nodeID, up)
 	ret0, _ := ret[0].(types.Hash)
@@ -150,7 +150,7 @@ func (m *MockSub) SetNodePowerTarget(identity substrate.Identity, nodeID uint32,
 }
 
 // SetNodePowerTarget indicates an expected call of SetNodePowerTarget.
-func (mr *MockSubMockRecorder) SetNodePowerTarget(identity, nodeID, up interface{}) *gomock.Call {
+func (mr *MockSubstrateMockRecorder) SetNodePowerTarget(identity, nodeID, up interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNodePowerTarget", reflect.TypeOf((*MockSub)(nil).SetNodePowerTarget), identity, nodeID, up)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetNodePowerTarget", reflect.TypeOf((*MockSubstrate)(nil).SetNodePowerTarget), identity, nodeID, up)
 }

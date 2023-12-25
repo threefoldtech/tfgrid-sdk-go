@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/parser"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
 	"github.com/vedhavyas/go-subkey"
 )
@@ -41,11 +42,18 @@ func Execute() {
 }
 
 func init() {
+	farmerBotCmd.PersistentFlags().StringP("env", "e", "", "enter your env file that includes your NETWORK and MNEMONIC_OR_SEED")
+
 	farmerBotCmd.PersistentFlags().StringP("network", "n", internal.MainNetwork, "the grid network to use")
 	farmerBotCmd.PersistentFlags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
 	farmerBotCmd.PersistentFlags().StringP("seed", "s", "", "the hex seed of the account of the farmer")
-	farmerBotCmd.PersistentFlags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
 	farmerBotCmd.MarkFlagsMutuallyExclusive("mnemonic", "seed")
+
+	farmerBotCmd.MarkFlagsMutuallyExclusive("env", "network")
+	farmerBotCmd.MarkFlagsMutuallyExclusive("env", "seed")
+	farmerBotCmd.MarkFlagsMutuallyExclusive("env", "mnemonic")
+
+	farmerBotCmd.PersistentFlags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
 
 	runCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Available format is yml/yaml")
 
@@ -64,6 +72,21 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonicOrSeed string,
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+
+	envPath, err := cmd.Flags().GetString("env")
+	if err != nil {
+		err = fmt.Errorf("invalid env path '%s'", envPath)
+		return
+	}
+
+	if len(envPath) != 0 {
+		envContent, err := parser.ReadFile(envPath)
+		if err != nil {
+			return "", "", err
+		}
+
+		return parser.ParseEnv(string(envContent))
 	}
 
 	network, err = cmd.Flags().GetString("network")

@@ -18,7 +18,7 @@ import (
 )
 
 func mockRMBAndSubstrateCalls(
-	ctx context.Context, sub *mocks.MockSub, rmb *mocks.MockRMB,
+	ctx context.Context, sub *mocks.MockSubstrate, rmb *mocks.MockRMB,
 	inputs Config,
 	resources gridtypes.Capacity, errs []string, emptyNode, emptyTwin bool,
 ) {
@@ -93,7 +93,7 @@ func mockRMBAndSubstrateCalls(
 func TestSetConfig(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	sub := mocks.NewMockSub(ctrl)
+	sub := mocks.NewMockSubstrate(ctrl)
 	rmb := mocks.NewMockRMB(ctrl)
 
 	ctx := context.Background()

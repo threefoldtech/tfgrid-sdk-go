@@ -8,8 +8,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// PowerOn sets the node power state ON
-func (f *FarmerBot) powerOn(sub Sub, nodeID uint32) error {
+// powerOn sets the node power state ON
+func (f *FarmerBot) powerOn(sub Substrate, nodeID uint32) error {
 	log.Info().Uint32("nodeID", nodeID).Msg("POWER ON")
 	f.m.Lock()
 	defer f.m.Unlock()
@@ -35,15 +35,15 @@ func (f *FarmerBot) powerOn(sub Sub, nodeID uint32) error {
 	return f.updateNode(node)
 }
 
-// PowerOff sets the node power state OFF
-func (f *FarmerBot) powerOff(sub Sub, nodeID uint32) error {
+// powerOff sets the node power state OFF
+func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 	log.Info().Uint32("nodeID", nodeID).Msg("POWER OFF")
 	f.m.Lock()
 	defer f.m.Unlock()
 
 	node, ok := f.nodes[nodeID]
 	if !ok {
-		return fmt.Errorf("node %d is not found", nodeID)
+		return fmt.Errorf("node '%d' is not found", nodeID)
 	}
 
 	if node.powerState == off || node.powerState == shuttingDown {
@@ -51,38 +51,38 @@ func (f *FarmerBot) powerOff(sub Sub, nodeID uint32) error {
 	}
 
 	if node.neverShutDown {
-		return errors.Errorf("cannot power off node, node is configured to never be shutdown")
+		return errors.Errorf("cannot power off node '%d', node is configured to never be shutdown", nodeID)
 	}
 
 	if node.PublicConfig.HasValue {
-		return errors.Errorf("cannot power off node, node has public config")
+		return errors.Errorf("cannot power off node '%d', node has public config", nodeID)
 	}
 
 	if node.timeoutClaimedResources.After(time.Now()) {
-		return errors.Errorf("cannot power off node, node has claimed resources")
+		return errors.Errorf("cannot power off node '%d', node has claimed resources", nodeID)
 	}
 
 	if node.hasActiveRentContract {
-		return errors.Errorf("cannot power off node, node has a rent contract")
+		return errors.Errorf("cannot power off node '%d', node has a rent contract", nodeID)
 	}
 
 	if !node.isUnused() {
-		return errors.Errorf("cannot power off node, node is used")
+		return errors.Errorf("cannot power off node '%d', node is used", nodeID)
 	}
 
 	if time.Since(node.lastTimePowerStateChanged) < periodicWakeUpDuration {
-		return errors.Errorf("cannot power off node, node is still in its wakeup duration")
+		return errors.Errorf("cannot power off node '%d', node is still in its wakeup duration", nodeID)
 	}
 
 	onNodes := f.filterNodesPower([]powerState{on})
 
 	if len(onNodes) < 2 {
-		return errors.Errorf("cannot power off node, at least one node should be on in the farm")
+		return errors.Errorf("cannot power off node '%d', at least one node should be on in the farm", nodeID)
 	}
 
 	_, err := sub.SetNodePowerTarget(f.identity, nodeID, false)
 	if err != nil {
-		return errors.Wrapf(err, "failed to set node %d power target to down", nodeID)
+		return errors.Wrapf(err, "failed to set node '%d' power target to down", nodeID)
 	}
 
 	node.powerState = shuttingDown
@@ -92,7 +92,7 @@ func (f *FarmerBot) powerOff(sub Sub, nodeID uint32) error {
 }
 
 // manageNodesPower for power management nodes
-func (f *FarmerBot) manageNodesPower(sub Sub) error {
+func (f *FarmerBot) manageNodesPower(sub Substrate) error {
 	nodes := f.filterNodesPower([]powerState{on, wakingUP})
 
 	usedResources, totalResources := calculateResourceUsage(nodes)
@@ -129,7 +129,7 @@ func calculateResourceUsage(nodes map[uint32]node) (uint64, uint64) {
 	return used, total
 }
 
-func (f *FarmerBot) resourceUsageTooHigh(sub Sub) error {
+func (f *FarmerBot) resourceUsageTooHigh(sub Substrate) error {
 	offNodes := f.filterNodesPower([]powerState{off})
 
 	if len(offNodes) > 0 {
@@ -141,7 +141,7 @@ func (f *FarmerBot) resourceUsageTooHigh(sub Sub) error {
 	return fmt.Errorf("no available node to wake up, resources usage is high")
 }
 
-func (f *FarmerBot) resourceUsageTooLow(sub Sub, usedResources, totalResources uint64) error {
+func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResources uint64) error {
 	onNodes := f.filterNodesPower([]powerState{on})
 
 	// nodes with public config can't be shutdown

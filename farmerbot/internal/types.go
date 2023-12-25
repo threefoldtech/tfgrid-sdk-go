@@ -48,20 +48,20 @@ type node struct {
 	timesRandomWakeUps        int
 }
 
-// NodeOptions represents the options to find a node
-type NodeOptions struct {
-	NodeExclude  []uint32 `json:"node_exclude,omitempty"`
-	HasGPUs      uint8    `json:"has_gpus,omitempty"`
-	GPUVendors   []string `json:"gpu_vendors,omitempty"`
-	GPUDevices   []string `json:"gpu_devices,omitempty"`
-	Certified    bool     `json:"certified,omitempty"`
-	Dedicated    bool     `json:"dedicated,omitempty"`
-	PublicConfig bool     `json:"public_config,omitempty"`
-	PublicIPs    uint64   `json:"public_ips,omitempty"`
-	HRU          uint64   `json:"hru,omitempty"`
-	SRU          uint64   `json:"sru,omitempty"`
-	CRU          uint64   `json:"cru,omitempty"`
-	MRU          uint64   `json:"mru,omitempty"`
+// NodeFilterOption represents the options to find a node
+type NodeFilterOption struct {
+	NodesExcluded []uint32 `json:"nodes_excluded,omitempty"`
+	HasGPUs       uint8    `json:"has_gpus,omitempty"`
+	GPUVendors    []string `json:"gpu_vendors,omitempty"`
+	GPUDevices    []string `json:"gpu_devices,omitempty"`
+	Certified     bool     `json:"certified,omitempty"`
+	Dedicated     bool     `json:"dedicated,omitempty"`
+	PublicConfig  bool     `json:"public_config,omitempty"`
+	PublicIPs     uint64   `json:"public_ips,omitempty"`
+	HRU           uint64   `json:"hru,omitempty"`
+	SRU           uint64   `json:"sru,omitempty"`
+	CRU           uint64   `json:"cru,omitempty"`
+	MRU           uint64   `json:"mru,omitempty"`
 }
 
 // UpdateResources updates the node resources from zos resources stats
@@ -133,14 +133,14 @@ func (cap *capacity) add(c capacity) {
 
 // Subtract subtracts a new capacity
 func (cap *capacity) subtract(c capacity) (result capacity) {
-	result.cru = subtract(cap.cru, c.cru)
-	result.mru = subtract(cap.mru, c.mru)
-	result.sru = subtract(cap.sru, c.sru)
-	result.hru = subtract(cap.hru, c.hru)
+	result.cru = subtractOrZero(cap.cru, c.cru)
+	result.mru = subtractOrZero(cap.mru, c.mru)
+	result.sru = subtractOrZero(cap.sru, c.sru)
+	result.hru = subtractOrZero(cap.hru, c.hru)
 	return result
 }
 
-func subtract(a uint64, b uint64) uint64 {
+func subtractOrZero(a uint64, b uint64) uint64 {
 	if a > b {
 		return a - b
 	}

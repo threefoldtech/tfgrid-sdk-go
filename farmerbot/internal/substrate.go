@@ -5,8 +5,8 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
-// Sub is substrate client interface
-type Sub interface {
+// Substrate is substrate client interface
+type Substrate interface {
 	SetNodePowerTarget(identity substrate.Identity, nodeID uint32, up bool) (hash types.Hash, err error)
 	GetPowerTarget(nodeID uint32) (power substrate.NodePower, err error)
 

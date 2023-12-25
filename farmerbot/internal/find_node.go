@@ -11,7 +11,7 @@ import (
 )
 
 // FindNode finds an available node in the farm
-func (f *FarmerBot) findNode(sub Sub, nodeOptions NodeOptions) (uint32, error) {
+func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint32, error) {
 	log.Info().Msg("Finding a node")
 
 	nodeOptionsCapacity := capacity{
@@ -78,7 +78,7 @@ func (f *FarmerBot) findNode(sub Sub, nodeOptions NodeOptions) (uint32, error) {
 			}
 		}
 
-		if slices.Contains(nodeOptions.NodeExclude, uint32(node.ID)) {
+		if slices.Contains(nodeOptions.NodesExcluded, uint32(node.ID)) {
 			continue
 		}
 
