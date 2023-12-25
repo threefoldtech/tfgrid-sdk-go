@@ -470,6 +470,7 @@ func ExampleGatewayNameDeployer_BatchDeploy() {
 func ExampleGatewayNameDeployer_Cancel() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 	if err != nil {
@@ -477,8 +478,14 @@ func ExampleGatewayNameDeployer_Cancel() {
 		return
 	}
 
-	// should be a valid and existing gateway name
-	g := workloads.GatewayNameProxy{}
+	// should be a valid and existing name and deploymentName
+	name := "test.com"
+	deploymentName := "test"
+	g, err := tfPluginClient.State.LoadGatewayNameFromGrid(nodeID, name, deploymentName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	err = tfPluginClient.GatewayNameDeployer.Cancel(context.Background(), &g)
 	if err != nil {

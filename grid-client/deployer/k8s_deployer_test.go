@@ -472,6 +472,7 @@ func ExampleK8sDeployer_BatchDeploy() {
 func ExampleK8sDeployer_Cancel() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 	if err != nil {
@@ -479,8 +480,13 @@ func ExampleK8sDeployer_Cancel() {
 		return
 	}
 
-	// should be a valid and existing k8s cluster
-	cluster := workloads.K8sCluster{}
+	// should be a valid and existing k8s cluster deployment name
+	deploymentName := "K8sForTesting"
+	cluster, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID}, deploymentName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	err = tfPluginClient.K8sDeployer.Cancel(context.Background(), &cluster)
 	if err != nil {

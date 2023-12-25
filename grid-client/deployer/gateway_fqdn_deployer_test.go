@@ -435,6 +435,7 @@ func ExampleGatewayFQDNDeployer_BatchDeploy() {
 func ExampleGatewayFQDNDeployer_Cancel() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 	if err != nil {
@@ -442,8 +443,14 @@ func ExampleGatewayFQDNDeployer_Cancel() {
 		return
 	}
 
-	// should be a valid and existing gateway fqdn
-	g := workloads.GatewayFQDNProxy{}
+	// should be a valid and existing name and deploymentName
+	name := "test1.com"
+	deploymentName := "test1"
+	g, err := tfPluginClient.State.LoadGatewayFQDNFromGrid(nodeID, name, deploymentName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	err = tfPluginClient.GatewayFQDNDeployer.Cancel(context.Background(), &g)
 	if err != nil {

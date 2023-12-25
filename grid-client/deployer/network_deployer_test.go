@@ -204,8 +204,13 @@ func ExampleNetworkDeployer_Cancel() {
 		return
 	}
 
-	// should be a valid and existing network
-	n := workloads.ZNet{}
+	// should be a valid and existing network name
+	networkName := "network"
+	n, err := tfPluginClient.State.LoadNetworkFromGrid(networkName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &n)
 	if err != nil {
