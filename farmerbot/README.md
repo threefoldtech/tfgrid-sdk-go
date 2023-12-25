@@ -8,22 +8,7 @@ Farmerbot is a service that a farmer can run allowing him to automatically manag
 
 > :warning: **Be careful**: The timezone of the farmerbot will be the same as the time zone of the machine the farmerbot running inside.
 
-- Create a new yml/yaml file `config.yml` and add your configurations:
-
-```yml
-farm_id: "<your farm ID, required>"
-included_nodes:
-  - "<your node ID to be included, required at least 2>"
-excluded_nodes:
-  - "<your node ID to be excluded, optional>"
-never_shutdown_nodes:
-  - "<your node ID to be never shutdown, optional>"
-power:
-  periodic_wake_up_start: "<daily time to wake up nodes for your farm, default is the time your run the command, format is 00:00AM or 00:00PM, optional>"
-  wake_up_threshold: "<the threshold number for resources usage that will need another node to be on, default is 80, optional>"
-  periodic_wake_up_limit: "<the number (limit) of nodes to be waken up everyday, default is 1, optional>"
-  overprovision_cpu: "<how much node allows over provisioning the CPU , default is 1, range: [1;4], optional>"
-```
+- add your [configurations](#config)
 
 - [Download](#download) farmerbot binaries.
 
@@ -33,7 +18,7 @@ power:
 farmerbot run -c config.yml -m <mnemonic> -n dev -d
 ```
 
-- OR
+- OR (create env file)
 
 ```bash
 farmerbot run -c config.yml -e .env -d
@@ -67,12 +52,54 @@ Global Flags:
 mv farmerbot /usr/local/bin
 ```
 
+## Use docker to run the bot
+
+1. Create a new `.env` file and add your farmer environment variables:
+
+```env
+NETWORK="the grid network to use (default is mainnet)"
+MNEMONIC_OR_SEED="your farm mnemonic or seed"
+```
+
+2. Add your [configurations](#config)
+
+3. build
+
+```bash
+docker build -t farmerbot -f Dockerfile ../
+```
+
+4. run
+
+```bash
+docker run farmerbot
+```
+
 ## Build
 
 Run the following command inside the directory:
 
 ```bash
 make build
+```
+
+## Config
+
+- Create a new yml/yaml file `config.yml` and add your configurations:
+
+```yml
+farm_id: "<your farm ID, required>"
+included_nodes:
+  - "<your node ID to be included, required at least 2>"
+excluded_nodes:
+  - "<your node ID to be excluded, optional>"
+never_shutdown_nodes:
+  - "<your node ID to be never shutdown, optional>"
+power:
+  periodic_wake_up_start: "<daily time to wake up nodes for your farm, default is the time your run the command, format is 00:00AM or 00:00PM, optional>"
+  wake_up_threshold: "<the threshold number for resources usage that will need another node to be on, default is 80, optional>"
+  periodic_wake_up_limit: "<the number (limit) of nodes to be waken up everyday, default is 1, optional>"
+  overprovision_cpu: "<how much node allows over provisioning the CPU , default is 1, range: [1;4], optional>"
 ```
 
 ## Supported commands

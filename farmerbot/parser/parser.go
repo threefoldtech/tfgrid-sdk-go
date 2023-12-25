@@ -65,7 +65,7 @@ func ParseEnv(content string) (network string, mnemonicOrSeed string, err error)
 
 	switch {
 	case network == "":
-		return "", "", fmt.Errorf("NETWORK is required")
+		network = internal.MainNetwork
 	case mnemonicOrSeed == "":
 		return "", "", fmt.Errorf("MNEMONIC_OR_SEED is required")
 	}

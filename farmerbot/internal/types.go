@@ -104,6 +104,7 @@ func (n *node) canShutDown() bool {
 		n.PublicConfig.HasValue ||
 		n.neverShutDown ||
 		n.hasActiveRentContract ||
+		n.timeoutClaimedResources.After(time.Now()) ||
 		time.Since(n.lastTimePowerStateChanged) < periodicWakeUpDuration {
 		return false
 	}
