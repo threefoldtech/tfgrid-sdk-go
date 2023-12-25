@@ -2,13 +2,13 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/golang/mock/gomock"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
@@ -132,7 +132,7 @@ func TestSetConfig(t *testing.T) {
 
 		state, err := newState(ctx, sub, rmb, inputs)
 		assert.NoError(t, err)
-		assert.Equal(t, state.config.Power.WakeUpThreshold, MaxWakeUpThreshold)
+		assert.Equal(t, state.config.Power.WakeUpThreshold, maxWakeUpThreshold)
 	})
 
 	t.Run("test valid state: wake up threshold (is 0 => default)", func(t *testing.T) {
@@ -299,23 +299,23 @@ func TestStateModel(t *testing.T) {
 func mocksErr(errs []string) (farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, powerErr, statsErr, poolsErr, gpusErr error) {
 	// errors
 	if slices.Contains(errs, "farm") {
-		farmErr = errors.Errorf("error")
+		farmErr = fmt.Errorf("error")
 	}
 
 	if slices.Contains(errs, "nodes") {
-		nodesErr = errors.Errorf("error")
+		nodesErr = fmt.Errorf("error")
 	}
 
 	if slices.Contains(errs, "node") {
-		nodeErr = errors.Errorf("error")
+		nodeErr = fmt.Errorf("error")
 	}
 
 	if slices.Contains(errs, "dedicated") {
-		dedicatedErr = errors.Errorf("error")
+		dedicatedErr = fmt.Errorf("error")
 	}
 
 	if slices.Contains(errs, "rent") {
-		rentErr = errors.Errorf("error")
+		rentErr = fmt.Errorf("error")
 	}
 
 	if slices.Contains(errs, "rentNotExist") {
@@ -323,19 +323,19 @@ func mocksErr(errs []string) (farmErr, nodesErr, nodeErr, dedicatedErr, rentErr,
 	}
 
 	if slices.Contains(errs, "power") {
-		powerErr = errors.Errorf("error")
+		powerErr = fmt.Errorf("error")
 	}
 
 	if slices.Contains(errs, "stats") {
-		statsErr = errors.Errorf("error")
+		statsErr = fmt.Errorf("error")
 	}
 
 	if slices.Contains(errs, "pools") {
-		poolsErr = errors.Errorf("error")
+		poolsErr = fmt.Errorf("error")
 	}
 
 	if slices.Contains(errs, "gpus") {
-		gpusErr = errors.Errorf("error")
+		gpusErr = fmt.Errorf("error")
 	}
 
 	return

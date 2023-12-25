@@ -6,12 +6,13 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/golang/mock v1.6.0
+	github.com/hashicorp/go-envparse v0.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20231129121046-56ffc1f8f5c6
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.7
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.10
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
 	github.com/vedhavyas/go-subkey v1.0.3
 	gopkg.in/yaml.v3 v3.0.1
@@ -31,7 +32,7 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
-	github.com/google/uuid v1.4.0 // indirect
+	github.com/google/uuid v1.5.0 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect

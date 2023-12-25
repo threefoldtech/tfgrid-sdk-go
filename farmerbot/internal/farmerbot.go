@@ -46,9 +46,9 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 		return FarmerBot{}, err
 	}
 
-	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, relayURLS[network], fmt.Sprintf("farmerbot-rpc-%d", config.FarmID), subConn, true)
+	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, relayURLs[network], fmt.Sprintf("farmerbot-rpc-%d", config.FarmID), subConn, true)
 	if err != nil {
-		return FarmerBot{}, errors.Wrap(err, "could not create rmb client")
+		return FarmerBot{}, fmt.Errorf("could not create rmb client with error %w", err)
 	}
 
 	farmerbot.rmbNodeClient = NewRmbNodeClient(rmb)
@@ -99,8 +99,11 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	// defer subConn.Close()
+
+	if err := f.validateAccountEnoughBalance(subConn, minBalanceToRun); err != nil {
+		return fmt.Errorf("failed to validate account balance: %w", err)
+	}
 
 	farmerTwinID, err := subConn.GetTwinByPubKey(f.identity.PublicKey())
 	if err != nil {
@@ -146,7 +149,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		neverShutDown := slices.Contains(f.config.NeverShutDownNodes, nodeID)
 		node, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, neverShutDown, false, f.farm.DedicatedFarm, on)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to include node with id %d", nodeID)
+			return nil, fmt.Errorf("failed to include node with id %d with error: %w", nodeID, err)
 		}
 
 		f.state.addNode(node)
@@ -159,7 +162,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 			return nil, err
 		}
 
-		if err := f.validateAccountEnoughBalance(subConn); err != nil {
+		if err := f.validateAccountEnoughBalance(subConn, 0); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
@@ -185,7 +188,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 			return nil, err
 		}
 
-		if err := f.validateAccountEnoughBalance(subConn); err != nil {
+		if err := f.validateAccountEnoughBalance(subConn, 0); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
@@ -210,12 +213,12 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		f.mnemonicOrSeed,
 		subConn,
 		router.Serve,
-		peer.WithRelay(relayURLS[f.network]),
+		peer.WithRelay(relayURLs[f.network]),
 		peer.WithSession(fmt.Sprintf("farmerbot-%d", f.farm.ID)),
 	)
 
 	if err != nil {
-		return errors.Wrap(err, "failed to create farmerbot direct peer")
+		return fmt.Errorf("failed to create farmerbot direct peer with error: %w", err)
 	}
 
 	return nil
@@ -237,7 +240,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context) error {
 		return err
 	}
 
-	// remove nodes that doesn't exist anymore in the farm
+	// remove nodes that don't exist anymore in the farm
 	for nodeID := range f.state.nodes {
 		if !slices.Contains(farmNodes, nodeID) {
 			f.state.deleteNode(nodeID)
@@ -343,7 +346,7 @@ func (f *FarmerBot) updateNodeWithLatestState(ctx context.Context, nodeID uint32
 	nodeObj.lastTimeAwake = oldNode.lastTimeAwake
 	nodeObj.timesRandomWakeUps = oldNode.timesRandomWakeUps
 
-	if nodeObj.powerState == wakingUP && time.Since(nodeObj.lastTimePowerStateChanged) > timeoutPowerStateChange {
+	if nodeObj.powerState == wakingUp && time.Since(nodeObj.lastTimePowerStateChanged) > timeoutPowerStateChange {
 		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Wakeup was unsuccessful. Putting its state back to off.")
 		nodeObj.powerState = off
 		nodeObj.lastTimePowerStateChanged = time.Now()
@@ -398,7 +401,13 @@ func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time)
 	return false
 }
 
-func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate) error {
+func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate, required float64) error {
+	if required == 0 {
+		required = 0.002
+	}
+
+	requiredBalanceInTFT := int64(required * math.Pow(10, 7))
+
 	accountAddress, err := substrate.FromAddress(f.identity.Address())
 	if err != nil {
 		return err
@@ -406,11 +415,11 @@ func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate) error
 
 	balance, err := sub.GetBalance(accountAddress)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
-		return errors.Wrap(err, "failed to get a valid account")
+		return fmt.Errorf("failed to get a valid account with error: %w", err)
 	}
 
-	if balance.Free.Cmp(big.NewInt(20000)) == -1 {
-		return errors.Errorf("account contains %f tft, min fee is 0.002 tft", float64(balance.Free.Int64())/math.Pow(10, 7))
+	if balance.Free.Cmp(big.NewInt(requiredBalanceInTFT)) == -1 {
+		return fmt.Errorf("account contains %f tft, min fee is 0.002 tft", float64(balance.Free.Int64())/math.Pow(10, 7))
 	}
 
 	return nil

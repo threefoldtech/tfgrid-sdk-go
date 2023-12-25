@@ -54,7 +54,7 @@ power:
 		now := time.Now()
 		assert.Equal(t, c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime(), time.Date(now.Year(), now.Month(), now.Day(), 8, 30, 0, 0, time.Local))
 		assert.Equal(t, c.Power.PeriodicWakeUpLimit, uint8(2))
-		assert.Equal(t, c.Power.OverProvisionCPU, float32(2))
+		assert.Equal(t, c.Power.OverProvisionCPU, int8(2))
 	})
 
 	t.Run("test invalid yaml: node is included and excluded", func(t *testing.T) {

@@ -6,6 +6,8 @@ Farmerbot is a service that a farmer can run allowing him to automatically manag
 
 ## How to use
 
+> :warning: **Be careful**: The timezone of the farmerbot will be the same as the time zone of the machine the farmerbot running inside.
+
 - Create a new yml/yaml file `config.yml` and add your configurations:
 
 ```yml
@@ -47,7 +49,7 @@ Global Flags:
 -d, --debug             by setting this flag the farmerbot will print debug logs too
 -e, --env string        enter your env file that includes your NETWORK and MNEMONIC_OR_SEED
 -m, --mnemonic string   the mnemonic of the account of the farmer
--n, --network string    the grid network to use (default "main")
+-n, --network string    the grid network to use, available networks: dev, qa, test, and main (default "main")
 -s, --seed string       the hex seed of the account of the farmer
 ```
 
@@ -152,7 +154,7 @@ Example:
 
 ### farmerbot.powermanager.poweron
 
-This call is only allowed to be executed if it comes from the farmer (the twin ID should equal the farmer's twin ID). It will power on the node specified in the arguments. After powering on a node it will be excluded from farmerbot management
+This call is only allowed to be executed if it comes from the farmer (the twin ID should equal the farmer's twin ID). It will power on the node specified in the arguments. After powering on a node it will be :warning: **EXCLUDED** :warning: from farmerbot management
 
 Arguments:
 
@@ -164,7 +166,7 @@ Example:
 
 ### farmerbot.powermanager.poweroff
 
-This call is only allowed to be executed if it comes from the farmer (the twin ID should equal the farmer's twin ID). It will power off the node specified in the arguments. After powering off a node it will be excluded from farmerbot management
+This call is only allowed to be executed if it comes from the farmer (the twin ID should equal the farmer's twin ID). It will power off the node specified in the arguments. After powering off a node it will be :warning: **EXCLUDED** :warning: from farmerbot management
 
 Arguments:
 
@@ -182,7 +184,7 @@ Example:
 
 - [version](./examples/version/main.go)
 
-### farmerbot.powermanager.includenode
+### :warning: farmerbot.powermanager.includenode
 
 This call is only allowed to be executed if it comes from the farmer (the twin ID should equal the farmer's twin ID). It will include an excluded node from power on and off calls (it should be included in the farmerbot configurations)
 

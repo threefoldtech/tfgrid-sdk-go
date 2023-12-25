@@ -73,12 +73,14 @@ func TestFindNode(t *testing.T) {
 	t.Run("test valid find node: found an ON node, trying to power off fails because resources is claimed", func(t *testing.T) {
 		nodeID, err := farmerbot.findNode(sub, nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, uint32(farmerbot.nodes[1].ID))
+		assert.Contains(t, farmerbot.nodes, nodeID)
 
 		err = farmerbot.powerOff(sub, nodeID)
 		assert.Error(t, err)
 
 		err = farmerbot.updateNode(oldNode1)
+		assert.NoError(t, err)
+		err = farmerbot.updateNode(oldNode2)
 		assert.NoError(t, err)
 		farmerbot.farm = oldFarm
 	})

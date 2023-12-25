@@ -21,9 +21,9 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 		mru: nodeOptions.MRU,
 	}
 
-	if (len(nodeOptions.GPUVendors) > 0 || len(nodeOptions.GPUDevices) > 0) && nodeOptions.HasGPUs == 0 {
+	if (len(nodeOptions.GPUVendors) > 0 || len(nodeOptions.GPUDevices) > 0) && nodeOptions.NumGPU == 0 {
 		// at least one gpu in case the user didn't provide the amount
-		nodeOptions.HasGPUs = 1
+		nodeOptions.NumGPU = 1
 	}
 
 	log.Debug().Interface("required filter options", nodeOptions)
@@ -42,16 +42,16 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 	var possibleNodes []node
 	for _, node := range f.nodes {
 		gpus := node.gpus
-		if nodeOptions.HasGPUs > 0 {
+		if nodeOptions.NumGPU > 0 {
 			if len(nodeOptions.GPUVendors) > 0 {
-				gpus = filterGPUs(gpus, nodeOptions.GPUVendors, false)
+				gpus = filterGPUsByVendors(gpus, nodeOptions.GPUVendors)
 			}
 
 			if len(nodeOptions.GPUDevices) > 0 {
-				gpus = filterGPUs(gpus, nodeOptions.GPUDevices, true)
+				gpus = filterGPUsByDevices(gpus, nodeOptions.GPUDevices)
 			}
 
-			if len(gpus) < int(nodeOptions.HasGPUs) {
+			if len(gpus) < int(nodeOptions.NumGPU) {
 				continue
 			}
 		}
@@ -95,10 +95,6 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 
 	// Sort the nodes on power state (the ones that are ON first then waking up, off, shutting down)
 	sort.Slice(possibleNodes, func(i, j int) bool {
-		return possibleNodes[i].ID < possibleNodes[j].ID
-	})
-
-	sort.Slice(possibleNodes, func(i, j int) bool {
 		return possibleNodes[i].powerState < possibleNodes[j].powerState
 	})
 
@@ -109,7 +105,7 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 	// add a timeout (after 30 minutes we update the resources)
 	nodeFound.timeoutClaimedResources = time.Now().Add(timeoutPowerStateChange)
 
-	if nodeOptions.Dedicated || nodeOptions.HasGPUs > 0 {
+	if nodeOptions.Dedicated || nodeOptions.NumGPU > 0 {
 		// claim all capacity
 		nodeFound.claimResources(nodeFound.resources.total)
 	} else {
@@ -137,15 +133,21 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 	return uint32(nodeFound.ID), nil
 }
 
-// FilterIncludesSubStr filters a string slice according to if elements include a sub string
-func filterGPUs(gpus []zos.GPU, vendorsOrDevices []string, device bool) (filtered []zos.GPU) {
+func filterGPUsByVendors(gpus []zos.GPU, vendorsOrDevices []string) (filtered []zos.GPU) {
 	for _, gpu := range gpus {
 		for _, filter := range vendorsOrDevices {
-			if gpu.Device == filter && device {
+			if gpu.Vendor == filter {
 				filtered = append(filtered, gpu)
 			}
+		}
+	}
+	return
+}
 
-			if gpu.Vendor == filter && !device {
+func filterGPUsByDevices(gpus []zos.GPU, vendorsOrDevices []string) (filtered []zos.GPU) {
+	for _, gpu := range gpus {
+		for _, filter := range vendorsOrDevices {
+			if gpu.Device == filter {
 				filtered = append(filtered, gpu)
 			}
 		}

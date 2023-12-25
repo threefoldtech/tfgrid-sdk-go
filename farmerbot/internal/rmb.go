@@ -17,40 +17,40 @@ type RMB interface {
 }
 
 type RMBNodeClient struct {
-	rmb        rmb.Client
+	client     rmb.Client
 	rmbTimeout time.Duration
 }
 
 func NewRmbNodeClient(rmb rmb.Client) *RMBNodeClient {
 	return &RMBNodeClient{
-		rmb:        rmb,
+		client:     rmb,
 		rmbTimeout: timeoutRMBResponse,
 	}
 }
 
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
-func (n *RMBNodeClient) Statistics(ctx context.Context, nodeTwin uint32) (stats zos.Counters, err error) {
-	ctx, cancel := context.WithTimeout(ctx, n.rmbTimeout)
+func (r *RMBNodeClient) Statistics(ctx context.Context, nodeTwin uint32) (stats zos.Counters, err error) {
+	ctx, cancel := context.WithTimeout(ctx, r.rmbTimeout)
 	defer cancel()
 
 	const cmd = "zos.statistics.get"
-	return stats, n.rmb.Call(ctx, nodeTwin, cmd, nil, &stats)
+	return stats, r.client.Call(ctx, nodeTwin, cmd, nil, &stats)
 }
 
 // GetStoragePools executes zos system version cmd
-func (n *RMBNodeClient) GetStoragePools(ctx context.Context, nodeTwin uint32) (pools []pkg.PoolMetrics, err error) {
-	ctx, cancel := context.WithTimeout(ctx, n.rmbTimeout)
+func (r *RMBNodeClient) GetStoragePools(ctx context.Context, nodeTwin uint32) (pools []pkg.PoolMetrics, err error) {
+	ctx, cancel := context.WithTimeout(ctx, r.rmbTimeout)
 	defer cancel()
 
 	const cmd = "zos.storage.pools"
-	return pools, n.rmb.Call(ctx, nodeTwin, cmd, nil, &pools)
+	return pools, r.client.Call(ctx, nodeTwin, cmd, nil, &pools)
 }
 
 // ListGPUs return a list of all gpus on the node.
-func (n *RMBNodeClient) ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []zos.GPU, err error) {
-	ctx, cancel := context.WithTimeout(ctx, n.rmbTimeout)
+func (r *RMBNodeClient) ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []zos.GPU, err error) {
+	ctx, cancel := context.WithTimeout(ctx, r.rmbTimeout)
 	defer cancel()
 
 	const cmd = "zos.gpu.list"
-	return gpus, n.rmb.Call(ctx, nodeTwin, cmd, nil, &gpus)
+	return gpus, r.client.Call(ctx, nodeTwin, cmd, nil, &gpus)
 }

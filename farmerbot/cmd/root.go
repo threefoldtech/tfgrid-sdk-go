@@ -44,7 +44,7 @@ func Execute() {
 func init() {
 	farmerBotCmd.PersistentFlags().StringP("env", "e", "", "enter your env file that includes your NETWORK and MNEMONIC_OR_SEED")
 
-	farmerBotCmd.PersistentFlags().StringP("network", "n", internal.MainNetwork, "the grid network to use")
+	farmerBotCmd.PersistentFlags().StringP("network", "n", internal.MainNetwork, fmt.Sprintf("the grid network to use, available networks: %s, %s, %s, and %s", internal.DevNetwork, internal.QaNetwork, internal.TestNetwork, internal.MainNetwork))
 	farmerBotCmd.PersistentFlags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
 	farmerBotCmd.PersistentFlags().StringP("seed", "s", "", "the hex seed of the account of the farmer")
 	farmerBotCmd.MarkFlagsMutuallyExclusive("mnemonic", "seed")
@@ -55,7 +55,7 @@ func init() {
 
 	farmerBotCmd.PersistentFlags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
 
-	runCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Available format is yml/yaml")
+	runCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Allowed format is yml/yaml")
 
 	startCmd.Flags().Uint32("node", 0, "enter the node ID you want to use")
 
@@ -65,7 +65,7 @@ func init() {
 func getDefaultFlags(cmd *cobra.Command) (network string, mnemonicOrSeed string, err error) {
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
-		err = errors.Wrapf(err, "invalid log debug mode input '%v'", debug)
+		err = fmt.Errorf("invalid log debug mode input '%v' with error: %w", debug, err)
 		return
 	}
 
@@ -91,7 +91,7 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonicOrSeed string,
 
 	network, err = cmd.Flags().GetString("network")
 	if err != nil {
-		err = errors.Wrapf(err, "invalid network input '%s'", network)
+		err = fmt.Errorf("invalid network input '%s' with error: %w", network, err)
 		return
 	}
 
@@ -102,7 +102,7 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonicOrSeed string,
 
 	mnemonic, err := cmd.Flags().GetString("mnemonic")
 	if err != nil {
-		err = errors.Wrapf(err, "invalid mnemonic input '%s'", mnemonic)
+		err = fmt.Errorf("invalid mnemonic input '%s' with error: %w", mnemonic, err)
 		return
 	}
 
@@ -118,7 +118,7 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonicOrSeed string,
 
 	seed, err := cmd.Flags().GetString("seed")
 	if err != nil {
-		err = errors.Wrapf(err, "invalid seed input '%s'", seed)
+		err = fmt.Errorf("invalid seed input '%s' with error: %w", seed, err)
 		return
 	}
 

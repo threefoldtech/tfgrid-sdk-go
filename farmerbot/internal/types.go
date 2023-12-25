@@ -25,7 +25,7 @@ type powerState uint8
 
 const (
 	on = powerState(iota)
-	wakingUP
+	wakingUp
 	off
 	shuttingDown
 )
@@ -51,7 +51,7 @@ type node struct {
 // NodeFilterOption represents the options to find a node
 type NodeFilterOption struct {
 	NodesExcluded []uint32 `json:"nodes_excluded,omitempty"`
-	HasGPUs       uint8    `json:"has_gpus,omitempty"`
+	NumGPU        uint8    `json:"num_gpu,omitempty"`
 	GPUVendors    []string `json:"gpu_vendors,omitempty"`
 	GPUDevices    []string `json:"gpu_devices,omitempty"`
 	Certified     bool     `json:"certified,omitempty"`
@@ -79,7 +79,7 @@ func (n *node) isUnused() bool {
 }
 
 // CanClaimResources checks if a node can claim some resources
-func (n *node) canClaimResources(cap capacity, overProvisionCPU float32) bool {
+func (n *node) canClaimResources(cap capacity, overProvisionCPU int8) bool {
 	free := n.freeCapacity(overProvisionCPU)
 	return n.resources.total.cru >= cap.cru && free.cru >= cap.cru && free.mru >= cap.mru && free.hru >= cap.hru && free.sru >= cap.sru
 }
@@ -90,10 +90,24 @@ func (n *node) claimResources(c capacity) {
 }
 
 // FreeCapacity calculates the free capacity of a node
-func (n *node) freeCapacity(overProvisionCPU float32) capacity {
+func (n *node) freeCapacity(overProvisionCPU int8) capacity {
 	total := n.resources.total
 	total.cru = uint64(math.Ceil(float64(total.cru) * float64(overProvisionCPU)))
 	return total.subtract(n.resources.used)
+}
+
+// canShutDown return if the node can be shutdown
+// nodes with public config can't be shutdown
+// Do not shutdown a node that just came up (give it some time `periodicWakeUpDuration`)
+func (n *node) canShutDown() bool {
+	if !n.isUnused() ||
+		n.PublicConfig.HasValue ||
+		n.neverShutDown ||
+		n.hasActiveRentContract ||
+		time.Since(n.lastTimePowerStateChanged) < periodicWakeUpDuration {
+		return false
+	}
+	return true
 }
 
 // ConsumableResources for node resources
@@ -152,7 +166,7 @@ type power struct {
 	WakeUpThreshold     uint8      `yaml:"wake_up_threshold"`
 	PeriodicWakeUpStart wakeUpDate `yaml:"periodic_wake_up_start"`
 	PeriodicWakeUpLimit uint8      `yaml:"periodic_wake_up_limit"`
-	OverProvisionCPU    float32    `yaml:"overprovision_cpu,omitempty"`
+	OverProvisionCPU    int8       `yaml:"overprovision_cpu,omitempty"`
 }
 
 // wakeUpDate is the date to wake up all nodes
@@ -169,7 +183,7 @@ func (d *wakeUpDate) UnmarshalText(b []byte) error {
 	return nil
 }
 
-// MarshalText marshals the wake up TOML date
+// MarshalText marshals the wake up yaml date
 func (d wakeUpDate) MarshalText() ([]byte, error) {
 	date := time.Time(d)
 

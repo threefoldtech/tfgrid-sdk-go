@@ -33,7 +33,6 @@ func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config)
 		return nil, fmt.Errorf("cpu over provision should be a value between 1 and 4 not %v", s.config.Power.OverProvisionCPU)
 	}
 
-	// set farm
 	farm, err := sub.GetFarm(cfg.FarmID)
 	if err != nil {
 		return nil, err
@@ -75,7 +74,7 @@ func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Co
 
 			configNode, err := getNode(ctx, sub, rmbNodeClient, nodeID, neverShutDown, false, dedicatedFarm, on)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to add node with id %d", nodeID)
+				return nil, fmt.Errorf("failed to add node with id %d with error: %w", nodeID, err)
 			}
 			nodes[nodeID] = configNode
 		}
@@ -97,18 +96,17 @@ func getNode(
 
 	nodeObj, err := sub.GetNode(nodeID)
 	if err != nil {
-		return node{}, errors.Wrapf(err, "failed to get node %d from substrate", nodeID)
+		return node{}, fmt.Errorf("failed to get node %d from substrate with error: %w", nodeID, err)
 	}
 
 	configNode := node{
-		Node: *nodeObj,
+		Node:          *nodeObj,
+		neverShutDown: neverShutDown,
 	}
-
-	configNode.neverShutDown = neverShutDown
 
 	price, err := sub.GetDedicatedNodePrice(nodeID)
 	if err != nil {
-		return node{}, errors.Wrapf(err, "failed to get node %d dedicated price from substrate", nodeID)
+		return node{}, fmt.Errorf("failed to get node %d dedicated price from substrate with error: %w", nodeID, err)
 	}
 
 	if price != 0 || dedicatedFarm {
@@ -119,14 +117,14 @@ func getNode(
 	if errors.Is(err, substrate.ErrNotFound) {
 		configNode.hasActiveRentContract = false
 	} else if err != nil {
-		return node{}, errors.Wrapf(err, "failed to get node %d rent contract from substrate", nodeID)
+		return node{}, fmt.Errorf("failed to get node %d rent contract from substrate with error: %w", nodeID, err)
 	}
 
 	configNode.hasActiveRentContract = rentContract != 0
 
 	powerTarget, err := sub.GetPowerTarget(nodeID)
 	if err != nil {
-		return node{}, errors.Wrapf(err, "failed to get node %d power target from substrate", nodeID)
+		return node{}, fmt.Errorf("failed to get node %d power target from substrate with error: %w", nodeID, err)
 	}
 
 	configNode.powerState = oldPowerState
@@ -146,20 +144,20 @@ func getNode(
 	if !hasClaimedResources {
 		stats, err := rmbNodeClient.Statistics(ctx, uint32(configNode.TwinID))
 		if err != nil {
-			return node{}, errors.Wrapf(err, "failed to get node %d statistics from rmb", nodeID)
+			return node{}, fmt.Errorf("failed to get node %d statistics from rmb with error: %w", nodeID, err)
 		}
 		configNode.updateResources(stats)
 	}
 
 	pools, err := rmbNodeClient.GetStoragePools(ctx, uint32(configNode.TwinID))
 	if err != nil {
-		return node{}, errors.Wrapf(err, "failed to get node %d pools from rmb", nodeID)
+		return node{}, fmt.Errorf("failed to get node %d pools from rmb with error: %w", nodeID, err)
 	}
 	configNode.pools = pools
 
 	gpus, err := rmbNodeClient.ListGPUs(ctx, uint32(configNode.TwinID))
 	if err != nil {
-		return node{}, errors.Wrapf(err, "failed to get node %d gpus from rmb", nodeID)
+		return node{}, fmt.Errorf("failed to get node %d gpus from rmb with error: %w", nodeID, err)
 	}
 	configNode.gpus = gpus
 
@@ -186,19 +184,21 @@ func (s *state) updateNode(node node) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	_, ok := s.nodes[uint32(node.ID)]
+	nodeID := uint32(node.ID)
+
+	_, ok := s.nodes[nodeID]
 	if !ok {
-		return fmt.Errorf("node %d is not found", uint32(node.ID))
+		return fmt.Errorf("node %d is not found", nodeID)
 	}
 
-	s.nodes[uint32(node.ID)] = node
+	s.nodes[nodeID] = node
 
 	return nil
 }
 
-// FilterNodesPower filters ON or OFF nodes
+// FilterNodesPower filters ON, waking up, shutting down, or OFF nodes
 func (s *state) filterNodesPower(states []powerState) map[uint32]node {
-	filtered := make(map[uint32]node, 0)
+	filtered := make(map[uint32]node)
 	for nodeID, node := range s.nodes {
 		if slices.Contains(states, node.powerState) {
 			filtered[nodeID] = node
@@ -208,15 +208,10 @@ func (s *state) filterNodesPower(states []powerState) map[uint32]node {
 }
 
 // FilterAllowedNodesToShutDown filters nodes that are allowed to shut down
-//
-// nodes with public config can't be shutdown
-// Do not shutdown a node that just came up (give it some time)
 func (s *state) filterAllowedNodesToShutDown() map[uint32]node {
-	filtered := make(map[uint32]node, 0)
+	filtered := make(map[uint32]node)
 	for nodeID, node := range s.nodes {
-		if node.isUnused() && !node.PublicConfig.HasValue &&
-			!node.neverShutDown && !node.hasActiveRentContract &&
-			time.Since(node.lastTimePowerStateChanged) >= periodicWakeUpDuration {
+		if node.canShutDown() {
 			filtered[nodeID] = node
 		}
 	}
@@ -260,14 +255,18 @@ func (s *state) validate() error {
 		s.config.Power.WakeUpThreshold = defaultWakeUpThreshold
 	}
 
-	if s.config.Power.WakeUpThreshold < minWakeUpThreshold {
-		s.config.Power.WakeUpThreshold = minWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to minimum value %d", minWakeUpThreshold, MaxWakeUpThreshold, minWakeUpThreshold)
+	if s.config.Power.WakeUpThreshold < 1 || s.config.Power.WakeUpThreshold > 100 {
+		return fmt.Errorf("invalid wake-up threshold %d, should be between [1-100]", s.config.Power.WakeUpThreshold)
 	}
 
-	if s.config.Power.WakeUpThreshold > MaxWakeUpThreshold {
-		s.config.Power.WakeUpThreshold = MaxWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to maximum value %d", minWakeUpThreshold, MaxWakeUpThreshold, minWakeUpThreshold)
+	if s.config.Power.WakeUpThreshold < minWakeUpThreshold {
+		s.config.Power.WakeUpThreshold = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to minimum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	}
+
+	if s.config.Power.WakeUpThreshold > maxWakeUpThreshold {
+		s.config.Power.WakeUpThreshold = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to maximum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
 	}
 
 	if s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {
