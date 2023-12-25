@@ -39,7 +39,7 @@ func generateData(db *sql.DB, seed int) error {
 		return fmt.Errorf("failed to generate contracts: %w", err)
 	}
 
-	if err := generator.GeneratePublicIPs(1, modifiers.PublicIPCount); err != nil {
+	if err := generator.GeneratePublicIPs(1, modifiers.PublicIPCount, 1, modifiers.FarmCount); err != nil {
 		return fmt.Errorf("failed to generate public ips: %w", err)
 	}
 

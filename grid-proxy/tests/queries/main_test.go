@@ -127,63 +127,65 @@ func modifyDataToFireTriggers(db *sql.DB, data mock.DBData) error {
 
 	twinStart := len(data.Twins) + 1
 	farmStart := len(data.Farms) + 1
+	farmSize := 100
 	nodeStart := len(data.Nodes) + 1
+	nodeSize := 600
 	contractStart := len(data.NodeContracts) + len(data.RentContracts) + len(data.NameContracts) + 1
 	billStart := data.BillReports + 1
 	publicIpStart := len(data.PublicIPs) + 1
 	size := 10
 
 	// insertion
-	if err := generator.GenerateFarms(farmStart, 100, twinStart); err != nil {
+	if err := generator.GenerateFarms(farmStart, farmSize, twinStart); err != nil {
 		return fmt.Errorf("failed to generate farms: %w", err)
 	}
 
-	if err := generator.GenerateNodes(nodeStart, 600, farmStart, 100, twinStart); err != nil {
+	if err := generator.GenerateNodes(nodeStart, nodeSize, farmStart, farmSize, twinStart); err != nil {
 		return fmt.Errorf("failed to generate nodes: %w", err)
 	}
 
 	// rentCount is 1 because the generate method have .1 percent of 10 farms to be dedicated
-	if err := generator.GenerateContracts(int(billStart), contractStart, 50, size, 1, nodeStart, 600); err != nil {
+	if err := generator.GenerateContracts(int(billStart), contractStart, 50, size, 1, nodeStart, nodeSize); err != nil {
 		return fmt.Errorf("failed to generate contracts: %w", err)
 	}
 
-	if err := generator.GeneratePublicIPs(publicIpStart, size); err != nil {
+	if err := generator.GeneratePublicIPs(publicIpStart, size, farmStart, farmSize); err != nil {
 		return fmt.Errorf("failed to generate public ips: %w", err)
 	}
 
 	// // updates
-	// if err := generator.UpdateNodeCountry(); err != nil {
-	// 	return fmt.Errorf("failed to update node country: %w", err)
-	// }
+	if err := generator.UpdateNodeCountry(); err != nil {
+		return fmt.Errorf("failed to update node country: %w", err)
+	}
 
-	// if err := generator.UpdateNodeTotalResources(); err != nil {
-	// 	return fmt.Errorf("failed to update node total resources: %w", err)
-	// }
+	if err := generator.UpdateNodeTotalResources(); err != nil {
+		return fmt.Errorf("failed to update node total resources: %w", err)
+	}
 
-	// if err := generator.UpdateContractResources(); err != nil {
-	// 	return fmt.Errorf("failed to update contract resources: %w", err)
-	// }
+	if err := generator.UpdateContractResources(); err != nil {
+		return fmt.Errorf("failed to update contract resources: %w", err)
+	}
 
-	// if err := generator.UpdateNodeContractState(); err != nil {
-	// 	return fmt.Errorf("failed to update node node contract: %w", err)
-	// }
+	if err := generator.UpdateNodeContractState(); err != nil {
+		return fmt.Errorf("failed to update node node contract: %w", err)
+	}
 
-	// if err := generator.UpdateRentContract(); err != nil {
-	// 	return fmt.Errorf("failed to update rent contract: %w", err)
-	// }
+	if err := generator.UpdateRentContract(); err != nil {
+		return fmt.Errorf("failed to update rent contract: %w", err)
+	}
 
-	// if err := generator.UpdatePublicIps(); err != nil {
-	// 	return fmt.Errorf("failed to update public ips: %w", err)
-	// }
+	if err := generator.UpdatePublicIps(); err != nil {
+		return fmt.Errorf("failed to update public ips: %w", err)
+	}
 
 	// // deletions
-	// if err := generator.DeleteNodes(); err != nil {
-	// 	return fmt.Errorf("failed to delete node: %w", err)
-	// }
+	if err := generator.DeleteNodes(len(data.Nodes) + nodeSize); err != nil {
+		return fmt.Errorf("failed to delete node: %w", err)
+	}
 
-	// if err := generator.DeletePublicIps(); err != nil {
-	// 	return fmt.Errorf("failed to delete node: %w", err)
-	// }
+	if err := generator.DeletePublicIps(); err != nil {
+		return fmt.Errorf("failed to delete node: %w", err)
+	}
 
 	return nil
 }

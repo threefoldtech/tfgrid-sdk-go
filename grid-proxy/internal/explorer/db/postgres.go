@@ -328,7 +328,7 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 			"farm.certification",
 			"farm.stellar_address",
 			"farm.dedicated_farm as dedicated",
-			"public_ips_cache.ips as public_ips",
+			"COALESCE(public_ips_cache.ips, '[]') as public_ips",
 		).
 		Joins(
 			"LEFT JOIN public_ips_cache ON public_ips_cache.farm_id = farm.farm_id",
@@ -350,7 +350,7 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 				farm.certification,
 				farm.stellar_address,
 				farm.dedicated_farm,
-				public_ips_cache.ips
+				COALESCE(public_ips_cache.ips, '[]')
 			`)
 	}
 
@@ -409,10 +409,10 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	}
 
 	if filter.FreeIPs != nil {
-		q = q.Where("public_ips_cache.free_ips >= ?", *filter.FreeIPs)
+		q = q.Where("COALESCE(public_ips_cache.free_ips, 0) >= ?", *filter.FreeIPs)
 	}
 	if filter.TotalIPs != nil {
-		q = q.Where("public_ips_cache.total_ips >= ?", *filter.TotalIPs)
+		q = q.Where("COALESCE(public_ips_cache.total_ips, 0) >= ?", *filter.TotalIPs)
 	}
 	if filter.StellarAddress != nil {
 		q = q.Where("farm.stellar_address = ?", *filter.StellarAddress)
@@ -573,7 +573,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where("farm.name ILIKE '%' || ? || '%'", *filter.FarmNameContains)
 	}
 	if filter.FreeIPs != nil {
-		q = q.Where("public_ips_cache.free_ips >= ?", *filter.FreeIPs)
+		q = q.Where("COALESCE(public_ips_cache.free_ips, 0) >= ?", *filter.FreeIPs)
 	}
 	if filter.IPv4 != nil {
 		q = q.Where("(public_config.ipv4 IS NULL) != ?", *filter.IPv4)

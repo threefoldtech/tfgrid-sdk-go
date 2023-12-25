@@ -267,17 +267,32 @@ func (g *Generator) generateNodeContracts(billsStartID, contractsStartID, contra
 	var contracts []string
 	var contractResources []string
 	var billingReports []string
+	toDelete := ""
+	toGracePeriod := ""
 
 	for i := contractsStartID; i < end; i++ {
 		nodeID := uint64(r.Intn((nodeStart+nodeSize)-nodeStart) + nodeStart)
 		state := deleted
-
 		if g.nodeUP[nodeID] {
-			if flip(contractCreatedRatio) {
+			if flip(0.9) {
 				state = created
 			} else if flip(0.5) {
 				state = gracePeriod
 			}
+		}
+
+		if state == deleted {
+			if len(toDelete) != 0 {
+				toDelete += ", "
+			}
+			toDelete += fmt.Sprint(i)
+		}
+
+		if state == gracePeriod {
+			if len(toGracePeriod) != 0 {
+				toGracePeriod += ", "
+			}
+			toGracePeriod += fmt.Sprint(i)
 		}
 
 		if state != deleted && (minContractHRU > g.nodesHRU[nodeID] || minContractMRU > g.nodesMRU[nodeID] || minContractSRU > g.nodesSRU[nodeID]) {
@@ -303,7 +318,7 @@ func (g *Generator) generateNodeContracts(billsStartID, contractsStartID, contra
 			id:                    fmt.Sprintf("node-contract-%d", i),
 			twin_id:               twinID,
 			contract_id:           uint64(i),
-			state:                 state,
+			state:                 created,
 			created_at:            uint64(time.Now().Unix()),
 			node_id:               nodeID,
 			deployment_data:       fmt.Sprintf("deployment-data-%d", i),
@@ -341,7 +356,7 @@ func (g *Generator) generateNodeContracts(billsStartID, contractsStartID, contra
 			mru:         mru,
 			contract_id: fmt.Sprintf("node-contract-%d", i),
 		}
-		if contract.state != deleted {
+		if state != deleted {
 			g.nodesHRU[nodeID] -= hru
 			g.nodesSRU[nodeID] -= sru
 			g.nodesMRU[nodeID] -= mru
@@ -399,6 +414,18 @@ func (g *Generator) generateNodeContracts(billsStartID, contractsStartID, contra
 		return nil, end, fmt.Errorf("failed to update node contract resources id: %w", err)
 	}
 
+	if len(toDelete) > 0 {
+		if _, err := g.db.Exec(fmt.Sprintf("UPDATE node_contract SET state = '%s' WHERE contract_id IN (%s)", deleted, toDelete)); err != nil {
+			return nil, 0, fmt.Errorf("failed to update node_contract state to deleted: %w", err)
+		}
+	}
+
+	if len(toGracePeriod) > 0 {
+		if _, err := g.db.Exec(fmt.Sprintf("UPDATE node_contract SET state = '%s' WHERE contract_id IN (%s)", gracePeriod, toGracePeriod)); err != nil {
+			return nil, 0, fmt.Errorf("failed to update node_contract state to grace period: %w", err)
+		}
+	}
+
 	fmt.Println("node contracts generated")
 
 	return billingReports, end, nil
@@ -417,6 +444,9 @@ func (g *Generator) GenerateNameContracts(billsStartID, contractsStartID, contra
 	end := contractsStartID + contractCount
 	var contracts []string
 	var billReports []string
+	toDelete := ""
+	toGracePeriod := ""
+
 	for i := contractsStartID; i < end; i++ {
 		nodeID, err := rnd(1, uint64(NodeCount))
 		if err != nil {
@@ -425,11 +455,25 @@ func (g *Generator) GenerateNameContracts(billsStartID, contractsStartID, contra
 
 		state := deleted
 		if g.nodeUP[nodeID] {
-			if flip(contractCreatedRatio) {
+			if flip(0.9) {
 				state = created
 			} else if flip(0.5) {
 				state = gracePeriod
 			}
+		}
+
+		if state == deleted {
+			if len(toDelete) != 0 {
+				toDelete += ", "
+			}
+			toDelete += fmt.Sprint(i)
+		}
+
+		if state == gracePeriod {
+			if len(toGracePeriod) != 0 {
+				toGracePeriod += ", "
+			}
+			toGracePeriod += fmt.Sprint(i)
 		}
 
 		twinID, err := rnd(1100, 3100)
@@ -493,6 +537,18 @@ func (g *Generator) GenerateNameContracts(billsStartID, contractsStartID, contra
 		return nil, end, fmt.Errorf("failed to insert name contracts: %w", err)
 	}
 
+	if len(toDelete) > 0 {
+		if _, err := g.db.Exec(fmt.Sprintf("UPDATE rent_contract SET state = '%s' WHERE contract_id IN (%s)", deleted, toDelete)); err != nil {
+			return nil, 0, fmt.Errorf("failed to update rent_contract state to deleted: %w", err)
+		}
+	}
+
+	if len(toGracePeriod) > 0 {
+		if _, err := g.db.Exec(fmt.Sprintf("UPDATE rent_contract SET state = '%s' WHERE contract_id IN (%s)", gracePeriod, toGracePeriod)); err != nil {
+			return nil, 0, fmt.Errorf("failed to update rent_contract state to grace period: %w", err)
+		}
+	}
+
 	fmt.Println("name contracts generated")
 
 	return billReports, end, nil
@@ -503,6 +559,8 @@ func (g *Generator) GenerateRentContracts(billsStart, contractStart, rentConCoun
 
 	var contracts []string
 	var billReports []string
+	toDelete := ""
+	toGracePeriod := ""
 	for i := contractStart; i < end; i++ {
 		nl, nodeID, err := popRandom(g.availableRentNodesList)
 		if err != nil {
@@ -520,6 +578,20 @@ func (g *Generator) GenerateRentContracts(billsStart, contractStart, rentConCoun
 			}
 		}
 
+		if state == deleted {
+			if len(toDelete) != 0 {
+				toDelete += ", "
+			}
+			toDelete += fmt.Sprint(i)
+		}
+
+		if state == gracePeriod {
+			if len(toGracePeriod) != 0 {
+				toGracePeriod += ", "
+			}
+			toGracePeriod += fmt.Sprint(i)
+		}
+
 		twinID, err := rnd(1100, 3100)
 		if err != nil {
 			return nil, i, fmt.Errorf("failed to generate a random twin id: %w", err)
@@ -529,7 +601,7 @@ func (g *Generator) GenerateRentContracts(billsStart, contractStart, rentConCoun
 			id:           fmt.Sprintf("rent-contract-%d", i),
 			twin_id:      twinID,
 			contract_id:  uint64(i),
-			state:        state,
+			state:        created,
 			created_at:   uint64(time.Now().Unix()),
 			node_id:      nodeID,
 			grid_version: 3,
@@ -579,15 +651,27 @@ func (g *Generator) GenerateRentContracts(billsStart, contractStart, rentConCoun
 		return nil, end, fmt.Errorf("failed to insert rent contracts: %w", err)
 	}
 
+	if len(toDelete) > 0 {
+		if _, err := g.db.Exec(fmt.Sprintf("UPDATE rent_contract SET state = '%s' WHERE contract_id IN (%s)", deleted, toDelete)); err != nil {
+			return nil, 0, fmt.Errorf("failed to update rent_contract state to deleted: %w", err)
+		}
+	}
+
+	if len(toGracePeriod) > 0 {
+		if _, err := g.db.Exec(fmt.Sprintf("UPDATE rent_contract SET state = '%s' WHERE contract_id IN (%s)", gracePeriod, toGracePeriod)); err != nil {
+			return nil, 0, fmt.Errorf("failed to update rent_contract state to grace period: %w", err)
+		}
+	}
+
 	fmt.Println("rent contracts generated")
 
 	return billReports, end, nil
 }
 
-func (g *Generator) GeneratePublicIPs(start, size int) error {
+func (g *Generator) GeneratePublicIPs(start, size, farmStart, farmSize int) error {
 	var publicIPs []string
 	var nodeContracts []uint64
-
+	reservedIPs := map[string]uint64{}
 	for i := uint64(start); i < uint64(start+size); i++ {
 		contract_id := uint64(0)
 		if flip(usedPublicIPsRatio) {
@@ -597,19 +681,23 @@ func (g *Generator) GeneratePublicIPs(start, size int) error {
 			}
 			contract_id = g.createdNodeContracts[idx]
 		}
+
 		ip := randomIPv4()
-		farmID, err := rnd(1, uint64(FarmCount))
-		if err != nil {
-			return fmt.Errorf("failed to generate random farm id: %w", err)
-		}
+
+		farmID := r.Int63n(int64(farmSize)) + int64(farmStart)
 
 		public_ip := public_ip{
 			id:          fmt.Sprintf("public-ip-%d", i),
 			gateway:     ip.String(),
 			ip:          IPv4Subnet(ip).String(),
-			contract_id: contract_id,
+			contract_id: 0,
 			farm_id:     fmt.Sprintf("farm-%d", farmID),
 		}
+
+		if contract_id != 0 {
+			reservedIPs[public_ip.id] = contract_id
+		}
+
 		publicIpTuple, err := objectToTupleString(public_ip)
 		if err != nil {
 			return fmt.Errorf("failed to convert public ip object to tuple string: %w", err)
@@ -624,6 +712,12 @@ func (g *Generator) GeneratePublicIPs(start, size int) error {
 
 	if err := g.updateNodeContractPublicIPs(nodeContracts); err != nil {
 		return fmt.Errorf("failed to update contract public ips: %w", err)
+	}
+
+	for id, contractID := range reservedIPs {
+		if _, err := g.db.Exec(fmt.Sprintf("UPDATE public_ip SET contract_id = %d WHERE id = '%s'", contractID, id)); err != nil {
+			return fmt.Errorf("failed to reserve ip %s: %w", id, err)
+		}
 	}
 
 	fmt.Println("public IPs generated")

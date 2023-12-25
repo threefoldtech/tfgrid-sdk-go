@@ -193,15 +193,15 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.FreeMRU != nil && *f.FreeMRU > free.MRU {
+	if f.FreeMRU != nil && int64(*f.FreeMRU) > int64(free.MRU) {
 		return false
 	}
 
-	if f.FreeHRU != nil && *f.FreeHRU > free.HRU {
+	if f.FreeHRU != nil && int64(*f.FreeHRU) > int64(free.HRU) {
 		return false
 	}
 
-	if f.FreeSRU != nil && *f.FreeSRU > free.SRU {
+	if f.FreeSRU != nil && int64(*f.FreeSRU) > int64(free.SRU) {
 		return false
 	}
 

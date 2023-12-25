@@ -132,15 +132,15 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 		total := data.NodeTotalResources[node.NodeID]
 		used := data.NodeUsedResources[node.NodeID]
 		free := calcFreeResources(total, used)
-		if filter.NodeFreeHRU != nil && free.HRU < *filter.NodeFreeHRU {
+		if filter.NodeFreeHRU != nil && int64(free.HRU) < int64(*filter.NodeFreeHRU) {
 			continue
 		}
 
-		if filter.NodeFreeMRU != nil && free.MRU < *filter.NodeFreeMRU {
+		if filter.NodeFreeMRU != nil && int64(free.MRU) < int64(*filter.NodeFreeMRU) {
 			continue
 		}
 
-		if filter.NodeFreeSRU != nil && free.SRU < *filter.NodeFreeSRU {
+		if filter.NodeFreeSRU != nil && int64(free.SRU) < int64(*filter.NodeFreeSRU) {
 			continue
 		}
 

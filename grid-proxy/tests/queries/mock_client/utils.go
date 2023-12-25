@@ -11,19 +11,25 @@ type Result interface {
 }
 
 func calcFreeResources(total NodeResourcesTotal, used NodeResourcesTotal) NodeResourcesTotal {
-	if total.MRU < used.MRU {
-		panic("total mru is less than mru")
+	mru := total.MRU - used.MRU
+	if mru < 0 {
+		mru = 0
 	}
-	if total.HRU < used.HRU {
-		panic("total hru is less than hru")
+
+	hru := total.HRU - used.HRU
+	if hru < 0 {
+		hru = 0
 	}
-	if total.SRU < used.SRU {
-		panic("total sru is less than sru")
+
+	sru := total.SRU - used.SRU
+	if sru < 0 {
+		sru = 0
 	}
+
 	return NodeResourcesTotal{
-		HRU: total.HRU - used.HRU,
-		SRU: total.SRU - used.SRU,
-		MRU: total.MRU - used.MRU,
+		HRU: hru,
+		SRU: sru,
+		MRU: mru,
 	}
 }
 

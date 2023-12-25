@@ -37,7 +37,7 @@ func (g *Generator) UpdateNodeTotalResources() error {
 		query += fmt.Sprintf("UPDATE node_resources_total SET cru = %d, hru = %d, mru = %d, sru = %d WHERE node_id = 'node-%d';", cru, hru, mru, sru, nodeId)
 	}
 
-	log.Debug().Str("query", query).Msg("update node country")
+	log.Debug().Str("query", query).Msg("update node total resources")
 
 	_, err := g.db.Exec(query)
 	return err
@@ -57,7 +57,7 @@ func (g *Generator) UpdateContractResources() error {
 		query += fmt.Sprintf("UPDATE contract_resources SET cru = %d, hru = %d, mru = %d, sru = %d WHERE contract_id = 'node-contract-%d';", cru, hru, mru, sru, contractId)
 	}
 
-	log.Debug().Str("query", query).Msg("update node country")
+	log.Debug().Str("query", query).Msg("update contract resources")
 
 	_, err := g.db.Exec(query)
 	return err
@@ -71,10 +71,10 @@ func (g *Generator) UpdateNodeContractState() error {
 	for i := 0; i < updatesCount; i++ {
 		contractId := g.createdNodeContracts[r.Intn(len(g.createdNodeContracts))]
 		state := states[r.Intn(2)]
-		query += fmt.Sprintf("UPDATE node_contract SET state = '%s' WHERE contract_id = %d;", state, contractId)
+		query += fmt.Sprintf("UPDATE node_contract SET state = '%s' WHERE contract_id = %d AND state != 'Deleted';", state, contractId)
 	}
 
-	log.Debug().Str("query", query).Msg("update node country")
+	log.Debug().Str("query", query).Msg("update node contract state")
 
 	_, err := g.db.Exec(query)
 	return err
@@ -91,7 +91,7 @@ func (g *Generator) UpdateRentContract() error {
 		query += fmt.Sprintf("UPDATE rent_contract SET state = '%s' WHERE contract_id = %d;", state, contractId)
 	}
 
-	log.Debug().Str("query", query).Msg("update node country")
+	log.Debug().Str("query", query).Msg("update rent contracts")
 
 	_, err := g.db.Exec(query)
 	return err
@@ -107,6 +107,8 @@ func (g *Generator) UpdatePublicIps() error {
 		publicIPID := r.Intn(int(PublicIPCount))
 
 		query += fmt.Sprintf("UPDATE public_ip SET contract_id = (CASE WHEN contract_id = 0 THEN %d ELSE 0 END) WHERE id = 'public-ip-%d';", contractID, publicIPID)
+		query += fmt.Sprintf("UPDATE node_contract SET number_of_public_i_ps = (SELECT COUNT(id) FROM public_ip WHERE contract_id = %d) WHERE contract_id = %d;", contractID, contractID)
+
 	}
 
 	log.Debug().Str("query", query).Msg("update public ip contract_id")
@@ -116,22 +118,22 @@ func (g *Generator) UpdatePublicIps() error {
 }
 
 // deletions
-func (g *Generator) DeleteNodes() error {
+func (g *Generator) DeleteNodes(nodesCount int) error {
 	// delete node contracts on this node
 	// free public ips that are assigned to the deleted contracts
 	// delete rent contracts on this node
 	// delete node
-	updatesCount := r.Intn(10) + 1
+	deleteCount := r.Intn(10) + 1
 	query := ""
 
-	for i := 0; i < updatesCount; i++ {
-		nodeID := r.Intn(int(NodeCount)) + 1
-		// NodeCount--
+	for i := 0; i < deleteCount; i++ {
+		nodeID := nodesCount - i
 
 		query += fmt.Sprintf("UPDATE public_ip SET contract_id = 0 WHERE contract_id IN (SELECT contract_id FROM node_contract WHERE node_id = %d);", nodeID)
 		query += fmt.Sprintf("UPDATE node_contract SET state = 'Deleted' WHERE node_id = %d;", nodeID)
 		query += fmt.Sprintf("UPDATE rent_contract set state = 'Deleted' WHERE node_id = %d;", nodeID)
 		query += fmt.Sprintf("DELETE FROM node_resources_total WHERE node_id = (SELECT id FROM node WHERE node_id = %d);", nodeID)
+		query += fmt.Sprintf("DELETE FROM public_config WHERE node_id = (SELECT id FROM node WHERE node_id = %d);", nodeID)
 		query += fmt.Sprintf("DELETE FROM node WHERE node_id = %d;", nodeID)
 	}
 
@@ -149,12 +151,6 @@ func (g *Generator) DeletePublicIps() error {
 	if err != nil {
 		return fmt.Errorf("failed to delete public ips: %w", err)
 	}
-
-	// rowsAffercted, err := res.RowsAffected()
-	// if err != nil {
-	// 	return fmt.Errorf("failed to get rows affected by public ips delete: %w", err)
-	// }
-	// PublicIPCount -= uint32(rowsAffercted)
 
 	log.Debug().Str("query", query).Msg("delete public ips")
 

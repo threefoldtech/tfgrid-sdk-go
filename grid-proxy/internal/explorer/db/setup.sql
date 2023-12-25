@@ -83,7 +83,7 @@ SELECT
     ) as used_cru,
     rent_contract.twin_id as renter,
     rent_contract.contract_id as rent_contract_id,
-    count(node_contract.contract_id) as node_contract_count,
+    count(node_contract.contract_id) as node_contracts_count,
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     country.name as country,
     country.subregion as region
@@ -330,6 +330,7 @@ BEGIN
             free_hru = free_hru - (NEW.hru - COALESCE(OLD.hru, 0)),
             free_sru = free_sru - (NEW.sru - COALESCE(OLD.sru, 0))
         WHERE
+            (SELECT state from node_contract where id = NEW.contract_id) != 'Deleted' AND
             resources_cache.node_id = (
                 SELECT node_id FROM node_contract WHERE node_contract.id = NEW.contract_id
             );
@@ -347,7 +348,7 @@ CREATE OR REPLACE TRIGGER contract_resources_trigger
 
 /*
     Node contract trigger
-     - Insert new contract > increment resources_cache node_contract_count
+     - Insert new contract > increment resources_cache node_contracts_count
      - Update contract state to 'Deleted' > decrement used an increment free fields on resources_cache
 */
 CREATE OR REPLACE FUNCTION node_contract_upsert() RETURNS TRIGGER AS 
@@ -368,8 +369,8 @@ BEGIN
                     resources_cache.free_hru + hru,
                     resources_cache.node_contracts_count - 1
                 FROM resources_cache
-                    LEFT JOIN contract_resources ON contract_resources.contract_id = NEW.id 
-                    WHERE resources_cache.node_id = NEW.node_id
+                LEFT JOIN contract_resources ON contract_resources.contract_id = NEW.id 
+                WHERE resources_cache.node_id = NEW.node_id
             ) WHERE resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
@@ -383,7 +384,7 @@ BEGIN
             WHERE resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
-            RAISE NOTICE 'Error incrementing node_contract_count %', SQLERRM;
+            RAISE NOTICE 'Error incrementing node_contracts_count %', SQLERRM;
         END; 
     END IF;
 RETURN NULL;
@@ -443,21 +444,6 @@ CREATE OR REPLACE TRIGGER rent_contract_trigger
 CREATE OR REPLACE FUNCTION public_ip_upsert() RETURNS TRIGGER AS 
 $$ 
 BEGIN
-    
-    BEGIN
-        IF TG_OP = 'INSERT' AND NEW.farm_id NOT IN (select farm_id from public_ips_cache) THEN
-            INSERT INTO public_ips_cache VALUES(
-                NEW.farm_id,
-                0,
-                0,
-                '[]'
-            );
-        END IF;
-    EXCEPTION
-        WHEN OTHERS THEN
-            RAISE NOTICE 'Error inserting public_ips_cache record %s', SQLERRM;
-    END;
-       
 
     BEGIN 
         UPDATE public_ips_cache
@@ -467,7 +453,7 @@ BEGIN
             WHEN TG_OP != 'DELETE' AND NEW.contract_id = 0
                 THEN 1 
             -- handles deletion/update by reserving ip
-            WHEN COALESCE(OLD.contract_id, 0) = 0
+            WHEN TG_OP != 'INSERT' AND OLD.contract_id = 0
                 THEN -1
             -- handles delete reserved ips
             ELSE 0
@@ -507,17 +493,6 @@ BEGIN
             RAISE NOTICE 'Error reflect public_ips changes %s', SQLERRM;
     END;
 
-    BEGIN
-        IF TG_OP = 'DELETE' THEN
-            -- delete if exists
-            DELETE FROM public_ips_cache WHERE public_ips_cache.total_ips = 0 AND
-                public_ips_cache.farm_id = (select farm_id from farm where farm.id = OLD.farm_id);
-        END IF;
-    EXCEPTION
-        WHEN OTHERS THEN
-            RAISE NOTICE 'Error deleting public_ips_cache record %s', SQLERRM;
-    END;
-
 RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -525,5 +500,40 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER public_ip_trigger
     AFTER INSERT OR DELETE OR UPDATE OF contract_id ON public_ip FOR EACH ROW 
     EXECUTE PROCEDURE public_ip_upsert();
+
+
+CREATE OR REPLACE FUNCTION farm_insert_delete() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    
+    IF TG_OP = 'INSERT'  THEN
+        BEGIN
+        INSERT INTO public_ips_cache VALUES(
+            NEW.farm_id,
+            0,
+            0,
+            '[]'
+        );
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE 'Error inserting public_ips_cache record %s', SQLERRM;
+        END;
+
+    ELSIF (TG_OP = 'DELETE') THEN
+        BEGIN
+            DELETE FROM public_ips_cache WHERE public_ips_cache.farm_id = OLD.farm_id;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE 'Error deleting public_ips_cache record %s', SQLERRM;
+        END; 
+    END IF;
+
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER farms_trigger
+    AFTER INSERT OR DELETE ON farm FOR EACH ROW 
+    EXECUTE PROCEDURE farm_insert_delete();
 
 COMMIT;

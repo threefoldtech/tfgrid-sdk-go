@@ -538,12 +538,26 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 		countries[node.Country] = struct{}{}
 		total := data.NodeTotalResources[node.NodeID]
 		free := calcFreeResources(total, data.NodeUsedResources[node.NodeID])
-		res.maxFreeHRU = max(res.maxFreeHRU, free.HRU)
-		res.maxFreeSRU = max(res.maxFreeSRU, free.SRU)
-		res.maxFreeMRU = max(res.maxFreeMRU, free.MRU)
-		res.freeMRUs = append(res.freeMRUs, free.MRU)
-		res.freeSRUs = append(res.freeSRUs, free.SRU)
-		res.freeHRUs = append(res.freeHRUs, free.HRU)
+		freeHRU := free.HRU
+		if int64(freeHRU) < 0 {
+			freeHRU = 0
+		}
+		freeMRU := free.MRU
+		if int64(freeMRU) < 0 {
+			freeMRU = 0
+		}
+
+		freeSRU := free.SRU
+		if int64(freeSRU) < 0 {
+			freeSRU = 0
+		}
+
+		res.maxFreeHRU = max(res.maxFreeHRU, freeHRU)
+		res.maxFreeSRU = max(res.maxFreeSRU, freeSRU)
+		res.maxFreeMRU = max(res.maxFreeMRU, freeMRU)
+		res.freeMRUs = append(res.freeMRUs, freeMRU)
+		res.freeSRUs = append(res.freeSRUs, freeSRU)
+		res.freeHRUs = append(res.freeHRUs, freeHRU)
 
 		res.maxTotalMRU = max(res.maxTotalMRU, total.MRU)
 		res.totalMRUs = append(res.totalMRUs, total.MRU)
