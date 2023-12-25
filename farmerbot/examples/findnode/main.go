@@ -41,19 +41,19 @@ func findNode() (uint32, error) {
 	service := fmt.Sprintf("farmerbot-%d", farmID)
 	const farmerbotTwinID = 164 // <- replace this with the twin id of where the farmerbot is running
 
-	options := internal.NodeOptions{
-		NodeExclude:  []uint32{},
-		HasGPUs:      0,
-		GPUVendors:   []string{},
-		GPUDevices:   []string{},
-		Certified:    false,
-		Dedicated:    false,
-		PublicConfig: false,
-		PublicIPs:    0,
-		HRU:          0,
-		SRU:          0,
-		CRU:          0,
-		MRU:          0,
+	options := internal.NodeFilterOption{
+		NodesExcluded: []uint32{},
+		NumGPU:        0,
+		GPUVendors:    []string{},
+		GPUDevices:    []string{},
+		Certified:     false,
+		Dedicated:     false,
+		PublicConfig:  false,
+		PublicIPs:     0,
+		HRU:           0,
+		SRU:           0,
+		CRU:           0,
+		MRU:           0,
 	}
 	var output uint32
 	if err := client.CallWithSession(ctx, farmerbotTwinID, &service, "farmerbot.nodemanager.findnode", options, &output); err != nil {
