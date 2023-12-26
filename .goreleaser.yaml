@@ -1,6 +1,21 @@
 # This is an example .goreleaser.yml file with some sensible defaults.
 # Make sure to check the documentation at https://goreleaser.com
 builds:
+  - dir: ./farmerbot
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    binary: farmerbot
+    id: farmerbot
+
+    ignore:
+      - goos: windows
+    ldflags:
+      - -X github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version.Version={{.Tag}}
+
   - dir: ./grid-cli
     env:
       - CGO_ENABLED=0
