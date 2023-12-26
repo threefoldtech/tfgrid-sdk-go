@@ -35,7 +35,7 @@ func TestFindNode(t *testing.T) {
 
 	// mock state
 	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
-	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
+	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
 	state, err := newState(ctx, sub, rmb, inputs)
 	assert.NoError(t, err)

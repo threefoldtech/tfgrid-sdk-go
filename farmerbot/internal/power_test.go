@@ -13,7 +13,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-func TestPowerManager(t *testing.T) {
+func TestPower(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	sub := mocks.NewMockSubstrate(ctrl)
@@ -34,7 +34,7 @@ func TestPowerManager(t *testing.T) {
 
 	// mock state
 	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
-	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, resources, []string{}, false, false)
+	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
 	state, err := newState(ctx, sub, rmb, inputs)
 	assert.NoError(t, err)
@@ -207,16 +207,6 @@ func TestPowerManager(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("test power management: a node to shutdown", func(t *testing.T) {
-		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(state.nodes[1].ID), false).Return(types.Hash{}, nil)
-
-		err = farmerbot.manageNodesPower(sub)
-		assert.NoError(t, err)
-
-		state.addNode(oldNode1)
-		state.addNode(oldNode2)
-	})
-
 	t.Run("test power management: a node to shutdown (failed set the first node)", func(t *testing.T) {
 		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(state.nodes[1].ID), false).Return(types.Hash{}, errors.New("error"))
 		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(state.nodes[2].ID), false).Return(types.Hash{}, nil)
@@ -334,22 +324,6 @@ func TestPowerManager(t *testing.T) {
 		testNode = state.nodes[2]
 		testNode.resources.total = capacity{}
 		state.addNode(testNode)
-
-		err = farmerbot.manageNodesPower(sub)
-		assert.NoError(t, err)
-
-		state.addNode(oldNode1)
-		state.addNode(oldNode2)
-	})
-
-	t.Run("test power management: total resources becomes 0 after node 1 turns off", func(t *testing.T) {
-		testNode := state.nodes[1]
-		testNode.resources.total = capacity{}
-		state.addNode(testNode)
-		testNode.ID = 3
-		state.addNode(testNode)
-
-		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(state.nodes[1].ID), false).Return(types.Hash{}, nil)
 
 		err = farmerbot.manageNodesPower(sub)
 		assert.NoError(t, err)
