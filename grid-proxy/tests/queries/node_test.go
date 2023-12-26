@@ -102,45 +102,83 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 	},
 	"Country": func(agg NodesAggregate) interface{} {
 		country := changeCase(agg.countries[rand.Intn(len(agg.countries))])
+		if len(country) == 0 {
+			return nil
+		}
+
 		return &country
 	},
 	"Region": func(agg NodesAggregate) interface{} {
 		region := changeCase(agg.regions[rand.Intn(len(agg.regions))])
+		if len(region) == 0 {
+			return nil
+		}
+
 		return &region
 	},
 	"CountryContains": func(agg NodesAggregate) interface{} {
 		c := agg.countries[rand.Intn(len(agg.countries))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		if len(c) == 0 {
+			return nil
+		}
+
+		runesList := []rune(c)
+		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
 		if a > b {
 			a, b = b, a
 		}
-		c = c[a : b+1]
+		runesList = runesList[a : b+1]
+		c = string(runesList)
+		if len(c) == 0 {
+			return nil
+		}
+
 		return &c
 	},
 	"City": func(agg NodesAggregate) interface{} {
 		city := changeCase(agg.cities[rand.Intn(len(agg.cities))])
+		if len(city) == 0 {
+			return nil
+		}
+
 		return &city
 	},
 	"CityContains": func(agg NodesAggregate) interface{} {
 		c := agg.cities[rand.Intn(len(agg.cities))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		if len(c) == 0 {
+			return nil
+		}
+
+		runesList := []rune(c)
+		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
 		if a > b {
 			a, b = b, a
 		}
-		c = c[a : b+1]
+		runesList = runesList[a : b+1]
+		c = string(runesList)
 		return &c
 	},
 	"FarmName": func(agg NodesAggregate) interface{} {
 		name := changeCase(agg.farmNames[rand.Intn(len(agg.farmNames))])
+		if len(name) == 0 {
+			return nil
+		}
+
 		return &name
 	},
 	"FarmNameContains": func(agg NodesAggregate) interface{} {
 		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		if len(c) == 0 {
+			return nil
+		}
+
+		runesList := []rune(c)
+		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
 		if a > b {
 			a, b = b, a
 		}
-		c = c[a : b+1]
+		runesList = runesList[a : b+1]
+		c = string(runesList)
 		return &c
 	},
 	"FarmIDs": func(agg NodesAggregate) interface{} {
@@ -308,11 +346,14 @@ func TestNode(t *testing.T) {
 
 		for i := 1; i <= NODE_COUNT; i++ {
 			if flip(.3) {
-				want, err := mockClient.NodeStatus(context.Background(), uint32(i))
-				require.NoError(t, err)
+				want, errWant := mockClient.NodeStatus(context.Background(), uint32(i))
+				got, errGot := gridProxyClient.NodeStatus(context.Background(), uint32(i))
 
-				got, err := gridProxyClient.NodeStatus(context.Background(), uint32(i))
-				require.NoError(t, err)
+				if errGot != nil && errWant != nil {
+					require.True(t, errors.As(errWant, &errGot), fmt.Sprintf("errors should match: want error %s, got error %s", errWant, errGot))
+				} else {
+					require.True(t, errWant == errGot)
+				}
 
 				require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 			}
@@ -449,10 +490,14 @@ func TestNodeFilter(t *testing.T) {
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
 		randomFieldValue := generator(agg)
+		if randomFieldValue == nil {
+			continue
+		}
 
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 		}
+
 		v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 
 		want, wantCount, err := mockClient.Nodes(context.Background(), f, l)
@@ -472,11 +517,15 @@ func TestNodeFilter(t *testing.T) {
 func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
 	t.Parallel()
 	nodeID := rand.Intn(NODE_COUNT)
-	want, err := mockClient.Node(context.Background(), uint32(nodeID))
-	require.NoError(t, err)
+	want, errWant := mockClient.Node(context.Background(), uint32(nodeID))
 
-	got, err := gridProxyClient.Node(context.Background(), uint32(nodeID))
-	require.NoError(t, err)
+	got, errGot := gridProxyClient.Node(context.Background(), uint32(nodeID))
+
+	if errGot != nil && errWant != nil {
+		require.True(t, errors.As(errWant, &errGot))
+	} else {
+		require.True(t, errWant == errGot)
+	}
 
 	require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 }
@@ -523,6 +572,10 @@ func randomNodeFilter(agg *NodesAggregate) (types.NodeFilter, error) {
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}
+			if randomFieldValue == nil {
+				continue
+			}
+
 			v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 		}
 	}

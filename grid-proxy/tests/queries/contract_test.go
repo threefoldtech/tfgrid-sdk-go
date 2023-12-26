@@ -54,16 +54,28 @@ var contractFilterRandomValueGenerator = map[string]func(agg ContractsAggregate)
 		return &agg.States[rand.Intn(len(agg.States))]
 	},
 	"Name": func(agg ContractsAggregate) interface{} {
-		return &agg.Names[rand.Intn(len(agg.Names))]
+		c := agg.Names[rand.Intn(len(agg.Names))]
+		if len(c) == 0 {
+			return nil
+		}
+		return &c
 	},
 	"NumberOfPublicIps": func(agg ContractsAggregate) interface{} {
 		return rndref(0, agg.maxNumberOfPublicIPs)
 	},
 	"DeploymentData": func(agg ContractsAggregate) interface{} {
-		return &agg.DeploymentsData[rand.Intn(len(agg.DeploymentsData))]
+		c := agg.DeploymentsData[rand.Intn(len(agg.DeploymentsData))]
+		if len(c) == 0 {
+			return nil
+		}
+		return &c
 	},
 	"DeploymentHash": func(agg ContractsAggregate) interface{} {
-		return &agg.DeploymentHashes[rand.Intn(len(agg.DeploymentHashes))]
+		c := agg.DeploymentHashes[rand.Intn(len(agg.DeploymentHashes))]
+		if len(c) == 0 {
+			return nil
+		}
+		return &c
 	},
 }
 
@@ -204,6 +216,10 @@ func TestContractsFilter(t *testing.T) {
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
 		randomFieldValue := generator(agg)
+		if randomFieldValue == nil {
+			continue
+		}
+
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 		}
@@ -295,6 +311,10 @@ func randomContractsFilter(agg *ContractsAggregate) (proxytypes.ContractFilter, 
 			}
 
 			randomFieldValue := contractFilterRandomValueGenerator[v.Type().Field(i).Name](*agg)
+			if randomFieldValue == nil {
+				continue
+			}
+
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}

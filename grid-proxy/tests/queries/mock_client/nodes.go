@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -83,7 +84,8 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 					State:  node.Power.State,
 					Target: node.Power.Target,
 				},
-				NumGPU: numGPU,
+				NumGPU:   numGPU,
+				ExtraFee: node.ExtraFee,
 			})
 		}
 	}
@@ -105,7 +107,11 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 }
 
 func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
-	node := g.data.Nodes[uint64(nodeID)]
+	node, ok := g.data.Nodes[uint64(nodeID)]
+	if !ok {
+		return res, fmt.Errorf("node not found")
+	}
+
 	numGPU := len(g.data.GPUs[node.TwinID])
 
 	nodePower := types.NodePower{
@@ -170,7 +176,11 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 }
 
 func (g *GridProxyMockClient) NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error) {
-	node := g.data.Nodes[uint64(nodeID)]
+	node, ok := g.data.Nodes[uint64(nodeID)]
+	if !ok {
+		return res, fmt.Errorf("node not found")
+	}
+
 	nodePower := types.NodePower{
 		State:  node.Power.State,
 		Target: node.Power.Target,

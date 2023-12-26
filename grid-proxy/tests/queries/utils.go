@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
-	"strings"
+	"unicode"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
@@ -65,8 +65,10 @@ func changeCase(s string) string {
 		return s
 	}
 
-	idx := rand.Intn(len(s))
-	return strings.Replace(s, string(s[idx]), strings.ToUpper(string(s[idx])), 1)
+	runesList := []rune(s)
+	idx := rand.Intn(len(runesList))
+	runesList[idx] = unicode.ToUpper(runesList[idx])
+	return string(runesList)
 }
 
 func SerializeFilter[F Filter](f F) string {

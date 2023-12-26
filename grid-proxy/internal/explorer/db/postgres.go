@@ -571,13 +571,13 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where("COALESCE(public_ips_cache.free_ips, 0) >= ?", *filter.FreeIPs)
 	}
 	if filter.IPv4 != nil {
-		q = q.Where("(public_config.ipv4 IS NULL) != ?", *filter.IPv4)
+		q = q.Where("(COALESCE(public_config.ipv4, '') != '') = ?", *filter.IPv4)
 	}
 	if filter.IPv6 != nil {
-		q = q.Where("(public_config.ipv6 IS NULL) != ?", *filter.IPv6)
+		q = q.Where("(COALESCE(public_config.ipv6, '') != '') = ?", *filter.IPv6)
 	}
 	if filter.Domain != nil {
-		q = q.Where("(public_config.domain IS NULL) != ?", *filter.Domain)
+		q = q.Where("(COALESCE(public_config.domain, '') != '') = ?", *filter.Domain)
 	}
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
@@ -719,10 +719,10 @@ func (d *PostgresDatabase) contractTableQuery() *gorm.DB {
 	contractTablesQuery := `(
 		SELECT contract_id, twin_id, state, created_at, '' AS name, node_id, deployment_data, deployment_hash, number_of_public_i_ps, 'node' AS type
 		FROM node_contract 
-		UNION 
+		UNION ALL
 		SELECT contract_id, twin_id, state, created_at, '' AS name, node_id, '', '', 0, 'rent' AS type
 		FROM rent_contract 
-		UNION 
+		UNION ALL
 		SELECT contract_id, twin_id, state, created_at, name, 0, '', '', 0, 'name' AS type
 		FROM name_contract
 	) contracts`
