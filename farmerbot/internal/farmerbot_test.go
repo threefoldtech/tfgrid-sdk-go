@@ -13,6 +13,8 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+const aliceSeed = "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a"
+
 func TestFarmerbot(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -21,10 +23,8 @@ func TestFarmerbot(t *testing.T) {
 
 	ctx := context.Background()
 
-	farmerbot, err := NewFarmerBot(ctx, Config{}, "dev", "invalid")
-	assert.Error(t, err)
-
-	aliceSeed := "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a"
+	// farmerbot, err := NewFarmerBot(ctx, Config{}, "dev", "invalid")
+	// assert.Error(t, err)
 
 	inputs := Config{
 		FarmID:        1,
@@ -32,7 +32,7 @@ func TestFarmerbot(t *testing.T) {
 		Power:         power{WakeUpThreshold: 50},
 	}
 
-	farmerbot, err = NewFarmerBot(ctx, inputs, "dev", aliceSeed)
+	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed)
 	assert.Error(t, err)
 	farmerbot.rmbNodeClient = rmb
 

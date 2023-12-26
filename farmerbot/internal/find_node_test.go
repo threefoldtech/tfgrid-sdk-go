@@ -22,8 +22,6 @@ func TestFindNode(t *testing.T) {
 
 	ctx := context.Background()
 
-	aliceSeed := "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a"
-
 	inputs := Config{
 		FarmID:        1,
 		IncludedNodes: []uint32{1, 2},

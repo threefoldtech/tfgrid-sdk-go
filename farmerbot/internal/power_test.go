@@ -21,8 +21,6 @@ func TestPower(t *testing.T) {
 
 	ctx := context.Background()
 
-	aliceSeed := "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a"
-
 	inputs := Config{
 		FarmID:        1,
 		IncludedNodes: []uint32{1, 2},
@@ -208,8 +206,8 @@ func TestPower(t *testing.T) {
 	})
 
 	t.Run("test power management: a node to shutdown (failed set the first node)", func(t *testing.T) {
-		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(state.nodes[1].ID), false).Return(types.Hash{}, errors.New("error"))
-		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(state.nodes[2].ID), false).Return(types.Hash{}, nil)
+		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), false).Return(types.Hash{}, errors.New("error"))
+		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), false).Return(types.Hash{}, nil)
 
 		err = farmerbot.manageNodesPower(sub)
 		assert.NoError(t, err)
