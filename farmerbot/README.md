@@ -1,8 +1,8 @@
 # Farmerbot
 
-<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-73%25-brightgreen.svg?longCache=true&style=flat)</a>
+<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-64%25-brightgreen.svg?longCache=true&style=flat)</a>
 
-Farmerbot is a service that a farmer can run allowing him to automatically manage power of the nodes of his farm.
+Farmerbot is a service that farmers can run allowing them to automatically manage power of the nodes of their farm.
 
 ## How to use
 

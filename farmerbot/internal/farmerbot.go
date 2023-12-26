@@ -265,12 +265,20 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context) error {
 			continue
 		}
 
+		if node.neverShutDown && node.powerState == off {
+			log.Debug().Uint32("nodeID", nodeID).Msg("Power on node because it is set to never shutdown")
+			err := f.powerOn(subConn, nodeID)
+			if err != nil {
+				log.Error().Err(err).Send()
+				continue
+			}
+		}
+
 		if roundStart.Day() == 1 && roundStart.Hour() == 1 && roundStart.Minute() < int(timeoutUpdate.Minutes()) {
 			log.Debug().Uint32("nodeID", nodeID).Msg("Reset random wake-up times the first day of the month")
 			node.timesRandomWakeUps = 0
 		}
 
-		log.Debug().Uint32("nodeID", nodeID).Msg("Periodic wake-up")
 		if f.shouldWakeUp(subConn, node, roundStart) && wakeUpCalls < defaultPeriodicWakeUPLimit {
 			log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Power on node")
 			err := f.powerOn(subConn, uint32(node.ID))
@@ -284,7 +292,6 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context) error {
 
 	}
 
-	log.Debug().Msg("power management")
 	err = f.manageNodesPower(subConn)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to power management nodes")
@@ -311,10 +318,6 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 	// if node doesn't exist, we should add it
 	nodeObj, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm, on)
 	if err != nil {
-		if nodeObj.powerState == on {
-			return node{}, fmt.Errorf("node %d is not responding while we expect it to: %w", nodeID, err)
-		}
-		log.Error().Err(err).Uint32("nodeID", nodeID).Msg("Failed to get node")
 		return node{}, fmt.Errorf("failed to get node %d: %w", nodeID, err)
 	}
 
