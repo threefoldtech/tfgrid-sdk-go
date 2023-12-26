@@ -1,9 +1,9 @@
-// Package provider is the terraform provider
 package deployer
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -181,7 +181,6 @@ func TestNameDeployer(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
 		assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {contractID}})
-
 	})
 
 	t.Run("test update failed", func(t *testing.T) {
@@ -373,7 +372,6 @@ func TestNameDeployer(t *testing.T) {
 	})
 
 	t.Run("test sync contracts", func(t *testing.T) {
-
 	})
 
 	t.Run("test sync deleted workloads", func(t *testing.T) {
@@ -407,4 +405,92 @@ func TestNameDeployer(t *testing.T) {
 		assert.Equal(t, gw.ContractID, contractID)
 		assert.Equal(t, gw.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
 	})
+}
+
+func ExampleGatewayNameDeployer_Deploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	g := workloads.GatewayNameProxy{
+		NodeID:         nodeID,
+		Name:           "test",
+		TLSPassthrough: false,
+		Backends:       []zos.Backend{"http://1.1.1.1"},
+		FQDN:           "test.com",
+	}
+
+	err = tfPluginClient.GatewayNameDeployer.Deploy(context.Background(), &g)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("deployment is done successfully")
+}
+
+func ExampleGatewayNameDeployer_BatchDeploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	g1 := workloads.GatewayNameProxy{
+		NodeID:         nodeID,
+		Name:           "test1",
+		TLSPassthrough: false,
+		Backends:       []zos.Backend{"http://1.1.1.1"},
+		FQDN:           "test1.com",
+	}
+	g2 := workloads.GatewayNameProxy{
+		NodeID:         nodeID,
+		Name:           "test2",
+		TLSPassthrough: false,
+		Backends:       []zos.Backend{"http://2.2.2.2"},
+		FQDN:           "test2.com",
+	}
+
+	err = tfPluginClient.GatewayNameDeployer.BatchDeploy(context.Background(), []*workloads.GatewayNameProxy{&g1, &g2})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("batch deployment is done successfully")
+}
+
+func ExampleGatewayNameDeployer_Cancel() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// should be a valid and existing name and deploymentName
+	name := "test.com"
+	deploymentName := "test"
+	g, err := tfPluginClient.State.LoadGatewayNameFromGrid(nodeID, name, deploymentName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = tfPluginClient.GatewayNameDeployer.Cancel(context.Background(), &g)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("deployment is canceled successfully")
 }
