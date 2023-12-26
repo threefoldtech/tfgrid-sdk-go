@@ -43,15 +43,6 @@ TEXT) RETURNS DECIMAL AS $$
 ----
 DROP TRIGGER IF EXISTS node_added ON node;
 
-CREATE TABLE IF NOT EXISTS node_gpu (
-    id text PRIMARY KEY,
-    node_twin_id bigint NOT NULL,
-    vendor text,
-    device text,
-    contract bigint
-);
-
-
 ----
 -- Resources cache table
 ----
@@ -94,7 +85,7 @@ SELECT
     rent_contract.contract_id as rent_contract_id,
     count(node_contract.contract_id) as node_contracts_count,
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
-    country.name as country,
+    node.country as country,
     country.subregion as region
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
@@ -120,7 +111,7 @@ GROUP BY
     rent_contract.contract_id,
     rent_contract.twin_id,
     COALESCE(node_gpu.node_gpu_count, 0),
-    country.name,
+    node.country,
     country.subregion;
 
 CREATE TABLE IF NOT EXISTS resources_cache(

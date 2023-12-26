@@ -3,6 +3,7 @@ package mock
 import (
 	"database/sql"
 	"math"
+	"strings"
 
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -515,7 +516,7 @@ func loadCountries(db *sql.DB, data *DBData) error {
 		); err != nil {
 			return err
 		}
-		data.Regions[country.Name] = country.Subregion
+		data.Regions[strings.ToLower(country.Name)] = country.Subregion
 	}
 
 	return nil

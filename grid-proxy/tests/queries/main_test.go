@@ -85,16 +85,16 @@ func TestMain(m *testing.M) {
 	// 	os.Exit(exitcode)
 	// }
 
-	err = modifyDataToFireTriggers(db, data)
-	if err != nil {
-		panic(err)
-	}
+	// err = modifyDataToFireTriggers(db, data)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	data, err = mock.Load(db)
-	if err != nil {
-		panic(err)
-	}
-	mockClient = mock.NewGridProxyMockClient(data)
+	// data, err = mock.Load(db)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// mockClient = mock.NewGridProxyMockClient(data)
 
 	exitcode := m.Run()
 	os.Exit(exitcode)
