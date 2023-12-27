@@ -49,6 +49,7 @@ type Node struct {
 	Power           NodePower `gorm:"type:jsonb"`
 	HasGPU          bool
 	ExtraFee        uint64
+	Dedicated       bool
 }
 
 type NodePower struct {
@@ -157,4 +158,10 @@ type Country struct {
 	Subregion string
 	Lat       string
 	Long      string
+}
+
+type Location struct {
+	ID        string
+	Longitude *float64
+	Latitude  *float64
 }

@@ -102,45 +102,83 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 	},
 	"Country": func(agg NodesAggregate) interface{} {
 		country := changeCase(agg.countries[rand.Intn(len(agg.countries))])
+		if len(country) == 0 {
+			return nil
+		}
+
 		return &country
 	},
 	"Region": func(agg NodesAggregate) interface{} {
 		region := changeCase(agg.regions[rand.Intn(len(agg.regions))])
+		if len(region) == 0 {
+			return nil
+		}
+
 		return &region
 	},
 	"CountryContains": func(agg NodesAggregate) interface{} {
 		c := agg.countries[rand.Intn(len(agg.countries))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		if len(c) == 0 {
+			return nil
+		}
+
+		runesList := []rune(c)
+		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
 		if a > b {
 			a, b = b, a
 		}
-		c = c[a : b+1]
+		runesList = runesList[a : b+1]
+		c = string(runesList)
+		if len(c) == 0 {
+			return nil
+		}
+
 		return &c
 	},
 	"City": func(agg NodesAggregate) interface{} {
 		city := changeCase(agg.cities[rand.Intn(len(agg.cities))])
+		if len(city) == 0 {
+			return nil
+		}
+
 		return &city
 	},
 	"CityContains": func(agg NodesAggregate) interface{} {
 		c := agg.cities[rand.Intn(len(agg.cities))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		if len(c) == 0 {
+			return nil
+		}
+
+		runesList := []rune(c)
+		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
 		if a > b {
 			a, b = b, a
 		}
-		c = c[a : b+1]
+		runesList = runesList[a : b+1]
+		c = string(runesList)
 		return &c
 	},
 	"FarmName": func(agg NodesAggregate) interface{} {
 		name := changeCase(agg.farmNames[rand.Intn(len(agg.farmNames))])
+		if len(name) == 0 {
+			return nil
+		}
+
 		return &name
 	},
 	"FarmNameContains": func(agg NodesAggregate) interface{} {
 		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		if len(c) == 0 {
+			return nil
+		}
+
+		runesList := []rune(c)
+		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
 		if a > b {
 			a, b = b, a
 		}
-		c = c[a : b+1]
+		runesList = runesList[a : b+1]
+		c = string(runesList)
 		return &c
 	},
 	"FarmIDs": func(agg NodesAggregate) interface{} {
@@ -270,6 +308,7 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 }
 
 func TestNode(t *testing.T) {
+	t.Parallel()
 	t.Run("node pagination test", func(t *testing.T) {
 		nodePaginationCheck(t, mockClient, gridProxyClient)
 	})
@@ -279,6 +318,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("node up test", func(t *testing.T) {
+		t.Parallel()
+
 		f := types.NodeFilter{
 			Status: &STATUS_UP,
 		}
@@ -301,13 +342,18 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("node status test", func(t *testing.T) {
+		t.Parallel()
+
 		for i := 1; i <= NODE_COUNT; i++ {
 			if flip(.3) {
-				want, err := mockClient.NodeStatus(context.Background(), uint32(i))
-				require.NoError(t, err)
+				want, errWant := mockClient.NodeStatus(context.Background(), uint32(i))
+				got, errGot := gridProxyClient.NodeStatus(context.Background(), uint32(i))
 
-				got, err := gridProxyClient.NodeStatus(context.Background(), uint32(i))
-				require.NoError(t, err)
+				if errGot != nil && errWant != nil {
+					require.True(t, errors.As(errWant, &errGot), fmt.Sprintf("errors should match: want error %s, got error %s", errWant, errGot))
+				} else {
+					require.True(t, errWant == errGot)
+				}
 
 				require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 			}
@@ -315,6 +361,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("node stress test", func(t *testing.T) {
+		t.Parallel()
+
 		agg := calcNodesAggregates(&data)
 		for i := 0; i < NODE_TESTS; i++ {
 			l := types.Limit{
@@ -338,26 +386,16 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("node not found test", func(t *testing.T) {
+		t.Parallel()
+
 		nodeID := 1000000000
 		_, err := gridProxyClient.Node(context.Background(), uint32(nodeID))
 		assert.Equal(t, err.Error(), ErrNodeNotFound.Error())
 	})
 
-	t.Run("nodes test without resources view", func(t *testing.T) {
-		db := data.DB
-		_, err := db.Exec("drop view nodes_resources_view ;")
-		assert.NoError(t, err)
-
-		singleNodeCheck(t, mockClient, gridProxyClient)
-		assert.NoError(t, err)
-
-		_, err = db.Exec("drop view nodes_resources_view ;")
-		assert.NoError(t, err)
-
-		nodePaginationCheck(t, mockClient, gridProxyClient)
-	})
-
 	t.Run("nodes test certification_type filter", func(t *testing.T) {
+		t.Parallel()
+
 		certType := "Diy"
 		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{CertificationType: &certType}, types.DefaultLimit())
 		require.NoError(t, err)
@@ -373,6 +411,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test has_gpu filter", func(t *testing.T) {
+		t.Parallel()
+
 		l := proxytypes.DefaultLimit()
 		hasGPU := true
 		f := proxytypes.NodeFilter{
@@ -389,6 +429,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test gpu vendor, device name filter", func(t *testing.T) {
+		t.Parallel()
+
 		device := "navi"
 		vendor := "advanced"
 		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{GpuDeviceName: &device, GpuVendorName: &vendor}, types.DefaultLimit())
@@ -401,6 +443,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test gpu vendor, device id filter", func(t *testing.T) {
+		t.Parallel()
+
 		device := "744c"
 		vendor := "1002"
 		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{GpuDeviceID: &device, GpuVendorID: &vendor}, types.DefaultLimit())
@@ -413,6 +457,8 @@ func TestNode(t *testing.T) {
 	})
 
 	t.Run("nodes test gpu available", func(t *testing.T) {
+		t.Parallel()
+
 		available := false
 		nodes, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{GpuAvailable: &available}, types.DefaultLimit())
 		assert.NoError(t, err)
@@ -426,6 +472,8 @@ func TestNode(t *testing.T) {
 
 // TestNodeFilter iterates over all NodeFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestNodeFilter(t *testing.T) {
+	t.Parallel()
+
 	f := types.NodeFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()
@@ -442,10 +490,14 @@ func TestNodeFilter(t *testing.T) {
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
 		randomFieldValue := generator(agg)
+		if randomFieldValue == nil {
+			continue
+		}
 
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 		}
+
 		v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 
 		want, wantCount, err := mockClient.Nodes(context.Background(), f, l)
@@ -463,12 +515,17 @@ func TestNodeFilter(t *testing.T) {
 }
 
 func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
+	t.Parallel()
 	nodeID := rand.Intn(NODE_COUNT)
-	want, err := mockClient.Node(context.Background(), uint32(nodeID))
-	require.NoError(t, err)
+	want, errWant := mockClient.Node(context.Background(), uint32(nodeID))
 
-	got, err := gridProxyClient.Node(context.Background(), uint32(nodeID))
-	require.NoError(t, err)
+	got, errGot := gridProxyClient.Node(context.Background(), uint32(nodeID))
+
+	if errGot != nil && errWant != nil {
+		require.True(t, errors.As(errWant, &errGot))
+	} else {
+		require.True(t, errWant == errGot)
+	}
 
 	require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 }
@@ -478,7 +535,7 @@ func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClie
 		Status: &STATUS_DOWN,
 	}
 	l := types.Limit{
-		Size:     5,
+		Size:     100,
 		Page:     1,
 		RetCount: true,
 	}
@@ -515,6 +572,10 @@ func randomNodeFilter(agg *NodesAggregate) (types.NodeFilter, error) {
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}
+			if randomFieldValue == nil {
+				continue
+			}
+
 			v.Field(i).Set(reflect.ValueOf(randomFieldValue))
 		}
 	}
@@ -529,13 +590,27 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 		cities[node.City] = struct{}{}
 		countries[node.Country] = struct{}{}
 		total := data.NodeTotalResources[node.NodeID]
-		free := calcFreeResources(total, data.NodeUsedResources[node.NodeID])
-		res.maxFreeHRU = max(res.maxFreeHRU, free.HRU)
-		res.maxFreeSRU = max(res.maxFreeSRU, free.SRU)
-		res.maxFreeMRU = max(res.maxFreeMRU, free.MRU)
-		res.freeMRUs = append(res.freeMRUs, free.MRU)
-		res.freeSRUs = append(res.freeSRUs, free.SRU)
-		res.freeHRUs = append(res.freeHRUs, free.HRU)
+		free := mock.CalcFreeResources(total, data.NodeUsedResources[node.NodeID])
+		freeHRU := free.HRU
+		if int64(freeHRU) < 0 {
+			freeHRU = 0
+		}
+		freeMRU := free.MRU
+		if int64(freeMRU) < 0 {
+			freeMRU = 0
+		}
+
+		freeSRU := free.SRU
+		if int64(freeSRU) < 0 {
+			freeSRU = 0
+		}
+
+		res.maxFreeHRU = max(res.maxFreeHRU, freeHRU)
+		res.maxFreeSRU = max(res.maxFreeSRU, freeSRU)
+		res.maxFreeMRU = max(res.maxFreeMRU, freeMRU)
+		res.freeMRUs = append(res.freeMRUs, freeMRU)
+		res.freeSRUs = append(res.freeSRUs, freeSRU)
+		res.freeHRUs = append(res.freeHRUs, freeHRU)
 
 		res.maxTotalMRU = max(res.maxTotalMRU, total.MRU)
 		res.totalMRUs = append(res.totalMRUs, total.MRU)

@@ -20,6 +20,7 @@ import (
 	logging "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg"
 	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"gorm.io/gorm/logger"
 )
 
 const (
@@ -39,6 +40,7 @@ type flags struct {
 	postgresDB               string
 	postgresUser             string
 	postgresPassword         string
+	sqlLogLevel              int
 	address                  string
 	version                  bool
 	nocert                   bool
@@ -65,6 +67,7 @@ func main() {
 	flag.StringVar(&f.postgresDB, "postgres-db", "", "postgres database")
 	flag.StringVar(&f.postgresUser, "postgres-user", "", "postgres username")
 	flag.StringVar(&f.postgresPassword, "postgres-password", "", "postgres password")
+	flag.IntVar(&f.sqlLogLevel, "sql-log-level", 2, "sql logger level")
 	flag.BoolVar(&f.version, "v", false, "shows the package version")
 	flag.BoolVar(&f.nocert, "no-cert", false, "start the server without certificate")
 	flag.StringVar(&f.domain, "domain", "", "domain on which the server will be served")
@@ -108,18 +111,22 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to create relay client")
 	}
 
-	db, err := db.NewPostgresDatabase(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB, f.maxPoolOpenConnections)
+	db, err := db.NewPostgresDatabase(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB, f.maxPoolOpenConnections, logger.LogLevel(f.sqlLogLevel))
 	if err != nil {
 		log.Fatal().Err(err).Msg("couldn't get postgres client")
 	}
 
-	dbClient := explorer.DBClient{DB: db}
+	if err := db.Initialize(); err != nil {
+		log.Fatal().Err(err).Msg("failed to initialize database")
+	}
+
+	dbClient := explorer.DBClient{DB: &db}
 
 	indexer, err := gpuindexer.NewNodeGPUIndexer(
 		ctx,
 		f.relayURL,
 		f.mnemonics,
-		subManager, db,
+		subManager, &db,
 		f.indexerCheckIntervalMins,
 		f.indexerBatchSize,
 		f.indexerResultWorkers,

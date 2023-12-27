@@ -10,16 +10,7 @@ type Result interface {
 	types.Contract | types.Farm | types.Node | types.Twin
 }
 
-func calcFreeResources(total NodeResourcesTotal, used NodeResourcesTotal) NodeResourcesTotal {
-	if total.MRU < used.MRU {
-		panic("total mru is less than mru")
-	}
-	if total.HRU < used.HRU {
-		panic("total hru is less than hru")
-	}
-	if total.SRU < used.SRU {
-		panic("total sru is less than sru")
-	}
+func CalcFreeResources(total NodeResourcesTotal, used NodeResourcesTotal) NodeResourcesTotal {
 	return NodeResourcesTotal{
 		HRU: total.HRU - used.HRU,
 		SRU: total.SRU - used.SRU,

@@ -3,6 +3,7 @@ package mock
 import (
 	"database/sql"
 	"math"
+	"strings"
 
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -17,7 +18,7 @@ type DBData struct {
 	NodeUsedResources  map[uint64]NodeResourcesTotal
 	NodeRentedBy       map[uint64]uint64
 	NodeRentContractID map[uint64]uint64
-	FarmHasRentedNode  map[uint64]bool
+	FarmHasRentedNode  map[uint64]map[uint64]bool
 
 	Nodes               map[uint64]Node
 	NodeTotalResources  map[uint64]NodeResourcesTotal
@@ -29,10 +30,12 @@ type DBData struct {
 	RentContracts       map[uint64]RentContract
 	NameContracts       map[uint64]NameContract
 	Billings            map[uint64][]ContractBillReport
+	BillReports         uint32
 	ContractResources   map[string]ContractResources
 	NonDeletedContracts map[uint64][]uint64
 	GPUs                map[uint64][]NodeGPU
 	Regions             map[string]string
+	Locations           map[string]Location
 	DB                  *sql.DB
 }
 
@@ -132,7 +135,7 @@ func calcRentInfo(data *DBData) error {
 		data.NodeRentedBy[contract.NodeID] = contract.TwinID
 		data.NodeRentContractID[contract.NodeID] = contract.ContractID
 		farmID := data.Nodes[contract.NodeID].FarmID
-		data.FarmHasRentedNode[farmID] = true
+		data.FarmHasRentedNode[farmID][contract.TwinID] = true
 	}
 	return nil
 }
@@ -212,6 +215,7 @@ func loadFarms(db *sql.DB, data *DBData) error {
 		}
 		data.Farms[farm.FarmID] = farm
 		data.FarmIDMap[farm.ID] = farm.FarmID
+		data.FarmHasRentedNode[farm.FarmID] = map[uint64]bool{}
 	}
 	return nil
 }
@@ -475,6 +479,7 @@ func loadContractBillingReports(db *sql.DB, data *DBData) error {
 			return err
 		}
 		data.Billings[contractBillReport.ContractID] = append(data.Billings[contractBillReport.ContractID], contractBillReport)
+		data.BillReports++
 	}
 	return nil
 }
@@ -511,11 +516,42 @@ func loadCountries(db *sql.DB, data *DBData) error {
 		); err != nil {
 			return err
 		}
-		data.Regions[country.Name] = country.Subregion
+		data.Regions[strings.ToLower(country.Name)] = country.Subregion
 	}
 
 	return nil
 }
+
+func loadLocations(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT 
+		COALESCE(id, ''),
+		CASE WHEN longitude = '' THEN NULL ELSE longitude END,
+		CASE WHEN latitude = '' THEN NULL ELSE latitude END
+	FROM
+		location;
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		var location Location
+		if err := rows.Scan(
+			&location.ID,
+			&location.Longitude,
+			&location.Latitude,
+		); err != nil {
+			return err
+		}
+
+		data.Locations[location.ID] = location
+	}
+
+	return nil
+}
+
 func loadNodeGPUs(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 	SELECT 
@@ -562,13 +598,15 @@ func Load(db *sql.DB) (DBData, error) {
 		NodeRentedBy:        make(map[uint64]uint64),
 		NodeRentContractID:  make(map[uint64]uint64),
 		Billings:            make(map[uint64][]ContractBillReport),
+		BillReports:         0,
 		ContractResources:   make(map[string]ContractResources),
 		NodeTotalResources:  make(map[uint64]NodeResourcesTotal),
 		NodeUsedResources:   make(map[uint64]NodeResourcesTotal),
 		NonDeletedContracts: make(map[uint64][]uint64),
 		GPUs:                make(map[uint64][]NodeGPU),
-		FarmHasRentedNode:   make(map[uint64]bool),
+		FarmHasRentedNode:   make(map[uint64]map[uint64]bool),
 		Regions:             make(map[string]string),
+		Locations:           make(map[string]Location),
 		DB:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {
@@ -608,6 +646,9 @@ func Load(db *sql.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadCountries(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadLocations(db, &data); err != nil {
 		return data, err
 	}
 	if err := calcNodesUsedResources(&data); err != nil {

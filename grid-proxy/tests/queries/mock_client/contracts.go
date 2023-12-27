@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -243,6 +244,10 @@ func (g *GridProxyMockClient) Contract(ctx context.Context, contractID uint32) (
 				NodeID: uint(rentContract.NodeID),
 			},
 		}, err
+	}
+
+	if !ok {
+		return res, fmt.Errorf("contract not found")
 	}
 
 	return res, err

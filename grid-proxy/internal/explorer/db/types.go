@@ -41,41 +41,41 @@ type DBContract struct {
 
 // Node data about a node which is calculated from the chain
 type Node struct {
-	ID              string
-	NodeID          int64
-	FarmID          int64
-	TwinID          int64
-	Country         string
-	GridVersion     int64
-	City            string
-	Uptime          int64
-	Created         int64
-	FarmingPolicyID int64
-	UpdatedAt       int64
-	TotalCru        int64
-	TotalMru        int64
-	TotalSru        int64
-	TotalHru        int64
-	UsedCru         int64
-	UsedMru         int64
-	UsedSru         int64
-	UsedHru         int64
-	Domain          string
-	Gw4             string
-	Gw6             string
-	Ipv4            string
-	Ipv6            string
-	Certification   string
-	FarmDedicated   bool `gorm:"farm_dedicated"`
-	RentContractID  int64
-	RentedByTwinID  int64
-	SerialNumber    string
-	Longitude       *float64
-	Latitude        *float64
-	Power           NodePower `gorm:"type:jsonb"`
-	NumGPU          int       `gorm:"num_gpu"`
-	ExtraFee        uint64
-	HasNodeContract bool `gorm:"has_node_contract"`
+	ID                 string
+	NodeID             int64
+	FarmID             int64
+	TwinID             int64
+	Country            string
+	GridVersion        int64
+	City               string
+	Uptime             int64
+	Created            int64
+	FarmingPolicyID    int64
+	UpdatedAt          int64
+	TotalCru           int64
+	TotalMru           int64
+	TotalSru           int64
+	TotalHru           int64
+	UsedCru            int64
+	UsedMru            int64
+	UsedSru            int64
+	UsedHru            int64
+	Domain             string
+	Gw4                string
+	Gw6                string
+	Ipv4               string
+	Ipv6               string
+	Certification      string
+	FarmDedicated      bool `gorm:"farm_dedicated"`
+	RentContractID     int64
+	Renter             int64
+	SerialNumber       string
+	Longitude          *float64
+	Latitude           *float64
+	Power              NodePower `gorm:"type:jsonb"`
+	NumGPU             int       `gorm:"num_gpu"`
+	ExtraFee           uint64
+	NodeContractsCount uint64 `gorm:"node_contracts_count"`
 }
 
 // NodePower struct is the farmerbot report for node status
