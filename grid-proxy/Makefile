@@ -42,7 +42,7 @@ db-stop: ## Stop the database container if running
 	@if [ ! "$(shell docker ps | grep '$(PQ_CONTAINER)' )" = "" ]; then \
 		docker stop postgres; \
 	fi
-
+db-refill: db-stop db-start sleep db-fill
 server-start: ## Start the proxy server			(Args: `m=<MNEMONICS>`)
 	@go run cmds/proxy_server/main.go \
 		-no-cert \
@@ -52,7 +52,6 @@ server-start: ## Start the proxy server			(Args: `m=<MNEMONICS>`)
 		--postgres-db tfgrid-graphql \
 		--postgres-password postgres \
 		--postgres-user postgres \
-		--sql-log-level 4 \
 		--mnemonics "$(m)" ;
 
 all-start: db-stop db-start sleep db-fill server-start ## Full start of the database and the server (Args: `m=<MNEMONICS>`)

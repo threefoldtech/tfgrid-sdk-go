@@ -1,24 +1,14 @@
-package modifiers
+package crafter
 
 import (
 	"database/sql"
 	"math/rand"
 )
 
-var r *rand.Rand
-
 const (
 	contractCreatedRatio = .1 // from devnet
 	usedPublicIPsRatio   = .9
 	nodeUpRatio          = .5
-	NodeCount            = 6000
-	FarmCount            = 600
-	NormalUsersCount     = 6000
-	PublicIPCount        = 1000
-	TwinCount            = 6000 + 600 + 6000 // nodes + farms + normal users
-	NodeContractCount    = 9000
-	RentContractCount    = 100
-	NameContractCount    = 300
 	maxContractHRU       = 1024 * 1024 * 1024 * 300
 	maxContractSRU       = 1024 * 1024 * 1024 * 300
 	maxContractMRU       = 1024 * 1024 * 1024 * 16
@@ -30,6 +20,8 @@ const (
 )
 
 var (
+	r *rand.Rand
+
 	countries = []string{"Belgium", "United States", "Egypt", "United Kingdom"}
 	regions   = map[string]string{
 		"Belgium":        "Europe",
@@ -51,8 +43,9 @@ var (
 	}
 )
 
-type Generator struct {
-	db                     *sql.DB
+type Crafter struct {
+	db *sql.DB
+
 	nodesMRU               map[uint64]uint64
 	nodesSRU               map[uint64]uint64
 	nodesHRU               map[uint64]uint64
@@ -62,13 +55,44 @@ type Generator struct {
 	availableRentNodes     map[uint64]struct{}
 	availableRentNodesList []uint64
 	renter                 map[uint64]uint64
+
+	NodeCount         uint
+	FarmCount         uint
+	PublicIPCount     uint
+	TwinCount         uint
+	NodeContractCount uint
+	RentContractCount uint
+	NameContractCount uint
+
+	NodeStart     uint
+	FarmStart     uint
+	TwinStart     uint
+	ContractStart uint
+	BillStart     uint
+	PublicIPStart uint
 }
 
-func NewGenerator(db *sql.DB, seed int) Generator {
+func NewCrafter(db *sql.DB,
+	seed int,
+	nodeCount,
+	farmCount,
+	twinCount,
+	ipCount,
+	nodeContractCount,
+	nameContractCount,
+	rentContractCount,
+	nodeStart,
+	farmStart,
+	twinStart,
+	contractStart,
+	billStart,
+	publicIPStart uint) Crafter {
+
 	r = rand.New(rand.NewSource(int64(seed)))
 
-	return Generator{
-		db:                     db,
+	return Crafter{
+		db: db,
+
 		nodesMRU:               make(map[uint64]uint64),
 		nodesSRU:               make(map[uint64]uint64),
 		nodesHRU:               make(map[uint64]uint64),
@@ -78,6 +102,21 @@ func NewGenerator(db *sql.DB, seed int) Generator {
 		availableRentNodes:     make(map[uint64]struct{}),
 		availableRentNodesList: make([]uint64, 0),
 		renter:                 make(map[uint64]uint64),
+
+		TwinCount:         twinCount,
+		FarmCount:         farmCount,
+		NodeCount:         nodeCount,
+		PublicIPCount:     ipCount,
+		NodeContractCount: nodeContractCount,
+		RentContractCount: rentContractCount,
+		NameContractCount: nameContractCount,
+
+		NodeStart:     nodeStart,
+		FarmStart:     farmStart,
+		TwinStart:     twinStart,
+		ContractStart: contractStart,
+		BillStart:     billStart,
+		PublicIPStart: publicIPStart,
 	}
 }
 

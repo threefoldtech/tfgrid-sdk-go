@@ -1,4 +1,4 @@
-package modifiers
+package crafter
 
 import (
 	"fmt"

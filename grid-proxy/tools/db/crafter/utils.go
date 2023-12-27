@@ -1,4 +1,4 @@
-package modifiers
+package crafter
 
 import (
 	"encoding/json"
@@ -92,7 +92,8 @@ func objectToTupleString(v interface{}) (string, error) {
 				if err != nil {
 					return "", fmt.Errorf("failed to marshal the power map to JSON: %w", err)
 				}
-				v = fmt.Sprintf("'%s'", string(powerJSON))
+				escapedJSON := strings.ReplaceAll(string(powerJSON), "'", "''")
+				v = fmt.Sprintf("'%s'", escapedJSON)
 			}
 			vals = fmt.Sprintf("%s, %s", vals, v)
 		}
@@ -100,7 +101,7 @@ func objectToTupleString(v interface{}) (string, error) {
 	return fmt.Sprintf("%s)", vals), nil
 }
 
-func (g *Generator) insertTuples(tupleObj interface{}, tuples []string) error {
+func (g *Crafter) insertTuples(tupleObj interface{}, tuples []string) error {
 
 	if len(tuples) != 0 {
 		query := "INSERT INTO  " + reflect.Indirect(reflect.ValueOf(tupleObj)).Type().Name() + " ("

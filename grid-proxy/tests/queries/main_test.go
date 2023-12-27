@@ -16,9 +16,8 @@ import (
 	proxyDB "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tools/db/modifiers"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tools/db/crafter"
 	"gorm.io/gorm/logger"
-	// _ "embed"
 )
 
 var (
@@ -38,9 +37,6 @@ var (
 	DBClient        db.Database
 )
 
-// //go:embed modifiers.sql
-// var modifiersFile string
-
 func parseCmdline() {
 	flag.StringVar(&POSTGRES_HOST, "postgres-host", "", "postgres host")
 	flag.IntVar(&POSTGRES_PORT, "postgres-port", 5432, "postgres port")
@@ -53,6 +49,8 @@ func parseCmdline() {
 }
 
 func TestMain(m *testing.M) {
+	var exitCode int
+
 	parseCmdline()
 	if SEED != 0 {
 		rand.New(rand.NewSource(int64(SEED)))
@@ -67,93 +65,94 @@ func TestMain(m *testing.M) {
 	}
 	defer db.Close()
 
-	data, err = mock.Load(db)
-	if err != nil {
-		panic(err)
-	}
+	// proxy client
+	gridProxyClient = proxyclient.NewClient(ENDPOINT)
+
+	// mock client
 	dbClient, err := proxyDB.NewPostgresDatabase(POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB, 80, logger.Error)
 	if err != nil {
 		panic(err)
 	}
 	DBClient = &dbClient
 
-	mockClient = mock.NewGridProxyMockClient(data)
-	gridProxyClient = proxyclient.NewClient(ENDPOINT)
-
-	// exitcode := m.Run()
-	// if exitcode != 0 {
-	// 	os.Exit(exitcode)
-	// }
-
-	// err = modifyDataToFireTriggers(db, data)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// data, err = mock.Load(db)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	// load mock client
+	data, err = mock.Load(db)
+	if err != nil {
+		panic(err)
+	}
 	// mockClient = mock.NewGridProxyMockClient(data)
 
-	exitcode := m.Run()
-	os.Exit(exitcode)
+	err = modifyDataToFireTriggers(db, data)
+	if err != nil {
+		panic(err)
+	}
+	data, err = mock.Load(db)
+	if err != nil {
+		panic(err)
+	}
+	mockClient = mock.NewGridProxyMockClient(data)
+
+	exitCode = m.Run()
+	os.Exit(exitCode)
 }
 
 func modifyDataToFireTriggers(db *sql.DB, data mock.DBData) error {
-	/*
-		- insert nodes - y
-			- should be on new/old farms
-			- should be on new/old locations
-		- insert node total resources - y
-		- insert node contracts - y
-		- insert contract resources - y
-		- insert rent contracts - y
-		- insert public ips - y
-
-		- update node country - y
-		- update node total resources - y
-		- update contract_resources - y
-		- update node contract state - y
-		- update rent contract state - y
-		- update public ip contract id - y
-
-		- delete node - y
-		- delete public ip - y
-	*/
-	// modifiers.GenerateTwins(db)
-
-	generator := modifiers.NewGenerator(db, SEED)
-
 	twinStart := len(data.Twins) + 1
 	farmStart := len(data.Farms) + 1
-	farmSize := 100
 	nodeStart := len(data.Nodes) + 1
-	nodeSize := 600
 	contractStart := len(data.NodeContracts) + len(data.RentContracts) + len(data.NameContracts) + 1
 	billStart := data.BillReports + 1
 	publicIpStart := len(data.PublicIPs) + 1
-	size := 10
+
+	const (
+		NodeCount         = 600
+		FarmCount         = 100
+		TwinCount         = 600 + 100 + 600 // nodes + farms + normal users
+		PublicIPCount     = 10
+		NodeContractCount = 50
+		NameContractCount = 10
+		RentContractCount = 1
+	)
+
+	generator := crafter.NewCrafter(db,
+		SEED,
+		NodeCount,
+		FarmCount,
+		TwinCount,
+		PublicIPCount,
+		NodeContractCount,
+		NameContractCount,
+		RentContractCount,
+		uint(nodeStart),
+		uint(farmStart),
+		uint(twinStart),
+		uint(contractStart),
+		uint(billStart),
+		uint(publicIpStart))
 
 	// insertion
-	if err := generator.GenerateFarms(farmStart, farmSize, twinStart); err != nil {
+	if err := generator.GenerateTwins(); err != nil {
+		return fmt.Errorf("failed to generate twins: %w", err)
+	}
+
+	if err := generator.GenerateFarms(); err != nil {
 		return fmt.Errorf("failed to generate farms: %w", err)
 	}
 
-	if err := generator.GenerateNodes(nodeStart, nodeSize, farmStart, farmSize, twinStart); err != nil {
+	if err := generator.GenerateNodes(); err != nil {
 		return fmt.Errorf("failed to generate nodes: %w", err)
 	}
 
 	// rentCount is 1 because the generate method have .1 percent of 10 farms to be dedicated
-	if err := generator.GenerateContracts(int(billStart), contractStart, 50, size, 1, nodeStart, nodeSize); err != nil {
+	if err := generator.GenerateContracts(); err != nil {
 		return fmt.Errorf("failed to generate contracts: %w", err)
 	}
 
-	if err := generator.GeneratePublicIPs(publicIpStart, size, farmStart, farmSize); err != nil {
+	if err := generator.GeneratePublicIPs(); err != nil {
 		return fmt.Errorf("failed to generate public ips: %w", err)
 	}
 
-	// // updates
+	// updates
 	if err := generator.UpdateNodeCountry(); err != nil {
 		return fmt.Errorf("failed to update node country: %w", err)
 	}
@@ -179,7 +178,7 @@ func modifyDataToFireTriggers(db *sql.DB, data mock.DBData) error {
 	}
 
 	// // deletions
-	if err := generator.DeleteNodes(len(data.Nodes) + nodeSize); err != nil {
+	if err := generator.DeleteNodes(); err != nil {
 		return fmt.Errorf("failed to delete node: %w", err)
 	}
 

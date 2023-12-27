@@ -869,7 +869,7 @@ ALTER TABLE ONLY public.node_resources_total
 --
 
 ALTER TABLE ONLY public.node_gpu
-    ADD CONSTRAINT node_gpu_pkey PRIMARY KEY (node_twin_id, id);
+    ADD CONSTRAINT node_gpu_pkey PRIMARY KEY (id);
 
 
 
