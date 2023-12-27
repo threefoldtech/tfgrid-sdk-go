@@ -147,11 +147,15 @@ func TestContract(t *testing.T) {
 
 		contractID := rand.Intn(CONTRACTS_TESTS)
 
-		want, err := mockClient.Contract(context.Background(), uint32(contractID))
-		require.NoError(t, err)
+		want, errGot := mockClient.Contract(context.Background(), uint32(contractID))
 
-		got, err := gridProxyClient.Contract(context.Background(), uint32(contractID))
-		require.NoError(t, err)
+		got, errWant := gridProxyClient.Contract(context.Background(), uint32(contractID))
+
+		if errGot != nil && errWant != nil {
+			require.True(t, errors.As(errWant, &errGot))
+		} else {
+			require.True(t, errWant == errGot)
+		}
 
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("wanted: %+v\n got: %+v", want, got))
 	})
