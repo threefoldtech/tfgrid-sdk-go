@@ -97,13 +97,8 @@ func NewMonitor(ctx context.Context, env config, wallets wallets) (Monitor, erro
 	for _, network := range networks {
 		mon.managers[network] = client.NewManager(SubstrateURLs[network]...)
 
-		con, err := mon.managers[network].Substrate()
-		if err != nil {
-			return mon, fmt.Errorf("substrate connection for %s network failed with error: %w", network, err)
-		}
-
 		sessionID := fmt.Sprintf("monbot-%d", os.Getpid())
-		rmbClient, err := peer.NewRpcClient(ctx, "sr25519", mon.mnemonics[network], RelayURLS[network], sessionID, con, true)
+		rmbClient, err := peer.NewRpcClient(ctx, "sr25519", mon.mnemonics[network], RelayURLS[network], sessionID, mon.managers[network], true)
 		if err != nil {
 			return mon, fmt.Errorf("couldn't create rpc client in network %s with error: %w", network, err)
 		}

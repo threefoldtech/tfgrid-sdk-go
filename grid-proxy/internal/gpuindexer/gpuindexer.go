@@ -39,7 +39,7 @@ func NewNodeGPUIndexer(
 	ctx context.Context,
 	relayURL,
 	mnemonics string,
-	sub *substrate.Substrate,
+	subManager substrate.Manager,
 	db db.Database,
 	indexerCheckIntervalMins,
 	batchSize,
@@ -60,7 +60,7 @@ func NewNodeGPUIndexer(
 	client, err := peer.NewPeer(
 		ctx,
 		mnemonics,
-		sub,
+		subManager,
 		indexer.relayCallback,
 		peer.WithRelay(relayURL),
 		peer.WithSession(sessionId),

@@ -20,13 +20,9 @@ func app() error {
 	subNodeURL := "wss://tfchain.dev.grid.tf/ws"
 	relayURL := "wss://relay.dev.grid.tf"
 
-	sub, err := substrate.NewManager(subNodeURL).Substrate()
-	if err != nil {
-		return fmt.Errorf("failed to connect to substrate: %w", err)
-	}
-	defer sub.Close()
+	subManager := substrate.NewManager(subNodeURL)
 
-	client, err := peer.NewRpcClient(context.Background(), peer.KeyTypeSr25519, mnemonics, relayURL, "test-client", sub, true)
+	client, err := peer.NewRpcClient(context.Background(), peer.KeyTypeSr25519, mnemonics, relayURL, "test-client", subManager, true)
 	if err != nil {
 		return fmt.Errorf("failed to create direct client: %w", err)
 	}
@@ -34,14 +30,9 @@ func app() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	const dstNode = 11 // <- replace this with any node id
-	node, err := sub.GetNode(dstNode)
-	if err != nil {
-		return err
-	}
-
+	const dstTwin uint32 = 11 // <- replace this with any node i
 	var ver version
-	if err := client.Call(ctx, uint32(node.TwinID), "zos.system.version", nil, &ver); err != nil {
+	if err := client.Call(ctx, dstTwin, "zos.system.version", nil, &ver); err != nil {
 		return err
 	}
 

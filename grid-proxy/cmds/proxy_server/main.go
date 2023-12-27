@@ -102,13 +102,8 @@ func main() {
 	defer cancel()
 
 	subManager := substrate.NewManager(f.tfChainURL)
-	sub, err := subManager.Substrate()
-	if err != nil {
-		log.Fatal().Err(err).Msg(fmt.Sprintf("failed to connect to TF chain URL: %s", err))
-	}
-	defer sub.Close()
 
-	relayRPCClient, err := createRPCRMBClient(ctx, f.relayURL, f.mnemonics, sub)
+	relayRPCClient, err := createRPCRMBClient(ctx, f.relayURL, f.mnemonics, subManager)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create relay client")
 	}
@@ -124,7 +119,7 @@ func main() {
 		ctx,
 		f.relayURL,
 		f.mnemonics,
-		sub, db,
+		subManager, db,
 		f.indexerCheckIntervalMins,
 		f.indexerBatchSize,
 		f.indexerResultWorkers,
@@ -192,9 +187,9 @@ func app(s *http.Server, f flags) error {
 	return nil
 }
 
-func createRPCRMBClient(ctx context.Context, relayURL, mnemonics string, sub *substrate.Substrate) (rmb.Client, error) {
+func createRPCRMBClient(ctx context.Context, relayURL, mnemonics string, subManager substrate.Manager) (rmb.Client, error) {
 	sessionId := fmt.Sprintf("tfgrid_proxy-%d", os.Getpid())
-	client, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonics, relayURL, sessionId, sub, true)
+	client, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonics, relayURL, sessionId, subManager, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create direct RPC RMB client: %w", err)
 	}
