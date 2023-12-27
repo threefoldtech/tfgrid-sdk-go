@@ -1,6 +1,21 @@
 # This is an example .goreleaser.yml file with some sensible defaults.
 # Make sure to check the documentation at https://goreleaser.com
 builds:
+  - dir: ./farmerbot
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    binary: farmerbot
+    id: farmerbot
+
+    ignore:
+      - goos: windows
+    ldflags:
+      - -X github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version.Version={{.Tag}}
+
   - dir: ./grid-cli
     env:
       - CGO_ENABLED=0
@@ -13,7 +28,6 @@ builds:
 
     ignore:
       - goos: windows
-        goarch: "arm64"
     ldflags:
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit={{.Commit}}
@@ -30,7 +44,6 @@ builds:
 
     ignore:
       - goos: windows
-        goarch: "arm64"
     ldflags:
       - -w -s -X github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/cmd.version={{.Tag}} -extldflags '-static'
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/cmd.commit={{.Commit}}
@@ -47,7 +60,6 @@ builds:
 
     ignore:
       - goos: windows
-        goarch: "arm64"
     ldflags:
       - -X github.com/threefoldtech/tfgrid-sdk-go/gridify/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/gridify/cmd.commit={{.Commit}}
@@ -64,7 +76,6 @@ builds:
 
     ignore:
       - goos: windows
-        goarch: "arm64"
     ldflags:
       - -X github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.commit={{.Commit}}

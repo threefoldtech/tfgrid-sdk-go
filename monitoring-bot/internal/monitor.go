@@ -17,7 +17,6 @@ import (
 	"github.com/cosmos/go-bip39"
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
@@ -56,21 +55,17 @@ type wallets struct {
 
 // Monitor for bot monitoring
 type Monitor struct {
-	env       config
-	mnemonics map[network]string
-	farms     map[network]string
-	wallets   wallets
-	managers  map[network]client.Manager
+	env        config
+	mnemonics  map[network]string
+	farms      map[network]string
+	wallets    wallets
+	managers   map[network]client.Manager
+	rmbClients map[network]*peer.RpcCLient
 }
 
 // NewMonitor creates a new instance of monitor
-func NewMonitor(env config, wallets wallets) (Monitor, error) {
+func NewMonitor(ctx context.Context, env config, wallets wallets) (Monitor, error) {
 	mon := Monitor{}
-
-	mon.managers = make(map[network]client.Manager, 4)
-	for _, network := range networks {
-		mon.managers[network] = client.NewManager(SubstrateURLs[network]...)
-	}
 
 	mon.wallets = wallets
 	mon.env = env
@@ -96,6 +91,19 @@ func NewMonitor(env config, wallets wallets) (Monitor, error) {
 	mon.mnemonics[testNetwork] = mon.env.testMnemonic
 	mon.mnemonics[qaNetwork] = mon.env.qaMnemonic
 	mon.mnemonics[mainNetwork] = mon.env.mainMnemonic
+
+	mon.managers = make(map[network]client.Manager, 4)
+	mon.rmbClients = make(map[network]*peer.RpcCLient, 4)
+	for _, network := range networks {
+		mon.managers[network] = client.NewManager(SubstrateURLs[network]...)
+
+		sessionID := fmt.Sprintf("monbot-%d", os.Getpid())
+		rmbClient, err := peer.NewRpcClient(ctx, "sr25519", mon.mnemonics[network], RelayURLS[network], sessionID, mon.managers[network], true)
+		if err != nil {
+			return mon, fmt.Errorf("couldn't create rpc client in network %s with error: %w", network, err)
+		}
+		mon.rmbClients[network] = rmbClient
+	}
 
 	mon.farms = make(map[network]string, 4)
 	mon.farms[devNetwork] = mon.env.devFarmName
@@ -330,13 +338,7 @@ func (m *Monitor) systemVersion(ctx context.Context) (map[network]version, map[n
 			log.Error().Err(err).Msgf("substrate connection for %v network failed", network)
 			continue
 		}
-
-		sessionID := fmt.Sprintf("monbot-%d", os.Getpid())
-		rmbClient, err := peer.NewRpcClient(ctx, "sr25519", m.mnemonics[network], RelayURLS[network], sessionID, con, true)
-		if err != nil {
-			log.Error().Err(err).Msgf("error getting relay for network %v", network)
-			continue
-		}
+		defer con.Close()
 
 		farmID, err := con.GetFarmByName(m.farms[network])
 		if err != nil {
@@ -360,7 +362,7 @@ func (m *Monitor) systemVersion(ctx context.Context) (map[network]version, map[n
 
 		for _, NodeID := range randomNodes {
 			log.Debug().Msgf("check node %d", NodeID)
-			ver, working, failed, err := m.checkNodeSystemVersion(ctx, rmbClient, NodeID, network)
+			ver, working, failed, err := m.checkNodeSystemVersion(ctx, NodeID, network)
 			failedNodes[network] = append(failedNodes[network], failed...)
 			if err != nil {
 				log.Error().Err(err).Msgf("check node %d failed", NodeID)
@@ -375,7 +377,7 @@ func (m *Monitor) systemVersion(ctx context.Context) (map[network]version, map[n
 	return versions, workingNodes, failedNodes
 }
 
-func (m *Monitor) checkNodeSystemVersion(ctx context.Context, rmbClient rmb.Client, NodeID uint32, net network) (version, []uint32, []uint32, error) {
+func (m *Monitor) checkNodeSystemVersion(ctx context.Context, NodeID uint32, net network) (version, []uint32, []uint32, error) {
 	const cmd = "zos.system.version"
 	var ver version
 	var workingNodes []uint32
@@ -393,10 +395,10 @@ func (m *Monitor) checkNodeSystemVersion(ctx context.Context, rmbClient rmb.Clie
 		return version{}, []uint32{}, failedNodes, fmt.Errorf("cannot get node %d. failed with error: %w", NodeID, err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	rmbCtx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	err = rmbClient.Call(ctx, uint32(node.TwinID), cmd, nil, &ver)
+	err = m.rmbClients[net].Call(rmbCtx, uint32(node.TwinID), cmd, nil, &ver)
 	if err != nil {
 		failedNodes = append(failedNodes, NodeID)
 		return version{}, []uint32{}, failedNodes, fmt.Errorf("rmb version call in %s failed using node twin %d with node ID %d: %w", net, node.TwinID, NodeID, err)

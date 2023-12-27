@@ -28,6 +28,7 @@ jobs:
       matrix:
         dir:
           - activation-service
+          - farmerbot 
           - grid-cli
           - grid-client
           - grid-proxy

@@ -3,6 +3,7 @@ package deployer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net"
 	"testing"
@@ -370,4 +371,91 @@ func TestFQDNDeployer(t *testing.T) {
 		assert.Equal(t, gw.TLSPassthrough, false)
 		assert.Equal(t, gw.Backends, []zos.Backend(nil))
 	})
+}
+
+func ExampleGatewayFQDNDeployer_Deploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	g := workloads.GatewayFQDNProxy{
+		NodeID:         nodeID,
+		Name:           "test1",
+		TLSPassthrough: false,
+		Backends:       []zos.Backend{"http://1.1.1.1"},
+		FQDN:           "name.com",
+	}
+
+	err = tfPluginClient.GatewayFQDNDeployer.Deploy(context.Background(), &g)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("deployment is done successfully")
+}
+
+func ExampleGatewayFQDNDeployer_BatchDeploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	g1 := workloads.GatewayFQDNProxy{
+		NodeID:         nodeID,
+		Name:           "test1",
+		TLSPassthrough: false,
+		Backends:       []zos.Backend{"http://1.1.1.1"},
+		FQDN:           "test1.com",
+	}
+	g2 := workloads.GatewayFQDNProxy{
+		NodeID:         nodeID,
+		Name:           "test2",
+		TLSPassthrough: false,
+		Backends:       []zos.Backend{"http://2.2.2.2"},
+		FQDN:           "test2.com",
+	}
+
+	err = tfPluginClient.GatewayFQDNDeployer.BatchDeploy(context.Background(), []*workloads.GatewayFQDNProxy{&g1, &g2})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("batch deployment is done successfully")
+}
+
+func ExampleGatewayFQDNDeployer_Cancel() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// should be a valid and existing name and deploymentName
+	name := "test1.com"
+	deploymentName := "test1"
+	g, err := tfPluginClient.State.LoadGatewayFQDNFromGrid(nodeID, name, deploymentName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = tfPluginClient.GatewayFQDNDeployer.Cancel(context.Background(), &g)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("deployment is canceled successfully")
 }
