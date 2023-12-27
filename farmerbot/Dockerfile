@@ -16,9 +16,4 @@ WORKDIR /app
 
 COPY --from=builder /src/farmerbot/bin/farmerbot .
 
-COPY --from=builder /src/farmerbot/.env .
-
-COPY --from=builder /src/farmerbot/config.yml .
-
-CMD ./farmerbot run -c config.yml -e .env
-
+ENTRYPOINT [ "./farmerbot", "run" ]
