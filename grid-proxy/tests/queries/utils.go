@@ -7,34 +7,10 @@ import (
 	"unicode"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
 
 type Filter interface {
 	types.ContractFilter | types.NodeFilter | types.FarmFilter | types.TwinFilter | types.StatsFilter
-}
-
-func calcFreeResources(total mock.NodeResourcesTotal, used mock.NodeResourcesTotal) mock.NodeResourcesTotal {
-	mru := total.MRU - used.MRU
-	if mru < 0 {
-		mru = 0
-	}
-
-	hru := total.HRU - used.HRU
-	if hru < 0 {
-		hru = 0
-	}
-
-	sru := total.SRU - used.SRU
-	if sru < 0 {
-		sru = 0
-	}
-
-	return mock.NodeResourcesTotal{
-		HRU: hru,
-		SRU: sru,
-		MRU: mru,
-	}
 }
 
 func flip(success float32) bool {

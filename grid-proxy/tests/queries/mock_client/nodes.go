@@ -197,7 +197,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 
 	total := data.NodeTotalResources[n.NodeID]
 	used := data.NodeUsedResources[n.NodeID]
-	free := calcFreeResources(total, used)
+	free := CalcFreeResources(total, used)
 
 	if f.Status != nil && *f.Status != nodestatus.DecideNodeStatus(nodePower, int64(n.UpdatedAt)) {
 		return false

@@ -590,7 +590,7 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 		cities[node.City] = struct{}{}
 		countries[node.Country] = struct{}{}
 		total := data.NodeTotalResources[node.NodeID]
-		free := calcFreeResources(total, data.NodeUsedResources[node.NodeID])
+		free := mock.CalcFreeResources(total, data.NodeUsedResources[node.NodeID])
 		freeHRU := free.HRU
 		if int64(freeHRU) < 0 {
 			freeHRU = 0

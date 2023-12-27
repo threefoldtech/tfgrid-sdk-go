@@ -10,26 +10,11 @@ type Result interface {
 	types.Contract | types.Farm | types.Node | types.Twin
 }
 
-func calcFreeResources(total NodeResourcesTotal, used NodeResourcesTotal) NodeResourcesTotal {
-	mru := total.MRU - used.MRU
-	if mru < 0 {
-		mru = 0
-	}
-
-	hru := total.HRU - used.HRU
-	if hru < 0 {
-		hru = 0
-	}
-
-	sru := total.SRU - used.SRU
-	if sru < 0 {
-		sru = 0
-	}
-
+func CalcFreeResources(total NodeResourcesTotal, used NodeResourcesTotal) NodeResourcesTotal {
 	return NodeResourcesTotal{
-		HRU: hru,
-		SRU: sru,
-		MRU: mru,
+		HRU: total.HRU - used.HRU,
+		SRU: total.SRU - used.SRU,
+		MRU: total.MRU - used.MRU,
 	}
 }
 
