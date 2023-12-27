@@ -1,12 +1,13 @@
-// Package deployer is the grid deployer
 package deployer
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"math/big"
+	"net"
 	"testing"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -405,7 +406,6 @@ func TestDeploymentDeployer(t *testing.T) {
 			assert.Equal(t, dl.ContractID, contractID)
 			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {netContractID, contractID}})
 		})
-
 	})
 
 	t.Run("test delete", func(t *testing.T) {
@@ -429,7 +429,6 @@ func TestDeploymentDeployer(t *testing.T) {
 			assert.Equal(t, dl.ContractID, contractID)
 			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {contractID}})
 			assert.Equal(t, dl.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
-
 		})
 		t.Run("Canceling failed", func(t *testing.T) {
 			sub.EXPECT().
@@ -450,7 +449,6 @@ func TestDeploymentDeployer(t *testing.T) {
 			assert.Equal(t, dl.ContractID, contractID)
 			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {contractID}})
 			assert.Equal(t, dl.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
-
 		})
 		t.Run("Canceling succeeded", func(t *testing.T) {
 			sub.EXPECT().
@@ -470,9 +468,7 @@ func TestDeploymentDeployer(t *testing.T) {
 			assert.Empty(t, dl.ContractID)
 			assert.Empty(t, d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID])
 			assert.Empty(t, dl.NodeDeploymentID)
-
 		})
-
 	})
 
 	t.Run("test sync", func(t *testing.T) {
@@ -613,8 +609,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		})
 
 		for i := 0; 2*i < len(gridDl.Workloads); i++ {
-			gridDl.Workloads[i], gridDl.Workloads[len(gridDl.Workloads)-1-i] =
-				gridDl.Workloads[len(gridDl.Workloads)-1-i], gridDl.Workloads[i]
+			gridDl.Workloads[i], gridDl.Workloads[len(gridDl.Workloads)-1-i] = gridDl.Workloads[len(gridDl.Workloads)-1-i], gridDl.Workloads[i]
 		}
 
 		sub.EXPECT().IsValidContract(contractID).Return(true, nil)
@@ -628,7 +623,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		deployer.EXPECT().
 			GetDeployments(gomock.Any(), map[uint32]uint64{}).
 			Return(map[uint32]gridtypes.Deployment{nodeID: gridDl}, nil)
-		//manager.EXPECT().Commit(context.Background()).AnyTimes()
+		// manager.EXPECT().Commit(context.Background()).AnyTimes()
 		assert.NoError(t, d.Sync(context.Background(), &dl))
 		assert.Equal(t, dl.Vms, cp.Vms)
 		assert.Equal(t, dl.Disks, cp.Disks)
@@ -660,5 +655,139 @@ func TestDeploymentDeployer(t *testing.T) {
 		assert.Empty(t, dl.QSFS)
 		assert.Empty(t, dl.Zdbs)
 	})
+}
 
+func ExampleDeploymentDeployer_Deploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	n := workloads.ZNet{
+		Name:        "network",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
+
+	vm := workloads.VM{
+		Name:        "vm",
+		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		CPU:         2,
+		Planetary:   true,
+		Memory:      1024,
+		Entrypoint:  "/sbin/zinit init",
+		EnvVars:     map[string]string{"SSH_KEY": "<ssh key goes here>"},
+		NetworkName: n.Name,
+	}
+
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &n)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	dl := workloads.NewDeployment("vmdeployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm}, nil)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("deployment is done successfully")
+}
+
+func ExampleDeploymentDeployer_BatchDeploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	n := workloads.ZNet{
+		Name:        "network",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
+
+	vm1 := workloads.VM{
+		Name:        "vm1",
+		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		CPU:         2,
+		Planetary:   true,
+		Memory:      1024,
+		Entrypoint:  "/sbin/zinit init",
+		EnvVars:     map[string]string{"SSH_KEY": "<ssh key goes here>"},
+		NetworkName: n.Name,
+	}
+	vm2 := workloads.VM{
+		Name:        "vm2",
+		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		CPU:         2,
+		Planetary:   true,
+		Memory:      1024,
+		Entrypoint:  "/sbin/zinit init",
+		EnvVars:     map[string]string{"SSH_KEY": "<ssh key goes here>"},
+		NetworkName: n.Name,
+	}
+
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &n)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	d1 := workloads.NewDeployment("vm1deployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm1}, nil)
+	d2 := workloads.NewDeployment("vm2deployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm2}, nil)
+	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&d1, &d2})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("batch deployment is done successfully")
+}
+
+func ExampleDeploymentDeployer_Cancel() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// dl should be a valid and existing deployment name
+	deploymentName := "vmdeployment"
+	dl, err := tfPluginClient.State.LoadDeploymentFromGrid(nodeID, deploymentName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("deployment is canceled successfully")
 }

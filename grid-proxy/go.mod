@@ -6,9 +6,9 @@ require (
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/go-acme/lego/v4 v4.14.2
 	github.com/google/go-cmp v0.6.0
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.5.0
 	github.com/gorilla/mux v1.8.1
-	github.com/gorilla/schema v1.2.0
+	github.com/gorilla/schema v1.2.1
 	github.com/lib/pq v1.10.9
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.31.0
@@ -66,7 +66,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/swaggo/files v1.0.1 // indirect
-	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	golang.org/x/crypto v0.16.0 // indirect
 	golang.org/x/mod v0.13.0 // indirect

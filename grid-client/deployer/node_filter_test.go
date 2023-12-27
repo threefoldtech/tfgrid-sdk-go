@@ -1,10 +1,13 @@
 package deployer
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
@@ -40,7 +43,6 @@ func TestHasEnoughStorage(t *testing.T) {
 		disks := []uint64{3, 2, 1, 5}
 		check := hasEnoughStorage(poolsCopy, disks, zos.SSDDevice)
 		assert.False(t, check)
-
 	})
 	t.Run("fails because order because disks size", func(t *testing.T) {
 		poolsCopy := make([]client.PoolMetrics, len(pools))
@@ -67,6 +69,37 @@ func TestHasEnoughStorage(t *testing.T) {
 		disks := []uint64{6, 4}
 		check := hasEnoughStorage(poolsCopy, disks, zos.HDDDevice)
 		assert.True(t, check)
-
 	})
+}
+
+func ExampleFilterNodes() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	trueVal := true
+	statusUp := "up"
+	freeMRU := uint64(2048)
+	freeSRU := uint64(2048)
+
+	filter := types.NodeFilter{
+		Status:  &statusUp,
+		IPv4:    &trueVal,
+		FreeMRU: &freeMRU,
+		FreeSRU: &freeSRU,
+		FarmIDs: []uint64{uint64(1)},
+	}
+
+	_, err = FilterNodes(context.Background(), tfPluginClient, filter, []uint64{freeSRU}, nil, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("nodes filtered successfully")
 }
