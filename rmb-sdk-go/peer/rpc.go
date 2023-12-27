@@ -37,7 +37,7 @@ func NewRpcClient(
 	mnemonics string,
 	relayURL string,
 	session string,
-	sub *substrate.Substrate,
+	subManager substrate.Manager,
 	enableEncryption bool) (*RpcCLient, error) {
 
 	rpc := RpcCLient{
@@ -47,7 +47,7 @@ func NewRpcClient(
 	base, err := NewPeer(
 		ctx,
 		mnemonics,
-		sub,
+		subManager,
 		rpc.router,
 		WithEncryption(enableEncryption),
 		WithKeyType(keytype),
