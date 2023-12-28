@@ -95,8 +95,7 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 
 	// Sort the nodes on power state (the ones that are ON first then waking up, off, shutting down)
 	sort.Slice(possibleNodes, func(i, j int) bool {
-		return possibleNodes[i].powerState < possibleNodes[j].powerState ||
-			possibleNodes[i].ID < possibleNodes[j].ID // for tests
+		return possibleNodes[i].powerState < possibleNodes[j].powerState
 	})
 
 	nodeFound := possibleNodes[0]

@@ -23,9 +23,6 @@ func TestFarmerbot(t *testing.T) {
 
 	ctx := context.Background()
 
-	// farmerbot, err := NewFarmerBot(ctx, Config{}, "dev", "invalid")
-	// assert.Error(t, err)
-
 	inputs := Config{
 		FarmID:        1,
 		IncludedNodes: []uint32{1, 2},
@@ -54,6 +51,11 @@ func TestFarmerbot(t *testing.T) {
 	oldNode1 := farmerbot.nodes[1]
 	oldNode2 := farmerbot.nodes[2]
 
+	t.Run("invalid identity", func(t *testing.T) {
+		_, err := NewFarmerBot(ctx, Config{}, "dev", "invalid")
+		assert.Error(t, err)
+	})
+
 	t.Run("test serve", func(t *testing.T) {
 		farmerbot.substrateManager = substrate.NewManager(SubstrateURLs[DevNetwork]...)
 		identity, err := substrate.NewIdentityFromSr25519Phrase(aliceSeed)
@@ -67,7 +69,7 @@ func TestFarmerbot(t *testing.T) {
 	t.Run("test iterateOnNodes: update nodes and power off extra node (periodic wake up: already on)", func(t *testing.T) {
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, true, resources, []string{}, false, false)
 
-		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(state.nodes[1].ID), false).Return(types.Hash{}, nil)
+		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), false).Return(types.Hash{}, nil)
 
 		err = farmerbot.iterateOnNodes(ctx, sub)
 		assert.NoError(t, err)
