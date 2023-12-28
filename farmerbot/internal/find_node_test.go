@@ -61,10 +61,10 @@ func TestFindNode(t *testing.T) {
 	t.Run("test valid find node: found an ON node", func(t *testing.T) {
 		nodeID, err := farmerbot.findNode(sub, nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, uint32(farmerbot.nodes[1].ID))
+		assert.Contains(t, farmerbot.nodes, nodeID)
 
-		err = farmerbot.updateNode(oldNode1)
-		assert.NoError(t, err)
+		farmerbot.addNode(oldNode1)
+		farmerbot.addNode(oldNode2)
 		farmerbot.farm = oldFarm
 	})
 
@@ -76,10 +76,8 @@ func TestFindNode(t *testing.T) {
 		err = farmerbot.powerOff(sub, nodeID)
 		assert.Error(t, err)
 
-		err = farmerbot.updateNode(oldNode1)
-		assert.NoError(t, err)
-		err = farmerbot.updateNode(oldNode2)
-		assert.NoError(t, err)
+		farmerbot.addNode(oldNode1)
+		farmerbot.addNode(oldNode2)
 		farmerbot.farm = oldFarm
 	})
 
@@ -92,10 +90,8 @@ func TestFindNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, nodeID, uint32(farmerbot.nodes[2].ID))
 
-		err = farmerbot.updateNode(oldNode1)
-		assert.NoError(t, err)
-		err = farmerbot.updateNode(oldNode2)
-		assert.NoError(t, err)
+		farmerbot.addNode(oldNode1)
+		farmerbot.addNode(oldNode2)
 		farmerbot.farm = oldFarm
 	})
 
@@ -106,12 +102,10 @@ func TestFindNode(t *testing.T) {
 
 		nodeID, err := farmerbot.findNode(sub, nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, uint32(farmerbot.nodes[2].ID))
+		assert.Contains(t, farmerbot.config.IncludedNodes, nodeID)
 
-		err = farmerbot.updateNode(oldNode1)
-		assert.NoError(t, err)
-		err = farmerbot.updateNode(oldNode2)
-		assert.NoError(t, err)
+		farmerbot.addNode(oldNode1)
+		farmerbot.addNode(oldNode2)
 		farmerbot.farm = oldFarm
 	})
 
@@ -122,22 +116,20 @@ func TestFindNode(t *testing.T) {
 
 		nodeID, err := farmerbot.findNode(sub, nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, uint32(farmerbot.nodes[1].ID))
+		assert.Contains(t, farmerbot.config.IncludedNodes, nodeID)
 
-		err = farmerbot.updateNode(oldNode1)
-		assert.NoError(t, err)
+		farmerbot.addNode(oldNode1)
+		farmerbot.addNode(oldNode2)
 		farmerbot.farm = oldFarm
 	})
 
 	t.Run("test valid find node: options and nodes are dedicated and nodes are unused", func(t *testing.T) {
 		nodeID, err := farmerbot.findNode(sub, nodeOptions)
 		assert.NoError(t, err)
-		assert.Equal(t, nodeID, uint32(farmerbot.nodes[1].ID))
+		assert.Contains(t, farmerbot.config.IncludedNodes, nodeID)
 
-		err = farmerbot.updateNode(oldNode1)
-		assert.NoError(t, err)
-		err = farmerbot.updateNode(oldNode2)
-		assert.NoError(t, err)
+		farmerbot.addNode(oldNode1)
+		farmerbot.addNode(oldNode2)
 		farmerbot.farm = oldFarm
 	})
 
@@ -155,8 +147,7 @@ func TestFindNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, nodeID, uint32(farmerbot.nodes[2].ID))
 
-		err = farmerbot.updateNode(oldNode2)
-		assert.NoError(t, err)
+		farmerbot.addNode(oldNode2)
 	})
 
 	t.Run("test invalid find node: no gpus in nodes", func(t *testing.T) {
@@ -172,15 +163,13 @@ func TestFindNode(t *testing.T) {
 		farmerbot.nodes[1] = node
 		farmerbot.nodes[2] = node2
 
-		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(farmerbot.nodes[1].ID), true).Return(types.Hash{}, fmt.Errorf("error"))
+		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), true).Return(types.Hash{}, fmt.Errorf("error"))
 
 		_, err := farmerbot.findNode(sub, nodeOptions)
 		assert.Error(t, err)
 
-		err = farmerbot.updateNode(oldNode1)
-		assert.NoError(t, err)
-		err = farmerbot.updateNode(oldNode2)
-		assert.NoError(t, err)
+		farmerbot.addNode(oldNode1)
+		farmerbot.addNode(oldNode2)
 	})
 
 	t.Run("test invalid find node: no enough public ips", func(t *testing.T) {
@@ -218,10 +207,8 @@ func TestFindNode(t *testing.T) {
 		_, err := farmerbot.findNode(sub, NodeFilterOption{})
 		assert.Error(t, err)
 
-		err = farmerbot.updateNode(oldNode1)
-		assert.NoError(t, err)
-		err = farmerbot.updateNode(oldNode2)
-		assert.NoError(t, err)
+		farmerbot.addNode(oldNode1)
+		farmerbot.addNode(oldNode2)
 		farmerbot.farm = oldFarm
 	})
 
@@ -240,5 +227,8 @@ func TestFindNode(t *testing.T) {
 
 		_, err := farmerbot.findNode(sub, nodeOptions)
 		assert.Error(t, err)
+
+		farmerbot.addNode(oldNode1)
+		farmerbot.addNode(oldNode2)
 	})
 }

@@ -16,4 +16,4 @@ WORKDIR /app
 
 COPY --from=builder /src/farmerbot/bin/farmerbot .
 
-ENTRYPOINT [ "./farmerbot", "run" ]
+ENTRYPOINT [ "./farmerbot" ]
