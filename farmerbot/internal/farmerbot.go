@@ -367,6 +367,9 @@ func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time)
 	if node.powerState != off {
 		return false
 	}
+	if node.hasActiveRentContract {
+		return true
+	}
 
 	periodicWakeUpStart := f.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()
 	if periodicWakeUpStart.Before(roundStart) && node.lastTimeAwake.Before(periodicWakeUpStart) {
@@ -378,7 +381,7 @@ func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time)
 
 	nodesLen := len(f.nodes)
 
-	// TODO:
+	// TODO
 	if node.timesRandomWakeUps < defaultRandomWakeUpsAMonth &&
 		int(rand.Int31())%((8460-(defaultRandomWakeUpsAMonth*6)-
 			(defaultRandomWakeUpsAMonth*(nodesLen-1))/int(math.Min(float64(f.config.Power.PeriodicWakeUpLimit), float64(nodesLen))))/
