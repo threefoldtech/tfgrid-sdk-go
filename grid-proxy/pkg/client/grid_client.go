@@ -74,6 +74,21 @@ func requestCounters(r *http.Response) (int, error) {
 	return 0, nil
 }
 
+// RequestPages returns the pages value from header response
+func RequestPages(r *http.Response) (uint64, error) {
+	pageStr := r.Header.Get("Pages")
+	if pageStr == "" {
+		return 0, errors.New("Pages not found on header")
+	}
+
+	page, err := strconv.ParseUint(pageStr, 10, 64)
+	if err != nil {
+		return 0, errors.Wrap(err, "couldn't parse page header")
+	}
+
+	return page, nil
+}
+
 // Ping makes sure the server is up
 func (g *Clientimpl) Ping() error {
 	client := g.newHTTPClient()
