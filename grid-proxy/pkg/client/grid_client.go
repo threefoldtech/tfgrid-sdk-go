@@ -83,7 +83,7 @@ func RequestPages(r *http.Response) (uint64, error) {
 
 	page, err := strconv.ParseUint(pageStr, 10, 64)
 	if err != nil {
-		return 0, errors.Wrap(err, "couldn't parse page header")
+		return 0, errors.Wrap(err, "could not parse page header")
 	}
 
 	return page, nil
