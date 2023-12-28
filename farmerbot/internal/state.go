@@ -246,7 +246,6 @@ func (s *state) validate() error {
 			return fmt.Errorf("node %d: total MRU is required", n.ID)
 		}
 
-
 		// visit: https://github.com/threefoldtech/tfgrid-sdk-go/issues/586
 		// if n.resources.total.hru == 0 {
 		// 	return fmt.Errorf("node %d: total HRU is required", n.ID)
