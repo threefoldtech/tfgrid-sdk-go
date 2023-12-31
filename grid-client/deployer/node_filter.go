@@ -3,6 +3,7 @@ package deployer
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"sort"
 	"strings"
@@ -46,13 +47,17 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 	nodesCount := optionalLimit[0]
 	limit := types.Limit{Randomize: true, Size: uint64(nodesCount), RetCount: true}
 
-	// totalPagesCount would be initialized to the total number of pages with the specified filter and limit
-	totalPagesCount := 5
+	_, totalNodesCount, err := tf.GridProxyClient.Nodes(ctx, options, limit)
+	if err != nil {
+		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
+	}
+	totalPagesCount := int(math.Ceil(float64(totalNodesCount) / float64(limit.Size)))
 
-	for pageCount := 1; pageCount <= totalPagesCount; pageCount++ {
-
+	for page := 1; page <= totalPagesCount; page++ {
 		wg.Add(1)
-		go func(page int) {
+		limit.Page = uint64(page)
+
+		go func(limit types.Limit) {
 			defer wg.Done()
 
 			lock.Lock()
@@ -63,7 +68,6 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 				return
 			}
 
-			limit.Page = uint64(page)
 			nodesFounds, err := getNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, limit)
 			if err != nil {
 				lock.Lock()
@@ -84,7 +88,7 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 				return
 			}
 			nodes = append(nodes, nodesFounds...)
-		}(pageCount)
+		}(limit)
 	}
 	wg.Wait()
 
