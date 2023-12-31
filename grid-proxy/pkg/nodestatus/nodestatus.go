@@ -46,6 +46,7 @@ func DecideNodeStatusCondition(status string) string {
 	return condition
 }
 
+// DecideNodeStatusOrdering returns an sql ordering condition
 func DecideNodeStatusOrdering(order types.SortOrder) string {
 	upNodesOrder := 1
 	standbyNodesOrder := 2
