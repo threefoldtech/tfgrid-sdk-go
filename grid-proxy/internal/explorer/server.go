@@ -118,7 +118,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of nodes"
-// @Param sort_by query string false "Sort by specific node filed" Enums(node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
+// @Param sort_by query string false "Sort by specific node filed" Enums(status, node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
 // @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"
