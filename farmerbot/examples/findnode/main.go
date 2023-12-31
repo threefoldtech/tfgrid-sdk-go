@@ -15,11 +15,6 @@ import (
 func findNode() (uint32, error) {
 	mnemonics := "<mnemonics goes here>"
 	subManager := substrate.NewManager("wss://tfchain.dev.grid.tf/ws")
-	sub, err := subManager.Substrate()
-	if err != nil {
-		return 0, fmt.Errorf("failed to connect to substrate: %w", err)
-	}
-	defer sub.Close()
 
 	client, err := peer.NewRpcClient(
 		context.Background(),
@@ -27,7 +22,7 @@ func findNode() (uint32, error) {
 		mnemonics,
 		"wss://relay.dev.grid.tf",
 		"test-find-node",
-		sub,
+		subManager,
 		true,
 	)
 	if err != nil {

@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 PQ_HOST = $(shell docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' postgres)
 PQ_CONTAINER = postgres
+count = 3
 
 install-swag: 
 	@go install github.com/swaggo/swag/cmd/swag@v1.8.12;
@@ -41,7 +42,7 @@ db-stop: ## Stop the database container if running
 	@if [ ! "$(shell docker ps | grep '$(PQ_CONTAINER)' )" = "" ]; then \
 		docker stop postgres; \
 	fi
-
+db-refill: db-stop db-start sleep db-fill
 server-start: ## Start the proxy server			(Args: `m=<MNEMONICS>`)
 	@go run cmds/proxy_server/main.go \
 		-no-cert \
@@ -61,22 +62,26 @@ sleep:
 test-queries: ## Run all queries tests
 	@cd tests/queries/ &&\
 	go test -v \
-		--seed 13 \
-		--postgres-host $(PQ_HOST) \
-		--postgres-db tfgrid-graphql \
-		--postgres-password postgres \
-		--postgres-user postgres \
-		--endpoint http://localhost:8080
-
-test-query: ## Run specific test query 			(Args: `t=TestName`).
-	@cd tests/queries/ &&\
-	go test -v \
+		-parallel 20 \
 		--seed 13 \
 		--postgres-host $(PQ_HOST) \
 		--postgres-db tfgrid-graphql \
 		--postgres-password postgres \
 		--postgres-user postgres \
 		--endpoint http://localhost:8080 \
+		-count $(count) 
+
+test-query: ## Run specific test query 			(Args: `t=TestName`).
+	@cd tests/queries/ &&\
+	go test -v \
+		-parallel 10 \
+		--seed 13 \
+		--postgres-host $(PQ_HOST) \
+		--postgres-db tfgrid-graphql \
+		--postgres-password postgres \
+		--postgres-user postgres \
+		--endpoint http://localhost:8080 \
+		-count $(count) \
 		-run $(t)
 
 test-unit: ## Run only unit tests
@@ -124,3 +129,13 @@ spelling:
 staticcheck:
 	@echo "Running $@"
 	@$(shell go env GOPATH)/bin/staticcheck -- ./...
+
+bench:
+	@cd tests/queries/ &&\
+	go test -v -bench Bench -run notests -count 5\
+		--seed 13 \
+		--postgres-host $(PQ_HOST) \
+		--postgres-db tfgrid-graphql \
+		--postgres-password postgres \
+		--postgres-user postgres \
+		--endpoint http://localhost:8080

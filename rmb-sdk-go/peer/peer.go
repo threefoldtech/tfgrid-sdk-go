@@ -81,7 +81,7 @@ func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 func NewPeer(
 	ctx context.Context,
 	mnemonics string,
-	sub *substrate.Substrate,
+	subManager substrate.Manager,
 	handler Handler,
 	opts ...PeerOpt) (*Peer, error) {
 
@@ -103,7 +103,7 @@ func NewPeer(
 		return nil, err
 	}
 
-	twinDB := NewTwinDB(sub)
+	twinDB := NewTwinDB(subManager)
 	id, err := twinDB.GetByPk(identity.PublicKey())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get twin by public key")
@@ -134,7 +134,13 @@ func NewPeer(
 
 	if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || url.Hostname() != *twin.Relay {
 		log.Info().Msg("twin relay/public key didn't match, updating on chain ...")
-		if _, err = sub.UpdateTwin(identity, url.Hostname(), publicKey); err != nil {
+		subConn, err := subManager.Substrate()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not start substrate connection")
+		}
+		defer subConn.Close()
+
+		if _, err = subConn.UpdateTwin(identity, url.Hostname(), publicKey); err != nil {
 			return nil, errors.Wrap(err, "could not update twin relay information")
 		}
 	}

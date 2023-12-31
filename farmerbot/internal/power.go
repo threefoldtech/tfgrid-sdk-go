@@ -2,7 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -132,18 +131,8 @@ func calculateResourceUsage(nodes map[uint32]node) (uint64, uint64) {
 }
 
 func (f *FarmerBot) resourceUsageTooHigh(sub Substrate) error {
-	// sort IDs for testing
-	var nodeIDs []uint32
-	for nodeID := range f.nodes {
-		nodeIDs = append(nodeIDs, nodeID)
-	}
-
-	sort.Slice(nodeIDs, func(i, j int) bool {
-		return nodeIDs[i] < nodeIDs[j]
-	})
-
-	for _, nodeID := range nodeIDs {
-		if f.nodes[nodeID].powerState == off {
+	for nodeID, node := range f.nodes {
+		if node.powerState == off {
 			log.Info().Uint32("nodeID", nodeID).Msg("Too much resource usage. Turning on node")
 			return f.powerOn(sub, nodeID)
 		}

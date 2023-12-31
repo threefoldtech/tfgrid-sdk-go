@@ -69,10 +69,10 @@ MNEMONIC_OR_SEED="your farm mnemonic or seed"
 docker build -t farmerbot -f Dockerfile ../
 ```
 
-4. run
+4. run (mount `.env` and `config.yml` from your current directory to the container using `-v`)
 
 ```bash
-docker run farmerbot
+docker run -v $(pwd)/config.yaml:/config.yml -v $(pwd)/.env:/.env farmerbot run -e /.env -c /config.yml -d
 ```
 
 ## Build

@@ -14,11 +14,6 @@ import (
 func powerOff() error {
 	mnemonics := "<mnemonics goes here>"
 	subManager := substrate.NewManager("wss://tfchain.dev.grid.tf/ws")
-	sub, err := subManager.Substrate()
-	if err != nil {
-		return fmt.Errorf("failed to connect to substrate: %w", err)
-	}
-	defer sub.Close()
 
 	client, err := peer.NewRpcClient(
 		context.Background(),
@@ -26,7 +21,7 @@ func powerOff() error {
 		mnemonics,
 		"wss://relay.dev.grid.tf",
 		"test-power-off",
-		sub,
+		subManager,
 		true,
 	)
 	if err != nil {

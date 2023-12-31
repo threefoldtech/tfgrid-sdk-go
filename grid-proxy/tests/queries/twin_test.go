@@ -32,21 +32,37 @@ var twinFilterRandomValueGenerator = map[string]func(agg TwinsAggregate) interfa
 		return &agg.twinIDs[rand.Intn(len(agg.twinIDs))]
 	},
 	"AccountID": func(agg TwinsAggregate) interface{} {
-		return &agg.accountIDs[rand.Intn(len(agg.accountIDs))]
+		c := agg.accountIDs[rand.Intn(len(agg.accountIDs))]
+		if len(c) == 0 {
+			return nil
+		}
+		return &c
 	},
 	"Relay": func(agg TwinsAggregate) interface{} {
-		return &agg.relays[rand.Intn(len(agg.relays))]
+		c := agg.relays[rand.Intn(len(agg.relays))]
+		if len(c) == 0 {
+			return nil
+		}
+		return &c
 	},
 	"PublicKey": func(agg TwinsAggregate) interface{} {
-		return &agg.publicKeys[rand.Intn(len(agg.publicKeys))]
+		c := agg.publicKeys[rand.Intn(len(agg.publicKeys))]
+		if len(c) == 0 {
+			return nil
+		}
+		return &c
 	},
 }
 
 func TestTwins(t *testing.T) {
+	t.Parallel()
+
 	t.Run("twins pagination test", func(t *testing.T) {
+		t.Parallel()
+
 		f := proxytypes.TwinFilter{}
 		l := proxytypes.Limit{
-			Size:     5,
+			Size:     100,
 			Page:     1,
 			RetCount: true,
 		}
@@ -69,6 +85,8 @@ func TestTwins(t *testing.T) {
 	})
 
 	t.Run("twins stress test", func(t *testing.T) {
+		t.Parallel()
+
 		agg := calcTwinsAggregates(&data)
 		for i := 0; i < TWINS_TESTS; i++ {
 			l := proxytypes.Limit{
@@ -94,6 +112,8 @@ func TestTwins(t *testing.T) {
 
 // TestTwinFilter iterates over all TwinFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestTwinFilter(t *testing.T) {
+	t.Parallel()
+
 	f := proxytypes.TwinFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()
@@ -110,6 +130,9 @@ func TestTwinFilter(t *testing.T) {
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
 		randomFieldValue := generator(agg)
+		if randomFieldValue == nil {
+			continue
+		}
 
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
@@ -143,6 +166,10 @@ func randomTwinsFilter(agg *TwinsAggregate) (proxytypes.TwinFilter, error) {
 			}
 
 			randomFieldValue := twinFilterRandomValueGenerator[v.Type().Field(i).Name](*agg)
+			if randomFieldValue == nil {
+				continue
+			}
+
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}

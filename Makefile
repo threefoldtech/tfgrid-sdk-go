@@ -1,4 +1,4 @@
-DIRS := "activation-service" "grid-cli" "grid-client" "grid-proxy" "gridify" "monitoring-bot" "rmb-sdk-go" "user-contracts-mon" 
+DIRS := "activation-service" "farmerbot" "grid-cli" "grid-client" "grid-proxy" "gridify" "monitoring-bot" "rmb-sdk-go" "user-contracts-mon" 
 
 release-rmb:
 	@echo "Release RMB..." 

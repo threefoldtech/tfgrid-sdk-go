@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -59,8 +60,10 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 					SRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].SRU),
 				},
 				Location: types.Location{
-					Country: node.Country,
-					City:    node.City,
+					Country:   node.Country,
+					City:      node.City,
+					Longitude: g.data.Locations[node.LocationID].Longitude,
+					Latitude:  g.data.Locations[node.LocationID].Latitude,
 				},
 				PublicConfig: types.PublicConfig{
 					Domain: g.data.PublicConfigs[node.NodeID].Domain,
@@ -81,7 +84,8 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 					State:  node.Power.State,
 					Target: node.Power.Target,
 				},
-				NumGPU: numGPU,
+				NumGPU:   numGPU,
+				ExtraFee: node.ExtraFee,
 			})
 		}
 	}
@@ -103,7 +107,11 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 }
 
 func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
-	node := g.data.Nodes[uint64(nodeID)]
+	node, ok := g.data.Nodes[uint64(nodeID)]
+	if !ok {
+		return res, fmt.Errorf("node not found")
+	}
+
 	numGPU := len(g.data.GPUs[node.TwinID])
 
 	nodePower := types.NodePower{
@@ -137,8 +145,10 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 			},
 		},
 		Location: types.Location{
-			Country: node.Country,
-			City:    node.City,
+			Country:   node.Country,
+			City:      node.City,
+			Longitude: g.data.Locations[node.LocationID].Longitude,
+			Latitude:  g.data.Locations[node.LocationID].Latitude,
 		},
 		PublicConfig: types.PublicConfig{
 			Domain: g.data.PublicConfigs[node.NodeID].Domain,
@@ -166,7 +176,11 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 }
 
 func (g *GridProxyMockClient) NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error) {
-	node := g.data.Nodes[uint64(nodeID)]
+	node, ok := g.data.Nodes[uint64(nodeID)]
+	if !ok {
+		return res, fmt.Errorf("node not found")
+	}
+
 	nodePower := types.NodePower{
 		State:  node.Power.State,
 		Target: node.Power.Target,
@@ -183,21 +197,21 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 
 	total := data.NodeTotalResources[n.NodeID]
 	used := data.NodeUsedResources[n.NodeID]
-	free := calcFreeResources(total, used)
+	free := CalcFreeResources(total, used)
 
 	if f.Status != nil && *f.Status != nodestatus.DecideNodeStatus(nodePower, int64(n.UpdatedAt)) {
 		return false
 	}
 
-	if f.FreeMRU != nil && *f.FreeMRU > free.MRU {
+	if f.FreeMRU != nil && int64(*f.FreeMRU) > int64(free.MRU) {
 		return false
 	}
 
-	if f.FreeHRU != nil && *f.FreeHRU > free.HRU {
+	if f.FreeHRU != nil && int64(*f.FreeHRU) > int64(free.HRU) {
 		return false
 	}
 
-	if f.FreeSRU != nil && *f.FreeSRU > free.SRU {
+	if f.FreeSRU != nil && int64(*f.FreeSRU) > int64(free.SRU) {
 		return false
 	}
 
@@ -221,7 +235,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.Region != nil && !strings.EqualFold(*f.Region, data.Regions[n.Country]) {
+	if f.Region != nil && !strings.EqualFold(*f.Region, data.Regions[strings.ToLower(n.Country)]) {
 		return false
 	}
 

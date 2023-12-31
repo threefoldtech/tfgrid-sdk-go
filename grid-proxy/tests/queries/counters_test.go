@@ -21,6 +21,7 @@ var statsFilterRandomValues = map[string]func() interface{}{
 }
 
 func TestStats(t *testing.T) {
+	t.Parallel()
 	t.Run("stats up test", func(t *testing.T) {
 		f := proxytypes.StatsFilter{
 			Status: &STATUS_UP,
@@ -48,6 +49,8 @@ func TestStats(t *testing.T) {
 }
 
 func TestStatsFilter(t *testing.T) {
+	t.Parallel()
+
 	f := proxytypes.StatsFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()
