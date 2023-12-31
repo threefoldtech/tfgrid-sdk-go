@@ -166,12 +166,15 @@ func (c *Crafter) GenerateNodes() error {
 			secure:            false,
 			virtualized:       false,
 			serial_number:     "",
-			power: nodePower{
+			extra_fee:         0,
+			dedicated:         false,
+		}
+
+		if flip(.3) {
+			node.power = &nodePower{
 				State:  powerState[r.Intn(len(powerState))],
 				Target: powerState[r.Intn(len(powerState))],
-			},
-			extra_fee: 0,
-			dedicated: false,
+			}
 		}
 
 		total_resources := node_resources_total{
@@ -230,7 +233,7 @@ func (c *Crafter) GenerateNodes() error {
 	}
 
 	if err := c.insertTuples(node{}, nodes); err != nil {
-		return fmt.Errorf("failed to isnert nodes: %w", err)
+		return fmt.Errorf("failed to insert nodes: %w", err)
 	}
 
 	if err := c.insertTuples(node_resources_total{}, totalResources); err != nil {

@@ -62,7 +62,7 @@ func objectToTupleString(v interface{}) (string, error) {
 	for i := 0; i < val.NumField(); i++ {
 		if i == 0 {
 			v := fmt.Sprint(val.Field(i))
-			if v == "" {
+			if v == "" || (val.Field(i).Kind() == reflect.Pointer && val.Field(i).IsNil()) {
 				v = null
 			}
 			if v != null && val.Field(i).Type().Name() == "string" {
@@ -71,15 +71,15 @@ func objectToTupleString(v interface{}) (string, error) {
 			vals = fmt.Sprintf("%s%s", vals, v)
 		} else {
 			v := fmt.Sprint(val.Field(i))
-			if v == "" {
+			if v == "" || (val.Field(i).Kind() == reflect.Pointer && val.Field(i).IsNil()) {
 				v = null
 			}
 			if v != null && val.Field(i).Type().Name() == "string" {
 				v = fmt.Sprintf(`'%s'`, v)
 			}
-			if v != null && val.Field(i).Type().Name() == "nodePower" {
+			if v != null && val.Type().Field(i).Name == "power" {
 				// Construct the nodePower object
-				val2 := val.Field(i)
+				val2 := reflect.Indirect(val.Field(i))
 				power := make(map[string]string)
 				for j := 0; j < val2.NumField(); j++ {
 					fieldName := strings.ToLower(val2.Type().Field(j).Name)
