@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 15.3 (Debian 15.3-1.pgdg110+1)
--- Dumped by pg_dump version 15.3 (Ubuntu 15.3-0ubuntu0.23.04.1)
+-- Dumped from database version 16.1 (Debian 16.1-1.pgdg120+1)
+-- Dumped by pg_dump version 16.1 (Debian 16.1-1.pgdg120+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -17,31 +17,17 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: substrate_threefold_status; Type: SCHEMA; Schema: -; Owner: postgres
+-- Name: squid_processor; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
-CREATE SCHEMA substrate_threefold_status;
+CREATE SCHEMA squid_processor;
 
 
-ALTER SCHEMA substrate_threefold_status OWNER TO postgres;
-
+ALTER SCHEMA squid_processor OWNER TO postgres;
 
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
-
---
--- Name: account; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.account (
-    id character varying NOT NULL,
-    wallet text NOT NULL,
-    balance numeric NOT NULL
-);
-
-
-ALTER TABLE public.account OWNER TO postgres;
 
 --
 -- Name: burn_transaction; Type: TABLE; Schema: public; Owner: postgres
@@ -96,7 +82,7 @@ CREATE TABLE public.contract_resources (
     sru numeric NOT NULL,
     cru numeric NOT NULL,
     mru numeric NOT NULL,
-    contract_id character varying NOT NULL
+    contract_id character varying
 );
 
 
@@ -145,7 +131,7 @@ CREATE TABLE public.entity_proof (
     id character varying NOT NULL,
     entity_id integer NOT NULL,
     signature text NOT NULL,
-    twin_rel_id character varying NOT NULL
+    twin_rel_id character varying
 );
 
 
@@ -196,20 +182,6 @@ CREATE TABLE public.farming_policy (
 ALTER TABLE public.farming_policy OWNER TO postgres;
 
 --
--- Name: historical_balance; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.historical_balance (
-    id character varying NOT NULL,
-    balance numeric NOT NULL,
-    "timestamp" numeric NOT NULL,
-    account_id character varying NOT NULL
-);
-
-
-ALTER TABLE public.historical_balance OWNER TO postgres;
-
---
 -- Name: interfaces; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -218,7 +190,7 @@ CREATE TABLE public.interfaces (
     name text NOT NULL,
     mac text NOT NULL,
     ips text NOT NULL,
-    node_id character varying NOT NULL
+    node_id character varying
 );
 
 
@@ -263,7 +235,7 @@ CREATE SEQUENCE public.migrations_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.migrations_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.migrations_id_seq OWNER TO postgres;
 
 --
 -- Name: migrations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
@@ -297,7 +269,8 @@ CREATE TABLE public.name_contract (
     twin_id integer NOT NULL,
     name text NOT NULL,
     created_at numeric NOT NULL,
-    state character varying(11) NOT NULL
+    state character varying(11) NOT NULL,
+    solution_provider_id integer
 );
 
 
@@ -323,10 +296,11 @@ CREATE TABLE public.node (
     serial_number text,
     created_at numeric NOT NULL,
     updated_at numeric NOT NULL,
-    location_id character varying NOT NULL,
+    location_id character varying,
     certification character varying(9),
     connection_price integer,
     power jsonb,
+    dedicated boolean NOT NULL,
     extra_fee numeric
 );
 
@@ -348,26 +322,12 @@ CREATE TABLE public.node_contract (
     number_of_public_i_ps integer NOT NULL,
     created_at numeric NOT NULL,
     resources_used_id character varying,
-    state character varying(11) NOT NULL
+    state character varying(11) NOT NULL,
+    solution_provider_id integer
 );
 
 
 ALTER TABLE public.node_contract OWNER TO postgres;
-
---
--- Name: node_gpu; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.node_gpu (
-    node_twin_id bigint NOT NULL,
-    id text NOT NULL,
-    vendor text,
-    device text,
-    contract bigint
-);
-
-
-ALTER TABLE public.node_gpu OWNER TO postgres;
 
 --
 -- Name: node_resources_free; Type: TABLE; Schema: public; Owner: postgres
@@ -416,33 +376,6 @@ CREATE TABLE public.node_resources_used (
 
 
 ALTER TABLE public.node_resources_used OWNER TO postgres;
-
---
--- Name: nodes_resources_view; Type: VIEW; Schema: public; Owner: postgres
---
-
-CREATE VIEW public.nodes_resources_view AS
- SELECT node.node_id,
-    COALESCE(sum(contract_resources.cru), (0)::numeric) AS used_cru,
-    (COALESCE(sum(contract_resources.mru), (0)::numeric) + (GREATEST(((node_resources_total.mru / (10)::numeric))::bigint, '2147483648'::bigint))::numeric) AS used_mru,
-    COALESCE(sum(contract_resources.hru), (0)::numeric) AS used_hru,
-    (COALESCE(sum(contract_resources.sru), (0)::numeric) + ('21474836480'::bigint)::numeric) AS used_sru,
-    ((node_resources_total.mru - COALESCE(sum(contract_resources.mru), (0)::numeric)) - (GREATEST(((node_resources_total.mru / (10)::numeric))::bigint, '2147483648'::bigint))::numeric) AS free_mru,
-    (node_resources_total.hru - COALESCE(sum(contract_resources.hru), (0)::numeric)) AS free_hru,
-    ((node_resources_total.sru - COALESCE(sum(contract_resources.sru), (0)::numeric)) - ('21474836480'::bigint)::numeric) AS free_sru,
-    COALESCE(node_resources_total.cru, (0)::numeric) AS total_cru,
-    COALESCE(node_resources_total.mru, (0)::numeric) AS total_mru,
-    COALESCE(node_resources_total.hru, (0)::numeric) AS total_hru,
-    COALESCE(node_resources_total.sru, (0)::numeric) AS total_sru,
-    COALESCE(count(DISTINCT node_contract.state), (0)::bigint) AS states
-   FROM (((public.contract_resources
-     JOIN public.node_contract node_contract ON ((((node_contract.resources_used_id)::text = (contract_resources.id)::text) AND ((node_contract.state)::text = ANY ((ARRAY['Created'::character varying, 'GracePeriod'::character varying])::text[])))))
-     RIGHT JOIN public.node node ON ((node.node_id = node_contract.node_id)))
-     JOIN public.node_resources_total node_resources_total ON (((node_resources_total.node_id)::text = (node.id)::text)))
-  GROUP BY node.node_id, node_resources_total.mru, node_resources_total.sru, node_resources_total.hru, node_resources_total.cru;
-
-
-ALTER TABLE public.nodes_resources_view OWNER TO postgres;
 
 --
 -- Name: nru_consumption; Type: TABLE; Schema: public; Owner: postgres
@@ -506,11 +439,23 @@ CREATE TABLE public.public_ip (
     gateway text NOT NULL,
     ip text NOT NULL,
     contract_id numeric NOT NULL,
-    farm_id character varying NOT NULL
+    farm_id character varying
+);
+ALTER TABLE public.public_ip OWNER TO postgres;
+
+--
+-- Name: node_gpu; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS public.node_gpu (
+    id text NOT NULL,
+    node_twin_id bigint NOT NULL,
+    vendor text,
+    device text,
+    contract bigint
 );
 
-
-ALTER TABLE public.public_ip OWNER TO postgres;
+ALTER TABLE public.node_gpu OWNER TO postgres;
 
 --
 -- Name: refund_transaction; Type: TABLE; Schema: public; Owner: postgres
@@ -538,26 +483,65 @@ CREATE TABLE public.rent_contract (
     twin_id integer NOT NULL,
     node_id integer NOT NULL,
     created_at numeric NOT NULL,
-    state character varying(11) NOT NULL
+    state character varying(11) NOT NULL,
+    solution_provider_id integer
 );
 
 
 ALTER TABLE public.rent_contract OWNER TO postgres;
 
 --
--- Name: transfer; Type: TABLE; Schema: public; Owner: postgres
+-- Name: service_contract; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.transfer (
+CREATE TABLE public.service_contract (
     id character varying NOT NULL,
-    "from" text NOT NULL,
-    "to" text NOT NULL,
-    amount numeric NOT NULL,
-    "timestamp" numeric NOT NULL
+    service_contract_id numeric NOT NULL,
+    service_twin_id integer NOT NULL,
+    consumer_twin_id integer NOT NULL,
+    base_fee numeric NOT NULL,
+    variable_fee numeric NOT NULL,
+    metadata text NOT NULL,
+    accepted_by_service boolean NOT NULL,
+    accepted_by_consumer boolean NOT NULL,
+    last_bill numeric NOT NULL,
+    state character varying(14) NOT NULL
 );
 
 
-ALTER TABLE public.transfer OWNER TO postgres;
+ALTER TABLE public.service_contract OWNER TO postgres;
+
+--
+-- Name: service_contract_bill; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.service_contract_bill (
+    id character varying NOT NULL,
+    service_contract_id numeric NOT NULL,
+    variable_amount numeric NOT NULL,
+    "window" numeric NOT NULL,
+    metadata text,
+    amount numeric NOT NULL
+);
+
+
+ALTER TABLE public.service_contract_bill OWNER TO postgres;
+
+--
+-- Name: solution_provider; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.solution_provider (
+    id character varying NOT NULL,
+    solution_provider_id numeric NOT NULL,
+    description text NOT NULL,
+    link text NOT NULL,
+    approved boolean NOT NULL,
+    providers jsonb
+);
+
+
+ALTER TABLE public.solution_provider OWNER TO postgres;
 
 --
 -- Name: twin; Type: TABLE; Schema: public; Owner: postgres
@@ -576,22 +560,6 @@ CREATE TABLE public.twin (
 ALTER TABLE public.twin OWNER TO postgres;
 
 --
--- Name: typeorm_metadata; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.typeorm_metadata (
-    type character varying NOT NULL,
-    database character varying,
-    schema character varying,
-    "table" character varying,
-    name character varying,
-    value text
-);
-
-
-ALTER TABLE public.typeorm_metadata OWNER TO postgres;
-
---
 -- Name: uptime_event; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -606,16 +574,16 @@ CREATE TABLE public.uptime_event (
 ALTER TABLE public.uptime_event OWNER TO postgres;
 
 --
--- Name: status; Type: TABLE; Schema: substrate_threefold_status; Owner: postgres
+-- Name: status; Type: TABLE; Schema: squid_processor; Owner: postgres
 --
 
-CREATE TABLE substrate_threefold_status.status (
+CREATE TABLE squid_processor.status (
     id integer NOT NULL,
     height integer NOT NULL
 );
 
 
-ALTER TABLE substrate_threefold_status.status OWNER TO postgres;
+ALTER TABLE squid_processor.status OWNER TO postgres;
 
 --
 -- Name: migrations id; Type: DEFAULT; Schema: public; Owner: postgres
@@ -657,6 +625,14 @@ ALTER TABLE ONLY public.mint_transaction
 
 
 --
+-- Name: service_contract_bill PK_1fd26292c0913e974b774342fa7; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.service_contract_bill
+    ADD CONSTRAINT "PK_1fd26292c0913e974b774342fa7" PRIMARY KEY (id);
+
+
+--
 -- Name: burn_transaction PK_20ec76c5c56dd6b47dec5f0aaa8; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -689,14 +665,6 @@ ALTER TABLE ONLY public.entity
 
 
 --
--- Name: account PK_54115ee388cdb6d86bb4bf5b2ea; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.account
-    ADD CONSTRAINT "PK_54115ee388cdb6d86bb4bf5b2ea" PRIMARY KEY (id);
-
-
---
 -- Name: contract_resources PK_557de19994fcca90916e8c6582f; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -718,14 +686,6 @@ ALTER TABLE ONLY public.contract_bill_report
 
 ALTER TABLE ONLY public.farming_policy
     ADD CONSTRAINT "PK_5d2ec9534104f44e4d989c4e82f" PRIMARY KEY (id);
-
-
---
--- Name: historical_balance PK_74ac29ad0bdffb6d1281a1e17e8; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.historical_balance
-    ADD CONSTRAINT "PK_74ac29ad0bdffb6d1281a1e17e8" PRIMARY KEY (id);
 
 
 --
@@ -849,6 +809,14 @@ ALTER TABLE ONLY public.nru_consumption
 
 
 --
+-- Name: solution_provider PK_dbb1dd40ae8f70dc9bbe2ce6347; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.solution_provider
+    ADD CONSTRAINT "PK_dbb1dd40ae8f70dc9bbe2ce6347" PRIMARY KEY (id);
+
+
+--
 -- Name: public_ip PK_f170b0b519632730f41d2ef78f4; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -857,11 +825,11 @@ ALTER TABLE ONLY public.public_ip
 
 
 --
--- Name: transfer PK_fd9ddbdd49a17afcbe014401295; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: service_contract PK_ff58318f8230b8053067edd0343; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.transfer
-    ADD CONSTRAINT "PK_fd9ddbdd49a17afcbe014401295" PRIMARY KEY (id);
+ALTER TABLE ONLY public.service_contract
+    ADD CONSTRAINT "PK_ff58318f8230b8053067edd0343" PRIMARY KEY (id);
 
 
 --
@@ -901,7 +869,7 @@ ALTER TABLE ONLY public.node_resources_total
 --
 
 ALTER TABLE ONLY public.node_gpu
-    ADD CONSTRAINT node_gpu_pkey PRIMARY KEY (node_twin_id, id);
+    ADD CONSTRAINT node_gpu_pkey PRIMARY KEY (id);
 
 
 
@@ -909,7 +877,7 @@ ALTER TABLE ONLY public.node_gpu
 -- Name: status status_pkey; Type: CONSTRAINT; Schema: substrate_threefold_status; Owner: postgres
 --
 
-ALTER TABLE ONLY substrate_threefold_status.status
+ALTER TABLE ONLY squid_processor.status
     ADD CONSTRAINT status_pkey PRIMARY KEY (id);
 
 
@@ -918,13 +886,6 @@ ALTER TABLE ONLY substrate_threefold_status.status
 --
 
 CREATE INDEX "IDX_23937641f28c607f061dab4694" ON public.interfaces USING btree (node_id);
-
-
---
--- Name: IDX_383ff006e4b59db91d32cb891e; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX "IDX_383ff006e4b59db91d32cb891e" ON public.historical_balance USING btree (account_id);
 
 
 --
@@ -996,14 +957,6 @@ CREATE UNIQUE INDEX "IDX_fd430c3a2645c8f409f859c2aa" ON public.node_resources_to
 
 ALTER TABLE ONLY public.interfaces
     ADD CONSTRAINT "FK_23937641f28c607f061dab4694b" FOREIGN KEY (node_id) REFERENCES public.node(id);
-
-
---
--- Name: historical_balance FK_383ff006e4b59db91d32cb891e9; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.historical_balance
-    ADD CONSTRAINT "FK_383ff006e4b59db91d32cb891e9" FOREIGN KEY (account_id) REFERENCES public.account(id);
 
 
 --

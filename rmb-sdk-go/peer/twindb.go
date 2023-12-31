@@ -23,15 +23,15 @@ type Twin struct {
 }
 
 type twinDB struct {
-	cache *cache.Cache
-	sub   *substrate.Substrate
+	cache      *cache.Cache
+	subManager substrate.Manager
 }
 
 // NewTwinDB creates a new twinDBImpl instance, with a non expiring cache.
-func NewTwinDB(sub *substrate.Substrate) TwinDB {
+func NewTwinDB(subManager substrate.Manager) TwinDB {
 	return &twinDB{
-		cache: cache.New(cache.NoExpiration, cache.NoExpiration),
-		sub:   sub,
+		cache:      cache.New(cache.NoExpiration, cache.NoExpiration),
+		subManager: subManager,
 	}
 }
 
@@ -42,9 +42,15 @@ func (t *twinDB) Get(id uint32) (Twin, error) {
 		return cachedValue.(Twin), nil
 	}
 
-	substrateTwin, err := t.sub.GetTwin(id)
+	subConn, err := t.subManager.Substrate()
 	if err != nil {
-		return Twin{}, errors.Wrapf(err, "could net get twin with id %d", id)
+		return Twin{}, errors.Wrap(err, "could not start substrate connection")
+	}
+	defer subConn.Close()
+
+	substrateTwin, err := subConn.GetTwin(id)
+	if err != nil {
+		return Twin{}, errors.Wrapf(err, "could not get twin with id %d", id)
 	}
 
 	var relay *string
@@ -67,5 +73,11 @@ func (t *twinDB) Get(id uint32) (Twin, error) {
 }
 
 func (t *twinDB) GetByPk(pk []byte) (uint32, error) {
-	return t.sub.GetTwinByPubKey(pk)
+	subConn, err := t.subManager.Substrate()
+	if err != nil {
+		return 0, errors.Wrap(err, "could not start substrate connection")
+	}
+	defer subConn.Close()
+
+	return subConn.GetTwinByPubKey(pk)
 }

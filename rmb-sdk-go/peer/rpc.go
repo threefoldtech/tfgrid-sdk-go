@@ -37,14 +37,23 @@ func NewRpcClient(
 	mnemonics string,
 	relayURL string,
 	session string,
-	sub *substrate.Substrate,
+	subManager substrate.Manager,
 	enableEncryption bool) (*RpcCLient, error) {
 
 	rpc := RpcCLient{
 		responses: make(map[string]chan incomingEnv),
 	}
 
-	base, err := NewPeer(ctx, keytype, mnemonics, relayURL, session, sub, enableEncryption, rpc.router)
+	base, err := NewPeer(
+		ctx,
+		mnemonics,
+		subManager,
+		rpc.router,
+		WithEncryption(enableEncryption),
+		WithKeyType(keytype),
+		WithRelay(relayURL),
+		WithSession(session),
+	)
 
 	if err != nil {
 		return nil, err

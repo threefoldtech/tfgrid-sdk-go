@@ -61,26 +61,18 @@ func app() error {
 	// adding a peer for the router
 	mnemonics := "<mnemonics goes here>"
 	subManager := substrate.NewManager("wss://tfchain.dev.grid.tf/ws")
-	sub, err := subManager.Substrate()
 	ctx := context.Background()
-	if err != nil {
-		return fmt.Errorf("failed to connect to substrate: %w", err)
-	}
-
-	defer sub.Close()
 
 	// this peer will be a 'calculator' session.
 	// means other peers on the network need to know that
 	// session id to use when they are making calls
-	_, err = peer.NewPeer(
+	_, err := peer.NewPeer(
 		ctx,
-		peer.KeyTypeSr25519,
 		mnemonics,
-		"wss://relay.dev.grid.tf",
-		"calculator",
-		sub,
-		true,
+		subManager,
 		router.Serve,
+		peer.WithRelay("wss://relay.dev.grid.tf"),
+		peer.WithSession("calculator"),
 	)
 
 	if err != nil {

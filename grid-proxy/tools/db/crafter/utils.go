@@ -1,4 +1,4 @@
-package main
+package crafter
 
 import (
 	"encoding/json"
@@ -92,12 +92,37 @@ func objectToTupleString(v interface{}) (string, error) {
 				if err != nil {
 					return "", fmt.Errorf("failed to marshal the power map to JSON: %w", err)
 				}
-				v = fmt.Sprintf("'%s'", string(powerJSON))
+				escapedJSON := strings.ReplaceAll(string(powerJSON), "'", "''")
+				v = fmt.Sprintf("'%s'", escapedJSON)
 			}
 			vals = fmt.Sprintf("%s, %s", vals, v)
 		}
 	}
 	return fmt.Sprintf("%s)", vals), nil
+}
+
+func (g *Crafter) insertTuples(tupleObj interface{}, tuples []string) error {
+
+	if len(tuples) != 0 {
+		query := "INSERT INTO  " + reflect.Indirect(reflect.ValueOf(tupleObj)).Type().Name() + " ("
+		objType := reflect.TypeOf(tupleObj)
+		for i := 0; i < objType.NumField(); i++ {
+			if i != 0 {
+				query += ", "
+			}
+			query += objType.Field(i).Name
+		}
+
+		query += ") VALUES "
+
+		query += strings.Join(tuples, ",")
+		query += ";"
+		if _, err := g.db.Exec(query); err != nil {
+			return fmt.Errorf("failed to insert tuples: %w", err)
+		}
+
+	}
+	return nil
 }
 
 // popRandom selects a random element from the given slice,

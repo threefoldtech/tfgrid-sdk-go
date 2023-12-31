@@ -1,4 +1,3 @@
-// Package deployer for grid deployer
 package deployer
 
 import (
@@ -209,7 +208,7 @@ func NewTFPluginClient(
 	ctx, cancel := context.WithCancel(context.Background())
 	tfPluginClient.cancelRelayContext = cancel
 
-	rmbClient, err := peer.NewRpcClient(ctx, keyType, tfPluginClient.mnemonicOrSeed, tfPluginClient.relayURL, sessionID, sub.Substrate, true)
+	rmbClient, err := peer.NewRpcClient(ctx, keyType, tfPluginClient.mnemonicOrSeed, tfPluginClient.relayURL, sessionID, manager, true)
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not create rmb client")
 	}
