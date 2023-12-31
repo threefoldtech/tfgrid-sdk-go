@@ -18,7 +18,7 @@ const (
 func DecideNodeStatusCondition(status string) string {
 	condition := "TRUE"
 
-	nilPower := "node.power->> 'state' = '' AND node.power->> 'target' = ''"
+	nilPower := "node.power IS NULL"
 
 	poweredOn := "node.power->> 'state' = 'Up' AND node.power->> 'target' = 'Up'"
 	poweredOff := "node.power->> 'state' = 'Down' AND node.power->> 'target' = 'Down'"
