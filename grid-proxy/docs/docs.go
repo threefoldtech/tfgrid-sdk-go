@@ -825,6 +825,7 @@ const docTemplate = `{
                     },
                     {
                         "enum": [
+                            "status",
                             "node_id",
                             "farm_id",
                             "twin_id",
@@ -1605,7 +1606,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "description": "added node status field for up or down",
                     "type": "string"
                 },
                 "total_resources": {

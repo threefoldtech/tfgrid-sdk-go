@@ -132,7 +132,6 @@ definitions:
       serialNumber:
         type: string
       status:
-        description: added node status field for up or down
         type: string
       total_resources:
         $ref: '#/definitions/types.Capacity'
@@ -878,6 +877,7 @@ paths:
         type: boolean
       - description: Sort by specific node filed
         enum:
+        - status
         - node_id
         - farm_id
         - twin_id

@@ -635,7 +635,12 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 			if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
 				order = types.SortOrderDesc
 			}
-			q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
+
+			if limit.SortBy == "status" {
+				q.Order(nodestatus.DecideNodeStatusOrdering(order))
+			} else {
+				q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
+			}
 		} else {
 			q = q.Order("node.node_id")
 		}

@@ -39,7 +39,7 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 	}
 
 	var nodes []types.Node
-	var allErrors error
+	var errs error
 
 	var wg sync.WaitGroup
 	var lock sync.Mutex
@@ -73,10 +73,10 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 				lock.Lock()
 				defer lock.Unlock()
 
-				if allErrors == nil {
-					allErrors = err
+				if errs == nil {
+					errs = err
 				} else {
-					allErrors = errors.Wrap(allErrors, err.Error())
+					errs = errors.Wrap(errs, err.Error())
 				}
 				return
 			}
@@ -92,8 +92,8 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 	}
 	wg.Wait()
 
-	if allErrors != nil {
-		return []types.Node{}, allErrors
+	if errs != nil {
+		return []types.Node{}, errs
 	}
 
 	if len(nodes) < nodesCount {
@@ -104,7 +104,7 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 		return []types.Node{}, errors.Errorf("could not find enough nodes with options: %s", options)
 	}
 
-	return nodes[:nodesCount], allErrors
+	return nodes[:nodesCount], errs
 }
 
 func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, limit types.Limit) ([]types.Node, error) {

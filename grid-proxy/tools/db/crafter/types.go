@@ -158,7 +158,7 @@ type node struct {
 	created_at        uint64
 	updated_at        uint64
 	location_id       string
-	power             nodePower `gorm:"type:jsonb"`
+	power             *nodePower `gorm:"type:jsonb"`
 	extra_fee         uint64
 	dedicated         bool
 }
