@@ -278,7 +278,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 			node.timesRandomWakeUps = 0
 		}
 
-		if f.shouldWakeUp(subConn, node, roundStart) && wakeUpCalls < defaultPeriodicWakeUPLimit {
+		if f.shouldWakeUp(subConn, node, roundStart) && wakeUpCalls < f.config.Power.PeriodicWakeUpLimit {
 			err := f.powerOn(subConn, uint32(node.ID))
 			if err != nil {
 				log.Error().Err(err).Uint32("nodeID", uint32(node.ID)).Msg("failed to power on node")
@@ -332,23 +332,14 @@ func (f *FarmerBot) updateNodeWithLatestState(ctx context.Context, subConn Subst
 	}
 
 	// get old node state
-	nodeObj.timeoutClaimedResources = oldNode.timeoutClaimedResources
-	nodeObj.lastTimePowerStateChanged = oldNode.lastTimePowerStateChanged
-	nodeObj.lastTimeAwake = oldNode.lastTimeAwake
+	if nodeObj.lastTimePowerStateChanged.IsZero() {
+		nodeObj.lastTimePowerStateChanged = oldNode.lastTimePowerStateChanged
+	}
+	if nodeObj.lastTimeAwake.IsZero() {
+		nodeObj.lastTimeAwake = oldNode.lastTimeAwake
+	}
 	nodeObj.timesRandomWakeUps = oldNode.timesRandomWakeUps
-
-	if nodeObj.powerState == wakingUp && time.Since(nodeObj.lastTimePowerStateChanged) > timeoutPowerStateChange {
-		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Wakeup was unsuccessful. Putting its state back to off.")
-		nodeObj.powerState = off
-		nodeObj.lastTimePowerStateChanged = time.Now()
-	}
-
-	if nodeObj.powerState == shuttingDown && time.Since(nodeObj.lastTimePowerStateChanged) > timeoutPowerStateChange {
-		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Shutdown was unsuccessful. Putting its state back to on.")
-		nodeObj.powerState = on
-		nodeObj.lastTimeAwake = time.Now()
-		nodeObj.lastTimePowerStateChanged = time.Now()
-	}
+	nodeObj.timeoutClaimedResources = oldNode.timeoutClaimedResources
 
 	err = f.state.updateNode(nodeObj)
 	if err != nil {
@@ -364,6 +355,8 @@ func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time)
 	}
 
 	periodicWakeUpStart := f.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()
+	fmt.Printf("periodicWakeUpStart: %v\n", periodicWakeUpStart)
+	fmt.Printf("node.lastTimeAwake.Before(periodicWakeUpStart): %v\n", node.lastTimeAwake.Before(periodicWakeUpStart))
 	if periodicWakeUpStart.Before(roundStart) && node.lastTimeAwake.Before(periodicWakeUpStart) {
 		// we wake up the node if the periodic wake up start time has started and only if the last time the node was awake
 		// was before the periodic wake up start of that day
