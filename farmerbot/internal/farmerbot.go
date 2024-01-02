@@ -267,7 +267,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 
 		node := f.state.nodes[nodeID]
 
-		if node.neverShutDown && node.powerState == off {
+		if node.powerState == off && (node.neverShutDown || node.hasActiveRentContract) {
 			log.Debug().Uint32("nodeID", nodeID).Msg("Power on node because it is set to never shutdown")
 			err := f.powerOn(subConn, nodeID)
 			if err != nil {
