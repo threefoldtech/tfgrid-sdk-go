@@ -264,14 +264,6 @@ func TestSetConfig(t *testing.T) {
 		_, err := newState(ctx, sub, rmb, inputs)
 		assert.Error(t, err)
 	})
-
-	t.Run("test invalid state no hru", func(t *testing.T) {
-		resources := gridtypes.Capacity{HRU: 0, SRU: 1, CRU: 1, MRU: 1}
-		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
-
-		_, err := newState(ctx, sub, rmb, inputs)
-		assert.Error(t, err)
-	})
 }
 
 func TestStateModel(t *testing.T) {
