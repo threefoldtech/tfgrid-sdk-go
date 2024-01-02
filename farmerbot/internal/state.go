@@ -72,6 +72,7 @@ func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Co
 		if slices.Contains(config.IncludedNodes, nodeID) || len(config.IncludedNodes) == 0 {
 			neverShutDown := slices.Contains(config.NeverShutDownNodes, nodeID)
 
+			log.Debug().Uint32("nodeID", nodeID).Msg("Add node")
 			configNode, err := getNode(ctx, sub, rmbNodeClient, nodeID, neverShutDown, false, dedicatedFarm, on)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add node with id %d with error: %w", nodeID, err)
@@ -128,13 +129,27 @@ func getNode(
 	}
 
 	configNode.powerState = oldPowerState
+	if powerTarget.State.IsDown && powerTarget.Target.IsUp && configNode.powerState != wakingUp {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is waking up")
+		configNode.powerState = wakingUp
+		configNode.lastTimePowerStateChanged = time.Now()
+	}
+
 	if powerTarget.State.IsUp && powerTarget.Target.IsUp && configNode.powerState != on {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is on")
 		configNode.powerState = on
 		configNode.lastTimeAwake = time.Now()
 		configNode.lastTimePowerStateChanged = time.Now()
 	}
 
+	if powerTarget.State.IsUp && powerTarget.Target.IsDown && configNode.powerState != shuttingDown {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is shutting down")
+		configNode.powerState = shuttingDown
+		configNode.lastTimePowerStateChanged = time.Now()
+	}
+
 	if powerTarget.State.IsDown && powerTarget.Target.IsDown && configNode.powerState != off {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is off")
 		configNode.powerState = off
 		configNode.lastTimePowerStateChanged = time.Now()
 	}
