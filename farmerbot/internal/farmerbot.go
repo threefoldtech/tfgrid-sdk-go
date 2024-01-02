@@ -41,17 +41,18 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 		identity:         identity,
 	}
 
-	subConn, err := farmerbot.substrateManager.Substrate()
-	if err != nil {
-		return FarmerBot{}, err
-	}
-
 	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, relayURLs[network], fmt.Sprintf("farmerbot-rpc-%d", config.FarmID), farmerbot.substrateManager, true)
 	if err != nil {
 		return FarmerBot{}, fmt.Errorf("could not create rmb client with error %w", err)
 	}
 
 	farmerbot.rmbNodeClient = NewRmbNodeClient(rmb)
+
+	subConn, err := farmerbot.substrateManager.Substrate()
+	if err != nil {
+		return FarmerBot{}, err
+	}
+	defer subConn.Close()
 
 	state, err := newState(ctx, subConn, farmerbot.rmbNodeClient, config)
 	if err != nil {
@@ -262,7 +263,6 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 		node, err := f.addOrUpdateNode(ctx, subConn, nodeID)
 		if err != nil {
 			log.Error().Err(err).Send()
-			continue
 		}
 
 		if node.neverShutDown && node.powerState == off {
@@ -270,7 +270,6 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 			err := f.powerOn(subConn, nodeID)
 			if err != nil {
 				log.Error().Err(err).Send()
-				continue
 			}
 		}
 
@@ -306,7 +305,6 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 	if nodeExists {
 		nodeObj, err := f.updateNodeWithLatestState(ctx, subConn, nodeID, oldNode, neverShutDown)
 		if err != nil {
-			log.Error().Err(err).Uint32("nodeID", nodeID).Msg("Failed to update node")
 			return node{}, fmt.Errorf("failed to update node %d: %w", nodeID, err)
 		}
 
@@ -330,10 +328,7 @@ func (f *FarmerBot) updateNodeWithLatestState(ctx context.Context, subConn Subst
 
 	nodeObj, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, neverShutDown, hasClaimedResources, f.state.farm.DedicatedFarm, oldNode.powerState)
 	if err != nil {
-		if nodeObj.powerState == on {
-			return node{}, fmt.Errorf("failed to get node %d, node is not responding while we expect it to", nodeID)
-		}
-		return node{}, fmt.Errorf("failed to get node %d %w", nodeID, err)
+		return node{}, fmt.Errorf("failed to get node %d with error: %w", nodeID, err)
 	}
 
 	// get old node state
