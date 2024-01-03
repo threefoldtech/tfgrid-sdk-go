@@ -9,4 +9,5 @@ use (
 	./monitoring-bot
 	./rmb-sdk-go
 	./user-contracts-mon
+    ./mass-deployer
 )
