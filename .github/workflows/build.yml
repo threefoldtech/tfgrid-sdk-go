@@ -51,41 +51,57 @@ jobs:
             bin/${{ matrix.dir }} version
           fi
 
-  # build-docker:
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: grid-proxy
-  #   permissions:
-  #     contents: read
-  #     packages: write
+  build-docker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: grid-proxy
 
-  #   steps:
-  #     - name: Checkout the repo
-  #       uses: actions/checkout@v4
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: "activation-service"
+            image: "tfactivation"
+          - dir: "farmerbot"
+            image: "tffarmerbot"
+          - dir: "grid-proxy"
+            image: "tfgridproxy"
+        # dir:
+        #   - grid-cli
+        #   - gridify
+        #   - monitoring-bot
+        #   - user-contracts-mon 
 
-  #     - name: Log in to the Container registry
-  #       uses: docker/login-action@v3.0.0
-  #       with:
-  #         registry: ghcr.io
-  #         username: ${{ github.actor }}
-  #         password: ${{ secrets.GITHUB_TOKEN }}
+    # permissions:
+    #   contents: read
 
-  #     - name: Extract metadata (tags, labels) for Docker
-  #       id: meta
-  #       uses: docker/metadata-action@v5
-  #       with:
-  #         images: ghcr.io/threefoldtech/tfgridproxy
-  #         tags: |
-  #           type=semver,pattern={{version}}
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
 
-  #     - name: Build Docker image
-  #       uses: docker/build-push-action@v5
-  #       with:
-  #         context: .
-  #         file: ./grid-proxy/Dockerfile
-  #         tags: ${{ steps.meta.outputs.tags }}
-  #         labels: ${{ steps.meta.outputs.labels }}
-  #         #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
-  #         build-args: |
-  #           version=${{ github.ref_name	 }}
+      # - name: Log in to the Container registry
+      #   uses: docker/login-action@v3.0.0
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Extract metadata (tags, labels) for Docker
+      #   id: meta
+      #   uses: docker/metadata-action@v5
+      #   with:
+      #     images: ghcr.io/threefoldtech/${{ matrix.image }}
+      #     tags: |
+      #       type=semver,pattern={{version}}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./${{ matrix.dir }}/Dockerfile
+          # tags: ${{ steps.meta.outputs.tags }}
+          # labels: ${{ steps.meta.outputs.labels }}
+          # #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
+          # build-args: |
+          #   version=${{ github.ref_name	 }}
