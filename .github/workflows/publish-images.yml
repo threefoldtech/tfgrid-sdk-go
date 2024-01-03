@@ -1,19 +1,32 @@
-name: proxy release Create and publish a Docker image
+name: create and publish Docker images
+
+# on:
+#   workflow_dispatch:
+#   release:
+#     types: [published]
 
 on:
-  workflow_dispatch:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
 
 jobs:
-  build-and-push:
+  push-docker-images:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: grid-proxy
     permissions:
       contents: read
       packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: "activation-service"
+            image: "tfactivation"
+          - dir: "farmerbot"
+            image: "tffarmerbot"
+          - dir: "grid-proxy"
+            image: "tfgridproxy"
 
     steps:
       - name: Checkout the repo
@@ -30,7 +43,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/threefoldtech/tfgridproxy
+          images: ghcr.io/threefoldtech/${{ matrix.image }}
           tags: |
             type=semver,pattern={{version}}
 
@@ -38,10 +51,19 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./grid-proxy/Dockerfile
+          file: ./${{ matrix.dir }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
           build-args: |
             version=${{ github.ref_name	 }}
+
+      # - name: Push flist to grid hub
+      #   uses: fjogeleit/http-request-action@v1
+      #   with:
+      #     url: https://hub.grid.tf/api/flist/me/docker
+      #     method: "POST"
+      #     bearerToken: ${{ secrets.HUB_TOKEN }}
+      #     customHeaders: '{"Content-Type": "application/json"}'
+      #     data: '{"image": "ghcr.io/threefoldtech/${{ matrix.image }}"}'
