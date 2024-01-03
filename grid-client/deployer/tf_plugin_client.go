@@ -1,4 +1,3 @@
-// Package deployer for grid deployer
 package deployer
 
 import (
@@ -22,6 +21,7 @@ import (
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/vedhavyas/go-subkey"
 )
 
 var (
@@ -57,14 +57,14 @@ var (
 
 // TFPluginClient is a Threefold plugin client
 type TFPluginClient struct {
-	TwinID       uint32
-	mnemonics    string
-	Identity     substrate.Identity
-	substrateURL string
-	relayURL     string
-	RMBTimeout   time.Duration
-	rmbProxyURL  string
-	useRmbProxy  bool
+	TwinID         uint32
+	mnemonicOrSeed string
+	Identity       substrate.Identity
+	substrateURL   string
+	relayURL       string
+	RMBTimeout     time.Duration
+	rmbProxyURL    string
+	useRmbProxy    bool
 
 	// network
 	Network string
@@ -97,7 +97,7 @@ type TFPluginClient struct {
 
 // NewTFPluginClient generates a new tf plugin client
 func NewTFPluginClient(
-	mnemonics string,
+	mnemonicOrSeed string,
 	keyType string,
 	network string,
 	substrateURL string,
@@ -117,23 +117,26 @@ func NewTFPluginClient(
 	var err error
 	tfPluginClient := TFPluginClient{}
 
-	if valid := validateMnemonics(mnemonics); !valid {
-		return TFPluginClient{}, errors.Errorf("mnemonics %s is invalid", mnemonics)
+	if valid := validateMnemonics(mnemonicOrSeed); !valid {
+		_, ok := subkey.DecodeHex(mnemonicOrSeed)
+		if !ok {
+			return TFPluginClient{}, fmt.Errorf("mnemonic/seed '%s' is invalid", mnemonicOrSeed)
+		}
 	}
-	tfPluginClient.mnemonics = mnemonics
+	tfPluginClient.mnemonicOrSeed = mnemonicOrSeed
 
 	var identity substrate.Identity
 	switch keyType {
 	case "ed25519":
-		identity, err = substrate.NewIdentityFromEd25519Phrase(tfPluginClient.mnemonics)
+		identity, err = substrate.NewIdentityFromEd25519Phrase(tfPluginClient.mnemonicOrSeed)
 	case "sr25519":
-		identity, err = substrate.NewIdentityFromSr25519Phrase(tfPluginClient.mnemonics)
+		identity, err = substrate.NewIdentityFromSr25519Phrase(tfPluginClient.mnemonicOrSeed)
 	default:
 		err = errors.Errorf("key type must be one of ed25519 and sr25519 not %s", keyType)
 	}
 
 	if err != nil {
-		return TFPluginClient{}, errors.Wrapf(err, "error getting identity using mnemonics %s", mnemonics)
+		return TFPluginClient{}, errors.Wrapf(err, "error getting identity using '%s'", mnemonicOrSeed)
 	}
 	tfPluginClient.Identity = identity
 
@@ -161,7 +164,7 @@ func NewTFPluginClient(
 		return TFPluginClient{}, errors.Wrap(err, "could not get substrate client")
 	}
 
-	if err := validateAccount(sub, tfPluginClient.Identity, tfPluginClient.mnemonics); err != nil {
+	if err := validateAccount(sub, tfPluginClient.Identity, tfPluginClient.mnemonicOrSeed); err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not validate substrate account")
 	}
 
@@ -169,10 +172,10 @@ func NewTFPluginClient(
 
 	twinID, err := sub.GetTwinByPubKey(keyPair.Public())
 	if err != nil && errors.Is(err, substrate.ErrNotFound) {
-		return TFPluginClient{}, errors.Wrap(err, "no twin associated with the account with the given mnemonics")
+		return TFPluginClient{}, errors.Wrap(err, "no twin associated with the account with the given mnemonic/seed")
 	}
 	if err != nil {
-		return TFPluginClient{}, errors.Wrapf(err, "failed to get twin for the given mnemonics %s", mnemonics)
+		return TFPluginClient{}, errors.Wrapf(err, "failed to get twin for the given mnemonic/seed %s", mnemonicOrSeed)
 	}
 	tfPluginClient.TwinID = twinID
 
@@ -205,7 +208,7 @@ func NewTFPluginClient(
 	ctx, cancel := context.WithCancel(context.Background())
 	tfPluginClient.cancelRelayContext = cancel
 
-	rmbClient, err := peer.NewRpcClient(ctx, keyType, tfPluginClient.mnemonics, tfPluginClient.relayURL, sessionID, sub.Substrate, true)
+	rmbClient, err := peer.NewRpcClient(ctx, keyType, tfPluginClient.mnemonicOrSeed, tfPluginClient.relayURL, sessionID, manager, true)
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not create rmb client")
 	}

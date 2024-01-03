@@ -16,7 +16,6 @@ lint:
 	done
 
 tidy:
-	go work sync
 	for DIR in ${DIRS} ; do \
 		cd $$DIR && go mod tidy && cd ../ ; \
 	done

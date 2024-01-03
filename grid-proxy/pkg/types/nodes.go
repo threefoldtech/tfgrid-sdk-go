@@ -33,7 +33,7 @@ type Node struct {
 	UsedResources     Capacity     `json:"used_resources" sort:"used_"`
 	Location          Location     `json:"location"`
 	PublicConfig      PublicConfig `json:"publicConfig"`
-	Status            string       `json:"status"` // added node status field for up or down
+	Status            string       `json:"status" sort:"status"`
 	CertificationType string       `json:"certificationType"`
 	Dedicated         bool         `json:"dedicated"`
 	InDedicatedFarm   bool         `json:"inDedicatedFarm" sort:"dedicated_farm"`

@@ -14,19 +14,14 @@ import (
 func app() error {
 	mnemonics := "<mnemonics goes here>"
 	subManager := substrate.NewManager("wss://tfchain.dev.grid.tf/ws")
-	sub, err := subManager.Substrate()
-	if err != nil {
-		return fmt.Errorf("failed to connect to substrate: %w", err)
-	}
 
-	defer sub.Close()
 	client, err := peer.NewRpcClient(
 		context.Background(),
 		peer.KeyTypeSr25519,
 		mnemonics,
 		"wss://relay.dev.grid.tf",
 		"test-client",
-		sub,
+		subManager,
 		true,
 	)
 	if err != nil {

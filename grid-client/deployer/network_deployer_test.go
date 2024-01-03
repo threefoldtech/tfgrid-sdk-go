@@ -1,9 +1,9 @@
-// Package deployer is the grid deployer
 package deployer
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"testing"
 
@@ -121,4 +121,101 @@ func TestNetworkDeployer(t *testing.T) {
 			nodeID: networkDl,
 		})
 	})
+}
+
+func ExampleNetworkDeployer_Deploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	n := workloads.ZNet{
+		Name:        "network",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
+
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &n)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("deployment is done successfully")
+}
+
+func ExampleNetworkDeployer_BatchDeploy() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	n1 := workloads.ZNet{
+		Name:        "network1",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
+	n2 := workloads.ZNet{
+		Name:        "network2",
+		Description: "network for testing",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 1, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess: false,
+	}
+
+	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []*workloads.ZNet{&n1, &n2})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("batch deployment is done successfully")
+}
+
+func ExampleNetworkDeployer_Cancel() {
+	const mnemonic = "<mnemonics goes here>"
+	const network = "<dev, test, qa, main>"
+
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// should be a valid and existing network name
+	networkName := "network"
+	n, err := tfPluginClient.State.LoadNetworkFromGrid(networkName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &n)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("deployment is canceled successfully")
 }

@@ -1,4 +1,3 @@
-// Package deployer is grid deployer
 package deployer
 
 import (
@@ -9,9 +8,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gorilla/schema"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -25,18 +26,28 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		limit = types.Limit{Size: optionalLimit[0]}
 	}
 
+	if options.AvailableFor == nil {
+		twinID := uint64(tfPlugin.TwinID)
+		options.AvailableFor = &twinID
+	}
+
 	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
 	if err != nil {
 		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
 	}
 
 	if len(nodes) == 0 {
-		return []types.Node{}, errors.Errorf("could not find any node with options: %+v", serializeOptions(options))
+		options, err := serializeOptions(options)
+		if err != nil {
+			log.Debug().Msg(err.Error())
+		}
+		return []types.Node{}, errors.Errorf("could not find any node with options: %s", options)
 	}
 
 	// if no storage needed
 	if options.FreeSRU == nil && options.FreeHRU == nil {
-		return nodes, nil
+		// only pinging here because if there is storage required it will be pinged with Pools call
+		return pingNodes(ctx, tfPlugin.NcPool, tfPlugin.SubstrateConn, nodes), nil
 	}
 	sort.Slice(ssdDisks, func(i, j int) bool {
 		return ssdDisks[i] > ssdDisks[j]
@@ -95,6 +106,33 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	}
 
 	return nodePools, nil
+}
+
+func pingNodes(ctx context.Context, clientGetter client.NodeClientGetter, sub subi.SubstrateExt, nodes []types.Node) []types.Node {
+	var workingNodes []types.Node
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	for _, node := range nodes {
+		wg.Add(1)
+		go func(node types.Node) {
+			defer wg.Done()
+			client, err := clientGetter.GetNodeClient(sub, uint32(node.NodeID))
+			if err != nil {
+				log.Debug().Err(err).Msgf("failed to get node %d client", node.NodeID)
+				return
+			}
+			_, err = client.SystemVersion(ctx)
+			if err != nil {
+				log.Debug().Err(err).Msgf("failed to ping node %d", node.NodeID)
+				return
+			}
+			mu.Lock()
+			workingNodes = append(workingNodes, node)
+			mu.Unlock()
+		}(node)
+	}
+	wg.Wait()
+	return workingNodes
 }
 
 var (
@@ -202,34 +240,30 @@ func hasEnoughStorage(pools []client.PoolMetrics, storages []uint64, poolType zo
 	return true
 }
 
-func serializeOptions(options types.NodeFilter) string {
-	var filterStringBuilder strings.Builder
-	if options.FarmIDs != nil {
-		fmt.Fprintf(&filterStringBuilder, "farm ids: %v, ", options.FarmIDs)
+// serializeOptions used to encode a struct of NodeFilter type and convert it to string
+// with only non-zero values and drop any field with zero-value
+func serializeOptions(options types.NodeFilter) (string, error) {
+	params := make(map[string][]string)
+	err := schema.NewEncoder().Encode(options, params)
+	if err != nil {
+		return "", nil
 	}
-	if options.FarmName != nil {
-		fmt.Fprintf(&filterStringBuilder, "farm name: %v, ", options.FarmName)
+
+	// convert the map to string with `key: value` format
+	//
+	// example:
+	//
+	// map[string][]string{Status: [up]} -> "Status: [up]"
+	var sb strings.Builder
+	for key, val := range params {
+		fmt.Fprintf(&sb, "%s: %v, ", key, val[0])
 	}
-	if options.FreeMRU != nil {
-		fmt.Fprintf(&filterStringBuilder, "mru: %d GB, ", convertBytesToGB(*options.FreeMRU))
+
+	filter := sb.String()
+	if len(filter) > 2 {
+		filter = filter[:len(filter)-2]
 	}
-	if options.FreeSRU != nil {
-		fmt.Fprintf(&filterStringBuilder, "sru: %d GB, ", convertBytesToGB(*options.FreeSRU))
-	}
-	if options.FreeHRU != nil {
-		fmt.Fprintf(&filterStringBuilder, "hru: %d GB, ", convertBytesToGB(*options.FreeHRU))
-	}
-	if options.FreeIPs != nil {
-		fmt.Fprintf(&filterStringBuilder, "free ips: %d, ", *options.FreeIPs)
-	}
-	if options.Domain != nil {
-		fmt.Fprintf(&filterStringBuilder, "domain: %t, ", *options.Domain)
-	}
-	if options.IPv4 != nil {
-		fmt.Fprintf(&filterStringBuilder, "ipv4: %t, ", *options.IPv4)
-	}
-	filterString := filterStringBuilder.String()
-	return filterString[:len(filterString)-2]
+	return filter, nil
 }
 
 func convertBytesToGB(bytes uint64) uint64 {

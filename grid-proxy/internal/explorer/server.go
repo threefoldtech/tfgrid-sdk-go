@@ -48,6 +48,7 @@ const (
 // @Param node_free_mru query int false "Min free reservable mru for at least a single node that belongs to the farm, in bytes"
 // @Param node_free_hru query int false "Min free reservable hru for at least a single node that belongs to the farm, in bytes"
 // @Param node_free_sru query int false "Min free reservable sru for at least a single node that belongs to the farm, in bytes"
+// @Param node_total_cru query int false "Min total cpu cores for at least a single node that belongs to the farm"
 // @Param node_status query string false "Node status for at least a single node that belongs to the farm"
 // @Param node_rented_by query int false "Twin ID of user who has at least one rented node in the farm"
 // @Param node_available_for query int false "Twin ID of user for whom there is at least one node that is available to be deployed to in the farm"
@@ -117,7 +118,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of nodes"
-// @Param sort_by query string false "Sort by specific node filed" Enums(node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
+// @Param sort_by query string false "Sort by specific node filed" Enums(status, node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
 // @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"

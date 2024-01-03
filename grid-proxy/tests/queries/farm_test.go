@@ -27,7 +27,12 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		return rndref(0, agg.maxTotalIPs)
 	},
 	"StellarAddress": func(agg FarmsAggregate) interface{} {
-		return &agg.stellarAddresses[rand.Intn(len(agg.stellarAddresses))]
+		c := agg.stellarAddresses[rand.Intn(len(agg.stellarAddresses))]
+		if len(c) == 0 {
+			return nil
+		}
+
+		return &c
 	},
 	"PricingPolicyID": func(agg FarmsAggregate) interface{} {
 		return &agg.pricingPolicyIDs[rand.Intn(len(agg.pricingPolicyIDs))]
@@ -40,24 +45,42 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 	},
 	"Name": func(agg FarmsAggregate) interface{} {
 		name := changeCase(agg.farmNames[rand.Intn(len(agg.farmNames))])
+		if len(name) == 0 {
+			return nil
+		}
+
 		return &name
 	},
 	"Country": func(_ FarmsAggregate) interface{} {
 		aggNode := calcNodesAggregates(&data)
 		country := changeCase(aggNode.countries[rand.Intn(len(aggNode.countries))])
+		if len(country) == 0 {
+			return nil
+		}
+
 		return &country
 	},
 	"Region": func(agg FarmsAggregate) interface{} {
-		region := changeCase(agg.regions[rand.Intn(len(agg.regions))])
-		return &region
+		c := changeCase(agg.regions[rand.Intn(len(agg.regions))])
+		if len(c) == 0 {
+			return nil
+		}
+
+		return &c
 	},
 	"NameContains": func(agg FarmsAggregate) interface{} {
 		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
-		a, b := rand.Intn(len(c)), rand.Intn(len(c))
+		runesList := []rune(c)
+		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
 		if a > b {
 			a, b = b, a
 		}
-		c = c[a : b+1]
+		runesList = runesList[a : b+1]
+		c = string(runesList)
+		if len(c) == 0 {
+			return nil
+		}
+
 		return &c
 	},
 	"CertificationType": func(agg FarmsAggregate) interface{} {
@@ -84,6 +107,11 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		aggNode := calcNodesAggregates(&data)
 		sru := uint64(rand.Int63n(int64(aggNode.maxFreeSRU)))
 		return &sru
+	},
+	"NodeTotalCRU": func(agg FarmsAggregate) interface{} {
+		aggNode := calcNodesAggregates(&data)
+		cru := uint64(rand.Int63n(int64(aggNode.maxTotalCRU)))
+		return &cru
 	},
 	"NodeStatus": func(agg FarmsAggregate) interface{} {
 		nodeStatuses := []string{"up", "down", "standby"}
@@ -126,13 +154,16 @@ type FarmsAggregate struct {
 }
 
 func TestFarm(t *testing.T) {
+	t.Parallel()
 	t.Run("farms pagination test", func(t *testing.T) {
+		t.Parallel()
+
 		one := uint64(1)
 		f := proxytypes.FarmFilter{
 			TotalIPs: &one,
 		}
 		l := proxytypes.Limit{
-			Size:     5,
+			Size:     100,
 			Page:     1,
 			RetCount: true,
 		}
@@ -155,6 +186,8 @@ func TestFarm(t *testing.T) {
 	})
 
 	t.Run("farms stress test", func(t *testing.T) {
+		t.Parallel()
+
 		agg := calcFarmsAggregates(&data)
 		for i := 0; i < FARM_TESTS; i++ {
 			l := proxytypes.Limit{
@@ -178,6 +211,8 @@ func TestFarm(t *testing.T) {
 		}
 	})
 	t.Run("farms list node free hru", func(t *testing.T) {
+		t.Parallel()
+
 		aggNode := calcNodesAggregates(&data)
 		l := proxytypes.Limit{
 			Size:     999999999999,
@@ -200,6 +235,8 @@ func TestFarm(t *testing.T) {
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("Used Filter:\n%s", SerializeFilter(f)), fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 	t.Run("farms list node free hru, mru", func(t *testing.T) {
+		t.Parallel()
+
 		aggNode := calcNodesAggregates(&data)
 
 		l := proxytypes.Limit{
@@ -228,6 +265,8 @@ func TestFarm(t *testing.T) {
 
 // TestFarmFilter iterates over all FarmFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestFarmFilter(t *testing.T) {
+	t.Parallel()
+
 	f := proxytypes.FarmFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()
@@ -244,6 +283,10 @@ func TestFarmFilter(t *testing.T) {
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
 		randomFieldValue := generator(agg)
+		if randomFieldValue == nil {
+			continue
+		}
+
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 		}
@@ -332,6 +375,10 @@ func randomFarmsFilter(agg *FarmsAggregate) (proxytypes.FarmFilter, error) {
 			}
 
 			randomFieldValue := generate(*agg)
+			if randomFieldValue == nil {
+				continue
+			}
+
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}

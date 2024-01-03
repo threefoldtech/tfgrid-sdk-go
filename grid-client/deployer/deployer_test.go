@@ -1,4 +1,3 @@
-// Package deployer for grid deployer
 package deployer
 
 import (
@@ -19,19 +18,37 @@ import (
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/vedhavyas/go-subkey"
 )
 
 var backendURLWithTLSPassthrough = "1.1.1.1:10"
 var backendURLWithoutTLSPassthrough = "http://1.1.1.1:10"
 
 func setup() (TFPluginClient, error) {
-	mnemonics := os.Getenv("MNEMONICS")
-	log.Debug().Msgf("mnemonics: %s", mnemonics)
-
 	network := os.Getenv("NETWORK")
+	if len(network) == 0 {
+		network = "dev"
+	}
 	log.Debug().Msgf("network: %s", network)
 
-	return NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, true)
+	// Alice identity
+	aliceIdentity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+	if err != nil {
+		return TFPluginClient{}, err
+	}
+
+	keyPair, err := aliceIdentity.KeyPair()
+	if err != nil {
+		return TFPluginClient{}, err
+	}
+	seed := subkey.EncodeHex(keyPair.Seed())
+
+	plugin, err := NewTFPluginClient(seed, "sr25519", network, "", "", "", 0, true)
+	if err != nil {
+		return TFPluginClient{}, err
+	}
+
+	return plugin, nil
 }
 
 type gatewayWorkloadGenerator interface {

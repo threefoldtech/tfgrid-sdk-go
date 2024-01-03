@@ -132,7 +132,6 @@ definitions:
       serialNumber:
         type: string
       status:
-        description: added node status field for up or down
         type: string
       total_resources:
         $ref: '#/definitions/types.Capacity'
@@ -606,6 +605,11 @@ paths:
         in: query
         name: node_free_sru
         type: integer
+      - description: Min total cpu cores for at least a single node that belongs to
+          the farm
+        in: query
+        name: node_total_cru
+        type: integer
       - description: Node status for at least a single node that belongs to the farm
         in: query
         name: node_status
@@ -873,6 +877,7 @@ paths:
         type: boolean
       - description: Sort by specific node filed
         enum:
+        - status
         - node_id
         - farm_id
         - twin_id

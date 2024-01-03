@@ -52,14 +52,14 @@ func nodeFromDBNode(info db.Node) types.Node {
 		InDedicatedFarm:   info.FarmDedicated,
 		CertificationType: info.Certification,
 		RentContractID:    uint(info.RentContractID),
-		RentedByTwinID:    uint(info.RentedByTwinID),
+		RentedByTwinID:    uint(info.Renter),
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
-	node.Dedicated = info.FarmDedicated || !info.HasNodeContract || info.RentContractID != 0
+	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
 	return node
 }
 
@@ -124,14 +124,14 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		InDedicatedFarm:   info.FarmDedicated,
 		CertificationType: info.Certification,
 		RentContractID:    uint(info.RentContractID),
-		RentedByTwinID:    uint(info.RentedByTwinID),
+		RentedByTwinID:    uint(info.Renter),
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
-	node.Dedicated = info.FarmDedicated || !info.HasNodeContract || info.RentContractID != 0
+	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
 	return node
 }
 
