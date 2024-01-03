@@ -3,9 +3,12 @@ package cmd
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
+	"sync"
 	"time"
 
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/internal/parser"
 	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
 )
@@ -47,8 +50,41 @@ func Execute() {
 		}
 		groupsNodes[group.Name] = nodesIDs
 	}
+
 	vmsWorkloads := d.ParseVms(cfg.Vms)
+	var pass, fail map[string]error
+
+	var lock sync.Mutex
+	var wg sync.WaitGroup
+
+	deploymentStart := time.Now()
+
 	for group, vms := range vmsWorkloads {
-		// deploy every group of vms sparatly as a mass deployment
+		wg.Add(1)
+		go func(group string, vms []workloads.VM) {
+			defer wg.Done()
+			err := d.MassDeploy(vms, groupsNodes[group])
+
+			lock.Lock()
+			defer lock.Unlock()
+
+			if err != nil {
+				fail[group] = err
+			} else {
+				pass[group] = nil
+			}
+		}(group, vms)
+	}
+	wg.Wait()
+
+	log.Println("deployment took ", time.Since(deploymentStart))
+	fmt.Println("ok:")
+	for group := range pass {
+		fmt.Printf("\t%s\n", group)
+	}
+
+	fmt.Println("error:")
+	for group, err := range fail {
+		fmt.Printf("\t%s: %v\n", group, err)
 	}
 }

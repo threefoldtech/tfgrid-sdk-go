@@ -74,8 +74,5 @@ func (d Deployer) ParseVms(vms []parser.Vm) map[string][]workloads.VM {
 	return vmsWorkloads
 }
 
-func (d Deployer) CreateNetworkDeployments(vms []parser.Vm, nodesGroups map[string][]int) {
-}
-
-func (d Deployer) CreateVMsDeployments(vms []parser.Vm, nodesGroups map[string][]int) {
+func (d Deployer) MassDeploy(vms []workloads.VM, nodes []int) error {
 }
