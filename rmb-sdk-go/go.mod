@@ -16,7 +16,7 @@ require (
 	github.com/rs/zerolog v1.31.0
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240101155545-8dfb94126345
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 )
 
 require (
