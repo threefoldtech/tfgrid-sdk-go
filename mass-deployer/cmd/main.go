@@ -15,7 +15,7 @@ import (
 
 func Execute() {
 	var configFile string
-	flag.StringVar(&configFile, "config", "", "path to config file")
+	flag.StringVar(&configFile, "c", "", "path to config file")
 	flag.Parse()
 
 	if configFile == "" {
@@ -40,7 +40,7 @@ func Execute() {
 	for _, group := range cfg.NodeGroups {
 		nodes, err := d.FilterNodes(group, ctx)
 		if err != nil {
-			log.Default().Println(err)
+			fmt.Println(err)
 			continue
 		}
 
@@ -51,8 +51,9 @@ func Execute() {
 		groupsNodes[group.Name] = nodesIDs
 	}
 
-	vmsWorkloads := d.ParseVms(cfg.Vms)
-	var pass, fail map[string]error
+	vmsWorkloads, disksWorkloads := d.ParseVms(cfg.Vms, cfg.SSHKey)
+	pass := map[string]error{}
+	fail := map[string]error{}
 
 	var lock sync.Mutex
 	var wg sync.WaitGroup
@@ -63,7 +64,7 @@ func Execute() {
 		wg.Add(1)
 		go func(group string, vms []workloads.VM) {
 			defer wg.Done()
-			err := d.MassDeploy(vms, groupsNodes[group])
+			err := d.MassDeploy(ctx, vms, groupsNodes[group], disksWorkloads[group])
 
 			lock.Lock()
 			defer lock.Unlock()
@@ -77,7 +78,7 @@ func Execute() {
 	}
 	wg.Wait()
 
-	log.Println("deployment took ", time.Since(deploymentStart))
+	fmt.Println("deployment took ", time.Since(deploymentStart))
 	fmt.Println("ok:")
 	for group := range pass {
 		fmt.Printf("\t%s\n", group)
