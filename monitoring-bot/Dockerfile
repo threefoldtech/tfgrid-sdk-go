@@ -1,11 +1,23 @@
-FROM golang:1.19-alpine
+FROM golang:1.21-alpine as builder
 
-WORKDIR /monitoring-bot
+WORKDIR /src/rmb-sdk-go
 
-COPY . .
+COPY /rmb-sdk-go .
 
-RUN go mod tidy
+WORKDIR /src/grid-proxy
 
-RUN go build -o tfgridmon main.go 
+COPY /grid-proxy .
 
-CMD ./tfgridmon -e .env -w wallets.json
+WORKDIR /src/monitoring-bot
+
+COPY /monitoring-bot .
+
+RUN go build -o bin/monitoring-bot main.go
+
+FROM alpine:3.19
+
+WORKDIR /app
+
+COPY --from=builder /src/monitoring-bot/bin/monitoring-bot .
+
+ENTRYPOINT [ "./monitoring-bot" ]
