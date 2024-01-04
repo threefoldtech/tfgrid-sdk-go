@@ -72,7 +72,7 @@ docker build -t farmerbot -f Dockerfile ../
 4. run (mount `.env` and `config.yml` from your current directory to the container using `-v`)
 
 ```bash
-docker run -v $(pwd)/config.yaml:/config.yml -v $(pwd)/.env:/.env farmerbot run -e /.env -c /config.yml -d
+docker run -v $(pwd)/config.yml:/config.yml -v $(pwd)/.env:/.env farmerbot run -e /.env -c /config.yml -d
 ```
 
 ## Build

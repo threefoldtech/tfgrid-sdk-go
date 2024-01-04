@@ -1,0 +1,78 @@
+name: Build source code
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+    types: [opened, reopened, review_requested]
+  schedule:
+    - cron: "25 5 * * *"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        dir:
+          - activation-service
+          - farmerbot 
+          - grid-cli
+          - grid-proxy
+          # - grid-client
+          - gridify
+          - monitoring-bot
+          # - rmb-sdk-go
+          - user-contracts-mon 
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+
+      - name: Build
+        run: make build
+
+      - name: Test version
+        if: ${{ matrix.dir != 'grid-cli' }}
+        run: |
+          if [ ${{ matrix.dir }} == 'grid-proxy' ]; then
+            cmds/proxy_server/server -v
+          elif [ ${{ matrix.dir }} == 'grid-cli' ]; then
+            bin/tf-grid-cli version
+          else
+            bin/${{ matrix.dir }} version
+          fi
+
+  build-docker:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir:
+          - activation-service
+          - farmerbot 
+          - grid-cli
+          - grid-proxy
+          # - grid-client
+          - gridify
+          - monitoring-bot
+          # - rmb-sdk-go
+          - user-contracts-mon 
+
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./${{ matrix.dir }}/Dockerfile

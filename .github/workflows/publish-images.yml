@@ -5,6 +5,10 @@ name: create and publish Docker images
 #   release:
 #     types: [published]
 
+# NOTE: workflows using GITHUB_TOKEN doesn't get triggered after publishing release
+# https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
+# Thats why we will trigger this workflow after the main release workflow is completed
+
 on:
   workflow_run:
     workflows: [Release]
