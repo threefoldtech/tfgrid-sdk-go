@@ -17,6 +17,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/gpuindexer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/healthchecker"
 	logging "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg"
 	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
@@ -56,6 +57,8 @@ type flags struct {
 	indexerResultWorkers     int
 	indexerBatchWorkers      int
 	maxPoolOpenConnections   int
+	healthCheckerWorkers     int
+	healthCheckingInterval   int
 }
 
 func main() {
@@ -82,6 +85,8 @@ func main() {
 	flag.IntVar(&f.indexerResultWorkers, "indexer-results-workers", 2, "number of workers to process indexer GPU info")
 	flag.IntVar(&f.indexerBatchWorkers, "indexer-batch-workers", 2, "number of workers to process batch GPU info")
 	flag.IntVar(&f.maxPoolOpenConnections, "max-open-conns", 80, "max number of db connection pool open connections")
+	flag.IntVar(&f.healthCheckerWorkers, "health-worker", 10, "number of workers checking on node health")
+	flag.IntVar(&f.healthCheckingInterval, "health-interval", 5, "node health check interval in min")
 	flag.Parse()
 
 	// shows version and exit
@@ -137,6 +142,12 @@ func main() {
 	}
 
 	indexer.Start(ctx)
+
+	healthChecker, err := healthchecker.NewNodeHealthChecker(ctx, &db, subManager, f.mnemonics, f.relayURL, f.healthCheckerWorkers, f.healthCheckingInterval)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create health checker")
+	}
+	healthChecker.Start(ctx)
 
 	s, err := createServer(f, dbClient, GitCommit, relayRPCClient)
 	if err != nil {
