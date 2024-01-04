@@ -90,6 +90,20 @@ This is a bot to monitor some TFGrid functionalities here is a list:
     - `-w wallets.json` is the json file of wallets to be monitored (default is `wallets.json`)
     - `-d` is set to allow debug level while monitoring (default is `false`)
 
+- Run using docker:
+
+  - build
+
+  ```bash
+  docker build -t monitoring-bot -f Dockerfile ../
+  ```
+
+  - run (mount `.env` and `wallets.json` from your current directory to the container using `-v`)
+
+  ```bash
+  docker run -v $(pwd)/wallets.json:/wallets.json -v $(pwd)/.env:/.env monitoring-bot run -e /.env -w /wallets.json -d
+  ```
+
 ## Create a bot if you don't have
 
 - Open telegram app
