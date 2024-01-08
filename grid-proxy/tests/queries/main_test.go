@@ -168,9 +168,9 @@ func modifyDataToFireTriggers(db *sql.DB, data mock.DBData) error {
 		return fmt.Errorf("failed to update node node contract: %w", err)
 	}
 
-	// if err := generator.UpdateRentContract(); err != nil {
-	// 	return fmt.Errorf("failed to update rent contract: %w", err)
-	// }
+	if err := generator.UpdateRentContract(); err != nil {
+		return fmt.Errorf("failed to update rent contract: %w", err)
+	}
 
 	if err := generator.UpdatePublicIps(); err != nil {
 		return fmt.Errorf("failed to update public ips: %w", err)
