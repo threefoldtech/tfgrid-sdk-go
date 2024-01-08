@@ -34,7 +34,7 @@ func ParseConfig(filtName string) (Config, error) {
 			return Config{}, err
 		}
 
-		err = yaml.Unmarshal(configFile, conf)
+		err = yaml.Unmarshal(configFile, &conf)
 		if err != nil {
 			return Config{}, err
 		}
