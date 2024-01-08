@@ -90,7 +90,6 @@ func (d Deployer) ParseVms(vms []parser.Vm, sshKey string) (map[string][]workloa
 				SizeGB: vm.Disk.Capacity,
 			}
 			w.Mounts = []workloads.Mount{{DiskName: disk.Name, MountPoint: vm.Disk.Mount}}
-
 		}
 
 		if vm.Count == 0 { // if vms count is not specified so it's one vm
@@ -100,7 +99,6 @@ func (d Deployer) ParseVms(vms []parser.Vm, sshKey string) (map[string][]workloa
 		for i := 0; i < vm.Count; i++ {
 			vmsWorkloads[vm.Nodegroup] = append(vmsWorkloads[vm.Nodegroup], w)
 			vmsDisks[vm.Nodegroup] = append(vmsDisks[vm.Nodegroup], disk)
-
 		}
 	}
 	return vmsWorkloads, vmsDisks
