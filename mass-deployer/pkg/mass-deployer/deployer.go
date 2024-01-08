@@ -2,6 +2,7 @@ package deployer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -59,7 +60,11 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 	filter.IPv6 = &group.Pubip6
 	filter.Dedicated = &group.Dedicated
 
-	return deployer.FilterNodes(ctx, d.TFPluginClient, filter, []uint64{group.FreeSSD}, []uint64{group.FreeHDD}, []uint64{}, group.NodesCount)
+	nodes, err := deployer.FilterNodes(ctx, d.TFPluginClient, filter, []uint64{group.FreeSSD}, []uint64{group.FreeHDD}, []uint64{}, group.NodesCount)
+	if len(nodes) < int(group.NodesCount) {
+		return []types.Node{}, errors.New("could not find any node with the requested filter")
+	}
+	return nodes, err
 }
 
 func (d Deployer) ParseVms(vms []parser.Vm, sshKey string) (map[string][]workloads.VM, map[string][]*workloads.Disk) {

@@ -37,10 +37,13 @@ func Execute() {
 
 	groupsNodes := map[string][]int{}
 
+	pass := map[string]error{}
+	fail := map[string]error{}
+
 	for _, group := range cfg.NodeGroups {
 		nodes, err := d.FilterNodes(group, ctx)
 		if err != nil {
-			fmt.Println(err)
+			fail[group.Name] = err
 			continue
 		}
 
@@ -52,9 +55,6 @@ func Execute() {
 	}
 
 	vmsWorkloads, disksWorkloads := d.ParseVms(cfg.Vms, cfg.SSHKey)
-	pass := map[string]error{}
-	fail := map[string]error{}
-
 	var lock sync.Mutex
 	var wg sync.WaitGroup
 
