@@ -75,15 +75,20 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 
 	nodes, err := deployer.FilterNodes(ctx, d.TFPluginClient, filter, freeSSD, freeHDD, nil, group.NodesCount)
 	if len(nodes) < int(group.NodesCount) {
-		return []types.Node{}, errors.New("could not find any node with the requested filter")
+		return []types.Node{}, errors.New("could not find enough nodes with the requested filter")
 	}
 	return nodes, err
 }
 
-func (d Deployer) ParseVms(vms []parser.Vm, sshKey string) (map[string][]workloads.VM, map[string][]*workloads.Disk) {
+func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKey string) (map[string][]workloads.VM, map[string][]*workloads.Disk) {
 	vmsWorkloads := map[string][]workloads.VM{}
 	vmsDisks := map[string][]*workloads.Disk{}
 	for _, vm := range vms {
+		// make sure the group has vaild nodes
+		if _, ok := groups[vm.Nodegroup]; !ok {
+			continue
+		}
+
 		w := workloads.VM{
 			Name:       vm.Name,
 			Flist:      vm.Flist,

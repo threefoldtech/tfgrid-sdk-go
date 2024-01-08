@@ -54,7 +54,7 @@ func Execute() {
 		groupsNodes[group.Name] = nodesIDs
 	}
 
-	vmsWorkloads, disksWorkloads := d.ParseVms(cfg.Vms, cfg.SSHKey)
+	vmsWorkloads, disksWorkloads := d.ParseVms(cfg.Vms, groupsNodes, cfg.SSHKey)
 	var lock sync.Mutex
 	var wg sync.WaitGroup
 
