@@ -150,6 +150,6 @@ type NodeGPU struct {
 
 // HeathReport holds the info of node health
 type HealthReport struct {
-	NodeTwinId uint64
+	NodeTwinId uint32
 	Healthy    bool
 }

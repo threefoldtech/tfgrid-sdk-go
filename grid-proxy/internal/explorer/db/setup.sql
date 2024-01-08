@@ -106,14 +106,6 @@ INSERT INTO resources_cache
 SELECT * 
 FROM resources_cache_view;
 
-----
--- Health report table
----
-DROP TABLE IF EXISTS health_report;
-CREATE TABLE health_report (
-    node_twin_id bigint PRIMARY KEY,
-    healthy boolean
-);
 
 ----
 -- PublicIpsCache table

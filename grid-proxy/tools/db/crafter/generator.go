@@ -192,7 +192,7 @@ func (c *Crafter) GenerateNodes() error {
 			health = false
 		}
 		healthReport := health_report{
-			node_twin_id: uint64(nodeTwinsStart) + i,
+			node_twin_id: node.twin_id,
 			healthy:      health,
 		}
 

@@ -115,3 +115,12 @@ type NodeGPU struct {
 func (NodeGPU) TableName() string {
 	return "node_gpu"
 }
+
+type HealthReport struct {
+	NodeTwinId int
+	Healthy    bool
+}
+
+func (HealthReport) TableName() string {
+	return "health_report"
+}
