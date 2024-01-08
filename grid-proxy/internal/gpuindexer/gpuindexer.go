@@ -27,12 +27,12 @@ type NodeGPUIndexer struct {
 	db                     db.Database
 	relayPeer              *peer.Peer
 	checkInterval          time.Duration
-	batchSize              int
+	batchSize              uint
 	nodesGPUResultsChan    chan []types.NodeGPU
 	nodesGPUBatchesChan    chan []types.NodeGPU
 	newNodeTwinIDChan      chan []uint32
-	nodesGPUResultsWorkers int
-	nodesGPUBufferWorkers  int
+	nodesGPUResultsWorkers uint
+	nodesGPUBufferWorkers  uint
 }
 
 func NewNodeGPUIndexer(
@@ -44,7 +44,7 @@ func NewNodeGPUIndexer(
 	indexerCheckIntervalMins,
 	batchSize,
 	nodesGPUResultsWorkers,
-	nodesGPUBufferWorkers int) (*NodeGPUIndexer, error) {
+	nodesGPUBufferWorkers uint) (*NodeGPUIndexer, error) {
 	indexer := &NodeGPUIndexer{
 		db:                     db,
 		nodesGPUResultsChan:    make(chan []types.NodeGPU),
@@ -172,7 +172,7 @@ func (n *NodeGPUIndexer) gpuNodeResultsBatcher(ctx context.Context) {
 		select {
 		case nodesGPU := <-n.nodesGPUResultsChan:
 			nodesGPUBuffer = append(nodesGPUBuffer, nodesGPU...)
-			if len(nodesGPUBuffer) >= n.batchSize {
+			if len(nodesGPUBuffer) >= int(n.batchSize) {
 				log.Debug().Msg("flushing gpu indexer buffer")
 				n.nodesGPUBatchesChan <- nodesGPUBuffer
 				nodesGPUBuffer = nil
@@ -192,11 +192,11 @@ func (n *NodeGPUIndexer) gpuNodeResultsBatcher(ctx context.Context) {
 }
 
 func (n *NodeGPUIndexer) Start(ctx context.Context) {
-	for i := 0; i < n.nodesGPUResultsWorkers; i++ {
+	for i := uint(0); i < n.nodesGPUResultsWorkers; i++ {
 		go n.gpuNodeResultsBatcher(ctx)
 	}
 
-	for i := 0; i < n.nodesGPUBufferWorkers; i++ {
+	for i := uint(0); i < n.nodesGPUBufferWorkers; i++ {
 		go n.gpuBatchesDBUpserter(ctx)
 	}
 
