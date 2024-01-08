@@ -60,7 +60,20 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 	filter.IPv6 = &group.Pubip6
 	filter.Dedicated = &group.Dedicated
 
-	nodes, err := deployer.FilterNodes(ctx, d.TFPluginClient, filter, []uint64{group.FreeSSD}, []uint64{group.FreeHDD}, []uint64{}, group.NodesCount)
+	freeSSD := []uint64{group.FreeSSD}
+	if group.FreeSSD == 0 {
+		freeSSD = nil
+	}
+	freeHDD := []uint64{group.FreeHDD}
+	if group.FreeSSD == 0 {
+		freeHDD = nil
+	}
+
+	if group.NodesCount == 0 {
+		group.NodesCount = 1
+	}
+
+	nodes, err := deployer.FilterNodes(ctx, d.TFPluginClient, filter, freeSSD, freeHDD, nil, group.NodesCount)
 	if len(nodes) < int(group.NodesCount) {
 		return []types.Node{}, errors.New("could not find any node with the requested filter")
 	}
