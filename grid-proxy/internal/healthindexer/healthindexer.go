@@ -1,4 +1,4 @@
-package healthchecker
+package healthindexer
 
 import (
 	"context"
@@ -23,21 +23,21 @@ const (
 type NodeHealthChecker struct {
 	db              db.Database
 	relayClient     rmb.Client
-	nodeTwinIdsChan chan int64
+	nodeTwinIdsChan chan uint32
 	checkInterval   time.Duration
-	checkWorkers    int
+	checkWorkers    uint
 }
 
-func NewNodeHealthChecker(
+func NewNodeHealthIndexer(
 	ctx context.Context,
 	db db.Database,
 	subManager substrate.Manager,
 	mnemonic string,
 	relayUrl string,
-	checkWorkers int,
-	checkInterval int,
+	checkWorkers uint,
+	checkInterval uint,
 ) (*NodeHealthChecker, error) {
-	sessionId := fmt.Sprintf("node-health-checker-%s", strings.Split(uuid.NewString(), "-")[0])
+	sessionId := generateSessionId()
 	rpcClient, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonic, relayUrl, sessionId, subManager, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rmb client: %w", err)
@@ -46,7 +46,7 @@ func NewNodeHealthChecker(
 	return &NodeHealthChecker{
 		db:              db,
 		relayClient:     rpcClient,
-		nodeTwinIdsChan: make(chan int64),
+		nodeTwinIdsChan: make(chan uint32),
 		checkWorkers:    checkWorkers,
 		checkInterval:   time.Duration(checkInterval) * time.Minute,
 	}, nil
@@ -58,7 +58,7 @@ func (c *NodeHealthChecker) Start(ctx context.Context) {
 	go c.startNodeQuerier(ctx)
 
 	// start the health checkers, pop from twin-ids chan and update the db
-	for i := 0; i < c.checkWorkers; i++ {
+	for i := uint(0); i < c.checkWorkers; i++ {
 		go c.checkNodeHealth(ctx)
 	}
 
@@ -103,7 +103,7 @@ func (c *NodeHealthChecker) queryGridNodes(ctx context.Context) {
 		}
 
 		for _, node := range nodes {
-			c.nodeTwinIdsChan <- node.TwinID
+			c.nodeTwinIdsChan <- uint32(node.TwinID)
 		}
 	}
 
@@ -114,10 +114,10 @@ func (c *NodeHealthChecker) checkNodeHealth(ctx context.Context) {
 	for twinId := range c.nodeTwinIdsChan {
 		ctx, cancel := context.WithTimeout(ctx, checkCallTimeout)
 
-		err := c.relayClient.Call(ctx, uint32(twinId), checkCommand, nil, &result)
+		err := c.relayClient.Call(ctx, twinId, checkCommand, nil, &result)
 		if isHealthy(err) {
 			healthReport := types.HealthReport{
-				NodeTwinId: uint64(twinId),
+				NodeTwinId: twinId,
 				Healthy:    true,
 			}
 			err := c.db.UpsertNodeHealth(ctx, healthReport)
@@ -131,4 +131,8 @@ func (c *NodeHealthChecker) checkNodeHealth(ctx context.Context) {
 
 func isHealthy(err error) bool {
 	return err == nil
+}
+
+func generateSessionId() string {
+	return fmt.Sprintf("node-health-checker-%s", strings.Split(uuid.NewString(), "-")[0])
 }

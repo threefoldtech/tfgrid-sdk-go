@@ -86,6 +86,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				},
 				NumGPU:   numGPU,
 				ExtraFee: node.ExtraFee,
+				Healthy:  g.data.HealthReports[node.TwinID],
 			})
 		}
 	}
@@ -171,6 +172,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		},
 		NumGPU:   numGPU,
 		ExtraFee: node.ExtraFee,
+		Healthy:  g.data.HealthReports[node.TwinID],
 	}
 	return
 }
