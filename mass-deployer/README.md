@@ -4,12 +4,12 @@ Mass Deplyer tool designed to automate mass deployment of batchs of VMs on Three
 
 ## Features
 
-- **Mass Deployment:** Deploy groups of vms on ThreeFold Grid simultaneously.
-- **Customizable Configurations:** Define Node groups, VMs groups and other configurations through YAML or JSON file.
+-   **Mass Deployment:** Deploy groups of vms on ThreeFold Grid simultaneously.
+-   **Customizable Configurations:** Define Node groups, VMs groups and other configurations through YAML or JSON file.
 
 ## Usage
-1. First [download](#download) mass-deployer binaries.
-2. Create a new configuration file.
+1.  First [download](#download) mass-deployer binaries.
+2.  Create a new configuration file.
 
 ```yaml
 node_groups:
@@ -35,16 +35,16 @@ network: example-network
 ```
 > Make sure to replace placeholders and adapt the groups based on your actual project details.
 
-3. Run the deployer with path to the config file
+3.  Run the deployer with path to the config file
 ```bash
 $ mass-deployer -c path/to/your/config.yaml
 ```
 
 ## Download
 
-- Download the binaries from [releases](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
-- Extract the downloaded files
-- Move the binary to any of `$PATH` directories, for example:
+-   Download the binaries from [releases](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
+-   Extract the downloaded files
+-   Move the binary to any of `$PATH` directories, for example:
 
 ```bash
 mv mass-deployer /usr/local/bin
