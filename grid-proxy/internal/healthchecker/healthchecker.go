@@ -103,7 +103,6 @@ func (c *NodeHealthChecker) queryGridNodes(ctx context.Context) {
 		}
 
 		for _, node := range nodes {
-			// fmt.Printf("push node: %d\n", node.TwinID)
 			c.nodeTwinIdsChan <- node.TwinID
 		}
 	}
@@ -117,12 +116,15 @@ func (c *NodeHealthChecker) checkNodeHealth(ctx context.Context) {
 
 		err := c.relayClient.Call(ctx, uint32(twinId), checkCommand, nil, &result)
 		if isHealthy(err) {
-			err := c.db.MarkNodeAsHealthy(ctx, twinId)
+			healthReport := types.HealthReport{
+				NodeTwinId: uint64(twinId),
+				Healthy:    true,
+			}
+			err := c.db.UpsertNodeHealth(ctx, healthReport)
 			if err != nil {
 				log.Error().Err(err).Msgf("failed to mark node with twin id %d as healthy", twinId)
 			}
 		}
-		// fmt.Printf("pop node: %d -> %v, worker: %d\n", twinId, isHealthy(err), num)
 		cancel()
 	}
 }

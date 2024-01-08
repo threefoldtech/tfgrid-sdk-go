@@ -147,3 +147,9 @@ type NodeGPU struct {
 	Device     string `json:"device"`
 	Contract   int    `json:"contract"`
 }
+
+// HeathReport holds the info of node health
+type HealthReport struct {
+	NodeTwinId uint64
+	Healthy    bool
+}

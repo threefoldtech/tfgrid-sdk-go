@@ -88,6 +88,7 @@ func (c *Crafter) GenerateNodes() error {
 
 	powerState := []string{"Up", "Down"}
 	var locations []string
+	var healthReports []string
 	var nodes []string
 	var totalResources []string
 	var publicConfigs []string
@@ -186,6 +187,15 @@ func (c *Crafter) GenerateNodes() error {
 			node_id: fmt.Sprintf("node-%d", i),
 		}
 
+		health := true
+		if flip(.5) {
+			health = false
+		}
+		healthReport := health_report{
+			node_twin_id: uint64(nodeTwinsStart) + i,
+			healthy:      health,
+		}
+
 		if _, ok := c.dedicatedFarms[node.farm_id]; ok {
 			c.availableRentNodes[i] = struct{}{}
 			c.availableRentNodesList = append(c.availableRentNodesList, i)
@@ -196,6 +206,12 @@ func (c *Crafter) GenerateNodes() error {
 			return fmt.Errorf("failed to convert location object to tuple string: %w", err)
 		}
 		locations = append(locations, locationTuple)
+
+		healthTuple, err := objectToTupleString(healthReport)
+		if err != nil {
+			return fmt.Errorf("failed to convert health report to tuple string: %w", err)
+		}
+		healthReports = append(healthReports, healthTuple)
 
 		nodeTuple, err := objectToTupleString(node)
 		if err != nil {
@@ -230,6 +246,10 @@ func (c *Crafter) GenerateNodes() error {
 
 	if err := c.insertTuples(location{}, locations); err != nil {
 		return fmt.Errorf("failed to insert locations: %w", err)
+	}
+
+	if err := c.insertTuples(health_report{}, healthReports); err != nil {
+		return fmt.Errorf("failed to insert health reports: %w", err)
 	}
 
 	if err := c.insertTuples(node{}, nodes); err != nil {
