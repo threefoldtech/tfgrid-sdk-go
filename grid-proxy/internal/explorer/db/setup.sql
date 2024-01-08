@@ -35,7 +35,6 @@ CREATE OR REPLACE VIEW resources_cache_view AS
 SELECT
     node.node_id as node_id,
     node.farm_id as farm_id,
-    node.twin_id as node_twin_id,
     COALESCE(node_resources_total.hru, 0) as total_hru,
     COALESCE(node_resources_total.mru, 0) as total_mru,
     COALESCE(node_resources_total.sru, 0) as total_sru,
@@ -69,7 +68,6 @@ FROM node
     LEFT JOIN country ON LOWER(node.country) = LOWER(country.name)
 GROUP BY
     node.node_id,
-    node.twin_id,
     node_resources_total.mru,
     node_resources_total.sru,
     node_resources_total.hru,
@@ -85,7 +83,6 @@ DROP TABLE IF EXISTS resources_cache;
 CREATE TABLE IF NOT EXISTS resources_cache(
     node_id INTEGER PRIMARY KEY,
     farm_id INTEGER NOT NULL,
-    node_twin_id INTEGER NOT NULL,
     total_hru NUMERIC NOT NULL,
     total_mru NUMERIC NOT NULL,
     total_sru NUMERIC NOT NULL,
@@ -102,13 +99,21 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     node_contracts_count INTEGER NOT NULL,
     node_gpu_count INTEGER NOT NULL,
     country TEXT,
-    region TEXT,
-    healthy BOOLEAN DEFAULT false
+    region TEXT
     );
 
 INSERT INTO resources_cache 
 SELECT * 
 FROM resources_cache_view;
+
+----
+-- Health report table
+---
+DROP TABLE IF EXISTS health_report;
+CREATE TABLE health_report (
+    node_twin_id bigint PRIMARY KEY,
+    healthy boolean
+);
 
 ----
 -- PublicIpsCache table

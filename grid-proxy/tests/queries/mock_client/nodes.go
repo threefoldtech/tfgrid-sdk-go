@@ -211,6 +211,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.Healthy != nil && *f.Healthy != data.HealthReports[n.TwinID] {
+		return false
+	}
+
 	if f.FreeSRU != nil && int64(*f.FreeSRU) > int64(free.SRU) {
 		return false
 	}
