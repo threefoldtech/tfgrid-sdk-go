@@ -16,16 +16,16 @@ import (
 )
 
 const (
-	checkCallTimeout = 10 * time.Second
-	checkCommand     = "zos.system.version"
+	indexerCallTimeout = 10 * time.Second
+	indexerCallCommand = "zos.system.version"
 )
 
-type NodeHealthChecker struct {
+type NodeHealthIndexer struct {
 	db              db.Database
 	relayClient     rmb.Client
 	nodeTwinIdsChan chan uint32
-	checkInterval   time.Duration
-	checkWorkers    uint
+	indexerInterval time.Duration
+	indexerWorkers  uint
 }
 
 func NewNodeHealthIndexer(
@@ -34,40 +34,40 @@ func NewNodeHealthIndexer(
 	subManager substrate.Manager,
 	mnemonic string,
 	relayUrl string,
-	checkWorkers uint,
-	checkInterval uint,
-) (*NodeHealthChecker, error) {
+	indexerWorkers uint,
+	indexerInterval uint,
+) (*NodeHealthIndexer, error) {
 	sessionId := generateSessionId()
 	rpcClient, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonic, relayUrl, sessionId, subManager, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rmb client: %w", err)
 	}
 
-	return &NodeHealthChecker{
+	return &NodeHealthIndexer{
 		db:              db,
 		relayClient:     rpcClient,
 		nodeTwinIdsChan: make(chan uint32),
-		checkWorkers:    checkWorkers,
-		checkInterval:   time.Duration(checkInterval) * time.Minute,
+		indexerWorkers:  indexerWorkers,
+		indexerInterval: time.Duration(indexerInterval) * time.Minute,
 	}, nil
 }
 
-func (c *NodeHealthChecker) Start(ctx context.Context) {
+func (c *NodeHealthIndexer) Start(ctx context.Context) {
 
 	// start the node querier, push twin-ids into chan
 	go c.startNodeQuerier(ctx)
 
-	// start the health checkers, pop from twin-ids chan and update the db
-	for i := uint(0); i < c.checkWorkers; i++ {
+	// start the health indexer workers, pop from twin-ids chan and update the db
+	for i := uint(0); i < c.indexerWorkers; i++ {
 		go c.checkNodeHealth(ctx)
 	}
 
-	log.Info().Msg("Node health checker started")
+	log.Info().Msg("Node health indexer started")
 
 }
 
-func (c *NodeHealthChecker) startNodeQuerier(ctx context.Context) {
-	ticker := time.NewTicker(c.checkInterval)
+func (c *NodeHealthIndexer) startNodeQuerier(ctx context.Context) {
+	ticker := time.NewTicker(c.indexerInterval)
 	c.queryGridNodes(ctx)
 	for {
 		select {
@@ -79,7 +79,7 @@ func (c *NodeHealthChecker) startNodeQuerier(ctx context.Context) {
 	}
 }
 
-func (c *NodeHealthChecker) queryGridNodes(ctx context.Context) {
+func (c *NodeHealthIndexer) queryGridNodes(ctx context.Context) {
 	status := "up"
 	filter := types.NodeFilter{
 		Status: &status,
@@ -109,12 +109,12 @@ func (c *NodeHealthChecker) queryGridNodes(ctx context.Context) {
 
 }
 
-func (c *NodeHealthChecker) checkNodeHealth(ctx context.Context) {
+func (c *NodeHealthIndexer) checkNodeHealth(ctx context.Context) {
 	var result interface{}
 	for twinId := range c.nodeTwinIdsChan {
-		ctx, cancel := context.WithTimeout(ctx, checkCallTimeout)
+		ctx, cancel := context.WithTimeout(ctx, indexerCallTimeout)
 
-		err := c.relayClient.Call(ctx, twinId, checkCommand, nil, &result)
+		err := c.relayClient.Call(ctx, twinId, indexerCallCommand, nil, &result)
 		if isHealthy(err) {
 			healthReport := types.HealthReport{
 				NodeTwinId: twinId,
@@ -134,5 +134,5 @@ func isHealthy(err error) bool {
 }
 
 func generateSessionId() string {
-	return fmt.Sprintf("node-health-checker-%s", strings.Split(uuid.NewString(), "-")[0])
+	return fmt.Sprintf("node-health-indexer-%s", strings.Split(uuid.NewString(), "-")[0])
 }

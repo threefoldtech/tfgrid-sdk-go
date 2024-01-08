@@ -35,30 +35,30 @@ const (
 var GitCommit string
 
 type flags struct {
-	debug                    string
-	postgresHost             string
-	postgresPort             int
-	postgresDB               string
-	postgresUser             string
-	postgresPassword         string
-	sqlLogLevel              int
-	address                  string
-	version                  bool
-	nocert                   bool
-	domain                   string
-	TLSEmail                 string
-	CA                       string
-	certCacheDir             string
-	tfChainURL               string
-	relayURL                 string
-	mnemonics                string
-	indexerCheckIntervalMins int
-	indexerBatchSize         int
-	indexerResultWorkers     int
-	indexerBatchWorkers      int
-	maxPoolOpenConnections   int
-	healthCheckerWorkers     uint
-	healthCheckingInterval   uint
+	debug                       string
+	postgresHost                string
+	postgresPort                int
+	postgresDB                  string
+	postgresUser                string
+	postgresPassword            string
+	sqlLogLevel                 int
+	address                     string
+	version                     bool
+	nocert                      bool
+	domain                      string
+	TLSEmail                    string
+	CA                          string
+	certCacheDir                string
+	tfChainURL                  string
+	relayURL                    string
+	mnemonics                   string
+	gpuIndexerCheckIntervalMins uint
+	gpuIndexerBatchSize         uint
+	gpuIndexerResultWorkers     uint
+	gpuIndexerBatchWorkers      uint
+	maxPoolOpenConnections      int
+	healthIndexerWorkers        uint
+	healthIndexerInterval       uint
 }
 
 func main() {
@@ -80,13 +80,13 @@ func main() {
 	flag.StringVar(&f.tfChainURL, "tfchain-url", DefaultTFChainURL, "TF chain url")
 	flag.StringVar(&f.relayURL, "relay-url", DefaultRelayURL, "RMB relay url")
 	flag.StringVar(&f.mnemonics, "mnemonics", "", "Dummy user mnemonics for relay calls")
-	flag.IntVar(&f.indexerCheckIntervalMins, "indexer-interval-min", 60, "the interval that the GPU indexer will run")
-	flag.IntVar(&f.indexerBatchSize, "indexer-batch-size", 20, "batch size for the GPU indexer worker batch")
-	flag.IntVar(&f.indexerResultWorkers, "indexer-results-workers", 2, "number of workers to process indexer GPU info")
-	flag.IntVar(&f.indexerBatchWorkers, "indexer-batch-workers", 2, "number of workers to process batch GPU info")
+	flag.UintVar(&f.gpuIndexerCheckIntervalMins, "indexer-interval-min", 60, "the interval that the GPU indexer will run")
+	flag.UintVar(&f.gpuIndexerBatchSize, "indexer-batch-size", 20, "batch size for the GPU indexer worker batch")
+	flag.UintVar(&f.gpuIndexerResultWorkers, "indexer-results-workers", 2, "number of workers to process indexer GPU info")
+	flag.UintVar(&f.gpuIndexerBatchWorkers, "indexer-batch-workers", 2, "number of workers to process batch GPU info")
 	flag.IntVar(&f.maxPoolOpenConnections, "max-open-conns", 80, "max number of db connection pool open connections")
-	flag.UintVar(&f.healthCheckerWorkers, "health-worker", 10, "number of workers checking on node health")
-	flag.UintVar(&f.healthCheckingInterval, "health-interval", 5, "node health check interval in min")
+	flag.UintVar(&f.healthIndexerWorkers, "health-indexer-workers", 10, "number of workers checking on node health")
+	flag.UintVar(&f.healthIndexerInterval, "health-indexer-interval", 5, "node health check interval in min")
 	flag.Parse()
 
 	// shows version and exit
@@ -132,10 +132,10 @@ func main() {
 		f.relayURL,
 		f.mnemonics,
 		subManager, &db,
-		f.indexerCheckIntervalMins,
-		f.indexerBatchSize,
-		f.indexerResultWorkers,
-		f.indexerBatchWorkers,
+		f.gpuIndexerCheckIntervalMins,
+		f.gpuIndexerBatchSize,
+		f.gpuIndexerResultWorkers,
+		f.gpuIndexerBatchWorkers,
 	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create GPU indexer")
@@ -143,9 +143,9 @@ func main() {
 
 	indexer.Start(ctx)
 
-	healthIndexer, err := healthindexer.NewNodeHealthIndexer(ctx, &db, subManager, f.mnemonics, f.relayURL, f.healthCheckerWorkers, f.healthCheckingInterval)
+	healthIndexer, err := healthindexer.NewNodeHealthIndexer(ctx, &db, subManager, f.mnemonics, f.relayURL, f.healthIndexerWorkers, f.healthIndexerInterval)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create health checker")
+		log.Fatal().Err(err).Msg("failed to create health indexer")
 	}
 	healthIndexer.Start(ctx)
 
