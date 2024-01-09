@@ -44,6 +44,7 @@ type Node struct {
 	ID                 string
 	NodeID             int64
 	FarmID             int64
+	FarmName           string
 	TwinID             int64
 	Country            string
 	GridVersion        int64
