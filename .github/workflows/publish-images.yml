@@ -37,6 +37,13 @@ jobs:
       - name: Checkout the repo
         uses: actions/checkout@v4
 
+      - run: git fetch --prune --unshallow
+
+      - name: Get latest version
+        run: |
+          echo "TAG_VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+        id: version
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3.0.0
         with:
@@ -58,11 +65,11 @@ jobs:
           context: .
           file: ./${{ matrix.dir }}/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/threefoldtech/${{ matrix.image }}:${{ steps.version.outputs.TAG_VERSION }}
           labels: ${{ steps.meta.outputs.labels }}
           #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
           build-args: |
-            version=${{ github.ref_name	 }}
+            version=${{ steps.version.outputs.TAG_VERSION }}
 
       # - name: Push flist to grid hub
       #   uses: fjogeleit/http-request-action@v1
