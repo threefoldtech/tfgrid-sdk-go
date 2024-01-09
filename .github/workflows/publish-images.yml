@@ -62,7 +62,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
           build-args: |
-            version=${{ github.event.workflow_run.head_branch	 }}
+            version=$(git describe --tags `git rev-list --tags --max-count=1`)
 
       # - name: Push flist to grid hub
       #   uses: fjogeleit/http-request-action@v1
