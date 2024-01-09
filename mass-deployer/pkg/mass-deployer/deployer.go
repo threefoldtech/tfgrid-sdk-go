@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"sync"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -21,10 +20,10 @@ type Deployer struct {
 }
 
 func NewDeployer(conf parser.Config) (Deployer, error) {
-	network := os.Getenv("NETWORK")
+	network := conf.Network
 	log.Printf("network: %s\n", network)
 
-	mnemonic := os.Getenv("MNEMONICS")
+	mnemonic := conf.Mnemonic
 	log.Printf("mnemonics: %s\n", mnemonic)
 
 	tf, err := deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 30, false)
