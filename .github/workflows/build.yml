@@ -28,7 +28,7 @@ jobs:
           - monitoring-bot
           # - rmb-sdk-go
           - user-contracts-mon 
-          # - mass-deployer
+          - mass-deployer
 
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +67,7 @@ jobs:
           - monitoring-bot
           # - rmb-sdk-go
           - user-contracts-mon 
+          - mass-deployer
 
     steps:
       - name: Checkout the repo

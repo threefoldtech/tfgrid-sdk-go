@@ -13,10 +13,24 @@ import (
 	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
 )
 
+var (
+	commit  string
+	version string
+)
+
 func Execute() {
 	var configFile string
+	var versionFlag bool
+
 	flag.StringVar(&configFile, "c", "", "path to config file")
+	flag.BoolVar(&versionFlag, "version", false, "Print the version and exit")
 	flag.Parse()
+
+	if versionFlag {
+		fmt.Println(version)
+		fmt.Println(commit)
+		return
+	}
 
 	if configFile == "" {
 		log.Fatal("couldn't locate config file")
