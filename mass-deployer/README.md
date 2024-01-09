@@ -1,11 +1,11 @@
 # mass-deployer
 
-Mass Deplyer tool designed to automate mass deployment of batchs of VMs on ThreeFold Grid.
+Mass Deplyer tool designed to automate mass deployment of groups of VMs on ThreeFold Grid.
 
 ## Features
 
 -   **Mass Deployment:** Deploy groups of vms on ThreeFold Grid simultaneously.
--   **Customizable Configurations:** Define Node groups, VMs groups and other configurations through YAML or JSON file.
+-   **Customizable Configurations:** Define Node groups, VMs groups and other configurations through YAML file.
 
 ## Usage
 1.  First [download](#download) mass-deployer binaries.
