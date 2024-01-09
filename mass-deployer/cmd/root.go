@@ -2,48 +2,60 @@ package cmd
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"log"
+	"os"
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
+	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/internal/parser"
 	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
 )
 
-var (
-	commit  string
-	version string
-)
+var rootCmd = &cobra.Command{
+	Use:   "mass-deployer",
+	Short: "A tool for deploying groups of vms on Threefold Grid",
+
+	Run: func(cmd *cobra.Command, args []string) {
+		configFile, err := cmd.Flags().GetString("config")
+		if err != nil || configFile == "" {
+			log.Error().Err(err).Msg("error in config file")
+			return
+		}
+		err = runDeployer(configFile)
+		if err != nil {
+			log.Fatal().Err(err)
+		}
+	},
+}
 
 func Execute() {
-	var configFile string
-	var versionFlag bool
-
-	flag.StringVar(&configFile, "c", "", "path to config file")
-	flag.BoolVar(&versionFlag, "version", false, "Print the version and exit")
-	flag.Parse()
-
-	if versionFlag {
-		fmt.Println(version)
-		fmt.Println(commit)
-		return
+	err := rootCmd.Execute()
+	if err != nil {
+		os.Exit(1)
 	}
+}
 
-	if configFile == "" {
-		log.Fatal("couldn't locate config file")
-	}
+func init() {
+	rootCmd.Flags().StringP("config", "c", "", "path to config file")
 
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+}
+
+func runDeployer(configFile string) error {
 	cfg, err := parser.ParseConfig(configFile)
 	if err != nil {
-		log.Fatalf("failed to parse config file: %v", err)
+		return fmt.Errorf("failed to parse config file: %v", err)
 	}
 
 	d, err := deployer.NewDeployer(cfg)
 	if err != nil {
-		log.Fatalf("failed to create deployer: %v", err)
+		return fmt.Errorf("failed to create deployer: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Minute)
@@ -102,4 +114,5 @@ func Execute() {
 	for group, err := range fail {
 		fmt.Printf("\t%s: %v\n", group, err)
 	}
+	return nil
 }
