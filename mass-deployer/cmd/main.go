@@ -24,12 +24,12 @@ func Execute() {
 
 	cfg, err := parser.ParseConfig(configFile)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to parse config file: %v", err)
 	}
 
 	d, err := deployer.NewDeployer(cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to create deployer: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Minute)
@@ -37,7 +37,7 @@ func Execute() {
 
 	groupsNodes := map[string][]int{}
 
-	pass := map[string]error{}
+	pass := []string{}
 	fail := map[string]error{}
 
 	for _, group := range cfg.NodeGroups {
@@ -72,7 +72,7 @@ func Execute() {
 			if err != nil {
 				fail[group] = err
 			} else {
-				pass[group] = nil
+				pass = append(pass, group)
 			}
 		}(group, vms)
 	}
@@ -80,7 +80,7 @@ func Execute() {
 
 	fmt.Println("deployment took ", time.Since(deploymentStart))
 	fmt.Println("ok:")
-	for group := range pass {
+	for _, group := range pass {
 		fmt.Printf("\t%s\n", group)
 	}
 
