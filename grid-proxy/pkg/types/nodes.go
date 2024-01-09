@@ -21,6 +21,7 @@ type Node struct {
 	ID                string       `json:"id"`
 	NodeID            int          `json:"nodeId" sort:"node_id"`
 	FarmID            int          `json:"farmId" sort:"farm_id"`
+	FarmName          string       `json:"farmName"`
 	TwinID            int          `json:"twinId" sort:"twin_id"`
 	Country           string       `json:"country" sort:"country"`
 	GridVersion       int          `json:"gridVersion"`
@@ -56,6 +57,7 @@ type NodeWithNestedCapacity struct {
 	ID                string         `json:"id"`
 	NodeID            int            `json:"nodeId"`
 	FarmID            int            `json:"farmId"`
+	FarmName          string         `json:"farmName"`
 	TwinID            int            `json:"twinId"`
 	Country           string         `json:"country"`
 	GridVersion       int            `json:"gridVersion"`
