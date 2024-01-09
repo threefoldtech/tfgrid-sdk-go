@@ -55,6 +55,7 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
+
 replace github.com/threefoldtech/tfgrid-sdk-go/grid-client => ../grid-client
 
 replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy => ../grid-proxy

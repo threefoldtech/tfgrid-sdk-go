@@ -1,5 +1,7 @@
 # mass-deployer
 
+<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-90%25-brightgreen.svg?longCache=true&style=flat)</a>
+
 Mass Deplyer tool designed to automate mass deployment of groups of VMs on ThreeFold Grid.
 
 ## Features
