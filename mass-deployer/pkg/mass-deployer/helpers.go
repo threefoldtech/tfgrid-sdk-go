@@ -10,3 +10,8 @@ func generateRandomString(length int) string {
 	}
 	return string(result)
 }
+
+func convertGBToBytes(gb int) int {
+	bytes := gb * 1024 * 1024 * 1024
+	return bytes
+}

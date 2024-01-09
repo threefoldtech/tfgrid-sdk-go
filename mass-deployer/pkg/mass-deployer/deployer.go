@@ -40,13 +40,16 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 		filter.TotalCRU = &group.FreeCPU
 	}
 	if group.FreeMRU > 0 {
-		filter.FreeMRU = &group.FreeMRU
+		mru := uint64(convertGBToBytes(int(group.FreeMRU)))
+		filter.FreeMRU = &mru
 	}
 	if group.FreeSSD > 0 {
-		filter.FreeSRU = &group.FreeSSD
+		ssd := uint64(convertGBToBytes(int(group.FreeSSD)))
+		filter.FreeSRU = &ssd
 	}
 	if group.FreeHDD > 0 {
-		filter.FreeHRU = &group.FreeHDD
+		hdd := uint64(convertGBToBytes(int(group.FreeHDD)))
+		filter.FreeHRU = &hdd
 	}
 	if group.Regions != "" {
 		filter.Region = &group.Regions
@@ -92,10 +95,10 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKey stri
 			Name:       vm.Name,
 			Flist:      vm.Flist,
 			CPU:        vm.FreeCPU,
-			Memory:     vm.FreeMRU,
+			Memory:     convertGBToBytes(vm.FreeMRU),
 			PublicIP:   vm.Pubip4,
 			PublicIP6:  vm.Pubip6,
-			RootfsSize: vm.Rootsize,
+			RootfsSize: convertGBToBytes(vm.Rootsize),
 			Entrypoint: vm.Entrypoint,
 			EnvVars:    map[string]string{"SSH_KEY": sshKey},
 		}
@@ -104,7 +107,7 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKey stri
 		if vm.Disk.Mount != "" {
 			disk = &workloads.Disk{
 				Name:   fmt.Sprintf("%sdisk", vm.Name),
-				SizeGB: vm.Disk.Capacity,
+				SizeGB: convertGBToBytes(vm.Disk.Capacity),
 			}
 			w.Mounts = []workloads.Mount{{DiskName: disk.Name, MountPoint: vm.Disk.Mount}}
 		}
