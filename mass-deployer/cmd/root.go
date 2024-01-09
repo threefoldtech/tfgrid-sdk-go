@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/spf13/cobra"
@@ -28,7 +27,7 @@ var rootCmd = &cobra.Command{
 		}
 		err = runDeployer(configFile)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("failed to parse config file")
 		}
 	},
 }
@@ -42,9 +41,6 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().StringP("config", "c", "", "path to config file")
-
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 }
 
 func runDeployer(configFile string) error {
@@ -80,7 +76,7 @@ func runDeployer(configFile string) error {
 		groupsNodes[group.Name] = nodesIDs
 	}
 
-	vmsWorkloads, disksWorkloads := d.ParseVms(cfg.Vms, groupsNodes, cfg.SSHKey)
+	vmsWorkloads, disksWorkloads := d.ParseVms(cfg.Vms, groupsNodes, cfg.SSHKeys)
 	var lock sync.Mutex
 	var wg sync.WaitGroup
 

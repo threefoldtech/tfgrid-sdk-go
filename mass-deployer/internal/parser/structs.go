@@ -1,11 +1,11 @@
 package parser
 
 type Config struct {
-	NodeGroups []NodesGroup `yaml:"node_groups"`
-	Vms        []Vm         `yaml:"vms"`
-	SSHKey     string       `yaml:"sshkey"`
-	Mnemonic   string       `yaml:"mnemonic"`
-	Network    string       `yaml:"network"`
+	NodeGroups []NodesGroup      `yaml:"node_groups"`
+	Vms        []Vm              `yaml:"vms"`
+	SSHKeys    map[string]string `yaml:"ssh_keys"`
+	Mnemonic   string            `yaml:"mnemonic"`
+	Network    string            `yaml:"network"`
 }
 
 type NodesGroup struct {
@@ -36,6 +36,7 @@ type Vm struct {
 	Flist       string `yaml:"flist"`
 	Rootsize    int    `yaml:"root_size"`
 	Entrypoint  string `yaml:"entry_point"`
+	SSHKey      string `yaml:"ssh_key"`
 }
 
 type Disk struct {

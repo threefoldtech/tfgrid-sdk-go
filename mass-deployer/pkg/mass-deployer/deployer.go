@@ -82,7 +82,7 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 	return nodes, err
 }
 
-func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKey string) (map[string][]workloads.VM, map[string][]*workloads.Disk) {
+func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map[string]string) (map[string][]workloads.VM, map[string][]*workloads.Disk) {
 	vmsWorkloads := map[string][]workloads.VM{}
 	vmsDisks := map[string][]*workloads.Disk{}
 	for _, vm := range vms {
@@ -90,6 +90,7 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKey stri
 		if _, ok := groups[vm.Nodegroup]; !ok {
 			continue
 		}
+		sshKey := sshKeys[vm.SSHKey]
 
 		w := workloads.VM{
 			Name:       vm.Name,
