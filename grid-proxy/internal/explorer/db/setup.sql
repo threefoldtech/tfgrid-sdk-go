@@ -106,6 +106,7 @@ INSERT INTO resources_cache
 SELECT * 
 FROM resources_cache_view;
 
+
 ----
 -- PublicIpsCache table
 ----
