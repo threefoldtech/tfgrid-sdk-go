@@ -37,6 +37,8 @@ jobs:
       - name: Checkout the repo
         uses: actions/checkout@v4
 
+      - run: git fetch --prune --unshallow
+
       - name: Get latest version
         run: |
           echo "TAG_VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
