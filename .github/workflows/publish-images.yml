@@ -58,11 +58,11 @@ jobs:
           context: .
           file: ./${{ matrix.dir }}/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/threefoldtech/${{ matrix.image }}:$(git describe --tags --abbrev=0)
           labels: ${{ steps.meta.outputs.labels }}
           #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
           build-args: |
-            version=$(git describe --tags `git rev-list --tags --max-count=1`)
+            version=$(git describe --tags --abbrev=0)
 
       # - name: Push flist to grid hub
       #   uses: fjogeleit/http-request-action@v1
