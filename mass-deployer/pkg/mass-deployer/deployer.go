@@ -54,8 +54,9 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 	if group.Regions != "" {
 		filter.Region = &group.Regions
 	}
-	if group.CertificationType != "" {
-		filter.CertificationType = &group.CertificationType
+	if group.Certified {
+		certified := "Certified"
+		filter.CertificationType = &certified
 	}
 
 	filter.IPv4 = &group.Pubip4
@@ -82,9 +83,9 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 	return nodes, err
 }
 
-func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map[string]string) (map[string][]workloads.VM, map[string][]*workloads.Disk) {
+func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map[string]string) (map[string][]workloads.VM, map[string][][]workloads.Disk) {
 	vmsWorkloads := map[string][]workloads.VM{}
-	vmsDisks := map[string][]*workloads.Disk{}
+	vmsDisks := map[string][][]workloads.Disk{}
 	for _, vm := range vms {
 		// make sure the group has vaild nodes
 		if _, ok := groups[vm.Nodegroup]; !ok {
@@ -104,14 +105,18 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map
 			EnvVars:    map[string]string{"SSH_KEY": sshKey},
 		}
 
-		var disk *workloads.Disk
-		if vm.Disk.Mount != "" {
-			disk = &workloads.Disk{
+		var disks []workloads.Disk
+		var mounts []workloads.Mount
+		for _, disk := range vm.SSHDisks {
+			DiskWorkload := workloads.Disk{
 				Name:   fmt.Sprintf("%sdisk", vm.Name),
-				SizeGB: convertGBToBytes(vm.Disk.Capacity),
+				SizeGB: convertGBToBytes(disk.Capacity),
 			}
-			w.Mounts = []workloads.Mount{{DiskName: disk.Name, MountPoint: vm.Disk.Mount}}
+
+			disks = append(disks, DiskWorkload)
+			mounts = append(mounts, workloads.Mount{DiskName: DiskWorkload.Name, MountPoint: disk.Mount})
 		}
+		w.Mounts = mounts
 
 		if vm.Count == 0 { // if vms count is not specified so it's one vm
 			vm.Count++
@@ -119,13 +124,13 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map
 
 		for i := 0; i < vm.Count; i++ {
 			vmsWorkloads[vm.Nodegroup] = append(vmsWorkloads[vm.Nodegroup], w)
-			vmsDisks[vm.Nodegroup] = append(vmsDisks[vm.Nodegroup], disk)
+			vmsDisks[vm.Nodegroup] = append(vmsDisks[vm.Nodegroup], disks)
 		}
 	}
 	return vmsWorkloads, vmsDisks
 }
 
-func (d Deployer) MassDeploy(ctx context.Context, vms []workloads.VM, nodes []int, disks []*workloads.Disk) error {
+func (d Deployer) MassDeploy(ctx context.Context, vms []workloads.VM, nodes []int, disks [][]workloads.Disk) error {
 	networks := make([]*workloads.ZNet, len(vms))
 	vmDeployments := make([]*workloads.Deployment, len(vms))
 
@@ -157,11 +162,7 @@ func (d Deployer) MassDeploy(ctx context.Context, vms []workloads.VM, nodes []in
 
 			vm.NetworkName = network.Name
 
-			var workloadDisks []workloads.Disk
-			if disks[i] != nil {
-				workloadDisks = []workloads.Disk{*disks[i]}
-			}
-			deployment := workloads.NewDeployment(generateRandomString(10), nodeID, "", nil, network.Name, workloadDisks, nil, []workloads.VM{vm}, nil)
+			deployment := workloads.NewDeployment(generateRandomString(10), nodeID, "", nil, network.Name, disks[i], nil, []workloads.VM{vm}, nil)
 
 			lock.Lock()
 			networks[i] = &network
