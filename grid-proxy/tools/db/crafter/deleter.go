@@ -22,6 +22,7 @@ func (g *Crafter) DeleteNodes() error {
 		query += fmt.Sprintf("DELETE FROM node_resources_total WHERE node_id = (SELECT id FROM node WHERE node_id = %d);", nodeID)
 		query += fmt.Sprintf("DELETE FROM public_config WHERE node_id = (SELECT id FROM node WHERE node_id = %d);", nodeID)
 		query += fmt.Sprintf("DELETE FROM node WHERE node_id = %d;", nodeID)
+		query += fmt.Sprintf("DELETE FROM health_report WHERE node_twin_id = (SELECT twin_id FROM node WHERE node_id = %d);", nodeID)
 	}
 
 	fmt.Println("nodes deleted")

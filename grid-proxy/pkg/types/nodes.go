@@ -21,6 +21,7 @@ type Node struct {
 	ID                string       `json:"id"`
 	NodeID            int          `json:"nodeId" sort:"node_id"`
 	FarmID            int          `json:"farmId" sort:"farm_id"`
+	FarmName          string       `json:"farmName"`
 	TwinID            int          `json:"twinId" sort:"twin_id"`
 	Country           string       `json:"country" sort:"country"`
 	GridVersion       int          `json:"gridVersion"`
@@ -43,6 +44,7 @@ type Node struct {
 	Power             NodePower    `json:"power"`
 	NumGPU            int          `json:"num_gpu" sort:"num_gpu"`
 	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
+	Healthy           bool         `json:"healthy"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -56,6 +58,7 @@ type NodeWithNestedCapacity struct {
 	ID                string         `json:"id"`
 	NodeID            int            `json:"nodeId"`
 	FarmID            int            `json:"farmId"`
+	FarmName          string         `json:"farmName"`
 	TwinID            int            `json:"twinId"`
 	Country           string         `json:"country"`
 	GridVersion       int            `json:"gridVersion"`
@@ -77,6 +80,7 @@ type NodeWithNestedCapacity struct {
 	Power             NodePower      `json:"power"`
 	NumGPU            int            `json:"num_gpu"`
 	ExtraFee          uint64         `json:"extraFee"`
+	Healthy           bool           `json:"healthy"`
 }
 
 // PublicConfig node public config
@@ -134,6 +138,7 @@ type NodeFilter struct {
 	GpuVendorID       *string  `schema:"gpu_vendor_id,omitempty"`
 	GpuVendorName     *string  `schema:"gpu_vendor_name,omitempty"`
 	GpuAvailable      *bool    `schema:"gpu_available,omitempty"`
+	Healthy           *bool    `schema:"healthy,omitempty"`
 }
 
 // NodeGPU holds the info about gpu card
@@ -143,4 +148,10 @@ type NodeGPU struct {
 	Vendor     string `json:"vendor"`
 	Device     string `json:"device"`
 	Contract   int    `json:"contract"`
+}
+
+// HeathReport holds the info of node health
+type HealthReport struct {
+	NodeTwinId uint32
+	Healthy    bool
 }
