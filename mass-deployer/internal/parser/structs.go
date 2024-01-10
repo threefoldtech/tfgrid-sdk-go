@@ -30,7 +30,6 @@ type Vm struct {
 	FreeCPU     int    `yaml:"cpu"`
 	FreeMRU     int    `yaml:"mem"`
 	SSHDisks    []Disk `yaml:"ssd"`
-	HDDAttached bool   `yaml:"hdd"`
 	Pubip4      bool   `yaml:"pubip4"`
 	Pubip6      bool   `yaml:"pubip6"`
 	Flist       string `yaml:"flist"`
