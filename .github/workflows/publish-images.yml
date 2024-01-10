@@ -41,7 +41,8 @@ jobs:
 
       - name: Get latest version
         run: |
-          echo "TAG_VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+          TAG=$(git describe --tags --abbrev=0)
+          echo "TAG_VERSION=${TAG#v}" >> $GITHUB_OUTPUT
         id: version
 
       - name: Log in to the Container registry
