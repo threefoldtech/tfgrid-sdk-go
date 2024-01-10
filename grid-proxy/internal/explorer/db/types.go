@@ -118,7 +118,7 @@ func (NodeGPU) TableName() string {
 }
 
 type HealthReport struct {
-	NodeTwinId int
+	NodeTwinId int `gorm:"unique;not null"`
 	Healthy    bool
 }
 
