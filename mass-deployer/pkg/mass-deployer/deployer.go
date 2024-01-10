@@ -2,7 +2,6 @@ package deployer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -56,10 +55,15 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 		certified := "Certified"
 		filter.CertificationType = &certified
 	}
-
-	filter.IPv4 = &group.Pubip4
-	filter.IPv6 = &group.Pubip6
-	filter.Dedicated = &group.Dedicated
+	if group.Pubip4 {
+		filter.IPv4 = &group.Pubip4
+	}
+	if group.Pubip6 {
+		filter.IPv6 = &group.Pubip6
+	}
+	if group.Dedicated {
+		filter.Dedicated = &group.Dedicated
+	}
 
 	freeSSD := []uint64{group.FreeSSD}
 	if group.FreeSSD == 0 {
@@ -75,9 +79,6 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 	}
 
 	nodes, err := deployer.FilterNodes(ctx, d.TFPluginClient, filter, freeSSD, freeHDD, nil, group.NodesCount)
-	if len(nodes) < int(group.NodesCount) {
-		return []types.Node{}, errors.New("could not find enough nodes with the requested filter")
-	}
 	return nodes, err
 }
 

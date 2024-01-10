@@ -19,6 +19,7 @@ mv mass-deployer /usr/local/bin
 ```
 4.  Create a new configuration file.
 
+
 ```yaml
 node_groups:
   - name: example-group
@@ -37,11 +38,13 @@ vms:
     entry_point: /sbin/zinit init
     # ... other fields
 
-sshkey: example-ssh-key
+sshkey: 
+  example1: ssh-key1
 mnemonic: example-mnemonic
 network: example-network
 ```
-> Make sure to replace placeholders and adapt the groups based on your actual project details.
+
+> You can use this [example](./docs/conf.yaml) for further guidance, and make sure to replace placeholders and adapt the groups based on your actual project details.
 
 5.  Run the deployer with path to the config file
 ```bash
