@@ -32,7 +32,6 @@ func NewDeployer(conf parser.Config) (Deployer, error) {
 
 func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]types.Node, error) {
 	filter := types.NodeFilter{}
-
 	statusUp := "up"
 	filter.Status = &statusUp
 
@@ -40,8 +39,7 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 		filter.TotalCRU = &group.FreeCPU
 	}
 	if group.FreeMRU > 0 {
-		mru := uint64(convertGBToBytes(int(group.FreeMRU)))
-		filter.FreeMRU = &mru
+		filter.FreeMRU = &group.FreeMRU
 	}
 	if group.FreeSSD > 0 {
 		ssd := uint64(convertGBToBytes(int(group.FreeSSD)))
@@ -97,7 +95,7 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map
 			Name:       vm.Name,
 			Flist:      vm.Flist,
 			CPU:        vm.FreeCPU,
-			Memory:     convertGBToBytes(vm.FreeMRU),
+			Memory:     vm.FreeMRU,
 			PublicIP:   vm.Pubip4,
 			PublicIP6:  vm.Pubip6,
 			RootfsSize: convertGBToBytes(vm.Rootsize),
