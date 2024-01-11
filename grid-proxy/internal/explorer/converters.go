@@ -57,6 +57,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 		Power:             types.NodePower(info.Power),
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
+		Healthy:           info.Healthy,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
@@ -129,6 +130,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		Power:             types.NodePower(info.Power),
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
+		Healthy:           info.Healthy,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0

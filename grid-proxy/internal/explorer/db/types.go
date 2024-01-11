@@ -20,6 +20,8 @@ type Database interface {
 	UpsertNodesGPU(ctx context.Context, nodesGPU []types.NodeGPU) error
 	GetLastNodeTwinID(ctx context.Context) (int64, error)
 	GetNodeTwinIDsAfter(ctx context.Context, twinID int64) ([]int64, error)
+	UpsertNodeHealth(ctx context.Context, healthReport types.HealthReport) error
+	GetHealthyNodeTwinIds(ctx context.Context) ([]int64, error)
 	GetConnectionString() string
 }
 
@@ -76,6 +78,7 @@ type Node struct {
 	NumGPU             int       `gorm:"num_gpu"`
 	ExtraFee           uint64
 	NodeContractsCount uint64 `gorm:"node_contracts_count"`
+	Healthy            bool
 }
 
 // NodePower struct is the farmerbot report for node status
@@ -112,4 +115,13 @@ type NodeGPU struct {
 
 func (NodeGPU) TableName() string {
 	return "node_gpu"
+}
+
+type HealthReport struct {
+	NodeTwinId int
+	Healthy    bool
+}
+
+func (HealthReport) TableName() string {
+	return "health_report"
 }
