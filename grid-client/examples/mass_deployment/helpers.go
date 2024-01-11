@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"slices"
-	"sync"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -14,14 +13,12 @@ import (
 var (
 	statusUp  = "up"
 	minRootfs = *convertGBToBytes(2)
-	twn       = uint64(5432)
 )
 
 var nodeFilter = types.NodeFilter{
-	Status:       &statusUp,
-	AvailableFor: &twn,
-	FreeSRU:      convertGBToBytes(15),
-	FreeMRU:      convertGBToBytes(1),
+	Status:  &statusUp,
+	FreeSRU: convertGBToBytes(15),
+	FreeMRU: convertGBToBytes(1),
 }
 
 func setup() ([]deployer.TFPluginClient, error) {
@@ -76,38 +73,6 @@ func getNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, total
 
 	fmt.Printf("Found free %d nodes!\n", len(nodes))
 	return nodesIDs[:totalVMCount], nil
-}
-
-func getReachableNodes(nodes []uint32, tfPluginClient deployer.TFPluginClient, ctx context.Context) []uint32 {
-	nodesIDs := []uint32{}
-	var wg sync.WaitGroup
-	var lock sync.Mutex
-
-	// skip any node that can't be reached
-	for _, node := range nodes {
-		wg.Add(1)
-
-		go func(nodeID uint32) {
-			defer wg.Done()
-
-			client, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID)
-			if err != nil {
-				fmt.Printf("failed to get node '%d' client\n", nodeID)
-				return
-			}
-			err = client.IsNodeUp(ctx)
-			if err != nil {
-				fmt.Printf("failed to ping node '%d'\n", nodeID)
-				return
-			}
-
-			lock.Lock()
-			nodesIDs = append(nodesIDs, nodeID)
-			lock.Unlock()
-		}(node)
-	}
-	wg.Wait()
-	return nodesIDs
 }
 
 func getNodesWithValidFileSystem(nodes []uint32, tfPluginClient deployer.TFPluginClient, ctx context.Context) []uint32 {

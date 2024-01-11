@@ -74,7 +74,6 @@ func MassDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, nod
 
 	for i := 0; i < batchCnt; i++ {
 		batchIDs := nodes[i*batchSize : (i+1)*batchSize]
-		batchIDs = getReachableNodes(batchIDs, tfPluginClient, ctx)
 
 		networkDeployments := make([]*workloads.ZNet, len(batchIDs))
 		vmDeployments := make([]*workloads.Deployment, len(batchIDs))
