@@ -57,8 +57,9 @@ type flags struct {
 	gpuIndexerResultWorkers     uint
 	gpuIndexerBatchWorkers      uint
 	maxPoolOpenConnections      int
-	healthIndexerWorkers        uint
-	healthIndexerInterval       uint
+	// being 0 is helpful of making the data persistent while testing
+	healthIndexerWorkers  uint
+	healthIndexerInterval uint
 }
 
 func main() {
