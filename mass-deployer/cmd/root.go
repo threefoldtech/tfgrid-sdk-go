@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v3"
 
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -59,7 +60,7 @@ func runDeployer(configFile string) error {
 
 	groupsNodes := map[string][]int{}
 
-	pass := []string{}
+	pass := map[string][]deployer.VMInfo{}
 	fail := map[string]error{}
 
 	for _, group := range cfg.NodeGroups {
@@ -86,7 +87,7 @@ func runDeployer(configFile string) error {
 		wg.Add(1)
 		go func(group string, vms []workloads.VM) {
 			defer wg.Done()
-			err := d.MassDeploy(ctx, vms, groupsNodes[group], disksWorkloads[group])
+			info, err := d.MassDeploy(ctx, vms, groupsNodes[group], disksWorkloads[group])
 
 			lock.Lock()
 			defer lock.Unlock()
@@ -94,7 +95,7 @@ func runDeployer(configFile string) error {
 			if err != nil {
 				fail[group] = err
 			} else {
-				pass = append(pass, group)
+				pass[group] = info
 			}
 		}(group, vms)
 	}
@@ -102,13 +103,18 @@ func runDeployer(configFile string) error {
 
 	fmt.Println("deployment took ", time.Since(deploymentStart))
 	fmt.Println("ok:")
-	for _, group := range pass {
-		fmt.Printf("\t%s\n", group)
+	for group, info := range pass {
+
+		groupInfo, err := yaml.Marshal(info)
+		if err != nil {
+			log.Debug().Err(err).Msg("failed to marshal json")
+		}
+		fmt.Printf("%s: \n%v\n", group, string(groupInfo))
 	}
 
 	fmt.Println("error:")
 	for group, err := range fail {
-		fmt.Printf("\t%s: %v\n", group, err)
+		fmt.Printf("%s: %v\n", group, err)
 	}
 	return nil
 }

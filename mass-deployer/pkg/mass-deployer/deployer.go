@@ -3,10 +3,10 @@ package deployer
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 
+	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -18,12 +18,27 @@ type Deployer struct {
 	TFPluginClient deployer.TFPluginClient
 }
 
+type vmDeploymentInfo struct {
+	nodeID         uint32
+	vmName         string
+	deploymentName string
+}
+
+type VMInfo struct {
+	Name      string
+	PublicIP4 string
+	PublicIP6 string
+	YggIP     string
+	IP        string
+	Mounts    []workloads.Mount
+}
+
 func NewDeployer(conf parser.Config) (Deployer, error) {
 	network := conf.Network
-	log.Printf("network: %s\n", network)
+	log.Printf("network: %s", network)
 
 	mnemonic := conf.Mnemonic
-	log.Printf("mnemonics: %s\n", mnemonic)
+	log.Printf("mnemonics: %s", mnemonic)
 
 	tf, err := deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 30, false)
 	return Deployer{tf}, err
@@ -93,12 +108,12 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map
 		sshKey := sshKeys[vm.SSHKey]
 
 		w := workloads.VM{
-			Name:       vm.Name,
 			Flist:      vm.Flist,
 			CPU:        vm.FreeCPU,
 			Memory:     vm.FreeMRU,
 			PublicIP:   vm.Pubip4,
 			PublicIP6:  vm.Pubip6,
+			Planetary:  vm.Planetary,
 			RootfsSize: convertGBToBytes(vm.Rootsize),
 			Entrypoint: vm.Entrypoint,
 			EnvVars:    map[string]string{"SSH_KEY": sshKey},
@@ -122,6 +137,7 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map
 		}
 
 		for i := 0; i < vm.Count; i++ {
+			w.Name = fmt.Sprintf("%s%d", vm.Name, i)
 			vmsWorkloads[vm.Nodegroup] = append(vmsWorkloads[vm.Nodegroup], w)
 			vmsDisks[vm.Nodegroup] = append(vmsDisks[vm.Nodegroup], disks)
 		}
@@ -129,7 +145,7 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map
 	return vmsWorkloads, vmsDisks
 }
 
-func (d Deployer) MassDeploy(ctx context.Context, vms []workloads.VM, nodes []int, disks [][]workloads.Disk) error {
+func (d Deployer) MassDeploy(ctx context.Context, vms []workloads.VM, nodes []int, disks [][]workloads.Disk) ([]VMInfo, error) {
 	networks := make([]*workloads.ZNet, len(vms))
 	vmDeployments := make([]*workloads.Deployment, len(vms))
 
@@ -138,6 +154,7 @@ func (d Deployer) MassDeploy(ctx context.Context, vms []workloads.VM, nodes []in
 
 	nodesCounter := 0
 	nodesCount := len(nodes)
+	deploymentInfo := []vmDeploymentInfo{}
 
 	for i, vm := range vms {
 		nodeID := nodes[nodesCounter%nodesCount]
@@ -166,6 +183,7 @@ func (d Deployer) MassDeploy(ctx context.Context, vms []workloads.VM, nodes []in
 			lock.Lock()
 			networks[i] = &network
 			vmDeployments[i] = &deployment
+			deploymentInfo = append(deploymentInfo, vmDeploymentInfo{nodeID: nodeID, deploymentName: deployment.Name, vmName: vm.Name})
 			lock.Unlock()
 		}(vm, i, uint32(nodeID))
 	}
@@ -173,13 +191,31 @@ func (d Deployer) MassDeploy(ctx context.Context, vms []workloads.VM, nodes []in
 
 	err := d.TFPluginClient.NetworkDeployer.BatchDeploy(ctx, networks)
 	if err != nil {
-		return err
+		return []VMInfo{}, err
 	}
 
 	err = d.TFPluginClient.DeploymentDeployer.BatchDeploy(ctx, vmDeployments)
 	if err != nil {
-		return err
+		return []VMInfo{}, err
 	}
 
-	return nil
+	vmsInfo := []VMInfo{}
+	for _, vmInfo := range deploymentInfo {
+		vm, err := d.TFPluginClient.State.LoadVMFromGrid(vmInfo.nodeID, vmInfo.vmName, vmInfo.deploymentName)
+		if err != nil {
+			log.Debug().Err(err).Msgf("couldn't load vm %s of deployment %s from node %d", vmInfo.vmName, vmInfo.deploymentName, vmInfo.nodeID)
+			continue
+		}
+		info := VMInfo{
+			Name:      vm.Name,
+			PublicIP4: vm.ComputedIP,
+			PublicIP6: vm.ComputedIP6,
+			YggIP:     vm.YggIP,
+			IP:        vm.IP,
+			Mounts:    vm.Mounts,
+		}
+		vmsInfo = append(vmsInfo, info)
+	}
+
+	return vmsInfo, nil
 }

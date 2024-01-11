@@ -32,6 +32,7 @@ type Vm struct {
 	SSHDisks   []Disk `yaml:"ssd"`
 	Pubip4     bool   `yaml:"pubip4"`
 	Pubip6     bool   `yaml:"pubip6"`
+	Planetary  bool   `yaml:"planetary"`
 	Flist      string `yaml:"flist"`
 	Rootsize   int    `yaml:"root_size"`
 	Entrypoint string `yaml:"entry_point"`
