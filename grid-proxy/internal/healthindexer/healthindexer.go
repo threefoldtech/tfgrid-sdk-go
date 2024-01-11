@@ -68,14 +68,28 @@ func (c *NodeHealthIndexer) Start(ctx context.Context) {
 
 func (c *NodeHealthIndexer) startNodeQuerier(ctx context.Context) {
 	ticker := time.NewTicker(c.indexerInterval)
+	c.queryHealthyNodes(ctx)
 	c.queryGridNodes(ctx)
 	for {
 		select {
 		case <-ticker.C:
+			c.queryHealthyNodes(ctx)
 			c.queryGridNodes(ctx)
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+// to revalidate the reports
+func (c *NodeHealthIndexer) queryHealthyNodes(ctx context.Context) {
+	ids, err := c.db.GetHealthyNodeTwinIds(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to query healthy nodes")
+	}
+
+	for _, id := range ids {
+		c.nodeTwinIdsChan <- uint32(id)
 	}
 }
 

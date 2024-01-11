@@ -21,6 +21,7 @@ type Database interface {
 	GetLastNodeTwinID(ctx context.Context) (int64, error)
 	GetNodeTwinIDsAfter(ctx context.Context, twinID int64) ([]int64, error)
 	UpsertNodeHealth(ctx context.Context, healthReport types.HealthReport) error
+	GetHealthyNodeTwinIds(ctx context.Context) ([]int64, error)
 	GetConnectionString() string
 }
 

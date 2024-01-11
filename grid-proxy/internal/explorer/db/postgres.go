@@ -898,3 +898,9 @@ func (p *PostgresDatabase) UpsertNodeHealth(ctx context.Context, healthReport ty
 	}
 	return p.gormDB.WithContext(ctx).Table("health_report").Clauses(conflictClause).Create(&healthReport).Error
 }
+
+func (p *PostgresDatabase) GetHealthyNodeTwinIds(ctx context.Context) ([]int64, error) {
+	nodeTwinIDs := make([]int64, 0)
+	err := p.gormDB.Table("health_report").Select("node_twin_id").Where("healthy = true").Scan(&nodeTwinIDs).Error
+	return nodeTwinIDs, err
+}
