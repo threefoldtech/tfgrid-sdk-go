@@ -111,21 +111,24 @@ func (c *NodeHealthIndexer) queryGridNodes(ctx context.Context) {
 
 func (c *NodeHealthIndexer) checkNodeHealth(ctx context.Context) {
 	var result interface{}
-	for twinId := range c.nodeTwinIdsChan {
-		ctx, cancel := context.WithTimeout(ctx, indexerCallTimeout)
+	for {
+		select {
+		case twinId := <-c.nodeTwinIdsChan:
+			subCtx, cancel := context.WithTimeout(ctx, indexerCallTimeout)
+			err := c.relayClient.Call(subCtx, twinId, indexerCallCommand, nil, &result)
+			cancel()
 
-		err := c.relayClient.Call(ctx, twinId, indexerCallCommand, nil, &result)
-		if isHealthy(err) {
 			healthReport := types.HealthReport{
 				NodeTwinId: twinId,
-				Healthy:    true,
+				Healthy:    isHealthy(err),
 			}
-			err := c.db.UpsertNodeHealth(ctx, healthReport)
+			err = c.db.UpsertNodeHealth(ctx, healthReport)
 			if err != nil {
-				log.Error().Err(err).Msgf("failed to mark node with twin id %d as healthy", twinId)
+				log.Error().Err(err).Msgf("failed to update health report for node with twin id %d", twinId)
 			}
+		case <-ctx.Done():
+			return
 		}
-		cancel()
 	}
 }
 
