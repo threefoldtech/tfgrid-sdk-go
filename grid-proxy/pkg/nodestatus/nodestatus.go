@@ -21,18 +21,18 @@ var (
 	poweredOff  = "node.power->> 'state' = 'Down' AND node.power->> 'target' = 'Down'"
 	poweringOff = "node.power->> 'state' = 'Up' AND node.power->> 'target' = 'Down'"
 	poweringOn  = "node.power->> 'state' = 'Down' AND node.power->> 'target' = 'Up'"
-
-	nodeUpInterval      = time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
-	nodeStandbyInterval = time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
-
-	inUpInterval       = fmt.Sprintf("node.updated_at >= %d", nodeUpInterval)
-	outUpInterval      = fmt.Sprintf("node.updated_at < %d", nodeUpInterval)
-	inStandbyInterval  = fmt.Sprintf("node.updated_at >= %d", nodeStandbyInterval)
-	outStandbyInterval = fmt.Sprintf("node.updated_at < %d", nodeStandbyInterval)
 )
 
 // return the condition to be used in the SQL query to get the nodes with the given status.
 func DecideNodeStatusCondition(status string) string {
+	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
+	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
+
+	inUpInterval := fmt.Sprintf("node.updated_at >= %d", nodeUpInterval)
+	outUpInterval := fmt.Sprintf("node.updated_at < %d", nodeUpInterval)
+	inStandbyInterval := fmt.Sprintf("node.updated_at >= %d", nodeStandbyInterval)
+	outStandbyInterval := fmt.Sprintf("node.updated_at < %d", nodeStandbyInterval)
+
 	condition := "TRUE"
 
 	if status == "up" {
@@ -48,6 +48,14 @@ func DecideNodeStatusCondition(status string) string {
 
 // DecideNodeStatusOrdering returns an sql ordering condition
 func DecideNodeStatusOrdering(order types.SortOrder) string {
+	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
+	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
+
+	inUpInterval := fmt.Sprintf("node.updated_at >= %d", nodeUpInterval)
+	outUpInterval := fmt.Sprintf("node.updated_at < %d", nodeUpInterval)
+	inStandbyInterval := fmt.Sprintf("node.updated_at >= %d", nodeStandbyInterval)
+	outStandbyInterval := fmt.Sprintf("node.updated_at < %d", nodeStandbyInterval)
+
 	upNodesOrder := 1
 	standbyNodesOrder := 2
 	downNodesOrder := 3
