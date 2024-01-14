@@ -10,7 +10,9 @@ name: create and publish Docker images
 # Thats why we will trigger this workflow after the main release workflow is completed
 
 on:
-  push:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
   workflow_dispatch:
 
 jobs:
