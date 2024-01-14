@@ -21,6 +21,62 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+DROP FUNCTION IF EXISTS calc_price(
+    cru NUMERIC,
+    sru NUMERIC,
+    hru NUMERIC,
+    mru NUMERIC,
+    certified BOOLEAN,
+    policy_id INTEGER,
+    extra_fee NUMERIC
+);
+CREATE OR REPLACE FUNCTION calc_price(
+    cru NUMERIC,
+    sru NUMERIC,
+    hru NUMERIC,
+    mru NUMERIC,
+    certified BOOLEAN,
+    policy_id INTEGER,
+    extra_fee NUMERIC
+) RETURNS NUMERIC AS $$
+
+DECLARE
+    su_value NUMERIC;
+    cu_value NUMERIC;
+    price NUMERIC;
+
+BEGIN
+    -- THE Equation: ((cu * cu_value + su * su_value) * certified_factor * month_hours) + extra_fee
+    SELECT cu->'value', su->'value'
+    INTO cu_value, su_value
+    FROM pricing_policy
+    WHERE pricing_policy_id = policy_id;
+
+    IF cu_value IS NULL OR su_value IS NULL THEN
+        RAISE EXCEPTION 'values not found for policy_id: %', policy_id;
+    END IF;
+
+    price := (
+        -- cu
+        (LEAST(
+            GREATEST(mru / 4, cru / 2),
+            GREATEST(mru / 8, cru),
+            GREATEST(mru / 2, cru / 4)
+        ) * cu_value
+        -- su
+        + (hru / 1200 + sru / 200) * su_value)
+        -- certified factor
+        * (CASE certified WHEN TRUE THEN 1.25 ELSE 1 END)
+        -- month hours
+        * (27 * 30)
+        -- extra fee
+        + extra_fee
+    );
+
+    RETURN price;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 ----
 -- Clean old triggers
 ----
@@ -99,7 +155,19 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     node_contracts_count INTEGER NOT NULL,
     node_gpu_count INTEGER NOT NULL,
     country TEXT,
-    region TEXT
+    region TEXT,
+    price NUMERIC GENERATED ALWAYS AS (
+        calc_price(
+            total_cru,
+            total_sru,
+            total_hru,
+            total_mru,
+            -- FOR NOW
+            TRUE,
+            '1',
+            0
+        )
+    ) STORED
     );
 
 INSERT INTO resources_cache 
