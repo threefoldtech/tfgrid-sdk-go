@@ -55,6 +55,13 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 	"Status": func(agg NodesAggregate) interface{} {
 		return &statuses[rand.Intn(3)]
 	},
+	"Healthy": func(_ NodesAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
 	"FreeMRU": func(agg NodesAggregate) interface{} {
 		if flip(.1) {
 			return &agg.freeMRUs[rand.Intn(len(agg.freeMRUs))]

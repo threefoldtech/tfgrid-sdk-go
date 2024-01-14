@@ -23,6 +23,13 @@ Run
 make run
 ```
 
+Run using docker:
+
+```bash
+docker build -t activation ../
+docker run -v $(pwd)/activation-service/.env:/.env -p 3000:3000 activation -c /.env
+```
+
 ## Endpoints
 
 ### Activate

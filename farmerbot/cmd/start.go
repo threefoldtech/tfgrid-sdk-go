@@ -38,7 +38,7 @@ var startCmd = &cobra.Command{
 
 		_, err = subConn.SetNodePowerTarget(identity, nodeID, true)
 		if err != nil {
-			return fmt.Errorf("failed to power on node '%d'", nodeID)
+			return fmt.Errorf("failed to power on node '%d' with error: %w", nodeID, err)
 		}
 
 		log.Info().Msgf("Node %d is started successfully", nodeID)

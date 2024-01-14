@@ -17,7 +17,4 @@ WORKDIR /app
 
 COPY --from=builder /src/user-contracts-mon/contractsmon .
 
-COPY --from=builder /src/user-contracts-mon/.env .
-
-CMD ./contractsmon -e .env 
-
+ENTRYPOINT [ "./contractsmon" ]

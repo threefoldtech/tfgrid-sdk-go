@@ -66,6 +66,10 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string, m
 	if err != nil {
 		return PostgresDatabase{}, errors.Wrap(err, "failed to migrate node_gpu table")
 	}
+	err = gormDB.AutoMigrate(&HealthReport{})
+	if err != nil {
+		return PostgresDatabase{}, errors.Wrap(err, "failed to migrate health_report table")
+	}
 	sql.SetMaxIdleConns(3)
 	sql.SetMaxOpenConns(maxConns)
 
@@ -263,6 +267,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"node.id",
 			"node.node_id",
 			"node.farm_id",
+			"farm.name as farm_name",
 			"node.twin_id",
 			"node.country",
 			"node.grid_version",
@@ -295,6 +300,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"node.extra_fee",
 			"resources_cache.node_contracts_count",
 			"resources_cache.node_gpu_count AS num_gpu",
+			"health_report.healthy",
 		).
 		Joins(`
 			LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id
@@ -302,6 +308,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			LEFT JOIN public_config ON node.id = public_config.node_id
 			LEFT JOIN farm ON node.farm_id = farm.farm_id
 			LEFT JOIN location ON node.location_id = location.id
+			LEFT JOIN health_report ON node.twin_id = health_report.node_twin_id
 		`)
 
 	if filter.HasGPU != nil || filter.GpuDeviceName != nil ||
@@ -520,6 +527,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 
 	q = q.Where(condition)
 
+	if filter.Healthy != nil {
+		q = q.Where("health_report.healthy = ? ", *filter.Healthy)
+	}
 	if filter.FreeMRU != nil {
 		q = q.Where("resources_cache.free_mru >= ?", *filter.FreeMRU)
 	}
@@ -879,5 +889,19 @@ func (p *PostgresDatabase) GetLastNodeTwinID(ctx context.Context) (int64, error)
 func (p *PostgresDatabase) GetNodeTwinIDsAfter(ctx context.Context, twinID int64) ([]int64, error) {
 	nodeTwinIDs := make([]int64, 0)
 	err := p.gormDB.Table("node").Select("twin_id").Where("twin_id > ?", twinID).Order("twin_id DESC").Scan(&nodeTwinIDs).Error
+	return nodeTwinIDs, err
+}
+
+func (p *PostgresDatabase) UpsertNodeHealth(ctx context.Context, healthReport types.HealthReport) error {
+	conflictClause := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "node_twin_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"healthy"}),
+	}
+	return p.gormDB.WithContext(ctx).Table("health_report").Clauses(conflictClause).Create(&healthReport).Error
+}
+
+func (p *PostgresDatabase) GetHealthyNodeTwinIds(ctx context.Context) ([]int64, error) {
+	nodeTwinIDs := make([]int64, 0)
+	err := p.gormDB.Table("health_report").Select("node_twin_id").Where("healthy = true").Scan(&nodeTwinIDs).Error
 	return nodeTwinIDs, err
 }

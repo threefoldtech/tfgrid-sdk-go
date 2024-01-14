@@ -9,6 +9,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -200,14 +201,53 @@ func TestPower(t *testing.T) {
 
 	t.Run("test invalid power off: set node power failed", func(t *testing.T) {
 		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(state.nodes[1].ID), false).Return(types.Hash{}, errors.New("error"))
+		sub.EXPECT().GetPowerTarget(gomock.Any()).Return(substrate.NodePower{}, nil)
 
 		err = farmerbot.powerOff(sub, uint32(state.nodes[1].ID))
 		assert.Error(t, err)
+		assert.Equal(t, state.nodes[1].powerState, on)
+		state.addNode(oldNode1)
+	})
+
+	t.Run("test invalid power off: set and get node power failed", func(t *testing.T) {
+		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(state.nodes[1].ID), false).Return(types.Hash{}, errors.New("error"))
+		sub.EXPECT().GetPowerTarget(gomock.Any()).Return(substrate.NodePower{}, errors.New("error"))
+
+		err = farmerbot.powerOff(sub, uint32(state.nodes[1].ID))
+		assert.Error(t, err)
+		assert.Equal(t, state.nodes[1].powerState, on)
+		state.addNode(oldNode1)
+	})
+
+	t.Run("test invalid power off: set node power failed but target is changed", func(t *testing.T) {
+		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(state.nodes[1].ID), false).Return(types.Hash{}, errors.New("error"))
+		sub.EXPECT().GetPowerTarget(uint32(state.nodes[1].ID)).Return(substrate.NodePower{
+			Target: substrate.Power{IsDown: true},
+		}, nil)
+
+		err = farmerbot.powerOff(sub, uint32(state.nodes[1].ID))
+		assert.Error(t, err)
+		assert.Equal(t, state.nodes[1].powerState, shuttingDown)
+		state.addNode(oldNode1)
 	})
 
 	t.Run("test power management: a node to shutdown (failed set the first node)", func(t *testing.T) {
 		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), false).Return(types.Hash{}, errors.New("error"))
+		sub.EXPECT().GetPowerTarget(gomock.Any()).Return(substrate.NodePower{}, nil)
 		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), false).Return(types.Hash{}, nil)
+
+		err = farmerbot.manageNodesPower(sub)
+		assert.NoError(t, err)
+
+		state.addNode(oldNode1)
+		state.addNode(oldNode2)
+	})
+
+	t.Run("test power management: a node to shutdown (failed set the first node but power target changes)", func(t *testing.T) {
+		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), false).Return(types.Hash{}, errors.New("error"))
+		sub.EXPECT().GetPowerTarget(gomock.Any()).Return(substrate.NodePower{
+			Target: substrate.Power{IsDown: true},
+		}, nil)
 
 		err = farmerbot.manageNodesPower(sub)
 		assert.NoError(t, err)

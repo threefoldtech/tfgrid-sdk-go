@@ -264,3 +264,8 @@ type country struct {
 	lat        string
 	long       string
 }
+
+type health_report struct {
+	node_twin_id uint64
+	healthy      bool
+}
