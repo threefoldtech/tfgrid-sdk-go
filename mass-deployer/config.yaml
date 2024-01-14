@@ -1,0 +1,21 @@
+node_groups:
+  - name: group_a
+    free_mru: 16384 
+    free_ssd: 50 
+    nodes_count: 5 
+
+vms:
+  - name: examplevm
+    vms_count: 10
+    cpu: 1
+    mem: 256 
+    node_group: group_a
+    planetary: true 
+    flist: https://hub.grid.tf/tf-official-apps/base:latest.flist
+    entry_point: /sbin/zinit init
+    ssh_key: sshkey1
+
+ssh_keys: 
+  sshkey1: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCUKElNQ1MWHCaOorb0tDU6wx6bWlKZC9mpmmwMdHsDg7vUo1MiAufgpwx7HH+GFcA6lJ8dlv4rKyI74WoB2eO8CPBEefuP9WcS9LeTkCQ7q+WDpGPo6YiFWOC/rQsy0Ju1rApVS3fcv1wPNkxKYf6kSTXJunkbdBvCNPZjF/YhhrGhZJXWc4jgMMqCNFQgW/VCb6ncLPaqS3USP/xJMA91V0sJGDAT9OXqWfKCfkfs69LrV9OzveomJWgS8QGFFTk5PeT2MLf9jxLYt5R4/JQ4Dz636hbFXUYxc8lPB0CPdoV+3iRfl2mAUWrBIOr+B7dS8UiEmcS8Vwq1U54+Stsni7E88n9g7hJRxVVd5vXXbK/+N6aoNoY2OYWtpEY/jWHPbmK9ggGek5/UUyESUTljx//9Z+75CH0f+TSRvFFLeOqdh0BR9x8TwtkKO3D9K7jjkQ3B2UyKi8t2DnlDYNmUKXZ4DrVodX4XtReLJfmtoJJQxTMlRECiBt9wZc+hC+obh4FoiaD4bO0CgYFF4+V1aNsMalLRLpRYXf5GKj87EyT2QCEXyltkYgaFA/rSn3o/BK+x4uf9tNCkMlPO+DYnc9tD1FVDxQ0N39PYaozyUJgJmA0GEOPo3mHM9g0ZKvED/RyL6BdQN1bO1T7i6qY91RIG2Y5QIpEdYlgtssmTBw== eslam@eslam"
+mnemonic: salon regular master arm disease section universe market issue mimic fantasy toe
+network: dev

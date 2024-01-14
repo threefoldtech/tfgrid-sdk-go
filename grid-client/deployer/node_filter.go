@@ -38,73 +38,58 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 		return nodes, err
 	}
 
-	var nodes []types.Node
-	var errs error
+	var allNodes []types.Node
+	var allErrors []error
 
-	var wg sync.WaitGroup
-	var lock sync.Mutex
+	nodesChan := make(chan []types.Node)
+	errorsChan := make(chan error)
 
 	nodesCount := optionalLimit[0]
 	limit := types.Limit{Randomize: true, Size: uint64(nodesCount), RetCount: true}
 
-	_, totalNodesCount, err := tf.GridProxyClient.Nodes(ctx, options, limit)
+	totalPagesCount, err := getPagesCount(ctx, tf, options, limit)
 	if err != nil {
-		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
+		return []types.Node{}, err
 	}
-	totalPagesCount := int(math.Ceil(float64(totalNodesCount) / float64(limit.Size)))
 
 	for page := 1; page <= totalPagesCount; page++ {
-		wg.Add(1)
 		limit.Page = uint64(page)
 
-		go func(limit types.Limit) {
-			defer wg.Done()
-
-			lock.Lock()
-			lenNodes := len(nodes)
-			lock.Unlock()
-
-			if lenNodes >= nodesCount {
-				return
-			}
-
+		go func(limit types.Limit, nodesChan chan []types.Node, errorsChan chan error) {
 			nodesFounds, err := getNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, limit)
 			if err != nil {
-				lock.Lock()
-				defer lock.Unlock()
+				errorsChan <- err
+				return
+			}
+			nodesChan <- nodesFounds
+		}(limit, nodesChan, errorsChan)
+	}
 
-				if errs == nil {
-					errs = err
-				} else {
-					errs = errors.Wrap(errs, err.Error())
+	for i := 0; i < totalPagesCount; i++ {
+		select {
+		case nodes := <-nodesChan:
+			allNodes = append(allNodes, nodes...)
+			if len(allNodes) >= nodesCount {
+				// log all errors in case needed to depug
+				for _, err := range allErrors {
+					log.Debug().Err(err).Send()
 				}
-				return
+				return allNodes[:nodesCount], nil
 			}
-
-			lock.Lock()
-			defer lock.Unlock()
-
-			if len(nodes) >= nodesCount {
-				return
-			}
-			nodes = append(nodes, nodesFounds...)
-		}(limit)
-	}
-	wg.Wait()
-
-	if errs != nil {
-		return []types.Node{}, errs
-	}
-
-	if len(nodes) < nodesCount {
-		options, err := serializeOptions(options)
-		if err != nil {
-			log.Debug().Msg(err.Error())
+		case err := <-errorsChan:
+			allErrors = append(allErrors, err)
 		}
-		return []types.Node{}, errors.Errorf("could not find enough nodes with options: %s", options)
 	}
 
-	return nodes[:nodesCount], errs
+	if len(allErrors) != 0 {
+		return []types.Node{}, errors.Errorf("could not find enough nodes, found errors: %v", allErrors)
+	}
+
+	opts, err := serializeOptions(options)
+	if err != nil {
+		log.Debug().Err(err).Send()
+	}
+	return []types.Node{}, errors.Errorf("could not find enough nodes with options: %s", opts)
 }
 
 func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, limit types.Limit) ([]types.Node, error) {
@@ -324,4 +309,12 @@ func serializeOptions(options types.NodeFilter) (string, error) {
 		filter = filter[:len(filter)-2]
 	}
 	return filter, nil
+}
+
+func getPagesCount(ctx context.Context, tf TFPluginClient, options types.NodeFilter, limit types.Limit) (int, error) {
+	_, totalNodesCount, err := tf.GridProxyClient.Nodes(ctx, options, limit)
+	if err != nil {
+		return 0, err
+	}
+	return int(math.Ceil(float64(totalNodesCount) / float64(limit.Size))), nil
 }
