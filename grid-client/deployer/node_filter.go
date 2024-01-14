@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -25,6 +24,7 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 		twinID := uint64(tf.TwinID)
 		options.AvailableFor = &twinID
 	}
+	options.Healthy = &trueVal
 
 	if len(optionalLimit) == 0 {
 		nodes, err := getNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, types.Limit{Randomize: true})
@@ -104,8 +104,7 @@ func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFi
 
 	// if no storage needed
 	if options.FreeSRU == nil && options.FreeHRU == nil {
-		// only pinging here because if there is storage required it will be pinged with Pools call
-		return pingNodes(ctx, tfPlugin.NcPool, tfPlugin.SubstrateConn, nodes), nil
+		return nodes, nil
 	}
 	sort.Slice(ssdDisks, func(i, j int) bool {
 		return ssdDisks[i] > ssdDisks[j]
@@ -151,33 +150,6 @@ func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFi
 	wg.Wait()
 
 	return nodePools, nil
-}
-
-func pingNodes(ctx context.Context, clientGetter client.NodeClientGetter, sub subi.SubstrateExt, nodes []types.Node) []types.Node {
-	var workingNodes []types.Node
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	for _, node := range nodes {
-		wg.Add(1)
-		go func(node types.Node) {
-			defer wg.Done()
-			client, err := clientGetter.GetNodeClient(sub, uint32(node.NodeID))
-			if err != nil {
-				log.Debug().Err(err).Msgf("failed to get node %d client", node.NodeID)
-				return
-			}
-			_, err = client.SystemVersion(ctx)
-			if err != nil {
-				log.Debug().Err(err).Msgf("failed to ping node %d", node.NodeID)
-				return
-			}
-			mu.Lock()
-			workingNodes = append(workingNodes, node)
-			mu.Unlock()
-		}(node)
-	}
-	wg.Wait()
-	return workingNodes
 }
 
 var (
