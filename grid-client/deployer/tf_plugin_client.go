@@ -32,8 +32,8 @@ var (
 		"qa":   "wss://tfchain.qa.grid.tf/ws",
 		"main": "wss://tfchain.grid.tf/ws",
 	}
-	// RMBProxyURLs are rmb proxy urls
-	RMBProxyURLs = map[string]string{
+	// ProxyURLs are rmb proxy urls
+	ProxyURLs = map[string]string{
 		"dev":  "https://gridproxy.dev.grid.tf/",
 		"test": "https://gridproxy.test.grid.tf/",
 		"qa":   "https://gridproxy.qa.grid.tf/",
@@ -63,7 +63,7 @@ type TFPluginClient struct {
 	substrateURL   string
 	relayURL       string
 	RMBTimeout     time.Duration
-	rmbProxyURL    string
+	proxyURL       string
 	useRmbProxy    bool
 
 	// network
@@ -102,7 +102,7 @@ func NewTFPluginClient(
 	network string,
 	substrateURL string,
 	relayURL string,
-	rmbProxyURL string,
+	proxyURL string,
 	rmbTimeout int,
 	showLogs bool,
 ) (TFPluginClient, error) {
@@ -179,12 +179,12 @@ func NewTFPluginClient(
 	}
 	tfPluginClient.TwinID = twinID
 
-	tfPluginClient.rmbProxyURL = RMBProxyURLs[network]
-	if len(strings.TrimSpace(rmbProxyURL)) != 0 {
-		if err := validateProxyURL(rmbProxyURL); err != nil {
-			return TFPluginClient{}, errors.Wrapf(err, "could not validate rmb proxy url %s", rmbProxyURL)
+	tfPluginClient.proxyURL = ProxyURLs[network]
+	if len(strings.TrimSpace(proxyURL)) != 0 {
+		if err := validateProxyURL(proxyURL); err != nil {
+			return TFPluginClient{}, errors.Wrapf(err, "could not validate proxy url %s", proxyURL)
 		}
-		tfPluginClient.rmbProxyURL = rmbProxyURL
+		tfPluginClient.proxyURL = proxyURL
 	}
 
 	tfPluginClient.useRmbProxy = true
@@ -215,7 +215,7 @@ func NewTFPluginClient(
 
 	tfPluginClient.RMB = rmbClient
 
-	gridProxyClient := proxy.NewClient(tfPluginClient.rmbProxyURL)
+	gridProxyClient := proxy.NewClient(tfPluginClient.proxyURL)
 	if err := validateRMBProxyServer(gridProxyClient); err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not validate rmb proxy server")
 	}
