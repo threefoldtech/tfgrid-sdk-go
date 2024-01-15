@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	_ rmb.Client = (*RpcCLient)(nil)
+	_ rmb.Client = (*RpcClient)(nil)
 )
 
 type incomingEnv struct {
@@ -22,7 +22,7 @@ type incomingEnv struct {
 }
 
 // RpcClient is a peer connection that makes it easy to make rpc calls
-type RpcCLient struct {
+type RpcClient struct {
 	base      *Peer
 	responses map[string]chan incomingEnv
 	m         sync.Mutex
@@ -38,9 +38,9 @@ func NewRpcClient(
 	relayURL string,
 	session string,
 	subManager substrate.Manager,
-	enableEncryption bool) (*RpcCLient, error) {
+	enableEncryption bool) (*RpcClient, error) {
 
-	rpc := RpcCLient{
+	rpc := RpcClient{
 		responses: make(map[string]chan incomingEnv),
 	}
 
@@ -63,7 +63,7 @@ func NewRpcClient(
 	return &rpc, nil
 }
 
-func (d *RpcCLient) router(ctx context.Context, peer Peer, env *types.Envelope, err error) {
+func (d *RpcClient) router(ctx context.Context, peer Peer, env *types.Envelope, err error) {
 	d.m.Lock()
 	defer d.m.Unlock()
 
@@ -78,11 +78,11 @@ func (d *RpcCLient) router(ctx context.Context, peer Peer, env *types.Envelope, 
 		// client is not waiting anymore! just return then
 	}
 }
-func (d *RpcCLient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
+func (d *RpcClient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
 	return d.CallWithSession(ctx, twin, nil, fn, data, result)
 }
 
-func (d *RpcCLient) CallWithSession(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error {
+func (d *RpcClient) CallWithSession(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error {
 	id := uuid.NewString()
 
 	ch := make(chan incomingEnv)

@@ -60,7 +60,7 @@ type Monitor struct {
 	farms      map[network]string
 	wallets    wallets
 	managers   map[network]client.Manager
-	rmbClients map[network]*peer.RpcCLient
+	rmbClients map[network]*peer.RpcClient
 }
 
 // NewMonitor creates a new instance of monitor
@@ -93,7 +93,7 @@ func NewMonitor(ctx context.Context, env config, wallets wallets) (Monitor, erro
 	mon.mnemonics[mainNetwork] = mon.env.mainMnemonic
 
 	mon.managers = make(map[network]client.Manager, 4)
-	mon.rmbClients = make(map[network]*peer.RpcCLient, 4)
+	mon.rmbClients = make(map[network]*peer.RpcClient, 4)
 	for _, network := range networks {
 		mon.managers[network] = client.NewManager(SubstrateURLs[network]...)
 
