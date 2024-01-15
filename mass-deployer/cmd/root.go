@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -21,11 +22,21 @@ var rootCmd = &cobra.Command{
 	Short: "A tool for deploying groups of vms on Threefold Grid",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		configFile, err := cmd.Flags().GetString("config")
-		if err != nil || configFile == "" {
-			log.Error().Err(err).Msg("error in config file")
+		configPath, err := cmd.Flags().GetString("config")
+		if err != nil || configPath == "" {
+			log.Fatal().Err(err).Msg("error in config file")
 			return
 		}
+
+		if filepath.Ext(configPath) != ".yaml" {
+			log.Fatal().Err(err).Msg("invalid config file extension")
+		}
+
+		configFile, err := os.ReadFile(configPath)
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to open config file")
+		}
+
 		err = runDeployer(configFile)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to parse config file")
@@ -44,7 +55,7 @@ func init() {
 	rootCmd.Flags().StringP("config", "c", "", "path to config file")
 }
 
-func runDeployer(configFile string) error {
+func runDeployer(configFile []byte) error {
 	cfg, err := parser.ParseConfig(configFile)
 	if err != nil {
 		return fmt.Errorf("failed to parse config file: %v", err)
