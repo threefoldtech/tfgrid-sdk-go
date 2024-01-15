@@ -19,19 +19,19 @@ import (
 )
 
 // FilterNodes filters nodes using proxy
-func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, optionalLimit ...int) ([]types.Node, error) {
+func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, optionalLimit ...int) ([]types.Node, error) {
 	if options.AvailableFor == nil {
-		twinID := uint64(tf.TwinID)
+		twinID := uint64(tfPlugin.TwinID)
 		options.AvailableFor = &twinID
 	}
 	options.Healthy = &trueVal
 
 	if len(optionalLimit) == 0 {
-		nodes, err := getNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, types.Limit{Randomize: true})
+		nodes, err := getNodes(ctx, tfPlugin, options, ssdDisks, hddDisks, rootfs, types.Limit{})
 		if err == nil && len(nodes) == 0 {
 			options, err := serializeOptions(options)
 			if err != nil {
-				log.Debug().Msg(err.Error())
+				log.Debug().Err(err).Send()
 			}
 			return []types.Node{}, errors.Errorf("could not find any nodes with options: %s", options)
 		}
@@ -45,9 +45,9 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 	errorsChan := make(chan error)
 
 	nodesCount := optionalLimit[0]
-	limit := types.Limit{Randomize: true, Size: uint64(nodesCount), RetCount: true}
+	limit := types.Limit{Size: uint64(nodesCount), RetCount: true}
 
-	totalPagesCount, err := getPagesCount(ctx, tf, options, limit)
+	totalPagesCount, err := getPagesCount(ctx, tfPlugin, options, limit)
 	if err != nil {
 		return []types.Node{}, err
 	}
@@ -56,7 +56,7 @@ func FilterNodes(ctx context.Context, tf TFPluginClient, options types.NodeFilte
 		limit.Page = uint64(page)
 
 		go func(limit types.Limit, nodesChan chan []types.Node, errorsChan chan error) {
-			nodesFounds, err := getNodes(ctx, tf, options, ssdDisks, hddDisks, rootfs, limit)
+			nodesFounds, err := getNodes(ctx, tfPlugin, options, ssdDisks, hddDisks, rootfs, limit)
 			if err != nil {
 				errorsChan <- err
 				return
@@ -283,8 +283,8 @@ func serializeOptions(options types.NodeFilter) (string, error) {
 	return filter, nil
 }
 
-func getPagesCount(ctx context.Context, tf TFPluginClient, options types.NodeFilter, limit types.Limit) (int, error) {
-	_, totalNodesCount, err := tf.GridProxyClient.Nodes(ctx, options, limit)
+func getPagesCount(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, limit types.Limit) (int, error) {
+	_, totalNodesCount, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
 	if err != nil {
 		return 0, err
 	}
