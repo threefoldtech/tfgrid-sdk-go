@@ -2,7 +2,7 @@
 
 <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-90%25-brightgreen.svg?longCache=true&style=flat)</a>
 
-Mass Deplyer tool designed to automate mass deployment of groups of VMs on ThreeFold Grid.
+Mass Deplyer tool is designed to automate mass deployment of groups of VMs on ThreeFold Grid.
 
 ## Features
 
@@ -19,32 +19,7 @@ mv mass-deployer /usr/local/bin
 ```
 4.  Create a new configuration file.
 
-
-```yaml
-node_groups:
-  - name: example-group
-    nodes_count: 3
-    free_cpu: 8
-    free_mru: 16384
-    # ... other fields
-
-vms:
-  - name: example-vm
-    vms_count: 2
-    node_group: example-group
-    cpu: 2
-    mem: 4096
-    flist: example-flist,
-    entry_point: /sbin/zinit init
-    # ... other fields
-
-sshkey: 
-  example1: ssh-key1
-mnemonic: example-mnemonic
-network: example-network
-```
-
-> You can use this [example](./docs/conf.yaml) for further guidance, and make sure to replace placeholders and adapt the groups based on your actual project details.
+You can use this [example](./example/conf.yaml) for guidance, and make sure to replace placeholders and adapt the groups based on your actual project details.
 
 5.  Run the deployer with path to the config file
 ```bash
@@ -63,4 +38,12 @@ To build the deployer locally clone the repo and run the following command insid
 
 ```bash
 make build
+```
+
+## Test
+
+To run the deployer tests run the following command inside the repo directory:
+
+```bash
+make test
 ```

@@ -2,29 +2,29 @@ node_groups:
   - name: group_a
     nodes_count: 3 # amount of nodes to be found
     free_cpu: 2 # number of logical cores
-    free_mru: 16384 # amount of memory in mb
-    free_ssd: 100 # amount of ssd storage in gb
-    free_hdd: 50 # amount of hdd storage in gb
-    dedicated: false # is dedicated nodes?
+    free_mru: 16384 # amount of memory in MB
+    free_ssd: 100 # amount of ssd storage in GB
+    free_hdd: 50 # amount of hdd storage in GB
+    dedicated: false # are nodes dedicated
     pubip4: false # should the nodes have free ip v4
     pubip6: false # should the nodes have free ip v6
     certified: false # should the nodes be certified(if false the nodes could be certified of diyed) 
-    region: "europe" # region could be the name of the continents the nodes are located in (eg: europe, asia,...)
+    region: "europe" # region could be the name of the continents the nodes are located in (africa, americas, antarctic, antarctic ocean, asia, europe, oceania, polar)
     min_bandwidth_ms: 100
 vms:
   - name: examplevm
     vms_count: 5 # amount of vms with the same configurations
     node_group: group_a # the name of the predefined group of nodes
     cpu: 1 # number of logical cores
-    mem: 256 # amount of memory in mb
+    mem: 256 # amount of memory in MB
     ssd: # list of ssd storage needed to be mounted to the vm
-      capacity: 5 # capacity in gb
+      capacity: 5 # capacity in GB
       mount_point: /mnt/ssd
     pubip4: false
     pubip6: false
     flist: https://hub.grid.tf/tf-official-apps/base:latest.flist
     entry_point: /sbin/zinit init
-    root_size: 0 # root size in gb
+    root_size: 0 # root size in GB
     ssh_key: example1 # the name of the predefined ssh key
 
 ssh_key: # map of ssh keys with key=name and value=the actual ssh key
