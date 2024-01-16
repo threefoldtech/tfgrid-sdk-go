@@ -11,8 +11,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-func nodeFromDBNode(info db.Node) types.Node {
-	var tftPrice float64 = 17 // FOR NOW
+func nodeFromDBNode(info db.Node, tftPrice uint32) types.Node {
 	node := types.Node{
 		ID:              info.ID,
 		NodeID:          int(info.NodeID),
@@ -63,7 +62,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
-	node.Price = info.Price / tftPrice
+	node.Price = info.Price / float64(tftPrice) / 1000.0
 	return node
 }
 
@@ -83,9 +82,7 @@ func farmFromDBFarm(info db.Farm) (types.Farm, error) {
 	return farm, nil
 }
 
-func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity {
-	var tftPrice float64 = 17.0 / 1000.0 // FOR NOW
-
+func nodeWithNestedCapacityFromDBNode(info db.Node, tftPrice uint32) types.NodeWithNestedCapacity {
 	node := types.NodeWithNestedCapacity{
 		ID:              info.ID,
 		NodeID:          int(info.NodeID),
@@ -139,7 +136,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
-	node.Price = info.Price / tftPrice
+	node.Price = info.Price / float64(tftPrice) / 1000.0
 	return node
 }
 
