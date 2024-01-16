@@ -21,15 +21,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-DROP FUNCTION IF EXISTS calc_price(
-    cru NUMERIC,
-    sru NUMERIC,
-    hru NUMERIC,
-    mru NUMERIC,
-    certified BOOLEAN,
-    policy_id INTEGER,
-    extra_fee NUMERIC
-);
 CREATE OR REPLACE FUNCTION calc_price(
     cru NUMERIC,
     sru NUMERIC,
@@ -47,8 +38,13 @@ DECLARE
 
 BEGIN
     -- THE Equation: ((cu * cu_value + su * su_value) * certified_factor * month_hours) + extra_fee
-    SELECT cu->'value', su->'value'
-    INTO cu_value, su_value
+    SELECT cu->'value'
+    INTO cu_value
+    FROM pricing_policy
+    WHERE pricing_policy_id = policy_id;
+
+    SELECT su->'value'
+    INTO su_value
     FROM pricing_policy
     WHERE pricing_policy_id = policy_id;
 
@@ -107,7 +103,10 @@ SELECT
     count(node_contract.contract_id) as node_contracts_count,
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     node.country as country,
-    country.subregion as region
+    country.subregion as region,
+    CASE WHEN node.certification = 'Certified' THEN true ELSE false END as certified,
+    farm.pricing_policy_id as policy_id,
+    COALESCE(node.extra_fee, 0) as extra_fee
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id 
@@ -122,6 +121,7 @@ FROM node
             node_twin_id
     ) AS node_gpu ON node.twin_id = node_gpu.node_twin_id
     LEFT JOIN country ON LOWER(node.country) = LOWER(country.name)
+    LEFT JOIN farm ON farm.farm_id = node.farm_id
 GROUP BY
     node.node_id,
     node_resources_total.mru,
@@ -133,6 +133,9 @@ GROUP BY
     rent_contract.twin_id,
     COALESCE(node_gpu.node_gpu_count, 0),
     node.country,
+    node.certification,
+    node.extra_fee,
+    farm.pricing_policy_id,
     country.subregion;
 
 DROP TABLE IF EXISTS resources_cache;
@@ -156,16 +159,18 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     node_gpu_count INTEGER NOT NULL,
     country TEXT,
     region TEXT,
+    certified BOOLEAN,
+    policy_id INTEGER,
+    extra_fee NUMERIC,
     price NUMERIC GENERATED ALWAYS AS (
         calc_price(
             total_cru,
             total_sru,
             total_hru,
             total_mru,
-            -- FOR NOW
-            TRUE,
-            '1',
-            0
+            certified,
+            policy_id,
+            extra_fee
         )
     ) STORED
     );

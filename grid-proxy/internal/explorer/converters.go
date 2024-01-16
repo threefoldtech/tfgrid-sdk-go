@@ -12,6 +12,7 @@ import (
 )
 
 func nodeFromDBNode(info db.Node) types.Node {
+	var tftPrice float64 = 17 // FOR NOW
 	node := types.Node{
 		ID:              info.ID,
 		NodeID:          int(info.NodeID),
@@ -62,6 +63,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
+	node.Price = info.Price / tftPrice
 	return node
 }
 
@@ -82,6 +84,7 @@ func farmFromDBFarm(info db.Farm) (types.Farm, error) {
 }
 
 func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity {
+	var tftPrice float64 = 17.0 / 1000.0 // FOR NOW
 
 	node := types.NodeWithNestedCapacity{
 		ID:              info.ID,
@@ -136,6 +139,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
+	node.Price = info.Price / tftPrice
 	return node
 }
 

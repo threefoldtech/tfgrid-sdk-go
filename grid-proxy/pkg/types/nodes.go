@@ -45,6 +45,7 @@ type Node struct {
 	NumGPU            int          `json:"num_gpu" sort:"num_gpu"`
 	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
 	Healthy           bool         `json:"healthy"`
+	Price             float64      `json:"price"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -81,6 +82,7 @@ type NodeWithNestedCapacity struct {
 	NumGPU            int            `json:"num_gpu"`
 	ExtraFee          uint64         `json:"extraFee"`
 	Healthy           bool           `json:"healthy"`
+	Price             float64        `json:"price"`
 }
 
 // PublicConfig node public config
