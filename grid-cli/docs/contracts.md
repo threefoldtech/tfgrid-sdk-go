@@ -65,6 +65,14 @@ Cancel specified contracts or all contracts.
 tf-grid-cli cancel contracts <contract-id>... [Flags]
 ```
 
+Example:
+
+```console
+$ tf-grid-cli cancel contracts 50856 50857
+5:17PM INF starting peer session=tf-1185964 twin=81
+5:17PM INF contracts canceled successfully
+```
+
 ### Optional Flags
 
 - all: cancel all twin's contracts.
@@ -72,7 +80,7 @@ tf-grid-cli cancel contracts <contract-id>... [Flags]
 Example:
 
 ```console
-$ tf-grid-cli cancel contracts 50856 50857
+$ tf-grid-cli cancel contracts --all
 5:17PM INF starting peer session=tf-1185964 twin=81
 5:17PM INF contracts canceled successfully
 ```
