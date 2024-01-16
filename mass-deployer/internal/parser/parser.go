@@ -45,15 +45,6 @@ func ParseConfig(configFile []byte) (Config, error) {
 		if nodeGroup.FreeMRU <= 0 {
 			return Config{}, fmt.Errorf("free_mru in node_group: %s is invalid, should be a positive number", nodeGroup.Name)
 		}
-		if nodeGroup.FreeSSD < 0 {
-			return Config{}, fmt.Errorf("free_ssd in node_group: %s is invalid, should be a positive number", nodeGroup.Name)
-		}
-		if nodeGroup.FreeHDD < 0 {
-			return Config{}, fmt.Errorf("free_hdd in node_group: %s is invalid, should be a positive number", nodeGroup.Name)
-		}
-		if nodeGroup.MinBwd < 0 {
-			return Config{}, fmt.Errorf("min_bwd in node_group: %s is invalid, should be a positive number", nodeGroup.Name)
-		}
 	}
 
 	for _, vm := range conf.Vms {

@@ -50,7 +50,7 @@ func getNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, total
 		[]uint64{*convertGBToBytes(5)},
 		nil,
 		[]uint64{minRootfs},
-		uint64(totalVMCount+200),
+		totalVMCount+200,
 	)
 	if err != nil {
 		return []uint32{}, err
