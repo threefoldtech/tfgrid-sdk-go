@@ -1,4 +1,4 @@
-name: Testing account clean up
+name: Testing account cleanup
 
 defaults:
   run:
@@ -31,7 +31,7 @@ jobs:
         run: make build
 
       - name: CLI login
-        run: /bin/bash -c  "{ echo ${{ secrets.MNEMONICS }}; echo ${{ matrix.network }}; } | tf-grid-cli login"
+        run: /bin/bash -c  "{ echo ${{ secrets.MNEMONICS }}; echo ${{ matrix.network }}; } | bin/tf-grid-cli login"
 
       - name: Clean contracts
         run: bin/tf-grid-cli cancel contracts all
