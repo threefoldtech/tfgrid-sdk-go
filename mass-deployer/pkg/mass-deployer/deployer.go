@@ -40,7 +40,7 @@ func NewDeployer(conf parser.Config) (Deployer, error) {
 	mnemonic := conf.Mnemonic
 	log.Printf("mnemonics: %s", mnemonic)
 
-	tf, err := deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 30, false)
+	tf, err := deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 	return Deployer{tf}, err
 }
 
@@ -48,13 +48,9 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 	filter := types.NodeFilter{}
 	statusUp := "up"
 	filter.Status = &statusUp
+	filter.TotalCRU = &group.FreeCPU
+	filter.FreeMRU = &group.FreeMRU
 
-	if group.FreeCPU > 0 {
-		filter.TotalCRU = &group.FreeCPU
-	}
-	if group.FreeMRU > 0 {
-		filter.FreeMRU = &group.FreeMRU
-	}
 	if group.FreeSSD > 0 {
 		ssd := uint64(convertGBToBytes(int(group.FreeSSD)))
 		filter.FreeSRU = &ssd
@@ -89,11 +85,7 @@ func (d Deployer) FilterNodes(group parser.NodesGroup, ctx context.Context) ([]t
 		freeHDD = nil
 	}
 
-	if group.NodesCount == 0 {
-		group.NodesCount = 1
-	}
-
-	nodes, err := deployer.FilterNodes(ctx, d.TFPluginClient, filter, freeSSD, freeHDD, nil, group.NodesCount)
+	nodes, err := deployer.FilterNodes(ctx, d.TFPluginClient, filter, freeSSD, freeHDD, nil, int(group.NodesCount))
 	return nodes, err
 }
 
@@ -101,7 +93,7 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map
 	vmsWorkloads := map[string][]workloads.VM{}
 	vmsDisks := map[string][][]workloads.Disk{}
 	for _, vm := range vms {
-		// make sure the group has vaild nodes
+		// make sure the group is valid
 		if _, ok := groups[vm.Nodegroup]; !ok {
 			continue
 		}
@@ -121,7 +113,7 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map
 
 		var disks []workloads.Disk
 		var mounts []workloads.Mount
-		for _, disk := range vm.SSHDisks {
+		for _, disk := range vm.SSDDisks {
 			DiskWorkload := workloads.Disk{
 				Name:   fmt.Sprintf("%sdisk", vm.Name),
 				SizeGB: convertGBToBytes(disk.Capacity),
@@ -131,10 +123,6 @@ func (d Deployer) ParseVms(vms []parser.Vm, groups map[string][]int, sshKeys map
 			mounts = append(mounts, workloads.Mount{DiskName: DiskWorkload.Name, MountPoint: disk.Mount})
 		}
 		w.Mounts = mounts
-
-		if vm.Count == 0 { // if vms count is not specified so it's one vm
-			vm.Count++
-		}
 
 		for i := 0; i < vm.Count; i++ {
 			w.Name = fmt.Sprintf("%s%d", vm.Name, i)
@@ -152,14 +140,11 @@ func (d Deployer) MassDeploy(ctx context.Context, vms []workloads.VM, nodes []in
 	var lock sync.Mutex
 	var wg sync.WaitGroup
 
-	nodesCounter := 0
 	nodesCount := len(nodes)
 	deploymentInfo := []vmDeploymentInfo{}
 
 	for i, vm := range vms {
-		nodeID := nodes[nodesCounter%nodesCount]
-		nodesCounter++
-
+		nodeID := nodes[i%nodesCount]
 		wg.Add(1)
 
 		go func(vm workloads.VM, i int, nodeID uint32) {
