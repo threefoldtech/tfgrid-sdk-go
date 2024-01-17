@@ -3,9 +3,11 @@ package cmd
 import (
 	"os"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/spf13/cobra"
+	"github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/internal/parser"
 	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
 )
 
@@ -25,7 +27,12 @@ var rootCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("failed to open config file")
 		}
 
-		err = deployer.RunDeployer(configFile)
+		cfg, err := parser.ParseConfig(configFile)
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to parse config file: %v")
+		}
+
+		err = deployer.RunDeployer(cfg)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to run the deployer")
 		}
@@ -40,5 +47,6 @@ func Execute() {
 }
 
 func init() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	rootCmd.Flags().StringP("config", "c", "", "path to config file")
 }

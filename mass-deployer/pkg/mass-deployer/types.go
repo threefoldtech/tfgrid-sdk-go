@@ -1,4 +1,4 @@
-package parser
+package deployer
 
 type Config struct {
 	NodeGroups []NodesGroup      `yaml:"node_groups"`

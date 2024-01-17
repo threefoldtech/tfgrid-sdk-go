@@ -14,7 +14,6 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/internal/parser"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -33,12 +32,7 @@ type VMInfo struct {
 	Mounts    []workloads.Mount
 }
 
-func RunDeployer(configFile []byte) error {
-	cfg, err := parser.ParseConfig(configFile)
-	if err != nil {
-		return fmt.Errorf("failed to parse config file: %v", err)
-	}
-
+func RunDeployer(cfg Config) error {
 	tfPluginClient, err := setup(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create deployer: %v", err)
@@ -98,7 +92,7 @@ func RunDeployer(configFile []byte) error {
 		if err != nil {
 			log.Debug().Err(err).Msg("failed to marshal json")
 		}
-		fmt.Printf("%s: \n%v\n", group, string(groupInfo))
+		log.Debug().Msgf("%s: \n%v\n", group, string(groupInfo))
 	}
 
 	if len(fail) > 0 {
@@ -110,12 +104,12 @@ func RunDeployer(configFile []byte) error {
 	return nil
 }
 
-func setup(conf parser.Config) (deployer.TFPluginClient, error) {
+func setup(conf Config) (deployer.TFPluginClient, error) {
 	network := conf.Network
-	log.Printf("network: %s", network)
+	log.Debug().Msgf("network: %s", network)
 
 	mnemonic := conf.Mnemonic
-	log.Printf("mnemonic: %s", mnemonic)
+	log.Debug().Msgf("mnemonic: %s", mnemonic)
 
 	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 }
@@ -192,7 +186,7 @@ func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, vms
 	return vmsInfo, nil
 }
 
-func filterNodes(tfPluginClient deployer.TFPluginClient, group parser.NodesGroup, ctx context.Context) ([]types.Node, error) {
+func filterNodes(tfPluginClient deployer.TFPluginClient, group NodesGroup, ctx context.Context) ([]types.Node, error) {
 	filter := types.NodeFilter{}
 	statusUp := "up"
 	filter.Status = &statusUp
@@ -237,7 +231,7 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, group parser.NodesGroup
 	return nodes, err
 }
 
-func parseVms(tfPluginClient deployer.TFPluginClient, vms []parser.Vms, groups map[string][]int, sshKeys map[string]string) (map[string][]workloads.VM, map[string][][]workloads.Disk) {
+func parseVms(tfPluginClient deployer.TFPluginClient, vms []Vms, groups map[string][]int, sshKeys map[string]string) (map[string][]workloads.VM, map[string][][]workloads.Disk) {
 	vmsWorkloads := map[string][]workloads.VM{}
 	vmsDisks := map[string][][]workloads.Disk{}
 	for _, vm := range vms {
