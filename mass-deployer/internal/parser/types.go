@@ -2,7 +2,7 @@ package parser
 
 type Config struct {
 	NodeGroups []NodesGroup      `yaml:"node_groups"`
-	Vms        []Vms              `yaml:"vms"`
+	Vms        []Vms             `yaml:"vms"`
 	SSHKeys    map[string]string `yaml:"ssh_keys"`
 	Mnemonic   string            `yaml:"mnemonic"`
 	Network    string            `yaml:"network"`
@@ -20,7 +20,6 @@ type NodesGroup struct {
 	Pubip6     bool   `yaml:"pubip6"`
 	Certified  bool   `yaml:"certified"`
 	Regions    string `yaml:"regions"`
-	MinBwd     uint64 `yaml:"min_bandwidth_ms"`
 }
 
 type Vms struct {
