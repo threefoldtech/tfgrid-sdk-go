@@ -17,13 +17,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-type vmDeploymentInfo struct {
-	nodeID         uint32
-	vmName         string
-	deploymentName string
-}
-
-type VMInfo struct {
+type vmInfo struct {
 	Name      string
 	PublicIP4 string
 	PublicIP6 string
@@ -32,74 +26,68 @@ type VMInfo struct {
 	Mounts    []workloads.Mount
 }
 
+type groupDeploymentsInfo struct {
+	vmDeployments      []*workloads.Deployment
+	networkDeployments []*workloads.ZNet
+	deploymentsInfo    []vmDeploymentInfo
+}
+
+type vmDeploymentInfo struct {
+	nodeID         uint32
+	vmName         string
+	deploymentName string
+}
+
 func RunDeployer(cfg Config) error {
+	ctx := context.Background()
+	passedGroups := map[string][]string{}
+	failedGroups := map[string]error{}
+
 	tfPluginClient, err := setup(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create deployer: %v", err)
 	}
 
-	ctx := context.Background()
+	groupsNodes, failed := filterNodes(tfPluginClient, cfg.NodeGroups, ctx)
+	failedGroups = failed
 
-	groupsNodes := map[string][]int{}
-	pass := map[string][]VMInfo{}
-	fail := map[string]error{}
-
-	for _, group := range cfg.NodeGroups {
-		nodes, err := filterNodes(tfPluginClient, group, ctx)
-		if err != nil {
-			fail[group.Name] = err
-			continue
-		}
-
-		nodesIDs := []int{}
-		for _, node := range nodes {
-			nodesIDs = append(nodesIDs, node.NodeID)
-		}
-		groupsNodes[group.Name] = nodesIDs
-	}
-
-	vmsWorkloads, disksWorkloads := parseVms(tfPluginClient, cfg.Vms, groupsNodes, cfg.SSHKeys)
+	groupsDeployments := parseVMs(tfPluginClient, cfg.Vms, groupsNodes, cfg.SSHKeys)
 	var lock sync.Mutex
 	var wg sync.WaitGroup
 
 	deploymentStart := time.Now()
 
-	for group, vms := range vmsWorkloads {
+	for nodeGroup, deployemnts := range groupsDeployments {
 		wg.Add(1)
-		go func(group string, vms []workloads.VM) {
+		go func(group string, deployemnts groupDeploymentsInfo) {
 			defer wg.Done()
-			info, err := massDeploy(tfPluginClient, ctx, vms, groupsNodes[group], disksWorkloads[group])
+			info, err := massDeploy(tfPluginClient, ctx, deployemnts)
 
 			lock.Lock()
 			defer lock.Unlock()
 
 			if err != nil {
-				fail[group] = err
+				failedGroups[group] = err
 			} else {
-				pass[group] = info
+				passedGroups[group] = info
 			}
-		}(group, vms)
+		}(nodeGroup, deployemnts)
 	}
 	wg.Wait()
 
 	log.Info().Msgf("deployment took %s", time.Since(deploymentStart))
 
-	if len(pass) > 0 {
+	if len(passedGroups) > 0 {
 		fmt.Println("ok:")
 	}
-
-	for group, info := range pass {
-		groupInfo, err := yaml.Marshal(info)
-		if err != nil {
-			log.Debug().Err(err).Msg("failed to marshal json")
-		}
-		fmt.Printf("%s: \n%v\n", group, string(groupInfo))
+	for group, info := range passedGroups {
+		fmt.Printf("%s: \n%v\n", group, info)
 	}
 
-	if len(fail) > 0 {
+	if len(failedGroups) > 0 {
 		fmt.Println("error:")
 	}
-	for group, err := range fail {
+	for group, err := range failedGroups {
 		fmt.Printf("%s: %v\n", group, err)
 	}
 	return nil
@@ -115,25 +103,136 @@ func setup(conf Config) (deployer.TFPluginClient, error) {
 	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 30, false)
 }
 
-func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, vms []workloads.VM, nodes []int, disks [][]workloads.Disk) ([]VMInfo, error) {
-	networks := make([]*workloads.ZNet, len(vms))
-	vmDeployments := make([]*workloads.Deployment, len(vms))
+func filterNodes(tfPluginClient deployer.TFPluginClient, groups []NodesGroup, ctx context.Context) (map[string][]int, map[string]error) {
+	failedGroups := map[string]error{}
+	filteredNodes := map[string][]int{}
+	for _, group := range groups {
+		filter := types.NodeFilter{}
+		statusUp := "up"
+		filter.Status = &statusUp
+		filter.TotalCRU = &group.FreeCPU
+		filter.FreeMRU = &group.FreeMRU
 
-	var lock sync.Mutex
-	var wg sync.WaitGroup
+		if group.FreeSRU > 0 {
+			ssd := convertGBToBytes(group.FreeSRU)
+			filter.FreeSRU = &ssd
+		}
+		if group.FreeHRU > 0 {
+			hdd := convertGBToBytes(group.FreeHRU)
+			filter.FreeHRU = &hdd
+		}
+		if group.Regions != "" {
+			filter.Region = &group.Regions
+		}
+		if group.Certified {
+			certified := "Certified"
+			filter.CertificationType = &certified
+		}
+		if group.Pubip4 {
+			filter.IPv4 = &group.Pubip4
+		}
+		if group.Pubip6 {
+			filter.IPv6 = &group.Pubip6
+		}
+		if group.Dedicated {
+			filter.Dedicated = &group.Dedicated
+		}
 
-	nodesCount := len(nodes)
-	deploymentInfo := []vmDeploymentInfo{}
+		freeSSD := []uint64{group.FreeSRU}
+		if group.FreeSRU == 0 {
+			freeSSD = nil
+		}
+		freeHDD := []uint64{group.FreeHRU}
+		if group.FreeHRU == 0 {
+			freeHDD = nil
+		}
 
-	for i, vm := range vms {
-		nodeID := nodes[i%nodesCount]
-		wg.Add(1)
+		nodes, err := deployer.FilterNodes(ctx, tfPluginClient, filter, freeSSD, freeHDD, nil, int(group.NodesCount))
+		if err != nil {
+			failedGroups[group.Name] = err
+			continue
+		}
 
-		go func(vm workloads.VM, i int, nodeID uint32) {
-			defer wg.Done()
+		nodesIDs := []int{}
+		for _, node := range nodes {
+			nodesIDs = append(nodesIDs, node.NodeID)
+		}
+		filteredNodes[group.Name] = nodesIDs
+	}
+	return filteredNodes, failedGroups
+}
+
+func parseVMs(tfPluginClient deployer.TFPluginClient, vms []Vms, nodeGroups map[string][]int, sshKeys map[string]string) map[string]groupDeploymentsInfo {
+	deploymentsInfo := map[string]groupDeploymentsInfo{}
+	vmsOfNodeGroups := map[string][]Vms{}
+	for _, vm := range vms {
+		vmsOfNodeGroups[vm.Nodegroup] = append(vmsOfNodeGroups[vm.Nodegroup], vm)
+	}
+
+	for nodeGroup, vms := range vmsOfNodeGroups {
+		deploymentsInfo[nodeGroup] = buildDeployments(tfPluginClient, vms, nodeGroups[nodeGroup], sshKeys)
+	}
+	return deploymentsInfo
+}
+
+func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, deployemnts groupDeploymentsInfo) ([]string, error) {
+	err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, deployemnts.networkDeployments)
+	if err != nil {
+		return []string{}, err
+	}
+
+	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, deployemnts.vmDeployments)
+	if err != nil {
+		return []string{}, err
+	}
+	vmsInfo := loadDeploymentsInfo(tfPluginClient, deployemnts.deploymentsInfo)
+
+	return vmsInfo, nil
+}
+
+func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployemnts []vmDeploymentInfo) []string {
+	vmsInfo := []string{}
+	for _, info := range deployemnts {
+		vm, err := tfPluginClient.State.LoadVMFromGrid(info.nodeID, info.vmName, info.deploymentName)
+		if err != nil {
+			log.Debug().Err(err).Msgf("couldn't load vm %s of deployment %s from node %d", info.vmName, info.deploymentName, info.nodeID)
+			continue
+		}
+		info := vmInfo{
+			Name:      vm.Name,
+			PublicIP4: vm.ComputedIP,
+			PublicIP6: vm.ComputedIP6,
+			YggIP:     vm.YggIP,
+			IP:        vm.IP,
+			Mounts:    vm.Mounts,
+		}
+		groupInfo, err := yaml.Marshal(info)
+		if err != nil {
+			log.Debug().Err(err).Msg("failed to marshal json")
+		}
+		vmsInfo = append(vmsInfo, string(groupInfo))
+	}
+	return vmsInfo
+}
+
+func buildDeployments(tfPluginClient deployer.TFPluginClient, vms []Vms, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
+	var vmDeployments []*workloads.Deployment
+	var networkDeployments []*workloads.ZNet
+	var deployemntsInfo []vmDeploymentInfo
+	nodesIDsIdx := 0
+
+	// here we loop over all groups of vms within the same node group, and for every group
+	// we loop over all it's vms and create network and vm deployment for it
+	// the nodesIDsIdx is a counter used to get nodeID to be able to distribute load over all nodes
+	for _, vmGroup := range vms {
+		for i := 0; i < int(vmGroup.Count); i++ {
+			nodeID := uint32(nodesIDs[nodesIDsIdx%len(nodesIDs)])
+			nodesIDsIdx++
+
+			disks, mounts := parseDisks(vmGroup.Name, vmGroup.SSDDisks)
 
 			network := workloads.ZNet{
-				Name:        generateRandomString(10),
+				Name:        fmt.Sprintf("%s%d", vmGroup.Name, i),
 				Description: "network for mass deployment",
 				Nodes:       []uint32{nodeID},
 				IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -142,134 +241,46 @@ func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, vms
 				}),
 				AddWGAccess: false,
 			}
-
-			vm.NetworkName = network.Name
-
-			deployment := workloads.NewDeployment(generateRandomString(10), nodeID, "", nil, network.Name, disks[i], nil, []workloads.VM{vm}, nil)
-
-			lock.Lock()
-			networks[i] = &network
-			vmDeployments[i] = &deployment
-			deploymentInfo = append(deploymentInfo, vmDeploymentInfo{nodeID: nodeID, deploymentName: deployment.Name, vmName: vm.Name})
-			lock.Unlock()
-		}(vm, i, uint32(nodeID))
-	}
-	wg.Wait()
-
-	err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, networks)
-	if err != nil {
-		return []VMInfo{}, err
-	}
-
-	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, vmDeployments)
-	if err != nil {
-		return []VMInfo{}, err
-	}
-
-	vmsInfo := []VMInfo{}
-	for _, vmInfo := range deploymentInfo {
-		vm, err := tfPluginClient.State.LoadVMFromGrid(vmInfo.nodeID, vmInfo.vmName, vmInfo.deploymentName)
-		if err != nil {
-			log.Debug().Err(err).Msgf("couldn't load vm %s of deployment %s from node %d", vmInfo.vmName, vmInfo.deploymentName, vmInfo.nodeID)
-			continue
-		}
-		info := VMInfo{
-			Name:      vm.Name,
-			PublicIP4: vm.ComputedIP,
-			PublicIP6: vm.ComputedIP6,
-			YggIP:     vm.YggIP,
-			IP:        vm.IP,
-			Mounts:    vm.Mounts,
-		}
-		vmsInfo = append(vmsInfo, info)
-	}
-
-	return vmsInfo, nil
-}
-
-func filterNodes(tfPluginClient deployer.TFPluginClient, group NodesGroup, ctx context.Context) ([]types.Node, error) {
-	filter := types.NodeFilter{}
-	statusUp := "up"
-	filter.Status = &statusUp
-	filter.TotalCRU = &group.FreeCPU
-	filter.FreeMRU = &group.FreeMRU
-
-	if group.FreeSRU > 0 {
-		ssd := convertGBToBytes(group.FreeSRU)
-		filter.FreeSRU = &ssd
-	}
-	if group.FreeHRU > 0 {
-		hdd := convertGBToBytes(group.FreeHRU)
-		filter.FreeHRU = &hdd
-	}
-	if group.Regions != "" {
-		filter.Region = &group.Regions
-	}
-	if group.Certified {
-		certified := "Certified"
-		filter.CertificationType = &certified
-	}
-	if group.Pubip4 {
-		filter.IPv4 = &group.Pubip4
-	}
-	if group.Pubip6 {
-		filter.IPv6 = &group.Pubip6
-	}
-	if group.Dedicated {
-		filter.Dedicated = &group.Dedicated
-	}
-
-	freeSSD := []uint64{group.FreeSRU}
-	if group.FreeSRU == 0 {
-		freeSSD = nil
-	}
-	freeHDD := []uint64{group.FreeHRU}
-	if group.FreeHRU == 0 {
-		freeHDD = nil
-	}
-
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, filter, freeSSD, freeHDD, nil, int(group.NodesCount))
-	return nodes, err
-}
-
-func parseVms(tfPluginClient deployer.TFPluginClient, vms []Vms, groups map[string][]int, sshKeys map[string]string) (map[string][]workloads.VM, map[string][][]workloads.Disk) {
-	vmsWorkloads := map[string][]workloads.VM{}
-	vmsDisks := map[string][][]workloads.Disk{}
-	for _, vm := range vms {
-		sshKey := sshKeys[vm.SSHKey]
-
-		w := workloads.VM{
-			Flist:      vm.Flist,
-			CPU:        int(vm.FreeCPU),
-			Memory:     int(vm.FreeMRU),
-			PublicIP:   vm.Pubip4,
-			PublicIP6:  vm.Pubip6,
-			Planetary:  vm.Planetary,
-			RootfsSize: int(convertGBToBytes(vm.Rootsize)),
-			Entrypoint: vm.Entrypoint,
-			EnvVars:    map[string]string{"SSH_KEY": sshKey},
-		}
-
-		var disks []workloads.Disk
-		var mounts []workloads.Mount
-		for _, disk := range vm.SSDDisks {
-			DiskWorkload := workloads.Disk{
-				Name:   fmt.Sprintf("%sdisk", vm.Name),
-				SizeGB: int(convertGBToBytes(disk.Size)),
+			w := workloads.VM{
+				Name:        fmt.Sprintf("%s%d", vmGroup.Name, i),
+				NetworkName: network.Name,
+				Flist:       vmGroup.Flist,
+				CPU:         int(vmGroup.FreeCPU),
+				Memory:      int(vmGroup.FreeMRU),
+				PublicIP:    vmGroup.Pubip4,
+				PublicIP6:   vmGroup.Pubip6,
+				Planetary:   vmGroup.Planetary,
+				RootfsSize:  int(convertGBToBytes(vmGroup.Rootsize)),
+				Entrypoint:  vmGroup.Entrypoint,
+				EnvVars:     map[string]string{"SSH_KEY": sshKeys[vmGroup.SSHKey]},
+				Mounts:      mounts,
 			}
+			deployment := workloads.NewDeployment(generateRandomString(10), nodeID, "", nil, network.Name, disks, nil, []workloads.VM{w}, nil)
 
-			disks = append(disks, DiskWorkload)
-			mounts = append(mounts, workloads.Mount{DiskName: DiskWorkload.Name, MountPoint: disk.Mount})
-		}
-		w.Mounts = mounts
-
-		for i := 0; i < int(vm.Count); i++ {
-			w.Name = fmt.Sprintf("%s%d", vm.Name, i)
-			vmsWorkloads[vm.Nodegroup] = append(vmsWorkloads[vm.Nodegroup], w)
-			vmsDisks[vm.Nodegroup] = append(vmsDisks[vm.Nodegroup], disks)
+			vmDeployments = append(vmDeployments, &deployment)
+			networkDeployments = append(networkDeployments, &network)
+			deployemntsInfo = append(deployemntsInfo, vmDeploymentInfo{nodeID: nodeID, deploymentName: deployment.Name, vmName: w.Name})
 		}
 	}
-	return vmsWorkloads, vmsDisks
+	return groupDeploymentsInfo{vmDeployments: vmDeployments, networkDeployments: networkDeployments, deploymentsInfo: deployemntsInfo}
+}
+
+func convertGBToBytes(gb uint64) uint64 {
+	bytes := gb * 1024 * 1024 * 1024
+	return bytes
+}
+
+func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mountsWorkloads []workloads.Mount) {
+	for _, disk := range disks {
+		DiskWorkload := workloads.Disk{
+			Name:   fmt.Sprintf("%sdisk", name),
+			SizeGB: int(convertGBToBytes(disk.Size)),
+		}
+
+		disksWorkloads = append(disksWorkloads, DiskWorkload)
+		mountsWorkloads = append(mountsWorkloads, workloads.Mount{DiskName: DiskWorkload.Name, MountPoint: disk.Mount})
+	}
+	return
 }
 
 func generateRandomString(length int) string {
@@ -279,9 +290,4 @@ func generateRandomString(length int) string {
 		result[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(result)
-}
-
-func convertGBToBytes(gb uint64) uint64 {
-	bytes := gb * 1024 * 1024 * 1024
-	return bytes
 }
