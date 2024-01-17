@@ -28,7 +28,7 @@ func ParseConfig(configFile []byte) (deployer.Config, error) {
 	if len(conf.SSHKeys) == 0 {
 		return deployer.Config{}, fmt.Errorf("user ssh_keys are invalid, ssh_keys shouldn't be empty")
 	}
-	if bip39.IsMnemonicValid(conf.Mnemonic) {
+	if !bip39.IsMnemonicValid(conf.Mnemonic) {
 		return deployer.Config{}, fmt.Errorf("invalid user mnemonic: %s", conf.Mnemonic)
 	}
 	networks := []string{"dev", "test", "qa", "main"}
@@ -70,8 +70,8 @@ func ParseConfig(configFile []byte) (deployer.Config, error) {
 			return deployer.Config{}, fmt.Errorf("mem in vms group: %s is invalid, shouldn't be equal to 0", vm.Name)
 		}
 		for _, disk := range vm.SSDDisks {
-			if disk.Capacity <= 0 {
-				return deployer.Config{}, fmt.Errorf("ssd disk capacity in vms group: %s is invalid, shouldn't be equal to 0", vm.Name)
+			if disk.Size <= 0 {
+				return deployer.Config{}, fmt.Errorf("ssd disk size in vms group: %s is invalid, shouldn't be equal to 0", vm.Name)
 			}
 			if strings.TrimSpace(disk.Mount) == "" {
 				return deployer.Config{}, fmt.Errorf("vms group %s mount point is invalid, shouldn't be empty", vm.Name)

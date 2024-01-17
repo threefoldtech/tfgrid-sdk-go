@@ -17,7 +17,7 @@ vms:
     cpu: 1 # number of logical cores
     mem: 256 # amount of memory in MB
     ssd: # list of ssd storage needed to be mounted to the vm
-      capacity: 5 # capacity in GB
+      size: 5 # size in GB
       mount_point: /mnt/ssd
     pubip4: false
     pubip6: false

@@ -48,6 +48,8 @@ jobs:
             cmds/proxy_server/server -v
           elif [ ${{ matrix.dir }} == 'grid-cli' ]; then
             bin/tf-grid-cli version
+          elif [ ${{ matrix.dir }} == 'mass-deployer' ]; then
+            bin/tfrobot  version
           else
             bin/${{ matrix.dir }} version
           fi

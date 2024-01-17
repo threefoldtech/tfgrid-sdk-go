@@ -141,7 +141,7 @@ vms:
 ssh_keys: 
   example1: ssh-key1
 network: dev
-mnemonic: example-mnemonic
+mnemonic: rival oyster defense garbage fame disease mask mail family wire village vibrant index fuel dolphin
     `
 		_, err := ParseConfig([]byte(conf))
 		assert.NoError(t, err)

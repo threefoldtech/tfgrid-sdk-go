@@ -82,17 +82,18 @@ func RunDeployer(cfg Config) error {
 	}
 	wg.Wait()
 
-	fmt.Println("deployment took ", time.Since(deploymentStart))
+	log.Info().Msgf("deployment took %s", time.Since(deploymentStart))
+
 	if len(pass) > 0 {
 		fmt.Println("ok:")
 	}
-	for group, info := range pass {
 
+	for group, info := range pass {
 		groupInfo, err := yaml.Marshal(info)
 		if err != nil {
 			log.Debug().Err(err).Msg("failed to marshal json")
 		}
-		log.Debug().Msgf("%s: \n%v\n", group, string(groupInfo))
+		fmt.Printf("%s: \n%v\n", group, string(groupInfo))
 	}
 
 	if len(fail) > 0 {
@@ -111,7 +112,7 @@ func setup(conf Config) (deployer.TFPluginClient, error) {
 	mnemonic := conf.Mnemonic
 	log.Debug().Msgf("mnemonic: %s", mnemonic)
 
-	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 30, false)
 }
 
 func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, vms []workloads.VM, nodes []int, disks [][]workloads.Disk) ([]VMInfo, error) {
@@ -254,7 +255,7 @@ func parseVms(tfPluginClient deployer.TFPluginClient, vms []Vms, groups map[stri
 		for _, disk := range vm.SSDDisks {
 			DiskWorkload := workloads.Disk{
 				Name:   fmt.Sprintf("%sdisk", vm.Name),
-				SizeGB: int(convertGBToBytes(disk.Capacity)),
+				SizeGB: int(convertGBToBytes(disk.Size)),
 			}
 
 			disks = append(disks, DiskWorkload)

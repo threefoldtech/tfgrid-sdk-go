@@ -39,6 +39,6 @@ type Vms struct {
 }
 
 type Disk struct {
-	Capacity uint64 `yaml:"capacity"`
-	Mount    string `yaml:"mount_point"`
+	Size  uint64 `yaml:"size"`
+	Mount string `yaml:"mount_point"`
 }

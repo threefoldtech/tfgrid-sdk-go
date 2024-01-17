@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 
 		cfg, err := parser.ParseConfig(configFile)
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to parse config file: %v")
+			log.Fatal().Err(err).Msg("failed to parse config file")
 		}
 
 		err = deployer.RunDeployer(cfg)
