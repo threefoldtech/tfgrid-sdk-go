@@ -11,13 +11,8 @@ func TestParseConfig(t *testing.T) {
 		conf := ` {
   "node_groups": [
     {
-      "name": "group_b",
-      "free_mru": 16384,
       "nodes_count": 10
     }
-  ],
-  "mnemonic": "example-mnemonic",
-  "network": "dev"
 } `
 		_, err := ParseConfig([]byte(conf))
 		assert.Error(t, err)

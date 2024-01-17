@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/cosmos/go-bip39"
 	"gopkg.in/yaml.v3"
@@ -10,6 +11,7 @@ import (
 
 func ParseConfig(configFile []byte) (Config, error) {
 	conf := Config{}
+	nodeGroupsNames := []string{}
 
 	err := yaml.Unmarshal(configFile, &conf)
 	if err != nil {
@@ -34,7 +36,8 @@ func ParseConfig(configFile []byte) (Config, error) {
 	}
 
 	for _, nodeGroup := range conf.NodeGroups {
-		if nodeGroup.Name == "" {
+		name := strings.TrimSpace(nodeGroup.Name)
+		if name == "" {
 			return Config{}, fmt.Errorf("node groups name is invalid, shouldn't be empty")
 		}
 		if nodeGroup.NodesCount == 0 {
@@ -46,17 +49,18 @@ func ParseConfig(configFile []byte) (Config, error) {
 		if nodeGroup.FreeMRU == 0 {
 			return Config{}, fmt.Errorf("free_mru in node_group: %s is invalid, shouldn't be equal to 0", nodeGroup.Name)
 		}
+		nodeGroupsNames = append(nodeGroupsNames, name)
 	}
 
 	for _, vm := range conf.Vms {
-		if vm.Name == "" {
+		if strings.TrimSpace(vm.Name) == "" {
 			return Config{}, fmt.Errorf("vms name is invalid, shouldn't be empty")
 		}
 		if vm.Count == 0 {
 			return Config{}, fmt.Errorf("vms_count in vms: %s is invalid, shouldn't be equal to 0", vm.Name)
 		}
-		if vm.Nodegroup == "" {
-			return Config{}, fmt.Errorf("vms node_group is invalid, shouldn't be empty")
+		if !slices.Contains(nodeGroupsNames, strings.TrimSpace(vm.Nodegroup)) {
+			return Config{}, fmt.Errorf("invalid node_group: %s in vms: %s", vm.Nodegroup, vm.Name)
 		}
 		if vm.FreeCPU == 0 {
 			return Config{}, fmt.Errorf("cpu in vms: %s is invalid, shouldn't be equal to 0", vm.Name)
@@ -68,18 +72,18 @@ func ParseConfig(configFile []byte) (Config, error) {
 			if disk.Capacity <= 0 {
 				return Config{}, fmt.Errorf("ssd disk capacity in vms: %s is invalid, shouldn't be equal to 0", vm.Name)
 			}
-			if disk.Mount == "" {
+			if strings.TrimSpace(disk.Mount) == "" {
 				return Config{}, fmt.Errorf("vms mount point is invalid, shouldn't be empty")
 			}
 		}
-		if vm.Flist == "" {
+		if strings.TrimSpace(vm.Flist) == "" {
 			return Config{}, fmt.Errorf("vms flist is invalid, shouldn't be empty")
 		}
-		if vm.Entrypoint == "" {
+		if strings.TrimSpace(vm.Entrypoint) == "" {
 			return Config{}, fmt.Errorf("vms entry_point is invalid, shouldn't be empty")
 		}
 		if _, ok := conf.SSHKeys[vm.SSHKey]; !ok {
-			return Config{}, fmt.Errorf("vms ssh_key is invalid, should be valid ssh_key refers to one of ssh_keys list")
+			return Config{}, fmt.Errorf("vms ssh_key is invalid, should be valid name refers to one of ssh_keys list")
 		}
 	}
 

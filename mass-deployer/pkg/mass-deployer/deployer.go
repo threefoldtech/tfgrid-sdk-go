@@ -199,12 +199,12 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, group parser.NodesGroup
 	filter.TotalCRU = &group.FreeCPU
 	filter.FreeMRU = &group.FreeMRU
 
-	if group.FreeSSD > 0 {
-		ssd := convertGBToBytes(group.FreeSSD)
+	if group.FreeSRU > 0 {
+		ssd := convertGBToBytes(group.FreeSRU)
 		filter.FreeSRU = &ssd
 	}
-	if group.FreeHDD > 0 {
-		hdd := convertGBToBytes(group.FreeHDD)
+	if group.FreeHRU > 0 {
+		hdd := convertGBToBytes(group.FreeHRU)
 		filter.FreeHRU = &hdd
 	}
 	if group.Regions != "" {
@@ -224,12 +224,12 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, group parser.NodesGroup
 		filter.Dedicated = &group.Dedicated
 	}
 
-	freeSSD := []uint64{group.FreeSSD}
-	if group.FreeSSD == 0 {
+	freeSSD := []uint64{group.FreeSRU}
+	if group.FreeSRU == 0 {
 		freeSSD = nil
 	}
-	freeHDD := []uint64{group.FreeHDD}
-	if group.FreeSSD == 0 {
+	freeHDD := []uint64{group.FreeHRU}
+	if group.FreeHRU == 0 {
 		freeHDD = nil
 	}
 
@@ -237,14 +237,10 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, group parser.NodesGroup
 	return nodes, err
 }
 
-func parseVms(tfPluginClient deployer.TFPluginClient, vms []parser.Vm, groups map[string][]int, sshKeys map[string]string) (map[string][]workloads.VM, map[string][][]workloads.Disk) {
+func parseVms(tfPluginClient deployer.TFPluginClient, vms []parser.Vms, groups map[string][]int, sshKeys map[string]string) (map[string][]workloads.VM, map[string][][]workloads.Disk) {
 	vmsWorkloads := map[string][]workloads.VM{}
 	vmsDisks := map[string][][]workloads.Disk{}
 	for _, vm := range vms {
-		// make sure the group is valid
-		if _, ok := groups[vm.Nodegroup]; !ok {
-			continue
-		}
 		sshKey := sshKeys[vm.SSHKey]
 
 		w := workloads.VM{

@@ -2,7 +2,7 @@ package parser
 
 type Config struct {
 	NodeGroups []NodesGroup      `yaml:"node_groups"`
-	Vms        []Vm              `yaml:"vms"`
+	Vms        []Vms              `yaml:"vms"`
 	SSHKeys    map[string]string `yaml:"ssh_keys"`
 	Mnemonic   string            `yaml:"mnemonic"`
 	Network    string            `yaml:"network"`
@@ -13,8 +13,8 @@ type NodesGroup struct {
 	NodesCount uint64 `yaml:"nodes_count"`
 	FreeCPU    uint64 `yaml:"free_cpu"`
 	FreeMRU    uint64 `yaml:"free_mru"`
-	FreeSSD    uint64 `yaml:"free_ssd"`
-	FreeHDD    uint64 `yaml:"free_hdd"`
+	FreeSRU    uint64 `yaml:"free_ssd"`
+	FreeHRU    uint64 `yaml:"free_hdd"`
 	Dedicated  bool   `yaml:"dedicated"`
 	Pubip4     bool   `yaml:"pubip4"`
 	Pubip6     bool   `yaml:"pubip6"`
@@ -23,7 +23,7 @@ type NodesGroup struct {
 	MinBwd     uint64 `yaml:"min_bandwidth_ms"`
 }
 
-type Vm struct {
+type Vms struct {
 	Name       string `yaml:"name"`
 	Count      uint64 `yaml:"vms_count"`
 	Nodegroup  string `yaml:"node_group"`
