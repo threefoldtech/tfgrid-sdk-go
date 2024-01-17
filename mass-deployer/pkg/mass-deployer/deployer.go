@@ -3,6 +3,7 @@ package deployer
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -114,7 +115,7 @@ func setup(conf parser.Config) (deployer.TFPluginClient, error) {
 	log.Printf("network: %s", network)
 
 	mnemonic := conf.Mnemonic
-	log.Printf("mnemonics: %s", mnemonic)
+	log.Printf("mnemonic: %s", mnemonic)
 
 	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 }
@@ -199,11 +200,11 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, group parser.NodesGroup
 	filter.FreeMRU = &group.FreeMRU
 
 	if group.FreeSSD > 0 {
-		ssd := uint64(convertGBToBytes(int(group.FreeSSD)))
+		ssd := convertGBToBytes(group.FreeSSD)
 		filter.FreeSRU = &ssd
 	}
 	if group.FreeHDD > 0 {
-		hdd := uint64(convertGBToBytes(int(group.FreeHDD)))
+		hdd := convertGBToBytes(group.FreeHDD)
 		filter.FreeHRU = &hdd
 	}
 	if group.Regions != "" {
@@ -248,12 +249,12 @@ func parseVms(tfPluginClient deployer.TFPluginClient, vms []parser.Vm, groups ma
 
 		w := workloads.VM{
 			Flist:      vm.Flist,
-			CPU:        vm.FreeCPU,
-			Memory:     vm.FreeMRU,
+			CPU:        int(vm.FreeCPU),
+			Memory:     int(vm.FreeMRU),
 			PublicIP:   vm.Pubip4,
 			PublicIP6:  vm.Pubip6,
 			Planetary:  vm.Planetary,
-			RootfsSize: convertGBToBytes(vm.Rootsize),
+			RootfsSize: int(convertGBToBytes(vm.Rootsize)),
 			Entrypoint: vm.Entrypoint,
 			EnvVars:    map[string]string{"SSH_KEY": sshKey},
 		}
@@ -263,7 +264,7 @@ func parseVms(tfPluginClient deployer.TFPluginClient, vms []parser.Vm, groups ma
 		for _, disk := range vm.SSDDisks {
 			DiskWorkload := workloads.Disk{
 				Name:   fmt.Sprintf("%sdisk", vm.Name),
-				SizeGB: convertGBToBytes(disk.Capacity),
+				SizeGB: int(convertGBToBytes(disk.Capacity)),
 			}
 
 			disks = append(disks, DiskWorkload)
@@ -271,11 +272,25 @@ func parseVms(tfPluginClient deployer.TFPluginClient, vms []parser.Vm, groups ma
 		}
 		w.Mounts = mounts
 
-		for i := 0; i < vm.Count; i++ {
+		for i := 0; i < int(vm.Count); i++ {
 			w.Name = fmt.Sprintf("%s%d", vm.Name, i)
 			vmsWorkloads[vm.Nodegroup] = append(vmsWorkloads[vm.Nodegroup], w)
 			vmsDisks[vm.Nodegroup] = append(vmsDisks[vm.Nodegroup], disks)
 		}
 	}
 	return vmsWorkloads, vmsDisks
+}
+
+func generateRandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	result := make([]byte, length)
+	for i := range result {
+		result[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(result)
+}
+
+func convertGBToBytes(gb uint64) uint64 {
+	bytes := gb * 1024 * 1024 * 1024
+	return bytes
 }

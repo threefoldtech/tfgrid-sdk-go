@@ -25,21 +25,21 @@ type NodesGroup struct {
 
 type Vm struct {
 	Name       string `yaml:"name"`
-	Count      int    `yaml:"vms_count"`
+	Count      uint64 `yaml:"vms_count"`
 	Nodegroup  string `yaml:"node_group"`
-	FreeCPU    int    `yaml:"cpu"`
-	FreeMRU    int    `yaml:"mem"`
+	FreeCPU    uint64 `yaml:"cpu"`
+	FreeMRU    uint64 `yaml:"mem"`
 	SSDDisks   []Disk `yaml:"ssd"`
 	Pubip4     bool   `yaml:"pubip4"`
 	Pubip6     bool   `yaml:"pubip6"`
 	Planetary  bool   `yaml:"planetary"`
 	Flist      string `yaml:"flist"`
-	Rootsize   int    `yaml:"root_size"`
+	Rootsize   uint64 `yaml:"root_size"`
 	Entrypoint string `yaml:"entry_point"`
 	SSHKey     string `yaml:"ssh_key"`
 }
 
 type Disk struct {
-	Capacity int    `yaml:"capacity"`
+	Capacity uint64 `yaml:"capacity"`
 	Mount    string `yaml:"mount_point"`
 }
