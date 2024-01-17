@@ -19,7 +19,7 @@ build:
 	@go build -ldflags=\
 	"-X 'github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/cmd.commit=$(shell git rev-parse HEAD)'\
 	 -X 'github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/cmd.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
-	 -o bin/mass-deployer main.go
+	 -o bin/tfrobot main.go
 
 coverage: clean 
 	@echo "Installing gopherbadger" && go get -u github.com/jpoles1/gopherbadger && go install github.com/jpoles1/gopherbadger

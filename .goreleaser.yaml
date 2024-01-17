@@ -39,8 +39,8 @@ builds:
       - linux
       - windows
       - darwin
-    binary: mass-deployer
-    id: mass-deployer
+    binary: tfrobot
+    id: tfrobot
 
     ignore:
       - goos: windows
