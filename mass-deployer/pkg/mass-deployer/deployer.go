@@ -3,7 +3,6 @@ package deployer
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -81,7 +80,7 @@ func RunDeployer(cfg Config) error {
 		fmt.Println("ok:")
 	}
 	for group, info := range passedGroups {
-		fmt.Printf("%s: \n%v\n", group, info)
+		fmt.Printf("%s: \n%+v\n", group, info)
 	}
 
 	if len(failedGroups) > 0 {
@@ -100,7 +99,7 @@ func setup(conf Config) (deployer.TFPluginClient, error) {
 	mnemonic := conf.Mnemonic
 	log.Debug().Msgf("mnemonic: %s", mnemonic)
 
-	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 30, false)
+	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
 }
 
 func filterNodes(tfPluginClient deployer.TFPluginClient, groups []NodesGroup, ctx context.Context) (map[string][]int, map[string]error) {
@@ -190,6 +189,56 @@ func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, dep
 	return vmsInfo, nil
 }
 
+func buildDeployments(tfPluginClient deployer.TFPluginClient, vms []Vms, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
+	var vmDeployments []*workloads.Deployment
+	var networkDeployments []*workloads.ZNet
+	var deployemntsInfo []vmDeploymentInfo
+	nodesIDsIdx := 0
+
+	// here we loop over all groups of vms within the same node group, and for every group
+	// we loop over all it's vms and create network and vm deployment for it
+	// the nodesIDsIdx is a counter used to get nodeID to be able to distribute load over all nodes
+	for _, vmGroup := range vms {
+		for i := 0; i < int(vmGroup.Count); i++ {
+			nodeID := uint32(nodesIDs[nodesIDsIdx%len(nodesIDs)])
+			nodesIDsIdx++
+
+			disks, mounts := parseDisks(vmGroup.Name, vmGroup.SSDDisks)
+
+			network := workloads.ZNet{
+				Name:        fmt.Sprintf("%s%dnetwork", vmGroup.Name, i),
+				Description: "network for mass deployment",
+				Nodes:       []uint32{nodeID},
+				IPRange: gridtypes.NewIPNet(net.IPNet{
+					IP:   net.IPv4(10, 20, 0, 0),
+					Mask: net.CIDRMask(16, 32),
+				}),
+				AddWGAccess: false,
+			}
+			w := workloads.VM{
+				Name:        fmt.Sprintf("%s%d", vmGroup.Name, i),
+				NetworkName: network.Name,
+				Flist:       vmGroup.Flist,
+				CPU:         int(vmGroup.FreeCPU),
+				Memory:      int(vmGroup.FreeMRU),
+				PublicIP:    vmGroup.Pubip4,
+				PublicIP6:   vmGroup.Pubip6,
+				Planetary:   vmGroup.Planetary,
+				RootfsSize:  int(convertGBToBytes(vmGroup.Rootsize)),
+				Entrypoint:  vmGroup.Entrypoint,
+				EnvVars:     map[string]string{"SSH_KEY": sshKeys[vmGroup.SSHKey]},
+				Mounts:      mounts,
+			}
+			deployment := workloads.NewDeployment(w.Name, nodeID, "", nil, network.Name, disks, nil, []workloads.VM{w}, nil)
+
+			vmDeployments = append(vmDeployments, &deployment)
+			networkDeployments = append(networkDeployments, &network)
+			deployemntsInfo = append(deployemntsInfo, vmDeploymentInfo{nodeID: nodeID, deploymentName: deployment.Name, vmName: w.Name})
+		}
+	}
+	return groupDeploymentsInfo{vmDeployments: vmDeployments, networkDeployments: networkDeployments, deploymentsInfo: deployemntsInfo}
+}
+
 func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployemnts []vmDeploymentInfo) []string {
 	vmsInfo := []string{}
 	for _, info := range deployemnts {
@@ -215,66 +264,11 @@ func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployemnts []v
 	return vmsInfo
 }
 
-func buildDeployments(tfPluginClient deployer.TFPluginClient, vms []Vms, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
-	var vmDeployments []*workloads.Deployment
-	var networkDeployments []*workloads.ZNet
-	var deployemntsInfo []vmDeploymentInfo
-	nodesIDsIdx := 0
-
-	// here we loop over all groups of vms within the same node group, and for every group
-	// we loop over all it's vms and create network and vm deployment for it
-	// the nodesIDsIdx is a counter used to get nodeID to be able to distribute load over all nodes
-	for _, vmGroup := range vms {
-		for i := 0; i < int(vmGroup.Count); i++ {
-			nodeID := uint32(nodesIDs[nodesIDsIdx%len(nodesIDs)])
-			nodesIDsIdx++
-
-			disks, mounts := parseDisks(vmGroup.Name, vmGroup.SSDDisks)
-
-			network := workloads.ZNet{
-				Name:        fmt.Sprintf("%s%d", vmGroup.Name, i),
-				Description: "network for mass deployment",
-				Nodes:       []uint32{nodeID},
-				IPRange: gridtypes.NewIPNet(net.IPNet{
-					IP:   net.IPv4(10, 20, 0, 0),
-					Mask: net.CIDRMask(16, 32),
-				}),
-				AddWGAccess: false,
-			}
-			w := workloads.VM{
-				Name:        fmt.Sprintf("%s%d", vmGroup.Name, i),
-				NetworkName: network.Name,
-				Flist:       vmGroup.Flist,
-				CPU:         int(vmGroup.FreeCPU),
-				Memory:      int(vmGroup.FreeMRU),
-				PublicIP:    vmGroup.Pubip4,
-				PublicIP6:   vmGroup.Pubip6,
-				Planetary:   vmGroup.Planetary,
-				RootfsSize:  int(convertGBToBytes(vmGroup.Rootsize)),
-				Entrypoint:  vmGroup.Entrypoint,
-				EnvVars:     map[string]string{"SSH_KEY": sshKeys[vmGroup.SSHKey]},
-				Mounts:      mounts,
-			}
-			deployment := workloads.NewDeployment(generateRandomString(10), nodeID, "", nil, network.Name, disks, nil, []workloads.VM{w}, nil)
-
-			vmDeployments = append(vmDeployments, &deployment)
-			networkDeployments = append(networkDeployments, &network)
-			deployemntsInfo = append(deployemntsInfo, vmDeploymentInfo{nodeID: nodeID, deploymentName: deployment.Name, vmName: w.Name})
-		}
-	}
-	return groupDeploymentsInfo{vmDeployments: vmDeployments, networkDeployments: networkDeployments, deploymentsInfo: deployemntsInfo}
-}
-
-func convertGBToBytes(gb uint64) uint64 {
-	bytes := gb * 1024 * 1024 * 1024
-	return bytes
-}
-
 func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mountsWorkloads []workloads.Mount) {
 	for _, disk := range disks {
 		DiskWorkload := workloads.Disk{
 			Name:   fmt.Sprintf("%sdisk", name),
-			SizeGB: int(convertGBToBytes(disk.Size)),
+			SizeGB: int(disk.Size),
 		}
 
 		disksWorkloads = append(disksWorkloads, DiskWorkload)
@@ -283,11 +277,7 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 	return
 }
 
-func generateRandomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	result := make([]byte, length)
-	for i := range result {
-		result[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(result)
+func convertGBToBytes(gb uint64) uint64 {
+	bytes := gb * 1024 * 1024 * 1024
+	return bytes
 }
