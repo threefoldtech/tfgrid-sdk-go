@@ -225,7 +225,7 @@ Example:
 
 ## Examples
 
-Check the [examples](/examples)
+Check the [examples](./examples)
 
 To run examples:
 
