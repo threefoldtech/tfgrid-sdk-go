@@ -20,7 +20,7 @@ const minWakeUpThreshold uint8 = 50
 const maxWakeUpThreshold uint8 = 80
 
 // minBalanceToRun min balance the farmer should have to run the bot
-const minBalanceToRun float64 = 100
+const minBalanceToRun float64 = 50
 
 const (
 	//timeoutRMBResponse a timeout for rmb response
