@@ -264,7 +264,7 @@ func (s *state) validate() error {
 		if n.resources.total.cru == 0 && n.Resources.CRU == 0 {
 			return fmt.Errorf("node %d: total CRU is required", n.ID)
 		}
-		if n.resources.total.mru == 0 && n.Resources.HRU == 0 {
+		if n.resources.total.mru == 0 && n.Resources.MRU == 0 {
 			return fmt.Errorf("node %d: total MRU is required", n.ID)
 		}
 
