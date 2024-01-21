@@ -31,7 +31,7 @@ jobs:
         run: make build
 
       - name: CLI login
-        run: /bin/bash -c  "{ echo ${{ secrets.MNEMONICS }}; echo ${{ matrix.network }}; } | bin/tf-grid-cli login"
+        run: /bin/bash -c  "{ echo ${{ secrets.MNEMONICS }}; echo ${{ matrix.network }}; } | bin/tfcmd login"
 
       - name: Clean contracts
-        run: bin/tf-grid-cli cancel contracts --all
+        run: bin/tfcmd cancel contracts --all

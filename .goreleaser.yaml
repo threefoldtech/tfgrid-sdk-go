@@ -23,8 +23,8 @@ builds:
       - linux
       - windows
       - darwin
-    binary: tf-grid-cli
-    id: tf-grid-cli
+    binary: tfcmd
+    id: tfcmd
 
     ignore:
       - goos: windows
