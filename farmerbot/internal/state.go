@@ -154,6 +154,12 @@ func getNode(
 		configNode.lastTimePowerStateChanged = time.Now()
 	}
 
+	// don't call rmb over off nodes (state and target are off) allow adding them in farmerbot
+	if configNode.powerState == off {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node is off, will skip rmb calls")
+		return configNode, nil
+	}
+
 	// update resources for nodes that have no claimed resources
 	// we do not update the resources for the nodes that have claimed resources because those resources should not be overwritten until the timeout
 	if !hasClaimedResources {

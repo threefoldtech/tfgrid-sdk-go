@@ -143,6 +143,7 @@ func (n *node) update(
 
 	// don't call rmb over off nodes (state and target are off)
 	if n.powerState == off {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node is off, will skip rmb calls")
 		return nil
 	}
 
