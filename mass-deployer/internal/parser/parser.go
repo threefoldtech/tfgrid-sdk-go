@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
@@ -19,6 +20,24 @@ func ParseConfig(configFile []byte) (deployer.Config, error) {
 		return deployer.Config{}, err
 	}
 
+	mnemonic := conf.Mnemonic
+	network := conf.Network
+
+	if strings.TrimSpace(mnemonic) == "" {
+		mnemonic = os.Getenv("MNEMONIC")
+	}
+
+	if strings.TrimSpace(network) == "" {
+		network = os.Getenv("NETWORK")
+	}
+
+	if !bip39.IsMnemonicValid(mnemonic) {
+		return deployer.Config{}, fmt.Errorf("invalid user mnemonic: %s", mnemonic)
+	}
+	networks := []string{"dev", "test", "qa", "main"}
+	if !slices.Contains(networks, network) {
+		return deployer.Config{}, fmt.Errorf("invalid netwok: %s", network)
+	}
 	if len(conf.NodeGroups) == 0 {
 		return deployer.Config{}, fmt.Errorf("couldn't find any node_groups to use in deployment")
 	}
@@ -28,14 +47,6 @@ func ParseConfig(configFile []byte) (deployer.Config, error) {
 	if len(conf.SSHKeys) == 0 {
 		return deployer.Config{}, fmt.Errorf("user ssh_keys are invalid, ssh_keys shouldn't be empty")
 	}
-	if !bip39.IsMnemonicValid(conf.Mnemonic) {
-		return deployer.Config{}, fmt.Errorf("invalid user mnemonic: %s", conf.Mnemonic)
-	}
-	networks := []string{"dev", "test", "qa", "main"}
-	if !slices.Contains(networks, conf.Network) {
-		return deployer.Config{}, fmt.Errorf("invalid netwok: %s", conf.Network)
-	}
-
 	for _, nodeGroup := range conf.NodeGroups {
 		name := strings.TrimSpace(nodeGroup.Name)
 		if name == "" {
