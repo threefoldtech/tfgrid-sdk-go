@@ -16,15 +16,6 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-type vmInfo struct {
-	Name      string
-	PublicIP4 string
-	PublicIP6 string
-	YggIP     string
-	IP        string
-	Mounts    []workloads.Mount
-}
-
 type groupDeploymentsInfo struct {
 	vmDeployments      []*workloads.Deployment
 	networkDeployments []*workloads.ZNet
@@ -56,11 +47,11 @@ func RunDeployer(cfg Config) error {
 
 	deploymentStart := time.Now()
 
-	for nodeGroup, deployemnts := range groupsDeployments {
+	for nodeGroup, deployments := range groupsDeployments {
 		wg.Add(1)
-		go func(group string, deployemnts groupDeploymentsInfo) {
+		go func(group string, deployments groupDeploymentsInfo) {
 			defer wg.Done()
-			info, err := massDeploy(tfPluginClient, ctx, deployemnts)
+			info, err := massDeploy(tfPluginClient, ctx, deployments)
 
 			lock.Lock()
 			defer lock.Unlock()
@@ -70,7 +61,7 @@ func RunDeployer(cfg Config) error {
 			} else {
 				passedGroups[group] = info
 			}
-		}(nodeGroup, deployemnts)
+		}(nodeGroup, deployments)
 	}
 	wg.Wait()
 
@@ -169,30 +160,30 @@ func parseVMs(tfPluginClient deployer.TFPluginClient, vms []Vms, nodeGroups map[
 	}
 
 	for nodeGroup, vms := range vmsOfNodeGroups {
-		deploymentsInfo[nodeGroup] = buildDeployments(tfPluginClient, vms, nodeGroups[nodeGroup], sshKeys)
+		deploymentsInfo[nodeGroup] = buildDeployments(vms, nodeGroups[nodeGroup], sshKeys)
 	}
 	return deploymentsInfo
 }
 
-func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, deployemnts groupDeploymentsInfo) ([]string, error) {
-	err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, deployemnts.networkDeployments)
+func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, deployments groupDeploymentsInfo) ([]string, error) {
+	err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, deployments.networkDeployments)
 	if err != nil {
 		return []string{}, err
 	}
 
-	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, deployemnts.vmDeployments)
+	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, deployments.vmDeployments)
 	if err != nil {
 		return []string{}, err
 	}
-	vmsInfo := loadDeploymentsInfo(tfPluginClient, deployemnts.deploymentsInfo)
+	vmsInfo := loadDeploymentsInfo(tfPluginClient, deployments.deploymentsInfo)
 
 	return vmsInfo, nil
 }
 
-func buildDeployments(tfPluginClient deployer.TFPluginClient, vms []Vms, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
+func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
 	var vmDeployments []*workloads.Deployment
 	var networkDeployments []*workloads.ZNet
-	var deployemntsInfo []vmDeploymentInfo
+	var deploymentsInfo []vmDeploymentInfo
 	nodesIDsIdx := 0
 
 	// here we loop over all groups of vms within the same node group, and for every group
@@ -233,34 +224,50 @@ func buildDeployments(tfPluginClient deployer.TFPluginClient, vms []Vms, nodesID
 
 			vmDeployments = append(vmDeployments, &deployment)
 			networkDeployments = append(networkDeployments, &network)
-			deployemntsInfo = append(deployemntsInfo, vmDeploymentInfo{nodeID: nodeID, deploymentName: deployment.Name, vmName: w.Name})
+			deploymentsInfo = append(deploymentsInfo, vmDeploymentInfo{nodeID: nodeID, deploymentName: deployment.Name, vmName: w.Name})
 		}
 	}
-	return groupDeploymentsInfo{vmDeployments: vmDeployments, networkDeployments: networkDeployments, deploymentsInfo: deployemntsInfo}
+	return groupDeploymentsInfo{vmDeployments: vmDeployments, networkDeployments: networkDeployments, deploymentsInfo: deploymentsInfo}
 }
 
-func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployemnts []vmDeploymentInfo) []string {
+func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployments []vmDeploymentInfo) []string {
 	vmsInfo := []string{}
-	for _, info := range deployemnts {
-		vm, err := tfPluginClient.State.LoadVMFromGrid(info.nodeID, info.vmName, info.deploymentName)
-		if err != nil {
-			log.Debug().Err(err).Msgf("couldn't load vm %s of deployment %s from node %d", info.vmName, info.deploymentName, info.nodeID)
-			continue
-		}
-		info := vmInfo{
-			Name:      vm.Name,
-			PublicIP4: vm.ComputedIP,
-			PublicIP6: vm.ComputedIP6,
-			YggIP:     vm.YggIP,
-			IP:        vm.IP,
-			Mounts:    vm.Mounts,
-		}
-		groupInfo, err := yaml.Marshal(info)
-		if err != nil {
-			log.Debug().Err(err).Msg("failed to marshal json")
-		}
-		vmsInfo = append(vmsInfo, string(groupInfo))
+	var lock sync.Mutex
+	var wg sync.WaitGroup
+
+	for _, info := range deployments {
+		wg.Add(1)
+
+		go func(depInfo vmDeploymentInfo) {
+			defer wg.Done()
+
+			vm, err := tfPluginClient.State.LoadVMFromGrid(depInfo.nodeID, depInfo.vmName, depInfo.deploymentName)
+			if err != nil {
+				log.Debug().Err(err).Msgf("couldn't load vm %s of deployment %s from node %d", depInfo.vmName, depInfo.deploymentName, depInfo.nodeID)
+				return
+			}
+
+			vmInfo := struct {
+				Name      string
+				PublicIP4 string
+				PublicIP6 string
+				YggIP     string
+				IP        string
+				Mounts    []workloads.Mount
+			}{vm.Name, vm.ComputedIP, vm.ComputedIP6, vm.YggIP, vm.IP, vm.Mounts}
+
+			groupInfo, err := yaml.Marshal(vmInfo)
+			if err != nil {
+				log.Debug().Err(err).Msg("failed to marshal json")
+			}
+
+			lock.Lock()
+			defer lock.Unlock()
+			vmsInfo = append(vmsInfo, string(groupInfo))
+		}(info)
 	}
+
+	wg.Wait()
 	return vmsInfo
 }
 
