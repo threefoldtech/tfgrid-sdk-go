@@ -386,9 +386,9 @@ func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate, requi
 	}
 
 	if balance.Free.Cmp(big.NewInt(requiredBalanceInTFT)) == -1 {
-		errMsg := fmt.Sprintf("account contains %f tft, you need to have at least %f tft.", float64(balance.Free.Int64())/math.Pow(10, 7), required)
+		errMsg := fmt.Sprintf("account contains %f tft, you need to have at least %v tft.", float64(balance.Free.Int64())/math.Pow(10, 7), required)
 		if recommended > 0 {
-			errMsg += fmt.Sprintf(" recommended balance is %f tft", recommended)
+			errMsg += fmt.Sprintf(" recommended balance is %v tft", recommended)
 		}
 		return fmt.Errorf(errMsg)
 	}
