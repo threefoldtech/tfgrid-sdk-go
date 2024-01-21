@@ -101,15 +101,13 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, groups []NodesGroup, ct
 		statusUp := "up"
 		filter.Status = &statusUp
 		filter.TotalCRU = &group.FreeCPU
-		filter.FreeMRU = &group.FreeMRU
+		filter.FreeMRU = convertMBToBytes(group.FreeMRU)
 
 		if group.FreeSRU > 0 {
-			ssd := convertGBToBytes(group.FreeSRU)
-			filter.FreeSRU = &ssd
+			filter.FreeSRU = convertGBToBytes(group.FreeSRU)
 		}
 		if group.FreeHRU > 0 {
-			hdd := convertGBToBytes(group.FreeHRU)
-			filter.FreeHRU = &hdd
+			filter.FreeHRU = convertGBToBytes(group.FreeHRU)
 		}
 		if group.Regions != "" {
 			filter.Region = &group.Regions
@@ -211,11 +209,11 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 				NetworkName: network.Name,
 				Flist:       vmGroup.Flist,
 				CPU:         int(vmGroup.FreeCPU),
-				Memory:      int(vmGroup.FreeMRU),
+				Memory:      int(*convertMBToBytes(vmGroup.FreeMRU)),
 				PublicIP:    vmGroup.Pubip4,
 				PublicIP6:   vmGroup.Pubip6,
 				Planetary:   vmGroup.Planetary,
-				RootfsSize:  int(convertGBToBytes(vmGroup.Rootsize)),
+				RootfsSize:  int(*convertGBToBytes(vmGroup.Rootsize)),
 				Entrypoint:  vmGroup.Entrypoint,
 				EnvVars:     map[string]string{"SSH_KEY": sshKeys[vmGroup.SSHKey]},
 				Mounts:      mounts,
@@ -284,7 +282,12 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 	return
 }
 
-func convertGBToBytes(gb uint64) uint64 {
+func convertGBToBytes(gb uint64) *uint64 {
 	bytes := gb * 1024 * 1024 * 1024
-	return bytes
+	return &bytes
+}
+
+func convertMBToBytes(mb uint64) *uint64 {
+	bytes := mb * 1024 * 1024
+	return &bytes
 }
