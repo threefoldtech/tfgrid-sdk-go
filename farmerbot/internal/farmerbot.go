@@ -108,7 +108,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	}
 	// defer subConn.Close()
 
-	if err := f.validateAccountEnoughBalance(subConn, minBalanceToRun); err != nil {
+	if err := f.validateAccountEnoughBalance(subConn, minBalanceToRun, recommendedBalanceToRun); err != nil {
 		return fmt.Errorf("failed to validate account balance: %w", err)
 	}
 
@@ -169,7 +169,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 			return nil, err
 		}
 
-		if err := f.validateAccountEnoughBalance(subConn, 0); err != nil {
+		if err := f.validateAccountEnoughBalance(subConn, 0, 0); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
@@ -195,7 +195,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 			return nil, err
 		}
 
-		if err := f.validateAccountEnoughBalance(subConn, 0); err != nil {
+		if err := f.validateAccountEnoughBalance(subConn, 0, 0); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
@@ -368,7 +368,7 @@ func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time)
 	return false
 }
 
-func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate, required float64) error {
+func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate, required float64, recommended float64) error {
 	if required == 0 {
 		required = 0.002
 	}
@@ -386,7 +386,11 @@ func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate, requi
 	}
 
 	if balance.Free.Cmp(big.NewInt(requiredBalanceInTFT)) == -1 {
-		return fmt.Errorf("account contains %f tft, min fee is %f tft", float64(balance.Free.Int64())/math.Pow(10, 7), required)
+		errMsg := fmt.Sprintf("account contains %f tft, you need to have at least %f tft.", float64(balance.Free.Int64())/math.Pow(10, 7), required)
+		if recommended > 0 {
+			errMsg += fmt.Sprintf(" recommended balance is %f tft", recommended)
+		}
+		return fmt.Errorf(errMsg)
 	}
 
 	return nil
