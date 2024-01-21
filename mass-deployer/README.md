@@ -1,8 +1,8 @@
-# mass-deployer
+# tfrobot
 
 <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-90%25-brightgreen.svg?longCache=true&style=flat)</a>
 
-Mass Deplyer tool is designed to automate mass deployment of groups of VMs on ThreeFold Grid.
+tfrobot is tool designed to automate mass deployment of groups of VMs on ThreeFold Grid.
 
 ## Features
 
@@ -15,7 +15,7 @@ Mass Deplyer tool is designed to automate mass deployment of groups of VMs on Th
 2.  Extract the downloaded files
 3.  Move the binary to any of `$PATH` directories, for example:
 ```bash
-mv mass-deployer /usr/local/bin
+mv tfrobot /usr/local/bin
 ```
 4.  Create a new configuration file.
 
@@ -23,13 +23,13 @@ You can use this [example](./example/conf.yaml) for guidance, and make sure to r
 
 5.  Run the deployer with path to the config file
 ```bash
-$ mass-deployer -c path/to/your/config.yaml
+$ tfrobot -c path/to/your/config.yaml
 ```
 
 ## Using Docker
 ```bash
-docker build -t mass-deployer -f Dockerfile ../
-docker run -v $(pwd)/config.yaml:/config.yaml -it mass-deployer:latest -c /config.yaml
+docker build -t tfrobot -f Dockerfile ../
+docker run -v $(pwd)/config.yaml:/config.yaml -it tfrobot:latest -c /config.yaml
 ```
 
 ## Build

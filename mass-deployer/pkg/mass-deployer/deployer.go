@@ -42,28 +42,17 @@ func RunDeployer(cfg Config) error {
 	failedGroups = failed
 
 	groupsDeployments := parseVMs(tfPluginClient, cfg.Vms, groupsNodes, cfg.SSHKeys)
-	var lock sync.Mutex
-	var wg sync.WaitGroup
 
 	deploymentStart := time.Now()
 
 	for nodeGroup, deployments := range groupsDeployments {
-		wg.Add(1)
-		go func(group string, deployments groupDeploymentsInfo) {
-			defer wg.Done()
-			info, err := massDeploy(tfPluginClient, ctx, deployments)
-
-			lock.Lock()
-			defer lock.Unlock()
-
-			if err != nil {
-				failedGroups[group] = err
-			} else {
-				passedGroups[group] = info
-			}
-		}(nodeGroup, deployments)
+		info, err := massDeploy(tfPluginClient, ctx, deployments)
+		if err != nil {
+			failedGroups[nodeGroup] = err
+		} else {
+			passedGroups[nodeGroup] = info
+		}
 	}
-	wg.Wait()
 
 	log.Info().Msgf("deployment took %s", time.Since(deploymentStart))
 
@@ -90,7 +79,7 @@ func setup(conf Config) (deployer.TFPluginClient, error) {
 	mnemonic := conf.Mnemonic
 	log.Debug().Msgf("mnemonic: %s", mnemonic)
 
-	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 30, false)
 }
 
 func filterNodes(tfPluginClient deployer.TFPluginClient, groups []NodesGroup, ctx context.Context) (map[string][]int, map[string]error) {
@@ -209,7 +198,7 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 				NetworkName: network.Name,
 				Flist:       vmGroup.Flist,
 				CPU:         int(vmGroup.FreeCPU),
-				Memory:      int(*convertMBToBytes(vmGroup.FreeMRU)),
+				Memory:      int(vmGroup.FreeMRU),
 				PublicIP:    vmGroup.Pubip4,
 				PublicIP6:   vmGroup.Pubip6,
 				Planetary:   vmGroup.Planetary,

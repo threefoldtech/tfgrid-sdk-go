@@ -17,13 +17,13 @@ WORKDIR /src/mass-deployer
 
 COPY /mass-deployer .
 
-RUN go build -o bin/mass-deployer main.go
+RUN go build -o bin/tfrobot main.go
 
 # Final Stage
 FROM alpine:3.19
 
 WORKDIR /app
 
-COPY --from=builder /src/mass-deployer/bin/mass-deployer .
+COPY --from=builder /src/mass-deployer/bin/tfrobot .
 
-ENTRYPOINT ["./mass-deployer"]
+ENTRYPOINT ["./tfrobot"]

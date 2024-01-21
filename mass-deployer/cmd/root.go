@@ -12,7 +12,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "mass-deployer",
+	Use:   "tfrobot",
 	Short: "A tool for deploying groups of vms on Threefold Grid",
 
 	Run: func(cmd *cobra.Command, args []string) {
