@@ -270,6 +270,7 @@ func (s *state) validate() error {
 	// required values for power
 	if s.config.Power.WakeUpThreshold == 0 {
 		s.config.Power.WakeUpThreshold = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold has not been set. setting it to %d", defaultWakeUpThreshold)
 	}
 
 	if s.config.Power.WakeUpThreshold < 1 || s.config.Power.WakeUpThreshold > 100 {
@@ -278,23 +279,23 @@ func (s *state) validate() error {
 
 	if s.config.Power.WakeUpThreshold < minWakeUpThreshold {
 		s.config.Power.WakeUpThreshold = minWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to minimum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]. Setting it to minimum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
 	}
 
 	if s.config.Power.WakeUpThreshold > maxWakeUpThreshold {
 		s.config.Power.WakeUpThreshold = maxWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to maximum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]. Setting it to maximum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
 	}
 
 	if s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {
 		s.config.Power.PeriodicWakeUpStart = wakeUpDate(time.Now())
-		log.Warn().Time("periodic wakeup start", s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()).Msg("The setting periodic_wake_up_start is zero. setting it with current time")
+		log.Warn().Time("periodic wakeup start", s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()).Msg("The setting periodic_wake_up_start has not been set. Setting it with current time")
 	}
 	s.config.Power.PeriodicWakeUpStart = wakeUpDate(s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime())
 
 	if s.config.Power.PeriodicWakeUpLimit == 0 {
 		s.config.Power.PeriodicWakeUpLimit = defaultPeriodicWakeUPLimit
-		log.Warn().Msgf("The setting periodic_wake_up_limit should be greater then 0! setting it to %d", defaultPeriodicWakeUPLimit)
+		log.Warn().Msgf("The setting periodic_wake_up_limit has not been set. setting it to %d", defaultPeriodicWakeUPLimit)
 	}
 
 	return nil
