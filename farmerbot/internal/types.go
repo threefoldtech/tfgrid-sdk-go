@@ -141,6 +141,11 @@ func (n *node) update(
 		n.lastTimePowerStateChanged = time.Now()
 	}
 
+	// don't call rmb over off nodes (state and target are off)
+	if n.powerState == off {
+		return nil
+	}
+
 	// update resources for nodes that have no claimed resources
 	// we do not update the resources for the nodes that have claimed resources because those resources should not be overwritten until the timeout
 	hasClaimedResources := n.timeoutClaimedResources.After(time.Now())
