@@ -336,7 +336,7 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 }
 
 func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time) bool {
-	if node.powerState != off {
+	if node.powerState != off || time.Since(node.lastTimePowerStateChanged) < periodicWakeUpDuration {
 		return false
 	}
 
