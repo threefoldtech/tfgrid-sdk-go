@@ -24,7 +24,7 @@ import (
 )
 
 // MockDeployer to be used for any deployer in mock testing
-type MockDeployer interface { //TODO: Change Name && separate them
+type MockDeployer interface { // TODO: Change Name && separate them
 	Deploy(ctx context.Context,
 		oldDeploymentIDs map[uint32]uint64,
 		newDeployments map[uint32]gridtypes.Deployment,
@@ -57,7 +57,6 @@ func NewDeployer(
 	tfPluginClient TFPluginClient,
 	revertOnFailure bool,
 ) Deployer {
-
 	return Deployer{
 		tfPluginClient.Identity,
 		tfPluginClient.TwinID,
@@ -448,7 +447,7 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 	}
 
 	contracts, index, err := d.substrateConn.BatchCreateContract(d.identity, contractsData)
-	if err != nil && index == nil {
+	if err != nil {
 		return map[uint32][]gridtypes.Deployment{}, errors.Wrap(err, "failed to create contracts")
 	}
 
