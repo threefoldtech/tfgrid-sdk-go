@@ -61,10 +61,10 @@ type NodeFilterOption struct {
 	Dedicated     bool     `json:"dedicated,omitempty"`
 	PublicConfig  bool     `json:"public_config,omitempty"`
 	PublicIPs     uint64   `json:"public_ips,omitempty"`
-	HRU           uint64   `json:"hru,omitempty"`
-	SRU           uint64   `json:"sru,omitempty"`
+	HRU           uint64   `json:"hru,omitempty"` // in GB
+	SRU           uint64   `json:"sru,omitempty"` // in GB
 	CRU           uint64   `json:"cru,omitempty"`
-	MRU           uint64   `json:"mru,omitempty"`
+	MRU           uint64   `json:"mru,omitempty"` // in GB
 }
 
 // TODO: if one update failed maybe other would not fail

@@ -166,9 +166,9 @@ Arguments (all arguments are optional):
 - _public_ips_ => how much public ips you need
 - _dedicated_ => whether you want a dedicated node (rent the full node)
 - _node_exclude_ => the list of node ids you want to exclude in your search
-- _hru_ => the amount of hru required in kilobytes
-- _sru_ => the amount of sru required in kilobytes
-- _mru_ => the amount of mru required in kilobytes
+- _hru_ => the amount of hru required in gigabytes
+- _sru_ => the amount of sru required in gigabytes
+- _mru_ => the amount of mru required in gigabytes
 - _cru_ => the amount of cru required
 
 Result:
