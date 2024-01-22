@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"os"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -63,9 +62,9 @@ func createNodeReport(n node) NodeReport {
 	}
 }
 
-func (f *FarmerBot) report() {
+func (f *FarmerBot) report() string {
 	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
+	// t.SetOutputMirror(os.Stdout)
 
 	t.AppendHeader(table.Row{
 		"ID",
@@ -99,5 +98,5 @@ func (f *FarmerBot) report() {
 	}
 
 	t.SetStyle(table.StyleLight)
-	t.Render()
+	return t.Render()
 }

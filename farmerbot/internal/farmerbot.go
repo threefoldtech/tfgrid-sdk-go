@@ -318,7 +318,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 		return fmt.Errorf("failed to manage nodes power with error: %w", err)
 	}
 
-	f.report()
+	log.Debug().Msgf("Nodes report\n%v", f.report())
 
 	return nil
 }
