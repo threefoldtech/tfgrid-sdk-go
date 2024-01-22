@@ -49,7 +49,12 @@ func mockRMBAndSubstrateCalls(
 			twinIDVal = 0
 		}
 
-		sub.EXPECT().GetNode(nodeID).Return(&substrate.Node{ID: nodeIDVal, TwinID: twinIDVal}, nodeErr)
+		sub.EXPECT().GetNode(nodeID).Return(&substrate.Node{ID: nodeIDVal, TwinID: twinIDVal, Resources: substrate.Resources{
+			HRU: types.U64(resources.HRU),
+			SRU: types.U64(resources.SRU),
+			CRU: types.U64(resources.CRU),
+			MRU: types.U64(resources.MRU),
+		}}, nodeErr)
 		if nodeErr != nil {
 			return
 		}
@@ -76,6 +81,10 @@ func mockRMBAndSubstrateCalls(
 		}, powerErr)
 		if powerErr != nil {
 			return
+		}
+
+		if !on {
+			continue
 		}
 
 		rmb.EXPECT().Statistics(ctx, uint32(twinIDVal)).Return(zos.Counters{Total: resources}, statsErr)

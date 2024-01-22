@@ -76,8 +76,11 @@ func TestFarmerbot(t *testing.T) {
 	})
 
 	t.Run("test iterateOnNodes: update nodes (periodic wake up: off node)", func(t *testing.T) {
+		oldNode1.powerState = off
+		oldNode2.powerState = off
 		state.addNode(oldNode1)
 		state.addNode(oldNode2)
+		farmerbot.state = state
 
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, false, true, resources, []string{}, false, false)
 
@@ -88,8 +91,11 @@ func TestFarmerbot(t *testing.T) {
 	})
 
 	t.Run("test iterateOnNodes: update nodes (periodic wake up: failed to set off node)", func(t *testing.T) {
+		oldNode1.powerState = off
+		oldNode2.powerState = off
 		state.addNode(oldNode1)
 		state.addNode(oldNode2)
+		farmerbot.state = state
 
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, false, true, resources, []string{}, false, false)
 
