@@ -33,4 +33,4 @@ build:
 	@go build -ldflags=\
 	"-X 'github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit=$(shell git rev-parse HEAD)'\
 	 -X 'github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
-	 -o bin/tf-grid-cli main.go
+	 -o bin/tfcmd main.go
