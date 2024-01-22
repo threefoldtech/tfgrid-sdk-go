@@ -18,10 +18,10 @@ func (f *FarmerBot) report() {
 		"Dedicated",
 		"public config",
 		"Used",
-		"Claimed resources timeout",
 		"Random wake-ups",
 		"last time state changed",
 		"last time awake",
+		"Claimed resources timeout",
 	})
 
 	for _, node := range f.nodes {
@@ -59,10 +59,10 @@ func (f *FarmerBot) report() {
 			node.dedicated,
 			node.PublicConfig.HasValue,
 			!node.isUnused(),
-			timeoutClaimedResources,
 			node.timesRandomWakeUps,
 			lastTimePowerStateChanged,
 			lastTimeAwake,
+			timeoutClaimedResources,
 		})
 		t.AppendSeparator()
 	}
