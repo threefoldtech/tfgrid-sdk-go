@@ -203,14 +203,6 @@ Example:
 
 - [power off](./examples/poweroff/main.go)
 
-### farmerbot.farmmanager.version
-
-This call returns the current version of the farmerbot
-
-Example:
-
-- [version](./examples/version/main.go)
-
 ### :warning: farmerbot.powermanager.includenode
 
 This call is only allowed to be executed if it comes from the farmer (the twin ID should equal the farmer's twin ID). It will include an excluded node from power on and off calls (it should be included in the farmerbot configurations)
@@ -222,6 +214,35 @@ Arguments:
 Example:
 
 - [include node](./examples/includenode/main.go)
+
+### farmerbot.farmmanager.version
+
+This call returns the current version of the farmerbot
+
+Example:
+
+- [version](./examples/version/main.go)
+
+### farmerbot.farmmanager.report
+
+This call returns the current report of nodes of the farmerbot
+
+Result: a list of node reports, each node report includes:
+
+- `id` => the node id
+- `state` => the power state of the node (ON, OFF, Waking up, Shutting down)
+- `rented` => if the node is rented (has an active rent contract) [true, false]
+- `dedicated` => if the node is dedicated (its farm is dedicated or it has a dedicated node price) [true, false]
+- `public_config` => if the node has public configurations [true, false]
+- `used` => if the node is used (has used resources) [true, false]
+- `random_wakeups` => times of the random wake ups for the node per month
+- `since_power_state_changed` => the duration since last time power state of the node has changed
+- `since_last_time_awake` => the duration since last time the node state was on
+- `until_claimed_resources_timeout` => the duration until claimed resources of the node timeout
+
+Example:
+
+- [report](./examples/report/main.go)
 
 ## Examples
 
