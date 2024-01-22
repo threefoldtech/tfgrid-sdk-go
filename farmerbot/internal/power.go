@@ -165,6 +165,11 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 		return nil
 	}
 
+	if len(nodesAllowedToShutdown) > 0 {
+		log.Debug().Msg("No nodes are allowed to shutdown.")
+		return nil
+	}
+
 	newUsedResources := usedResources
 	newTotalResources := totalResources
 	nodesLeftOnline := len(onNodes)
