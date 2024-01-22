@@ -129,6 +129,15 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		return version.Version, nil
 	})
 
+	farmRouter.WithHandler("report", func(ctx context.Context, payload []byte) (interface{}, error) {
+		var nodesReport []NodeReport
+		for _, node := range f.nodes {
+			nodesReport = append(nodesReport, createNodeReport(node))
+		}
+
+		return nodesReport, nil
+	})
+
 	nodeRouter.WithHandler("findnode", func(ctx context.Context, payload []byte) (interface{}, error) {
 		var options NodeFilterOption
 
