@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -13,7 +14,7 @@ type NodeReport struct {
 	HasActiveRentContract        bool          `json:"rented"`
 	Dedicated                    bool          `json:"dedicated"`
 	PublicConfig                 bool          `json:"public_config"`
-	Used                         bool          `json:"used"`
+	UsagePercentage              uint8         `json:"usage_percentage"`
 	TimesRandomWakeUps           int           `json:"random_wakeups"`
 	SincePowerStateChanged       time.Duration `json:"since_power_state_changed"`
 	SinceLastTimeAwake           time.Duration `json:"since_last_time_awake"`
@@ -21,6 +22,8 @@ type NodeReport struct {
 }
 
 func createNodeReport(n node) NodeReport {
+	nodeID := uint32(n.ID)
+
 	var state string
 	switch n.powerState {
 	case on:
@@ -48,13 +51,19 @@ func createNodeReport(n node) NodeReport {
 		sinceLastTimeAwake = time.Since(n.lastTimeAwake)
 	}
 
+	var usage uint8
+	used, total := calculateResourceUsage(map[uint32]node{nodeID: n})
+	if total != 0 {
+		usage = uint8(100 * used / total)
+	}
+
 	return NodeReport{
-		ID:                           uint32(n.ID),
+		ID:                           nodeID,
 		State:                        state,
 		HasActiveRentContract:        n.hasActiveRentContract,
 		Dedicated:                    n.dedicated,
 		PublicConfig:                 n.PublicConfig.HasValue,
-		Used:                         !n.isUnused(),
+		UsagePercentage:              usage,
 		TimesRandomWakeUps:           n.timesRandomWakeUps,
 		SincePowerStateChanged:       sincePowerStateChanged,
 		SinceLastTimeAwake:           sinceLastTimeAwake,
@@ -72,7 +81,7 @@ func (f *FarmerBot) report() string {
 		"Rented",
 		"Dedicated",
 		"public config",
-		"Used",
+		"Usage",
 		"Random wake-ups",
 		"last time state changed",
 		"last time awake",
@@ -88,7 +97,7 @@ func (f *FarmerBot) report() string {
 			nodeReport.HasActiveRentContract,
 			nodeReport.Dedicated,
 			nodeReport.PublicConfig,
-			nodeReport.Used,
+			fmt.Sprintf("%d%%", nodeReport.UsagePercentage),
 			nodeReport.TimesRandomWakeUps,
 			nodeReport.SincePowerStateChanged,
 			nodeReport.SinceLastTimeAwake,
