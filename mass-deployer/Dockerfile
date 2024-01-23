@@ -15,7 +15,11 @@ COPY /grid-proxy .
 
 WORKDIR /src/mass-deployer
 
-COPY /mass-deployer .
+COPY /mass-deployer/go.mod .
+
+RUN go mod download
+
+COPY /mass-deployer/ ./
 
 RUN go build -o bin/tfrobot main.go
 
