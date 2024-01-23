@@ -285,7 +285,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 		node := f.state.nodes[nodeID]
 
 		if node.powerState == off && (node.neverShutDown || node.hasActiveRentContract) {
-			log.Debug().Uint32("nodeID", nodeID).Msg("Power on node because it is set to never shutdown")
+			log.Debug().Uint32("nodeID", nodeID).Msg("Power on node because it is set to never shutdown or has a rent contract")
 			err := f.powerOn(subConn, nodeID)
 			if err != nil {
 				log.Error().Err(err).Send()
@@ -301,7 +301,12 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 			}
 		}
 
-		if f.shouldWakeUp(subConn, node, roundStart) && wakeUpCalls < f.config.Power.PeriodicWakeUpLimit {
+		if f.shouldWakeUp(subConn, &node, roundStart, wakeUpCalls) {
+			err = f.state.updateNode(node)
+			if err != nil {
+				log.Error().Err(err).Send()
+			}
+
 			err := f.powerOn(subConn, nodeID)
 			if err != nil {
 				log.Error().Err(err).Uint32("nodeID", nodeID).Msg("failed to power on node")
@@ -354,8 +359,10 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 	return nil
 }
 
-func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time) bool {
-	if node.powerState != off || time.Since(node.lastTimePowerStateChanged) < periodicWakeUpDuration {
+func (f *FarmerBot) shouldWakeUp(sub Substrate, node *node, roundStart time.Time, wakeUpCalls uint8) bool {
+	if node.powerState != off ||
+		time.Since(node.lastTimePowerStateChanged) < periodicWakeUpDuration ||
+		wakeUpCalls >= f.config.Power.PeriodicWakeUpLimit {
 		return false
 	}
 
@@ -364,6 +371,7 @@ func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time)
 		// we wake up the node if the periodic wake up start time has started and only if the last time the node was awake
 		// was before the periodic wake up start of that day
 		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Periodic wake up")
+		node.lastTimePeriodicWakeUp = time.Now()
 		return true
 	}
 
@@ -381,6 +389,7 @@ func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time)
 		// we also do not go through the code if we have woken up too many nodes at once => subtract (10 * (n-1))/min(periodic_wake up_limit, amount_of_nodes) from 8460
 		// now we can divide that by 10 and randomly generate a number in that range, if it's 0 we do the random wake up
 		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Random wake up")
+		node.timesRandomWakeUps++
 		return true
 	}
 
