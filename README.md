@@ -3,9 +3,12 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/cd6e18aac6be404ab89ec160b4b36671)](https://www.codacy.com/gh/threefoldtech/tfgrid-sdk-go/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=threefoldtech/tfgrid-sdk-go&amp;utm_campaign=Badge_Grade) [![Dependabot](https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot)](https://dependabot.com/) [![Lint](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/lint.yml/badge.svg?branch=development)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/lint.yml)
 [![Test](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/test.yml/badge.svg?branch=development)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/test.yml) [![Build](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/build.yml/badge.svg?branch=development)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/build.yml)
 
-[![client integration](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid-client-integration.yml/badge.svg?branch=development)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid-client-integration.yml) [![proxy integration](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid-proxy-integration.yml/badge.svg?branch=development)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid-proxy-integration.yml)
-
 This repo contains the go clients for Threefold grid.
+
+## Version
+
+![devnet](https://img.shields.io/badge/devnet%20version-v0.13.11-blue)
+![mainnet](https://img.shields.io/badge/mainnet%20version-v0.13.12-blue)
 
 ## Packages
 

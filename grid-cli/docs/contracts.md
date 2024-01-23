@@ -1,6 +1,6 @@
 # Contracts
 
-This document explains Contracts related commands using tf-grid-cli.
+This document explains Contracts related commands using tfcmd.
 
 ## Get
 
@@ -9,13 +9,13 @@ This document explains Contracts related commands using tf-grid-cli.
 Get all contracts
 
 ```bash
-tf-grid-cli get contracts
+tfcmd get contracts
 ```
 
 Example:
 
 ```console
-$ tf-grid-cli get contracts
+$ tfcmd get contracts
 5:13PM INF starting peer session=tf-1184566 twin=81
 Node contracts:
 ID       Node ID    Type            Name           Project Name
@@ -33,13 +33,13 @@ ID       Name
 Get specific contract
 
 ```bash
-tf-grid-cli get contract <contract-id>
+tfcmd get contract <contract-id>
 ```
 
 Example:
 
 ```console
-$ tf-grid-cli get contract 50977
+$ tfcmd get contract 50977
 5:14PM INF starting peer session=tf-1185180 twin=81
 5:14PM INF contract:
 {
@@ -62,13 +62,13 @@ $ tf-grid-cli get contract 50977
 Cancel specified contracts or all contracts.
 
 ```bash
-tf-grid-cli cancel contracts <contract-id>... [Flags]
+tfcmd cancel contracts <contract-id>... [Flags]
 ```
 
 Example:
 
 ```console
-$ tf-grid-cli cancel contracts 50856 50857
+$ tfcmd cancel contracts 50856 50857
 5:17PM INF starting peer session=tf-1185964 twin=81
 5:17PM INF contracts canceled successfully
 ```
@@ -80,7 +80,7 @@ $ tf-grid-cli cancel contracts 50856 50857
 Example:
 
 ```console
-$ tf-grid-cli cancel contracts --all
+$ tfcmd cancel contracts --all
 5:17PM INF starting peer session=tf-1185964 twin=81
 5:17PM INF contracts canceled successfully
 ```
