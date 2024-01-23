@@ -30,8 +30,6 @@ type vmDeploymentInfo struct {
 
 func RunDeployer(cfg Config) error {
 	ctx := context.Background()
-	passedGroups := map[string][]string{}
-	failedGroups := map[string]error{}
 
 	tfPluginClient, err := setup(cfg)
 	if err != nil {
@@ -39,7 +37,8 @@ func RunDeployer(cfg Config) error {
 	}
 
 	groupsNodes, failed := filterNodes(tfPluginClient, cfg.NodeGroups, ctx)
-	failedGroups = failed
+	failedGroups := failed
+	passedGroups := map[string][]string{}
 
 	groupsDeployments := parseVMs(tfPluginClient, cfg.Vms, groupsNodes, cfg.SSHKeys)
 
