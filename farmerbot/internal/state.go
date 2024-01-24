@@ -21,7 +21,7 @@ type state struct {
 }
 
 // NewState creates new state from configs
-func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config) (*state, error) {
+func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config, twinID uint32) (*state, error) {
 	s := state{config: cfg}
 
 	// required from power for nodes
@@ -36,6 +36,10 @@ func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config)
 	farm, err := sub.GetFarm(cfg.FarmID)
 	if err != nil {
 		return nil, err
+	}
+
+	if twinID != uint32(farm.TwinID) {
+		return nil, fmt.Errorf("you are not authorized to run the farmerbot on farm %d. your twin id is `%d`, only the farm owner with twin id `%d` is authorized", farm.ID, twinID, farm.TwinID)
 	}
 
 	s.farm = *farm

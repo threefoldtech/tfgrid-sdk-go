@@ -89,7 +89,7 @@ make build
 
 ```yml
 farm_id: "<your farm ID, required>"
-included_nodes:
+included_nodes: [optional, if no nodes are added then the farmerbot will include all nodes in the farm, farm should contain at least 2 nodes]
   - "<your node ID to be included, required at least 2>"
 excluded_nodes:
   - "<your node ID to be excluded, optional>"
