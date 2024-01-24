@@ -6,6 +6,8 @@ Farmerbot is a service that farmers can run allowing them to automatically manag
 
 ## How to use
 
+> :warning: **Be careful**: Make sure to run one farmerbot for each farm, otherwise the relay connection will close in all instances.
+
 > :warning: **Be careful**: The timezone of the farmerbot will be the same as the time zone of the machine the farmerbot running inside.
 
 - add your [configurations](#config)
