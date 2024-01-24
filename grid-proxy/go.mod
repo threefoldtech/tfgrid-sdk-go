@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.2
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240101155545-8dfb94126345
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240102110309-5d6a2dd91630
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
@@ -71,7 +71,7 @@ require (
 	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
