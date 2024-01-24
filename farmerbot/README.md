@@ -36,11 +36,12 @@ Global Flags:
 -m, --mnemonic string   the mnemonic of the account of the farmer
 -n, --network string    the grid network to use, available networks: dev, qa, test, and main (default "main")
 -s, --seed string       the hex seed of the account of the farmer
+-k, --key-type string   key type for mnemonic (default "sr25519")
 ```
 
 > Note: you should only provide **`mnemonic`** or **`seed`**
 
-> Note: If you provided **`env`** flag, you shouldn't provide **`seed`**, **`mnemonic`**, or **`network`** flags
+> Note: If you provided **`env`** flag, you shouldn't provide **`seed`**, **`key-type`**, **`mnemonic`**, or **`network`** flags
 
 ## Download
 
@@ -121,6 +122,7 @@ Global Flags:
 -m, --mnemonic string   the mnemonic of the account of the farmer
 -n, --network string    the grid network to use (default "main")
 -s, --seed string       the hex seed of the account of the farmer
+-k, --key-type string   key type for mnemonic (default "sr25519")
 ```
 
 - `start all`:  to start (power on) all nodes in a farm
@@ -140,6 +142,7 @@ Global Flags:
 -m, --mnemonic string   the mnemonic of the account of the farmer
 -n, --network string    the grid network to use (default "main")
 -s, --seed string       the hex seed of the account of the farmer
+-k, --key-type string   key type for mnemonic (default "sr25519")
 ```
 
 - `version`: to get the current version of farmerbot

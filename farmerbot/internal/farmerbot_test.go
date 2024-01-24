@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -29,7 +30,7 @@ func TestFarmerbot(t *testing.T) {
 		Power:         power{WakeUpThreshold: 50},
 	}
 
-	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed)
+	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)
 	assert.Error(t, err)
 	farmerbot.rmbNodeClient = rmb
 
@@ -52,7 +53,7 @@ func TestFarmerbot(t *testing.T) {
 	oldNode2 := farmerbot.nodes[2]
 
 	t.Run("invalid identity", func(t *testing.T) {
-		_, err := NewFarmerBot(ctx, Config{}, "dev", "invalid")
+		_, err := NewFarmerBot(ctx, Config{}, "dev", "invalid", peer.KeyTypeSr25519)
 		assert.Error(t, err)
 	})
 

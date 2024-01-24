@@ -23,12 +23,13 @@ type FarmerBot struct {
 	rmbNodeClient    RMB
 	network          string
 	mnemonicOrSeed   string
+	keyType          string
 	identity         substrate.Identity
 }
 
 // NewFarmerBot generates a new farmer bot
-func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed string) (FarmerBot, error) {
-	identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonicOrSeed)
+func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, keyType string) (FarmerBot, error) {
+	identity, err := GetIdentityWithKeyType(mnemonicOrSeed, keyType)
 	if err != nil {
 		return FarmerBot{}, err
 	}
@@ -37,10 +38,11 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 		substrateManager: substrate.NewManager(SubstrateURLs[network]...),
 		network:          network,
 		mnemonicOrSeed:   mnemonicOrSeed,
+		keyType:          keyType,
 		identity:         identity,
 	}
 
-	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, relayURLs[network], fmt.Sprintf("farmerbot-rpc-%d", config.FarmID), farmerbot.substrateManager, true)
+	rmb, err := peer.NewRpcClient(ctx, keyType, farmerbot.mnemonicOrSeed, relayURLs[network], fmt.Sprintf("farmerbot-rpc-%d", config.FarmID), farmerbot.substrateManager, true)
 	if err != nil {
 		return FarmerBot{}, fmt.Errorf("could not create rmb client with error %w", err)
 	}
@@ -239,6 +241,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		router.Serve,
 		peer.WithRelay(relayURLs[f.network]),
 		peer.WithSession(fmt.Sprintf("farmerbot-%d", f.farm.ID)),
+		peer.WithKeyType(f.keyType),
 	)
 
 	if err != nil {
