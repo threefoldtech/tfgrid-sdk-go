@@ -36,7 +36,7 @@ func TestFindNode(t *testing.T) {
 	resources := gridtypes.Capacity{HRU: gridtypes.Unit(convertGBToBytes(1)), SRU: gridtypes.Unit(convertGBToBytes(1)), CRU: 1, MRU: gridtypes.Unit(convertGBToBytes(1))}
 	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
-	state, err := newState(ctx, sub, rmb, inputs)
+	state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 	assert.NoError(t, err)
 	farmerbot.state = state
 

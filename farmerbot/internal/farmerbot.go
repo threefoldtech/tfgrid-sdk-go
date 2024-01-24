@@ -25,6 +25,7 @@ type FarmerBot struct {
 	mnemonicOrSeed   string
 	keyType          string
 	identity         substrate.Identity
+	twinID           uint32
 }
 
 // NewFarmerBot generates a new farmer bot
@@ -55,7 +56,13 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, k
 	}
 	defer subConn.Close()
 
-	state, err := newState(ctx, subConn, farmerbot.rmbNodeClient, config)
+	twinID, err := subConn.GetTwinByPubKey(identity.PublicKey())
+	if err != nil {
+		return FarmerBot{}, err
+	}
+	farmerbot.twinID = twinID
+
+	state, err := newState(ctx, subConn, farmerbot.rmbNodeClient, config, twinID)
 	if err != nil {
 		return FarmerBot{}, err
 	}
@@ -122,11 +129,6 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		log.Warn().Float64("current balance", balance).Msgf("Recommended balance to run farmerbot is %v tft", recommendedBalanceToRun)
 	}
 
-	farmerTwinID, err := subConn.GetTwinByPubKey(f.identity.PublicKey())
-	if err != nil {
-		return err
-	}
-
 	farmRouter.WithHandler("version", func(ctx context.Context, payload []byte) (interface{}, error) {
 		return version.Version, nil
 	})
@@ -152,7 +154,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	powerRouter.WithHandler("includenode", func(ctx context.Context, payload []byte) (interface{}, error) {
-		err := authorize(ctx, farmerTwinID)
+		err := authorize(ctx, f.twinID)
 		if err != nil {
 			return nil, err
 		}
@@ -183,7 +185,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	powerRouter.WithHandler("poweroff", func(ctx context.Context, payload []byte) (interface{}, error) {
-		err := authorize(ctx, farmerTwinID)
+		err := authorize(ctx, f.twinID)
 		if err != nil {
 			return nil, err
 		}
@@ -209,7 +211,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	powerRouter.WithHandler("poweron", func(ctx context.Context, payload []byte) (interface{}, error) {
-		err := authorize(ctx, farmerTwinID)
+		err := authorize(ctx, f.twinID)
 		if err != nil {
 			return nil, err
 		}
