@@ -20,7 +20,7 @@ require (
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	gorm.io/driver/postgres v1.5.4
-	gorm.io/gorm v1.25.5
+	gorm.io/gorm v1.25.6
 
 )
 
