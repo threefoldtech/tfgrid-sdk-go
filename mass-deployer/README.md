@@ -18,12 +18,37 @@ tfrobot is tool designed to automate mass deployment of groups of VMs on ThreeFo
 mv tfrobot /usr/local/bin
 ```
 4.  Create a new configuration file.
+For example:
+```yaml
+node_groups:
+  - name: group_a
+    nodes_count: 3
+    free_cpu: 2
+    free_mru: 16384
+    free_ssd: 100
+    free_hdd: 50
+vms:
+  - name: examplevm
+    vms_count: 5
+    node_group: group_a
+    cpu: 1
+    mem: 256
+    flist: example-flist
+    entry_point: example-entrypoint
+    root_size: 0
+    ssh_key: example1
+ssh_keys:
+  example1: ssh_key1
+mnemonic: example-mnemonic
+network: dev
+```
 
-You can use this [example](./example/conf.yaml) for guidance, and make sure to replace placeholders and adapt the groups based on your actual project details.
+You can use this [example](./example/conf.yaml) for further guidance, 
+>> Please make sure to replace placeholders and adapt the groups based on your actual project details.
 
 5.  Run the deployer with path to the config file
 ```bash
-$ tfrobot -c path/to/your/config.yaml
+tfrobot -c path/to/your/config.yaml
 ```
 
 ## Using Docker

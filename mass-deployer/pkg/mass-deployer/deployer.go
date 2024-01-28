@@ -59,7 +59,10 @@ func RunDeployer(cfg Config) error {
 		fmt.Println("ok:")
 	}
 	for group, info := range passedGroups {
-		fmt.Printf("%s: \n%+v\n", group, info)
+		fmt.Printf("%s:\n", group)
+		for _, s := range info {
+			fmt.Println(s)
+		}
 	}
 
 	if len(failedGroups) > 0 {
@@ -198,10 +201,10 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 				Flist:       vmGroup.Flist,
 				CPU:         int(vmGroup.FreeCPU),
 				Memory:      int(vmGroup.FreeMRU),
-				PublicIP:    vmGroup.Pubip4,
-				PublicIP6:   vmGroup.Pubip6,
+				PublicIP:    vmGroup.PublicIP4,
+				PublicIP6:   vmGroup.PublicIP6,
 				Planetary:   vmGroup.Planetary,
-				RootfsSize:  int(*convertGBToBytes(vmGroup.Rootsize)),
+				RootfsSize:  int(vmGroup.Rootsize * 1024), // Rootsize is in MB
 				Entrypoint:  vmGroup.Entrypoint,
 				EnvVars:     map[string]string{"SSH_KEY": sshKeys[vmGroup.SSHKey]},
 				Mounts:      mounts,

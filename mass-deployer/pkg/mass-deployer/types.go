@@ -1,18 +1,20 @@
 package deployer
 
+// type config contains configuration used to deploy multible groups of vms in batches
+// **note: please make sure to run validator (validator.Validate(conf))**
 type Config struct {
-	NodeGroups []NodesGroup      `yaml:"node_groups"`
-	Vms        []Vms             `yaml:"vms"`
-	SSHKeys    map[string]string `yaml:"ssh_keys"`
-	Mnemonic   string            `yaml:"mnemonic"`
-	Network    string            `yaml:"network"`
+	NodeGroups []NodesGroup      `yaml:"node_groups" validate:"nonzero"`
+	Vms        []Vms             `yaml:"vms" validate:"nonzero"`
+	SSHKeys    map[string]string `yaml:"ssh_keys" validate:"nonzero"`
+	Mnemonic   string            `yaml:"mnemonic" validate:"nonzero"`
+	Network    string            `yaml:"network" validate:"nonzero"`
 }
 
 type NodesGroup struct {
-	Name       string `yaml:"name"`
-	NodesCount uint64 `yaml:"nodes_count"`
-	FreeCPU    uint64 `yaml:"free_cpu"`
-	FreeMRU    uint64 `yaml:"free_mru"`
+	Name       string `yaml:"name" validate:"nonzero"`
+	NodesCount uint64 `yaml:"nodes_count" validate:"nonzero"`
+	FreeCPU    uint64 `yaml:"free_cpu" validate:"nonzero"`
+	FreeMRU    uint64 `yaml:"free_mru" validate:"nonzero"`
 	FreeSRU    uint64 `yaml:"free_ssd"`
 	FreeHRU    uint64 `yaml:"free_hdd"`
 	Dedicated  bool   `yaml:"dedicated"`
@@ -23,22 +25,22 @@ type NodesGroup struct {
 }
 
 type Vms struct {
-	Name       string `yaml:"name"`
-	Count      uint64 `yaml:"vms_count"`
-	Nodegroup  string `yaml:"node_group"`
-	FreeCPU    uint64 `yaml:"cpu"`
-	FreeMRU    uint64 `yaml:"mem"`
+	Name       string `yaml:"name" validate:"nonzero"`
+	Count      uint64 `yaml:"vms_count" validate:"nonzero"`
+	Nodegroup  string `yaml:"node_group" validate:"nonzero"`
+	FreeCPU    uint64 `yaml:"cpu" validate:"nonzero,max=32"`
+	FreeMRU    uint64 `yaml:"mem" validate:"nonzero,min=256,max=262144"` // max 256 GB
 	SSDDisks   []Disk `yaml:"ssd"`
-	Pubip4     bool   `yaml:"pubip4"`
-	Pubip6     bool   `yaml:"pubip6"`
+	PublicIP4  bool   `yaml:"public_ip4"`
+	PublicIP6  bool   `yaml:"public_ip6"`
 	Planetary  bool   `yaml:"planetary"`
-	Flist      string `yaml:"flist"`
-	Rootsize   uint64 `yaml:"root_size"`
-	Entrypoint string `yaml:"entry_point"`
-	SSHKey     string `yaml:"ssh_key"`
+	Flist      string `yaml:"flist" validate:"nonzero"`
+	Rootsize   uint64 `yaml:"root_size" validate:"max=10240"` // max 10 TB
+	Entrypoint string `yaml:"entry_point" validate:"nonzero"`
+	SSHKey     string `yaml:"ssh_key" validate:"nonzero"`
 }
 
 type Disk struct {
-	Size  uint64 `yaml:"size"`
-	Mount string `yaml:"mount_point"`
+	Size  uint64 `yaml:"size" validate:"nonzero"`
+	Mount string `yaml:"mount_point" validate:"nonzero"`
 }

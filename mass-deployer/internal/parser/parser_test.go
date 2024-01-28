@@ -1,12 +1,16 @@
 package parser
 
 import (
+	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestParseConfig(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := path.Join(tempDir, "conig.yaml")
 	t.Run("invaild yaml format", func(t *testing.T) {
 		conf := ` {
   "node_groups": [
@@ -14,7 +18,13 @@ func TestParseConfig(t *testing.T) {
       "nodes_count": 10
     }
 } `
-		_, err := ParseConfig([]byte(conf))
+		err := os.WriteFile(configPath, []byte(conf), 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
 	})
 
@@ -26,10 +36,16 @@ vms:
     node_group: example-group
 ssh_keys: 
   example1: ssh-key1
-mnemonic: example-mnemonic
 network: dev
+mnemonic: rival oyster defense garbage fame disease mask mail family wire village vibrant index fuel dolphin
     `
-		_, err := ParseConfig([]byte(conf))
+		err := os.WriteFile(configPath, []byte(conf), 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
 	})
 
@@ -42,10 +58,16 @@ node_groups:
     free_mru: 16384
 ssh_keys: 
   example1: ssh-key1
-mnemonic: example-mnemonic
 network: dev
+mnemonic: rival oyster defense garbage fame disease mask mail family wire village vibrant index fuel dolphin
 `
-		_, err := ParseConfig([]byte(conf))
+		err := os.WriteFile(configPath, []byte(conf), 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
 	})
 
@@ -62,13 +84,19 @@ vms:
     node_group: example-group
     cpu: 2
     mem: 4096
-    flist: example-flist
+    flist: https://hub.grid.tf/tf-official-apps/base:latest.flist
     root_size: 20
     entry_point: /sbin/zinit init
-mnemonic: example-mnemonic
 network: dev
+mnemonic: rival oyster defense garbage fame disease mask mail family wire village vibrant index fuel dolphin
     `
-		_, err := ParseConfig([]byte(conf))
+		err := os.WriteFile(configPath, []byte(conf), 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
 	})
 
@@ -85,14 +113,20 @@ vms:
     node_group: example-group
     cpu: 2
     mem: 4096
-    flist: example-flist
+    flist: https://hub.grid.tf/tf-official-apps/base:latest.flist
     root_size: 20
     entry_point: /sbin/zinit init
 ssh_keys: 
   example1: ssh-key1
 network: dev
     `
-		_, err := ParseConfig([]byte(conf))
+		err := os.WriteFile(configPath, []byte(conf), 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
 	})
 
@@ -109,7 +143,7 @@ vms:
     node_group: example-group
     cpu: 2
     mem: 4096
-    flist: example-flist
+    flist: https://hub.grid.tf/tf-official-apps/base:latest.flist
     root_size: 20
     entry_point: /sbin/zinit init
 ssh_keys: 
@@ -117,7 +151,13 @@ ssh_keys:
 network: example-network
 mnemonic: example-mnemonic
     `
-		_, err := ParseConfig([]byte(conf))
+		err := os.WriteFile(configPath, []byte(conf), 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
 	})
 
@@ -134,7 +174,7 @@ vms:
     node_group: example-group
     cpu: 2
     mem: 4096
-    flist: example-flist
+    flist: https://hub.grid.tf/tf-official-apps/base:latest.flist
     root_size: 20
     entry_point: /sbin/zinit init
     ssh_key: example1
@@ -143,7 +183,13 @@ ssh_keys:
 network: dev
 mnemonic: rival oyster defense garbage fame disease mask mail family wire village vibrant index fuel dolphin
     `
-		_, err := ParseConfig([]byte(conf))
+		err := os.WriteFile(configPath, []byte(conf), 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
 		assert.NoError(t, err)
 	})
 }

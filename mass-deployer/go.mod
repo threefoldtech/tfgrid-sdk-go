@@ -57,6 +57,7 @@ require (
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
+	gopkg.in/validator.v2 v2.0.1 // indirect
 )
 
 replace github.com/threefoldtech/tfgrid-sdk-go/grid-client => ../grid-client

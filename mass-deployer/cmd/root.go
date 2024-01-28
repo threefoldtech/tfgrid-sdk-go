@@ -22,14 +22,15 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
-		configFile, err := os.ReadFile(configPath)
+		configFile, err := os.Open(configPath)
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to open config file")
+			log.Fatal().Err(err).Msgf("failed to open config file: %s", configPath)
 		}
+		defer configFile.Close()
 
 		cfg, err := parser.ParseConfig(configFile)
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to parse config file")
+			log.Fatal().Err(err).Msgf("failed to parse config file: %s", configPath)
 		}
 
 		err = deployer.RunDeployer(cfg)
