@@ -119,6 +119,8 @@ func (c *NodeHealthIndexer) queryGridNodes(ctx context.Context) {
 		for _, node := range nodes {
 			c.nodeTwinIdsChan <- uint32(node.TwinID)
 		}
+
+		limit.Page++
 	}
 
 }

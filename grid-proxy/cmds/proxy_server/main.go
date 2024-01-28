@@ -86,7 +86,7 @@ func main() {
 	flag.UintVar(&f.gpuIndexerResultWorkers, "indexer-results-workers", 2, "number of workers to process indexer GPU info")
 	flag.UintVar(&f.gpuIndexerBatchWorkers, "indexer-batch-workers", 2, "number of workers to process batch GPU info")
 	flag.IntVar(&f.maxPoolOpenConnections, "max-open-conns", 80, "max number of db connection pool open connections")
-	flag.UintVar(&f.healthIndexerWorkers, "health-indexer-workers", 10, "number of workers checking on node health")
+	flag.UintVar(&f.healthIndexerWorkers, "health-indexer-workers", 100, "number of workers checking on node health")
 	flag.UintVar(&f.healthIndexerInterval, "health-indexer-interval", 5, "node health check interval in min")
 	flag.Parse()
 
