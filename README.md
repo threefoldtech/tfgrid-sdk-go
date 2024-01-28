@@ -7,8 +7,8 @@ This repo contains the go clients for Threefold grid.
 
 ## Version
 
-![devnet](https://img.shields.io/badge/devnet%20version-v0.13.11-blue)
-![mainnet](https://img.shields.io/badge/mainnet%20version-v0.13.12-blue)
+![devnet](https://img.shields.io/badge/devnet%20version-v0.13.15-blue)
+![mainnet](https://img.shields.io/badge/mainnet%20version-v0.13.16-blue)
 
 ## Packages
 

@@ -49,6 +49,8 @@ type node struct {
 	lastTimePowerStateChanged time.Time
 	lastTimeAwake             time.Time
 	timesRandomWakeUps        int
+	// set the time the node wakes up every day
+	lastTimePeriodicWakeUp time.Time
 }
 
 // NodeFilterOption represents the options to find a node

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -28,14 +29,14 @@ func TestPower(t *testing.T) {
 		Power:         power{WakeUpThreshold: 30},
 	}
 
-	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed)
+	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)
 	assert.Error(t, err)
 
 	// mock state
 	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
 	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
-	state, err := newState(ctx, sub, rmb, inputs)
+	state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 	assert.NoError(t, err)
 	farmerbot.state = state
 

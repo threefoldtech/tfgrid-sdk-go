@@ -9,6 +9,7 @@ import (
 	"github.com/cosmos/go-bip39"
 	env "github.com/hashicorp/go-envparse"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"github.com/vedhavyas/go-subkey"
 	"gopkg.in/yaml.v3"
 )
@@ -44,7 +45,7 @@ func ParseIntoConfig(content []byte) (internal.Config, error) {
 }
 
 // ParseEnv parses content to farmerbot environment vars
-func ParseEnv(content string) (network string, mnemonicOrSeed string, err error) {
+func ParseEnv(content string) (network string, mnemonicOrSeed string, keyType string, err error) {
 	envMap, err := env.Parse(strings.NewReader(content))
 	if err != nil {
 		return
@@ -58,8 +59,11 @@ func ParseEnv(content string) (network string, mnemonicOrSeed string, err error)
 		case "MNEMONIC_OR_SEED":
 			mnemonicOrSeed = value
 
+		case "KEY_TYPE":
+			keyType = value
+
 		default:
-			return "", "", fmt.Errorf("invalid key '%s'", key)
+			return "", "", "", fmt.Errorf("invalid key '%s'", key)
 		}
 	}
 
@@ -68,7 +72,7 @@ func ParseEnv(content string) (network string, mnemonicOrSeed string, err error)
 	}
 
 	if len(strings.TrimSpace(mnemonicOrSeed)) == 0 {
-		return "", "", fmt.Errorf("MNEMONIC_OR_SEED is required")
+		return "", "", "", fmt.Errorf("MNEMONIC_OR_SEED is required")
 	}
 
 	if !slices.Contains([]string{internal.DevNetwork, internal.QaNetwork, internal.TestNetwork, internal.MainNetwork}, network) {
@@ -77,7 +81,15 @@ func ParseEnv(content string) (network string, mnemonicOrSeed string, err error)
 	}
 
 	if _, ok := subkey.DecodeHex(mnemonicOrSeed); !bip39.IsMnemonicValid(mnemonicOrSeed) && !ok {
-		return "", "", fmt.Errorf("invalid seed or mnemonic input '%s'", mnemonicOrSeed)
+		return "", "", "", fmt.Errorf("invalid seed or mnemonic input '%s'", mnemonicOrSeed)
+	}
+
+	if len(strings.TrimSpace(keyType)) == 0 {
+		keyType = peer.KeyTypeSr25519
+	}
+
+	if keyType != peer.KeyTypeEd25519 && keyType != peer.KeyTypeSr25519 {
+		return "", "", "", fmt.Errorf("invalid key type input %q", keyType)
 	}
 
 	return

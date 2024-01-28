@@ -6,6 +6,8 @@ Farmerbot is a service that farmers can run allowing them to automatically manag
 
 ## How to use
 
+> :warning: **Be careful**: Make sure to run one farmerbot for each farm, otherwise the relay connection will close in all instances.
+
 > :warning: **Be careful**: The timezone of the farmerbot will be the same as the time zone of the machine the farmerbot running inside.
 
 - add your [configurations](#config)
@@ -36,11 +38,12 @@ Global Flags:
 -m, --mnemonic string   the mnemonic of the account of the farmer
 -n, --network string    the grid network to use, available networks: dev, qa, test, and main (default "main")
 -s, --seed string       the hex seed of the account of the farmer
+-k, --key-type string   key type for mnemonic (default "sr25519")
 ```
 
 > Note: you should only provide **`mnemonic`** or **`seed`**
 
-> Note: If you provided **`env`** flag, you shouldn't provide **`seed`**, **`mnemonic`**, or **`network`** flags
+> Note: If you provided **`env`** flag, you shouldn't provide **`seed`**, **`key-type`**, **`mnemonic`**, or **`network`** flags
 
 ## Download
 
@@ -89,7 +92,7 @@ make build
 
 ```yml
 farm_id: "<your farm ID, required>"
-included_nodes:
+included_nodes: [optional, if no nodes are added then the farmerbot will include all nodes in the farm, farm should contain at least 2 nodes]
   - "<your node ID to be included, required at least 2>"
 excluded_nodes:
   - "<your node ID to be excluded, optional>"
@@ -121,6 +124,7 @@ Global Flags:
 -m, --mnemonic string   the mnemonic of the account of the farmer
 -n, --network string    the grid network to use (default "main")
 -s, --seed string       the hex seed of the account of the farmer
+-k, --key-type string   key type for mnemonic (default "sr25519")
 ```
 
 - `start all`:  to start (power on) all nodes in a farm
@@ -140,6 +144,7 @@ Global Flags:
 -m, --mnemonic string   the mnemonic of the account of the farmer
 -n, --network string    the grid network to use (default "main")
 -s, --seed string       the hex seed of the account of the farmer
+-k, --key-type string   key type for mnemonic (default "sr25519")
 ```
 
 - `version`: to get the current version of farmerbot
