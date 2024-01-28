@@ -16,6 +16,7 @@ func TestParseConfig(t *testing.T) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	tempDir := t.TempDir()
 	configPath := path.Join(tempDir, "conig.yaml")
+	validFlist := "https://hub.grid.tf/tf-official-apps/base:latest.flist"
 	confStruct := deployer.Config{
 		NodeGroups: []deployer.NodesGroup{
 			{
@@ -37,7 +38,7 @@ func TestParseConfig(t *testing.T) {
 				FreeCPU:    2,
 				FreeMRU:    256,
 				PublicIP4:  true,
-				Flist:      "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+				Flist:      validFlist,
 				Entrypoint: "/sbin/zinit init",
 				SSHKey:     "example1",
 			},
@@ -157,7 +158,7 @@ func TestParseConfig(t *testing.T) {
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		conf.Vms[0].Flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+		conf.Vms[0].Flist = validFlist
 
 		err = os.WriteFile(configPath, data, 0667)
 		assert.NoError(t, err)
@@ -169,14 +170,14 @@ func TestParseConfig(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("invalid flist extention", func(t *testing.T) {
+	t.Run("invalid flist extension", func(t *testing.T) {
 		conf := confStruct
 		conf.Vms[0].Flist = "https://example-list.list"
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		conf.Vms[0].Flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+		conf.Vms[0].Flist = validFlist
 
 		err = os.WriteFile(configPath, data, 0667)
 		assert.NoError(t, err)
@@ -195,7 +196,7 @@ func TestParseConfig(t *testing.T) {
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		conf.Vms[0].Flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+		conf.Vms[0].Flist = validFlist
 
 		err = os.WriteFile(configPath, data, 0667)
 		assert.NoError(t, err)
@@ -342,7 +343,6 @@ func TestParseConfig(t *testing.T) {
 
 	t.Run("valid config", func(t *testing.T) {
 		conf := confStruct
-		conf.Vms[0].Flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
