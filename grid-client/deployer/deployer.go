@@ -447,11 +447,15 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 	}
 
 	contracts, index, err := d.substrateConn.BatchCreateContract(d.identity, contractsData)
-	if err != nil {
+	if err != nil && index == nil {
 		return map[uint32][]gridtypes.Deployment{}, errors.Wrap(err, "failed to create contracts")
 	}
 
 	var multiErr error
+	if err != nil {
+		multiErr = multierror.Append(multiErr, err)
+	}
+
 	failedContracts := make([]uint64, 0)
 	var wg sync.WaitGroup
 	for i, dl := range deploymentsSlice {

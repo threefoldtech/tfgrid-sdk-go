@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -36,11 +37,10 @@ func RunDeployer(cfg Config) error {
 		return fmt.Errorf("failed to create deployer: %v", err)
 	}
 
-	groupsNodes, failed := filterNodes(tfPluginClient, cfg.NodeGroups, ctx)
-	failedGroups := failed
+	groupsNodes, failedGroups := filterNodes(tfPluginClient, cfg.NodeGroups, ctx)
 	passedGroups := map[string][]string{}
 
-	groupsDeployments := parseVMs(tfPluginClient, cfg.Vms, groupsNodes, cfg.SSHKeys)
+	groupsDeployments := parseVMs(cfg.Vms, groupsNodes, cfg.SSHKeys)
 
 	deploymentStart := time.Now()
 
@@ -66,10 +66,10 @@ func RunDeployer(cfg Config) error {
 	}
 
 	if len(failedGroups) > 0 {
-		fmt.Println("error:")
+		fmt.Fprintln(os.Stderr, "error:")
 	}
 	for group, err := range failedGroups {
-		fmt.Printf("%s: %v\n", group, err)
+		fmt.Fprintf(os.Stderr, "%s: %v\n", group, err)
 	}
 	return nil
 }
@@ -141,7 +141,7 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, groups []NodesGroup, ct
 	return filteredNodes, failedGroups
 }
 
-func parseVMs(tfPluginClient deployer.TFPluginClient, vms []Vms, nodeGroups map[string][]int, sshKeys map[string]string) map[string]groupDeploymentsInfo {
+func parseVMs(vms []Vms, nodeGroups map[string][]int, sshKeys map[string]string) map[string]groupDeploymentsInfo {
 	deploymentsInfo := map[string]groupDeploymentsInfo{}
 	vmsOfNodeGroups := map[string][]Vms{}
 	for _, vm := range vms {
