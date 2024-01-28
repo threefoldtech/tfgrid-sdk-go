@@ -26,7 +26,7 @@ func TestParseConfig(t *testing.T) {
 				FreeSRU:    50,
 				FreeHRU:    50,
 				Pubip4:     true,
-				Regions:    "Africa",
+				Regions:    "Europe",
 			},
 		},
 		Vms: []deployer.Vms{
@@ -157,6 +157,8 @@ func TestParseConfig(t *testing.T) {
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
+		conf.Vms[0].Flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+
 		err = os.WriteFile(configPath, data, 0667)
 		assert.NoError(t, err)
 
@@ -167,12 +169,166 @@ func TestParseConfig(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("invalid flist", func(t *testing.T) {
+	t.Run("invalid flist extention", func(t *testing.T) {
+		conf := confStruct
+		conf.Vms[0].Flist = "https://example-list.list"
+
+		data, err := yaml.Marshal(conf)
+		assert.NoError(t, err)
+
+		conf.Vms[0].Flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+
+		err = os.WriteFile(configPath, data, 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid md5", func(t *testing.T) {
 		conf := confStruct
 		conf.Vms[0].Flist = "https://example-flist.flist"
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
+
+		conf.Vms[0].Flist = "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+
+		err = os.WriteFile(configPath, data, 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
+		assert.Error(t, err)
+	})
+
+	t.Run("zero cpu in node group", func(t *testing.T) {
+		conf := confStruct
+		conf.NodeGroups[0].FreeCPU = 0
+
+		data, err := yaml.Marshal(conf)
+		assert.NoError(t, err)
+
+		conf.NodeGroups[0].FreeCPU = 2
+
+		err = os.WriteFile(configPath, data, 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
+		assert.Error(t, err)
+	})
+
+	t.Run("zero memory in node group", func(t *testing.T) {
+		conf := confStruct
+		conf.NodeGroups[0].FreeMRU = 0
+
+		data, err := yaml.Marshal(conf)
+		assert.NoError(t, err)
+
+		conf.NodeGroups[0].FreeMRU = 256
+
+		err = os.WriteFile(configPath, data, 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
+		assert.Error(t, err)
+	})
+
+	t.Run("zero cpu in vm", func(t *testing.T) {
+		conf := confStruct
+		conf.Vms[0].FreeCPU = 0
+
+		data, err := yaml.Marshal(conf)
+		assert.NoError(t, err)
+
+		conf.Vms[0].FreeCPU = 2
+
+		err = os.WriteFile(configPath, data, 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
+		assert.Error(t, err)
+	})
+
+	t.Run("zero memory in vm", func(t *testing.T) {
+		conf := confStruct
+		conf.Vms[0].FreeMRU = 0
+
+		data, err := yaml.Marshal(conf)
+		assert.NoError(t, err)
+
+		conf.Vms[0].FreeMRU = 256
+
+		err = os.WriteFile(configPath, data, 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
+		assert.Error(t, err)
+	})
+
+	t.Run("cpu exeed limit in vm", func(t *testing.T) {
+		conf := confStruct
+		conf.Vms[0].FreeCPU = 35
+
+		data, err := yaml.Marshal(conf)
+		assert.NoError(t, err)
+
+		conf.Vms[0].FreeCPU = 2
+
+		err = os.WriteFile(configPath, data, 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
+		assert.Error(t, err)
+	})
+
+	t.Run("memory exeed limit in vm", func(t *testing.T) {
+		conf := confStruct
+		conf.Vms[0].FreeMRU = 300000
+
+		data, err := yaml.Marshal(conf)
+		assert.NoError(t, err)
+
+		conf.Vms[0].FreeMRU = 256
+
+		err = os.WriteFile(configPath, data, 0667)
+		assert.NoError(t, err)
+
+		configFile, err := os.Open(configPath)
+		assert.NoError(t, err)
+
+		_, err = ParseConfig(configFile)
+		assert.Error(t, err)
+	})
+
+	t.Run("root size exeed limit in vm", func(t *testing.T) {
+		conf := confStruct
+		conf.Vms[0].Rootsize = 20000
+
+		data, err := yaml.Marshal(conf)
+		assert.NoError(t, err)
+
+		conf.Vms[0].Rootsize = 0
 
 		err = os.WriteFile(configPath, data, 0667)
 		assert.NoError(t, err)
