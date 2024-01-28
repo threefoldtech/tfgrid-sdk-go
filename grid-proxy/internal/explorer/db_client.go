@@ -33,7 +33,6 @@ func (c *DBClient) Nodes(ctx context.Context, filter types.NodeFilter, paginatio
 		return nil, 0, errors.Wrap(err, "failed to get tft price")
 	}
 
-	fmt.Println(tftPrice)
 	nodes := make([]types.Node, len(dbNodes))
 	for idx, node := range dbNodes {
 		nodes[idx] = nodeFromDBNode(node, uint32(tftPrice))

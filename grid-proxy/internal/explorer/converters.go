@@ -62,7 +62,7 @@ func nodeFromDBNode(info db.Node, tftPrice uint32) types.Node {
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
-	node.Price = info.Price / float64(tftPrice) / 1000.0
+	node.Price = info.Price / float64(tftPrice) / 1000.0 // convert to usd
 	return node
 }
 
@@ -136,7 +136,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node, tftPrice uint32) types.NodeW
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
-	node.Price = info.Price / float64(tftPrice) / 1000.0
+	node.Price = info.Price / float64(tftPrice) / 1000.0 // convert to usd
 	return node
 }
 

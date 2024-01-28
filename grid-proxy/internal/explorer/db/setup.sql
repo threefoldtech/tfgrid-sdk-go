@@ -34,10 +34,10 @@ CREATE OR REPLACE FUNCTION calc_price(
 DECLARE
     su_value NUMERIC;
     cu_value NUMERIC;
-    price NUMERIC;
+    cost_per_month_tft NUMERIC;
 
 BEGIN
-    -- THE Equation: ((cu * cu_value + su * su_value) * certified_factor * month_hours) + extra_fee
+    -- THE Equation: ((cu * cu_value + su * su_value + extra_fee) * certified_factor * month_hours
     SELECT cu->'value'
     INTO cu_value
     FROM pricing_policy
@@ -52,24 +52,24 @@ BEGIN
         RAISE EXCEPTION 'values not found for policy_id: %', policy_id;
     END IF;
 
-    price := (
+    cost_per_month_tft := ((
         -- cu
         (LEAST(
             GREATEST(mru / 4, cru / 2),
             GREATEST(mru / 8, cru),
             GREATEST(mru / 2, cru / 4)
-        ) * cu_value
+        )) * cu_value
         -- su
-        + (hru / 1200 + sru / 200) * su_value)
-        -- certified factor
-        * (CASE certified WHEN TRUE THEN 1.25 ELSE 1 END)
-        -- month hours
-        * (27 * 30)
+        + (hru / 1200 + sru / 200) * su_value
         -- extra fee
-        + extra_fee
-    );
+        + extra_fee)
 
-    RETURN price;
+        -- certified factor
+        * (CASE certified WHEN true THEN 1.25 ELSE 1 END)
+        -- month hours
+        * (24 * 30))/1000;
+
+    RETURN cost_per_month_tft;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
@@ -165,9 +165,9 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     price NUMERIC GENERATED ALWAYS AS (
         calc_price(
             total_cru,
-            total_sru,
-            total_hru,
-            total_mru,
+            total_sru/(1024*1024*1024),
+            total_hru/(1024*1024*1024),
+            total_mru/(1024*1024*1024),
             certified,
             policy_id,
             extra_fee
