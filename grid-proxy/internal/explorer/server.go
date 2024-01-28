@@ -129,6 +129,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param total_hru query int false "Total hru in bytes"
 // @Param free_ips query int false "Min number of free ips in the farm of the node"
 // @Param status query string false "Node status filter, 'up': for only up nodes, 'down': for only down nodes & 'standby' for powered-off nodes by farmerbot."
+// @Param healthy query bool false "Healthy nodes filter, 'true' for nodes that responded to rmb call in the last 5 mins"
 // @Param city query string false "Node city filter"
 // @Param country query string false "Node country filter"
 // @Param region query string false "Node region"
