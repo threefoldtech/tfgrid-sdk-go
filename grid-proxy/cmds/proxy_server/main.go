@@ -111,10 +111,6 @@ func main() {
 	defer cancel()
 
 	subManager := substrate.NewManager(f.tfChainURL)
-	sub, err := subManager.Substrate()
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create substrate connection")
-	}
 
 	relayRPCClient, err := createRPCRMBClient(ctx, f.relayURL, f.mnemonics, subManager)
 	if err != nil {
@@ -131,8 +127,7 @@ func main() {
 	}
 
 	dbClient := explorer.DBClient{
-		DB:        &db,
-		Substrate: sub,
+		DB: &db,
 	}
 
 	indexer, err := gpuindexer.NewNodeGPUIndexer(
