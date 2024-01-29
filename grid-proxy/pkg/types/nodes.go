@@ -45,7 +45,7 @@ type Node struct {
 	NumGPU            int          `json:"num_gpu" sort:"num_gpu"`
 	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
 	Healthy           bool         `json:"healthy"`
-	PriceUsd          float64      `json:"price_usd"`
+	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
