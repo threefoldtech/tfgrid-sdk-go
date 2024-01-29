@@ -620,6 +620,12 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.OwnedBy != nil {
 		q = q.Where(`COALESCE(farm.twin_id, 0) = ?`, *filter.OwnedBy)
 	}
+	if filter.PriceMin != nil {
+		q = q.Where(`COALESCE(resources_cache.price_usd, 0) >= ?`, *filter.PriceMin)
+	}
+	if filter.PriceMax != nil {
+		q = q.Where(`COALESCE(resources_cache.price_usd, 0) <= ?`, *filter.PriceMax)
+	}
 
 	var count int64
 	if limit.Randomize || limit.RetCount {

@@ -312,6 +312,14 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &v
 	},
+	"PriceMin": func(_ NodesAggregate) interface{} {
+		v := rand.Float64() * 1000
+		return &v
+	},
+	"PriceMax": func(_ NodesAggregate) interface{} {
+		v := rand.Float64() * 1000
+		return &v
+	},
 }
 
 func TestNode(t *testing.T) {

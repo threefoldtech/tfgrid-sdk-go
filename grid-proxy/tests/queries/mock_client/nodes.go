@@ -380,6 +380,14 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.PriceMin != nil && *f.PriceMin >= calcNodePrice(*data, *n) {
+		return false
+	}
+
+	if f.PriceMax != nil && *f.PriceMax <= calcNodePrice(*data, *n) {
+		return false
+	}
+
 	foundGpuFilter := f.HasGPU != nil || f.GpuDeviceName != nil || f.GpuVendorName != nil || f.GpuVendorID != nil || f.GpuDeviceID != nil || f.GpuAvailable != nil
 	gpus, foundGpuCards := data.GPUs[n.TwinID]
 
