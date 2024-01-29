@@ -20,16 +20,16 @@ func isDedicatedNode(db DBData, node Node) bool {
 }
 
 func calculateCU(cru, mru float64) float64 {
-	MruUsed1 := float64(mru / 4)
-	CruUsed1 := float64(cru / 2)
+	MruUsed1 := mru / 4
+	CruUsed1 := cru / 2
 	cu1 := math.Max(MruUsed1, CruUsed1)
 
-	MruUsed2 := float64(mru / 8)
-	CruUsed2 := float64(cru)
+	MruUsed2 := mru / 8
+	CruUsed2 := cru
 	cu2 := math.Max(MruUsed2, CruUsed2)
 
-	MruUsed3 := float64(mru / 2)
-	CruUsed3 := float64(cru / 4)
+	MruUsed3 := mru / 2
+	CruUsed3 := cru / 4
 	cu3 := math.Max(MruUsed3, CruUsed3)
 
 	cu := math.Min(cu1, cu2)
@@ -39,7 +39,7 @@ func calculateCU(cru, mru float64) float64 {
 }
 
 func calculateSU(hru, sru float64) float64 {
-	return float64(hru/1200 + sru/200)
+	return hru/1200 + sru/200
 }
 
 func calcNodePrice(db DBData, node Node) float64 {
