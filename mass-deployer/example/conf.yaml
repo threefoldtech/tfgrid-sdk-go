@@ -14,16 +14,16 @@ vms:
   - name: examplevm
     vms_count: 5 # amount of vms with the same configurations
     node_group: group_a # the name of the predefined group of nodes
-    cpu: 1 # number of logical cores
-    mem: 256 # amount of memory in MB
+    cpu: 1 # number of logical cores, min 1, max 32
+    mem: 256 # amount of memory in MB, min 256 MB, max 256*1024 MB
     ssd: # list of ssd storage needed to be mounted to the vm
-      - size: 5 # size in GB
+      - size: 15 # size in GB, min 15 GB
         mount_point: /mnt/ssd
     public_ip4: false
     public_ip6: false
     flist: https://hub.grid.tf/tf-official-apps/base:latest.flist
     entry_point: /sbin/zinit init
-    root_size: 0 # root size in GB
+    root_size: 0 # root size in GB, 0 for default root size, max 10TB
     ssh_key: example1 # the name of the predefined ssh key
 
 ssh_keys: # map of ssh keys with key=name and value=the actual ssh key

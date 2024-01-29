@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sethvargo/go-retry"
 	"gopkg.in/yaml.v3"
 
 	"github.com/rs/zerolog/log"
@@ -31,25 +32,38 @@ type vmDeploymentInfo struct {
 
 func RunDeployer(cfg Config) error {
 	ctx := context.Background()
+	passedGroups := map[string][]string{}
+	failedGroups := map[string]error{}
 
 	tfPluginClient, err := setup(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create deployer: %v", err)
 	}
 
-	groupsNodes, failedGroups := filterNodes(tfPluginClient, cfg.NodeGroups, ctx)
-	passedGroups := map[string][]string{}
-
-	groupsDeployments := parseVMs(cfg.Vms, groupsNodes, cfg.SSHKeys)
-
 	deploymentStart := time.Now()
 
-	for nodeGroup, deployments := range groupsDeployments {
-		info, err := massDeploy(tfPluginClient, ctx, deployments)
-		if err != nil {
-			failedGroups[nodeGroup] = err
-		} else {
-			passedGroups[nodeGroup] = info
+	for _, nodeGroup := range cfg.NodeGroups {
+		log.Info().Msgf("running deployer for node group %s", nodeGroup.Name)
+		b := retry.NewFibonacci(1 * time.Nanosecond)
+
+		firstTrial := true
+		if err := retry.Do(ctx, retry.WithMaxRetries(3, b), func(ctx context.Context) error {
+			if !firstTrial {
+				log.Debug().Msgf("retrying to deploy node group %s", nodeGroup.Name)
+			}
+
+			info, err := deployNodeGroup(tfPluginClient, ctx, nodeGroup, cfg.Vms, cfg.SSHKeys)
+			if err != nil {
+				firstTrial = false
+				log.Debug().Err(err).Msgf("failed to deploy node group %s", nodeGroup.Name)
+				return retry.RetryableError(err)
+			}
+
+			passedGroups[nodeGroup.Name] = info
+			log.Info().Msgf("done deploying node group %s", nodeGroup.Name)
+			return nil
+		}); err != nil {
+			failedGroups[nodeGroup.Name] = err
 		}
 	}
 
@@ -84,74 +98,86 @@ func setup(conf Config) (deployer.TFPluginClient, error) {
 	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 30, false)
 }
 
-func filterNodes(tfPluginClient deployer.TFPluginClient, groups []NodesGroup, ctx context.Context) (map[string][]int, map[string]error) {
-	failedGroups := map[string]error{}
-	filteredNodes := map[string][]int{}
-	for _, group := range groups {
-		filter := types.NodeFilter{}
-		statusUp := "up"
-		filter.Status = &statusUp
-		filter.TotalCRU = &group.FreeCPU
-		filter.FreeMRU = convertMBToBytes(group.FreeMRU)
-
-		if group.FreeSRU > 0 {
-			filter.FreeSRU = convertGBToBytes(group.FreeSRU)
-		}
-		if group.FreeHRU > 0 {
-			filter.FreeHRU = convertGBToBytes(group.FreeHRU)
-		}
-		if group.Regions != "" {
-			filter.Region = &group.Regions
-		}
-		if group.Certified {
-			certified := "Certified"
-			filter.CertificationType = &certified
-		}
-		if group.Pubip4 {
-			filter.IPv4 = &group.Pubip4
-		}
-		if group.Pubip6 {
-			filter.IPv6 = &group.Pubip6
-		}
-		if group.Dedicated {
-			filter.Dedicated = &group.Dedicated
-		}
-
-		freeSSD := []uint64{group.FreeSRU}
-		if group.FreeSRU == 0 {
-			freeSSD = nil
-		}
-		freeHDD := []uint64{group.FreeHRU}
-		if group.FreeHRU == 0 {
-			freeHDD = nil
-		}
-
-		nodes, err := deployer.FilterNodes(ctx, tfPluginClient, filter, freeSSD, freeHDD, nil, int(group.NodesCount))
-		if err != nil {
-			failedGroups[group.Name] = err
-			continue
-		}
-
-		nodesIDs := []int{}
-		for _, node := range nodes {
-			nodesIDs = append(nodesIDs, node.NodeID)
-		}
-		filteredNodes[group.Name] = nodesIDs
+func deployNodeGroup(tfPluginClient deployer.TFPluginClient, ctx context.Context, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]string, error) {
+	nodesIDs, err := filterNodes(tfPluginClient, nodeGroup, ctx)
+	if err != nil {
+		return []string{}, err
 	}
-	return filteredNodes, failedGroups
+
+	groupsDeployments := parseGroupVMs(vms, nodeGroup.Name, nodesIDs, sshKeys)
+
+	info, err := massDeploy(tfPluginClient, ctx, groupsDeployments)
+	if err != nil {
+		return []string{}, err
+	}
+
+	return info, nil
 }
 
-func parseVMs(vms []Vms, nodeGroups map[string][]int, sshKeys map[string]string) map[string]groupDeploymentsInfo {
-	deploymentsInfo := map[string]groupDeploymentsInfo{}
-	vmsOfNodeGroups := map[string][]Vms{}
-	for _, vm := range vms {
-		vmsOfNodeGroups[vm.Nodegroup] = append(vmsOfNodeGroups[vm.Nodegroup], vm)
+func filterNodes(tfPluginClient deployer.TFPluginClient, group NodesGroup, ctx context.Context) ([]int, error) {
+	filter := types.NodeFilter{}
+
+	statusUp := "up"
+	freeMRU := convertMBToBytes(group.FreeMRU)
+
+	filter.Status = &statusUp
+	filter.TotalCRU = &group.FreeCPU
+	filter.FreeMRU = &freeMRU
+
+	if group.FreeSRU > 0 {
+		freeSRU := convertGBToBytes(group.FreeSRU)
+		filter.FreeSRU = &freeSRU
+	}
+	if group.FreeHRU > 0 {
+		freeHRU := convertGBToBytes(group.FreeHRU)
+		filter.FreeHRU = &freeHRU
+	}
+	if group.Regions != "" {
+		filter.Region = &group.Regions
+	}
+	if group.Certified {
+		certified := "Certified"
+		filter.CertificationType = &certified
+	}
+	if group.Pubip4 {
+		filter.IPv4 = &group.Pubip4
+	}
+	if group.Pubip6 {
+		filter.IPv6 = &group.Pubip6
+	}
+	if group.Dedicated {
+		filter.Dedicated = &group.Dedicated
+	}
+	freeSSD := []uint64{group.FreeSRU}
+	if group.FreeSRU == 0 {
+		freeSSD = nil
+	}
+	freeHDD := []uint64{group.FreeHRU}
+	if group.FreeHRU == 0 {
+		freeHDD = nil
 	}
 
-	for nodeGroup, vms := range vmsOfNodeGroups {
-		deploymentsInfo[nodeGroup] = buildDeployments(vms, nodeGroups[nodeGroup], sshKeys)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, filter, freeSSD, freeHDD, nil, int(group.NodesCount))
+	if err != nil {
+		return []int{}, err
 	}
-	return deploymentsInfo
+
+	nodesIDs := []int{}
+	for _, node := range nodes {
+		nodesIDs = append(nodesIDs, node.NodeID)
+	}
+	return nodesIDs, nil
+}
+
+func parseGroupVMs(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
+	vmsOfNodeGroup := []Vms{}
+	for _, vm := range vms {
+		if vm.Nodegroup == nodeGroup {
+			vmsOfNodeGroup = append(vmsOfNodeGroup, vm)
+		}
+	}
+
+	return buildDeployments(vmsOfNodeGroup, nodesIDs, sshKeys)
 }
 
 func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, deployments groupDeploymentsInfo) ([]string, error) {
@@ -180,8 +206,8 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 	// the nodesIDsIdx is a counter used to get nodeID to be able to distribute load over all nodes
 	for _, vmGroup := range vms {
 		for i := 0; i < int(vmGroup.Count); i++ {
-			nodeID := uint32(nodesIDs[nodesIDsIdx%len(nodesIDs)])
-			nodesIDsIdx++
+			nodeID := uint32(nodesIDs[nodesIDsIdx])
+			nodesIDsIdx = (nodesIDsIdx + 1) % len(nodesIDs)
 
 			disks, mounts := parseDisks(vmGroup.Name, vmGroup.SSDDisks)
 
@@ -273,12 +299,12 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 	return
 }
 
-func convertGBToBytes(gb uint64) *uint64 {
+func convertGBToBytes(gb uint64) uint64 {
 	bytes := gb * 1024 * 1024 * 1024
-	return &bytes
+	return bytes
 }
 
-func convertMBToBytes(mb uint64) *uint64 {
+func convertMBToBytes(mb uint64) uint64 {
 	bytes := mb * 1024 * 1024
-	return &bytes
+	return bytes
 }

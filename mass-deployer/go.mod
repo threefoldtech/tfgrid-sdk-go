@@ -5,11 +5,13 @@ go 1.21
 require (
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/rs/zerolog v1.31.0
+	github.com/sethvargo/go-retry v0.2.4
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.13.4
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.13.4
 	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
+	gopkg.in/validator.v2 v2.0.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -57,7 +59,6 @@ require (
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
-	gopkg.in/validator.v2 v2.0.1 // indirect
 )
 
 replace github.com/threefoldtech/tfgrid-sdk-go/grid-client => ../grid-client

@@ -2,7 +2,7 @@
 
 <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-90%25-brightgreen.svg?longCache=true&style=flat)</a>
 
-tfrobot is tool designed to automate mass deployment of groups of VMs on ThreeFold Grid.
+tfrobot is tool designed to automate mass deployment of groups of VMs on ThreeFold Grid, with support of multiple retries for failed deployments
 
 ## Features
 

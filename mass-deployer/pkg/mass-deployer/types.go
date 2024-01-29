@@ -29,7 +29,7 @@ type Vms struct {
 	Count      uint64 `yaml:"vms_count" validate:"nonzero"`
 	Nodegroup  string `yaml:"node_group" validate:"nonzero"`
 	FreeCPU    uint64 `yaml:"cpu" validate:"nonzero,max=32"`
-	FreeMRU    uint64 `yaml:"mem" validate:"nonzero,min=256,max=262144"` // max 256 GB
+	FreeMRU    uint64 `yaml:"mem" validate:"nonzero,min=256,max=262144"` // min: 256MB, max: 256 GB
 	SSDDisks   []Disk `yaml:"ssd"`
 	PublicIP4  bool   `yaml:"public_ip4"`
 	PublicIP6  bool   `yaml:"public_ip6"`
@@ -41,6 +41,6 @@ type Vms struct {
 }
 
 type Disk struct {
-	Size  uint64 `yaml:"size" validate:"nonzero"`
+	Size  uint64 `yaml:"size" validate:"nonzero,min=15"` // min 15 GB
 	Mount string `yaml:"mount_point" validate:"nonzero"`
 }
