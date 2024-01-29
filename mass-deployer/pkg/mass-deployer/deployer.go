@@ -17,8 +17,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-func RunDeployer(cfg Config) error {
-	ctx := context.Background()
+func RunDeployer(cfg Config, ctx context.Context) error {
 	passedGroups := map[string][]string{}
 	failedGroups := map[string]error{}
 

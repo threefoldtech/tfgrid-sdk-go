@@ -14,7 +14,7 @@ import (
 
 func validateMnemonic(mnemonic string) error {
 	if !bip39.IsMnemonicValid(mnemonic) {
-		return fmt.Errorf("invalid user mnemonic: %s", mnemonic)
+		return fmt.Errorf("invalid mnemonic: %s", mnemonic)
 	}
 	return nil
 }
@@ -33,7 +33,7 @@ func validateVMs(vms []deployer.Vms, nodeGroups []string, sskKeys map[string]str
 			return fmt.Errorf("invalid node_group: %s in vms group: %s", vm.Nodegroup, vm.Name)
 		}
 		if _, ok := sskKeys[vm.SSHKey]; !ok {
-			return fmt.Errorf("vms group %s ssh_key is invalid, should be valid name refers to one of ssh_keys list", vm.Name)
+			return fmt.Errorf("vms group %s ssh_key is invalid, should be valid name refers to one of ssh_keys map", vm.Name)
 		}
 		if err := validateFlist(vm.Flist, vm.Name); err != nil {
 			return err

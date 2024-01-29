@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -22,7 +23,7 @@ func ParseConfig(file io.Reader) (deployer.Config, error) {
 
 	configFile, err := io.ReadAll(file)
 	if err != nil {
-		return deployer.Config{}, fmt.Errorf("failed to read the config file")
+		return deployer.Config{}, fmt.Errorf("failed to read the config file %+w", err)
 	}
 
 	err = yaml.Unmarshal(configFile, &conf)
@@ -43,7 +44,7 @@ func ParseConfig(file io.Reader) (deployer.Config, error) {
 	log.Info().Msg("validating configuration file")
 
 	if err := validator.Validate(conf); err != nil {
-		return deployer.Config{}, fmt.Errorf("failed to validate config: %+v", err)
+		return deployer.Config{}, fmt.Errorf("failed to validate config: %+w", err)
 	}
 
 	if err := validateNetwork(conf.Network); err != nil {
@@ -69,9 +70,10 @@ func ParseConfig(file io.Reader) (deployer.Config, error) {
 
 func getValueOrEnv(value, envKey string) (string, error) {
 	envKey = strings.ToUpper(envKey)
-	if strings.TrimSpace(value) == "" {
-		if strings.TrimSpace(value) == "" {
-			return "", fmt.Errorf("couldn't find valid %s", envKey)
+	if len(strings.TrimSpace(value)) == 0 {
+		value = os.Getenv(envKey)
+		if len(strings.TrimSpace(value)) == 0 {
+			return "", fmt.Errorf("could not find valid %s", envKey)
 		}
 	}
 	return value, nil

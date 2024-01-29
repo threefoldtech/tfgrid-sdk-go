@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 
 	"github.com/rs/zerolog"
@@ -19,7 +20,6 @@ var rootCmd = &cobra.Command{
 		configPath, err := cmd.Flags().GetString("config")
 		if err != nil || configPath == "" {
 			log.Fatal().Err(err).Msg("error in config file")
-			return
 		}
 
 		configFile, err := os.Open(configPath)
@@ -33,7 +33,8 @@ var rootCmd = &cobra.Command{
 			log.Fatal().Err(err).Msgf("failed to parse config file: %s", configPath)
 		}
 
-		err = deployer.RunDeployer(cfg)
+		ctx := context.Background()
+		err = deployer.RunDeployer(cfg, ctx)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to run the deployer")
 		}
