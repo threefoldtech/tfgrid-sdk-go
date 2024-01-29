@@ -1,5 +1,7 @@
 package deployer
 
+import "github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+
 // type config contains configuration used to deploy multible groups of vms in batches
 // **note: please make sure to run validator (validator.Validate(conf))**
 type Config struct {
@@ -43,4 +45,16 @@ type Vms struct {
 type Disk struct {
 	Size  uint64 `yaml:"size" validate:"nonzero,min=15"` // min 15 GB
 	Mount string `yaml:"mount_point" validate:"nonzero"`
+}
+
+type groupDeploymentsInfo struct {
+	vmDeployments      []*workloads.Deployment
+	networkDeployments []*workloads.ZNet
+	deploymentsInfo    []vmDeploymentInfo
+}
+
+type vmDeploymentInfo struct {
+	nodeID         uint32
+	vmName         string
+	deploymentName string
 }

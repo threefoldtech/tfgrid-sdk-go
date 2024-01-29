@@ -14,21 +14,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
-
-type groupDeploymentsInfo struct {
-	vmDeployments      []*workloads.Deployment
-	networkDeployments []*workloads.ZNet
-	deploymentsInfo    []vmDeploymentInfo
-}
-
-type vmDeploymentInfo struct {
-	nodeID         uint32
-	vmName         string
-	deploymentName string
-}
 
 func RunDeployer(cfg Config) error {
 	ctx := context.Background()
@@ -47,7 +34,7 @@ func RunDeployer(cfg Config) error {
 		b := retry.NewFibonacci(1 * time.Nanosecond)
 
 		firstTrial := true
-		if err := retry.Do(ctx, retry.WithMaxRetries(3, b), func(ctx context.Context) error {
+		if err := retry.Do(ctx, retry.WithMaxRetries(2, b), func(ctx context.Context) error {
 			if !firstTrial {
 				log.Debug().Msgf("retrying to deploy node group %s", nodeGroup.Name)
 			}
@@ -88,16 +75,6 @@ func RunDeployer(cfg Config) error {
 	return nil
 }
 
-func setup(conf Config) (deployer.TFPluginClient, error) {
-	network := conf.Network
-	log.Debug().Msgf("network: %s", network)
-
-	mnemonic := conf.Mnemonic
-	log.Debug().Msgf("mnemonic: %s", mnemonic)
-
-	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 30, false)
-}
-
 func deployNodeGroup(tfPluginClient deployer.TFPluginClient, ctx context.Context, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]string, error) {
 	nodesIDs, err := filterNodes(tfPluginClient, nodeGroup, ctx)
 	if err != nil {
@@ -114,61 +91,6 @@ func deployNodeGroup(tfPluginClient deployer.TFPluginClient, ctx context.Context
 	return info, nil
 }
 
-func filterNodes(tfPluginClient deployer.TFPluginClient, group NodesGroup, ctx context.Context) ([]int, error) {
-	filter := types.NodeFilter{}
-
-	statusUp := "up"
-	freeMRU := convertMBToBytes(group.FreeMRU)
-
-	filter.Status = &statusUp
-	filter.TotalCRU = &group.FreeCPU
-	filter.FreeMRU = &freeMRU
-
-	if group.FreeSRU > 0 {
-		freeSRU := convertGBToBytes(group.FreeSRU)
-		filter.FreeSRU = &freeSRU
-	}
-	if group.FreeHRU > 0 {
-		freeHRU := convertGBToBytes(group.FreeHRU)
-		filter.FreeHRU = &freeHRU
-	}
-	if group.Regions != "" {
-		filter.Region = &group.Regions
-	}
-	if group.Certified {
-		certified := "Certified"
-		filter.CertificationType = &certified
-	}
-	if group.Pubip4 {
-		filter.IPv4 = &group.Pubip4
-	}
-	if group.Pubip6 {
-		filter.IPv6 = &group.Pubip6
-	}
-	if group.Dedicated {
-		filter.Dedicated = &group.Dedicated
-	}
-	freeSSD := []uint64{group.FreeSRU}
-	if group.FreeSRU == 0 {
-		freeSSD = nil
-	}
-	freeHDD := []uint64{group.FreeHRU}
-	if group.FreeHRU == 0 {
-		freeHDD = nil
-	}
-
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, filter, freeSSD, freeHDD, nil, int(group.NodesCount))
-	if err != nil {
-		return []int{}, err
-	}
-
-	nodesIDs := []int{}
-	for _, node := range nodes {
-		nodesIDs = append(nodesIDs, node.NodeID)
-	}
-	return nodesIDs, nil
-}
-
 func parseGroupVMs(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
 	vmsOfNodeGroup := []Vms{}
 	for _, vm := range vms {
@@ -183,11 +105,13 @@ func parseGroupVMs(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[stri
 func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, deployments groupDeploymentsInfo) ([]string, error) {
 	err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, deployments.networkDeployments)
 	if err != nil {
+		cancelContractsOfFailedDeployments(tfPluginClient, deployments.networkDeployments, []*workloads.Deployment{})
 		return []string{}, err
 	}
 
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, deployments.vmDeployments)
 	if err != nil {
+		cancelContractsOfFailedDeployments(tfPluginClient, deployments.networkDeployments, deployments.vmDeployments)
 		return []string{}, err
 	}
 	vmsInfo := loadDeploymentsInfo(tfPluginClient, deployments.deploymentsInfo)
@@ -245,6 +169,26 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 	return groupDeploymentsInfo{vmDeployments: vmDeployments, networkDeployments: networkDeployments, deploymentsInfo: deploymentsInfo}
 }
 
+func cancelContractsOfFailedDeployments(tfPluginClient deployer.TFPluginClient, networkDeployments []*workloads.ZNet, vmDeployments []*workloads.Deployment) {
+	contracts := []uint64{}
+	for _, network := range networkDeployments {
+		for _, contract := range network.NodeDeploymentID {
+			if contract != 0 {
+				contracts = append(contracts, contract)
+			}
+		}
+	}
+	for _, vm := range vmDeployments {
+		if vm.ContractID != 0 {
+			contracts = append(contracts, vm.ContractID)
+		}
+	}
+	err := tfPluginClient.BatchCancelContract(contracts)
+	if err != nil {
+		log.Debug().Err(err)
+	}
+}
+
 func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployments []vmDeploymentInfo) []string {
 	vmsInfo := []string{}
 	var lock sync.Mutex
@@ -297,14 +241,4 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 		mountsWorkloads = append(mountsWorkloads, workloads.Mount{DiskName: DiskWorkload.Name, MountPoint: disk.Mount})
 	}
 	return
-}
-
-func convertGBToBytes(gb uint64) uint64 {
-	bytes := gb * 1024 * 1024 * 1024
-	return bytes
-}
-
-func convertMBToBytes(mb uint64) uint64 {
-	bytes := mb * 1024 * 1024
-	return bytes
 }
