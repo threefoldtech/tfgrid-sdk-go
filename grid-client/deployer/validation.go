@@ -76,7 +76,7 @@ func validateProxyURL(url string) error {
 
 func validateAccountBalanceForExtrinsics(sub subi.SubstrateExt, identity substrate.Identity) error {
 	balance, err := sub.GetBalance(identity)
-	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
+	if err != nil {
 		return errors.Wrap(err, "failed to get account with the given mnemonics")
 	}
 
