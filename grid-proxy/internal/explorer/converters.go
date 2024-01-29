@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"encoding/json"
+	"math"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
@@ -11,7 +12,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-func nodeFromDBNode(info db.Node, tftPrice uint32) types.Node {
+func nodeFromDBNode(info db.Node) types.Node {
 	node := types.Node{
 		ID:              info.ID,
 		NodeID:          int(info.NodeID),
@@ -59,10 +60,10 @@ func nodeFromDBNode(info db.Node, tftPrice uint32) types.Node {
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 		Healthy:           info.Healthy,
+		PriceUsd:          math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
-	node.Price = info.Price / float64(tftPrice) / 1000.0 // convert to usd
 	return node
 }
 
@@ -82,7 +83,7 @@ func farmFromDBFarm(info db.Farm) (types.Farm, error) {
 	return farm, nil
 }
 
-func nodeWithNestedCapacityFromDBNode(info db.Node, tftPrice uint32) types.NodeWithNestedCapacity {
+func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity {
 	node := types.NodeWithNestedCapacity{
 		ID:              info.ID,
 		NodeID:          int(info.NodeID),
@@ -133,10 +134,10 @@ func nodeWithNestedCapacityFromDBNode(info db.Node, tftPrice uint32) types.NodeW
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 		Healthy:           info.Healthy,
+		PriceUsd:          math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
-	node.Price = info.Price / float64(tftPrice) / 1000.0 // convert to usd
 	return node
 }
 

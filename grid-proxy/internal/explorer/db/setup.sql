@@ -32,44 +32,40 @@ CREATE OR REPLACE FUNCTION calc_price(
 ) RETURNS NUMERIC AS $$
 
 DECLARE
+    su NUMERIC;
+    cu NUMERIC;
     su_value NUMERIC;
     cu_value NUMERIC;
-    cost_per_month_tft NUMERIC;
+    cost_per_month NUMERIC;
 
 BEGIN
-    -- THE Equation: ((cu * cu_value + su * su_value + extra_fee) * certified_factor * month_hours
-    SELECT cu->'value'
+    SELECT pricing_policy.cu->'value'
     INTO cu_value
     FROM pricing_policy
     WHERE pricing_policy_id = policy_id;
 
-    SELECT su->'value'
+    SELECT pricing_policy.su->'value'
     INTO su_value
     FROM pricing_policy
     WHERE pricing_policy_id = policy_id;
 
     IF cu_value IS NULL OR su_value IS NULL THEN
-        RAISE EXCEPTION 'values not found for policy_id: %', policy_id;
+        RAISE EXCEPTION 'pricing values not found for policy_id: %', policy_id;
     END IF;
 
-    cost_per_month_tft := ((
-        -- cu
-        (LEAST(
-            GREATEST(mru / 4, cru / 2),
-            GREATEST(mru / 8, cru),
-            GREATEST(mru / 2, cru / 4)
-        )) * cu_value
-        -- su
-        + (hru / 1200 + sru / 200) * su_value
-        -- extra fee
-        + extra_fee)
+    cu := (LEAST(
+        GREATEST(mru / 4, cru / 2),
+        GREATEST(mru / 8, cru),
+        GREATEST(mru / 2, cru / 4)
+    ));
 
-        -- certified factor
-        * (CASE certified WHEN true THEN 1.25 ELSE 1 END)
-        -- month hours
-        * (24 * 30))/1000;
+    su := (hru / 1200 + sru / 200);
 
-    RETURN cost_per_month_tft;
+    cost_per_month := (cu * cu_value + su * su_value + extra_fee) *
+        (CASE certified WHEN true THEN 1.25 ELSE 1 END) *
+        (24 * 30);
+
+    RETURN cost_per_month / 10000000; -- 1e7
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
@@ -162,12 +158,12 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     certified BOOLEAN,
     policy_id INTEGER,
     extra_fee NUMERIC,
-    price NUMERIC GENERATED ALWAYS AS (
+    price_usd NUMERIC GENERATED ALWAYS AS (
         calc_price(
             total_cru,
-            total_sru/(1024*1024*1024),
-            total_hru/(1024*1024*1024),
-            total_mru/(1024*1024*1024),
+            total_sru / (1024*1024*1024),
+            total_hru / (1024*1024*1024),
+            total_mru / (1024*1024*1024),
             certified,
             policy_id,
             extra_fee

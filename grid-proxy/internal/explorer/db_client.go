@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -16,8 +14,7 @@ import (
 //
 // It fetches the desired data from the database, does the appropriate type conversions, and returns the result.
 type DBClient struct {
-	DB        db.Database
-	Substrate *substrate.Substrate
+	DB db.Database
 }
 
 var _ client.DBClient = (*DBClient)(nil)
@@ -28,14 +25,9 @@ func (c *DBClient) Nodes(ctx context.Context, filter types.NodeFilter, paginatio
 		return nil, 0, err
 	}
 
-	tftPrice, err := c.Substrate.GetTFTPrice()
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "failed to get tft price")
-	}
-
 	nodes := make([]types.Node, len(dbNodes))
 	for idx, node := range dbNodes {
-		nodes[idx] = nodeFromDBNode(node, uint32(tftPrice))
+		nodes[idx] = nodeFromDBNode(node)
 	}
 
 	return nodes, int(cnt), nil
@@ -119,12 +111,7 @@ func (c *DBClient) Node(ctx context.Context, nodeID uint32) (types.NodeWithNeste
 		return types.NodeWithNestedCapacity{}, err
 	}
 
-	tftPrice, err := c.Substrate.GetTFTPrice()
-	if err != nil {
-		return types.NodeWithNestedCapacity{}, errors.Wrap(err, "failed to get tft price")
-	}
-
-	node := nodeWithNestedCapacityFromDBNode(dbNode, uint32(tftPrice))
+	node := nodeWithNestedCapacityFromDBNode(dbNode)
 	return node, nil
 }
 
@@ -134,9 +121,7 @@ func (c *DBClient) NodeStatus(ctx context.Context, nodeID uint32) (types.NodeSta
 		return types.NodeStatus{}, err
 	}
 
-	// we do not need to make a call to get tft price here
-	// because price data is not used
-	node := nodeWithNestedCapacityFromDBNode(dbNode, 0)
+	node := nodeWithNestedCapacityFromDBNode(dbNode)
 	status := types.NodeStatus{Status: node.Status}
 	return status, nil
 }

@@ -19,7 +19,7 @@ func isDedicatedNode(db DBData, node Node) bool {
 		db.NodeRentedBy[node.NodeID] != 0
 }
 
-func calculateCU(cru, mru uint64) float64 {
+func calculateCU(cru, mru float64) float64 {
 	MruUsed1 := float64(mru / 4)
 	CruUsed1 := float64(cru / 2)
 	cu1 := math.Max(MruUsed1, CruUsed1)
@@ -38,28 +38,29 @@ func calculateCU(cru, mru uint64) float64 {
 	return cu
 }
 
-func calculateSU(hru, sru int64) float64 {
+func calculateSU(hru, sru float64) float64 {
 	return float64(hru/1200 + sru/200)
 }
 
 func calcNodePrice(db DBData, node Node) float64 {
-	// calc cu
-	cu := calculateCU(db.NodeTotalResources[node.NodeID].CRU, db.NodeTotalResources[node.NodeID].MRU/(1024*1024*1024))
+	cu := calculateCU(float64(db.NodeTotalResources[node.NodeID].CRU),
+		float64(db.NodeTotalResources[node.NodeID].MRU)/(1024*1024*1024))
+	su := calculateSU(float64(db.NodeTotalResources[node.NodeID].HRU)/(1024*1024*1024),
+		float64(db.NodeTotalResources[node.NodeID].SRU)/(1024*1024*1024))
 
-	// calc su
-	su := calculateSU(int64(db.NodeTotalResources[node.NodeID].HRU/(1024*1024*1024)), int64(db.NodeTotalResources[node.NodeID].SRU/(1024*1024*1024)))
-
-	// get prices
 	pricingPolicy := db.PricingPolicies[uint(db.Farms[node.FarmID].PricingPolicyID)]
-
 	certifiedFactor := float64(1)
 	if node.Certification == "Certified" {
 		certifiedFactor = 1.25
 	}
 
-	// calc total price
-	costPerMonthTFT := (cu*float64(pricingPolicy.CU.Value) + su*float64(pricingPolicy.SU.Value) + float64(node.ExtraFee)) * certifiedFactor * 24 * 30
-	return costPerMonthTFT / 16.0 / 1000.0 / 1000.0
+	costPerMonth := (cu*float64(pricingPolicy.CU.Value) +
+		su*float64(pricingPolicy.SU.Value) +
+		float64(node.ExtraFee)) *
+		certifiedFactor * 24 * 30
+
+	costInUsd := costPerMonth / 1e7
+	return math.Round(costInUsd*1000) / 1000
 }
 
 // Nodes returns nodes with the given filters and pagination parameters
@@ -132,7 +133,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				NumGPU:   numGPU,
 				ExtraFee: node.ExtraFee,
 				Healthy:  g.data.HealthReports[node.TwinID],
-				Price:    calcNodePrice(g.data, node),
+				PriceUsd: calcNodePrice(g.data, node),
 			})
 		}
 	}
@@ -220,7 +221,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		NumGPU:   numGPU,
 		ExtraFee: node.ExtraFee,
 		Healthy:  g.data.HealthReports[node.TwinID],
-		Price:    calcNodePrice(g.data, node),
+		PriceUsd: calcNodePrice(g.data, node),
 	}
 	return
 }
