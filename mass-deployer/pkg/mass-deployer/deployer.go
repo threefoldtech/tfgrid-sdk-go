@@ -31,10 +31,9 @@ func RunDeployer(cfg Config) error {
 
 	for _, nodeGroup := range cfg.NodeGroups {
 		log.Info().Msgf("running deployer for node group %s", nodeGroup.Name)
-		b := retry.NewFibonacci(1 * time.Nanosecond)
-
 		firstTrial := true
-		if err := retry.Do(ctx, retry.WithMaxRetries(2, b), func(ctx context.Context) error {
+
+		if err := retry.Do(ctx, retry.WithMaxRetries(2, retry.NewConstant(1*time.Nanosecond)), func(ctx context.Context) error {
 			if !firstTrial {
 				log.Debug().Msgf("retrying to deploy node group %s", nodeGroup.Name)
 			}
