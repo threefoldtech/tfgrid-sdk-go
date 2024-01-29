@@ -3,7 +3,6 @@ package parser
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -31,12 +30,12 @@ func ParseConfig(file io.Reader) (deployer.Config, error) {
 		return deployer.Config{}, err
 	}
 
-	conf.Mnemonic, err = getEnvOrValue(conf.Mnemonic, mnemonicKey)
+	conf.Mnemonic, err = getValueOrEnv(conf.Mnemonic, mnemonicKey)
 	if err != nil {
 		return deployer.Config{}, err
 	}
 
-	conf.Network, err = getEnvOrValue(conf.Network, networkKey)
+	conf.Network, err = getValueOrEnv(conf.Network, networkKey)
 	if err != nil {
 		return deployer.Config{}, err
 	}
@@ -68,12 +67,11 @@ func ParseConfig(file io.Reader) (deployer.Config, error) {
 	return conf, nil
 }
 
-func getEnvOrValue(value, valueType string) (string, error) {
-	valueType = strings.ToUpper(valueType)
+func getValueOrEnv(value, envKey string) (string, error) {
+	envKey = strings.ToUpper(envKey)
 	if strings.TrimSpace(value) == "" {
-		value = os.Getenv("valueType")
 		if strings.TrimSpace(value) == "" {
-			return "", fmt.Errorf("couldn't find valid %s", valueType)
+			return "", fmt.Errorf("couldn't find valid %s", envKey)
 		}
 	}
 	return value, nil

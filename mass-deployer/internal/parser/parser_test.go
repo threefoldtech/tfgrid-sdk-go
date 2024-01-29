@@ -2,7 +2,7 @@ package parser
 
 import (
 	"os"
-	"path"
+	"strings"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -14,9 +14,8 @@ import (
 
 func TestParseConfig(t *testing.T) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	tempDir := t.TempDir()
-	configPath := path.Join(tempDir, "conig.yaml")
 	validFlist := "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+
 	confStruct := deployer.Config{
 		NodeGroups: []deployer.NodesGroup{
 			{
@@ -56,13 +55,9 @@ func TestParseConfig(t *testing.T) {
       "nodes_count": 10
     }
 } `
-		err := os.WriteFile(configPath, []byte(conf), 0667)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(conf)
 
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
-
-		_, err = ParseConfig(configFile)
+		_, err := ParseConfig(configFile)
 		assert.Error(t, err)
 	})
 
@@ -73,11 +68,7 @@ func TestParseConfig(t *testing.T) {
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -90,11 +81,7 @@ func TestParseConfig(t *testing.T) {
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -107,11 +94,7 @@ func TestParseConfig(t *testing.T) {
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -119,16 +102,12 @@ func TestParseConfig(t *testing.T) {
 
 	t.Run("invalid mnemonic", func(t *testing.T) {
 		conf := confStruct
-		conf.Mnemonic = ""
+		conf.Mnemonic = "mnemonic"
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -136,16 +115,12 @@ func TestParseConfig(t *testing.T) {
 
 	t.Run("invalid network", func(t *testing.T) {
 		conf := confStruct
-		conf.Network = ""
+		conf.Network = "network"
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -160,11 +135,7 @@ func TestParseConfig(t *testing.T) {
 
 		conf.Vms[0].Flist = validFlist
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -179,11 +150,7 @@ func TestParseConfig(t *testing.T) {
 
 		conf.Vms[0].Flist = validFlist
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -198,11 +165,7 @@ func TestParseConfig(t *testing.T) {
 
 		conf.Vms[0].Flist = validFlist
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -217,11 +180,7 @@ func TestParseConfig(t *testing.T) {
 
 		conf.NodeGroups[0].FreeCPU = 2
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -236,11 +195,7 @@ func TestParseConfig(t *testing.T) {
 
 		conf.NodeGroups[0].FreeMRU = 256
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -255,11 +210,7 @@ func TestParseConfig(t *testing.T) {
 
 		conf.Vms[0].FreeCPU = 2
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -274,17 +225,13 @@ func TestParseConfig(t *testing.T) {
 
 		conf.Vms[0].FreeMRU = 256
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
 	})
 
-	t.Run("cpu exeed limit in vm", func(t *testing.T) {
+	t.Run("cpu exceed limit in vm", func(t *testing.T) {
 		conf := confStruct
 		conf.Vms[0].FreeCPU = 35
 
@@ -293,17 +240,13 @@ func TestParseConfig(t *testing.T) {
 
 		conf.Vms[0].FreeCPU = 2
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
 	})
 
-	t.Run("memory exeed limit in vm", func(t *testing.T) {
+	t.Run("memory exceed limit in vm", func(t *testing.T) {
 		conf := confStruct
 		conf.Vms[0].FreeMRU = 300000
 
@@ -312,17 +255,13 @@ func TestParseConfig(t *testing.T) {
 
 		conf.Vms[0].FreeMRU = 256
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
 	})
 
-	t.Run("root size exeed limit in vm", func(t *testing.T) {
+	t.Run("root size exceed limit in vm", func(t *testing.T) {
 		conf := confStruct
 		conf.Vms[0].Rootsize = 20000
 
@@ -331,11 +270,7 @@ func TestParseConfig(t *testing.T) {
 
 		conf.Vms[0].Rootsize = 0
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.Error(t, err)
@@ -347,11 +282,7 @@ func TestParseConfig(t *testing.T) {
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		err = os.WriteFile(configPath, data, 0667)
-		assert.NoError(t, err)
-
-		configFile, err := os.Open(configPath)
-		assert.NoError(t, err)
+		configFile := strings.NewReader(string(data))
 
 		_, err = ParseConfig(configFile)
 		assert.NoError(t, err)
