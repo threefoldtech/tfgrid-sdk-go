@@ -58,3 +58,12 @@ type vmDeploymentInfo struct {
 	vmName         string
 	deploymentName string
 }
+
+type vmOutput struct {
+	Name      string
+	PublicIP4 string
+	PublicIP6 string
+	YggIP     string
+	IP        string
+	Mounts    []workloads.Mount
+}

@@ -8,8 +8,8 @@
       "free_ssd": 100,
       "free_hdd": 50,
       "dedicated": false,
-      "pubip4": false,
-      "pubip6": false,
+      "public_ip4": false,
+      "public_ip6": false,
       "certified": false,
       "region": "europe"
     }
@@ -17,7 +17,7 @@
   "vms": [
     {
       "name": "examplevm123",
-      "vms_count": 3,
+      "vms_count": 1,
       "node_group": "group_a",
       "cpu": 1,
       "mem": 256,

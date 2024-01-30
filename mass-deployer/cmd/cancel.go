@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -24,8 +25,9 @@ var cancelCmd = &cobra.Command{
 			log.Fatal().Err(err).Msgf("failed to open config file: %s", configPath)
 		}
 		defer configFile.Close()
+		jsonFmt := filepath.Ext(configPath) == ".json"
 
-		cfg, err := parser.ParseConfig(configFile)
+		cfg, err := parser.ParseConfig(configFile, jsonFmt)
 		if err != nil {
 			log.Fatal().Err(err).Msgf("failed to parse config file: %s", configPath)
 		}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -18,8 +19,8 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-func RunDeployer(cfg Config, ctx context.Context, jsonFmt bool) error {
-	passedGroups := map[string][]string{}
+func RunDeployer(cfg Config, ctx context.Context, output string) error {
+	passedGroups := map[string][]vmOutput{}
 	failedGroups := map[string]error{}
 
 	tfPluginClient, err := setup(cfg)
@@ -38,7 +39,7 @@ func RunDeployer(cfg Config, ctx context.Context, jsonFmt bool) error {
 				log.Debug().Msgf("retrying to deploy node group %s", nodeGroup.Name)
 			}
 
-			info, err := deployNodeGroup(tfPluginClient, ctx, nodeGroup, cfg.Vms, cfg.SSHKeys, jsonFmt)
+			info, err := deployNodeGroup(tfPluginClient, ctx, nodeGroup, cfg.Vms, cfg.SSHKeys)
 			if err != nil {
 				firstTrial = false
 				log.Debug().Err(err).Msgf("failed to deploy node group %s", nodeGroup.Name)
@@ -55,36 +56,40 @@ func RunDeployer(cfg Config, ctx context.Context, jsonFmt bool) error {
 
 	log.Info().Msgf("deployment took %s", time.Since(deploymentStart))
 
-	if len(passedGroups) > 0 {
-		fmt.Println("ok:")
+	outData := struct {
+		OK    map[string][]vmOutput `json:"ok"`
+		Error map[string]error      `json:"error"`
+	}{
+		OK:    passedGroups,
+		Error: failedGroups,
 	}
-	for group, info := range passedGroups {
-		fmt.Printf("%s:\n", group)
-		for _, s := range info {
-			fmt.Println(s)
-		}
+	var out []byte
+	if filepath.Ext(output) == ".json" {
+		out, err = json.MarshalIndent(outData, "", "  ")
+	} else {
+		out, err = yaml.Marshal(outData)
 	}
-
-	if len(failedGroups) > 0 {
-		fmt.Fprintln(os.Stderr, "error:")
+	fmt.Println(string(out))
+	if output == "" {
+		return nil
 	}
-	for group, err := range failedGroups {
-		fmt.Fprintf(os.Stderr, "%s: %v\n", group, err)
+	if err := os.WriteFile(output, out, 0644); err != nil {
+		return err
 	}
 	return nil
 }
 
-func deployNodeGroup(tfPluginClient deployer.TFPluginClient, ctx context.Context, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string, jsonFmt bool) ([]string, error) {
+func deployNodeGroup(tfPluginClient deployer.TFPluginClient, ctx context.Context, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]vmOutput, error) {
 	nodesIDs, err := filterNodes(tfPluginClient, nodeGroup, ctx)
 	if err != nil {
-		return []string{}, err
+		return []vmOutput{}, err
 	}
 
 	groupsDeployments := parseGroupVMs(vms, nodeGroup.Name, nodesIDs, sshKeys)
 
-	info, err := massDeploy(tfPluginClient, ctx, groupsDeployments, jsonFmt)
+	info, err := massDeploy(tfPluginClient, ctx, groupsDeployments)
 	if err != nil {
-		return []string{}, err
+		return []vmOutput{}, err
 	}
 
 	return info, nil
@@ -101,19 +106,19 @@ func parseGroupVMs(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[stri
 	return buildDeployments(vmsOfNodeGroup, nodeGroup, nodesIDs, sshKeys)
 }
 
-func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, deployments groupDeploymentsInfo, jsonFmt bool) ([]string, error) {
+func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, deployments groupDeploymentsInfo) ([]vmOutput, error) {
 	err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, deployments.networkDeployments)
 	if err != nil {
 		cancelContractsOfFailedDeployments(tfPluginClient, deployments.networkDeployments, []*workloads.Deployment{})
-		return []string{}, err
+		return []vmOutput{}, err
 	}
 
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, deployments.vmDeployments)
 	if err != nil {
 		cancelContractsOfFailedDeployments(tfPluginClient, deployments.networkDeployments, deployments.vmDeployments)
-		return []string{}, err
+		return []vmOutput{}, err
 	}
-	vmsInfo := loadDeploymentsInfo(tfPluginClient, deployments.deploymentsInfo, jsonFmt)
+	vmsInfo := loadDeploymentsInfo(tfPluginClient, deployments.deploymentsInfo)
 
 	return vmsInfo, nil
 }
@@ -189,8 +194,8 @@ func cancelContractsOfFailedDeployments(tfPluginClient deployer.TFPluginClient, 
 	}
 }
 
-func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployments []vmDeploymentInfo, jsonFmt bool) []string {
-	vmsInfo := []string{}
+func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployments []vmDeploymentInfo) []vmOutput {
+	vmsInfo := []vmOutput{}
 	var lock sync.Mutex
 	var wg sync.WaitGroup
 
@@ -206,27 +211,14 @@ func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployments []v
 				return
 			}
 
-			vmInfo := struct {
-				Name      string
-				PublicIP4 string
-				PublicIP6 string
-				YggIP     string
-				IP        string
-				Mounts    []workloads.Mount
-			}{vm.Name, vm.ComputedIP, vm.ComputedIP6, vm.YggIP, vm.IP, vm.Mounts}
-			var groupInfo []byte
-			if jsonFmt {
-				groupInfo, err = json.MarshalIndent(vmInfo, "", "  ")
-			} else {
-				groupInfo, err = yaml.Marshal(vmInfo)
-			}
+			vmInfo := vmOutput{vm.Name, vm.ComputedIP, vm.ComputedIP6, vm.YggIP, vm.IP, vm.Mounts}
 			if err != nil {
 				log.Debug().Err(err).Msg("failed to marshal output")
 			}
 
 			lock.Lock()
 			defer lock.Unlock()
-			vmsInfo = append(vmsInfo, string(groupInfo))
+			vmsInfo = append(vmsInfo, vmInfo)
 		}(info)
 	}
 
