@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -17,7 +18,7 @@ const (
 	networkKey  = "NETWORK"
 )
 
-func ParseConfig(file io.Reader) (deployer.Config, error) {
+func ParseConfig(file io.Reader, jsonFmt bool) (deployer.Config, error) {
 	conf := deployer.Config{}
 	nodeGroupsNames := []string{}
 
@@ -25,8 +26,11 @@ func ParseConfig(file io.Reader) (deployer.Config, error) {
 	if err != nil {
 		return deployer.Config{}, fmt.Errorf("failed to read the config file %+w", err)
 	}
-
-	err = yaml.Unmarshal(configFile, &conf)
+	if jsonFmt {
+		err = json.Unmarshal(configFile, &conf)
+	} else {
+		err = yaml.Unmarshal(configFile, &conf)
+	}
 	if err != nil {
 		return deployer.Config{}, err
 	}
