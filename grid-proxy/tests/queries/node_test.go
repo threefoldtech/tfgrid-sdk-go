@@ -483,6 +483,21 @@ func TestNode(t *testing.T) {
 
 		assert.Equal(t, len(nodes), len(localNodes), "gpu_available filter did not work")
 	})
+
+	t.Run("node staking discount", func(t *testing.T) {
+		t.Parallel()
+
+		limits := proxytypes.DefaultLimit()
+		limits.Balance = 9999999999 // in usd
+
+		got, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{}, limits)
+		assert.NoError(t, err)
+
+		want, _, err := mockClient.Nodes(context.Background(), types.NodeFilter{}, limits)
+		assert.NoError(t, err)
+
+		require.True(t, reflect.DeepEqual(want, got), "failed on testing staking discount", fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+	})
 }
 
 // TestNodeFilter iterates over all NodeFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client

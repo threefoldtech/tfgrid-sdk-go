@@ -63,6 +63,25 @@ func calcNodePrice(db DBData, node Node) float64 {
 	return math.Round(costInUsd*1000) / 1000
 }
 
+func calcDiscount(cost, balance float64) float64 {
+	var discount float64
+	switch {
+	case balance > cost*18:
+		discount = 0.6
+	case balance > cost*6:
+		discount = 0.4
+	case balance > cost*3:
+		discount = 0.3
+	case balance > cost*1.5:
+		discount = 0.2
+	default:
+		discount = 0
+	}
+
+	cost = cost - cost*discount
+	return math.Round(cost*1000) / 1000
+}
+
 // Nodes returns nodes with the given filters and pagination parameters
 func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) (res []types.Node, totalCount int, err error) {
 	res = []types.Node{}
@@ -133,7 +152,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				NumGPU:   numGPU,
 				ExtraFee: node.ExtraFee,
 				Healthy:  g.data.HealthReports[node.TwinID],
-				PriceUsd: calcNodePrice(g.data, node),
+				PriceUsd: calcDiscount(calcNodePrice(g.data, node), limit.Balance),
 			})
 		}
 	}
