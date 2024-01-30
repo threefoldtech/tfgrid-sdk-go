@@ -863,6 +863,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "a balance in usd, used to apply staking discount on nodes price",
+                        "name": "balance",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Min free reservable mru in bytes",
                         "name": "free_mru",
@@ -1056,6 +1062,18 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "get nodes owned by twin id",
                         "name": "owned_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "get nodes with price greater than this",
+                        "name": "price_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "get nodes with price smaller than this",
+                        "name": "price_max",
                         "in": "query"
                     }
                 ],
@@ -1605,6 +1623,9 @@ const docTemplate = `{
                 "power": {
                     "$ref": "#/definitions/types.NodePower"
                 },
+                "price_usd": {
+                    "type": "number"
+                },
                 "publicConfig": {
                     "$ref": "#/definitions/types.PublicConfig"
                 },
@@ -1772,6 +1793,9 @@ const docTemplate = `{
                 },
                 "power": {
                     "$ref": "#/definitions/types.NodePower"
+                },
+                "price_usd": {
+                    "type": "number"
                 },
                 "publicConfig": {
                     "$ref": "#/definitions/types.PublicConfig"
