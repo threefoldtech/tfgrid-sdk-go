@@ -50,8 +50,9 @@ func (d *NetworkDeployer) Validate(ctx context.Context, znet *workloads.ZNet) er
 	return d.InvalidateBrokenAttributes(znet)
 }
 
-// GenerateVersionlessDeployments generates deployments for network deployer without versions
-func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, znet *workloads.ZNet) (map[uint32]gridtypes.Deployment, error) {
+// GenerateVersionlessDeployments generates deployments for network deployer without versions.
+// usedPorts can be used to exclude some ports from being assigned to networks
+func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, znet *workloads.ZNet, usedPorts map[uint32][]uint16) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
 
 	log.Debug().Msgf("nodes: %v", znet.Nodes)
@@ -121,7 +122,7 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 	if err := znet.AssignNodesWGKey(allNodes); err != nil {
 		return nil, errors.Wrap(err, "could not assign node wg keys")
 	}
-	if err := znet.AssignNodesWGPort(ctx, sub, d.tfPluginClient.NcPool, allNodes); err != nil {
+	if err := znet.AssignNodesWGPort(ctx, sub, d.tfPluginClient.NcPool, allNodes, usedPorts); err != nil {
 		return nil, errors.Wrap(err, "could not assign node wg ports")
 	}
 
@@ -274,7 +275,7 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 		return err
 	}
 
-	newDeployments, err := d.GenerateVersionlessDeployments(ctx, znet)
+	newDeployments, err := d.GenerateVersionlessDeployments(ctx, znet, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not generate deployments data")
 	}
@@ -310,17 +311,17 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 }
 
 // BatchDeploy deploys multiple network deployments using the deployer
-func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZNet) error {
+func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZNet, updateMetadata ...bool) error {
 	newDeployments := make(map[uint32][]gridtypes.Deployment)
 	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
-
+	nodePorts := make(map[uint32][]uint16)
 	for _, znet := range znets {
 		err := d.Validate(ctx, znet)
 		if err != nil {
 			return err
 		}
 
-		dls, err := d.GenerateVersionlessDeployments(ctx, znet)
+		dls, err := d.GenerateVersionlessDeployments(ctx, znet, nodePorts)
 		if err != nil {
 			return errors.Wrap(err, "could not generate deployments data")
 		}
@@ -339,10 +340,15 @@ func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZN
 
 	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
 
+	update := true
+	if len(updateMetadata) != 0 {
+		update = updateMetadata[0]
+	}
+
 	// update deployment and plugin state
 	// error is not returned immediately before updating state because of untracked failed deployments
 	for _, znet := range znets {
-		if err := d.updateStateFromDeployments(ctx, znet, newDls); err != nil {
+		if err := d.updateStateFromDeployments(ctx, znet, newDls, update); err != nil {
 			return errors.Wrapf(err, "failed to update network '%s' state", znet.Name)
 		}
 	}
@@ -376,7 +382,7 @@ func (d *NetworkDeployer) Cancel(ctx context.Context, znet *workloads.ZNet) erro
 	return nil
 }
 
-func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *workloads.ZNet, dls map[uint32][]gridtypes.Deployment) error {
+func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *workloads.ZNet, dls map[uint32][]gridtypes.Deployment, updateMetadata bool) error {
 	znet.NodeDeploymentID = map[uint32]uint64{}
 
 	for _, nodeID := range znet.Nodes {
@@ -400,6 +406,9 @@ func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *
 		}
 	}
 
+	if !updateMetadata {
+		return nil
+	}
 	if err := d.ReadNodesConfig(ctx, znet); err != nil {
 		return errors.Wrapf(err, "could not read node's data for network %s", znet.Name)
 	}

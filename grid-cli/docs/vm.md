@@ -1,11 +1,11 @@
 # Virtual Machine
 
-This document explains Virtual Machine related commands using tf-grid-cli.
+This document explains Virtual Machine related commands using tfcmd.
 
 ## Deploy
 
 ```bash
-tf-grid-cli deploy vm [flags]
+tfcmd deploy vm [flags]
 ```
 
 ### Required Flags
@@ -33,7 +33,7 @@ Example:
 - Deploying VM without GPU
 
 ```console
-$ tf-grid-cli deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10
+$ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10
 12:06PM INF deploying network
 12:06PM INF deploying vm
 12:07PM INF vm yggdrasil ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
@@ -41,7 +41,7 @@ $ tf-grid-cli deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memor
 - Deploying VM with GPU
 
 ```console
-$ tf-grid-cli deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10 --gpus '0000:0e:00.0/1882/543f' --gpus '0000:0e:00.0/1887/593f' --node 12
+$ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10 --gpus '0000:0e:00.0/1882/543f' --gpus '0000:0e:00.0/1887/593f' --node 12
 12:06PM INF deploying network
 12:06PM INF deploying vm
 12:07PM INF vm yggdrasil ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
@@ -50,15 +50,15 @@ $ tf-grid-cli deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memor
 ## Get
 
 ```bash
-tf-grid-cli get vm <vm>
+tfcmd get vm <vm>
 ```
 
-vm is the name used when deploying vm using tf-grid-cli.
+vm is the name used when deploying vm using tfcmd.
 
 Example:
 
 ```console
-$ tf-grid-cli get vm examplevm
+$ tfcmd get vm examplevm
 3:20PM INF vm:
 {
         "Name": "examplevm",
@@ -116,15 +116,15 @@ $ tf-grid-cli get vm examplevm
 ## Cancel
 
 ```bash
-tf-grid-cli cancel <deployment-name>
+tfcmd cancel <deployment-name>
 ```
 
-deployment-name is the name of the deployment specified in while deploying using tf-grid-cli.
+deployment-name is the name of the deployment specified in while deploying using tfcmd.
 
 Example:
 
 ```console
-$ tf-grid-cli cancel examplevm
+$ tfcmd cancel examplevm
 3:37PM INF canceling contracts for project examplevm
 3:37PM INF examplevm canceled
 ```

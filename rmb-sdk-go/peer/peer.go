@@ -103,7 +103,12 @@ func NewPeer(
 		return nil, err
 	}
 
-	twinDB := NewTwinDB(subManager)
+	subConn, err := subManager.Substrate()
+	if err != nil {
+		return nil, err
+	}
+
+	twinDB := NewTwinDB(subConn)
 	id, err := twinDB.GetByPk(identity.PublicKey())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get twin by public key")

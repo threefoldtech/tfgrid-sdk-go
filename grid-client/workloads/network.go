@@ -214,24 +214,29 @@ func (znet *ZNet) AssignNodesIPs(nodes []uint32) error {
 }
 
 // AssignNodesWGPort assign network nodes wireguard port
-func (znet *ZNet) AssignNodesWGPort(ctx context.Context, sub subi.SubstrateExt, ncPool client.NodeClientGetter, nodes []uint32) error {
+func (znet *ZNet) AssignNodesWGPort(ctx context.Context, sub subi.SubstrateExt, ncPool client.NodeClientGetter, nodes []uint32, usedPorts map[uint32][]uint16) error {
+	if usedPorts == nil {
+		usedPorts = make(map[uint32][]uint16)
+	}
 	for _, nodeID := range nodes {
-		if _, ok := znet.WGPort[nodeID]; !ok {
-			cl, err := ncPool.GetNodeClient(sub, nodeID)
-			if err != nil {
-				return errors.Wrap(err, "could not get node client")
-			}
-			port, err := cl.GetNodeFreeWGPort(ctx, nodeID)
-			if err != nil {
-				return errors.Wrapf(err, "failed to get node %d free wg ports", nodeID)
-			}
-
-			if len(znet.WGPort) == 0 {
-				znet.WGPort = map[uint32]int{nodeID: port}
-				continue
-			}
-			znet.WGPort[nodeID] = port
+		if _, ok := znet.WGPort[nodeID]; ok {
+			continue
 		}
+		cl, err := ncPool.GetNodeClient(sub, nodeID)
+		if err != nil {
+			return errors.Wrap(err, "could not get node client")
+		}
+		port, err := cl.GetNodeFreeWGPort(ctx, nodeID, usedPorts[nodeID])
+		if err != nil {
+			return errors.Wrapf(err, "failed to get node %d free wg ports", nodeID)
+		}
+		usedPorts[nodeID] = append(usedPorts[nodeID], uint16(port))
+
+		if len(znet.WGPort) == 0 {
+			znet.WGPort = map[uint32]int{nodeID: port}
+			continue
+		}
+		znet.WGPort[nodeID] = port
 	}
 
 	return nil

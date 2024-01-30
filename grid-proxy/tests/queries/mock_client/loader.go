@@ -519,7 +519,7 @@ func loadCountries(db *sql.DB, data *DBData) error {
 		); err != nil {
 			return err
 		}
-		data.Regions[strings.ToLower(country.Name)] = country.Subregion
+		data.Regions[strings.ToLower(country.Name)] = country.Region
 	}
 
 	return nil

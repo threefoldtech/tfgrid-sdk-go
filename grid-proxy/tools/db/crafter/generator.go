@@ -839,8 +839,8 @@ func (c *Crafter) GenerateCountries() error {
 			country_id: uint64(index),
 			name:       countryName,
 			code:       countriesCodes[countryName],
-			region:     "unknown",
-			subregion:  region,
+			region:     region,
+			subregion:  "unknown",
 			lat:        fmt.Sprintf("%d", 0),
 			long:       fmt.Sprintf("%d", 0),
 		}

@@ -107,10 +107,14 @@ definitions:
         type: integer
       farmId:
         type: integer
+      farmName:
+        type: string
       farmingPolicyId:
         type: integer
       gridVersion:
         type: integer
+      healthy:
+        type: boolean
       id:
         type: string
       inDedicatedFarm:
@@ -213,10 +217,14 @@ definitions:
         type: integer
       farmId:
         type: integer
+      farmName:
+        type: string
       farmingPolicyId:
         type: integer
       gridVersion:
         type: integer
+      healthy:
+        type: boolean
       id:
         type: string
       inDedicatedFarm:
@@ -945,6 +953,11 @@ paths:
         in: query
         name: status
         type: string
+      - description: Healthy nodes filter, 'true' for nodes that responded to rmb
+          call in the last 5 mins
+        in: query
+        name: healthy
+        type: boolean
       - description: Node city filter
         in: query
         name: city

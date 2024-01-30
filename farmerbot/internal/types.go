@@ -49,6 +49,8 @@ type node struct {
 	lastTimePowerStateChanged time.Time
 	lastTimeAwake             time.Time
 	timesRandomWakeUps        int
+	// set the time the node wakes up every day
+	lastTimePeriodicWakeUp time.Time
 }
 
 // NodeFilterOption represents the options to find a node
@@ -61,10 +63,10 @@ type NodeFilterOption struct {
 	Dedicated     bool     `json:"dedicated,omitempty"`
 	PublicConfig  bool     `json:"public_config,omitempty"`
 	PublicIPs     uint64   `json:"public_ips,omitempty"`
-	HRU           uint64   `json:"hru,omitempty"`
-	SRU           uint64   `json:"sru,omitempty"`
+	HRU           uint64   `json:"hru,omitempty"` // in GB
+	SRU           uint64   `json:"sru,omitempty"` // in GB
 	CRU           uint64   `json:"cru,omitempty"`
-	MRU           uint64   `json:"mru,omitempty"`
+	MRU           uint64   `json:"mru,omitempty"` // in GB
 }
 
 // TODO: if one update failed maybe other would not fail
@@ -139,6 +141,12 @@ func (n *node) update(
 		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is off")
 		n.powerState = off
 		n.lastTimePowerStateChanged = time.Now()
+	}
+
+	// don't call rmb over off nodes (state and target are off)
+	if n.powerState == off {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node is off, will skip rmb calls")
+		return nil
 	}
 
 	// update resources for nodes that have no claimed resources

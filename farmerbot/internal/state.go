@@ -21,7 +21,7 @@ type state struct {
 }
 
 // NewState creates new state from configs
-func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config) (*state, error) {
+func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config, twinID uint32) (*state, error) {
 	s := state{config: cfg}
 
 	// required from power for nodes
@@ -36,6 +36,10 @@ func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config)
 	farm, err := sub.GetFarm(cfg.FarmID)
 	if err != nil {
 		return nil, err
+	}
+
+	if twinID != uint32(farm.TwinID) {
+		return nil, fmt.Errorf("you are not authorized to run the farmerbot on farm %d. your twin id is `%d`, only the farm owner with twin id `%d` is authorized", farm.ID, twinID, farm.TwinID)
 	}
 
 	s.farm = *farm
@@ -154,6 +158,12 @@ func getNode(
 		configNode.lastTimePowerStateChanged = time.Now()
 	}
 
+	// don't call rmb over off nodes (state and target are off) allow adding them in farmerbot
+	if configNode.powerState == off {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node is off, will skip rmb calls")
+		return configNode, nil
+	}
+
 	// update resources for nodes that have no claimed resources
 	// we do not update the resources for the nodes that have claimed resources because those resources should not be overwritten until the timeout
 	if !hasClaimedResources {
@@ -251,13 +261,14 @@ func (s *state) validate() error {
 		if n.TwinID == 0 {
 			return fmt.Errorf("node %d: twin_id is required", n.ID)
 		}
-		if n.resources.total.sru == 0 {
+
+		if n.resources.total.sru == 0 && n.Resources.SRU == 0 {
 			return fmt.Errorf("node %d: total SRU is required", n.ID)
 		}
-		if n.resources.total.cru == 0 {
+		if n.resources.total.cru == 0 && n.Resources.CRU == 0 {
 			return fmt.Errorf("node %d: total CRU is required", n.ID)
 		}
-		if n.resources.total.mru == 0 {
+		if n.resources.total.mru == 0 && n.Resources.MRU == 0 {
 			return fmt.Errorf("node %d: total MRU is required", n.ID)
 		}
 
@@ -270,6 +281,7 @@ func (s *state) validate() error {
 	// required values for power
 	if s.config.Power.WakeUpThreshold == 0 {
 		s.config.Power.WakeUpThreshold = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold has not been set. setting it to %d", defaultWakeUpThreshold)
 	}
 
 	if s.config.Power.WakeUpThreshold < 1 || s.config.Power.WakeUpThreshold > 100 {
@@ -278,23 +290,23 @@ func (s *state) validate() error {
 
 	if s.config.Power.WakeUpThreshold < minWakeUpThreshold {
 		s.config.Power.WakeUpThreshold = minWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to minimum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]. Setting it to minimum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
 	}
 
 	if s.config.Power.WakeUpThreshold > maxWakeUpThreshold {
 		s.config.Power.WakeUpThreshold = maxWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d], setting it to maximum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]. Setting it to maximum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
 	}
 
 	if s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {
 		s.config.Power.PeriodicWakeUpStart = wakeUpDate(time.Now())
-		log.Warn().Time("periodic wakeup start", s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()).Msg("The setting periodic_wake_up_start is zero. setting it with current time")
+		log.Warn().Time("periodic wakeup start", s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()).Msg("The setting periodic_wake_up_start has not been set. Setting it with current time")
 	}
 	s.config.Power.PeriodicWakeUpStart = wakeUpDate(s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime())
 
 	if s.config.Power.PeriodicWakeUpLimit == 0 {
 		s.config.Power.PeriodicWakeUpLimit = defaultPeriodicWakeUPLimit
-		log.Warn().Msgf("The setting periodic_wake_up_limit should be greater then 0! setting it to %d", defaultPeriodicWakeUPLimit)
+		log.Warn().Msgf("The setting periodic_wake_up_limit has not been set. setting it to %d", defaultPeriodicWakeUPLimit)
 	}
 
 	return nil

@@ -120,7 +120,7 @@ SELECT
     count(node_contract.contract_id) as node_contracts_count,
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     node.country as country,
-    country.subregion as region,
+    country.region as region,
     CASE WHEN node.certification = 'Certified' THEN true ELSE false END as certified,
     farm.pricing_policy_id as policy_id,
     COALESCE(node.extra_fee, 0) as extra_fee
@@ -153,7 +153,7 @@ GROUP BY
     node.certification,
     node.extra_fee,
     farm.pricing_policy_id,
-    country.subregion;
+    country.region;
 
 DROP TABLE IF EXISTS resources_cache;
 CREATE TABLE IF NOT EXISTS resources_cache(
@@ -267,7 +267,7 @@ BEGIN
             SET
                 country = NEW.country,
                 region = (
-                    SELECT subregion FROM country WHERE LOWER(country.name) = LOWER(NEW.country)
+                    SELECT region FROM country WHERE LOWER(country.name) = LOWER(NEW.country)
                 )
             WHERE
                 resources_cache.node_id = NEW.node_id;

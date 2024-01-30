@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"math/big"
 	"math/rand"
 	"slices"
 	"time"
@@ -24,12 +23,14 @@ type FarmerBot struct {
 	rmbNodeClient    RMB
 	network          string
 	mnemonicOrSeed   string
+	keyType          string
 	identity         substrate.Identity
+	twinID           uint32
 }
 
 // NewFarmerBot generates a new farmer bot
-func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed string) (FarmerBot, error) {
-	identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonicOrSeed)
+func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, keyType string) (FarmerBot, error) {
+	identity, err := GetIdentityWithKeyType(mnemonicOrSeed, keyType)
 	if err != nil {
 		return FarmerBot{}, err
 	}
@@ -38,10 +39,11 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 		substrateManager: substrate.NewManager(SubstrateURLs[network]...),
 		network:          network,
 		mnemonicOrSeed:   mnemonicOrSeed,
+		keyType:          keyType,
 		identity:         identity,
 	}
 
-	rmb, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, farmerbot.mnemonicOrSeed, relayURLs[network], fmt.Sprintf("farmerbot-rpc-%d", config.FarmID), farmerbot.substrateManager, true)
+	rmb, err := peer.NewRpcClient(ctx, keyType, farmerbot.mnemonicOrSeed, relayURLs[network], fmt.Sprintf("farmerbot-rpc-%d", config.FarmID), farmerbot.substrateManager, true)
 	if err != nil {
 		return FarmerBot{}, fmt.Errorf("could not create rmb client with error %w", err)
 	}
@@ -54,7 +56,13 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed st
 	}
 	defer subConn.Close()
 
-	state, err := newState(ctx, subConn, farmerbot.rmbNodeClient, config)
+	twinID, err := subConn.GetTwinByPubKey(identity.PublicKey())
+	if err != nil {
+		return FarmerBot{}, err
+	}
+	farmerbot.twinID = twinID
+
+	state, err := newState(ctx, subConn, farmerbot.rmbNodeClient, config, twinID)
 	if err != nil {
 		return FarmerBot{}, err
 	}
@@ -108,17 +116,30 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	}
 	// defer subConn.Close()
 
-	if err := f.validateAccountEnoughBalance(subConn, minBalanceToRun); err != nil {
-		return fmt.Errorf("failed to validate account balance: %w", err)
-	}
-
-	farmerTwinID, err := subConn.GetTwinByPubKey(f.identity.PublicKey())
+	balance, err := f.getAccountBalanceInTFT(subConn)
 	if err != nil {
 		return err
 	}
 
+	if balance < minBalanceToRun {
+		return fmt.Errorf("account contains %v tft, you need to have at least %v tft", balance, minBalanceToRun)
+	}
+
+	if balance < recommendedBalanceToRun {
+		log.Warn().Float64("current balance", balance).Msgf("Recommended balance to run farmerbot is %v tft", recommendedBalanceToRun)
+	}
+
 	farmRouter.WithHandler("version", func(ctx context.Context, payload []byte) (interface{}, error) {
 		return version.Version, nil
+	})
+
+	farmRouter.WithHandler("report", func(ctx context.Context, payload []byte) (interface{}, error) {
+		var nodesReport []NodeReport
+		for _, node := range f.nodes {
+			nodesReport = append(nodesReport, createNodeReport(node))
+		}
+
+		return nodesReport, nil
 	})
 
 	nodeRouter.WithHandler("findnode", func(ctx context.Context, payload []byte) (interface{}, error) {
@@ -133,7 +154,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	powerRouter.WithHandler("includenode", func(ctx context.Context, payload []byte) (interface{}, error) {
-		err := authorize(ctx, farmerTwinID)
+		err := authorize(ctx, f.twinID)
 		if err != nil {
 			return nil, err
 		}
@@ -164,12 +185,12 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	powerRouter.WithHandler("poweroff", func(ctx context.Context, payload []byte) (interface{}, error) {
-		err := authorize(ctx, farmerTwinID)
+		err := authorize(ctx, f.twinID)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := f.validateAccountEnoughBalance(subConn, 0); err != nil {
+		if err := f.validateAccountEnoughBalance(subConn); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
@@ -190,12 +211,12 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	powerRouter.WithHandler("poweron", func(ctx context.Context, payload []byte) (interface{}, error) {
-		err := authorize(ctx, farmerTwinID)
+		err := authorize(ctx, f.twinID)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := f.validateAccountEnoughBalance(subConn, 0); err != nil {
+		if err := f.validateAccountEnoughBalance(subConn); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
 
@@ -222,6 +243,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		router.Serve,
 		peer.WithRelay(relayURLs[f.network]),
 		peer.WithSession(fmt.Sprintf("farmerbot-%d", f.farm.ID)),
+		peer.WithKeyType(f.keyType),
 	)
 
 	if err != nil {
@@ -268,7 +290,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 		node := f.state.nodes[nodeID]
 
 		if node.powerState == off && (node.neverShutDown || node.hasActiveRentContract) {
-			log.Debug().Uint32("nodeID", nodeID).Msg("Power on node because it is set to never shutdown")
+			log.Debug().Uint32("nodeID", nodeID).Msg("Power on node because it is set to never shutdown or has a rent contract")
 			err := f.powerOn(subConn, nodeID)
 			if err != nil {
 				log.Error().Err(err).Send()
@@ -284,7 +306,12 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 			}
 		}
 
-		if f.shouldWakeUp(subConn, node, roundStart) && wakeUpCalls < f.config.Power.PeriodicWakeUpLimit {
+		if f.shouldWakeUp(subConn, &node, roundStart, wakeUpCalls) {
+			err = f.state.updateNode(node)
+			if err != nil {
+				log.Error().Err(err).Send()
+			}
+
 			err := f.powerOn(subConn, nodeID)
 			if err != nil {
 				log.Error().Err(err).Uint32("nodeID", nodeID).Msg("failed to power on node")
@@ -300,6 +327,8 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 	if err != nil {
 		return fmt.Errorf("failed to manage nodes power with error: %w", err)
 	}
+
+	log.Debug().Msgf("Nodes report\n%v", f.report())
 
 	return nil
 }
@@ -335,8 +364,10 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 	return nil
 }
 
-func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time) bool {
-	if node.powerState != off {
+func (f *FarmerBot) shouldWakeUp(sub Substrate, node *node, roundStart time.Time, wakeUpCalls uint8) bool {
+	if node.powerState != off ||
+		time.Since(node.lastTimePowerStateChanged) < periodicWakeUpDuration ||
+		wakeUpCalls >= f.config.Power.PeriodicWakeUpLimit {
 		return false
 	}
 
@@ -345,6 +376,7 @@ func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time)
 		// we wake up the node if the periodic wake up start time has started and only if the last time the node was awake
 		// was before the periodic wake up start of that day
 		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Periodic wake up")
+		node.lastTimePeriodicWakeUp = time.Now()
 		return true
 	}
 
@@ -362,31 +394,37 @@ func (f *FarmerBot) shouldWakeUp(sub Substrate, node node, roundStart time.Time)
 		// we also do not go through the code if we have woken up too many nodes at once => subtract (10 * (n-1))/min(periodic_wake up_limit, amount_of_nodes) from 8460
 		// now we can divide that by 10 and randomly generate a number in that range, if it's 0 we do the random wake up
 		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Random wake up")
+		node.timesRandomWakeUps++
 		return true
 	}
 
 	return false
 }
 
-func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate, required float64) error {
-	if required == 0 {
-		required = 0.002
-	}
-
-	requiredBalanceInTFT := int64(required * math.Pow(10, 7))
-
+func (f *FarmerBot) getAccountBalanceInTFT(sub *substrate.Substrate) (float64, error) {
 	accountAddress, err := substrate.FromAddress(f.identity.Address())
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	balance, err := sub.GetBalance(accountAddress)
 	if err != nil && !errors.Is(err, substrate.ErrAccountNotFound) {
-		return fmt.Errorf("failed to get a valid account with error: %w", err)
+		return 0, fmt.Errorf("failed to get a valid account with error: %w", err)
 	}
 
-	if balance.Free.Cmp(big.NewInt(requiredBalanceInTFT)) == -1 {
-		return fmt.Errorf("account contains %f tft, min fee is 0.002 tft", float64(balance.Free.Int64())/math.Pow(10, 7))
+	return float64(balance.Free.Int64()) / math.Pow(10, 7), nil
+}
+
+func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate) error {
+	required := 0.002
+
+	balance, err := f.getAccountBalanceInTFT(sub)
+	if err != nil {
+		return err
+	}
+
+	if balance < required {
+		return fmt.Errorf("account contains %v tft, you need to have at least %v tft", balance, required)
 	}
 
 	return nil

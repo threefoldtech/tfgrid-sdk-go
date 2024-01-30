@@ -917,6 +917,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Healthy nodes filter, 'true' for nodes that responded to rmb call in the last 5 mins",
+                        "name": "healthy",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Node city filter",
                         "name": "city",
@@ -1569,11 +1575,17 @@ const docTemplate = `{
                 "farmId": {
                     "type": "integer"
                 },
+                "farmName": {
+                    "type": "string"
+                },
                 "farmingPolicyId": {
                     "type": "integer"
                 },
                 "gridVersion": {
                     "type": "integer"
+                },
+                "healthy": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "string"
@@ -1731,11 +1743,17 @@ const docTemplate = `{
                 "farmId": {
                     "type": "integer"
                 },
+                "farmName": {
+                    "type": "string"
+                },
                 "farmingPolicyId": {
                     "type": "integer"
                 },
                 "gridVersion": {
                     "type": "integer"
+                },
+                "healthy": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "string"

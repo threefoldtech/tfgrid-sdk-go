@@ -23,6 +23,22 @@ builds:
       - linux
       - windows
       - darwin
+    binary: tfcmd
+    id: tfcmd
+
+    ignore:
+      - goos: windows
+    ldflags:
+      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version={{.Tag}}
+      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit={{.Commit}}
+
+  - dir: ./grid-cli
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
     binary: tf-grid-cli
     id: tf-grid-cli
 
@@ -31,6 +47,22 @@ builds:
     ldflags:
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit={{.Commit}}
+
+  - dir: ./mass-deployer
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    binary: tfrobot
+    id: tfrobot
+
+    ignore:
+      - goos: windows
+    ldflags:
+      - -X github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/cmd.version={{.Tag}}
+      - -X github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/cmd.commit={{.Commit}}
 
   - dir: ./grid-proxy/cmds/proxy_server
     env:
