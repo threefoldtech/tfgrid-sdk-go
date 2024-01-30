@@ -95,7 +95,7 @@ tfrobot deploy -c path/to/your/config.yaml
 | public_ip4 | should the vm have free ip v4 | bool value |
 | public_ip6 | should the vm have free ip v6 | bool value |
 | flist | should be a link to valid flist | valid flist url |
-| entry_point | entry point of the flist | bath to the entry point |
+| entry_point | entry point of the flist | path to the entry point |
 | ssh_key | key of ssh key defined in the ssh_keys map | should be valid ssh_key defined in the ssh_keys map |
 | env_vars | map of env vars | map of type string to string |
 | ssd | list of disks | should be of type disk|
