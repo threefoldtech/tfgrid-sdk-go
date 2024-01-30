@@ -29,12 +29,15 @@ func RunDeployer(cfg Config, ctx context.Context, output string) error {
 	}
 
 	deploymentStart := time.Now()
+	if cfg.MaxRetries == 0 {
+		cfg.MaxRetries = 5
+	}
 
 	for _, nodeGroup := range cfg.NodeGroups {
 		log.Info().Msgf("running deployer for node group %s", nodeGroup.Name)
 		firstTrial := true
 
-		if err := retry.Do(ctx, retry.WithMaxRetries(2, retry.NewConstant(1*time.Nanosecond)), func(ctx context.Context) error {
+		if err := retry.Do(ctx, retry.WithMaxRetries(uint64(cfg.MaxRetries), retry.NewConstant(1*time.Nanosecond)), func(ctx context.Context) error {
 			if !firstTrial {
 				log.Debug().Msgf("retrying to deploy node group %s", nodeGroup.Name)
 			}
