@@ -21,7 +21,7 @@ import (
 
 func RunDeployer(cfg Config, ctx context.Context, output string) error {
 	passedGroups := map[string][]vmOutput{}
-	failedGroups := map[string]error{}
+	failedGroups := map[string]string{}
 
 	tfPluginClient, err := setup(cfg)
 	if err != nil {
@@ -53,7 +53,7 @@ func RunDeployer(cfg Config, ctx context.Context, output string) error {
 			log.Info().Msgf("done deploying node group %s", nodeGroup.Name)
 			return nil
 		}); err != nil {
-			failedGroups[nodeGroup.Name] = err
+			failedGroups[nodeGroup.Name] = err.Error()
 		}
 	}
 
@@ -61,7 +61,7 @@ func RunDeployer(cfg Config, ctx context.Context, output string) error {
 
 	outData := struct {
 		OK    map[string][]vmOutput `json:"ok"`
-		Error map[string]error      `json:"error"`
+		Error map[string]string     `json:"error"`
 	}{
 		OK:    passedGroups,
 		Error: failedGroups,
