@@ -1,6 +1,7 @@
 package deployer
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ func (t *TFPluginClient) CancelByProjectName(projectName string) error {
 	if err != nil {
 		return errors.Wrapf(err, "could not load contracts for project %s", projectName)
 	}
+	contractIDS := make([]uint64, 0)
 
 	contractsSlice := append(contracts.NameContracts, contracts.NodeContracts...)
 	for _, contract := range contractsSlice {
@@ -21,12 +23,12 @@ func (t *TFPluginClient) CancelByProjectName(projectName string) error {
 		if err != nil {
 			return errors.Wrapf(err, "could not parse contract %s into uint64", contract.ContractID)
 		}
-		log.Debug().Uint64("canceling contract", contractID)
-		err = t.SubstrateConn.CancelContract(t.Identity, contractID)
-		if err != nil {
-			return errors.Wrapf(err, "could not cancel contract %d", contractID)
-		}
+		contractIDS = append(contractIDS, contractID)
 	}
+	if err := t.BatchCancelContract(contractIDS); err != nil {
+		return fmt.Errorf("failed to cancel contracts for project %s: %w", projectName, err)
+	}
+
 	log.Info().Msgf("%s canceled", projectName)
 	return nil
 }
