@@ -204,7 +204,7 @@ func (np *NodePower) Scan(value interface{}) error {
 
 // GetNode returns node info
 func (d *PostgresDatabase) GetNode(ctx context.Context, nodeID uint32) (Node, error) {
-	q := d.nodeTableQuery(ctx, types.NodeFilter{}, &gorm.DB{})
+	q := d.nodeTableQuery(ctx, types.NodeFilter{}, &gorm.DB{}, 0)
 	q = q.Where("node.node_id = ?", nodeID)
 	var node Node
 	res := q.Scan(&node)
@@ -260,7 +260,8 @@ func printQuery(query string, args ...interface{}) {
 	fmt.Printf("node query: %s", query)
 }
 
-func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.NodeFilter, nodeGpuSubquery *gorm.DB) *gorm.DB {
+func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.NodeFilter, nodeGpuSubquery *gorm.DB, balance float64) *gorm.DB {
+	calculatedDiscountColumn := fmt.Sprintf("calc_discount(resources_cache.price_usd, %f) AS price_usd", balance)
 	q := d.gormDB.WithContext(ctx).
 		Table("node").
 		Select(
@@ -301,7 +302,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.node_contracts_count",
 			"resources_cache.node_gpu_count AS num_gpu",
 			"health_report.healthy",
-			"resources_cache.price_usd",
+			calculatedDiscountColumn,
 		).
 		Joins(`
 			LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id
@@ -519,7 +520,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		nodeGpuSubquery = nodeGpuSubquery.Where("(COALESCE(node_gpu.contract, 0) = 0) = ?", *filter.GpuAvailable)
 	}
 
-	q := d.nodeTableQuery(ctx, filter, nodeGpuSubquery)
+	q := d.nodeTableQuery(ctx, filter, nodeGpuSubquery, limit.Balance)
 
 	condition := "TRUE"
 	if filter.Status != nil {
@@ -621,10 +622,10 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where(`COALESCE(farm.twin_id, 0) = ?`, *filter.OwnedBy)
 	}
 	if filter.PriceMin != nil {
-		q = q.Where(`COALESCE(resources_cache.price_usd, 0) >= ?`, *filter.PriceMin)
+		q = q.Where(`calc_discount(resources_cache.price_usd, ?) >= ?`, limit.Balance, *filter.PriceMin)
 	}
 	if filter.PriceMax != nil {
-		q = q.Where(`COALESCE(resources_cache.price_usd, 0) <= ?`, *filter.PriceMax)
+		q = q.Where(`calc_discount(resources_cache.price_usd, ?) <= ?`, limit.Balance, *filter.PriceMax)
 	}
 
 	var count int64

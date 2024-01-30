@@ -20,6 +20,27 @@ RETURN v_dec_value;
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION calc_discount(
+    cost NUMERIC,
+    balance NUMERIC
+) RETURNS NUMERIC AS $$
+
+DECLARE
+    discount NUMERIC;
+
+BEGIN
+    discount := (
+    CASE 
+        WHEN balance >= cost * 18 THEN 0.6
+        WHEN balance >= cost * 6 THEN 0.4
+        WHEN balance >= cost * 3 THEN 0.3
+        WHEN balance >= cost * 1.5 THEN 0.2
+        ELSE 0
+    END);
+
+    RETURN cost - cost * discount;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION calc_price(
     cru NUMERIC,
