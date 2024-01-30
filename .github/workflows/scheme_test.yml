@@ -23,20 +23,7 @@ jobs:
     defaults:
       run:
         working-directory: grid-proxy
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: tfgrid-graphql
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,11 +43,15 @@ jobs:
 
       - name: Build
         run: |
-          export PATH=/home/runner/go/bin:$PATH
-          export GIT_COMMIT=$(git rev-list -1 HEAD) 
-          go build -ldflags "-X main.GitCommit=$GIT_COMMIT" cmds/proxy_server/main.go
-        env:
-          GO111MODULE: on
+          go mod tidy
+          make db-start
+          make db-fill
+          make server-start m=${{ secrets.MNEMONICS }}&
+
+      - name: Wait on localhost
+        uses: iFaxity/wait-on-action@v1
+        with:
+          resource: http://localhost:8080
 
       - name: Run tests
         run: NETWORK=${{ github.event.inputs.NETWORK }} python3 -m pytest -v ./tests/schema_test/ --html=./tests/schema_test/report.html
