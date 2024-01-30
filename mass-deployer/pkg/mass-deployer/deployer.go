@@ -97,7 +97,7 @@ func parseGroupVMs(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[stri
 		}
 	}
 
-	return buildDeployments(vmsOfNodeGroup, nodesIDs, sshKeys)
+	return buildDeployments(vmsOfNodeGroup, nodeGroup, nodesIDs, sshKeys)
 }
 
 func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, deployments groupDeploymentsInfo) ([]string, error) {
@@ -117,7 +117,7 @@ func massDeploy(tfPluginClient deployer.TFPluginClient, ctx context.Context, dep
 	return vmsInfo, nil
 }
 
-func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
+func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
 	var vmDeployments []*workloads.Deployment
 	var networkDeployments []*workloads.ZNet
 	var deploymentsInfo []vmDeploymentInfo
@@ -141,7 +141,8 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 					IP:   net.IPv4(10, 20, 0, 0),
 					Mask: net.CIDRMask(16, 32),
 				}),
-				AddWGAccess: false,
+				AddWGAccess:  false,
+				SolutionType: nodeGroup,
 			}
 			w := workloads.VM{
 				Name:        fmt.Sprintf("%s%d", vmGroup.Name, i),
@@ -157,7 +158,7 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 				EnvVars:     map[string]string{"SSH_KEY": sshKeys[vmGroup.SSHKey]},
 				Mounts:      mounts,
 			}
-			deployment := workloads.NewDeployment(w.Name, nodeID, "", nil, network.Name, disks, nil, []workloads.VM{w}, nil)
+			deployment := workloads.NewDeployment(w.Name, nodeID, nodeGroup, nil, network.Name, disks, nil, []workloads.VM{w}, nil)
 
 			vmDeployments = append(vmDeployments, &deployment)
 			networkDeployments = append(networkDeployments, &network)

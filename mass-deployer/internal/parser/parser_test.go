@@ -25,7 +25,7 @@ func TestParseConfig(t *testing.T) {
 				FreeMRU:    256,
 				FreeSRU:    50,
 				FreeHRU:    50,
-				Pubip4:     true,
+				PublicIP4:  true,
 				Regions:    "Europe",
 			},
 		},
