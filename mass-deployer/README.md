@@ -38,6 +38,9 @@ vms:
     entry_point: example-entrypoint
     root_size: 0
     ssh_key: example1
+    env_vars: 
+      user: user1
+      pwd: 1234
 ssh_keys:
   example1: ssh_key1
 mnemonic: example-mnemonic
@@ -54,10 +57,24 @@ You can use this [example](./example/conf.yaml) for further guidance,
 tfrobot deploy -c path/to/your/config.yaml
 ```
 
-6.  Run the canceler with path to the config file
+## Usage
+### Subcommands:
+
+-   **deploy:** used to mass deploy groups of vms with specific configurations
+```bash
+tfrobot deploy -c path/to/your/config.yaml
+```
+
+-   **cancel:** used to cancel all vms deployed using specific configurations
 ```bash
 tfrobot cancel -c path/to/your/config.yaml
 ```
+
+### Flags:
+| Flag | Usage |
+| :---:   | :---: |
+| -c | used to specify path to configuration file |
+| -c | used to specify path to configuration file |
 
 ## Using Docker
 ```bash

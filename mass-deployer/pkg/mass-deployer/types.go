@@ -15,8 +15,8 @@ type Config struct {
 type NodesGroup struct {
 	Name       string `yaml:"name" validate:"nonzero" json:"name"`
 	NodesCount uint64 `yaml:"nodes_count" validate:"nonzero" json:"nodes_count"`
-	FreeCPU    uint64 `yaml:"free_cpu" validate:"nonzero,max=32" json:"cpu"`
-	FreeMRU    uint64 `yaml:"free_mru" validate:"nonzero,min=256,max=262144" json:"mem"` // min: 256MB, max: 256 GB
+	FreeCPU    uint64 `yaml:"free_cpu" validate:"nonzero,max=32" json:"free_cpu"`
+	FreeMRU    uint64 `yaml:"free_mru" validate:"nonzero,min=256,max=262144" json:"free_mru"` // min: 256MB, max: 256 GB
 	FreeSRU    uint64 `yaml:"free_ssd" json:"free_ssd"`
 	FreeHRU    uint64 `yaml:"free_hdd" json:"free_hdd"`
 	Dedicated  bool   `yaml:"dedicated" json:"dedicated"`

@@ -25,6 +25,9 @@ vms:
     entry_point: /sbin/zinit init
     root_size: 0 # root size in GB, 0 for default root size, max 10TB
     ssh_key: example1 # the name of the predefined ssh key
+    env_vars: # env vars are passed to the newly created vms
+      user: user1
+      pwd: 1234
 
 ssh_keys: # map of ssh keys with key=name and value=the actual ssh key
   example1: ssh_key1
