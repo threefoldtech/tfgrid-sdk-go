@@ -1,0 +1,75 @@
+name: Proxy Schema Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      NETWORK:
+        description: 'Network to run test on'
+        required: true
+        default: 'local'
+        type: choice
+        options: 
+        - local
+        - dev
+        - qa
+        - test
+        - main
+  push:
+
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: grid-proxy
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tfgrid-graphql
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+
+      - name: Setting up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Installing all necessary packages
+        run: pip install -r tests/schema_test/requirments.txt
+
+      - name: Build
+        run: |
+          export PATH=/home/runner/go/bin:$PATH
+          export GIT_COMMIT=$(git rev-list -1 HEAD) 
+          go build -ldflags "-X main.GitCommit=$GIT_COMMIT" cmds/proxy_server/main.go
+        env:
+          GO111MODULE: on
+
+      - name: Run tests
+        run: NETWORK=${{ github.event.inputs.NETWORK }} python3 -m pytest -v ./tests/schema_test/ --html=./tests/schema_test/report.html
+        
+      - name: Upload pytest test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-pytest-results
+          path: |
+            ///home/runner/work/tfgrid-sdk-go/tfgrid-sdk-go/grid-proxy/tests/schema_test/report.html
+            ///home/runner/work/tfgrid-sdk-go/tfgrid-sdk-go/grid-proxy/tests/schema_test/assets
+        if: ${{ always() }}
