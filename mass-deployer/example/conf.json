@@ -32,7 +32,11 @@
       "flist": "https://hub.grid.tf/tf-official-apps/base:latest.flist",
       "entry_point": "/sbin/zinit init",
       "root_size": 0,
-      "ssh_key": "example1"
+      "ssh_key": "example1",
+      "env_vars": {
+        "user": "user1",
+        "pwd": "1234"
+      }
     }
   ],
   "ssh_keys": {

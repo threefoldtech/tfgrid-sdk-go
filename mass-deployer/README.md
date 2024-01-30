@@ -38,7 +38,7 @@ vms:
     entry_point: example-entrypoint
     root_size: 0
     ssh_key: example1
-    env_vars: 
+    env_vars:
       user: user1
       pwd: 1234
 ssh_keys:
@@ -74,7 +74,8 @@ tfrobot cancel -c path/to/your/config.yaml
 | Flag | Usage |
 | :---:   | :---: |
 | -c | used to specify path to configuration file |
-| -c | used to specify path to configuration file |
+| -o | used to specify path to output file to store the output info in |
+>Parsing is based on file extension, json format if the file had json extension, yaml format otherwise 
 
 ## Using Docker
 ```bash
