@@ -1,3 +1,0 @@
-pytest==7.1.2
-schemathesis==3.17.5
-pytest-html==3.2.0

@@ -1,4 +1,4 @@
-name: Schema test
+name: Proxy Schema Test
 
 on:
   workflow_dispatch:
@@ -11,12 +11,18 @@ on:
         options: 
         - local
         - dev
+        - qa
+        - test
+        - main
   push:
 
 
 jobs:
   api-tests:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: grid-proxy
     services:
       postgres:
         image: postgres
@@ -33,44 +39,37 @@ jobs:
           - 5432:5432
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.17
+          go-version: 1.21
 
       - name: Setting up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
       - name: Installing all necessary packages
-        run: pip install -r tests/schema_test/requirements.txt
+        run: pip install -r tests/schema_test/requirments.txt
 
       - name: Build
-        if: ${{ github.event.inputs.NETWORK }} != 'dev'
         run: |
           export PATH=/home/runner/go/bin:$PATH
           export GIT_COMMIT=$(git rev-list -1 HEAD) 
           go build -ldflags "-X main.GitCommit=$GIT_COMMIT" cmds/proxy_server/main.go
-          export PATH=/home/runner/go/bin:$PATH
-          pushd tools/db
-          go run . --seed 13 --postgres-host localhost --postgres-db tfgrid-graphql --postgres-password postgres --postgres-user postgres --reset
-          popd
-          go run cmds/proxy_server/main.go -no-cert --address :8080 --log-level debug --postgres-host localhost --postgres-db tfgrid-graphql --postgres-password postgres --postgres-user postgres &
-          sleep 6
         env:
           GO111MODULE: on
 
       - name: Run tests
-        run: NETWORK=${{ github.event.inputs.NETWORK }} python3 -m pytest -v ./tests/schema_test --html=report.html
-      
+        run: NETWORK=${{ github.event.inputs.NETWORK }} python3 -m pytest -v ./tests/schema_test/ --html=./tests/schema_test/report.html
+        
       - name: Upload pytest test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: schema-pytest-results
           path: |
-            report.html
-            assets
+            ///home/runner/work/tfgrid-sdk-go/tfgrid-sdk-go/grid-proxy/tests/schema_test/report.html
+            ///home/runner/work/tfgrid-sdk-go/tfgrid-sdk-go/grid-proxy/tests/schema_test/assets
         if: ${{ always() }}
