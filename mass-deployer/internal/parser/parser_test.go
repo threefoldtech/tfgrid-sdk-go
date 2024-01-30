@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -57,7 +58,7 @@ func TestParseConfig(t *testing.T) {
 } `
 		configFile := strings.NewReader(conf)
 
-		_, err := ParseConfig(configFile)
+		_, err := ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -70,7 +71,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -83,7 +84,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -96,7 +97,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -109,7 +110,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -122,7 +123,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -137,7 +138,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -152,7 +153,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -167,7 +168,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -182,7 +183,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -197,7 +198,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -212,7 +213,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -227,7 +228,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -242,7 +243,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -257,7 +258,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -272,7 +273,7 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.Error(t, err)
 	})
 
@@ -284,7 +285,19 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile)
+		_, err = ParseConfig(configFile, false)
 		assert.NoError(t, err)
+	})
+	t.Run("valid json config", func(t *testing.T) {
+		conf := confStruct
+
+		data, err := json.Marshal(conf)
+		assert.NoError(t, err)
+
+		configFile := strings.NewReader(string(data))
+
+		parsedConf, err := ParseConfig(configFile, true)
+		assert.NoError(t, err)
+		assert.Equal(t, conf, parsedConf)
 	})
 }

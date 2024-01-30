@@ -4,6 +4,7 @@ package cmd
 import (
 	"context"
 	"os"
+	"path/filepath"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -19,20 +20,25 @@ var deployCmd = &cobra.Command{
 		if err != nil || configPath == "" {
 			log.Fatal().Err(err).Msg("error in config file")
 		}
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			log.Fatal().Err(err).Msg("error in output file")
+		}
 
 		configFile, err := os.Open(configPath)
 		if err != nil {
 			log.Fatal().Err(err).Msgf("failed to open config file: %s", configPath)
 		}
 		defer configFile.Close()
+		jsonFmt := filepath.Ext(configPath) == ".json"
 
-		cfg, err := parser.ParseConfig(configFile)
+		cfg, err := parser.ParseConfig(configFile, jsonFmt)
 		if err != nil {
 			log.Fatal().Err(err).Msgf("failed to parse config file: %s", configPath)
 		}
 
 		ctx := context.Background()
-		err = deployer.RunDeployer(cfg, ctx)
+		err = deployer.RunDeployer(cfg, ctx, output)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to run the deployer")
 		}
@@ -41,5 +47,6 @@ var deployCmd = &cobra.Command{
 
 func init() {
 	deployCmd.Flags().StringP("config", "c", "", "path to config file")
+	deployCmd.Flags().StringP("output", "o", "", "output file")
 	rootCmd.AddCommand(deployCmd)
 }
