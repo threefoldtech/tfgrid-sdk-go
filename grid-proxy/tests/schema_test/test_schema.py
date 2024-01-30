@@ -6,10 +6,10 @@ from schemathesis.checks import not_a_server_error, status_code_conformance, con
 network = os.environ['NETWORK']
 if network == 'main':
     url = 'https://gridproxy.grid.tf'
-elif network != 'local':
-    url = 'https://gridproxy.'+ network +'.grid.tf'
-else:
+elif network == '':
     url = 'http://localhost:8080'
+else:
+    url = 'https://gridproxy.'+ network +'.grid.tf'
 
 schema = schemathesis.from_path("docs/swagger.json", base_url = url)
 
