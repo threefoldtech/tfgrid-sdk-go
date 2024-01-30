@@ -69,6 +69,9 @@ func RunDeployer(cfg Config, ctx context.Context, output string) error {
 	} else {
 		out, err = yaml.Marshal(outData)
 	}
+	if err != nil {
+		return err
+	}
 	fmt.Println(string(out))
 	if output == "" {
 		return nil
