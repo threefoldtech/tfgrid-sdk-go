@@ -43,5 +43,6 @@
     "example1": "ssh_key1"
   },
   "mnemonic": "example-mnemonic",
-  "network": "dev"
+  "network": "dev",
+  "max_retries": 5
 }

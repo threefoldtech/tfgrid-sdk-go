@@ -10,6 +10,7 @@ type Config struct {
 	SSHKeys    map[string]string `yaml:"ssh_keys" validate:"nonzero" json:"ssh_keys"`
 	Mnemonic   string            `yaml:"mnemonic" validate:"nonzero" json:"mnemonic"`
 	Network    string            `yaml:"network" validate:"nonzero" json:"network"`
+	MaxRetries uint64            `yaml:"max_retries" json:"max_retries"`
 }
 
 type NodesGroup struct {

@@ -45,6 +45,7 @@ ssh_keys:
   example1: ssh_key1
 mnemonic: example-mnemonic
 network: dev
+max_retries: 5
 ```
 
 You can use this [example](./example/conf.yaml) for further guidance, 

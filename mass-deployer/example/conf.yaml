@@ -33,3 +33,4 @@ ssh_keys: # map of ssh keys with key=name and value=the actual ssh key
   example1: ssh_key1
 mnemonic: example-mnemonic # mnemonic of the user
 network: dev # eg: main, test, qa, dev
+max_retries: 5 # max retries for each node group (default 5)
