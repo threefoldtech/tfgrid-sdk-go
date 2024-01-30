@@ -163,7 +163,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 				NetworkName: network.Name,
 				Flist:       vmGroup.Flist,
 				CPU:         int(vmGroup.FreeCPU),
-				Memory:      int(vmGroup.FreeMRU),
+				Memory:      int(vmGroup.FreeMRU * 1024), // Memory is in MB
 				PublicIP:    vmGroup.PublicIP4,
 				PublicIP6:   vmGroup.PublicIP6,
 				Planetary:   vmGroup.Planetary,

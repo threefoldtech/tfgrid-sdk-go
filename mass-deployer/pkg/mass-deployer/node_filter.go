@@ -11,7 +11,7 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, group NodesGroup, ctx c
 	filter := types.NodeFilter{}
 
 	statusUp := "up"
-	freeMRU := convertMBToBytes(group.FreeMRU)
+	freeMRU := convertMBToBytes(uint64(group.FreeMRU * 1024))
 
 	filter.Status = &statusUp
 	filter.TotalCRU = &group.FreeCPU
@@ -25,8 +25,8 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, group NodesGroup, ctx c
 		freeHRU := convertGBToBytes(group.FreeHRU)
 		filter.FreeHRU = &freeHRU
 	}
-	if group.Regions != "" {
-		filter.Region = &group.Regions
+	if group.Region != "" {
+		filter.Region = &group.Region
 	}
 	if group.Certified {
 		certified := "Certified"

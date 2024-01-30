@@ -2,7 +2,7 @@ node_groups:
   - name: group_a
     nodes_count: 3 # amount of nodes to be found
     free_cpu: 2 # number of logical cores
-    free_mru: 16384 # amount of memory in MB
+    free_mru: 16 # amount of memory in GB
     free_ssd: 100 # amount of ssd storage in GB
     free_hdd: 50 # amount of hdd storage in GB
     dedicated: false # are nodes dedicated
@@ -15,7 +15,7 @@ vms:
     vms_count: 5 # amount of vms with the same configurations
     node_group: group_a # the name of the predefined group of nodes
     cpu: 1 # number of logical cores, min 1, max 32
-    mem: 256 # amount of memory in MB, min 256 MB, max 256*1024 MB
+    mem: 2 # amount of memory in GB, min 0.25 GB, max 256 GB
     ssd: # list of ssd storage needed to be mounted to the vm
       - size: 15 # size in GB, min 15 GB
         mount_point: /mnt/ssd

@@ -4,7 +4,7 @@
       "name": "group_a",
       "nodes_count": 3,
       "free_cpu": 2,
-      "free_mru": 16384,
+      "free_mru": 16,
       "free_ssd": 100,
       "free_hdd": 50,
       "dedicated": false,
@@ -20,7 +20,7 @@
       "vms_count": 1,
       "node_group": "group_a",
       "cpu": 1,
-      "mem": 256,
+      "mem": 2,
       "ssd": [
         {
           "size": 15,
