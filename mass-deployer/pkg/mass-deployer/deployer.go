@@ -215,9 +215,6 @@ func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployments []v
 			}
 
 			vmInfo := vmOutput{vm.Name, vm.ComputedIP, vm.ComputedIP6, vm.YggIP, vm.IP, vm.Mounts}
-			if err != nil {
-				log.Debug().Err(err).Msg("failed to marshal output")
-			}
 
 			lock.Lock()
 			defer lock.Unlock()
