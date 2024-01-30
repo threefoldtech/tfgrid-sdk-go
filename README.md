@@ -18,6 +18,7 @@ This repo contains the go clients for Threefold grid.
 -   [rmb client](./rmb-sdk-go/README.md)
 -   [gridify](./gridify/README.md)
 -   [monitoring bot](./monitoring-bot/README.md)
+-   [mass deployer](./mass-deployer/README.md)
 -   [user contracts mon](./user-contracts-mon/README.md)
 -   [activation service](./activation-service/README.md)
 -   [farmerbot](./farmerbot/README.md)
