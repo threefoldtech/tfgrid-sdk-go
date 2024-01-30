@@ -6,8 +6,8 @@ node_groups:
     free_ssd: 100 # amount of ssd storage in GB
     free_hdd: 50 # amount of hdd storage in GB
     dedicated: false # are nodes dedicated
-    pubip4: false # should the nodes have free ip v4
-    pubip6: false # should the nodes have free ip v6
+    public_ip4: false # should the nodes have free ip v4
+    public_ip6: false # should the nodes have free ip v6
     certified: false # should the nodes be certified(if false the nodes could be certified of diyed) 
     region: "europe" # region could be the name of the continents the nodes are located in (africa, americas, antarctic, antarctic ocean, asia, europe, oceania, polar)
 vms:

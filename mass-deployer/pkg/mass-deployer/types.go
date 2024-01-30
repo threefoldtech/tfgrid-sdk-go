@@ -20,8 +20,8 @@ type NodesGroup struct {
 	FreeSRU    uint64 `yaml:"free_ssd"`
 	FreeHRU    uint64 `yaml:"free_hdd"`
 	Dedicated  bool   `yaml:"dedicated"`
-	Pubip4     bool   `yaml:"pubip4"`
-	Pubip6     bool   `yaml:"pubip6"`
+	PublicIP4  bool   `yaml:"public_ip4"`
+	PublicIP6  bool   `yaml:"public_ip6"`
 	Certified  bool   `yaml:"certified"`
 	Regions    string `yaml:"regions"`
 }

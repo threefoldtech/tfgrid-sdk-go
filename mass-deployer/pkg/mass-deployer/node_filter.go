@@ -32,11 +32,11 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, group NodesGroup, ctx c
 		certified := "Certified"
 		filter.CertificationType = &certified
 	}
-	if group.Pubip4 {
-		filter.IPv4 = &group.Pubip4
+	if group.PublicIP4 {
+		filter.IPv4 = &group.PublicIP4
 	}
-	if group.Pubip6 {
-		filter.IPv6 = &group.Pubip6
+	if group.PublicIP6 {
+		filter.IPv6 = &group.PublicIP6
 	}
 	if group.Dedicated {
 		filter.Dedicated = &group.Dedicated
