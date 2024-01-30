@@ -42,11 +42,13 @@ jobs:
         run: pip install -r tests/schema_test/requirments.txt
 
       - name: Build
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
         run: |
           go mod tidy
           make db-start
           make db-fill
-          make server-start m=${{ secrets.MNEMONICS }}&
+          make server-start m="$MNEMONICS" &
 
       - name: Wait on localhost
         uses: iFaxity/wait-on-action@v1
