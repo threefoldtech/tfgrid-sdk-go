@@ -51,7 +51,7 @@ max_retries: 5
 You can use this [example](./example/conf.yaml) for further guidance, 
 >**Please** make sure to replace placeholders and adapt the groups based on your actual project details.
 
->**Note:** All storage resources are expected to be in GB, except of memory in MB to be able to deploy vm with a fraction of GB of memory(256 MB for example)
+>**Note:** All storage resources are expected to be in GB
 
 5.  Run the deployer with path to the config file
 ```bash
