@@ -136,6 +136,10 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 	// we loop over all it's vms and create network and vm deployment for it
 	// the nodesIDsIdx is a counter used to get nodeID to be able to distribute load over all nodes
 	for _, vmGroup := range vms {
+
+		envVars := vmGroup.EnvVars
+		envVars["SSH_KEY"] = sshKeys[vmGroup.SSHKey]
+
 		for i := 0; i < int(vmGroup.Count); i++ {
 			nodeID := uint32(nodesIDs[nodesIDsIdx])
 			nodesIDsIdx = (nodesIDsIdx + 1) % len(nodesIDs)
@@ -153,6 +157,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 				AddWGAccess:  false,
 				SolutionType: nodeGroup,
 			}
+
 			w := workloads.VM{
 				Name:        fmt.Sprintf("%s%d", vmGroup.Name, i),
 				NetworkName: network.Name,
@@ -164,7 +169,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 				Planetary:   vmGroup.Planetary,
 				RootfsSize:  int(vmGroup.Rootsize * 1024), // Rootsize is in MB
 				Entrypoint:  vmGroup.Entrypoint,
-				EnvVars:     map[string]string{"SSH_KEY": sshKeys[vmGroup.SSHKey]},
+				EnvVars:     envVars,
 				Mounts:      mounts,
 			}
 			deployment := workloads.NewDeployment(w.Name, nodeID, nodeGroup, nil, network.Name, disks, nil, []workloads.VM{w}, nil)
