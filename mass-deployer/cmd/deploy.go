@@ -21,7 +21,7 @@ var deployCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("error in config file")
 		}
 		output, err := cmd.Flags().GetString("output")
-		if err != nil || configPath == "" {
+		if err != nil {
 			log.Fatal().Err(err).Msg("error in output file")
 		}
 
