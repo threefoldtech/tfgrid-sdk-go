@@ -150,7 +150,7 @@ var deployVMCmd = &cobra.Command{
 			log.Info().Msgf("vm ipv6: %s", resVM.ComputedIP6)
 		}
 		if ygg {
-			log.Info().Msgf("vm yggdrasil ip: %s", resVM.YggIP)
+			log.Info().Msgf("vm planetary ip: %s", resVM.PlanetaryIP)
 		}
 		return nil
 	},

@@ -97,17 +97,17 @@ func TestPresearchDeployment(t *testing.T) {
 		t.Errorf("public ip is not reachable")
 	}
 
-	yggIP := v.YggIP
-	assert.NotEmpty(t, yggIP)
+	planetaryIP := v.PlanetaryIP
+	assert.NotEmpty(t, planetaryIP)
 
-	output, err := RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
+	output, err := RemoteRun("root", planetaryIP, "cat /proc/1/environ", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, "PRESEARCH_REGISTRATION_CODE=e5083a8d0a6362c6cf7a3078bfac81e3")
 
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute; {
 		<-ticker.C
-		output, err = RemoteRun("root", yggIP, "zinit list", privateKey)
+		output, err = RemoteRun("root", planetaryIP, "zinit list", privateKey)
 		if err == nil && strings.Contains(output, "prenode: Success") {
 			break
 		}

@@ -196,7 +196,7 @@ var deployKubernetesCmd = &cobra.Command{
 			log.Info().Msgf("master ipv6: %s", cluster.Master.ComputedIP6)
 		}
 		if ygg {
-			log.Info().Msgf("master yggdrasil ip: %s", cluster.Master.YggIP)
+			log.Info().Msgf("master planetary ip: %s", cluster.Master.PlanetaryIP)
 		}
 
 		for _, worker := range cluster.Workers {
@@ -214,7 +214,7 @@ var deployKubernetesCmd = &cobra.Command{
 		}
 		if workersYgg {
 			for _, worker := range cluster.Workers {
-				log.Info().Msgf("%s yggdrasil ip: %s", worker.Name, worker.YggIP)
+				log.Info().Msgf("%s planetary ip: %s", worker.Name, worker.PlanetaryIP)
 			}
 		}
 		return nil

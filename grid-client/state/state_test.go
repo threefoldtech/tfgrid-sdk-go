@@ -229,8 +229,8 @@ func TestLoadK8sFromGrid(t *testing.T) {
 	assert.NoError(t, err)
 
 	res, _ := json.Marshal(zos.ZMachineResult{
-		IP:    "1.1.1.1",
-		YggIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		IP:          "1.1.1.1",
+		PlanetaryIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 	})
 
 	master := workloads.K8sNode{
@@ -243,7 +243,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		Planetary:     true,
 		CPU:           1,
 		Memory:        8,
-		YggIP:         "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 		IP:            "1.1.1.1",
 		NetworkName:   "test",
 	}
@@ -548,9 +548,9 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 
 func TestLoadVMFromGrid(t *testing.T) {
 	vmRes, err := json.Marshal(zos.ZMachineResult{
-		ID:    "5",
-		IP:    "5.5.5.5",
-		YggIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		ID:          "5",
+		IP:          "5.5.5.5",
+		PlanetaryIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 	})
 	assert.NoError(t, err)
 
@@ -565,7 +565,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 		PublicIP6:     false,
 		Planetary:     true,
 		Corex:         false,
-		YggIP:         "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 		IP:            "1.1.1.1",
 		Description:   "test des",
 		CPU:           2,

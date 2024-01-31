@@ -110,7 +110,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	assert.Equal(t, vm.GPUs, ConvertGPUsToStr(gpus))
 
 	time.Sleep(30 * time.Second)
-	output, err := RemoteRun("root", vm.YggIP, "lspci -v", privateKey)
+	output, err := RemoteRun("root", vm.PlanetaryIP, "lspci -v", privateKey)
 	assert.NoError(t, err)
 	assert.Contains(t, output, gpus[0].Vendor)
 }

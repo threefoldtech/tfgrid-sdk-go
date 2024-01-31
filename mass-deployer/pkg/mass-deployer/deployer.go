@@ -249,7 +249,7 @@ func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployments []v
 				ContractID:  vmDeployment.ContractID,
 				PublicIP4:   vm.ComputedIP,
 				PublicIP6:   vm.ComputedIP6,
-				YggIP:       vm.YggIP,
+				PlanetaryIP: vm.PlanetaryIP,
 				IP:          vm.IP,
 				Mounts:      vm.Mounts,
 			}

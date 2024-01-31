@@ -66,7 +66,7 @@ type vmOutput struct {
 	NetworkName string
 	PublicIP4   string
 	PublicIP6   string
-	YggIP       string
+	PlanetaryIP string
 	IP          string
 	Mounts      []workloads.Mount
 	NodeID      uint32
