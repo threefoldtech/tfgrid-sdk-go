@@ -20,7 +20,7 @@ tfrobot is tool designed to automate mass deployment of groups of VMs on ThreeFo
 mv tfrobot /usr/local/bin
 ```
 
-1.  Create a new configuration file.
+4.  Create a new configuration file.
 For example:
 
 ```yaml
