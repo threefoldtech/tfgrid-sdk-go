@@ -3,6 +3,7 @@ package workloads
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -41,6 +42,7 @@ type ZNet struct {
 	Nodes       []uint32
 	IPRange     gridtypes.IPNet
 	AddWGAccess bool
+	MyceliumKey []byte
 
 	// computed
 	SolutionType     string
@@ -105,6 +107,10 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		}
 		externalSK = key
 	}
+	var myceliumKey []byte
+	if data.Mycelium != nil {
+		myceliumKey = data.Mycelium.Key
+	}
 
 	return ZNet{
 		Name:         wl.Name.String(),
@@ -118,6 +124,7 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		PublicNodeID: metadata.PublicNodeID,
 		ExternalIP:   externalIP,
 		ExternalSK:   externalSK,
+		MyceliumKey:  myceliumKey,
 	}, nil
 }
 
@@ -132,12 +139,19 @@ func (znet *ZNet) Validate() error {
 	if ones, _ := mask.Size(); ones != 16 {
 		return errors.Errorf("subnet in ip range %s should be 16", znet.IPRange.String())
 	}
+	if len(znet.MyceliumKey) != zos.MyceliumKeyLen && len(znet.MyceliumKey) != 0 {
+		return fmt.Errorf("invalid mycelium key length %d must be %d or empty", len(znet.MyceliumKey), zos.MyceliumKeyLen)
+	}
 
 	return nil
 }
 
 // ZosWorkload generates a zos workload from a network
 func (znet *ZNet) ZosWorkload(subnet gridtypes.IPNet, wgPrivateKey string, wgListenPort uint16, peers []zos.Peer, metadata string) gridtypes.Workload {
+	var mycelium *zos.Mycelium
+	if len(znet.MyceliumKey) != 0 {
+		mycelium = &zos.Mycelium{Key: znet.MyceliumKey}
+	}
 	return gridtypes.Workload{
 		Version:     0,
 		Type:        zos.NetworkType,
@@ -149,6 +163,7 @@ func (znet *ZNet) ZosWorkload(subnet gridtypes.IPNet, wgPrivateKey string, wgLis
 			WGPrivateKey:   wgPrivateKey,
 			WGListenPort:   wgListenPort,
 			Peers:          peers,
+			Mycelium:       mycelium,
 		}),
 		Metadata: metadata,
 	}
@@ -307,4 +322,10 @@ func nextFreeIP(used []byte, start *byte) error {
 		return errors.New("could not find a free ip to add node")
 	}
 	return nil
+}
+
+func RandomMyceliumKey() ([]byte, error) {
+	key := make([]byte, zos.MyceliumKeyLen)
+	_, err := rand.Read(key)
+	return key, err
 }
