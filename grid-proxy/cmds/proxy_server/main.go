@@ -58,9 +58,9 @@ type flags struct {
 	gpuIndexerResultWorkers     uint
 	gpuIndexerBatchWorkers      uint
 	maxPoolOpenConnections      int
-	// being 0 is helpful of making the data persistent while testing
-	healthIndexerWorkers  uint
-	healthIndexerInterval uint
+	healthIndexerWorkers        uint
+	healthIndexerInterval       uint
+	noIndexer                   bool // true to stop the indexer, useful on running for testing
 }
 
 func main() {
@@ -89,6 +89,7 @@ func main() {
 	flag.IntVar(&f.maxPoolOpenConnections, "max-open-conns", 80, "max number of db connection pool open connections")
 	flag.UintVar(&f.healthIndexerWorkers, "health-indexer-workers", 100, "number of workers checking on node health")
 	flag.UintVar(&f.healthIndexerInterval, "health-indexer-interval", 5, "node health check interval in min")
+	flag.BoolVar(&f.noIndexer, "no-indexer", false, "do not start the indexer")
 	flag.Parse()
 
 	// shows version and exit
@@ -127,7 +128,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create relay client")
 	}
-	idxr := indexer.NewIndexer(ctx, false, rpcRmbClient)
+	idxr := indexer.NewIndexer(ctx, f.noIndexer, rpcRmbClient)
 
 	gpuWatcher := indexer.NewNodeGPUIndexer(
 		ctx,

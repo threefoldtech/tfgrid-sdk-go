@@ -46,6 +46,7 @@ db-refill: db-stop db-start sleep db-fill
 server-start: ## Start the proxy server			(Args: `m=<MNEMONICS>`)
 	@go run cmds/proxy_server/main.go \
 		-no-cert \
+		-no-indexer \
 		--address :8080 \
 		--log-level debug \
 		--postgres-host $(PQ_HOST) \
@@ -63,6 +64,7 @@ test-queries: ## Run all queries tests
 	@cd tests/queries/ &&\
 	go test -v \
 		-parallel 20 \
+		-no-modify \
 		--seed 13 \
 		--postgres-host $(PQ_HOST) \
 		--postgres-db tfgrid-graphql \
@@ -75,6 +77,7 @@ test-query: ## Run specific test query 			(Args: `t=TestName`).
 	@cd tests/queries/ &&\
 	go test -v \
 		-parallel 10 \
+		-no-modify \
 		--seed 13 \
 		--postgres-host $(PQ_HOST) \
 		--postgres-db tfgrid-graphql \

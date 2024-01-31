@@ -30,6 +30,7 @@ var (
 	SEED               int
 	STATUS_DOWN        = "down"
 	STATUS_UP          = "up"
+	NO_MODIFY          = false
 
 	mockClient      proxyclient.Client
 	data            mock.DBData
@@ -45,6 +46,7 @@ func parseCmdline() {
 	flag.StringVar(&POSTGRES_PASSSWORD, "postgres-password", "", "postgres password")
 	flag.StringVar(&ENDPOINT, "endpoint", "", "the grid proxy endpoint to test against")
 	flag.IntVar(&SEED, "seed", 0, "seed used for the random generation of tests")
+	flag.BoolVar(&NO_MODIFY, "no-modify", false, "stop modify the dump data")
 	flag.Parse()
 }
 
@@ -81,16 +83,18 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	err = modifyDataToFireTriggers(db, data)
-	if err != nil {
-		panic(err)
+	if !NO_MODIFY {
+		err = modifyDataToFireTriggers(db, data)
+		if err != nil {
+			panic(err)
+		}
+		data, err = mock.Load(db)
+		if err != nil {
+			panic(err)
+		}
 	}
-	data, err = mock.Load(db)
-	if err != nil {
-		panic(err)
-	}
-	mockClient = mock.NewGridProxyMockClient(data)
 
+	mockClient = mock.NewGridProxyMockClient(data)
 	exitCode = m.Run()
 	os.Exit(exitCode)
 }
