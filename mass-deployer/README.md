@@ -92,6 +92,7 @@ tfrobot deploy -c path/to/your/config.yaml
 | node_group | name of node_group the vm belongs to | should be defined in node_groups |
 | cpu | number of cpu for vm | nonzero int max = 32 |
 | mem | free memory in the vm in GB | min = 0.25, max 256 |
+| planetary | should the vm have yggdrasil ip | bool value |
 | public_ip4 | should the vm have free ip v4 | bool value |
 | public_ip6 | should the vm have free ip v6 | bool value |
 | flist | should be a link to valid flist | valid flist url |
