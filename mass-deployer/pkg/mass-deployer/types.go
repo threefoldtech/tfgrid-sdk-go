@@ -62,11 +62,14 @@ type vmDeploymentInfo struct {
 }
 
 type vmOutput struct {
-	Name      string
-	PublicIP4 string
-	PublicIP6 string
-	YggIP     string
-	IP        string
-	Mounts    []workloads.Mount
-	// TODO: add node group, node ID and contract ID
+	Name         string
+	NetworkName  string
+	NetworkName2 string
+	PublicIP4    string
+	PublicIP6    string
+	YggIP        string
+	IP           string
+	Mounts       []workloads.Mount
+	NodeID       uint32
+	ContractID   uint64
 }

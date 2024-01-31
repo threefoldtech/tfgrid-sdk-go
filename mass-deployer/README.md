@@ -7,7 +7,7 @@ tfrobot is tool designed to automate mass deployment of groups of VMs on ThreeFo
 ## Features
 
 -   **Mass Deployment:** Deploy groups of vms on ThreeFold Grid simultaneously.
--   **Mass Cancelation:** cancel all vms on ThreeFold Grid defined in configuration file simultaneously.
+-   **Mass Cancellation:** cancel all vms on ThreeFold Grid defined in configuration file simultaneously.
 -   **Customizable Configurations:** Define Node groups, VMs groups and other configurations through YAML or JSON file.
 
 ## Download
@@ -36,7 +36,7 @@ vms:
     vms_count: 5
     node_group: group_a
     cpu: 1
-    mem: 256
+    mem: 0.25
     flist: example-flist
     entry_point: example-entrypoint
     root_size: 0
@@ -131,7 +131,8 @@ tfrobot cancel -c path/to/your/config.yaml
 | :---:   | :---: |
 | -c | used to specify path to configuration file |
 | -o | used to specify path to output file to store the output info in |
->Parsing is based on file extension, json format if the file had json extension, yaml format otherwise 
+| -d | allow debug logs to appear in the output logs |
+> Parsing is based on file extension, json format if the file had json extension, yaml format otherwise 
 
 ## Using Docker
 

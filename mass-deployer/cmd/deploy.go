@@ -54,7 +54,7 @@ var deployCmd = &cobra.Command{
 		}
 
 		ctx := context.Background()
-		err = deployer.RunDeployer(cfg, ctx, output)
+		err = deployer.RunDeployer(ctx, cfg, output)
 		if err != nil {
 			return fmt.Errorf("failed to run the deployer with error: %w", err)
 		}
