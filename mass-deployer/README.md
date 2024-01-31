@@ -28,7 +28,7 @@ node_groups:
   - name: group_a
     nodes_count: 3
     free_cpu: 2
-    free_mru: 16384
+    free_mru: 16
     free_ssd: 100
     free_hdd: 50
 vms:
@@ -132,6 +132,7 @@ tfrobot cancel -c path/to/your/config.yaml
 | -c | used to specify path to configuration file |
 | -o | used to specify path to output file to store the output info in |
 | -d | allow debug logs to appear in the output logs |
+| -h | help |
 > Parsing is based on file extension, json format if the file had json extension, yaml format otherwise 
 
 ## Using Docker
