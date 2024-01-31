@@ -85,7 +85,7 @@ func constructTestDeployment() workloads.Deployment {
 			Corex:         true,
 			ComputedIP:    "5.5.5.5/24",
 			ComputedIP6:   "::7/64",
-			YggIP:         "::8/64",
+			PlanetaryIP:   "::8/64",
 			IP:            "10.1.0.2",
 			Description:   "vm1_description",
 			CPU:           1,
@@ -128,7 +128,7 @@ func constructTestDeployment() workloads.Deployment {
 			Corex:         true,
 			ComputedIP:    "",
 			ComputedIP6:   "::7/64",
-			YggIP:         "::8/64",
+			PlanetaryIP:   "::8/64",
 			IP:            "10.1.0.2",
 			Description:   "vm2_description",
 			CPU:           1,
@@ -527,8 +527,8 @@ func TestDeploymentDeployer(t *testing.T) {
 		*wl.Workload = wl.WithResults(gridtypes.Result{
 			State: gridtypes.StateOk,
 			Data: mustMarshal(t, zos.ZMachineResult{
-				IP:    dl.Vms[0].IP,
-				YggIP: dl.Vms[0].YggIP,
+				IP:          dl.Vms[0].IP,
+				PlanetaryIP: dl.Vms[0].PlanetaryIP,
 			}),
 		})
 
@@ -569,8 +569,8 @@ func TestDeploymentDeployer(t *testing.T) {
 		*wl.Workload = wl.WithResults(gridtypes.Result{
 			State: gridtypes.StateOk,
 			Data: mustMarshal(t, zos.ZMachineResult{
-				IP:    dl.Vms[1].IP,
-				YggIP: dl.Vms[1].YggIP,
+				IP:          dl.Vms[1].IP,
+				PlanetaryIP: dl.Vms[1].PlanetaryIP,
 			}),
 		})
 

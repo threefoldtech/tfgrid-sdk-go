@@ -80,7 +80,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID1, vm.Name, dl.Name)
 	assert.NoError(t, err)
 
-	backend := fmt.Sprintf("http://[%s]:9000", v.YggIP)
+	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
 	gw1 := workloads.GatewayNameProxy{
 		NodeID:         nodeID1,
 		Name:           "test",

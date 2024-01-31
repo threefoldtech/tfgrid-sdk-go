@@ -189,8 +189,8 @@ func TestQSFSDeployment(t *testing.T) {
 	metrics := resQSFS.MetricsEndpoint
 	assert.NotEmpty(t, metrics)
 
-	yggIP := resVM.YggIP
-	assert.NotEmpty(t, yggIP)
+	planetaryIP := resVM.PlanetaryIP
+	assert.NotEmpty(t, planetaryIP)
 
 	// get metrics
 	cmd := exec.Command("curl", metrics)
@@ -199,7 +199,7 @@ func TestQSFSDeployment(t *testing.T) {
 	assert.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 0")
 
 	// try write to a file in mounted disk
-	_, err = RemoteRun("root", yggIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
+	_, err = RemoteRun("root", planetaryIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
 	assert.NoError(t, err)
 
 	// get metrics after write

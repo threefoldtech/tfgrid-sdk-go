@@ -18,7 +18,7 @@ import (
 func AssertNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, privateKey string) {
 	t.Helper()
 
-	masterYggIP := k8sCluster.Master.YggIP
+	masterYggIP := k8sCluster.Master.PlanetaryIP
 	assert.NotEmpty(t, masterYggIP)
 
 	// Check that the outputs not empty
@@ -91,7 +91,7 @@ func TestK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -108,7 +108,7 @@ func TestK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -125,7 +125,7 @@ func TestK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -158,7 +158,7 @@ func TestK8sDeployment(t *testing.T) {
 		assert.Equal(t, len(result.Workers), 2)
 
 		// Check that master is reachable
-		masterIP := result.Master.YggIP
+		masterIP := result.Master.PlanetaryIP
 		assert.NotEmpty(t, masterIP)
 
 		// Check wireguard config in output
@@ -199,7 +199,7 @@ func TestK8sDeployment(t *testing.T) {
 		assert.Equal(t, len(result.Workers), 1)
 
 		// Check that master is reachable
-		masterIP := result.Master.YggIP
+		masterIP := result.Master.PlanetaryIP
 		assert.NotEmpty(t, masterIP)
 
 		// ssh to master node

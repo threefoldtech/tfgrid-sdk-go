@@ -39,7 +39,7 @@ Example:
 $ tfcmd deploy kubernetes -n kube --ssh ~/.ssh/id_rsa.pub --master-node 14 --workers-number 2 --workers-node 14
 4:21PM INF deploying network
 4:22PM INF deploying cluster
-4:22PM INF master yggdrasil ip: 300:e9c4:9048:57cf:504f:c86c:9014:d02d
+4:22PM INF master planetary ip: 300:e9c4:9048:57cf:504f:c86c:9014:d02d
 ```
 
 ## Get
@@ -67,7 +67,7 @@ $ tfcmd get kubernetes examplevm
                 "FlistChecksum": "c87cf57e1067d21a3e74332a64ef9723",
                 "ComputedIP": "",
                 "ComputedIP6": "",
-                "YggIP": "300:e9c4:9048:57cf:e8a0:662b:4e66:8faa",
+                "PlanetaryIP": "300:e9c4:9048:57cf:e8a0:662b:4e66:8faa",
                 "IP": "10.20.2.2",
                 "CPU": 1,
                 "Memory": 1024
@@ -84,7 +84,7 @@ $ tfcmd get kubernetes examplevm
                         "FlistChecksum": "c87cf57e1067d21a3e74332a64ef9723",
                         "ComputedIP": "",
                         "ComputedIP6": "",
-                        "YggIP": "300:e9c4:9048:57cf:66d0:3ee4:294e:d134",
+                        "PlanetaryIP": "300:e9c4:9048:57cf:66d0:3ee4:294e:d134",
                         "IP": "10.20.2.2",
                         "CPU": 1,
                         "Memory": 1024
@@ -100,7 +100,7 @@ $ tfcmd get kubernetes examplevm
                         "FlistChecksum": "c87cf57e1067d21a3e74332a64ef9723",
                         "ComputedIP": "",
                         "ComputedIP6": "",
-                        "YggIP": "300:e9c4:9048:57cf:1ae5:cc51:3ffc:81e",
+                        "PlanetaryIP": "300:e9c4:9048:57cf:1ae5:cc51:3ffc:81e",
                         "IP": "10.20.2.2",
                         "CPU": 1,
                         "Memory": 1024

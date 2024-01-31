@@ -23,7 +23,7 @@ var K8sWorkload = K8sNode{
 	FlistChecksum: "c87cf57e1067d21a3e74332a64ef9723",
 	ComputedIP:    "",
 	ComputedIP6:   "",
-	YggIP:         "",
+	PlanetaryIP:   "",
 	IP:            "",
 	CPU:           2,
 	Memory:        1024,

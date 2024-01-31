@@ -85,10 +85,10 @@ func TestVMDeployment(t *testing.T) {
 		assert.NotEmpty(t, publicIP)
 		assert.True(t, TestConnection(publicIP, "22"))
 
-		yggIP := v.YggIP
-		assert.NotEmpty(t, yggIP)
+		planetaryIP := v.PlanetaryIP
+		assert.NotEmpty(t, planetaryIP)
 
-		output, err := RemoteRun("root", yggIP, "ls /", privateKey)
+		output, err := RemoteRun("root", planetaryIP, "ls /", privateKey)
 		assert.NoError(t, err)
 		assert.Contains(t, output, "root")
 	})

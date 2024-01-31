@@ -27,7 +27,7 @@ type VM struct {
 	Corex         bool   `json:"corex"` //TODO: Is it works ??
 	ComputedIP    string `json:"computedip"`
 	ComputedIP6   string `json:"computedip6"`
-	YggIP         string `json:"ygg_ip"`
+	PlanetaryIP   string `json:"planetary_ip"`
 	IP            string `json:"ip"`
 	// used to get the same mycelium ip for the vm. if not set and planetary is used
 	// it will fallback to yggdrasil.
@@ -95,9 +95,9 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, er
 		ComputedIP:    pubIP4,
 		PublicIP6:     !pubIPRes.IPv6.Nil(),
 		ComputedIP6:   pubIP6,
-		Planetary:     result.YggIP != "",
+		Planetary:     result.PlanetaryIP != "",
 		Corex:         data.Corex,
-		YggIP:         result.YggIP,
+		PlanetaryIP:   result.PlanetaryIP,
 		IP:            data.Network.Interfaces[0].IP.String(),
 		CPU:           int(data.ComputeCapacity.CPU),
 		GPUs:          data.GPU,

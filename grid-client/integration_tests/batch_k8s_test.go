@@ -72,7 +72,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -89,7 +89,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -106,7 +106,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -123,7 +123,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -164,7 +164,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	assert.Equal(t, len(result.Workers), 1)
 
 	// Check that master is reachable
-	masterIP := result.Master.YggIP
+	masterIP := result.Master.PlanetaryIP
 	assert.NotEmpty(t, masterIP)
 
 	// Check wireguard config in output
@@ -182,7 +182,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	assert.Equal(t, len(result.Workers), 1)
 
 	// Check that master is reachable
-	masterIP = result.Master.YggIP
+	masterIP = result.Master.PlanetaryIP
 	assert.NotEmpty(t, masterIP)
 
 	// Check wireguard config in output
