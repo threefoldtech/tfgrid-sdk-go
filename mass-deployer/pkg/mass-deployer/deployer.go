@@ -154,10 +154,11 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 			nodeID := uint32(nodesIDs[nodesIDsIdx])
 			nodesIDsIdx = (nodesIDsIdx + 1) % len(nodesIDs)
 
-			disks, mounts := parseDisks(vmGroup.Name, vmGroup.SSDDisks)
+			vmName := fmt.Sprintf("%s%d", vmGroup.Name, i)
+			disks, mounts := parseDisks(vmName, vmGroup.SSDDisks)
 
 			network := workloads.ZNet{
-				Name:        fmt.Sprintf("%s%dnetwork", vmGroup.Name, i),
+				Name:        fmt.Sprintf("%snetwork", vmName),
 				Description: "network for mass deployment",
 				Nodes:       []uint32{nodeID},
 				IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -174,7 +175,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 			}
 
 			vm := workloads.VM{
-				Name:        fmt.Sprintf("%s%d", vmGroup.Name, i),
+				Name:        vmName,
 				NetworkName: network.Name,
 				Flist:       vmGroup.Flist,
 				CPU:         int(vmGroup.FreeCPU),
