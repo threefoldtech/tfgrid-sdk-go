@@ -7,7 +7,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-func filterNodes(tfPluginClient deployer.TFPluginClient, group NodesGroup, ctx context.Context) ([]int, error) {
+func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, group NodesGroup) ([]int, error) {
 	filter := types.NodeFilter{}
 
 	statusUp := "up"
@@ -59,5 +59,6 @@ func filterNodes(tfPluginClient deployer.TFPluginClient, group NodesGroup, ctx c
 	for _, node := range nodes {
 		nodesIDs = append(nodesIDs, node.NodeID)
 	}
+
 	return nodesIDs, nil
 }

@@ -2,10 +2,11 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/internal/parser"
 	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
@@ -14,32 +15,43 @@ import (
 var cancelCmd = &cobra.Command{
 	Use:   "cancel",
 	Short: "cancel all deployments of configuration file",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		debug, err := cmd.Flags().GetBool("debug")
+		if err != nil {
+			return fmt.Errorf("invalid log debug mode input '%v' with error: %w", debug, err)
+		}
+
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		if debug {
+			zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		}
+
 		configPath, err := cmd.Flags().GetString("config")
-		if err != nil || configPath == "" {
-			log.Fatal().Err(err).Msg("error in config file")
+		if err != nil {
+			return fmt.Errorf("error in configuration file: %w", err)
+		}
+
+		if configPath == "" {
+			return fmt.Errorf("configuration file path is empty")
 		}
 
 		configFile, err := os.Open(configPath)
 		if err != nil {
-			log.Fatal().Err(err).Msgf("failed to open config file: %s", configPath)
+			return fmt.Errorf("failed to open configuration file '%s' with error: %w", configPath, err)
 		}
 		defer configFile.Close()
-		jsonFmt := filepath.Ext(configPath) == ".json"
 
+		jsonFmt := filepath.Ext(configPath) == ".json"
 		cfg, err := parser.ParseConfig(configFile, jsonFmt)
 		if err != nil {
-			log.Fatal().Err(err).Msgf("failed to parse config file: %s", configPath)
+			return fmt.Errorf("failed to parse configuration file '%s' with error: %w", configPath, err)
 		}
 
 		err = deployer.RunCanceler(cfg)
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to run the canceler")
+			return fmt.Errorf("failed to cancel configured deployments with error: %w", err)
 		}
-	},
-}
 
-func init() {
-	cancelCmd.Flags().StringP("config", "c", "", "path to config file")
-	rootCmd.AddCommand(cancelCmd)
+		return nil
+	},
 }

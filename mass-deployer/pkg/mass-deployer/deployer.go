@@ -29,6 +29,8 @@ func RunDeployer(cfg Config, ctx context.Context, output string) error {
 	}
 
 	deploymentStart := time.Now()
+	log.Debug().Msg("Deployment started")
+
 	if cfg.MaxRetries == 0 {
 		cfg.MaxRetries = 5
 	}
@@ -42,7 +44,7 @@ func RunDeployer(cfg Config, ctx context.Context, output string) error {
 				log.Debug().Msgf("retrying to deploy node group %s", nodeGroup.Name)
 			}
 
-			info, err := deployNodeGroup(tfPluginClient, ctx, nodeGroup, cfg.Vms, cfg.SSHKeys)
+			info, err := deployNodeGroup(ctx, tfPluginClient, nodeGroup, cfg.Vms, cfg.SSHKeys)
 			if err != nil {
 				firstTrial = false
 				log.Debug().Err(err).Msgf("failed to deploy node group %s", nodeGroup.Name)
@@ -85,8 +87,8 @@ func RunDeployer(cfg Config, ctx context.Context, output string) error {
 	return nil
 }
 
-func deployNodeGroup(tfPluginClient deployer.TFPluginClient, ctx context.Context, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]vmOutput, error) {
-	nodesIDs, err := filterNodes(tfPluginClient, nodeGroup, ctx)
+func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]vmOutput, error) {
+	nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup)
 	if err != nil {
 		return []vmOutput{}, err
 	}
@@ -104,7 +106,7 @@ func deployNodeGroup(tfPluginClient deployer.TFPluginClient, ctx context.Context
 func parseGroupVMs(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
 	vmsOfNodeGroup := []Vms{}
 	for _, vm := range vms {
-		if vm.Nodegroup == nodeGroup {
+		if vm.NodeGroup == nodeGroup {
 			vmsOfNodeGroup = append(vmsOfNodeGroup, vm)
 		}
 	}
@@ -173,7 +175,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 				PublicIP:    vmGroup.PublicIP4,
 				PublicIP6:   vmGroup.PublicIP6,
 				Planetary:   vmGroup.Planetary,
-				RootfsSize:  int(vmGroup.Rootsize * 1024), // Rootsize is in MB
+				RootfsSize:  int(vmGroup.RootSize * 1024), // RootSize is in MB
 				Entrypoint:  vmGroup.Entrypoint,
 				EnvVars:     envVars,
 				Mounts:      mounts,

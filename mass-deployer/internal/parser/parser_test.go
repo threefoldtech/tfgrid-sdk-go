@@ -34,7 +34,7 @@ func TestParseConfig(t *testing.T) {
 			{
 				Name:       "example-vm",
 				Count:      4,
-				Nodegroup:  "group_a",
+				NodeGroup:  "group_a",
 				FreeCPU:    2,
 				FreeMRU:    1,
 				PublicIP4:  true,
@@ -264,12 +264,12 @@ func TestParseConfig(t *testing.T) {
 
 	t.Run("root size exceed limit in vm", func(t *testing.T) {
 		conf := confStruct
-		conf.Vms[0].Rootsize = 20000
+		conf.Vms[0].RootSize = 20000
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		conf.Vms[0].Rootsize = 0
+		conf.Vms[0].RootSize = 0
 
 		configFile := strings.NewReader(string(data))
 

@@ -14,7 +14,7 @@ import (
 
 func validateMnemonic(mnemonic string) error {
 	if !bip39.IsMnemonicValid(mnemonic) {
-		return fmt.Errorf("invalid mnemonic: %s", mnemonic)
+		return fmt.Errorf("invalid mnemonic: '%s'", mnemonic)
 	}
 	return nil
 }
@@ -22,40 +22,43 @@ func validateMnemonic(mnemonic string) error {
 func validateNetwork(network string) error {
 	networks := []string{"dev", "test", "qa", "main"}
 	if !slices.Contains(networks, network) {
-		return fmt.Errorf("invalid network: %s, network can be one of %+v", network, networks)
+		return fmt.Errorf("invalid network: '%s', network can be one of %+v", network, networks)
 	}
 	return nil
 }
 
 func validateVMs(vms []deployer.Vms, nodeGroups []string, sskKeys map[string]string) error {
 	for _, vm := range vms {
-		if !slices.Contains(nodeGroups, strings.TrimSpace(vm.Nodegroup)) {
-			return fmt.Errorf("invalid node_group: %s in vms group: %s", vm.Nodegroup, vm.Name)
+		if !slices.Contains(nodeGroups, strings.TrimSpace(vm.NodeGroup)) {
+			return fmt.Errorf("node group: '%s' in vms group: '%s' is not found", vm.NodeGroup, vm.Name)
 		}
+
 		if _, ok := sskKeys[vm.SSHKey]; !ok {
-			return fmt.Errorf("vms group %s ssh_key is invalid, should be valid name refers to one of ssh_keys map", vm.Name)
+			return fmt.Errorf("vms group '%s' ssh key is not found, should refer to one from ssh keys map", vm.Name)
 		}
+
 		if err := validateFlist(vm.Flist, vm.Name); err != nil {
 			return err
 		}
-
 	}
+
 	return nil
 }
 
 func validateFlist(flist, name string) error {
 	flistExt := path.Ext(flist)
 	if flistExt != ".fl" && flistExt != ".flist" {
-		return fmt.Errorf("vms group %s flist: %s is invalid, should be valid flist", name, flist)
+		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, should have a valid flist extension", name, flist)
 	}
 
 	if flistExt == ".flist" {
 		hash := md5.Sum([]byte(flist + ".md5"))
 		response, err := http.Get(flist + fmt.Sprintf("%x", hash))
 		if err != nil {
-			return fmt.Errorf("vms group %s flist: %s is invalid, failed to download flist", name, flist)
+			return fmt.Errorf("vms group '%s' flist: '%s' is invalid, failed to download flist", name, flist)
 		}
 		defer response.Body.Close()
 	}
+
 	return nil
 }

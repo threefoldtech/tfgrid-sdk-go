@@ -15,11 +15,14 @@ tfrobot is tool designed to automate mass deployment of groups of VMs on ThreeFo
 1.  Download the binaries from [releases](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
 2.  Extract the downloaded files
 3.  Move the binary to any of `$PATH` directories, for example:
+
 ```bash
 mv tfrobot /usr/local/bin
 ```
-4.  Create a new configuration file.
+
+1.  Create a new configuration file.
 For example:
+
 ```yaml
 node_groups:
   - name: group_a
@@ -48,18 +51,21 @@ network: dev
 max_retries: 5
 ```
 
-You can use this [example](./example/conf.yaml) for further guidance, 
+You can use this [example](./example/conf.yaml) for further guidance,
 >**Please** make sure to replace placeholders and adapt the groups based on your actual project details.
 
 >**Note:** All storage resources are expected to be in GB
 
 5.  Run the deployer with path to the config file
+
 ```bash
 tfrobot deploy -c path/to/your/config.yaml
 ```
 
 ## Supported Configurations
+
 ### Config File
+
 | Field | Description| Supported Values|
 | :---:   | :---: | :---: |
 | [node_group](#node-group) | description of all resources needed for each node_group | list of structs of type node_group |
@@ -70,6 +76,7 @@ tfrobot deploy -c path/to/your/config.yaml
 | max_retries | times of retries of failed node groups | positive integer |
 
 ### Node Group
+
 | Field | Description| Supported Values|
 | :---:   | :---: | :---: |
 | name | name of node_group | node group name should be unique |
@@ -85,6 +92,7 @@ tfrobot deploy -c path/to/your/config.yaml
 | region | region could be the name of the continents the nodes are located in | africa, americas, antarctic, antarctic ocean, asia, europe, oceania, polar |
 
 ### Vms Groups
+
 | Field | Description| Supported Values|
 | :---:   | :---: | :---: |
 | name | name of vm group | string value with no special characters |
@@ -102,19 +110,23 @@ tfrobot deploy -c path/to/your/config.yaml
 | root_size | root size in GB | 0 for default root size, max 10TB |
 
 ## Usage
-### Subcommands:
+
+### Subcommands
 
 -   **deploy:** used to mass deploy groups of vms with specific configurations
+
 ```bash
 tfrobot deploy -c path/to/your/config.yaml
 ```
 
 -   **cancel:** used to cancel all vms deployed using specific configurations
+
 ```bash
 tfrobot cancel -c path/to/your/config.yaml
 ```
 
-### Flags:
+### Flags
+
 | Flag | Usage |
 | :---:   | :---: |
 | -c | used to specify path to configuration file |
@@ -122,6 +134,7 @@ tfrobot cancel -c path/to/your/config.yaml
 >Parsing is based on file extension, json format if the file had json extension, yaml format otherwise 
 
 ## Using Docker
+
 ```bash
 docker build -t tfrobot -f Dockerfile ../
 docker run -v $(pwd)/config.yaml:/config.yaml -it tfrobot:latest deploy -c /config.yaml
