@@ -150,6 +150,15 @@ func main() {
 	)
 	idxr.RegisterWatcher("Health", healthWatcher)
 
+	dmiWatcher := indexer.NewDmiWatcher(
+		ctx,
+		&db,
+		rpcRmbClient,
+		5,
+		1,
+	)
+	idxr.RegisterWatcher("DMI", dmiWatcher)
+
 	idxr.Start()
 
 	s, err := createServer(f, dbClient, GitCommit, rpcRmbClient)

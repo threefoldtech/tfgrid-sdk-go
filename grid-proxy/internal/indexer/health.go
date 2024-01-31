@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	indexerCallTimeout = 10 * time.Second
-	indexerCallCommand = "zos.system.version"
+	healthCallCmd = "zos.system.version"
 )
 
 type NodeHealthIndexer struct {
@@ -54,12 +53,12 @@ func (c *NodeHealthIndexer) Start(ctx context.Context) {
 func (c *NodeHealthIndexer) startNodeQuerier(ctx context.Context) {
 	ticker := time.NewTicker(c.indexerInterval)
 	c.queryHealthyNodes(ctx)
-	c.queryGridNodes(ctx)
+	queryUpNodes(ctx, c.db, c.nodeTwinIdsChan)
 	for {
 		select {
 		case <-ticker.C:
 			c.queryHealthyNodes(ctx)
-			c.queryGridNodes(ctx)
+			queryUpNodes(ctx, c.db, c.nodeTwinIdsChan)
 		case <-ctx.Done():
 			return
 		}
@@ -78,45 +77,13 @@ func (c *NodeHealthIndexer) queryHealthyNodes(ctx context.Context) {
 	}
 }
 
-func (c *NodeHealthIndexer) queryGridNodes(ctx context.Context) {
-	status := "up"
-	filter := types.NodeFilter{
-		Status: &status,
-	}
-
-	limit := types.Limit{
-		Size:     100,
-		RetCount: true,
-		Page:     1,
-	}
-
-	hasNext := true
-	for hasNext {
-		nodes, _, err := c.db.GetNodes(ctx, filter, limit)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to query grid nodes")
-		}
-
-		if len(nodes) < int(limit.Size) {
-			hasNext = false
-		}
-
-		for _, node := range nodes {
-			c.nodeTwinIdsChan <- uint32(node.TwinID)
-		}
-
-		limit.Page++
-	}
-
-}
-
 func (c *NodeHealthIndexer) checkNodeHealth(ctx context.Context) {
 	var result interface{}
 	for {
 		select {
 		case twinId := <-c.nodeTwinIdsChan:
 			subCtx, cancel := context.WithTimeout(ctx, indexerCallTimeout)
-			err := c.relayClient.Call(subCtx, twinId, indexerCallCommand, nil, &result)
+			err := c.relayClient.Call(subCtx, twinId, healthCallCmd, nil, &result)
 			cancel()
 
 			log.Debug().Msgf("health indexer: %+v", result)
@@ -125,6 +92,7 @@ func (c *NodeHealthIndexer) checkNodeHealth(ctx context.Context) {
 				NodeTwinId: twinId,
 				Healthy:    isHealthy(err),
 			}
+			// TODO: separate this on a different channel
 			err = c.db.UpsertNodeHealth(ctx, healthReport)
 			if err != nil {
 				log.Error().Err(err).Msgf("failed to update health report for node with twin id %d", twinId)
@@ -138,7 +106,3 @@ func (c *NodeHealthIndexer) checkNodeHealth(ctx context.Context) {
 func isHealthy(err error) bool {
 	return err == nil
 }
-
-// func generateSessionId() string {
-// 	return fmt.Sprintf("node-health-indexer-%s", strings.Split(uuid.NewString(), "-")[0])
-// }

@@ -72,6 +72,7 @@ func (n *NodeGPUIndexer) queryNewNodes(ctx context.Context, twinIDs []uint32) {
 	}
 }
 
+// TODO: use the node in utils
 func (n *NodeGPUIndexer) runQueryGridNodes(ctx context.Context) {
 	status := "up"
 	filter := types.NodeFilter{
@@ -226,25 +227,3 @@ func (n *NodeGPUIndexer) watchNodeTable(ctx context.Context) {
 		}
 	}
 }
-
-// func (n *NodeGPUIndexer) relayCallback(ctx context.Context, p peer.Peer, response *rmbTypes.Envelope, callBackErr error) {
-// 	output, err := peer.Json(response, callBackErr)
-// 	if err != nil {
-// 		log.Error().Err(err)
-// 		return
-// 	}
-
-// 	var nodesGPU []types.NodeGPU
-// 	err = json.Unmarshal(output, &nodesGPU)
-// 	if err != nil {
-// 		log.Error().Err(err).RawJSON("data", output).Msg("failed to unmarshal GPU information response")
-// 		return
-
-// 	}
-// 	for i := range nodesGPU {
-// 		nodesGPU[i].NodeTwinID = response.Source.Twin
-// 	}
-// 	if len(nodesGPU) != 0 {
-// 		n.nodesGPUResultsChan <- nodesGPU
-// 	}
-// }

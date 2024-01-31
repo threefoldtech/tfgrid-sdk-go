@@ -2,9 +2,14 @@ package indexer
 
 import (
 	"context"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+)
+
+const (
+	indexerCallTimeout = 10 * time.Second
 )
 
 type Watcher interface {
