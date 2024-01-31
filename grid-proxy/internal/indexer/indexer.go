@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/rs/zerolog/log"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
 type Watcher interface {
@@ -11,19 +12,22 @@ type Watcher interface {
 }
 
 type Indexer struct {
-	Watchers map[string]Watcher
-	Paused   bool
-	Context  context.Context
+	Watchers  map[string]Watcher
+	Paused    bool
+	Context   context.Context
+	RmbClient *peer.RpcClient
 }
 
 func NewIndexer(
 	ctx context.Context,
 	paused bool,
+	rmbClient *peer.RpcClient,
 ) *Indexer {
 	return &Indexer{
-		Watchers: make(map[string]Watcher),
-		Paused:   paused,
-		Context:  ctx,
+		Watchers:  make(map[string]Watcher),
+		Paused:    paused,
+		Context:   ctx,
+		RmbClient: rmbClient,
 	}
 }
 

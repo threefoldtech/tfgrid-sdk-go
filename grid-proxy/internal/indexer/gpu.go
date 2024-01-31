@@ -2,18 +2,12 @@ package indexer
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"os"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-	rmbTypes "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
 )
 
 const (
@@ -25,7 +19,7 @@ const (
 
 type NodeGPUIndexer struct {
 	db                     db.Database
-	relayPeer              *peer.Peer
+	rpcClient              *peer.RpcClient
 	checkInterval          time.Duration
 	batchSize              uint
 	nodesGPUResultsChan    chan []types.NodeGPU
@@ -37,16 +31,15 @@ type NodeGPUIndexer struct {
 
 func NewNodeGPUIndexer(
 	ctx context.Context,
-	relayURL,
-	mnemonics string,
-	subManager substrate.Manager,
+	rpcClient *peer.RpcClient,
 	db db.Database,
 	indexerCheckIntervalMins,
 	batchSize,
 	nodesGPUResultsWorkers,
-	nodesGPUBufferWorkers uint) (*NodeGPUIndexer, error) {
-	indexer := &NodeGPUIndexer{
+	nodesGPUBufferWorkers uint) *NodeGPUIndexer {
+	return &NodeGPUIndexer{
 		db:                     db,
+		rpcClient:              rpcClient,
 		nodesGPUResultsChan:    make(chan []types.NodeGPU),
 		nodesGPUBatchesChan:    make(chan []types.NodeGPU),
 		newNodeTwinIDChan:      make(chan []uint32),
@@ -55,22 +48,6 @@ func NewNodeGPUIndexer(
 		nodesGPUResultsWorkers: nodesGPUResultsWorkers,
 		nodesGPUBufferWorkers:  nodesGPUBufferWorkers,
 	}
-
-	sessionId := fmt.Sprintf("tfgrid_proxy_indexer-%d", os.Getpid())
-	client, err := peer.NewPeer(
-		ctx,
-		mnemonics,
-		subManager,
-		indexer.relayCallback,
-		peer.WithRelay(relayURL),
-		peer.WithSession(sessionId),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create direct RMB client: %w", err)
-	}
-	indexer.relayPeer = client
-
-	return indexer, nil
 }
 
 func (n *NodeGPUIndexer) queryGridNodes(ctx context.Context) {
@@ -130,11 +107,25 @@ func (n *NodeGPUIndexer) runQueryGridNodes(ctx context.Context) {
 }
 
 func (n *NodeGPUIndexer) getNodeGPUInfo(ctx context.Context, nodeTwinID uint32) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	subCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	id := uuid.NewString()
-	return n.relayPeer.SendRequest(ctx, id, nodeTwinID, nil, "zos.gpu.list", nil)
+	var nodesGPU []types.NodeGPU
+	err := n.rpcClient.Call(subCtx, nodeTwinID, "zos.gpu.list", nil, &nodesGPU)
+	if err != nil {
+		return err
+	}
+	log.Debug().Msgf("gpu indexer: %+v", nodesGPU)
+
+	for i := range nodesGPU {
+		nodesGPU[i].NodeTwinID = nodeTwinID
+	}
+
+	if len(nodesGPU) != 0 {
+		n.nodesGPUResultsChan <- nodesGPU
+	}
+
+	return nil
 }
 
 func (n *NodeGPUIndexer) getNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]db.Node, error) {
@@ -204,8 +195,6 @@ func (n *NodeGPUIndexer) Start(ctx context.Context) {
 
 	go n.watchNodeTable(ctx)
 
-	log.Info().Msg("GPU indexer started")
-
 }
 
 func (n *NodeGPUIndexer) watchNodeTable(ctx context.Context) {
@@ -238,24 +227,24 @@ func (n *NodeGPUIndexer) watchNodeTable(ctx context.Context) {
 	}
 }
 
-func (n *NodeGPUIndexer) relayCallback(ctx context.Context, p peer.Peer, response *rmbTypes.Envelope, callBackErr error) {
-	output, err := peer.Json(response, callBackErr)
-	if err != nil {
-		log.Error().Err(err)
-		return
-	}
+// func (n *NodeGPUIndexer) relayCallback(ctx context.Context, p peer.Peer, response *rmbTypes.Envelope, callBackErr error) {
+// 	output, err := peer.Json(response, callBackErr)
+// 	if err != nil {
+// 		log.Error().Err(err)
+// 		return
+// 	}
 
-	var nodesGPU []types.NodeGPU
-	err = json.Unmarshal(output, &nodesGPU)
-	if err != nil {
-		log.Error().Err(err).RawJSON("data", output).Msg("failed to unmarshal GPU information response")
-		return
+// 	var nodesGPU []types.NodeGPU
+// 	err = json.Unmarshal(output, &nodesGPU)
+// 	if err != nil {
+// 		log.Error().Err(err).RawJSON("data", output).Msg("failed to unmarshal GPU information response")
+// 		return
 
-	}
-	for i := range nodesGPU {
-		nodesGPU[i].NodeTwinID = response.Source.Twin
-	}
-	if len(nodesGPU) != 0 {
-		n.nodesGPUResultsChan <- nodesGPU
-	}
-}
+// 	}
+// 	for i := range nodesGPU {
+// 		nodesGPU[i].NodeTwinID = response.Source.Twin
+// 	}
+// 	if len(nodesGPU) != 0 {
+// 		n.nodesGPUResultsChan <- nodesGPU
+// 	}
+// }

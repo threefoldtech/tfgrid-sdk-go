@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -111,11 +113,6 @@ func main() {
 
 	subManager := substrate.NewManager(f.tfChainURL)
 
-	relayRPCClient, err := createRPCRMBClient(ctx, f.relayURL, f.mnemonics, subManager)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create relay client")
-	}
-
 	db, err := db.NewPostgresDatabase(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB, f.maxPoolOpenConnections, logger.LogLevel(f.sqlLogLevel))
 	if err != nil {
 		log.Fatal().Err(err).Msg("couldn't get postgres client")
@@ -126,32 +123,35 @@ func main() {
 	}
 
 	dbClient := explorer.DBClient{DB: &db}
+	rpcRmbClient, err := createRPCRMBClient(ctx, f.relayURL, f.mnemonics, subManager)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create relay client")
+	}
+	idxr := indexer.NewIndexer(ctx, false, rpcRmbClient)
 
-	gpuWatcher, err := indexer.NewNodeGPUIndexer(
+	gpuWatcher := indexer.NewNodeGPUIndexer(
 		ctx,
-		f.relayURL,
-		f.mnemonics,
-		subManager, &db,
+		rpcRmbClient,
+		&db,
 		f.gpuIndexerCheckIntervalMins,
 		f.gpuIndexerBatchSize,
 		f.gpuIndexerResultWorkers,
 		f.gpuIndexerBatchWorkers,
 	)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create GPU indexer")
-	}
+	idxr.RegisterWatcher("GPU", gpuWatcher)
 
-	healthWatcher, err := indexer.NewNodeHealthIndexer(ctx, &db, subManager, f.mnemonics, f.relayURL, f.healthIndexerWorkers, f.healthIndexerInterval)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create health indexer")
-	}
+	healthWatcher := indexer.NewNodeHealthIndexer(
+		ctx,
+		rpcRmbClient,
+		&db,
+		f.healthIndexerWorkers,
+		f.healthIndexerInterval,
+	)
+	idxr.RegisterWatcher("Health", healthWatcher)
 
-	indexer := indexer.NewIndexer(ctx, true)
-	indexer.RegisterWatcher("GPU", gpuWatcher)
-	indexer.RegisterWatcher("Health", healthWatcher)
-	indexer.Start()
+	idxr.Start()
 
-	s, err := createServer(f, dbClient, GitCommit, relayRPCClient)
+	s, err := createServer(f, dbClient, GitCommit, rpcRmbClient)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create mux server")
 	}
@@ -207,8 +207,8 @@ func app(s *http.Server, f flags) error {
 	return nil
 }
 
-func createRPCRMBClient(ctx context.Context, relayURL, mnemonics string, subManager substrate.Manager) (rmb.Client, error) {
-	sessionId := fmt.Sprintf("tfgrid_proxy-%d", os.Getpid())
+func createRPCRMBClient(ctx context.Context, relayURL, mnemonics string, subManager substrate.Manager) (*peer.RpcClient, error) {
+	sessionId := fmt.Sprintf("tfgrid-proxy-%s", strings.Split(uuid.NewString(), "-")[0])
 	client, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonics, relayURL, sessionId, subManager, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create direct RPC RMB client: %w", err)

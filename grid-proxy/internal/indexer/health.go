@@ -2,16 +2,11 @@ package indexer
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
@@ -22,7 +17,7 @@ const (
 
 type NodeHealthIndexer struct {
 	db              db.Database
-	relayClient     rmb.Client
+	relayClient     *peer.RpcClient
 	nodeTwinIdsChan chan uint32
 	indexerInterval time.Duration
 	indexerWorkers  uint
@@ -30,26 +25,18 @@ type NodeHealthIndexer struct {
 
 func NewNodeHealthIndexer(
 	ctx context.Context,
+	rpcClient *peer.RpcClient,
 	db db.Database,
-	subManager substrate.Manager,
-	mnemonic string,
-	relayUrl string,
 	indexerWorkers uint,
 	indexerInterval uint,
-) (*NodeHealthIndexer, error) {
-	sessionId := generateSessionId()
-	rpcClient, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonic, relayUrl, sessionId, subManager, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create rmb client: %w", err)
-	}
-
+) *NodeHealthIndexer {
 	return &NodeHealthIndexer{
 		db:              db,
 		relayClient:     rpcClient,
 		nodeTwinIdsChan: make(chan uint32),
 		indexerWorkers:  indexerWorkers,
 		indexerInterval: time.Duration(indexerInterval) * time.Minute,
-	}, nil
+	}
 }
 
 func (c *NodeHealthIndexer) Start(ctx context.Context) {
@@ -61,8 +48,6 @@ func (c *NodeHealthIndexer) Start(ctx context.Context) {
 	for i := uint(0); i < c.indexerWorkers; i++ {
 		go c.checkNodeHealth(ctx)
 	}
-
-	log.Info().Msg("Node health indexer started")
 
 }
 
@@ -134,6 +119,8 @@ func (c *NodeHealthIndexer) checkNodeHealth(ctx context.Context) {
 			err := c.relayClient.Call(subCtx, twinId, indexerCallCommand, nil, &result)
 			cancel()
 
+			log.Debug().Msgf("health indexer: %+v", result)
+
 			healthReport := types.HealthReport{
 				NodeTwinId: twinId,
 				Healthy:    isHealthy(err),
@@ -152,6 +139,6 @@ func isHealthy(err error) bool {
 	return err == nil
 }
 
-func generateSessionId() string {
-	return fmt.Sprintf("node-health-indexer-%s", strings.Split(uuid.NewString(), "-")[0])
-}
+// func generateSessionId() string {
+// 	return fmt.Sprintf("node-health-indexer-%s", strings.Split(uuid.NewString(), "-")[0])
+// }
