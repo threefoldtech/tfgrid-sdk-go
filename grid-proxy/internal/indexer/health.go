@@ -1,4 +1,4 @@
-package healthindexer
+package indexer
 
 import (
 	"context"

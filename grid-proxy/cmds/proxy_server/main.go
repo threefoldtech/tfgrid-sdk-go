@@ -16,8 +16,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/certmanager"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/gpuindexer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/healthindexer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/indexer"
 	logging "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg"
 	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
@@ -128,7 +127,7 @@ func main() {
 
 	dbClient := explorer.DBClient{DB: &db}
 
-	indexer, err := gpuindexer.NewNodeGPUIndexer(
+	gpuWatcher, err := indexer.NewNodeGPUIndexer(
 		ctx,
 		f.relayURL,
 		f.mnemonics,
@@ -142,13 +141,15 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to create GPU indexer")
 	}
 
-	indexer.Start(ctx)
-
-	healthIndexer, err := healthindexer.NewNodeHealthIndexer(ctx, &db, subManager, f.mnemonics, f.relayURL, f.healthIndexerWorkers, f.healthIndexerInterval)
+	healthWatcher, err := indexer.NewNodeHealthIndexer(ctx, &db, subManager, f.mnemonics, f.relayURL, f.healthIndexerWorkers, f.healthIndexerInterval)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create health indexer")
 	}
-	healthIndexer.Start(ctx)
+
+	indexer := indexer.NewIndexer(ctx, true)
+	indexer.RegisterWatcher("GPU", gpuWatcher)
+	indexer.RegisterWatcher("Health", healthWatcher)
+	indexer.Start()
 
 	s, err := createServer(f, dbClient, GitCommit, relayRPCClient)
 	if err != nil {

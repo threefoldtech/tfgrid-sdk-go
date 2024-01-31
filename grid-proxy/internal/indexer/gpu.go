@@ -1,4 +1,4 @@
-package gpuindexer
+package indexer
 
 import (
 	"context"
