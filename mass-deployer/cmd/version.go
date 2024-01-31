@@ -18,11 +18,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get latest build tag",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(version)
-		fmt.Println(commit)
+		fmt.Printf("version: %s", version)
+		fmt.Printf("commit: %s", commit)
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(versionCmd)
 }

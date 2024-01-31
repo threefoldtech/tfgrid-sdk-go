@@ -24,7 +24,7 @@ func ParseConfig(file io.Reader, jsonFmt bool) (deployer.Config, error) {
 
 	configFile, err := io.ReadAll(file)
 	if err != nil {
-		return deployer.Config{}, fmt.Errorf("failed to read the config file %+w", err)
+		return deployer.Config{}, fmt.Errorf("failed to read the config file: %+w", err)
 	}
 	if jsonFmt {
 		err = json.Unmarshal(configFile, &conf)

@@ -2,7 +2,7 @@ package deployer
 
 import "github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 
-// type config contains configuration used to deploy multible groups of vms in batches
+// type config contains configuration used to deploy multiple groups of vms in batches
 // **note: please make sure to run validator (validator.Validate(conf))**
 type Config struct {
 	NodeGroups []NodesGroup      `yaml:"node_groups" validate:"nonzero" json:"node_groups"`
@@ -30,7 +30,7 @@ type NodesGroup struct {
 type Vms struct {
 	Name       string            `yaml:"name" validate:"nonzero" json:"name"`
 	Count      uint64            `yaml:"vms_count" validate:"nonzero" json:"vms_count"`
-	Nodegroup  string            `yaml:"node_group" validate:"nonzero" json:"node_group"`
+	NodeGroup  string            `yaml:"node_group" validate:"nonzero" json:"node_group"`
 	FreeCPU    uint64            `yaml:"cpu" validate:"nonzero,max=32" json:"cpu"`
 	FreeMRU    float32           `yaml:"mem" validate:"nonzero,min=0.25,max=256" json:"mem"` // min: 0.25 GB, max: 256 GB
 	SSDDisks   []Disk            `yaml:"ssd" json:"ssd"`
@@ -38,7 +38,7 @@ type Vms struct {
 	PublicIP6  bool              `yaml:"public_ip6" json:"public_ip6"`
 	Planetary  bool              `yaml:"planetary" json:"planetary"`
 	Flist      string            `yaml:"flist" validate:"nonzero" json:"flist"`
-	Rootsize   uint64            `yaml:"root_size" validate:"max=10240" json:"root_size"` // max 10 TB
+	RootSize   uint64            `yaml:"root_size" validate:"max=10240" json:"root_size"` // max 10 TB
 	Entrypoint string            `yaml:"entry_point" validate:"nonzero" json:"entry_point"`
 	SSHKey     string            `yaml:"ssh_key" validate:"nonzero" json:"ssh_key"`
 	EnvVars    map[string]string `yaml:"env_vars" json:"env_vars"`
@@ -62,10 +62,13 @@ type vmDeploymentInfo struct {
 }
 
 type vmOutput struct {
-	Name      string
-	PublicIP4 string
-	PublicIP6 string
-	YggIP     string
-	IP        string
-	Mounts    []workloads.Mount
+	Name        string
+	NetworkName string
+	PublicIP4   string
+	PublicIP6   string
+	YggIP       string
+	IP          string
+	Mounts      []workloads.Mount
+	NodeID      uint32
+	ContractID  uint64
 }

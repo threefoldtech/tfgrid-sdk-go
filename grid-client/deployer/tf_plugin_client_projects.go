@@ -10,7 +10,7 @@ import (
 
 // CancelByProjectName cancels a deployed project
 func (t *TFPluginClient) CancelByProjectName(projectName string) error {
-	log.Info().Msgf("canceling contracts for project %s", projectName)
+	log.Info().Str("project name", projectName).Msg("canceling contracts")
 	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName)
 	if err != nil {
 		return errors.Wrapf(err, "could not load contracts for project %s", projectName)
@@ -29,6 +29,6 @@ func (t *TFPluginClient) CancelByProjectName(projectName string) error {
 		return fmt.Errorf("failed to cancel contracts for project %s: %w", projectName, err)
 	}
 
-	log.Info().Msgf("%s canceled", projectName)
+	log.Info().Str("project name", projectName).Msg("project is canceled")
 	return nil
 }
