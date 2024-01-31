@@ -7,10 +7,10 @@ import (
 
 func setup(conf Config) (deployer.TFPluginClient, error) {
 	network := conf.Network
-	log.Debug().Msgf("network: %s", network)
+	log.Debug().Str("network", network).Send()
 
 	mnemonic := conf.Mnemonic
-	log.Debug().Msgf("mnemonic: %s", mnemonic)
+	log.Debug().Str("mnemonic", mnemonic).Send()
 
 	return deployer.NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 30, false)
 }

@@ -83,12 +83,12 @@ tfrobot deploy -c path/to/your/config.yaml
 | nodes_count | number of nodes in node group| positive integer |
 | free_cpu | number of cpu of node | nonzero int max = 32 |
 | free_mru | free memory in the node in GB | min = 0.25, max 256 |
-| free_ssd | free ssd storage in the node in GB | positive integer value|
-| free_hdd| free hdd storage in the node in GB | positive integer value|
-| dedicated | are nodes dedicated | bool value |
-| public_ip4 | should the nodes have free ip v4 | bool value |
-| public_ip6 | should the nodes have free ip v6 | bool value |
-| certified | should the nodes be certified(if false the nodes could be certified of diyed)  | bool value |
+| free_ssd | free ssd storage in the node in GB | positive integer value |
+| free_hdd | free hdd storage in the node in GB | positive integer value |
+| dedicated | are nodes dedicated | `true` or `false` |
+| public_ip4 | should the nodes have free ip v4 | `true` or `false` |
+| public_ip6 | should the nodes have free ip v6 | `true` or `false` |
+| certified | should the nodes be certified(if false the nodes could be certified of diyed)  | `true` or `false` |
 | region | region could be the name of the continents the nodes are located in | africa, americas, antarctic, antarctic ocean, asia, europe, oceania, polar |
 
 ### Vms Groups
@@ -100,9 +100,9 @@ tfrobot deploy -c path/to/your/config.yaml
 | node_group | name of node_group the vm belongs to | should be defined in node_groups |
 | cpu | number of cpu for vm | nonzero int max = 32 |
 | mem | free memory in the vm in GB | min = 0.25, max 256 |
-| planetary | should the vm have yggdrasil ip | bool value |
-| public_ip4 | should the vm have free ip v4 | bool value |
-| public_ip6 | should the vm have free ip v6 | bool value |
+| planetary | should the vm have yggdrasil ip | `true` or `false` |
+| public_ip4 | should the vm have free ip v4 | `true` or `false` |
+| public_ip6 | should the vm have free ip v6 | `true` or `false` |
 | flist | should be a link to valid flist | valid flist url |
 | entry_point | entry point of the flist | path to the entry point |
 | ssh_key | key of ssh key defined in the ssh_keys map | should be valid ssh_key defined in the ssh_keys map |
