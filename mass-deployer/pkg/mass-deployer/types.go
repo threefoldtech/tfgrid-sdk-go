@@ -62,14 +62,13 @@ type vmDeploymentInfo struct {
 }
 
 type vmOutput struct {
-	Name         string
-	NetworkName  string
-	NetworkName2 string
-	PublicIP4    string
-	PublicIP6    string
-	YggIP        string
-	IP           string
-	Mounts       []workloads.Mount
-	NodeID       uint32
-	ContractID   uint64
+	Name        string
+	NetworkName string
+	PublicIP4   string
+	PublicIP6   string
+	YggIP       string
+	IP          string
+	Mounts      []workloads.Mount
+	NodeID      uint32
+	ContractID  uint64
 }
