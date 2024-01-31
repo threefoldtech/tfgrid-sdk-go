@@ -141,6 +141,9 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 	for _, vmGroup := range vms {
 
 		envVars := vmGroup.EnvVars
+		if envVars == nil {
+			envVars = map[string]string{}
+		}
 		envVars["SSH_KEY"] = sshKeys[vmGroup.SSHKey]
 
 		for i := 0; i < int(vmGroup.Count); i++ {
