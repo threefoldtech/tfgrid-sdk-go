@@ -168,6 +168,11 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 				SolutionType: nodeGroup,
 			}
 
+			if !vmGroup.PublicIP4 && !vmGroup.Planetary {
+				log.Warn().Msg("Planetary and public IP options are false. Setting planetary to true")
+				vmGroup.Planetary = true
+			}
+
 			vm := workloads.VM{
 				Name:        fmt.Sprintf("%s%d", vmGroup.Name, i),
 				NetworkName: network.Name,
