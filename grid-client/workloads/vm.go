@@ -31,18 +31,18 @@ type VM struct {
 	IP            string `json:"ip"`
 	// used to get the same mycelium ip for the vm. if not set and planetary is used
 	// it will fallback to yggdrasil.
-	MyceliumSeed []byte            `json:"mycelium_seed"`
-	Description  string            `json:"description"`
-	GPUs         []zos.GPU         `json:"gpus"`
-	CPU          int               `json:"cpu"`
-	Memory       int               `json:"memory"`
-	RootfsSize   int               `json:"rootfs_size"`
-	Entrypoint   string            `json:"entrypoint"`
-	Mounts       []Mount           `json:"mounts"`
-	Zlogs        []Zlog            `json:"zlogs"`
-	EnvVars      map[string]string `json:"env_vars"`
-	NetworkName  string            `json:"network_name"`
-	ConsoleURL   string            `json:"console_url"`
+	MyceliumIPSeed []byte            `json:"mycelium_ip_seed"`
+	Description    string            `json:"description"`
+	GPUs           []zos.GPU         `json:"gpus"`
+	CPU            int               `json:"cpu"`
+	Memory         int               `json:"memory"`
+	RootfsSize     int               `json:"rootfs_size"`
+	Entrypoint     string            `json:"entrypoint"`
+	Mounts         []Mount           `json:"mounts"`
+	Zlogs          []Zlog            `json:"zlogs"`
+	EnvVars        map[string]string `json:"env_vars"`
+	NetworkName    string            `json:"network_name"`
+	ConsoleURL     string            `json:"console_url"`
 }
 
 // Mount disks struct
@@ -163,10 +163,10 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 		workloads = append(workloads, zlogWorkload)
 	}
 	var myceliumIP *zos.MyceliumIP
-	if len(vm.MyceliumSeed) != 0 {
+	if len(vm.MyceliumIPSeed) != 0 {
 		myceliumIP = &zos.MyceliumIP{
 			Network: gridtypes.Name(vm.NetworkName),
-			Seed:    vm.MyceliumSeed,
+			Seed:    vm.MyceliumIPSeed,
 		}
 	}
 	workload := gridtypes.Workload{
@@ -234,8 +234,8 @@ func (vm *VM) Validate() error {
 			)
 		}
 	}
-	if len(vm.MyceliumSeed) != zos.MyceliumIPSeedLen && len(vm.MyceliumSeed) != 0 {
-		return fmt.Errorf("invalid mycelium ip seed length %d must be %d or empty", len(vm.MyceliumSeed), zos.MyceliumIPSeedLen)
+	if len(vm.MyceliumIPSeed) != zos.MyceliumIPSeedLen && len(vm.MyceliumIPSeed) != 0 {
+		return fmt.Errorf("invalid mycelium ip seed length %d must be %d or empty", len(vm.MyceliumIPSeed), zos.MyceliumIPSeedLen)
 	}
 	return nil
 }
