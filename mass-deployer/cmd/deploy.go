@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/internal/parser"
 	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"golang.org/x/sys/unix"
 )
 
 var deployCmd = &cobra.Command{
@@ -34,8 +35,15 @@ var deployCmd = &cobra.Command{
 
 		outJsonFmt := filepath.Ext(outputPath) == ".json"
 		outYmlFmt := filepath.Ext(outputPath) == ".yaml" || filepath.Ext(outputPath) == ".yml"
-		if !outJsonFmt && !outYmlFmt {
-			return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
+		if outputPath != "" {
+			if !outJsonFmt && !outYmlFmt {
+				return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
+			}
+
+			// check if output file is writable
+			if unix.Access(outputPath, unix.W_OK) != nil {
+				return fmt.Errorf("output path '%s' does not exist or is not writable", outputPath)
+			}
 		}
 
 		configPath, err := cmd.Flags().GetString("config")
