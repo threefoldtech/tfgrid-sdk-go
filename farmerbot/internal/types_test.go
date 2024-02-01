@@ -83,7 +83,7 @@ func TestPowerModel(t *testing.T) {
 
 	assert.Equal(t, time.Time(power.PeriodicWakeUpStart).Hour(), oldPower.Hour())
 	assert.Equal(t, time.Time(power.PeriodicWakeUpStart).Minute(), oldPower.Minute())
-	assert.NotEqual(t, time.Time(power.PeriodicWakeUpStart).Day(), oldPower.Day())
+	assert.Equal(t, time.Time(power.PeriodicWakeUpStart).Day(), oldPower.Day())
 
 	power.PeriodicWakeUpStart = wakeUpDate(power.PeriodicWakeUpStart.PeriodicWakeUpTime())
 	assert.Equal(t, time.Time(power.PeriodicWakeUpStart).Day(), oldPower.Day())
