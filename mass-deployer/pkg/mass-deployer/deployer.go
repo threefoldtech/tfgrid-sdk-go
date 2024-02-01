@@ -90,13 +90,17 @@ func RunDeployer(ctx context.Context, cfg Config, output string) error {
 }
 
 func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]vmOutput, error) {
+	log.Debug().Str("Node group", nodeGroup.Name).Msg("Filter nodes")
 	nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup)
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Ints("nodes IDs", nodesIDs).Send()
 
+	log.Debug().Str("Node group", nodeGroup.Name).Msg("Parsing vms group")
 	groupsDeployments := parseVMsGroup(vms, nodeGroup.Name, nodesIDs, sshKeys)
 
+	log.Debug().Str("Node group", nodeGroup.Name).Msg("Starting mass deployment")
 	info, err := massDeploy(ctx, tfPluginClient, groupsDeployments)
 	if err != nil {
 		return nil, err
@@ -113,22 +117,26 @@ func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[stri
 		}
 	}
 
+	log.Debug().Str("Node group", nodeGroup).Msg("Build deployments")
 	return buildDeployments(vmsOfNodeGroup, nodeGroup, nodesIDs, sshKeys)
 }
 
 func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, deployments groupDeploymentsInfo) ([]vmOutput, error) {
+	log.Debug().Msg("Deploy networks")
 	err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, deployments.networkDeployments)
 	if err != nil {
 		cancelContractsOfFailedDeployments(tfPluginClient, deployments.networkDeployments, []*workloads.Deployment{})
 		return nil, err
 	}
 
+	log.Debug().Msg("Deploy virtual machines")
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, deployments.vmDeployments)
 	if err != nil {
 		cancelContractsOfFailedDeployments(tfPluginClient, deployments.networkDeployments, deployments.vmDeployments)
 		return nil, err
 	}
 
+	log.Debug().Msg("Load deployments")
 	vmsInfo := loadDeploymentsInfo(tfPluginClient, deployments.deploymentsInfo)
 
 	return vmsInfo, nil
