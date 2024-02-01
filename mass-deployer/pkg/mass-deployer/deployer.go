@@ -21,11 +21,11 @@ import (
 
 const maxDeploymentRetries = 5
 
-func RunDeployer(ctx context.Context, cfg Config, output string) error {
+func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) error {
 	passedGroups := map[string][]vmOutput{}
 	failedGroups := map[string]string{}
 
-	tfPluginClient, err := setup(cfg)
+	tfPluginClient, err := setup(cfg, debug)
 	if err != nil {
 		return fmt.Errorf("failed to create deployer: %v", err)
 	}

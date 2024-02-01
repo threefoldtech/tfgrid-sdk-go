@@ -1,7 +1,7 @@
 package deployer
 
-func RunCanceler(cfg Config) error {
-	tfPluginClient, err := setup(cfg)
+func RunCanceler(cfg Config, debug bool) error {
+	tfPluginClient, err := setup(cfg, debug)
 	if err != nil {
 		return err
 	}

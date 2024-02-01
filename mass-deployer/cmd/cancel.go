@@ -57,7 +57,7 @@ var cancelCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse configuration file '%s' with error: %w", configPath, err)
 		}
 
-		err = deployer.RunCanceler(cfg)
+		err = deployer.RunCanceler(cfg, debug)
 		if err != nil {
 			return fmt.Errorf("failed to cancel configured deployments with error: %w", err)
 		}
