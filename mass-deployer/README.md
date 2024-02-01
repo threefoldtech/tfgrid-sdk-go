@@ -140,7 +140,9 @@ tfrobot cancel -c path/to/your/config.yaml
 | -o | used to specify path to output file to store the output info in |
 | -d | allow debug logs to appear in the output logs |
 | -h | help |
-> Parsing is based on file extension, json format if the file had json extension, yaml format otherwise 
+> **Note:** Parsing is based on file extension, json format if the file had json extension, yaml format otherwise
+
+> **Note:** Make sure to use every flag once. If the flag is repeated, it will ignore all values and take the last value of the flag.
 
 ## Using Docker
 

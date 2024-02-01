@@ -25,6 +25,11 @@ var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "deploy groups of vms in configuration file",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// It doesn't have a subcommand
+		if len(cmd.Flags().Args()) != 0 {
+			return fmt.Errorf("'deploy' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
+		}
+
 		debug, err := cmd.Flags().GetBool("debug")
 		if err != nil {
 			return fmt.Errorf("invalid log debug mode input '%v' with error: %w", debug, err)
