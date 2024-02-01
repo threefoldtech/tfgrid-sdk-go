@@ -32,7 +32,7 @@ var cancelCmd = &cobra.Command{
 		}
 
 		if configPath == "" {
-			return fmt.Errorf("configuration file path is empty")
+			return fmt.Errorf("required configuration file path is empty")
 		}
 
 		configFile, err := os.Open(configPath)
@@ -41,8 +41,8 @@ var cancelCmd = &cobra.Command{
 		}
 		defer configFile.Close()
 
-		jsonFmt := filepath.Ext(configPath) == ".json"
-		ymlFmt := filepath.Ext(configPath) == ".yaml" || filepath.Ext(configPath) == ".yml"
+		jsonFmt := filepath.Ext(configPath) == jsonExt
+		ymlFmt := filepath.Ext(configPath) == yamlExt || filepath.Ext(configPath) == ymlExt
 		if !jsonFmt && !ymlFmt {
 			return fmt.Errorf("unsupported configuration file format '%s', should be [yaml, yml, json]", configPath)
 		}

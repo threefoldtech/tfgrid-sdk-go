@@ -14,6 +14,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+const (
+	ymlExt  = ".yml"
+	yamlExt = ".yaml"
+	jsonExt = ".json"
+)
+
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "deploy groups of vms in configuration file",
@@ -33,8 +39,8 @@ var deployCmd = &cobra.Command{
 			return fmt.Errorf("error in output file: %w", err)
 		}
 
-		outJsonFmt := filepath.Ext(outputPath) == ".json"
-		outYmlFmt := filepath.Ext(outputPath) == ".yaml" || filepath.Ext(outputPath) == ".yml"
+		outJsonFmt := filepath.Ext(outputPath) == jsonExt
+		outYmlFmt := filepath.Ext(outputPath) == yamlExt || filepath.Ext(outputPath) == ymlExt
 		if outputPath != "" {
 			if !outJsonFmt && !outYmlFmt {
 				return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
@@ -52,7 +58,7 @@ var deployCmd = &cobra.Command{
 		}
 
 		if configPath == "" {
-			return fmt.Errorf("configuration file path is empty")
+			return fmt.Errorf("required configuration file path is empty")
 		}
 
 		configFile, err := os.Open(configPath)
@@ -61,8 +67,8 @@ var deployCmd = &cobra.Command{
 		}
 		defer configFile.Close()
 
-		jsonFmt := filepath.Ext(configPath) == ".json"
-		ymlFmt := filepath.Ext(configPath) == ".yaml" || filepath.Ext(configPath) == ".yml"
+		jsonFmt := filepath.Ext(configPath) == jsonExt
+		ymlFmt := filepath.Ext(configPath) == yamlExt || filepath.Ext(configPath) == ymlExt
 		if !jsonFmt && !ymlFmt {
 			return fmt.Errorf("unsupported configuration file format '%s', should be [yaml, yml, json]", configPath)
 		}
