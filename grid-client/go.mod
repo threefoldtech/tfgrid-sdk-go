@@ -14,7 +14,7 @@ require (
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240116163757-68c63d80a9e0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.2
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4
-	github.com/threefoldtech/zos v0.5.6-0.20240131114330-dd28b9043948
+	github.com/threefoldtech/zos v0.5.6-0.20240201083024-52a4a6c4c898
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.17.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
