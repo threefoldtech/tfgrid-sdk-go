@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/cosmos/go-bip39 v1.0.0
+	github.com/go-playground/validator/v10 v10.17.0
 	github.com/rs/zerolog v1.31.0
 	github.com/sethvargo/go-retry v0.2.4
 	github.com/spf13/cobra v1.8.0
@@ -11,7 +12,6 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.13.4
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.13.4
 	github.com/threefoldtech/zos v0.5.6-0.20240131114330-dd28b9043948
-	gopkg.in/validator.v2 v2.0.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -26,6 +26,9 @@ require (
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/ethereum/go-ethereum v1.11.6 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
@@ -39,6 +42,7 @@ require (
 	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6 // indirect
+	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b // indirect
@@ -56,6 +60,7 @@ require (
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect

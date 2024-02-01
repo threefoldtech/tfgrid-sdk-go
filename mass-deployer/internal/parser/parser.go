@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog/log"
 	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
-	"gopkg.in/validator.v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -47,8 +47,10 @@ func ParseConfig(file io.Reader, jsonFmt bool) (deployer.Config, error) {
 
 	log.Info().Msg("validating configuration file")
 
-	if err := validator.Validate(conf); err != nil {
-		return deployer.Config{}, fmt.Errorf("failed to validate config: %+w", err)
+	v := validator.New(validator.WithRequiredStructEnabled())
+	if err := v.Struct(conf); err != nil {
+		err = parseValidationError(err)
+		return deployer.Config{}, err
 	}
 
 	if err := validateNetwork(conf.Network); err != nil {
@@ -81,4 +83,27 @@ func getValueOrEnv(value, envKey string) (string, error) {
 		}
 	}
 	return value, nil
+}
+
+func parseValidationError(err error) error {
+	if _, ok := err.(*validator.InvalidValidationError); ok {
+		return err
+	}
+
+	for _, err := range err.(validator.ValidationErrors) {
+		tag := err.Tag()
+		value := err.Value()
+		boundary := err.Param()
+		nameSpace := err.Namespace()
+
+		switch tag {
+		case "required":
+			return fmt.Errorf("field '%s' should not be empty", nameSpace)
+		case "max":
+			return fmt.Errorf("value of '%s': '%v' is out of range, max value is '%s'", nameSpace, value, boundary)
+		case "min":
+			return fmt.Errorf("value of '%s': '%v' is out of range, min value is '%s'", nameSpace, value, boundary)
+		}
+	}
+	return nil
 }
