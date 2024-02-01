@@ -20,8 +20,7 @@ tfrobot is tool designed to automate mass deployment of groups of VMs on ThreeFo
 mv tfrobot /usr/local/bin
 ```
 
-4.  Create a new configuration file.
-For example:
+4.  Create a new configuration file, for example config.yaml:
 
 ```yaml
 node_groups:
@@ -80,15 +79,15 @@ tfrobot deploy -c path/to/your/config.yaml
 | Field | Description| Supported Values|
 | :---:   | :---: | :---: |
 | name | name of node_group | node group name should be unique |
-| nodes_count | number of nodes in node group| positive integer |
-| free_cpu | number of cpu of node | nonzero int max = 32 |
-| free_mru | free memory in the node in GB | min = 0.25, max 256 |
+| nodes_count | number of nodes in node group| nonzero positive integer |
+| free_cpu | number of cpu of node | nonzero positive integer max = 32 |
+| free_mru | free memory in the node in GB | min = 0.25, max = 256 |
 | free_ssd | free ssd storage in the node in GB | positive integer value |
 | free_hdd | free hdd storage in the node in GB | positive integer value |
 | dedicated | are nodes dedicated | `true` or `false` |
 | public_ip4 | should the nodes have free ip v4 | `true` or `false` |
 | public_ip6 | should the nodes have free ip v6 | `true` or `false` |
-| certified | should the nodes be certified(if false the nodes could be certified of diyed)  | `true` or `false` |
+| certified | should the nodes be certified(if false the nodes could be certified or DIY)  | `true` or `false` |
 | region | region could be the name of the continents the nodes are located in | africa, americas, antarctic, antarctic ocean, asia, europe, oceania, polar |
 
 ### Vms Groups
@@ -96,19 +95,26 @@ tfrobot deploy -c path/to/your/config.yaml
 | Field | Description| Supported Values|
 | :---:   | :---: | :---: |
 | name | name of vm group | string value with no special characters |
-| vms_count | number of vms in vm group| positive integer |
+| vms_count | number of vms in vm group| nonzero positive integer |
 | node_group | name of node_group the vm belongs to | should be defined in node_groups |
-| cpu | number of cpu for vm | nonzero int max = 32 |
+| cpu | number of cpu for vm | nonzero positive integer max = 32  |
 | mem | free memory in the vm in GB | min = 0.25, max 256 |
 | planetary | should the vm have yggdrasil ip | `true` or `false` |
 | public_ip4 | should the vm have free ip v4 | `true` or `false` |
 | public_ip6 | should the vm have free ip v6 | `true` or `false` |
-| flist | should be a link to valid flist | valid flist url |
-| entry_point | entry point of the flist | path to the entry point |
+| flist | should be a link to valid flist | valid flist url with `.flist` or `.fl` extension |
+| entry_point | entry point of the flist | path to the entry point in the flist |
 | ssh_key | key of ssh key defined in the ssh_keys map | should be valid ssh_key defined in the ssh_keys map |
 | env_vars | map of env vars | map of type string to string |
 | ssd | list of disks | should be of type disk|
 | root_size | root size in GB | 0 for default root size, max 10TB |
+
+### Disk
+
+| Field | Description| Supported Values|
+| :---:   | :---: | :---: |
+| Size | disk size in GB| positive integer min = 15 |
+| Mount | disk mount point | path to mountpoint |
 
 ## Usage
 
