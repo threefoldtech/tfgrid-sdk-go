@@ -42,6 +42,11 @@ var cancelCmd = &cobra.Command{
 		defer configFile.Close()
 
 		jsonFmt := filepath.Ext(configPath) == ".json"
+		ymlFmt := filepath.Ext(configPath) == ".yaml" || filepath.Ext(configPath) == ".yml"
+		if !jsonFmt && !ymlFmt {
+			return fmt.Errorf("unsupported configuration file format '%s', should be [yaml, yml, json]", configPath)
+		}
+
 		cfg, err := parser.ParseConfig(configFile, jsonFmt)
 		if err != nil {
 			return fmt.Errorf("failed to parse configuration file '%s' with error: %w", configPath, err)
