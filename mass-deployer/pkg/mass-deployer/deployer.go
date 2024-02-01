@@ -39,23 +39,53 @@ func RunDeployer(ctx context.Context, cfg Config, output string) error {
 	for _, nodeGroup := range cfg.NodeGroups {
 		log.Info().Str("Node group", nodeGroup.Name).Msg("Running deployment")
 		trial := 1
+		var failedDeployments []failedDeploymentsInfo
 
 		if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxRetries, retry.NewConstant(1*time.Nanosecond)), func(ctx context.Context) error {
 			if trial != 1 {
 				log.Debug().Str("Node group", nodeGroup.Name).Int("Deployment trial", trial).Msg("Retrying to deploy")
 			}
 
-			info, err := deployNodeGroup(ctx, tfPluginClient, nodeGroup, cfg.Vms, cfg.SSHKeys)
+			// deploy node group
+			nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup)
 			if err != nil {
-				trial++
+				return err
+			}
+
+			var groupDeployments groupDeploymentsInfo
+
+			if failedDeployments == nil {
+				groupDeployments = parseVMsGroup(cfg.Vms, nodeGroup.Name, nodesIDs, cfg.SSHKeys)
+			} else {
+				var updated bool
+
+				fmt.Println("updaing networks")
+				groupDeployments, updated = updateFailedNetworks(nodesIDs, failedDeployments)
+				if !updated {
+					fmt.Println("updaing vms")
+					groupDeployments = updateFailedDeployments(tfPluginClient, nodesIDs, failedDeployments)
+				}
+			}
+
+			info, failed := massDeploy(ctx, tfPluginClient, groupDeployments)
+			if failed != nil {
+
 				log.Debug().Err(err).Str("Node group", nodeGroup.Name).Msg("failed to deploy")
-				return retry.RetryableError(err)
+
+				trial++
+				failedDeployments = failed
+				return retry.RetryableError(fmt.Errorf("failed to deploy node group %s", nodeGroup.Name))
 			}
 
 			passedGroups[nodeGroup.Name] = info
 			log.Info().Str("Node group", nodeGroup.Name).Msg("Done deploying")
 			return nil
 		}); err != nil {
+			cancellationErr := tfPluginClient.CancelByProjectName(nodeGroup.Name)
+			if cancellationErr != nil {
+				log.Debug().Err(err).Send()
+			}
+
 			failedGroups[nodeGroup.Name] = err.Error()
 		}
 	}
@@ -89,22 +119,6 @@ func RunDeployer(ctx context.Context, cfg Config, output string) error {
 	return os.WriteFile(output, outputBytes, 0644)
 }
 
-func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]vmOutput, error) {
-	nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup)
-	if err != nil {
-		return nil, err
-	}
-
-	groupsDeployments := parseVMsGroup(vms, nodeGroup.Name, nodesIDs, sshKeys)
-
-	info, err := massDeploy(ctx, tfPluginClient, groupsDeployments)
-	if err != nil {
-		return nil, err
-	}
-
-	return info, nil
-}
-
 func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
 	vmsOfNodeGroup := []Vms{}
 	for _, vm := range vms {
@@ -116,17 +130,17 @@ func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[stri
 	return buildDeployments(vmsOfNodeGroup, nodeGroup, nodesIDs, sshKeys)
 }
 
-func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, deployments groupDeploymentsInfo) ([]vmOutput, error) {
-	err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, deployments.networkDeployments)
-	if err != nil {
-		cancelContractsOfFailedDeployments(tfPluginClient, deployments.networkDeployments, []*workloads.Deployment{})
-		return nil, err
-	}
+func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, deployments groupDeploymentsInfo) ([]vmOutput, []failedDeploymentsInfo) {
+	networkError := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, deployments.networkDeployments)
+	deploymentsError := tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, deployments.vmDeployments)
 
-	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, deployments.vmDeployments)
-	if err != nil {
-		cancelContractsOfFailedDeployments(tfPluginClient, deployments.networkDeployments, deployments.vmDeployments)
-		return nil, err
+	fmt.Printf("networkError: %v\n", networkError)
+	fmt.Printf("deploymentsError: %+v\n", deploymentsError)
+
+	if networkError != nil || deploymentsError != nil {
+		failedDeployments := getFailedDeployments(tfPluginClient, deployments.networkDeployments, deployments.vmDeployments)
+		fmt.Println(len(failedDeployments))
+		return nil, failedDeployments
 	}
 
 	vmsInfo := loadDeploymentsInfo(tfPluginClient, deployments.deploymentsInfo)
@@ -220,6 +234,36 @@ func cancelContractsOfFailedDeployments(tfPluginClient deployer.TFPluginClient, 
 	}
 }
 
+func getFailedDeployments(tfPluginClient deployer.TFPluginClient, networkDeployments []*workloads.ZNet, vmDeployments []*workloads.Deployment) []failedDeploymentsInfo {
+	failedDeployments := []failedDeploymentsInfo{}
+	for i := 0; i < len(networkDeployments); i++ {
+		var failedFlag bool
+		network := networkDeployments[i]
+		vm := vmDeployments[i]
+
+		// check if the network is failed to be deployed
+		for _, contract := range network.NodeDeploymentID {
+			if contract == 0 {
+				fmt.Println("network")
+				failedFlag = true
+				break
+			}
+		}
+
+		// check if the vm deployment is failed to be deployed
+		if vm.ContractID == 0 {
+
+			fmt.Println("vm")
+			failedFlag = true
+		}
+
+		if failedFlag {
+			failedDeployments = append(failedDeployments, failedDeploymentsInfo{vm, network, vmDeploymentInfo{nodeID: vm.NodeID, deploymentName: vm.Name, vmName: vm.Vms[0].Name}})
+		}
+	}
+	return failedDeployments
+}
+
 func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployments []vmDeploymentInfo) []vmOutput {
 	vmsInfo := []vmOutput{}
 	var lock sync.Mutex
@@ -275,4 +319,78 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 		mountsWorkloads = append(mountsWorkloads, workloads.Mount{DiskName: DiskWorkload.Name, MountPoint: disk.Mount})
 	}
 	return
+}
+
+/*
+if network failed then
+
+	we need to use new node and change node id for the vm deployment and then deploy the network and vm
+
+else if vm deployment failed
+
+	we need to cancel the network deployment then change node id for both vm and then deploy network and vm
+
+if there's a network that is failed, all vms will fail, so we need to fix the networks first then try to deploy vms
+*/
+func updateFailedDeployments(tfPluginClient deployer.TFPluginClient, nodesIDs []int, failedDeployments []failedDeploymentsInfo) groupDeploymentsInfo {
+	var newDeploymentsInfo groupDeploymentsInfo
+	// cancel old network deployments which vm deployments failed
+	contractsToBeCanceled := []uint64{}
+	for _, deployment := range failedDeployments {
+		// get network contracts of failed vm deployments
+		for _, contract := range deployment.networkDeployment.NodeDeploymentID {
+			if contract != 0 {
+				contractsToBeCanceled = append(contractsToBeCanceled, contract)
+			}
+		}
+	}
+
+	fmt.Printf("%d vm deployments failed \n", len(contractsToBeCanceled))
+	err := tfPluginClient.BatchCancelContract(contractsToBeCanceled)
+	if err != nil {
+		log.Debug().Err(err)
+	}
+
+	for idx, deployment := range failedDeployments {
+		nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
+
+		fmt.Printf("updating contract of vm %s from node %d to node %d\n", deployment.vmDeployment.Name, deployment.vmDeployment.NodeID, nodeID)
+		deployment.vmDeployment.NodeID = nodeID
+		deployment.deploymentInfo.nodeID = nodeID
+		deployment.networkDeployment.Nodes = []uint32{nodeID}
+
+		newDeploymentsInfo.vmDeployments = append(newDeploymentsInfo.vmDeployments, deployment.vmDeployment)
+		newDeploymentsInfo.deploymentsInfo = append(newDeploymentsInfo.deploymentsInfo, deployment.deploymentInfo)
+		newDeploymentsInfo.networkDeployments = append(newDeploymentsInfo.networkDeployments, deployment.networkDeployment)
+	}
+	return newDeploymentsInfo
+}
+
+// update nodes for failed networks and update vm deployments accordingly
+// returns the updated deployments and bool indicating if the networks were updated
+func updateFailedNetworks(nodesIDs []int, failedDeployments []failedDeploymentsInfo) (groupDeploymentsInfo, bool) {
+	var newDeploymentsInfo groupDeploymentsInfo
+	var updated bool
+	for idx, deployment := range failedDeployments {
+
+		nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
+		for _, contract := range deployment.networkDeployment.NodeDeploymentID {
+			if contract == 0 {
+				updated = true
+
+				deployment.vmDeployment.NodeID = nodeID
+				deployment.deploymentInfo.nodeID = nodeID
+				deployment.networkDeployment.Nodes = []uint32{nodeID}
+
+				newDeploymentsInfo.networkDeployments = append(newDeploymentsInfo.networkDeployments, deployment.networkDeployment)
+				break
+			}
+		}
+
+		newDeploymentsInfo.vmDeployments = append(newDeploymentsInfo.vmDeployments, deployment.vmDeployment)
+		newDeploymentsInfo.deploymentsInfo = append(newDeploymentsInfo.deploymentsInfo, deployment.deploymentInfo)
+
+	}
+
+	return newDeploymentsInfo, updated
 }
