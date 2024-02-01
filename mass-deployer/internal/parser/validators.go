@@ -13,7 +13,7 @@ import (
 	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
 )
 
-var alphanumeric = regexp.MustCompile("^[a-z0-9_]*$")
+var alphanumeric = regexp.MustCompile("^[a-z0-9_]+$")
 
 func validateMnemonic(mnemonic string) error {
 	if !bip39.IsMnemonicValid(mnemonic) {
