@@ -21,7 +21,6 @@ const (
 
 func ParseConfig(file io.Reader, jsonFmt bool) (deployer.Config, error) {
 	conf := deployer.Config{}
-	nodeGroupsNames := []string{}
 
 	configFile, err := io.ReadAll(file)
 	if err != nil {
@@ -62,19 +61,14 @@ func ParseConfig(file io.Reader, jsonFmt bool) (deployer.Config, error) {
 		return deployer.Config{}, err
 	}
 
-	for _, nodeGroup := range conf.NodeGroups {
-		name := strings.TrimSpace(nodeGroup.Name)
-		nodeGroupsNames = append(nodeGroupsNames, name)
-	}
-
 	for name, sshKey := range conf.SSHKeys {
-		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(sshKey))
+		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(sshKey)))
 		if err != nil {
 			return deployer.Config{}, fmt.Errorf("ssh key for `%s` is invalid: %+w", name, err)
 		}
 	}
 
-	if err := validateVMs(conf.Vms, nodeGroupsNames, conf.SSHKeys); err != nil {
+	if err := validateVMs(conf.Vms, conf.NodeGroups, conf.SSHKeys); err != nil {
 		return deployer.Config{}, err
 	}
 

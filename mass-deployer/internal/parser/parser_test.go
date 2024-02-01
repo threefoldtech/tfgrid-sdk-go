@@ -32,7 +32,7 @@ func TestParseConfig(t *testing.T) {
 		},
 		Vms: []deployer.Vms{
 			{
-				Name:       "example-vm",
+				Name:       "examplevm",
 				Count:      4,
 				NodeGroup:  "group_a",
 				FreeCPU:    2,
