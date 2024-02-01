@@ -27,9 +27,15 @@ var deployCmd = &cobra.Command{
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		}
 
-		output, err := cmd.Flags().GetString("output")
+		outputPath, err := cmd.Flags().GetString("output")
 		if err != nil {
 			return fmt.Errorf("error in output file: %w", err)
+		}
+
+		outJsonFmt := filepath.Ext(outputPath) == ".json"
+		outYmlFmt := filepath.Ext(outputPath) == ".yaml" || filepath.Ext(outputPath) == ".yml"
+		if !outJsonFmt && !outYmlFmt {
+			return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
 		}
 
 		configPath, err := cmd.Flags().GetString("config")
@@ -59,7 +65,7 @@ var deployCmd = &cobra.Command{
 		}
 
 		ctx := context.Background()
-		err = deployer.RunDeployer(ctx, cfg, output)
+		err = deployer.RunDeployer(ctx, cfg, outputPath)
 		if err != nil {
 			return fmt.Errorf("failed to run the deployer with error: %w", err)
 		}
