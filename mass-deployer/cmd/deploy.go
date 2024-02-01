@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,9 +47,10 @@ var deployCmd = &cobra.Command{
 				return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
 			}
 
+			_, err := os.Stat(outputPath)
 			// check if output file is writable
-			if unix.Access(outputPath, unix.W_OK) != nil {
-				return fmt.Errorf("output path '%s' does not exist or is not writable", outputPath)
+			if !errors.Is(err, os.ErrNotExist) && unix.Access(outputPath, unix.W_OK) != nil {
+				return fmt.Errorf("output path '%s' is not writable", outputPath)
 			}
 		}
 
