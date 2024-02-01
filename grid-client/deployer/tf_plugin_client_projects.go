@@ -25,6 +25,13 @@ func (t *TFPluginClient) CancelByProjectName(projectName string) error {
 		}
 		contractIDS = append(contractIDS, contractID)
 	}
+
+	if len(contractIDS) == 0 {
+		log.Info().Str("project name", projectName).Msg("No contracts exist for the project name")
+		return nil
+	}
+
+	log.Debug().Uints64("contracts IDs", contractIDS).Msg("Batch cancel")
 	if err := t.BatchCancelContract(contractIDS); err != nil {
 		return fmt.Errorf("failed to cancel contracts for project %s: %w", projectName, err)
 	}

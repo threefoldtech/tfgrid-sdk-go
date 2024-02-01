@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/cosmos/go-bip39 v1.0.0
+	github.com/gliderlabs/ssh v0.3.6
 	github.com/go-playground/validator/v10 v10.17.0
 	github.com/rs/zerolog v1.31.0
 	github.com/sethvargo/go-retry v0.2.4
@@ -12,11 +13,13 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.13.4
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.13.4
 	github.com/threefoldtech/zos v0.5.6-0.20240201092442-d2ba5be539d2
+	golang.org/x/sys v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	github.com/ChainSafe/go-schnorrkel v1.1.0 // indirect
+	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12 // indirect
@@ -59,7 +62,6 @@ require (
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
