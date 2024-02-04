@@ -62,14 +62,6 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string, m
 		return PostgresDatabase{}, errors.Wrap(err, "failed to configure DB connection")
 	}
 
-	err = gormDB.AutoMigrate(&NodeGPU{})
-	if err != nil {
-		return PostgresDatabase{}, errors.Wrap(err, "failed to migrate node_gpu table")
-	}
-	err = gormDB.AutoMigrate(&HealthReport{})
-	if err != nil {
-		return PostgresDatabase{}, errors.Wrap(err, "failed to migrate health_report table")
-	}
 	sql.SetMaxIdleConns(3)
 	sql.SetMaxOpenConns(maxConns)
 
@@ -87,7 +79,17 @@ func (d *PostgresDatabase) Close() error {
 }
 
 func (d *PostgresDatabase) Initialize() error {
-	return d.gormDB.Exec(setupFile).Error
+	err := d.gormDB.AutoMigrate(&NodeGPU{}, &HealthReport{}, &types.DmiInfo{})
+	if err != nil {
+		return errors.Wrap(err, "failed to migrate indexer tables")
+	}
+
+	err = d.gormDB.Exec(setupFile).Error
+	if err != nil {
+		return errors.Wrap(err, "failed to setup cache tables")
+	}
+
+	return nil
 }
 
 // GetStats returns aggregate info about the grid
@@ -904,4 +906,12 @@ func (p *PostgresDatabase) GetHealthyNodeTwinIds(ctx context.Context) ([]int64, 
 	nodeTwinIDs := make([]int64, 0)
 	err := p.gormDB.Table("health_report").Select("node_twin_id").Where("healthy = true").Scan(&nodeTwinIDs).Error
 	return nodeTwinIDs, err
+}
+
+func (p *PostgresDatabase) UpsertNodeDmi(ctx context.Context, dmi []types.DmiInfo) error {
+	conflictClause := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "node_twin_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"bios", "baseboard", "processor", "memory"}),
+	}
+	return p.gormDB.WithContext(ctx).Table("dmi_infos").Clauses(conflictClause).Create(&dmi).Error
 }

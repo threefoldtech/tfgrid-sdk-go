@@ -8,6 +8,7 @@ import (
 
 // Database interface for storing and fetching grid info
 type Database interface {
+	// TODO: separate the setter/getter
 	GetStats(ctx context.Context, filter types.StatsFilter) (types.Stats, error)
 	GetNode(ctx context.Context, nodeID uint32) (Node, error)
 	GetFarm(ctx context.Context, farmID uint32) (Farm, error)
@@ -23,6 +24,8 @@ type Database interface {
 	UpsertNodeHealth(ctx context.Context, healthReport types.HealthReport) error
 	GetHealthyNodeTwinIds(ctx context.Context) ([]int64, error)
 	GetConnectionString() string
+
+	UpsertNodeDmi(ctx context.Context, dmi []types.DmiInfo) error
 }
 
 type ContractBilling types.ContractBilling
