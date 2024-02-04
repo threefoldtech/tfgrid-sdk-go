@@ -56,11 +56,11 @@ func validateVMs(vms []deployer.Vms, nodeGroups []deployer.NodesGroup, sskKeys m
 				usedResources[nodeGroupName] = usedVMsResources
 
 				if usedVMsResources["free_cpu"].(uint64) > nodeGroup.FreeCPU {
-					return fmt.Errorf("cannot find enough cpu in node group '%s' for vm group '%s', needed cpu is %d while available cpu is %d, maybe previous vms groups used it", nodeGroupName, vmName, usedVMsResources["free_cpu"], nodeGroup.FreeCPU)
+					return fmt.Errorf("cannot find enough cpu in node group '%s' for vm group '%s', needed cpu is %d while available cpu is %d", nodeGroupName, vmName, usedVMsResources["free_cpu"], nodeGroup.FreeCPU)
 				}
 
 				if usedVMsResources["free_mru"].(float32) > nodeGroup.FreeMRU {
-					return fmt.Errorf("cannot find enough memory in node group '%s' for vm group '%s', needed memory is %v GB while available memory is %v GB, maybe previous vms groups used it", nodeGroupName, vmName, usedVMsResources["free_mru"], nodeGroup.FreeMRU)
+					return fmt.Errorf("cannot find enough memory in node group '%s' for vm group '%s', needed memory is %v GB while available memory is %v GB", nodeGroupName, vmName, usedVMsResources["free_mru"], nodeGroup.FreeMRU)
 				}
 
 				if usedVMsResources["free_ssd"].(uint64) > nodeGroup.FreeSRU {
