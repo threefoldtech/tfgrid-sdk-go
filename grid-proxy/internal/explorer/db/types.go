@@ -26,6 +26,7 @@ type Database interface {
 	GetConnectionString() string
 
 	UpsertNodeDmi(ctx context.Context, dmi []types.DmiInfo) error
+	UpsertNetworkSpeed(ctx context.Context, speed []types.NetworkTestResult) error
 }
 
 type ContractBilling types.ContractBilling

@@ -71,3 +71,14 @@ func (p *MemoryArray) Scan(value interface{}) error {
 	}
 	return json.Unmarshal(bytes, &p)
 }
+
+type NetworkTestResult struct {
+	NodeTwinId    uint32  `json:"node_twin_id" gorm:"unique;not null"`
+	UploadSpeed   float64 `json:"upload_speed"`   // in bit/sec
+	DownloadSpeed float64 `json:"download_speed"` // in bit/sec
+}
+
+type PerfResult struct {
+	NodeTwinId uint32              `json:"node_twin_id"`
+	Result     []NetworkTestResult `json:"result"`
+}

@@ -79,7 +79,7 @@ func (d *PostgresDatabase) Close() error {
 }
 
 func (d *PostgresDatabase) Initialize() error {
-	err := d.gormDB.AutoMigrate(&NodeGPU{}, &HealthReport{}, &types.DmiInfo{})
+	err := d.gormDB.AutoMigrate(&NodeGPU{}, &HealthReport{}, &types.DmiInfo{}, &types.NetworkTestResult{})
 	if err != nil {
 		return errors.Wrap(err, "failed to migrate indexer tables")
 	}
@@ -914,4 +914,12 @@ func (p *PostgresDatabase) UpsertNodeDmi(ctx context.Context, dmi []types.DmiInf
 		DoUpdates: clause.AssignmentColumns([]string{"bios", "baseboard", "processor", "memory"}),
 	}
 	return p.gormDB.WithContext(ctx).Table("dmi_infos").Clauses(conflictClause).Create(&dmi).Error
+}
+
+func (p *PostgresDatabase) UpsertNetworkSpeed(ctx context.Context, report []types.NetworkTestResult) error {
+	conflictClause := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "node_twin_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"download_speed", "upload_speed"}),
+	}
+	return p.gormDB.WithContext(ctx).Table("network_test_results").Clauses(conflictClause).Create(&report).Error
 }
