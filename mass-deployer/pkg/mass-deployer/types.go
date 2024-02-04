@@ -55,12 +55,6 @@ type groupDeploymentsInfo struct {
 	deploymentsInfo    []vmDeploymentInfo
 }
 
-type failedDeploymentsInfo struct {
-	vmDeployment      *workloads.Deployment
-	networkDeployment *workloads.ZNet
-	deploymentInfo    vmDeploymentInfo
-}
-
 type vmDeploymentInfo struct {
 	nodeID         uint32
 	vmName         string
