@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/maps"
 )
 
 // powerOn sets the node power state ON
@@ -170,11 +171,13 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 		return nil
 	}
 
+	log.Debug().Uints32("nodes IDs", maps.Keys(nodesAllowedToShutdown)).Msg("Nodes allowed to shutdown")
+
 	newUsedResources := usedResources
 	newTotalResources := totalResources
 	nodesLeftOnline := len(onNodes)
 
-	// shutdown a node if there is more then 1 unused node (aka keep at least one node online)
+	// shutdown a node if there is more than an unused node (aka keep at least one node online)
 	for _, node := range nodesAllowedToShutdown {
 		if nodesLeftOnline == 1 {
 			break

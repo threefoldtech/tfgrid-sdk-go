@@ -211,7 +211,8 @@ func (n *node) freeCapacity(overProvisionCPU int8) capacity {
 // nodes with public config can't be shutdown
 // Do not shutdown a node that just came up (give it some time `periodicWakeUpDuration`)
 func (n *node) canShutDown() bool {
-	if !n.isUnused() ||
+	if n.powerState != on ||
+		!n.isUnused() ||
 		n.PublicConfig.HasValue ||
 		n.neverShutDown ||
 		n.hasActiveRentContract ||
