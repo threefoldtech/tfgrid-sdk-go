@@ -30,10 +30,10 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolP("debug", "d", false, "allow debug logs")
-
+	deployCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
 	deployCmd.Flags().StringP("config", "c", "", "path to config file")
 	deployCmd.Flags().StringP("output", "o", "", "path to output file")
 
+	cancelCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
 	cancelCmd.Flags().StringP("config", "c", "", "path to config file")
 }

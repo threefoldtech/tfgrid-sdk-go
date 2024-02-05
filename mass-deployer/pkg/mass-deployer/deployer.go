@@ -21,11 +21,11 @@ import (
 
 const maxDeploymentRetries = 5
 
-func RunDeployer(ctx context.Context, cfg Config, output string) error {
+func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) error {
 	passedGroups := map[string][]vmOutput{}
 	failedGroups := map[string]string{}
 
-	tfPluginClient, err := setup(cfg)
+	tfPluginClient, err := setup(cfg, debug)
 	if err != nil {
 		return fmt.Errorf("failed to create deployer: %v", err)
 	}
@@ -43,7 +43,7 @@ func RunDeployer(ctx context.Context, cfg Config, output string) error {
 
 		if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxRetries, retry.NewConstant(1*time.Nanosecond)), func(ctx context.Context) error {
 			if trial != 1 {
-				log.Debug().Str("Node group", nodeGroup.Name).Int("Deployment trial", trial).Msg("Retrying to deploy")
+				log.Info().Str("Node group", nodeGroup.Name).Int("Deployment trial", trial).Msg("Retrying to deploy")
 			}
 
 			// deploy node group
@@ -109,6 +109,31 @@ func RunDeployer(ctx context.Context, cfg Config, output string) error {
 	return os.WriteFile(output, outputBytes, 0644)
 }
 
+func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]vmOutput, error) {
+	log.Info().Str("Node group", nodeGroup.Name).Msg("Filter nodes")
+	nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().Ints("nodes IDs", nodesIDs).Send()
+
+  if trial == 1 {
+    log.Debug().Str("Node group", nodeGroup.Name).Msg("Parsing vms group")
+    groupInfo = parseVMsGroup(cfg.Vms, nodeGroup.Name, nodesIDs, cfg.SSHKeys)
+  } else {
+    log.Debug().Str("Node group", nodeGroup.Name).Msg("Updating vms group")
+    updateFailedDeployments(tfPluginClient, nodesIDs, &groupInfo)
+  }
+
+	log.Info().Str("Node group", nodeGroup.Name).Msg("Starting mass deployment")
+  info, err := massDeploy(ctx, tfPluginClient, &groupInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return info, nil
+}
+
 func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
 	vmsOfNodeGroup := []Vms{}
 	for _, vm := range vms {
@@ -117,6 +142,7 @@ func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[stri
 		}
 	}
 
+	log.Debug().Str("Node group", nodeGroup).Msg("Build deployments")
 	return buildDeployments(vmsOfNodeGroup, nodeGroup, nodesIDs, sshKeys)
 }
 
@@ -124,14 +150,18 @@ func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, dep
 	// deploy only contracts that need to be deployed
 	networks, vms := getNotDeployedDeployments(tfPluginClient, deployments)
 
+	log.Debug().Msg("Deploy networks")
 	if err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, networks); err != nil {
 		return nil, err
 	}
 
+	log.Debug().Msg("Deploy virtual machines")
 	if err := tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, vms); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
+	log.Debug().Msg("Load deployments")
 	vmsInfo := loadDeploymentsInfo(tfPluginClient, deployments.deploymentsInfo)
 
 	return vmsInfo, nil
@@ -173,7 +203,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 			}
 
 			if !vmGroup.PublicIP4 && !vmGroup.Planetary {
-				log.Warn().Msg("Planetary and public IP options are false. Setting planetary IP to true")
+				log.Warn().Str("vms group", vmGroup.Name).Msg("Planetary and public IP options are false. Setting planetary IP to true")
 				vmGroup.Planetary = true
 			}
 
