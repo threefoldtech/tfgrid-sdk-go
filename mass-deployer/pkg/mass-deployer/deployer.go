@@ -109,7 +109,7 @@ func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient
 		*groupDeployments = parseVMsGroup(vms, nodeGroup.Name, nodesIDs, sshKeys)
 	} else {
 		log.Debug().Str("Node group", nodeGroup.Name).Msg("Updating vms group")
-		updateFailedDeployments(tfPluginClient, nodesIDs, groupDeployments)
+		updateFailedDeployments(ctx, tfPluginClient, nodesIDs, groupDeployments)
 	}
 
 	log.Info().Str("Node group", nodeGroup.Name).Msg("Starting mass deployment")
@@ -294,7 +294,7 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 	return
 }
 
-func updateFailedDeployments(tfPluginClient deployer.TFPluginClient, nodesIDs []int, groupDeployments *groupDeploymentsInfo) {
+func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodesIDs []int, groupDeployments *groupDeploymentsInfo) {
 	// update nodes for failed networks and update vm deployments accordingly
 	// return if the networks were updated
 	var updated bool
@@ -312,19 +312,11 @@ func updateFailedDeployments(tfPluginClient deployer.TFPluginClient, nodesIDs []
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	for idx, deployment := range groupDeployments.vmDeployments {
 		if deployment.ContractID == 0 {
-			for _, contract := range groupDeployments.networkDeployments[idx].NodeDeploymentID {
-				if contract != 0 {
-					err := tfPluginClient.NetworkDeployer.Cancel(ctx, groupDeployments.networkDeployments[idx])
-					if err != nil {
-						log.Debug().Err(err)
-					}
-					break
-				}
+			err := tfPluginClient.NetworkDeployer.Cancel(ctx, groupDeployments.networkDeployments[idx])
+			if err != nil {
+				log.Debug().Err(err)
 			}
 
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
