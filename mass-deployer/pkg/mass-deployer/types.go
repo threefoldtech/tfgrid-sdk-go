@@ -52,13 +52,6 @@ type Disk struct {
 type groupDeploymentsInfo struct {
 	vmDeployments      []*workloads.Deployment
 	networkDeployments []*workloads.ZNet
-	deploymentsInfo    []vmDeploymentInfo
-}
-
-type vmDeploymentInfo struct {
-	nodeID         uint32
-	vmName         string
-	deploymentName string
 }
 
 type vmOutput struct {
