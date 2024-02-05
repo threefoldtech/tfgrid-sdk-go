@@ -250,6 +250,11 @@ func loadGroupInfo(tfPluginClient deployer.TFPluginClient, vmDeployments []*work
 				lock.Lock()
 				defer lock.Unlock()
 				multiErr = multierror.Append(multiErr, err)
+				log.Debug().Err(err).
+					Str("vm", deployment.Vms[0].Name).
+					Str("deployment", deployment.Name).
+					Uint32("node ID", deployment.NodeID).
+					Msg("couldn't load from state")
 				return
 			}
 
@@ -273,7 +278,7 @@ func loadGroupInfo(tfPluginClient deployer.TFPluginClient, vmDeployments []*work
 	}
 	wg.Wait()
 
-	return vmsInfo, nil
+	return vmsInfo, multiErr
 }
 
 func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mountsWorkloads []workloads.Mount) {
@@ -307,17 +312,14 @@ func updateFailedDeployments(tfPluginClient deployer.TFPluginClient, nodesIDs []
 		return
 	}
 
-	// cancel old network deployments which vm deployments failed
 	contractsToBeCanceled := []uint64{}
 	for idx, deployment := range groupInfo.vmDeployments {
-		// get network contracts of failed vm deployments
 		if deployment.ContractID == 0 {
 			for _, contract := range groupInfo.networkDeployments[idx].NodeDeploymentID {
 				if contract != 0 {
 					contractsToBeCanceled = append(contractsToBeCanceled, contract)
 				}
 			}
-			groupInfo.networkDeployments[idx].NodeDeploymentID = nil
 		}
 	}
 
@@ -329,8 +331,20 @@ func updateFailedDeployments(tfPluginClient deployer.TFPluginClient, nodesIDs []
 	for idx, deployment := range groupInfo.vmDeployments {
 		if deployment.ContractID == 0 {
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
+			network := groupInfo.networkDeployments[idx]
+
 			groupInfo.vmDeployments[idx].NodeID = nodeID
-			groupInfo.networkDeployments[idx].Nodes = []uint32{nodeID}
+			groupInfo.networkDeployments[idx] = &workloads.ZNet{
+				Name:        network.Name,
+				Description: network.Description,
+				Nodes:       []uint32{nodeID},
+				IPRange: gridtypes.NewIPNet(net.IPNet{
+					IP:   net.IPv4(10, 20, 0, 0),
+					Mask: net.CIDRMask(16, 32),
+				}),
+				AddWGAccess:  false,
+				SolutionType: network.SolutionType,
+			}
 		}
 	}
 }
