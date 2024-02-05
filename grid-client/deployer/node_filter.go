@@ -94,7 +94,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	}
 
 	if errs != nil {
-		return []types.Node{}, errors.Errorf("could not find enough nodes, found errors: %v", errs)
+		return []types.Node{}, errors.Errorf("could not find enough nodes, found errors: %w", errs)
 	}
 
 	opts, err := serializeOptions(options)
