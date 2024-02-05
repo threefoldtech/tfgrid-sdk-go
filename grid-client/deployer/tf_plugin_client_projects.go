@@ -11,11 +11,8 @@ import (
 // CancelByProjectName cancels a deployed project
 func (t *TFPluginClient) CancelByProjectName(projectName string, noGateways ...bool) error {
 	log.Info().Str("project name", projectName).Msg("canceling contracts")
-	var noGatewaysFlag bool
-	if len(noGateways) > 0 {
-		noGatewaysFlag = noGateways[0]
-	}
-	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName, noGatewaysFlag)
+
+	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName, noGateways...)
 	if err != nil {
 		return errors.Wrapf(err, "could not load contracts for project %s", projectName)
 	}
