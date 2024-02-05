@@ -9,7 +9,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/schema v1.2.1
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.32.0
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240116163757-68c63d80a9e0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.2
