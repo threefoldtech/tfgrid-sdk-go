@@ -166,7 +166,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 			disks, mounts := parseDisks(vmName, vmGroup.SSDDisks)
 
 			network := workloads.ZNet{
-				Name:        fmt.Sprintf("%snetwork", vmName),
+				Name:        fmt.Sprintf("%s_network", vmName),
 				Description: "network for mass deployment",
 				Nodes:       []uint32{nodeID},
 				IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -273,9 +273,9 @@ func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployments []v
 }
 
 func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mountsWorkloads []workloads.Mount) {
-	for _, disk := range disks {
+	for i, disk := range disks {
 		DiskWorkload := workloads.Disk{
-			Name:   fmt.Sprintf("%sdisk", name),
+			Name:   fmt.Sprintf("%s_disk%d", name, i),
 			SizeGB: int(disk.Size),
 		}
 
