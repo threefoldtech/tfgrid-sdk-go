@@ -82,10 +82,6 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 
 	fmt.Println(string(outputBytes))
 
-	if output == "" {
-		return nil
-	}
-
 	return os.WriteFile(output, outputBytes, 0644)
 }
 
