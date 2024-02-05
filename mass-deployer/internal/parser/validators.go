@@ -45,7 +45,13 @@ func validateVMs(vms []deployer.Vms, nodeGroups []deployer.NodesGroup, sskKeys m
 		if !alphanumeric.MatchString(vmName) {
 			return fmt.Errorf("vms group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", vmName)
 		}
+		if _, ok := sskKeys[vm.SSHKey]; !ok {
+			return fmt.Errorf("vms group '%s' ssh key is not found, should refer to one from ssh keys map", vm.Name)
+		}
 
+		if err := validateFlist(vm.Flist, vm.Name); err != nil {
+			return err
+		}
 		for _, nodeGroup := range nodeGroups {
 			nodeGroupName := strings.TrimSpace(nodeGroup.Name)
 			if strings.TrimSpace(vm.NodeGroup) == nodeGroupName {
@@ -89,13 +95,6 @@ func validateVMs(vms []deployer.Vms, nodeGroups []deployer.NodesGroup, sskKeys m
 			return fmt.Errorf("node group: '%s' in vms group: '%s' is not found", vm.NodeGroup, vm.Name)
 		}
 
-		if _, ok := sskKeys[vm.SSHKey]; !ok {
-			return fmt.Errorf("vms group '%s' ssh key is not found, should refer to one from ssh keys map", vm.Name)
-		}
-
-		if err := validateFlist(vm.Flist, vm.Name); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -107,7 +106,7 @@ func validateFlist(flist, name string) error {
 		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, should have a valid flist extension", name, flist)
 	}
 	response, err := http.Head(flist)
-	if err != nil {
+	if err != nil || response.StatusCode != http.StatusOK {
 		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, failed to download flist", name, flist)
 	}
 	defer response.Body.Close()
