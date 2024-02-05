@@ -312,39 +312,24 @@ func updateFailedDeployments(tfPluginClient deployer.TFPluginClient, nodesIDs []
 		return
 	}
 
-	contractsToBeCanceled := []uint64{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for idx, deployment := range groupInfo.vmDeployments {
 		if deployment.ContractID == 0 {
 			for _, contract := range groupInfo.networkDeployments[idx].NodeDeploymentID {
 				if contract != 0 {
-					contractsToBeCanceled = append(contractsToBeCanceled, contract)
+					err := tfPluginClient.NetworkDeployer.Cancel(ctx, groupInfo.networkDeployments[idx])
+					if err != nil {
+						log.Debug().Err(err)
+					}
+					break
 				}
 			}
-		}
-	}
 
-	err := tfPluginClient.BatchCancelContract(contractsToBeCanceled)
-	if err != nil {
-		log.Debug().Err(err)
-	}
-
-	for idx, deployment := range groupInfo.vmDeployments {
-		if deployment.ContractID == 0 {
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
-			network := groupInfo.networkDeployments[idx]
-
 			groupInfo.vmDeployments[idx].NodeID = nodeID
-			groupInfo.networkDeployments[idx] = &workloads.ZNet{
-				Name:        network.Name,
-				Description: network.Description,
-				Nodes:       []uint32{nodeID},
-				IPRange: gridtypes.NewIPNet(net.IPNet{
-					IP:   net.IPv4(10, 20, 0, 0),
-					Mask: net.CIDRMask(16, 32),
-				}),
-				AddWGAccess:  false,
-				SolutionType: network.SolutionType,
-			}
+			groupInfo.networkDeployments[idx].Nodes = []uint32{nodeID}
 		}
 	}
 }
