@@ -44,7 +44,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	if len(optionalLimit) > 0 {
 		var err error
 		nodesCount = optionalLimit[0]
-		limit := types.Limit{Size: nodesCount, RetCount: true}
+		limit = types.Limit{Size: nodesCount, RetCount: true}
 		requestedPages = requestedPagesPerIteration
 		totalPagesCount, err = getPagesCount(ctx, tfPlugin, options, limit)
 		if err != nil {
@@ -82,7 +82,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		for node := range nodesOutput {
 			nodes = append(nodes, node)
 			if uint64(len(nodes)) == nodesCount {
-				log.Debug().Uint64("reached nodes page", limit.Page).Send()
+				log.Debug().Uint64("reached nodes page", limit.Page).Int("total pages", totalPagesCount).Send()
 				return nodes, nil
 			}
 		}
