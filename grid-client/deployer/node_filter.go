@@ -86,7 +86,6 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		}
 
 		if len(optionalLimit) == 0 { // no limit and didn't reach default limit
-			log.Debug().Uint64("reached nodes page", limit.Page).Send()
 			return nodes, nil
 		}
 	}
