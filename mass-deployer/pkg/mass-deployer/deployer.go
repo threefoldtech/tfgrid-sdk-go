@@ -125,7 +125,7 @@ func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, dep
 		return nil, err
 	}
 
-	log.Debug().Msg("Deploy virtual machines")
+	log.Debug().Msg(fmt.Sprintf("Deploying %d virtual machines, this may to take a while", len(deployments.vmDeployments)))
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, deployments.vmDeployments)
 	if err != nil {
 		cancelContractsOfFailedDeployments(tfPluginClient, deployments.networkDeployments, deployments.vmDeployments)
@@ -234,6 +234,9 @@ func loadDeploymentsInfo(tfPluginClient deployer.TFPluginClient, deployments []v
 
 		go func(depInfo vmDeploymentInfo) {
 			defer wg.Done()
+			log.Debug().
+				Str("vm", depInfo.vmName).
+				Msg("loading vm info from state")
 
 			vmDeployment, err := tfPluginClient.State.LoadDeploymentFromGrid(depInfo.nodeID, depInfo.deploymentName)
 			if err != nil {
