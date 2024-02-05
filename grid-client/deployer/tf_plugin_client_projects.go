@@ -13,7 +13,7 @@ func (t *TFPluginClient) CancelByProjectName(projectName string, noGateways ...b
 	log.Info().Str("project name", projectName).Msg("canceling contracts")
 	var noGatewaysFlag bool
 	if len(noGateways) > 0 {
-		noGatewaysFlag = true
+		noGatewaysFlag = noGateways[0]
 	}
 	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName, noGatewaysFlag)
 	if err != nil {
