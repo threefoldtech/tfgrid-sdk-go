@@ -46,21 +46,7 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 				log.Info().Str("Node group", nodeGroup.Name).Int("Deployment trial", trial).Msg("Retrying to deploy")
 			}
 
-			// deploy node group
-			nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup)
-			if err != nil {
-				trial++
-				log.Debug().Err(err).Str("Node group", nodeGroup.Name).Msg("failed to filter nodes")
-				return retry.RetryableError(err)
-			}
-
-			if trial == 1 {
-				groupInfo = parseVMsGroup(cfg.Vms, nodeGroup.Name, nodesIDs, cfg.SSHKeys)
-			} else {
-				updateFailedDeployments(tfPluginClient, nodesIDs, &groupInfo)
-			}
-
-			info, err := massDeploy(ctx, tfPluginClient, &groupInfo)
+			info, err := deployNodeGroup(ctx, tfPluginClient, trial, &groupInfo, nodeGroup, cfg.Vms, cfg.SSHKeys)
 			if err != nil {
 				log.Debug().Err(err).Str("Node group", nodeGroup.Name).Msg("failed to deploy")
 				trial++
@@ -109,7 +95,8 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 	return os.WriteFile(output, outputBytes, 0644)
 }
 
-func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]vmOutput, error) {
+func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, trial int, groupInfo *groupDeploymentsInfo, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]vmOutput, error) {
+	fmt.Println(*groupInfo)
 	log.Info().Str("Node group", nodeGroup.Name).Msg("Filter nodes")
 	nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup)
 	if err != nil {
@@ -117,16 +104,16 @@ func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient
 	}
 	log.Debug().Ints("nodes IDs", nodesIDs).Send()
 
-  if trial == 1 {
-    log.Debug().Str("Node group", nodeGroup.Name).Msg("Parsing vms group")
-    groupInfo = parseVMsGroup(cfg.Vms, nodeGroup.Name, nodesIDs, cfg.SSHKeys)
-  } else {
-    log.Debug().Str("Node group", nodeGroup.Name).Msg("Updating vms group")
-    updateFailedDeployments(tfPluginClient, nodesIDs, &groupInfo)
-  }
+	if trial == 1 {
+		log.Debug().Str("Node group", nodeGroup.Name).Msg("Parsing vms group")
+		*groupInfo = parseVMsGroup(vms, nodeGroup.Name, nodesIDs, sshKeys)
+	} else {
+		log.Debug().Str("Node group", nodeGroup.Name).Msg("Updating vms group")
+		updateFailedDeployments(tfPluginClient, nodesIDs, groupInfo)
+	}
 
 	log.Info().Str("Node group", nodeGroup.Name).Msg("Starting mass deployment")
-  info, err := massDeploy(ctx, tfPluginClient, &groupInfo)
+	info, err := massDeploy(ctx, tfPluginClient, groupInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +144,6 @@ func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, dep
 
 	log.Debug().Msg("Deploy virtual machines")
 	if err := tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, vms); err != nil {
-	if err != nil {
 		return nil, err
 	}
 
