@@ -63,7 +63,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 			}
 
 			wg.Add(1)
-			go func() {
+			go func(limit types.Limit) {
 				defer wg.Done()
 				err := getNodes(ctx, tfPlugin, options, ssdDisks, hddDisks, rootfs, limit, nodesOutput)
 				if err != nil {
@@ -71,7 +71,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 					errs = append(errs, err)
 					lock.Unlock()
 				}
-			}()
+			}(limit)
 		}
 
 		go func() {
