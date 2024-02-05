@@ -32,7 +32,7 @@ func Execute() {
 func init() {
 	deployCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
 	deployCmd.Flags().StringP("config", "c", "", "path to config file")
-	deployCmd.Flags().StringP("output", "o", "", "path to output file")
+	deployCmd.Flags().StringP("output", "o", "output.yaml", "path to output file")
 
 	cancelCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
 	cancelCmd.Flags().StringP("config", "c", "", "path to config file")
