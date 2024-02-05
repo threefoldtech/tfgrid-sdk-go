@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"crypto/md5"
 	"fmt"
 	"net/http"
 	"path"
@@ -107,15 +106,11 @@ func validateFlist(flist, name string) error {
 	if flistExt != ".fl" && flistExt != ".flist" {
 		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, should have a valid flist extension", name, flist)
 	}
-
-	if flistExt == ".flist" {
-		hash := md5.Sum([]byte(flist + ".md5"))
-		response, err := http.Get(flist + fmt.Sprintf("%x", hash))
-		if err != nil {
-			return fmt.Errorf("vms group '%s' flist: '%s' is invalid, failed to download flist", name, flist)
-		}
-		defer response.Body.Close()
+	response, err := http.Head(flist)
+	if err != nil {
+		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, failed to download flist", name, flist)
 	}
+	defer response.Body.Close()
 
 	return nil
 }
