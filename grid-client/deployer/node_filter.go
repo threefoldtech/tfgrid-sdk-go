@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/schema"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
@@ -32,7 +33,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	options.Healthy = &trueVal
 
 	var nodes []types.Node
-	var errs []error
+	var errs error
 	var lock sync.Mutex
 
 	// default values for no limit
@@ -59,7 +60,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		for j := 0; j < requestedPages; j++ {
 			limit.Page = uint64(i + j)
 			if limit.Page > uint64(totalPagesCount) {
-				continue
+				break
 			}
 
 			wg.Add(1)
@@ -68,7 +69,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 				err := getNodes(ctx, tfPlugin, options, ssdDisks, hddDisks, rootfs, limit, nodesOutput)
 				if err != nil {
 					lock.Lock()
-					errs = append(errs, err)
+					errs = multierror.Append(err)
 					lock.Unlock()
 				}
 			}(limit)
@@ -92,7 +93,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		}
 	}
 
-	if len(errs) != 0 {
+	if errs != nil {
 		return []types.Node{}, errors.Errorf("could not find enough nodes, found errors: %v", errs)
 	}
 
