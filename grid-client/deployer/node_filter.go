@@ -66,9 +66,11 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 			go func() {
 				defer wg.Done()
 				err := getNodes(ctx, tfPlugin, options, ssdDisks, hddDisks, rootfs, limit, nodesOutput)
-				lock.Lock()
-				errs = append(errs, err)
-				lock.Unlock()
+				if err != nil {
+					lock.Lock()
+					errs = append(errs, err)
+					lock.Unlock()
+				}
 			}()
 		}
 
@@ -117,12 +119,9 @@ func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFi
 	// if no storage needed
 	if options.FreeSRU == nil && options.FreeHRU == nil {
 		for _, node := range nodes {
-			select {
-			case output <- node:
-			case <-ctx.Done():
-				return nil
-			}
+			output <- node
 		}
+		return nil
 	}
 
 	sort.Slice(ssdDisks, func(i, j int) bool {
