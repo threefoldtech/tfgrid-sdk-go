@@ -116,7 +116,7 @@ func (c *ContractsGetter) ListContractsByTwinID(states []string) (Contracts, err
 }
 
 // ListContractsOfProjectName returns contracts for a project name
-func (c *ContractsGetter) ListContractsOfProjectName(projectName string) (Contracts, error) {
+func (c *ContractsGetter) ListContractsOfProjectName(projectName string, gateways bool) (Contracts, error) {
 	contracts := Contracts{
 		NodeContracts: make([]Contract, 0),
 		NameContracts: make([]Contract, 0),
@@ -137,22 +137,20 @@ func (c *ContractsGetter) ListContractsOfProjectName(projectName string) (Contra
 		}
 	}
 
-	nameGatewaysWorkloads, err := c.filterNameGatewaysWithinNodeContracts(contracts.NodeContracts)
-	if err != nil {
-		return Contracts{}, err
-	}
-
-	contracts.NameContracts, err = c.filterNameContracts(contractsList.NameContracts, nameGatewaysWorkloads)
-	if err != nil {
-		return Contracts{}, err
+	if !gateways {
+		nameGatewaysWorkloads, err := c.filterNameGatewaysWithinNodeContracts(contracts.NodeContracts)
+		if err != nil {
+			return Contracts{}, err
+		}
+		contracts.NameContracts = c.filterNameContracts(contractsList.NameContracts, nameGatewaysWorkloads)
 	}
 
 	return contracts, nil
 }
 
 // GetNodeContractsByTypeAndName list node contracts for a given type, project name and deployment name
-func (c *ContractsGetter) GetNodeContractsByTypeAndName(projectName, deploymentType, deploymentName string) (map[uint32]uint64, error) {
-	contracts, err := c.ListContractsOfProjectName(projectName)
+func (c *ContractsGetter) GetNodeContractsByTypeAndName(projectName, deploymentType, deploymentName string, gateways bool) (map[uint32]uint64, error) {
+	contracts, err := c.ListContractsOfProjectName(projectName, gateways)
 	if err != nil {
 		return map[uint32]uint64{}, err
 	}
@@ -185,7 +183,7 @@ func (c *ContractsGetter) GetNodeContractsByTypeAndName(projectName, deploymentT
 }
 
 // filterNameContracts returns the name contracts of the given name gateways
-func (c *ContractsGetter) filterNameContracts(nameContracts []Contract, nameGatewayWorkloads []gridtypes.Workload) ([]Contract, error) {
+func (c *ContractsGetter) filterNameContracts(nameContracts []Contract, nameGatewayWorkloads []gridtypes.Workload) []Contract {
 	filteredNameContracts := make([]Contract, 0)
 	for _, contract := range nameContracts {
 		for _, w := range nameGatewayWorkloads {
@@ -195,7 +193,7 @@ func (c *ContractsGetter) filterNameContracts(nameContracts []Contract, nameGate
 		}
 	}
 
-	return filteredNameContracts, nil
+	return filteredNameContracts
 }
 
 func (c *ContractsGetter) filterNameGatewaysWithinNodeContracts(nodeContracts []Contract) ([]gridtypes.Workload, error) {

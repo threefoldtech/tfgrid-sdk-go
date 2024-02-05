@@ -24,12 +24,12 @@ func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID ui
 
 // GetVM gets a vm with its project name
 func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
-	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
+	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name, false)
 	if err != nil {
 		return workloads.Deployment{}, err
 	}
 
-	networkContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
+	networkContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name), false)
 	if err != nil {
 		return workloads.Deployment{}, err
 	}
@@ -49,12 +49,12 @@ func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error)
 
 // GetK8sCluster gets a kubernetes cluster with its project name
 func GetK8sCluster(t deployer.TFPluginClient, name string) (workloads.K8sCluster, error) {
-	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.K8sType, name)
+	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.K8sType, name, false)
 	if err != nil {
 		return workloads.K8sCluster{}, err
 	}
 
-	networkContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
+	networkContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name), false)
 	if err != nil {
 		return workloads.K8sCluster{}, err
 	}
@@ -75,7 +75,7 @@ func GetK8sCluster(t deployer.TFPluginClient, name string) (workloads.K8sCluster
 
 // GetGatewayName gets a gateway name with its project name
 func GetGatewayName(t deployer.TFPluginClient, name string) (workloads.GatewayNameProxy, error) {
-	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.GatewayNameType, name)
+	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.GatewayNameType, name, true)
 	if err != nil {
 		return workloads.GatewayNameProxy{}, err
 	}
@@ -90,7 +90,7 @@ func GetGatewayName(t deployer.TFPluginClient, name string) (workloads.GatewayNa
 
 // GetGatewayFQDN gets a gateway fqdn with its project name
 func GetGatewayFQDN(t deployer.TFPluginClient, name string) (workloads.GatewayFQDNProxy, error) {
-	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.GatewayFQDNType, name)
+	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.GatewayFQDNType, name, true)
 	if err != nil {
 		return workloads.GatewayFQDNProxy{}, err
 	}
@@ -105,7 +105,7 @@ func GetGatewayFQDN(t deployer.TFPluginClient, name string) (workloads.GatewayFQ
 
 // GetDeployment gets a deployment with its project name
 func GetDeployment(t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
-	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
+	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name, false)
 	if err != nil {
 		return workloads.Deployment{}, err
 	}

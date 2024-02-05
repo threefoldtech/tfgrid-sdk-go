@@ -14,7 +14,7 @@ func TestContractsGetter(t *testing.T) {
 	_, err = tfPluginClient.ContractsGetter.ListContractsByTwinID([]string{"Created, GracePeriod"})
 	assert.NoError(t, err)
 
-	contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName("badName")
+	contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName("badName", true)
 	assert.Empty(t, contracts.NameContracts)
 	assert.Empty(t, contracts.NodeContracts)
 	assert.Empty(t, contracts.RentContracts)

@@ -23,7 +23,7 @@ var cancelCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		err = t.CancelByProjectName(args[0])
+		err = t.CancelByProjectName(args[0], true)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

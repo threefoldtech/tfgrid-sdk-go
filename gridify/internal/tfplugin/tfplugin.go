@@ -68,12 +68,12 @@ func (t *TFPluginClient) LoadGatewayNameFromGrid(nodeID uint32, name string, dep
 
 // ListContractsOfProjectName returns contracts for a project name from Threefold grid
 func (t *TFPluginClient) ListContractsOfProjectName(projectName string) (graphql.Contracts, error) {
-	return t.tfPluginClient.ContractsGetter.ListContractsOfProjectName(projectName)
+	return t.tfPluginClient.ContractsGetter.ListContractsOfProjectName(projectName, true)
 }
 
 // CancelByProjectName cancels a contract on Threefold grid
 func (t *TFPluginClient) CancelByProjectName(projectName string) error {
-	return t.tfPluginClient.CancelByProjectName(projectName)
+	return t.tfPluginClient.CancelByProjectName(projectName, true)
 }
 
 // GetAvailableNode returns nodes that match the given filter with rootfs specified in GBs
