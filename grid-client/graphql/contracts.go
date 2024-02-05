@@ -137,10 +137,8 @@ func (c *ContractsGetter) ListContractsOfProjectName(projectName string, noGatew
 		}
 	}
 
-	if len(noGateways) > 0 {
-		if noGateways[0] {
-			return contracts, nil
-		}
+	if len(noGateways) > 0 && noGateways[0] {
+		return contracts, nil
 	}
 
 	nameGatewaysWorkloads, err := c.filterNameGatewaysWithinNodeContracts(contracts.NodeContracts)
