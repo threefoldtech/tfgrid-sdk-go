@@ -33,13 +33,6 @@ func validateVMs(vms []deployer.Vms, nodeGroups []deployer.NodesGroup, sskKeys m
 	usedResources := make(map[string]map[string]interface{}, len(nodeGroups))
 	var vmNodeGroupExists bool
 
-	for _, nodeGroup := range nodeGroups {
-		nodeGroupName := strings.TrimSpace(nodeGroup.Name)
-		if !alphanumeric.MatchString(nodeGroupName) {
-			return fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
-		}
-	}
-
 	for _, vm := range vms {
 		vmName := strings.TrimSpace(vm.Name)
 		if !alphanumeric.MatchString(vmName) {

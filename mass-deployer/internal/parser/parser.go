@@ -45,14 +45,6 @@ func ParseConfig(file io.Reader, jsonFmt bool) (deployer.Config, error) {
 		return deployer.Config{}, err
 	}
 
-	log.Info().Msg("validating configuration file")
-
-	v := validator.New(validator.WithRequiredStructEnabled())
-	if err := v.Struct(conf); err != nil {
-		err = parseValidationError(err)
-		return deployer.Config{}, err
-	}
-
 	if err := validateNetwork(conf.Network); err != nil {
 		return deployer.Config{}, err
 	}
@@ -61,19 +53,38 @@ func ParseConfig(file io.Reader, jsonFmt bool) (deployer.Config, error) {
 		return deployer.Config{}, err
 	}
 
+	for _, nodeGroup := range conf.NodeGroups {
+		nodeGroupName := strings.TrimSpace(nodeGroup.Name)
+		if !alphanumeric.MatchString(nodeGroupName) {
+			return deployer.Config{}, fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
+		}
+	}
+
+	return conf, nil
+}
+
+func ValidateConfig(conf deployer.Config) error {
+	log.Info().Msg("validating configuration file")
+
+	v := validator.New(validator.WithRequiredStructEnabled())
+	if err := v.Struct(conf); err != nil {
+		err = parseValidationError(err)
+		return err
+	}
+
 	for name, sshKey := range conf.SSHKeys {
 		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(sshKey)))
 		if err != nil {
-			return deployer.Config{}, fmt.Errorf("ssh key for `%s` is invalid: %+w", name, err)
+			return fmt.Errorf("ssh key for `%s` is invalid: %+w", name, err)
 		}
 	}
 
 	if err := validateVMs(conf.Vms, conf.NodeGroups, conf.SSHKeys); err != nil {
-		return deployer.Config{}, err
+		return err
 	}
 
 	log.Info().Msg("done validating configuration file")
-	return conf, nil
+	return nil
 }
 
 func getValueOrEnv(value, envKey string) (string, error) {
