@@ -2,8 +2,10 @@ package deployer
 
 import (
 	"context"
+	"fmt"
 	"net"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
@@ -96,19 +98,22 @@ func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.D
 	newDeployments := make(map[uint32][]gridtypes.Deployment)
 	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
 	networkUsedIPs := make(map[string][]byte)
+	var multiErr error
 	for _, dl := range dls {
 		if err := d.Validate(ctx, dl); err != nil {
-			return err
+			multiErr = multierror.Append(multiErr, fmt.Errorf("invalid deployment %s: %w", dl.Name, err))
+			continue
 		}
 		if _, ok := networkUsedIPs[dl.NetworkName]; !ok {
 			network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
 			networkUsedIPs[dl.NetworkName] = network.GetUsedNetworkHostIDs(dl.NodeID)
 		}
 		generatedDls, usedHosts, err := d.GenerateVersionlessDeployments(ctx, dl, networkUsedIPs[dl.NetworkName])
-		networkUsedIPs[dl.NetworkName] = usedHosts
 		if err != nil {
-			return errors.Wrap(err, "could not generate deployments data")
+			multiErr = multierror.Append(multiErr, fmt.Errorf("could not generate deployments data for deployment %s: %w", dl.Name, err))
+			continue
 		}
+		networkUsedIPs[dl.NetworkName] = usedHosts
 
 		for nodeID, generatedDl := range generatedDls {
 			if _, ok := newDeployments[nodeID]; !ok {
@@ -122,6 +127,9 @@ func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.D
 	}
 
 	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
+	if err != nil {
+		multiErr = multierror.Append(multiErr, err)
+	}
 
 	// update deployment and plugin state
 	// error is not returned immediately before updating state because of untracked failed deployments
@@ -131,7 +139,7 @@ func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.D
 		}
 	}
 
-	return err
+	return multiErr
 }
 
 // Cancel cancels deployments
