@@ -11,13 +11,13 @@ require (
 	github.com/gorilla/schema v1.2.1
 	github.com/lib/pq v1.10.9
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.32.0
 	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.2
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240116163757-68c63d80a9e0
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4
-	github.com/threefoldtech/zos v0.5.6-0.20240131114330-dd28b9043948
+	github.com/threefoldtech/zos v0.5.6-0.20240201092442-d2ba5be539d2
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gorm v1.25.5

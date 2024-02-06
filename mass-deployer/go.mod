@@ -6,7 +6,7 @@ require (
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/gliderlabs/ssh v0.3.6
 	github.com/go-playground/validator/v10 v10.17.0
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.32.0
 	github.com/sethvargo/go-retry v0.2.4
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4

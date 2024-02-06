@@ -9,14 +9,14 @@ require (
 	github.com/hashicorp/go-envparse v0.1.0
 	github.com/jedib0t/go-pretty/v6 v6.5.3
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.32.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240116163757-68c63d80a9e0
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.10
-	github.com/threefoldtech/zos v0.5.6-0.20240131114330-dd28b9043948
+	github.com/threefoldtech/zos v0.5.6-0.20240201092442-d2ba5be539d2
 	github.com/vedhavyas/go-subkey v1.0.3
-	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	gopkg.in/yaml.v3 v3.0.1
 )
 
