@@ -295,13 +295,20 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 }
 
 func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodesIDs []int, groupDeployments *groupDeploymentsInfo) {
+	var contractsToBeCanceled []*workloads.ZNet
+	for idx, network := range groupDeployments.networkDeployments {
+		if groupDeployments.vmDeployments[idx].ContractID == 0 {
+			contractsToBeCanceled = append(contractsToBeCanceled, network)
+		}
+	}
+
+	err := tfPluginClient.NetworkDeployer.BatchCancel(ctx, contractsToBeCanceled)
+	if err != nil {
+		log.Debug().Err(err)
+	}
+
 	for idx, deployment := range groupDeployments.vmDeployments {
 		if deployment.ContractID == 0 || isFailedNetwork(*groupDeployments.networkDeployments[idx]) {
-			err := tfPluginClient.NetworkDeployer.Cancel(ctx, groupDeployments.networkDeployments[idx])
-			if err != nil {
-				log.Debug().Err(err)
-			}
-
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
 			groupDeployments.vmDeployments[idx].NodeID = nodeID
 			groupDeployments.networkDeployments[idx].Nodes = []uint32{nodeID}
