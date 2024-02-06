@@ -217,7 +217,7 @@ func getNotDeployedDeployments(tfPluginClient deployer.TFPluginClient, groupDepl
 	var failedNetworkDeployments []*workloads.ZNet
 
 	for i := range groupDeployments.networkDeployments {
-		if isFailedNetwork(*groupDeployments.networkDeployments[i]) {
+		if len(groupDeployments.networkDeployments[i].NodeDeploymentID) == 0 {
 			failedNetworkDeployments = append(failedNetworkDeployments, groupDeployments.networkDeployments[i])
 		}
 
@@ -308,23 +308,10 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 	}
 
 	for idx, deployment := range groupDeployments.vmDeployments {
-		if deployment.ContractID == 0 || isFailedNetwork(*groupDeployments.networkDeployments[idx]) {
+		if deployment.ContractID == 0 || len(groupDeployments.networkDeployments[idx].NodeDeploymentID) == 0 {
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
 			groupDeployments.vmDeployments[idx].NodeID = nodeID
 			groupDeployments.networkDeployments[idx].Nodes = []uint32{nodeID}
 		}
 	}
-}
-
-func isFailedNetwork(network workloads.ZNet) bool {
-	if len(network.NodeDeploymentID) == 0 {
-		return true
-	} else {
-		for _, contract := range network.NodeDeploymentID {
-			if contract == 0 {
-				return true
-			}
-		}
-	}
-	return false
 }
