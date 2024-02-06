@@ -596,6 +596,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
 	}
+	if filter.Excluded != nil {
+		q = q.Where("node.node_id NOT IN ?", filter.Excluded)
+	}
 
 	// Dedicated nodes filters
 	if filter.InDedicatedFarm != nil {
