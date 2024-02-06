@@ -75,7 +75,7 @@ func mockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub *m
 		GetBalance(identity).
 		Return(substrate.Balance{
 			Free: types.U128{
-				Int: big.NewInt(100000),
+				Int: big.NewInt(20000000),
 			},
 		}, nil)
 

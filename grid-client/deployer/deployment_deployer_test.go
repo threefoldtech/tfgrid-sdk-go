@@ -365,7 +365,7 @@ func TestDeploymentDeployer(t *testing.T) {
 				GetBalance(d.tfPluginClient.Identity).
 				Return(substrate.Balance{
 					Free: types.U128{
-						Int: big.NewInt(100000),
+						Int: big.NewInt(20000000),
 					},
 				}, nil)
 
@@ -389,7 +389,7 @@ func TestDeploymentDeployer(t *testing.T) {
 				GetBalance(d.tfPluginClient.Identity).
 				Return(substrate.Balance{
 					Free: types.U128{
-						Int: big.NewInt(100000),
+						Int: big.NewInt(20000000),
 					},
 				}, nil)
 
@@ -435,7 +435,7 @@ func TestDeploymentDeployer(t *testing.T) {
 				GetBalance(d.tfPluginClient.Identity).
 				Return(substrate.Balance{
 					Free: types.U128{
-						Int: big.NewInt(100000),
+						Int: big.NewInt(20000000),
 					},
 				}, nil)
 
@@ -455,7 +455,7 @@ func TestDeploymentDeployer(t *testing.T) {
 				GetBalance(d.tfPluginClient.Identity).
 				Return(substrate.Balance{
 					Free: types.U128{
-						Int: big.NewInt(100000),
+						Int: big.NewInt(20000000),
 					},
 				}, nil)
 

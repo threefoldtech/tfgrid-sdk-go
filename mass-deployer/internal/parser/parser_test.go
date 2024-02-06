@@ -71,7 +71,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -84,7 +87,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -97,7 +103,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -138,7 +147,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -153,7 +165,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -168,7 +183,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -183,7 +201,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -198,7 +219,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -213,7 +237,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -228,7 +255,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -243,7 +273,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -258,7 +291,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -273,7 +309,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -285,9 +324,13 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.NoError(t, err)
 	})
+
 	t.Run("valid json config", func(t *testing.T) {
 		conf := confStruct
 
@@ -299,5 +342,8 @@ func TestParseConfig(t *testing.T) {
 		parsedConf, err := ParseConfig(configFile, true)
 		assert.NoError(t, err)
 		assert.Equal(t, conf, parsedConf)
+
+		err = ValidateConfig(parsedConf)
+		assert.NoError(t, err)
 	})
 }

@@ -68,7 +68,7 @@ func k8sMockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub
 		GetBalance(d.tfPluginClient.Identity).
 		Return(substrate.Balance{
 			Free: types.U128{
-				Int: big.NewInt(100000),
+				Int: big.NewInt(20000000),
 			},
 		}, nil)
 
