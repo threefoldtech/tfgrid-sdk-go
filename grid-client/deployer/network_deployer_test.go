@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/mocks"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -121,6 +122,36 @@ func TestNetworkDeployer(t *testing.T) {
 			nodeID: networkDl,
 		})
 	})
+}
+
+func TestNetworkBatchCancel(t *testing.T) {
+	tfPluginClient, err := setup()
+	assert.NoError(t, err)
+	networks := []*workloads.ZNet{
+		{NodeDeploymentID: map[uint32]uint64{
+			1: 100,
+			2: 200,
+		}},
+		{NodeDeploymentID: map[uint32]uint64{
+			1: 101,
+			2: 201,
+		}},
+	}
+	tfPluginClient.State.CurrentNodeDeployments = map[uint32]state.ContractIDs{
+		1: []uint64{100, 101, 12345},
+		2: []uint64{200, 201},
+	}
+	net, _, sub, _ := constructTestNetworkDeployer(t, tfPluginClient, true)
+	sub.EXPECT().BatchCancelContract(
+		tfPluginClient.Identity,
+		gomock.InAnyOrder([]uint64{100, 101, 200, 201}),
+	).Return(nil)
+	err = net.BatchCancel(context.Background(), networks)
+	assert.NoError(t, err)
+	assert.Len(t, networks[0].NodeDeploymentID, 0)
+	assert.Len(t, networks[1].NodeDeploymentID, 0)
+	assert.Len(t, tfPluginClient.State.CurrentNodeDeployments[1], 1)
+	assert.Len(t, tfPluginClient.State.CurrentNodeDeployments[2], 0)
 }
 
 func ExampleNetworkDeployer_Deploy() {

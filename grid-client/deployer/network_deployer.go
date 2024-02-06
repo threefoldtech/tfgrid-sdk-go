@@ -389,6 +389,34 @@ func (d *NetworkDeployer) Cancel(ctx context.Context, znet *workloads.ZNet) erro
 	return nil
 }
 
+// BatchCancel cancels all contracts for given networks. if one contracts failed all networks will not be canceled
+// and state won't be updated.
+func (d *NetworkDeployer) BatchCancel(ctx context.Context, znets []*workloads.ZNet) error {
+	var contracts []uint64
+	for _, znet := range znets {
+		for _, contractID := range znet.NodeDeploymentID {
+			if contractID != 0 {
+				contracts = append(contracts, contractID)
+			}
+		}
+	}
+	err := d.tfPluginClient.BatchCancelContract(contracts)
+	if err != nil {
+		return fmt.Errorf("failed to cancel contracts: %w", err)
+	}
+	for _, znet := range znets {
+		for nodeID, contractID := range znet.NodeDeploymentID {
+			d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
+		}
+		znet.NodeDeploymentID = make(map[uint32]uint64)
+		znet.Keys = make(map[uint32]wgtypes.Key)
+		znet.WGPort = make(map[uint32]int)
+		znet.NodesIPRange = make(map[uint32]gridtypes.IPNet)
+		znet.AccessWGConfig = ""
+	}
+	return nil
+}
+
 func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *workloads.ZNet, dls map[uint32][]gridtypes.Deployment, updateMetadata bool) error {
 	znet.NodeDeploymentID = map[uint32]uint64{}
 
