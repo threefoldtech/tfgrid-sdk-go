@@ -135,18 +135,19 @@ func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[stri
 func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, deployments *groupDeploymentsInfo) error {
 	// deploy only contracts that need to be deployed
 	networks, vms := getNotDeployedDeployments(tfPluginClient, deployments)
+	var multiErr error
 
-	log.Debug().Msg("Deploy networks")
+	log.Debug().Msg(fmt.Sprintf("Deploying %d networks, this may to take a while", len(deployments.networkDeployments)))
 	if err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, networks); err != nil {
-		return err
+		multiErr = multierror.Append(multiErr, err)
 	}
 
 	log.Debug().Msg(fmt.Sprintf("Deploying %d virtual machines, this may to take a while", len(deployments.vmDeployments)))
 	if err := tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, vms); err != nil {
-		return err
+		multiErr = multierror.Append(multiErr, err)
 	}
 
-	return nil
+	return multiErr
 }
 
 func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
@@ -241,7 +242,7 @@ func loadGroupInfo(tfPluginClient deployer.TFPluginClient, vmDeployments []*work
 		go func(deployment workloads.Deployment) {
 			defer wg.Done()
 			log.Debug().
-				Str("vm", depInfo.vmName).
+				Str("vm", deployment.Name).
 				Msg("loading vm info from state")
 
 			vmDeployment, err := tfPluginClient.State.LoadDeploymentFromGrid(deployment.NodeID, deployment.Name)
@@ -294,25 +295,8 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 }
 
 func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodesIDs []int, groupDeployments *groupDeploymentsInfo) {
-	// update nodes for failed networks and update vm deployments accordingly
-	// return if the networks were updated
-	var updated bool
-	for idx, deployment := range groupDeployments.networkDeployments {
-
-		nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
-		if isFailedNetwork(*deployment) {
-			updated = true
-			groupDeployments.vmDeployments[idx].NodeID = nodeID
-			groupDeployments.networkDeployments[idx].Nodes = []uint32{nodeID}
-		}
-	}
-
-	if updated {
-		return
-	}
-
 	for idx, deployment := range groupDeployments.vmDeployments {
-		if deployment.ContractID == 0 {
+		if deployment.ContractID == 0 || isFailedNetwork(*groupDeployments.networkDeployments[idx]) {
 			err := tfPluginClient.NetworkDeployer.Cancel(ctx, groupDeployments.networkDeployments[idx])
 			if err != nil {
 				log.Debug().Err(err)
