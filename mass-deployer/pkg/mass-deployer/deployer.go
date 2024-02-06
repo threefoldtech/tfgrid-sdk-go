@@ -21,6 +21,7 @@ import (
 )
 
 const maxDeploymentRetries = 5
+const maxGoroutinesToFetchState = 20
 
 func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) error {
 	passedGroups := map[string][]vmOutput{}
@@ -236,11 +237,20 @@ func loadGroupInfo(tfPluginClient deployer.TFPluginClient, vmDeployments []*work
 	var lock sync.Mutex
 	var wg sync.WaitGroup
 
+	// Create a channel to act as a semaphore with a capacity of maxGoroutinesToFetchState
+	sem := make(chan struct{}, maxGoroutinesToFetchState)
+
 	for _, deployment := range vmDeployments {
 		wg.Add(1)
 
+		// Acquire a slot in the semaphore before starting the goroutine
+		sem <- struct{}{}
+
 		go func(deployment workloads.Deployment) {
 			defer wg.Done()
+			// Ensure the slot is released as soon as the goroutine completes or errors
+			defer func() { <-sem }()
+
 			log.Debug().
 				Str("vm", deployment.Name).
 				Msg("loading vm info from state")
@@ -248,8 +258,9 @@ func loadGroupInfo(tfPluginClient deployer.TFPluginClient, vmDeployments []*work
 			vmDeployment, err := tfPluginClient.State.LoadDeploymentFromGrid(deployment.NodeID, deployment.Name)
 			if err != nil {
 				lock.Lock()
-				defer lock.Unlock()
 				multiErr = multierror.Append(multiErr, err)
+				lock.Unlock()
+
 				log.Debug().Err(err).
 					Str("vm", deployment.Vms[0].Name).
 					Str("deployment", deployment.Name).
@@ -272,8 +283,8 @@ func loadGroupInfo(tfPluginClient deployer.TFPluginClient, vmDeployments []*work
 			}
 
 			lock.Lock()
-			defer lock.Unlock()
 			vmsInfo = append(vmsInfo, vmInfo)
+			lock.Unlock()
 		}(*deployment)
 	}
 	wg.Wait()
