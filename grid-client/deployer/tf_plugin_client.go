@@ -26,11 +26,11 @@ import (
 
 var (
 	// SubstrateURLs are substrate urls
-	SubstrateURLs = map[string]string{
-		"dev":  "wss://tfchain.dev.grid.tf/ws",
-		"test": "wss://tfchain.test.grid.tf/ws",
-		"qa":   "wss://tfchain.qa.grid.tf/ws",
-		"main": "wss://tfchain.grid.tf/ws",
+	SubstrateURLs = map[string][]string{
+		"dev":  {"wss://tfchain.dev.grid.tf/ws", "wss://tfchain.dev.grid.tf:443"},
+		"test": {"wss://tfchain.test.grid.tf/ws", "wss://tfchain.test.grid.tf:443"},
+		"qa":   {"wss://tfchain.qa.grid.tf/ws", "wss://tfchain.qa.grid.tf:443"},
+		"main": {"wss://tfchain.grid.tf/ws", "wss://tfchain.grid.tf:443"},
 	}
 	// ProxyURLs are rmb proxy urls
 	ProxyURLs = map[string]string{
@@ -60,7 +60,7 @@ type TFPluginClient struct {
 	TwinID         uint32
 	mnemonicOrSeed string
 	Identity       substrate.Identity
-	substrateURL   string
+	substrateURL   []string
 	relayURL       string
 	RMBTimeout     time.Duration
 	proxyURL       string
@@ -155,10 +155,10 @@ func NewTFPluginClient(
 		if err := validateWssURL(substrateURL); err != nil {
 			return TFPluginClient{}, errors.Wrapf(err, "could not validate substrate url %s", substrateURL)
 		}
-		tfPluginClient.substrateURL = substrateURL
+		tfPluginClient.substrateURL = []string{substrateURL}
 	}
 
-	manager := subi.NewManager(tfPluginClient.substrateURL)
+	manager := subi.NewManager(tfPluginClient.substrateURL...)
 	sub, err := manager.SubstrateExt()
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not get substrate client")

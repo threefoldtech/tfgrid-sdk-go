@@ -7,7 +7,7 @@ func RunCanceler(cfg Config, debug bool) error {
 	}
 
 	for _, group := range cfg.NodeGroups {
-		err = tfPluginClient.CancelByProjectName(group.Name)
+		err = tfPluginClient.CancelByProjectName(group.Name, true)
 		if err != nil {
 			return err
 		}

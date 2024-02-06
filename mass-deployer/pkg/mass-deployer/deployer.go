@@ -89,10 +89,6 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 
 	fmt.Println(string(outputBytes))
 
-	if output == "" {
-		return nil
-	}
-
 	return os.WriteFile(output, outputBytes, 0644)
 }
 
@@ -145,7 +141,7 @@ func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, dep
 		return err
 	}
 
-	log.Debug().Msg("Deploy virtual machines")
+	log.Debug().Msg(fmt.Sprintf("Deploying %d virtual machines, this may to take a while", len(deployments.vmDeployments)))
 	if err := tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, vms); err != nil {
 		return err
 	}
@@ -176,7 +172,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 			disks, mounts := parseDisks(vmName, vmGroup.SSDDisks)
 
 			network := workloads.ZNet{
-				Name:        fmt.Sprintf("%snetwork", vmName),
+				Name:        fmt.Sprintf("%s_network", vmName),
 				Description: "network for mass deployment",
 				Nodes:       []uint32{nodeID},
 				IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -244,6 +240,9 @@ func loadGroupInfo(tfPluginClient deployer.TFPluginClient, vmDeployments []*work
 
 		go func(deployment workloads.Deployment) {
 			defer wg.Done()
+			log.Debug().
+				Str("vm", depInfo.vmName).
+				Msg("loading vm info from state")
 
 			vmDeployment, err := tfPluginClient.State.LoadDeploymentFromGrid(deployment.NodeID, deployment.Name)
 			if err != nil {
@@ -282,9 +281,9 @@ func loadGroupInfo(tfPluginClient deployer.TFPluginClient, vmDeployments []*work
 }
 
 func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mountsWorkloads []workloads.Mount) {
-	for _, disk := range disks {
+	for i, disk := range disks {
 		DiskWorkload := workloads.Disk{
-			Name:   fmt.Sprintf("%sdisk", name),
+			Name:   fmt.Sprintf("%s_disk%d", name, i),
 			SizeGB: int(disk.Size),
 		}
 

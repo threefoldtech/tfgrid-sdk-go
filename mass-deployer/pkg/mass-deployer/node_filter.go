@@ -50,7 +50,7 @@ func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, gr
 		freeHDD = nil
 	}
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, filter, freeSSD, freeHDD, nil, int(group.NodesCount))
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, filter, freeSSD, freeHDD, nil, group.NodesCount)
 	if err != nil {
 		return []int{}, err
 	}
