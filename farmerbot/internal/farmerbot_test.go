@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
+	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
@@ -22,6 +23,7 @@ const (
 func TestFarmerbot(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+	proxy := mocks.NewMockProxyClient(ctrl)
 	sub := mocks.NewMockSubstrate(ctrl)
 	rmb := mocks.NewMockRMB(ctrl)
 
@@ -36,6 +38,7 @@ func TestFarmerbot(t *testing.T) {
 	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)
 	assert.Error(t, err)
 	farmerbot.rmbNodeClient = rmb
+	farmerbot.gridProxyClient = proxy
 
 	// mock state
 	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
@@ -44,13 +47,6 @@ func TestFarmerbot(t *testing.T) {
 	state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 	assert.NoError(t, err)
 	farmerbot.state = state
-
-	node := farmerbot.nodes[2]
-	node.dedicated = false
-	farmerbot.nodes[2] = node
-	node2 := farmerbot.nodes[2]
-	node2.dedicated = false
-	farmerbot.nodes[2] = node2
 
 	oldNode1 := farmerbot.nodes[1]
 	oldNode2 := farmerbot.nodes[2]
@@ -80,6 +76,8 @@ func TestFarmerbot(t *testing.T) {
 	})
 
 	t.Run("test iterateOnNodes: update nodes (periodic wake up: off node)", func(t *testing.T) {
+		proxy.EXPECT().Node(ctx, gomock.Any()).Return(proxyTypes.NodeWithNestedCapacity{}, nil).AnyTimes()
+
 		oldNode1.powerState = off
 		oldNode2.powerState = off
 		state.addNode(oldNode1)
