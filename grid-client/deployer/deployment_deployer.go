@@ -162,6 +162,29 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, dl *workloads.Deploymen
 	return nil
 }
 
+// BatchCancel cancels all contracts for given deployments. if one contracts failed all deployments will not be canceled
+// and state won't be updated.
+func (d *DeploymentDeployer) BatchCancel(ctx context.Context, deployments []*workloads.Deployment) error {
+	var contracts []uint64
+	for _, deployment := range deployments {
+		if deployment.ContractID != 0 {
+			contracts = append(contracts, deployment.ContractID)
+		}
+	}
+	err := d.tfPluginClient.BatchCancelContract(contracts)
+	if err != nil {
+		return fmt.Errorf("failed to cancel contracts: %w", err)
+	}
+	// update state
+	for _, dl := range deployments {
+		delete(dl.NodeDeploymentID, dl.NodeID)
+		d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[dl.NodeID], dl.ContractID)
+		dl.ContractID = 0
+		delete(d.tfPluginClient.State.Networks[dl.NetworkName].NodeDeploymentHostIDs[dl.NodeID], dl.ContractID)
+	}
+	return nil
+}
+
 func updateNetworkUsedIPs(network *state.Network, dl *workloads.Deployment) {
 	ips := network.GetDeploymentHostIDs(dl.NodeID, dl.ContractID)
 	for _, vm := range dl.Vms {
