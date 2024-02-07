@@ -208,7 +208,7 @@ func NewTFPluginClient(
 	ctx, cancel := context.WithCancel(context.Background())
 	tfPluginClient.cancelRelayContext = cancel
 
-	rmbClient, err := peer.NewRpcClient(ctx, keyType, tfPluginClient.mnemonicOrSeed, tfPluginClient.relayURL, sessionID, manager, true)
+	rmbClient, err := peer.NewRpcClient(ctx, tfPluginClient.mnemonicOrSeed, manager, peer.WithRelay(tfPluginClient.relayURL), peer.WithSession(sessionID), peer.WithKeyType(keyType))
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not create rmb client")
 	}

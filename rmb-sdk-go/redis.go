@@ -8,7 +8,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-func newRedisPool(address string, size ...uint32) (*redis.Pool, error) {
+func NewRedisPool(address string, size ...uint32) (*redis.Pool, error) {
 	var poolSize uint32 = 20
 	if len(size) == 1 {
 		poolSize = size[0]
