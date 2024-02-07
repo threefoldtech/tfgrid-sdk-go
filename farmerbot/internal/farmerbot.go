@@ -370,7 +370,6 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 
 func (f *FarmerBot) shouldWakeUp(ctx context.Context, sub Substrate, node *node, roundStart time.Time, wakeUpCalls uint8) bool {
 	if node.powerState != off ||
-		time.Since(node.lastTimePowerStateChanged) < periodicWakeUpDuration ||
 		wakeUpCalls >= f.config.Power.PeriodicWakeUpLimit {
 		return false
 	}
@@ -388,6 +387,11 @@ func (f *FarmerBot) shouldWakeUp(ctx context.Context, sub Substrate, node *node,
 		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Urgent wake up")
 		node.lastTimePeriodicWakeUp = time.Now()
 		return true
+	}
+
+	// postpone power state check for immediate wake ups
+	if time.Since(node.lastTimePowerStateChanged) < periodicWakeUpDuration {
+		return false
 	}
 
 	periodicWakeUpStart := f.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()
