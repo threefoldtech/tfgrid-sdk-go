@@ -17,13 +17,12 @@ func powerOn() error {
 
 	client, err := peer.NewRpcClient(
 		context.Background(),
-		peer.KeyTypeSr25519,
 		mnemonics,
-		"wss://relay.dev.grid.tf",
-		"test-power-on",
 		subManager,
-		true,
+		peer.WithRelay("wss://relay.dev.grid.tf"),
+		peer.WithSession("test-power-on"),
 	)
+
 	if err != nil {
 		return fmt.Errorf("failed to create rpc client: %w", err)
 	}

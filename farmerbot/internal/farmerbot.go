@@ -43,7 +43,13 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, k
 		identity:         identity,
 	}
 
-	rmb, err := peer.NewRpcClient(ctx, keyType, farmerbot.mnemonicOrSeed, relayURLs[network], fmt.Sprintf("farmerbot-rpc-%d", config.FarmID), farmerbot.substrateManager, true)
+	rmb, err := peer.NewRpcClient(ctx,
+		farmerbot.mnemonicOrSeed,
+		farmerbot.substrateManager,
+		peer.WithKeyType(keyType),
+		peer.WithRelay(relayURLs[network]),
+		peer.WithSession(fmt.Sprintf("farmerbot-rpc-%d", config.FarmID)),
+	)
 	if err != nil {
 		return FarmerBot{}, fmt.Errorf("could not create rmb client with error %w", err)
 	}
