@@ -134,6 +134,9 @@ func (w *SpeedWatcher) startUpserter(ctx context.Context, database db.Database) 
 }
 
 func parse(res types.PerfResult, twinId uint32) types.NetworkTestResult {
+	// TODO: better parsing
+	// we have four speeds tcp/udp for ipv4/ipv6.
+	// now, we just pick the first non-zero
 	for _, report := range res.Result {
 		if report.DownloadSpeed != 0 {
 			report.NodeTwinId = twinId

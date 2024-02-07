@@ -88,8 +88,8 @@ type Node struct {
 	Baseboard          types.Baseboard  `gorm:"type:jsonb"`
 	Memory             types.Memories   `gorm:"type:jsonb"`
 	Processor          types.Processors `gorm:"type:jsonb"`
-	UploadSpeed        uint64
-	DownloadSpeed      uint64
+	UploadSpeed        float64
+	DownloadSpeed      float64
 }
 
 // NodePower struct is the farmerbot report for node status

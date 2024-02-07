@@ -56,8 +56,8 @@ type CapacityResult struct {
 }
 
 type Speed struct {
-	Upload   uint64 `json:"upload"`
-	Download uint64 `json:"download"`
+	Upload   float64 `json:"upload"`
+	Download float64 `json:"download"`
 }
 
 // Node to be compatible with old view
