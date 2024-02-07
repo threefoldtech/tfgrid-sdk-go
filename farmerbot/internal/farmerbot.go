@@ -371,6 +371,14 @@ func (f *FarmerBot) shouldWakeUp(sub Substrate, node *node, roundStart time.Time
 		return false
 	}
 
+	if time.Since(node.lastTimeAwake) > 24*time.Hour {
+		// if the last time the node was awake was before 24 hours ago
+		log.Warn().Uint32("nodeID", uint32(node.ID)).Msgf("Node didn't wake up since more than %v hours", time.Since(node.lastTimeAwake).Hours())
+		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Urgent wake up")
+		node.lastTimePeriodicWakeUp = time.Now()
+		return true
+	}
+
 	periodicWakeUpStart := f.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime()
 	if periodicWakeUpStart.Before(roundStart) && node.lastTimeAwake.Before(periodicWakeUpStart) {
 		// we wake up the node if the periodic wake up start time has started and only if the last time the node was awake
