@@ -446,7 +446,7 @@ func ExampleGatewayFQDNDeployer_Cancel() {
 	// should be a valid and existing name and deploymentName
 	name := "test1.com"
 	deploymentName := "test1"
-	g, err := tfPluginClient.State.LoadGatewayFQDNFromGrid(nodeID, name, deploymentName)
+	g, err := tfPluginClient.State.LoadGatewayFQDNFromGrid(context.Background(), nodeID, name, deploymentName)
 	if err != nil {
 		fmt.Println(err)
 		return

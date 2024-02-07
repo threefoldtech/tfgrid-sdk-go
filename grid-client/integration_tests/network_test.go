@@ -50,7 +50,7 @@ func TestNetworkDeployment(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		_, err := tfPluginClient.State.LoadNetworkFromGrid(network.Name)
+		_, err := tfPluginClient.State.LoadNetworkFromGrid(ctx, network.Name)
 		assert.NoError(t, err)
 	})
 
@@ -60,7 +60,7 @@ func TestNetworkDeployment(t *testing.T) {
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &networkCp)
 		assert.NoError(t, err)
 
-		_, err := tfPluginClient.State.LoadNetworkFromGrid(networkCp.Name)
+		_, err := tfPluginClient.State.LoadNetworkFromGrid(ctx, networkCp.Name)
 		assert.NoError(t, err)
 	})
 
@@ -76,7 +76,7 @@ func TestNetworkDeployment(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		_, err := tfPluginClient.State.LoadNetworkFromGrid(networkCp.Name)
+		_, err := tfPluginClient.State.LoadNetworkFromGrid(ctx, networkCp.Name)
 		assert.NoError(t, err)
 	})
 

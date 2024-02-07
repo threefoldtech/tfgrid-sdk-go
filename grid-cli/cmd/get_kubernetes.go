@@ -26,7 +26,7 @@ var getKubernetesCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		cluster, err := command.GetK8sCluster(t, args[0])
+		cluster, err := command.GetK8sCluster(cmd.Context(), t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

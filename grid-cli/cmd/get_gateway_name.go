@@ -25,7 +25,7 @@ var getGatewayNameCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		gateway, err := command.GetGatewayName(t, args[0])
+		gateway, err := command.GetGatewayName(cmd.Context(), t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

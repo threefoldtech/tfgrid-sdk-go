@@ -67,7 +67,7 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 		}
 	}
 
-	log.Info().Msgf("Deployment took %s", time.Since(deploymentStart))
+	endTime := time.Since(deploymentStart)
 
 	outData := struct {
 		OK    map[string][]vmOutput `json:"ok"`
@@ -88,6 +88,7 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 	}
 
 	fmt.Println(string(outputBytes))
+	log.Info().Msgf("Deployment took %s", endTime)
 
 	return os.WriteFile(output, outputBytes, 0644)
 }
@@ -115,7 +116,7 @@ func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient
 	}
 
 	log.Debug().Msg("Load deployments")
-	vmsInfo, err := loadGroupInfo(tfPluginClient, groupDeployments.vmDeployments)
+	vmsInfo, err := loadGroupInfo(ctx, tfPluginClient, groupDeployments.vmDeployments)
 
 	return vmsInfo, err
 }
@@ -230,7 +231,7 @@ func getNotDeployedDeployments(tfPluginClient deployer.TFPluginClient, groupDepl
 	return failedNetworkDeployments, failedVmDeployments
 }
 
-func loadGroupInfo(tfPluginClient deployer.TFPluginClient, vmDeployments []*workloads.Deployment) ([]vmOutput, error) {
+func loadGroupInfo(ctx context.Context, tfPluginClient deployer.TFPluginClient, vmDeployments []*workloads.Deployment) ([]vmOutput, error) {
 	vmsInfo := []vmOutput{}
 	var multiErr error
 	var lock sync.Mutex
@@ -245,7 +246,7 @@ func loadGroupInfo(tfPluginClient deployer.TFPluginClient, vmDeployments []*work
 				Str("vm", deployment.Name).
 				Msg("loading vm info from state")
 
-			vmDeployment, err := tfPluginClient.State.LoadDeploymentFromGrid(deployment.NodeID, deployment.Name)
+			vmDeployment, err := tfPluginClient.State.LoadDeploymentFromGrid(ctx, deployment.NodeID, deployment.Name)
 			if err != nil {
 				lock.Lock()
 				defer lock.Unlock()

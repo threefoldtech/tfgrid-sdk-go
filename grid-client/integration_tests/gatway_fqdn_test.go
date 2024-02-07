@@ -81,7 +81,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
 
 	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
@@ -103,7 +103,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	_, err = tfPluginClient.State.LoadGatewayFQDNFromGrid(gatewayNode, gw.Name, gw.Name)
+	_, err = tfPluginClient.State.LoadGatewayFQDNFromGrid(ctx, gatewayNode, gw.Name, gw.Name)
 	assert.NoError(t, err)
 
 	_, err = RemoteRun("root", v.PlanetaryIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)

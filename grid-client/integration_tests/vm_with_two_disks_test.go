@@ -94,14 +94,14 @@ func TestVMWithTwoDisk(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
 
-	resDisk1, err := tfPluginClient.State.LoadDiskFromGrid(nodeID, disk1.Name, dl.Name)
+	resDisk1, err := tfPluginClient.State.LoadDiskFromGrid(ctx, nodeID, disk1.Name, dl.Name)
 	assert.NoError(t, err)
 	assert.Equal(t, disk1, resDisk1)
 
-	resDisk2, err := tfPluginClient.State.LoadDiskFromGrid(nodeID, disk2.Name, dl.Name)
+	resDisk2, err := tfPluginClient.State.LoadDiskFromGrid(ctx, nodeID, disk2.Name, dl.Name)
 	assert.NoError(t, err)
 	assert.Equal(t, disk2, resDisk2)
 

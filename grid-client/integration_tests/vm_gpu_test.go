@@ -105,7 +105,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	vm, err = tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+	vm, err = tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
 	assert.Equal(t, vm.GPUs, ConvertGPUsToStr(gpus))
 

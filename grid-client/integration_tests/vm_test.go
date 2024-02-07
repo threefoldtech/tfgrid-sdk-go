@@ -77,7 +77,7 @@ func TestVMDeployment(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+		v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 		assert.NoError(t, err)
 		assert.Equal(t, v.IP, "10.20.2.5")
 

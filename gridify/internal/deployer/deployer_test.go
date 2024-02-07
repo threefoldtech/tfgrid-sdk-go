@@ -137,7 +137,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadVMFromGrid(gomock.Any(), deployment.Name, deployment.Name).
+			LoadVMFromGrid(context.Background(), gomock.Any(), deployment.Name, deployment.Name).
 			Return(workloads.VM{}, errors.New("error"))
 
 		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
@@ -166,7 +166,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadVMFromGrid(gomock.Any(), deployment.Name, deployment.Name).
+			LoadVMFromGrid(context.Background(), gomock.Any(), deployment.Name, deployment.Name).
 			Return(workloads.VM{ComputedIP: vmIP}, nil)
 
 		clientMock.
@@ -200,7 +200,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadVMFromGrid(gomock.Any(), deployment.Name, deployment.Name).
+			LoadVMFromGrid(context.Background(), gomock.Any(), deployment.Name, deployment.Name).
 			Return(workloads.VM{ComputedIP: vmIP}, nil)
 
 		clientMock.
@@ -210,7 +210,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadGatewayNameFromGrid(gomock.Any(), gateway1.Name, gateway1.Name).
+			LoadGatewayNameFromGrid(context.Background(), gomock.Any(), gateway1.Name, gateway1.Name).
 			Return(workloads.GatewayNameProxy{}, errors.New("error"))
 
 		_, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
@@ -239,7 +239,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadVMFromGrid(gomock.Any(), deployment.Name, deployment.Name).
+			LoadVMFromGrid(context.Background(), gomock.Any(), deployment.Name, deployment.Name).
 			Return(workloads.VM{ComputedIP: vmIP}, nil)
 
 		clientMock.
@@ -249,7 +249,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadGatewayNameFromGrid(gomock.Any(), gateway1.Name, gateway1.Name).
+			LoadGatewayNameFromGrid(context.Background(), gomock.Any(), gateway1.Name, gateway1.Name).
 			Return(workloads.GatewayNameProxy{FQDN: "domain1"}, nil)
 
 		fqdns, err := deployer.Deploy(context.Background(), Eco, []uint{80}, deploymentName)
@@ -279,7 +279,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadVMFromGrid(gomock.Any(), deployment.Name, deployment.Name).
+			LoadVMFromGrid(context.Background(), gomock.Any(), deployment.Name, deployment.Name).
 			Return(workloads.VM{ComputedIP: vmIP}, nil)
 
 		clientMock.
@@ -289,7 +289,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadGatewayNameFromGrid(gomock.Any(), gateway1.Name, gateway1.Name).
+			LoadGatewayNameFromGrid(context.Background(), gomock.Any(), gateway1.Name, gateway1.Name).
 			Return(workloads.GatewayNameProxy{FQDN: "domain1"}, nil)
 
 		clientMock.
@@ -299,7 +299,7 @@ func TestDeploy(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadGatewayNameFromGrid(gomock.Any(), gateway2.Name, gateway2.Name).
+			LoadGatewayNameFromGrid(context.Background(), gomock.Any(), gateway2.Name, gateway2.Name).
 			Return(workloads.GatewayNameProxy{FQDN: "domain2"}, nil)
 
 		fqdns, err := deployer.Deploy(context.Background(), Eco, []uint{80, 8080}, deploymentName)
@@ -369,7 +369,7 @@ func TestGet(t *testing.T) {
 			ListContractsOfProjectName(projectName).
 			Return(graphql.Contracts{}, errors.New("error"))
 
-		_, err := deployer.Get()
+		_, err := deployer.Get(context.Background())
 		assert.Error(t, err)
 	})
 	t.Run("no contracts found", func(t *testing.T) {
@@ -378,7 +378,7 @@ func TestGet(t *testing.T) {
 			ListContractsOfProjectName(projectName).
 			Return(graphql.Contracts{}, nil)
 
-		_, err := deployer.Get()
+		_, err := deployer.Get(context.Background())
 		assert.NoError(t, err)
 	})
 	t.Run("parsing deployment data failed", func(t *testing.T) {
@@ -387,7 +387,7 @@ func TestGet(t *testing.T) {
 			ListContractsOfProjectName(projectName).
 			Return(graphql.Contracts{NodeContracts: []graphql.Contract{{ContractID: "1"}}}, nil)
 
-		_, err := deployer.Get()
+		_, err := deployer.Get(context.Background())
 		assert.Error(t, err)
 	})
 	t.Run("parsing backend failed", func(t *testing.T) {
@@ -398,10 +398,10 @@ func TestGet(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadGatewayNameFromGrid(uint32(14), "test", "test").
+			LoadGatewayNameFromGrid(context.Background(), uint32(14), "test", "test").
 			Return(badBackendGateway, nil)
 
-		_, err := deployer.Get()
+		_, err := deployer.Get(context.Background())
 		assert.Error(t, err)
 	})
 	t.Run("fetching succeeded", func(t *testing.T) {
@@ -412,10 +412,10 @@ func TestGet(t *testing.T) {
 
 		clientMock.
 			EXPECT().
-			LoadGatewayNameFromGrid(uint32(14), "test", "test").
+			LoadGatewayNameFromGrid(context.Background(), uint32(14), "test", "test").
 			Return(gatewayWorkload, nil)
 
-		fqdns, err := deployer.Get()
+		fqdns, err := deployer.Get(context.Background())
 		assert.NoError(t, err)
 		assert.Equal(t, fqdns, map[string]string{"8080": "http://example.com"})
 	})
