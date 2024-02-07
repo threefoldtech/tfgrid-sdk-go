@@ -63,3 +63,10 @@ var relayURLs = map[string]string{
 	QaNetwork:   "wss://relay.qa.grid.tf",
 	MainNetwork: "wss://relay.grid.tf",
 }
+
+var proxyURLs = map[string]string{
+	DevNetwork:  "https://gridproxy.dev.grid.tf/",
+	TestNetwork: "https://gridproxy.test.grid.tf/",
+	QaNetwork:   "https://gridproxy.qa.grid.tf/",
+	MainNetwork: "https://gridproxy.grid.tf/",
+}
