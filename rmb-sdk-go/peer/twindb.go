@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -72,6 +73,7 @@ func (t *twinDB) GetByPk(pk []byte) (uint32, error) {
 type inMemoryCache struct {
 	cache map[uint32]Twin
 	inner TwinDB
+	m     sync.RWMutex
 }
 
 func newInMemoryCache(inner TwinDB) TwinDB {
@@ -82,7 +84,9 @@ func newInMemoryCache(inner TwinDB) TwinDB {
 }
 
 func (m *inMemoryCache) Get(id uint32) (twin Twin, err error) {
+	m.m.RLock()
 	twin, ok := m.cache[id]
+	m.m.RUnlock()
 	if ok {
 		return twin, nil
 	}
@@ -92,7 +96,9 @@ func (m *inMemoryCache) Get(id uint32) (twin Twin, err error) {
 		return Twin{}, errors.Wrapf(err, "could not get twin with id %d", id)
 	}
 
+	m.m.Lock()
 	m.cache[id] = twin
+	m.m.Unlock()
 
 	return twin, nil
 }
