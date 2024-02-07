@@ -54,7 +54,7 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 	for {
 		typ, data, err := con.ReadMessage()
 		if err != nil {
-			log.Error().Err(err).Msg("failed to read message")
+			log.Debug().Err(err).Msg("failed to read message")
 			cancel()
 			return
 		}
