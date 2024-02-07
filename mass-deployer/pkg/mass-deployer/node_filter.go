@@ -7,8 +7,9 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, group NodesGroup) ([]int, error) {
+func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, group NodesGroup, excludedNodes []uint64) ([]int, error) {
 	filter := types.NodeFilter{}
+	filter.Excluded = excludedNodes
 
 	statusUp := "up"
 	freeMRU := convertMBToBytes(uint64(group.FreeMRU * 1024))
