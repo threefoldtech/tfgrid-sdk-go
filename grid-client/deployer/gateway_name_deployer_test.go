@@ -481,7 +481,7 @@ func ExampleGatewayNameDeployer_Cancel() {
 	// should be a valid and existing name and deploymentName
 	name := "test.com"
 	deploymentName := "test"
-	g, err := tfPluginClient.State.LoadGatewayNameFromGrid(nodeID, name, deploymentName)
+	g, err := tfPluginClient.State.LoadGatewayNameFromGrid(context.Background(), nodeID, name, deploymentName)
 	if err != nil {
 		fmt.Println(err)
 		return

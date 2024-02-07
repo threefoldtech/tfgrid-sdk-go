@@ -778,7 +778,7 @@ func ExampleDeploymentDeployer_Cancel() {
 
 	// dl should be a valid and existing deployment name
 	deploymentName := "vmdeployment"
-	dl, err := tfPluginClient.State.LoadDeploymentFromGrid(nodeID, deploymentName)
+	dl, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, deploymentName)
 	if err != nil {
 		fmt.Println(err)
 		return

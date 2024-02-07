@@ -88,7 +88,7 @@ func TestPresearchDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
 
 	publicIP := strings.Split(v.ComputedIP, "/")[0]

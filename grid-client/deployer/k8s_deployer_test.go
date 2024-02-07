@@ -482,7 +482,7 @@ func ExampleK8sDeployer_Cancel() {
 
 	// should be a valid and existing k8s cluster deployment name
 	deploymentName := "K8sForTesting"
-	cluster, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID}, deploymentName)
+	cluster, err := tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{nodeID}, deploymentName)
 	if err != nil {
 		fmt.Println(err)
 		return

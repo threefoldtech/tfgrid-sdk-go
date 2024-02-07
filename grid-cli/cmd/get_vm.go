@@ -26,7 +26,7 @@ var getVMCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		vm, err := command.GetVM(t, args[0])
+		vm, err := command.GetVM(cmd.Context(), t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

@@ -77,7 +77,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID1, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID1, vm.Name, dl.Name)
 	assert.NoError(t, err)
 
 	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
@@ -106,11 +106,11 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	result, err := tfPluginClient.State.LoadGatewayNameFromGrid(nodeID1, gw1.Name, gw1.Name)
+	result, err := tfPluginClient.State.LoadGatewayNameFromGrid(ctx, nodeID1, gw1.Name, gw1.Name)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, result.FQDN)
 
-	result, err = tfPluginClient.State.LoadGatewayNameFromGrid(nodeID2, gw2.Name, gw2.Name)
+	result, err = tfPluginClient.State.LoadGatewayNameFromGrid(ctx, nodeID2, gw2.Name, gw2.Name)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, result.FQDN)
 }

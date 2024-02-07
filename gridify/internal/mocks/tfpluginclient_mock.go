@@ -138,33 +138,33 @@ func (mr *MockTFPluginClientInterfaceMockRecorder) ListContractsOfProjectName(pr
 }
 
 // LoadGatewayNameFromGrid mocks base method.
-func (m *MockTFPluginClientInterface) LoadGatewayNameFromGrid(nodeID uint32, name, deploymentName string) (workloads.GatewayNameProxy, error) {
+func (m *MockTFPluginClientInterface) LoadGatewayNameFromGrid(ctx context.Context, nodeID uint32, name, deploymentName string) (workloads.GatewayNameProxy, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LoadGatewayNameFromGrid", nodeID, name, deploymentName)
+	ret := m.ctrl.Call(m, "LoadGatewayNameFromGrid", ctx, nodeID, name, deploymentName)
 	ret0, _ := ret[0].(workloads.GatewayNameProxy)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // LoadGatewayNameFromGrid indicates an expected call of LoadGatewayNameFromGrid.
-func (mr *MockTFPluginClientInterfaceMockRecorder) LoadGatewayNameFromGrid(nodeID, name, deploymentName interface{}) *gomock.Call {
+func (mr *MockTFPluginClientInterfaceMockRecorder) LoadGatewayNameFromGrid(ctx context.Context, nodeID, name, deploymentName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadGatewayNameFromGrid", reflect.TypeOf((*MockTFPluginClientInterface)(nil).LoadGatewayNameFromGrid), nodeID, name, deploymentName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadGatewayNameFromGrid", reflect.TypeOf((*MockTFPluginClientInterface)(nil).LoadGatewayNameFromGrid), ctx, nodeID, name, deploymentName)
 }
 
 // LoadVMFromGrid mocks base method.
-func (m *MockTFPluginClientInterface) LoadVMFromGrid(nodeID uint32, name, deploymentName string) (workloads.VM, error) {
+func (m *MockTFPluginClientInterface) LoadVMFromGrid(ctx context.Context, nodeID uint32, name, deploymentName string) (workloads.VM, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LoadVMFromGrid", nodeID, name, deploymentName)
+	ret := m.ctrl.Call(m, "LoadVMFromGrid", ctx, nodeID, name, deploymentName)
 	ret0, _ := ret[0].(workloads.VM)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // LoadVMFromGrid indicates an expected call of LoadVMFromGrid.
-func (mr *MockTFPluginClientInterfaceMockRecorder) LoadVMFromGrid(nodeID, name, deploymentName interface{}) *gomock.Call {
+func (mr *MockTFPluginClientInterfaceMockRecorder) LoadVMFromGrid(ctx context.Context, nodeID, name, deploymentName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadVMFromGrid", reflect.TypeOf((*MockTFPluginClientInterface)(nil).LoadVMFromGrid), nodeID, name, deploymentName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadVMFromGrid", reflect.TypeOf((*MockTFPluginClientInterface)(nil).LoadVMFromGrid), ctx, nodeID, name, deploymentName)
 }
 
 // SetState mocks base method.

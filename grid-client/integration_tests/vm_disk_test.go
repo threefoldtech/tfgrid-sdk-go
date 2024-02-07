@@ -82,10 +82,10 @@ func TestVmDisk(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
 
-	resDisk, err := tfPluginClient.State.LoadDiskFromGrid(nodeID, disk.Name, dl.Name)
+	resDisk, err := tfPluginClient.State.LoadDiskFromGrid(ctx, nodeID, disk.Name, dl.Name)
 	assert.NoError(t, err)
 	assert.Equal(t, disk, resDisk)
 

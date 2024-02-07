@@ -91,10 +91,10 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		v1, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm1.Name, dl.Name)
+		v1, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm1.Name, dl.Name)
 		assert.NoError(t, err)
 
-		v2, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm2.Name, dl.Name)
+		v2, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm2.Name, dl.Name)
 		assert.NoError(t, err)
 
 		yggIP1 := v1.PlanetaryIP

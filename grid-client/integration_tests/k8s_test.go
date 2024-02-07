@@ -151,7 +151,7 @@ func TestK8sDeployment(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
+		result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
 		assert.NoError(t, err)
 
 		// check workers count
@@ -192,7 +192,7 @@ func TestK8sDeployment(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{masterNodeID}, k8sCluster.Master.Name)
+		result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID}, k8sCluster.Master.Name)
 		assert.NoError(t, err)
 
 		// check workers count
@@ -210,7 +210,7 @@ func TestK8sDeployment(t *testing.T) {
 		err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
 		assert.NoError(t, err)
 
-		result, err = tfPluginClient.State.LoadK8sFromGrid([]uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
+		result, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
 		assert.NoError(t, err)
 
 		assert.Len(t, result.Workers, 2)

@@ -157,7 +157,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}()
 
 	// cluster 1
-	result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID1}, k8sCluster1.Master.Name)
+	result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{nodeID1}, k8sCluster1.Master.Name)
 	assert.NoError(t, err)
 
 	// check workers count
@@ -175,7 +175,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	AssertNodesAreReady(t, &result, privateKey)
 
 	// cluster 2
-	result, err = tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID2}, k8sCluster2.Master.Name)
+	result, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{nodeID2}, k8sCluster2.Master.Name)
 	assert.NoError(t, err)
 
 	// check workers count

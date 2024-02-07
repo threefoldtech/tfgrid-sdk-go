@@ -96,7 +96,7 @@ func TestBatchVMDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v1, err := tfPluginClient.State.LoadVMFromGrid(nodeID1, vm1.Name, dl1.Name)
+	v1, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID1, vm1.Name, dl1.Name)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, v1.PlanetaryIP)
 
@@ -104,7 +104,7 @@ func TestBatchVMDeployment(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, output, "root")
 
-	v2, err := tfPluginClient.State.LoadVMFromGrid(nodeID2, vm2.Name, dl2.Name)
+	v2, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID2, vm2.Name, dl2.Name)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, v2.PlanetaryIP)
 
