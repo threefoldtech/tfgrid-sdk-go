@@ -57,8 +57,8 @@ func validateVMs(vms []deployer.Vms, nodeGroups []deployer.NodesGroup, sskKeys m
 					return fmt.Errorf("cannot find enough cpu in node group '%s' for vm group '%s', needed cpu is %d while available cpu is %d", nodeGroupName, vmName, usedVMsResources["free_cpu"], nodeGroup.FreeCPU)
 				}
 
-				if usedVMsResources["free_mru"].(float32) > nodeGroup.FreeMRU {
-					return fmt.Errorf("cannot find enough memory in node group '%s' for vm group '%s', needed memory is %v GB while available memory is %v GB", nodeGroupName, vmName, usedVMsResources["free_mru"], nodeGroup.FreeMRU)
+				if usedVMsResources["free_mru"].(float32) > nodeGroup.FreeMRU*float32(nodeGroup.NodesCount) {
+					return fmt.Errorf("cannot find enough memory in node group '%s' for vm group '%s', needed memory is %v GB while available memory is %v GB", nodeGroupName, vmName, usedVMsResources["free_mru"], nodeGroup.FreeMRU*float32(nodeGroup.NodesCount))
 				}
 
 				if usedVMsResources["free_ssd"].(uint64) > nodeGroup.FreeSRU*nodeGroup.NodesCount {
@@ -121,9 +121,7 @@ func setVMUsedResources(vmsGroup deployer.Vms, vmUsedResources map[string]interf
 		vmUsedResources["free_cpu"] = vmsGroup.FreeCPU
 	}
 
-	if vmsGroup.FreeMRU > vmUsedResources["free_mru"].(float32) {
-		vmUsedResources["free_mru"] = vmsGroup.FreeMRU
-	}
+	vmUsedResources["free_mru"] = vmUsedResources["free_mru"].(float32) + (vmsGroup.FreeMRU * float32(vmsGroup.Count))
 
 	var ssdDisks uint64
 	for _, disk := range vmsGroup.SSDDisks {
