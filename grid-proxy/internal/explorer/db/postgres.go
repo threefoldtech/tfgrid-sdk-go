@@ -303,6 +303,12 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.node_contracts_count",
 			"resources_cache.node_gpu_count AS num_gpu",
 			"health_report.healthy",
+			"resources_cache.bios",
+			"resources_cache.baseboard",
+			"resources_cache.memory",
+			"resources_cache.processor",
+			"resources_cache.upload_speed",
+			"resources_cache.download_speed",
 		).
 		Joins(`
 			LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id

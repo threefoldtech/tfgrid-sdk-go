@@ -45,12 +45,19 @@ type Node struct {
 	NumGPU            int          `json:"num_gpu" sort:"num_gpu"`
 	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
 	Healthy           bool         `json:"healthy"`
+	Dmi               DmiInfo      `json:"dmi"`
+	Speed             Speed        `json:"speed"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
 type CapacityResult struct {
 	Total Capacity `json:"total_resources"`
 	Used  Capacity `json:"used_resources"`
+}
+
+type Speed struct {
+	Upload   uint64 `json:"upload"`
+	Download uint64 `json:"download"`
 }
 
 // Node to be compatible with old view
@@ -81,6 +88,8 @@ type NodeWithNestedCapacity struct {
 	NumGPU            int            `json:"num_gpu"`
 	ExtraFee          uint64         `json:"extraFee"`
 	Healthy           bool           `json:"healthy"`
+	Dmi               DmiInfo        `json:"dmi"`
+	Speed             Speed          `json:"speed"`
 }
 
 // PublicConfig node public config

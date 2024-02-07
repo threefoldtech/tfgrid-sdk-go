@@ -84,6 +84,12 @@ type Node struct {
 	ExtraFee           uint64
 	NodeContractsCount uint64 `gorm:"node_contracts_count"`
 	Healthy            bool
+	Bios               types.BIOS       `gorm:"type:jsonb"`
+	Baseboard          types.Baseboard  `gorm:"type:jsonb"`
+	Memory             types.Memories   `gorm:"type:jsonb"`
+	Processor          types.Processors `gorm:"type:jsonb"`
+	UploadSpeed        uint64
+	DownloadSpeed      uint64
 }
 
 // NodePower struct is the farmerbot report for node status

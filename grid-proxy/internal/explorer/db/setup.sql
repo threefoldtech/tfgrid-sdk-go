@@ -51,7 +51,13 @@ SELECT
     count(node_contract.contract_id) as node_contracts_count,
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     node.country as country,
-    country.region as region
+    country.region as region,
+    COALESCE(dmi_infos.bios, '{}') as bios,
+    COALESCE(dmi_infos.baseboard, '{}') as baseboard,
+    COALESCE(dmi_infos.processor, '[]') as processor,
+    COALESCE(dmi_infos.memory, '[]') as memory,
+    COALESCE(network_test_results.upload_speed, 0) as upload_speed,
+    COALESCE(network_test_results.download_speed, 0) as download_speed
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id 
@@ -66,6 +72,8 @@ FROM node
             node_twin_id
     ) AS node_gpu ON node.twin_id = node_gpu.node_twin_id
     LEFT JOIN country ON LOWER(node.country) = LOWER(country.name)
+    LEFT JOIN network_test_results ON node.twin_id = network_test_results.node_twin_id
+    LEFT JOIN dmi_infos ON node.twin_id = dmi_infos.node_twin_id
 GROUP BY
     node.node_id,
     node_resources_total.mru,
@@ -77,7 +85,13 @@ GROUP BY
     rent_contract.twin_id,
     COALESCE(node_gpu.node_gpu_count, 0),
     node.country,
-    country.region;
+    country.region,
+    COALESCE(dmi_infos.bios, '{}'),
+    COALESCE(dmi_infos.baseboard, '{}'),
+    COALESCE(dmi_infos.processor, '[]'),
+    COALESCE(dmi_infos.memory, '[]'),
+    COALESCE(network_test_results.upload_speed, 0),
+    COALESCE(network_test_results.download_speed, 0);
 
 DROP TABLE IF EXISTS resources_cache;
 CREATE TABLE IF NOT EXISTS resources_cache(
@@ -99,7 +113,13 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     node_contracts_count INTEGER NOT NULL,
     node_gpu_count INTEGER NOT NULL,
     country TEXT,
-    region TEXT
+    region TEXT,
+    bios jsonb,
+    baseboard jsonb,
+    processor jsonb,
+    memory jsonb,
+    upload_speed numeric,
+    download_speed numeric
     );
 
 INSERT INTO resources_cache 
