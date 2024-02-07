@@ -295,20 +295,28 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 }
 
 func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodesIDs []int, groupDeployments *groupDeploymentsInfo) {
-	var contractsToBeCanceled []*workloads.ZNet
+	var networksToBeCanceled []*workloads.ZNet
+	var vmDeploymentsToBeCanceled []*workloads.Deployment
 	for idx, network := range groupDeployments.networkDeployments {
-		if groupDeployments.vmDeployments[idx].ContractID == 0 {
-			contractsToBeCanceled = append(contractsToBeCanceled, network)
+		if len(network.NodeDeploymentID) != len(network.Keys) {
+			networksToBeCanceled = append(networksToBeCanceled, network)
+			vmDeploymentsToBeCanceled = append(vmDeploymentsToBeCanceled, groupDeployments.vmDeployments[idx])
+		} else if groupDeployments.vmDeployments[idx].ContractID == 0 {
+			networksToBeCanceled = append(networksToBeCanceled, network)
 		}
 	}
 
-	err := tfPluginClient.NetworkDeployer.BatchCancel(ctx, contractsToBeCanceled)
+	err := tfPluginClient.NetworkDeployer.BatchCancel(ctx, networksToBeCanceled)
 	if err != nil {
-		log.Debug().Err(err)
+		log.Debug().Err(err).Send()
+	}
+	err = tfPluginClient.DeploymentDeployer.BatchCancel(ctx, vmDeploymentsToBeCanceled)
+	if err != nil {
+		log.Debug().Err(err).Send()
 	}
 
-	for idx, network := range groupDeployments.networkDeployments {
-		if groupDeployments.vmDeployments[idx].ContractID == 0 || len(network.NodeDeploymentID) != len(network.Keys) {
+	for idx, deployment := range groupDeployments.vmDeployments {
+		if deployment.ContractID == 0 {
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
 			groupDeployments.vmDeployments[idx].NodeID = nodeID
 			groupDeployments.networkDeployments[idx].Nodes = []uint32{nodeID}
