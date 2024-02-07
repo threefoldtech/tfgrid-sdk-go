@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
@@ -20,6 +21,7 @@ import (
 type FarmerBot struct {
 	*state
 	substrateManager substrate.Manager
+	gridProxyClient  ProxyClient
 	rmbNodeClient    RMB
 	network          string
 	mnemonicOrSeed   string
@@ -42,6 +44,8 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, k
 		keyType:          keyType,
 		identity:         identity,
 	}
+
+	farmerbot.gridProxyClient = proxy.NewRetryingClient(proxy.NewClient(proxyURLs[network]))
 
 	rmb, err := peer.NewRpcClient(ctx,
 		farmerbot.mnemonicOrSeed,
@@ -312,7 +316,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 			}
 		}
 
-		if f.shouldWakeUp(subConn, &node, roundStart, wakeUpCalls) {
+		if f.shouldWakeUp(ctx, subConn, &node, roundStart, wakeUpCalls) {
 			err = f.state.updateNode(node)
 			if err != nil {
 				log.Error().Err(err).Send()
@@ -370,10 +374,29 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 	return nil
 }
 
-func (f *FarmerBot) shouldWakeUp(sub Substrate, node *node, roundStart time.Time, wakeUpCalls uint8) bool {
+func (f *FarmerBot) shouldWakeUp(ctx context.Context, sub Substrate, node *node, roundStart time.Time, wakeUpCalls uint8) bool {
 	if node.powerState != off ||
-		time.Since(node.lastTimePowerStateChanged) < periodicWakeUpDuration ||
 		wakeUpCalls >= f.config.Power.PeriodicWakeUpLimit {
+		return false
+	}
+
+	proxyNode, err := f.gridProxyClient.Node(ctx, uint32(node.ID))
+	if err != nil {
+		log.Error().Err(err).Uint32("nodeID", uint32(node.ID)).Msg("could not fetch node from the rmb proxy")
+		return false
+	}
+
+	lastTimeNodeUpdatedAt := time.Unix(proxyNode.UpdatedAt, 0)
+	if time.Since(lastTimeNodeUpdatedAt) > 24*time.Hour {
+		// if the last time the node was awake was before 24 hours ago
+		log.Warn().Uint32("nodeID", uint32(node.ID)).Msgf("Node didn't wake up since %v hours", math.Floor(time.Since(lastTimeNodeUpdatedAt).Hours()))
+		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Urgent wake up")
+		node.lastTimePeriodicWakeUp = time.Now()
+		return true
+	}
+
+	// postpone power state check for immediate wake ups
+	if time.Since(node.lastTimePowerStateChanged) < periodicWakeUpDuration {
 		return false
 	}
 

@@ -61,8 +61,8 @@ func validateVMs(vms []deployer.Vms, nodeGroups []deployer.NodesGroup, sskKeys m
 					return fmt.Errorf("cannot find enough memory in node group '%s' for vm group '%s', needed memory is %v GB while available memory is %v GB", nodeGroupName, vmName, usedVMsResources["free_mru"], nodeGroup.FreeMRU)
 				}
 
-				if usedVMsResources["free_ssd"].(uint64) > nodeGroup.FreeSRU {
-					return fmt.Errorf("cannot find enough ssd in node group '%s' for vm group '%s', needed ssd is %d GB while available ssd is %d GB, maybe previous vms groups used it", nodeGroupName, vmName, usedVMsResources["free_ssd"], nodeGroup.FreeSRU)
+				if usedVMsResources["free_ssd"].(uint64) > nodeGroup.FreeSRU*nodeGroup.NodesCount {
+					return fmt.Errorf("cannot find enough ssd in node group '%s' for vm group '%s', needed ssd is %d GB while available ssd is %d GB, maybe previous vms groups used it", nodeGroupName, vmName, usedVMsResources["free_ssd"], nodeGroup.FreeSRU*nodeGroup.NodesCount)
 				}
 
 				var nodeGroupPublicIPs uint64
@@ -127,10 +127,10 @@ func setVMUsedResources(vmsGroup deployer.Vms, vmUsedResources map[string]interf
 
 	var ssdDisks uint64
 	for _, disk := range vmsGroup.SSDDisks {
-		ssdDisks += disk.Size
+		ssdDisks += disk.Size * vmsGroup.Count
 	}
 
-	vmUsedResources["free_ssd"] = vmUsedResources["free_ssd"].(uint64) + vmsGroup.RootSize + ssdDisks
+	vmUsedResources["free_ssd"] = vmUsedResources["free_ssd"].(uint64) + (vmsGroup.RootSize * vmsGroup.Count) + ssdDisks
 
 	if vmsGroup.PublicIP4 {
 		vmUsedResources["public_ip4"] = vmUsedResources["public_ip4"].(uint64) + vmsGroup.Count
