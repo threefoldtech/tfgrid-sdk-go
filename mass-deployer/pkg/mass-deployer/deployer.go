@@ -307,8 +307,8 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 		log.Debug().Err(err)
 	}
 
-	for idx, deployment := range groupDeployments.vmDeployments {
-		if deployment.ContractID == 0 || len(groupDeployments.networkDeployments[idx].NodeDeploymentID) == 0 {
+	for idx, network := range groupDeployments.networkDeployments {
+		if groupDeployments.vmDeployments[idx].ContractID == 0 || len(network.NodeDeploymentID) != len(network.Keys) {
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
 			groupDeployments.vmDeployments[idx].NodeID = nodeID
 			groupDeployments.networkDeployments[idx].Nodes = []uint32{nodeID}
