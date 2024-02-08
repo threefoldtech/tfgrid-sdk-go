@@ -112,6 +112,20 @@ builds:
       - -X github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.commit={{.Commit}}
 
+  - dir: ./tools/relay-cache-warmer
+    goos:
+      - linux
+      - windows
+      - darwin
+    binary: cache-warmer
+    id: cache-warmer
+
+    ignore:
+      - goos: windows
+    ldflags:
+      - -X main.version={{.Tag}}
+      - -X main.commit={{.Commit}}
+
 archives:
   - format: tar.gz
     # this name template makes the OS and Arch compatible with the results of uname.
