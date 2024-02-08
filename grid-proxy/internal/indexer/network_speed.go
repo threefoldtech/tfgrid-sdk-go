@@ -77,7 +77,6 @@ func (w *SpeedWatcher) startNodeCaller(ctx context.Context) {
 				continue
 			}
 			parsed := parse(response, twinId)
-			log.Info().Msgf("got: %+v", parsed)
 			w.resultChan <- parsed
 		case <-ctx.Done():
 			return
@@ -105,7 +104,7 @@ func (w *SpeedWatcher) callNode(ctx context.Context, twinId uint32) (types.PerfR
 }
 
 func (w *SpeedWatcher) startUpserter(ctx context.Context, database db.Database) {
-	buffer := make([]types.NetworkTestResult, w.batchSize)
+	buffer := make([]types.NetworkTestResult, 0, w.batchSize)
 
 	ticker := time.NewTicker(flushingInterval)
 	for {

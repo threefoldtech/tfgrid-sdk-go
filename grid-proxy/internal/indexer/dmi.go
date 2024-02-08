@@ -100,7 +100,7 @@ func (w *DmiWatcher) callNode(ctx context.Context, twinId uint32) (DMI, error) {
 }
 
 func (w *DmiWatcher) startUpserter(ctx context.Context, database db.Database) {
-	buffer := make([]types.DmiInfo, w.batchSize)
+	buffer := make([]types.DmiInfo, 0, w.batchSize)
 
 	ticker := time.NewTicker(flushingInterval)
 	for {

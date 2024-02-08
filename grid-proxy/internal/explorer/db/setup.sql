@@ -397,6 +397,63 @@ CREATE OR REPLACE TRIGGER tg_rent_contract
     EXECUTE PROCEDURE reflect_rent_contract_changes();
 
 /*
+ Dmi trigger
+    - Insert new record/Update > update resources_cache
+*/
+CREATE OR REPLACE FUNCTION reflect_dmi_changes() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    BEGIN
+        UPDATE resources_cache
+        SET bios = NEW.bios,
+            baseboard = NEW.baseboard,
+            processor = NEW.processor,
+            memory = NEW.memory
+        WHERE resources_cache.node_id = (
+            SELECT node_id from node where node.twin_id = NEW.node_twin_id
+        );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating resources_cache dmi fields %', SQLERRM;
+    END; 
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER tg_dmi
+    AFTER INSERT OR UPDATE ON dmi_infos FOR EACH ROW
+    EXECUTE PROCEDURE reflect_dmi_changes();
+
+
+
+/*
+ speed trigger
+    - Insert new record/Update > update resources_cache
+*/
+CREATE OR REPLACE FUNCTION reflect_speed_changes() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    BEGIN
+        UPDATE resources_cache
+        SET upload_speed = NEW.upload_speed,
+            download_speed = NEW.download_speed
+        WHERE resources_cache.node_id = (
+            SELECT node_id from node where node.twin_id = NEW.node_twin_id
+        );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating resources_cache speed fields %', SQLERRM;
+    END; 
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER tg_speed
+    AFTER INSERT OR UPDATE ON network_test_results FOR EACH ROW
+    EXECUTE PROCEDURE reflect_speed_changes();
+
+
+/*
  Public ips trigger
   - Insert new ip > increment free/total ips + re-aggregate ips object
   - Deleted > decrement total, decrement free ips (if it was used) + re-aggregate ips object
