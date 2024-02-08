@@ -11,4 +11,5 @@ use (
 	./monitoring-bot
 	./rmb-sdk-go
 	./user-contracts-mon
+	./tools/relay-cache-warmer
 )
