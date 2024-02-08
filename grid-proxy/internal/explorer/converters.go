@@ -62,7 +62,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 		Dmi: types.DmiInfo{
 			Processor: info.Processor,
 			Memory:    info.Memory,
-			BIOS:      types.BIOS(info.Bios),
+			BIOS:      info.Bios,
 			Baseboard: info.Baseboard,
 		},
 		Speed: types.Speed{
@@ -146,7 +146,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		Dmi: types.DmiInfo{
 			Processor: info.Processor,
 			Memory:    info.Memory,
-			BIOS:      types.BIOS(info.Bios),
+			BIOS:      info.Bios,
 			Baseboard: info.Baseboard,
 		},
 		Speed: types.Speed{
