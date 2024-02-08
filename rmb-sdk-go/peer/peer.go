@@ -145,8 +145,8 @@ func NewPeer(
 	mnemonics string,
 	subManager substrate.Manager,
 	handler Handler,
-	opts ...PeerOpt) (*Peer, error) {
-
+	opts ...PeerOpt,
+) (*Peer, error) {
 	cfg := &peerCfg{
 		relayURL:         "wss://relay.grid.tf",
 		session:          "",
@@ -158,7 +158,12 @@ func NewPeer(
 	}
 
 	for _, o := range opts {
-		o(cfg)
+		// added to support passing default value peerOpt
+		// the other option would be exporting peerCfg
+		// or providing default peerOpt to be used as default value from third party code
+		if o != nil {
+			o(cfg)
+		}
 	}
 
 	if cfg.encoder == nil {
@@ -202,7 +207,6 @@ func NewPeer(
 		privKey, err = generateSecureKey(identity)
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not generate secure key")
-
 		}
 		publicKey = privKey.PubKey().SerializeCompressed()
 	}
@@ -453,11 +457,9 @@ func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string
 	}
 
 	return &env, nil
-
 }
 
 func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
-
 	bytes, err := proto.Marshal(request)
 	if err != nil {
 		return err
@@ -470,7 +472,6 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 	}
 
 	return nil
-
 }
 
 // SendRequest sends an rmb message to the relay

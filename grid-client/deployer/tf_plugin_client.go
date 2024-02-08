@@ -105,7 +105,7 @@ func NewTFPluginClient(
 	proxyURL string,
 	rmbTimeout int,
 	showLogs bool,
-	allowRMBCache ...bool,
+	rmbInMemCache bool,
 ) (TFPluginClient, error) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	if showLogs {
@@ -201,7 +201,7 @@ func NewTFPluginClient(
 	}
 
 	var twinCacheOpt peer.PeerOpt
-	if len(allowRMBCache) != 0 && allowRMBCache[0] {
+	if !rmbInMemCache {
 		twinCacheOpt = peer.WithTwinCache(10 * 60 * 60) // in seconds that's 10 hours
 	}
 
