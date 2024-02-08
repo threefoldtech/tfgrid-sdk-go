@@ -200,11 +200,6 @@ func NewTFPluginClient(
 		tfPluginClient.relayURL = relayURL
 	}
 
-	var twinCacheOpt peer.PeerOpt
-	if !rmbInMemCache {
-		twinCacheOpt = peer.WithTwinCache(10 * 60 * 60) // in seconds that's 10 hours
-	}
-
 	// default rmbTimeout is 60
 	if rmbTimeout == 0 {
 		rmbTimeout = 60
@@ -214,7 +209,16 @@ func NewTFPluginClient(
 	ctx, cancel := context.WithCancel(context.Background())
 	tfPluginClient.cancelRelayContext = cancel
 
-	rmbClient, err := peer.NewRpcClient(ctx, tfPluginClient.mnemonicOrSeed, manager, peer.WithRelay(tfPluginClient.relayURL), peer.WithSession(sessionID), peer.WithKeyType(keyType), twinCacheOpt)
+	var peerOpts []peer.PeerOpt
+	if !rmbInMemCache {
+		peerOpts = append(peerOpts, peer.WithTwinCache(10*60*60)) // in seconds that's 10 hours
+	}
+
+	peerOpts = append(peerOpts, peer.WithRelay(tfPluginClient.relayURL))
+	peerOpts = append(peerOpts, peer.WithSession(sessionID))
+	peerOpts = append(peerOpts, peer.WithKeyType(keyType))
+
+	rmbClient, err := peer.NewRpcClient(ctx, tfPluginClient.mnemonicOrSeed, manager, peerOpts...)
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not create rmb client")
 	}
