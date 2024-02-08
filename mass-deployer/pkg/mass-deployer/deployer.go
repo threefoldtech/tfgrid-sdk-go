@@ -21,7 +21,7 @@ import (
 )
 
 const maxDeploymentRetries = 5
-const maxGoroutinesToFetchState = 20
+const maxGoroutinesToFetchState = 100
 
 func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) error {
 	passedGroups := map[string][]vmOutput{}
