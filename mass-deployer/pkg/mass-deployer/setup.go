@@ -21,9 +21,8 @@ func setup(conf Config, debug bool) (deployer.TFPluginClient, error) {
 
 	if network == "main" && noNinjaProxyURL == "" {
 		proxyURL = "https://gridproxy.bknd1.ninja.tf"
-
 	}
-	return deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, "", "", proxyURL, 30, debug)
+	return deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, "", "", proxyURL, 0, debug, true)
 }
 
 func convertGBToBytes(gb uint64) uint64 {
