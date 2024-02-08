@@ -17,6 +17,8 @@ import (
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tools/db/crafter"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
@@ -65,7 +67,20 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(errors.Wrap(err, "failed to open db"))
 	}
-	defer db.Close()
+	gormDB, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{
+		Logger: logger.Default.LogMode(4),
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to generate gorm db: %w", err))
+	}
+	defer func() {
+		db.Close()
+		db_gorm, err := gormDB.DB()
+		if err != nil {
+			panic(fmt.Errorf("failed to get gorm db: %w", err))
+		}
+		db_gorm.Close()
+	}()
 
 	// proxy client
 	gridProxyClient = proxyclient.NewClient(ENDPOINT)
@@ -84,7 +99,7 @@ func TestMain(m *testing.M) {
 	}
 
 	if !NO_MODIFY {
-		err = modifyDataToFireTriggers(db, data)
+		err = modifyDataToFireTriggers(db, gormDB, data)
 		if err != nil {
 			panic(err)
 		}
@@ -99,7 +114,7 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func modifyDataToFireTriggers(db *sql.DB, data mock.DBData) error {
+func modifyDataToFireTriggers(db *sql.DB, gormDB *gorm.DB, data mock.DBData) error {
 	twinStart := len(data.Twins) + 1
 	farmStart := len(data.Farms) + 1
 	nodeStart := len(data.Nodes) + 1
@@ -117,7 +132,7 @@ func modifyDataToFireTriggers(db *sql.DB, data mock.DBData) error {
 		RentContractCount = 1
 	)
 
-	generator := crafter.NewCrafter(db,
+	generator := crafter.NewCrafter(db, gormDB,
 		SEED,
 		NodeCount,
 		FarmCount,

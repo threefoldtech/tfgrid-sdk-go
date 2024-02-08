@@ -2,10 +2,12 @@ package crafter
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -856,6 +858,54 @@ func (c *Crafter) GenerateCountries() error {
 		return fmt.Errorf("failed to insert country: %w", err)
 	}
 	fmt.Println("countries generated")
+
+	return nil
+}
+
+func (c *Crafter) GenerateSpeedReports() error {
+	start := c.NodeStart
+	end := c.NodeStart + c.NodeCount
+	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
+
+	var speedReports []types.NetworkTestResult
+	for i := start; i < end; i += 2 {
+		speedReport := types.NetworkTestResult{
+			NodeTwinId:    uint32(nodeTwinsStart + i),
+			UploadSpeed:   rand.Float64() * float64(rand.Intn(9999999)),
+			DownloadSpeed: rand.Float64() * float64(rand.Intn(9999999)),
+		}
+		speedReports = append(speedReports, speedReport)
+	}
+
+	if err := c.gormDB.Create(speedReports).Error; err != nil {
+		return fmt.Errorf("failed to insert speed: %w", err)
+	}
+	fmt.Println("speed reports generated")
+
+	return nil
+}
+
+func (c *Crafter) GenerateDmi() error {
+	start := c.NodeStart
+	end := c.NodeStart + c.NodeCount
+	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
+
+	var dmis []types.DmiInfo
+	for i := start; i < end; i++ {
+		dmi := types.DmiInfo{
+			NodeTwinId: uint32(nodeTwinsStart + i),
+			BIOS:       bios[rand.Intn(len(bios))],
+			Baseboard:  baseboard[rand.Intn(len(baseboard))],
+			Processor:  processor[:rand.Intn(len(processor))],
+			Memory:     memory[:rand.Intn(len(memory))],
+		}
+		dmis = append(dmis, dmi)
+	}
+
+	if err := c.gormDB.Create(dmis).Error; err != nil {
+		return fmt.Errorf("failed to insert dmi: %w", err)
+	}
+	fmt.Println("dmi reports generated")
 
 	return nil
 }

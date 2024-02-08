@@ -444,31 +444,6 @@ CREATE TABLE public.public_ip (
 ALTER TABLE public.public_ip OWNER TO postgres;
 
 --
--- Name: node_gpu; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE IF NOT EXISTS public.node_gpu (
-    id text NOT NULL,
-    node_twin_id bigint NOT NULL,
-    vendor text,
-    device text,
-    contract bigint
-);
-
-ALTER TABLE public.node_gpu OWNER TO postgres;
-
---
--- Name: health_report; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE IF NOT EXISTS public.health_report (
-    node_twin_id bigint NOT NULL,
-    healthy boolean
-);
-
-ALTER TABLE public.health_report OWNER TO postgres;
-
---
 -- Name: refund_transaction; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -876,15 +851,6 @@ ALTER TABLE ONLY public.node_resources_total
 
 
 --
--- Name: node_gpu node_gpu_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.node_gpu
-    ADD CONSTRAINT node_gpu_pkey PRIMARY KEY (id);
-
-
-
---
 -- Name: status status_pkey; Type: CONSTRAINT; Schema: substrate_threefold_status; Owner: postgres
 --
 
@@ -1046,3 +1012,70 @@ ALTER TABLE ONLY public.node_resources_total
 -- PostgreSQL database dump complete
 --
 
+
+--
+--
+--  Indexer tables
+--
+--
+
+
+--
+-- Name: node_gpu; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS public.node_gpu (
+    id text NOT NULL,
+    node_twin_id bigint NOT NULL,
+    vendor text,
+    device text,
+    contract bigint
+);
+
+ALTER TABLE public.node_gpu 
+    OWNER TO postgres;
+
+ALTER TABLE ONLY public.node_gpu
+    ADD CONSTRAINT node_gpu_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: health_report; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS public.health_report (
+    node_twin_id bigint NOT NULL,
+    healthy boolean
+);
+
+ALTER TABLE public.health_report 
+    OWNER TO postgres;
+
+
+--
+-- Name: dmi_infos; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.dmi_infos(
+    node_twin_id bigint PRIMARY KEY,
+    bios jsonb,
+    baseboard jsonb,
+    processor jsonb,
+    memory jsonb
+);
+
+ALTER TABLE public.dmi_infos 
+    OWNER TO postgres;
+
+--
+-- Name: network_test_results; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.network_test_results(
+    node_twin_id bigint PRIMARY KEY,
+    upload_speed numeric,
+    download_speed numeric
+);
+
+ALTER TABLE public.network_test_results 
+    OWNER TO postgres;
