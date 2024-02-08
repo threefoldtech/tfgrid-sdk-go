@@ -22,12 +22,12 @@ var getZDBCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false)
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false, true)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
 
-		zdb, err := command.GetDeployment(t, args[0])
+		zdb, err := command.GetDeployment(cmd.Context(), t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

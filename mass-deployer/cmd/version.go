@@ -17,12 +17,15 @@ var (
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get latest build tag",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(version)
-		fmt.Println(commit)
-	},
-}
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// It doesn't have a subcommand
+		if len(cmd.Flags().Args()) != 0 {
+			return fmt.Errorf("'version' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
+		}
 
-func init() {
-	rootCmd.AddCommand(versionCmd)
+		fmt.Printf("version: %s", version)
+		fmt.Printf("commit: %s", commit)
+
+		return nil
+	},
 }

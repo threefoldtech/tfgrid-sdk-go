@@ -36,7 +36,7 @@ Example:
 $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10
 12:06PM INF deploying network
 12:06PM INF deploying vm
-12:07PM INF vm yggdrasil ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
+12:07PM INF vm planetary ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
 ```
 - Deploying VM with GPU
 
@@ -44,7 +44,7 @@ $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --
 $ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub --cpu 2 --memory 4 --disk 10 --gpus '0000:0e:00.0/1882/543f' --gpus '0000:0e:00.0/1887/593f' --node 12
 12:06PM INF deploying network
 12:06PM INF deploying vm
-12:07PM INF vm yggdrasil ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
+12:07PM INF vm planetary ip: 300:e9c4:9048:57cf:7da2:ac99:99db:8821
 ```
 
 ## Get
@@ -85,7 +85,7 @@ $ tfcmd get vm examplevm
                         "Corex": false,
                         "ComputedIP": "",
                         "ComputedIP6": "",
-                        "YggIP": "301:ad3a:9c52:98d1:cd05:1595:9abb:e2f1",
+                        "PlanetaryIP": "301:ad3a:9c52:98d1:cd05:1595:9abb:e2f1",
                         "IP": "10.20.2.2",
                         "Description": "",
                         "CPU": 2,

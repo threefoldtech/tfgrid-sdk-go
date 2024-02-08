@@ -81,10 +81,10 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
 
-	backend := fmt.Sprintf("http://[%s]:9000", v.YggIP)
+	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
 	fqdn := "hamada1.3x0.me" // points to node 15 devnet
 	gatewayNode := uint32(15)
 	gw := workloads.GatewayFQDNProxy{
@@ -103,10 +103,10 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	_, err = tfPluginClient.State.LoadGatewayFQDNFromGrid(gatewayNode, gw.Name, gw.Name)
+	_, err = tfPluginClient.State.LoadGatewayFQDNFromGrid(ctx, gatewayNode, gw.Name, gw.Name)
 	assert.NoError(t, err)
 
-	_, err = RemoteRun("root", v.YggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+	_, err = RemoteRun("root", v.PlanetaryIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 	assert.NoError(t, err)
 
 	time.Sleep(3 * time.Second)

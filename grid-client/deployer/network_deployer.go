@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -315,15 +316,18 @@ func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZN
 	newDeployments := make(map[uint32][]gridtypes.Deployment)
 	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
 	nodePorts := make(map[uint32][]uint16)
+	var multiErr error
 	for _, znet := range znets {
 		err := d.Validate(ctx, znet)
 		if err != nil {
-			return err
+			multiErr = multierror.Append(multiErr, fmt.Errorf("invalid network %s: %w", znet.Name, err))
+			continue
 		}
 
 		dls, err := d.GenerateVersionlessDeployments(ctx, znet, nodePorts)
 		if err != nil {
-			return errors.Wrap(err, "could not generate deployments data")
+			multiErr = multierror.Append(multiErr, fmt.Errorf("could not generate deployments data for network %s: %w", znet.Name, err))
+			continue
 		}
 
 		for nodeID, dl := range dls {
@@ -339,6 +343,9 @@ func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZN
 	}
 
 	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
+	if err != nil {
+		multiErr = multierror.Append(multiErr, err)
+	}
 
 	update := true
 	if len(updateMetadata) != 0 {
@@ -353,7 +360,7 @@ func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZN
 		}
 	}
 
-	return err
+	return multiErr
 }
 
 // Cancel cancels all the deployments
@@ -382,6 +389,34 @@ func (d *NetworkDeployer) Cancel(ctx context.Context, znet *workloads.ZNet) erro
 	return nil
 }
 
+// BatchCancel cancels all contracts for given networks. if one contracts failed all networks will not be canceled
+// and state won't be updated.
+func (d *NetworkDeployer) BatchCancel(ctx context.Context, znets []*workloads.ZNet) error {
+	var contracts []uint64
+	for _, znet := range znets {
+		for _, contractID := range znet.NodeDeploymentID {
+			if contractID != 0 {
+				contracts = append(contracts, contractID)
+			}
+		}
+	}
+	err := d.tfPluginClient.BatchCancelContract(contracts)
+	if err != nil {
+		return fmt.Errorf("failed to cancel contracts: %w", err)
+	}
+	for _, znet := range znets {
+		for nodeID, contractID := range znet.NodeDeploymentID {
+			d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
+		}
+		znet.NodeDeploymentID = make(map[uint32]uint64)
+		znet.Keys = make(map[uint32]wgtypes.Key)
+		znet.WGPort = make(map[uint32]int)
+		znet.NodesIPRange = make(map[uint32]gridtypes.IPNet)
+		znet.AccessWGConfig = ""
+	}
+	return nil
+}
+
 func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *workloads.ZNet, dls map[uint32][]gridtypes.Deployment, updateMetadata bool) error {
 	znet.NodeDeploymentID = map[uint32]uint64{}
 
@@ -392,8 +427,7 @@ func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *
 			if err != nil {
 				return errors.Wrapf(err, "could not get deployment %d data", dl.ContractID)
 			}
-
-			if dlData.Name == znet.Name {
+			if dlData.Name == znet.Name && dl.ContractID != 0 {
 				znet.NodeDeploymentID[nodeID] = dl.ContractID
 			}
 		}

@@ -15,6 +15,69 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+func TestPowerLargeScale(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	sub := mocks.NewMockSubstrate(ctrl)
+	rmb := mocks.NewMockRMB(ctrl)
+
+	ctx := context.Background()
+
+	inputs := Config{
+		FarmID:        1,
+		IncludedNodes: []uint32{1, 2, 3, 4, 5, 6, 7},
+	}
+
+	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)
+	assert.Error(t, err)
+
+	// mock state
+	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
+	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
+
+	state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
+	assert.NoError(t, err)
+	farmerbot.state = state
+
+	t.Run("test valid power off: all nodes will be off except one node", func(t *testing.T) {
+		for i := range farmerbot.nodes {
+			if i == 1 {
+				continue
+			}
+			sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), false).Return(types.Hash{}, nil)
+		}
+
+		err = farmerbot.manageNodesPower(sub)
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(farmerbot.filterNodesPower([]powerState{on})), 1)
+		assert.Equal(t, len(farmerbot.filterNodesPower([]powerState{shuttingDown})), len(farmerbot.nodes)-1)
+	})
+
+	t.Run("test valid power off (all are off except 2): all nodes will be off except one node", func(t *testing.T) {
+		for i, node := range farmerbot.nodes {
+			node.lastTimePowerStateChanged = time.Now().Add(-periodicWakeUpDuration - time.Minute)
+			if i == 1 || i == 2 {
+				node.powerState = on
+				farmerbot.addNode(node)
+				continue
+			}
+
+			node.powerState = off
+			farmerbot.addNode(node)
+		}
+
+		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), false).Return(types.Hash{}, nil)
+
+		err = farmerbot.manageNodesPower(sub)
+		assert.NoError(t, err)
+
+		assert.Equal(t, len(farmerbot.filterNodesPower([]powerState{on})), 1)
+		assert.Equal(t, len(farmerbot.filterNodesPower([]powerState{shuttingDown})), 1)
+		assert.Equal(t, len(farmerbot.filterNodesPower([]powerState{off})), len(farmerbot.nodes)-2)
+	})
+}
+
 func TestPower(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -39,13 +102,6 @@ func TestPower(t *testing.T) {
 	state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 	assert.NoError(t, err)
 	farmerbot.state = state
-
-	node := farmerbot.nodes[2]
-	node.dedicated = false
-	farmerbot.nodes[2] = node
-	node2 := farmerbot.nodes[2]
-	node2.dedicated = false
-	farmerbot.nodes[2] = node2
 
 	oldNode1 := farmerbot.nodes[1]
 	oldNode2 := farmerbot.nodes[2]

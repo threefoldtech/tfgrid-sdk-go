@@ -4,6 +4,10 @@ WORKDIR /src/rmb-sdk-go
 
 COPY /rmb-sdk-go .
 
+WORKDIR /src/grid-proxy
+
+COPY /grid-proxy .
+
 WORKDIR /src/farmerbot
 
 COPY /farmerbot .

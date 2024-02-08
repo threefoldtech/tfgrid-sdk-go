@@ -15,8 +15,10 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-var ubuntuFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"
-var ubuntuFlistEntrypoint = "/sbin/zinit init"
+var (
+	ubuntuFlist           = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"
+	ubuntuFlistEntrypoint = "/sbin/zinit init"
+)
 
 func convertGPUsToZosGPUs(gpus []string) (zosGPUs []zos.GPU) {
 	for _, g := range gpus {
@@ -117,7 +119,7 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 0, false)
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 0, false, true)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -150,7 +152,7 @@ var deployVMCmd = &cobra.Command{
 			log.Info().Msgf("vm ipv6: %s", resVM.ComputedIP6)
 		}
 		if ygg {
-			log.Info().Msgf("vm yggdrasil ip: %s", resVM.YggIP)
+			log.Info().Msgf("vm planetary ip: %s", resVM.PlanetaryIP)
 		}
 		return nil
 	},

@@ -21,8 +21,10 @@ import (
 	"github.com/vedhavyas/go-subkey"
 )
 
-var backendURLWithTLSPassthrough = "1.1.1.1:10"
-var backendURLWithoutTLSPassthrough = "http://1.1.1.1:10"
+var (
+	backendURLWithTLSPassthrough    = "1.1.1.1:10"
+	backendURLWithoutTLSPassthrough = "http://1.1.1.1:10"
+)
 
 func setup() (TFPluginClient, error) {
 	network := os.Getenv("NETWORK")
@@ -43,7 +45,7 @@ func setup() (TFPluginClient, error) {
 	}
 	seed := subkey.EncodeHex(keyPair.Seed())
 
-	plugin, err := NewTFPluginClient(seed, "sr25519", network, "", "", "", 0, true)
+	plugin, err := NewTFPluginClient(seed, "sr25519", network, "", "", "", 0, true, true)
 	if err != nil {
 		return TFPluginClient{}, err
 	}

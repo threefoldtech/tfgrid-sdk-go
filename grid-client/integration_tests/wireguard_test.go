@@ -76,11 +76,11 @@ func TestWG(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
 
 	// wireguard
-	n, err := tfPluginClient.State.LoadNetworkFromGrid(dl.NetworkName)
+	n, err := tfPluginClient.State.LoadNetworkFromGrid(ctx, dl.NetworkName)
 	assert.NoError(t, err)
 
 	wgConfig := n.AccessWGConfig

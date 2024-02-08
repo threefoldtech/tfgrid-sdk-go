@@ -3,50 +3,99 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/internal/parser"
 	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"golang.org/x/sys/unix"
+)
+
+const (
+	ymlExt  = ".yml"
+	yamlExt = ".yaml"
+	jsonExt = ".json"
 )
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "deploy groups of vms in configuration file",
-	Run: func(cmd *cobra.Command, args []string) {
-		configPath, err := cmd.Flags().GetString("config")
-		if err != nil || configPath == "" {
-			log.Fatal().Err(err).Msg("error in config file")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// It doesn't have a subcommand
+		if len(cmd.Flags().Args()) != 0 {
+			return fmt.Errorf("'deploy' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
 		}
-		output, err := cmd.Flags().GetString("output")
+
+		debug, err := cmd.Flags().GetBool("debug")
 		if err != nil {
-			log.Fatal().Err(err).Msg("error in output file")
+			return fmt.Errorf("invalid log debug mode input '%v' with error: %w", debug, err)
+		}
+
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		if debug {
+			zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		}
+
+		outputPath, err := cmd.Flags().GetString("output")
+		if err != nil {
+			return fmt.Errorf("error in output file: %w", err)
+		}
+
+		outJsonFmt := filepath.Ext(outputPath) == jsonExt
+		outYmlFmt := filepath.Ext(outputPath) == yamlExt || filepath.Ext(outputPath) == ymlExt
+		if outputPath != "" {
+			if !outJsonFmt && !outYmlFmt {
+				return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
+			}
+
+			_, err := os.Stat(outputPath)
+			// check if output file is writable
+			if !errors.Is(err, os.ErrNotExist) && unix.Access(outputPath, unix.W_OK) != nil {
+				return fmt.Errorf("output path '%s' is not writable", outputPath)
+			}
+		}
+
+		configPath, err := cmd.Flags().GetString("config")
+		if err != nil {
+			return fmt.Errorf("error in configuration file: %w", err)
+		}
+
+		if configPath == "" {
+			return fmt.Errorf("required configuration file path is empty")
 		}
 
 		configFile, err := os.Open(configPath)
 		if err != nil {
-			log.Fatal().Err(err).Msgf("failed to open config file: %s", configPath)
+			return fmt.Errorf("failed to open configuration file '%s' with error: %w", configPath, err)
 		}
 		defer configFile.Close()
-		jsonFmt := filepath.Ext(configPath) == ".json"
+
+		jsonFmt := filepath.Ext(configPath) == jsonExt
+		ymlFmt := filepath.Ext(configPath) == yamlExt || filepath.Ext(configPath) == ymlExt
+		if !jsonFmt && !ymlFmt {
+			return fmt.Errorf("unsupported configuration file format '%s', should be [yaml, yml, json]", configPath)
+		}
 
 		cfg, err := parser.ParseConfig(configFile, jsonFmt)
 		if err != nil {
-			log.Fatal().Err(err).Msgf("failed to parse config file: %s", configPath)
+			return fmt.Errorf("failed to parse configuration file '%s' with error: %w", configPath, err)
+		}
+
+		err = parser.ValidateConfig(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to validate configuration file '%s' with error: %w", configPath, err)
 		}
 
 		ctx := context.Background()
-		err = deployer.RunDeployer(cfg, ctx, output)
+		err = deployer.RunDeployer(ctx, cfg, outputPath, debug)
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to run the deployer")
+			return fmt.Errorf("failed to run the deployer with error: %w", err)
 		}
-	},
-}
 
-func init() {
-	deployCmd.Flags().StringP("config", "c", "", "path to config file")
-	deployCmd.Flags().StringP("output", "o", "", "output file")
-	rootCmd.AddCommand(deployCmd)
+		return nil
+	},
 }

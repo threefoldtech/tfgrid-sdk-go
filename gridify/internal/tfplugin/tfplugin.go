@@ -4,7 +4,6 @@ package tfplugin
 import (
 	"context"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	gridDeployer "github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -16,8 +15,8 @@ type TFPluginClientInterface interface {
 	DeployNetwork(ctx context.Context, znet *workloads.ZNet) error
 	DeployDeployment(ctx context.Context, dl *workloads.Deployment) error
 	DeployGatewayName(ctx context.Context, gw *workloads.GatewayNameProxy) error
-	LoadVMFromGrid(nodeID uint32, name string, deploymentName string) (workloads.VM, error)
-	LoadGatewayNameFromGrid(nodeID uint32, name string, deploymentName string) (workloads.GatewayNameProxy, error)
+	LoadVMFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.VM, error)
+	LoadGatewayNameFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.GatewayNameProxy, error)
 	ListContractsOfProjectName(projectName string) (graphql.Contracts, error)
 	CancelByProjectName(projectName string) error
 	GetAvailableNode(ctx context.Context, options types.NodeFilter, rootfs uint64) (uint32, error)
@@ -27,7 +26,7 @@ type TFPluginClientInterface interface {
 
 // NewTFPluginClient returns new tfPluginClient given mnemonics and grid network
 func NewTFPluginClient(mnemonics, network string) (TFPluginClient, error) {
-	t, err := gridDeployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 100, false)
+	t, err := gridDeployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 100, false, true)
 	if err != nil {
 		return TFPluginClient{}, err
 	}
@@ -57,13 +56,13 @@ func (t *TFPluginClient) DeployGatewayName(ctx context.Context, gw *workloads.Ga
 }
 
 // LoadVMFromGrid loads a VM from Threefold grid
-func (t *TFPluginClient) LoadVMFromGrid(nodeID uint32, name string, deploymentName string) (workloads.VM, error) {
-	return t.tfPluginClient.State.LoadVMFromGrid(nodeID, name, deploymentName)
+func (t *TFPluginClient) LoadVMFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.VM, error) {
+	return t.tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, name, deploymentName)
 }
 
 // LoadGatewayNameFromGrid loads a GatewayName from Threefold grid
-func (t *TFPluginClient) LoadGatewayNameFromGrid(nodeID uint32, name string, deploymentName string) (workloads.GatewayNameProxy, error) {
-	return t.tfPluginClient.State.LoadGatewayNameFromGrid(nodeID, name, deploymentName)
+func (t *TFPluginClient) LoadGatewayNameFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.GatewayNameProxy, error) {
+	return t.tfPluginClient.State.LoadGatewayNameFromGrid(ctx, nodeID, name, deploymentName)
 }
 
 // ListContractsOfProjectName returns contracts for a project name from Threefold grid
@@ -78,7 +77,7 @@ func (t *TFPluginClient) CancelByProjectName(projectName string) error {
 
 // GetAvailableNode returns nodes that match the given filter with rootfs specified in GBs
 func (t *TFPluginClient) GetAvailableNode(ctx context.Context, options types.NodeFilter, rootfs uint64) (uint32, error) {
-	nodes, err := deployer.FilterNodes(ctx, *t.tfPluginClient, options, nil, nil, []uint64{rootfs * 1024 * 1024 * 1024})
+	nodes, err := gridDeployer.FilterNodes(ctx, *t.tfPluginClient, options, nil, nil, []uint64{rootfs * 1024 * 1024 * 1024})
 	if err != nil {
 		return 0, err
 	}

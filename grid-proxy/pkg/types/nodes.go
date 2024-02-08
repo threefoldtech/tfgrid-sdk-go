@@ -148,6 +148,7 @@ type NodeFilter struct {
 	GpuVendorName     *string  `schema:"gpu_vendor_name,omitempty"`
 	GpuAvailable      *bool    `schema:"gpu_available,omitempty"`
 	Healthy           *bool    `schema:"healthy,omitempty"`
+	Excluded          []uint64 `schema:"excluded,omitempty"`
 }
 
 // NodeGPU holds the info about gpu card

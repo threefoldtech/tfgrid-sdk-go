@@ -32,9 +32,9 @@ func TestParseConfig(t *testing.T) {
 		},
 		Vms: []deployer.Vms{
 			{
-				Name:       "example-vm",
+				Name:       "examplevm",
 				Count:      4,
-				Nodegroup:  "group_a",
+				NodeGroup:  "group_a",
 				FreeCPU:    2,
 				FreeMRU:    1,
 				PublicIP4:  true,
@@ -44,7 +44,7 @@ func TestParseConfig(t *testing.T) {
 			},
 		},
 		SSHKeys: map[string]string{
-			"example1": "example ssh key",
+			"example1": "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAklOUpkDHrfHY17SbrmTIpNLTGK9Tjom/BWDSUGPl+nafzlHDTYW7hdI4yZ5ew18JH4JW9jbhUFrviQzM7xlELEVf4h9lFX5QVkbPppSwg0cda3Pbv7kOdJ/MTyBlWXFCR+HAo3FXRitBqxiX1nKhXpHAZsMciLq8V6RjsNAQwdsdMFvSlVK/7XAt3FaoJoAsncM1Q9x5+3V0Ww68/eIFmb1zuUFljQJKprrX88XypNDvjYNby6vw/Pb0rwert/EnmZ+AW4OZPnTPI89ZPmVMLuayrD2cE86Z/il8b+gw3r3+1nKatmIkjn2so1d01QraTlMqVSsbxNrRFi9wrf+M7Q== schacon@mylaptop.local",
 		},
 		Mnemonic: "rival oyster defense garbage fame disease mask mail family wire village vibrant index fuel dolphin",
 		Network:  "dev",
@@ -71,7 +71,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -84,7 +87,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -97,7 +103,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -138,7 +147,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -153,7 +165,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -168,7 +183,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -183,7 +201,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -198,7 +219,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -213,7 +237,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -228,7 +255,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -243,7 +273,10 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -258,22 +291,28 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
 	t.Run("root size exceed limit in vm", func(t *testing.T) {
 		conf := confStruct
-		conf.Vms[0].Rootsize = 20000
+		conf.Vms[0].RootSize = 20000
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
 
-		conf.Vms[0].Rootsize = 0
+		conf.Vms[0].RootSize = 0
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.Error(t, err)
 	})
 
@@ -285,9 +324,13 @@ func TestParseConfig(t *testing.T) {
 
 		configFile := strings.NewReader(string(data))
 
-		_, err = ParseConfig(configFile, false)
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg)
 		assert.NoError(t, err)
 	})
+
 	t.Run("valid json config", func(t *testing.T) {
 		conf := confStruct
 
@@ -299,5 +342,8 @@ func TestParseConfig(t *testing.T) {
 		parsedConf, err := ParseConfig(configFile, true)
 		assert.NoError(t, err)
 		assert.Equal(t, conf, parsedConf)
+
+		err = ValidateConfig(parsedConf)
+		assert.NoError(t, err)
 	})
 }
