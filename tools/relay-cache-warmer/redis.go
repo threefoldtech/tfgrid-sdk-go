@@ -9,7 +9,9 @@ import (
 
 const twinTTL = 3600 // an hour
 
-func writeTwins(conn redis.Conn, twins []Twin) error {
+func writeTwins(pool *redis.Pool, twins []Twin) error {
+	conn := pool.Get()
+	defer conn.Close()
 	for _, twin := range twins {
 		val, err := json.Marshal(twin)
 		if err != nil {

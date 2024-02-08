@@ -21,7 +21,7 @@ make build
 
 ## Flags
 
-```
+```text
   --graphql string
         graphql url (default "https://graphql.grid.tf/graphql")
   --interval uint

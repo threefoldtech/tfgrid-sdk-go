@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/gomodule/redigo/redis"
 )
 
 const query = `query TwinsQuery {
@@ -26,7 +29,10 @@ const query = `query TwinsQuery {
   }
 }`
 
-const twinsPerPage = 500
+const (
+	twinsPerPage     = 500
+	requestsInterval = 3 * time.Second
+)
 
 type Twin struct {
 	ID        uint      `json:"id"`
@@ -44,35 +50,22 @@ func (u JSONArray) MarshalJSON() ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	_, err := buf.WriteRune('[')
-	if err != nil {
-		return nil, err
-	}
+	_, _ = buf.WriteRune('[')
 	for i, b := range u {
 		if i != 0 {
-			_, err = buf.WriteRune(',')
-			if err != nil {
-				return nil, err
-			}
+			_, _ = buf.WriteRune(',')
 		}
-		_, err = buf.WriteString(strconv.FormatUint(uint64(b), 10))
-		if err != nil {
-			return nil, err
-		}
+		_, _ = buf.WriteString(strconv.FormatUint(uint64(b), 10))
 	}
-	_, err = buf.WriteRune(']')
-	if err != nil {
-		return nil, err
-	}
+	_, _ = buf.WriteRune(']')
 
 	return buf.Bytes(), nil
 
 }
 
-func getTwins(graphql string) ([]Twin, error) {
+func warmTwins(pool *redis.Pool, graphql string) error {
 	offset := "0"
 
-	allTwins := make([]Twin, 0)
 	for {
 		afterCondition := ""
 		if offset != "0" && offset != "" {
@@ -87,21 +80,25 @@ func getTwins(graphql string) ([]Twin, error) {
 		)
 		pagination, gtwins, err := queryGraphql(graphql, body)
 		if err != nil {
-			return allTwins, err
+			return err
 		}
 		twins, err := graphqlTwinsToRelayTwins(gtwins)
 		if err != nil {
-			return allTwins, err
+			return err
 		}
-		allTwins = append(allTwins, twins...)
 		if !pagination.PageInfo.HasNextPage {
 			break
 		}
 		offset = pagination.PageInfo.EndCursor
 
+		err = writeTwins(pool, twins)
+		if err != nil {
+			return err
+		}
+		time.Sleep(requestsInterval)
 	}
 
-	return allTwins, nil
+	return nil
 }
 
 func queryGraphql(graphql, body string) (paginationData, []graphqlTwin, error) {

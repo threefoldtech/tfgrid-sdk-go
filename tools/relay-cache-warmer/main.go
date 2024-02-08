@@ -37,30 +37,36 @@ func main() {
 	if redisPassword != "" {
 		opts = append(opts, redis.DialPassword(redisPassword))
 	}
-
-	conn, err := redis.DialURL(redisURL, opts...)
-	if err != nil {
-		log.Fatalf("failed to connect to redis server: %s", err.Error())
+	pool := redis.Pool{
+		Dial: func() (redis.Conn, error) {
+			return redis.DialURL(redisURL, opts...)
+		},
+		MaxIdle:   10,
+		MaxActive: 20,
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			if time.Since(t) > 10*time.Second {
+				_, err := c.Do("PING")
+				return err
+			}
+			return nil
+		},
+		Wait: true,
 	}
 
-	run(conn, graphql, time.Duration(interval)*time.Minute)
+	run(&pool, graphql, time.Duration(interval)*time.Minute)
 
 }
 
-func run(conn redis.Conn, graphql string, interval time.Duration) {
+func run(pool *redis.Pool, graphql string, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	log.Println("warmer started")
 	for {
 		select {
-		case <-time.After(interval):
-			go func() {
-				twins, err := getTwins(graphql)
-				if err != nil {
-					log.Printf("failed to get twins: %s", err.Error())
-				}
-				err = writeTwins(conn, twins)
-				if err != nil {
-					log.Printf("failed to update cache: %s", err.Error())
-				}
-			}()
+		case <-ticker.C:
+			err := warmTwins(pool, graphql)
+			if err != nil {
+				log.Printf("failed to warm twins: %s", err.Error())
+			}
 		}
 	}
 }
