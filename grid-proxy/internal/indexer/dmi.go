@@ -13,6 +13,7 @@ import (
 const (
 	DmiCallCmd       = "zos.system.dmi"
 	flushingInterval = 60 * time.Second
+	dmiBatchSize     = 20
 )
 
 type DmiWatcher struct {
@@ -31,7 +32,6 @@ func NewDmiWatcher(
 	rmbClient *peer.RpcClient,
 	interval uint,
 	workers uint,
-	batchSize uint,
 ) *DmiWatcher {
 	return &DmiWatcher{
 		database:        database,
@@ -40,7 +40,7 @@ func NewDmiWatcher(
 		resultChan:      make(chan types.DmiInfo),
 		interval:        time.Duration(interval) * time.Minute,
 		workers:         workers,
-		batchSize:       batchSize,
+		batchSize:       dmiBatchSize,
 	}
 }
 

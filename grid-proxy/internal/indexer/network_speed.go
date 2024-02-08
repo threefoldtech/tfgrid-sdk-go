@@ -13,6 +13,7 @@ import (
 const (
 	perfTestCallCmd = "zos.perf.get"
 	testName        = "iperf"
+	speedBatchSize  = 20
 )
 
 type SpeedWatcher struct {
@@ -31,7 +32,6 @@ func NewSpeedWatcher(
 	rmbClient *peer.RpcClient,
 	interval uint,
 	workers uint,
-	batchSize uint,
 ) *SpeedWatcher {
 	return &SpeedWatcher{
 		database:        database,
@@ -40,7 +40,7 @@ func NewSpeedWatcher(
 		resultChan:      make(chan types.NetworkTestResult),
 		interval:        time.Duration(interval) * time.Minute,
 		workers:         workers,
-		batchSize:       batchSize,
+		batchSize:       speedBatchSize,
 	}
 }
 
@@ -54,7 +54,6 @@ func (w *SpeedWatcher) Start(ctx context.Context) {
 	go w.startUpserter(ctx, w.database)
 }
 
-// TODO: not only on interval but also on any node goes from down>up or newly added nodes
 func (w *SpeedWatcher) startNodeQuerier(ctx context.Context) {
 	ticker := time.NewTicker(w.interval)
 	queryUpNodes(ctx, w.database, w.nodeTwinIdsChan)
@@ -84,7 +83,6 @@ func (w *SpeedWatcher) startNodeCaller(ctx context.Context) {
 	}
 }
 
-// TODO: make it generic and then assert the result in each watcher
 func (w *SpeedWatcher) callNode(ctx context.Context, twinId uint32) (types.PerfResult, error) {
 	var result types.PerfResult
 	subCtx, cancel := context.WithTimeout(ctx, indexerCallTimeout)

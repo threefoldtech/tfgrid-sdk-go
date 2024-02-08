@@ -86,8 +86,6 @@ func (c *NodeHealthIndexer) checkNodeHealth(ctx context.Context) {
 			err := c.relayClient.Call(subCtx, twinId, healthCallCmd, nil, &result)
 			cancel()
 
-			log.Debug().Msgf("health indexer: %+v", result)
-
 			healthReport := types.HealthReport{
 				NodeTwinId: twinId,
 				Healthy:    isHealthy(err),

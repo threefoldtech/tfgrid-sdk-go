@@ -60,6 +60,10 @@ type flags struct {
 	maxPoolOpenConnections      int
 	healthIndexerWorkers        uint
 	healthIndexerInterval       uint
+	dmiWatcherWorkers           uint
+	dmiWatcherInterval          uint
+	speedWatcherWorkers         uint
+	speedWatcherInterval        uint
 	noIndexer                   bool // true to stop the indexer, useful on running for testing
 }
 
@@ -89,6 +93,11 @@ func main() {
 	flag.IntVar(&f.maxPoolOpenConnections, "max-open-conns", 80, "max number of db connection pool open connections")
 	flag.UintVar(&f.healthIndexerWorkers, "health-indexer-workers", 100, "number of workers checking on node health")
 	flag.UintVar(&f.healthIndexerInterval, "health-indexer-interval", 5, "node health check interval in min")
+	flag.UintVar(&f.dmiWatcherWorkers, "dmi-watcher-workers", 1, "number of workers checking on node dmi")
+	flag.UintVar(&f.dmiWatcherInterval, "dmi-watcher-interval", 60*24, "node dmi check interval in min")
+	flag.UintVar(&f.speedWatcherWorkers, "speed-watcher-workers", 100, "number of workers checking on node speed")
+	flag.UintVar(&f.speedWatcherInterval, "speed-watcher-interval", 5, "node speed check interval in min")
+
 	flag.BoolVar(&f.noIndexer, "no-indexer", false, "do not start the indexer")
 	flag.Parse()
 
@@ -154,9 +163,8 @@ func main() {
 		ctx,
 		&db,
 		rpcRmbClient,
-		5,
-		20,
-		20,
+		f.dmiWatcherInterval,
+		f.dmiWatcherWorkers,
 	)
 	idxr.RegisterWatcher("DMI", dmiWatcher)
 
@@ -164,9 +172,8 @@ func main() {
 		ctx,
 		&db,
 		rpcRmbClient,
-		5,
-		20,
-		20,
+		f.speedWatcherInterval,
+		f.speedWatcherWorkers,
 	)
 	idxr.RegisterWatcher("Speed", speedWatcher)
 

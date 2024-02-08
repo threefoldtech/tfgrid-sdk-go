@@ -6,6 +6,10 @@ import (
 	"errors"
 )
 
+// TODO: create new db_types pkg different than the server ones in pkg/types
+// it will be easier to have a single type that implement Scanner/Valuer when needed
+// will be used in: internal/explorer/db/types.go and tools/db/crafter/ and tests/mock_client
+
 type NetworkTestResult struct {
 	NodeTwinId    uint32  `json:"node_twin_id" gorm:"unique;not null"`
 	UploadSpeed   float64 `json:"upload_speed"`   // in bit/sec
