@@ -155,9 +155,20 @@ func main() {
 		&db,
 		rpcRmbClient,
 		5,
-		1,
+		20,
+		20,
 	)
 	idxr.RegisterWatcher("DMI", dmiWatcher)
+
+	speedWatcher := indexer.NewSpeedWatcher(
+		ctx,
+		&db,
+		rpcRmbClient,
+		5,
+		20,
+		20,
+	)
+	idxr.RegisterWatcher("Speed", speedWatcher)
 
 	idxr.Start()
 

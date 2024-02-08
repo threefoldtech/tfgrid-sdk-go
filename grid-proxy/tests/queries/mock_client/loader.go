@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -37,7 +38,10 @@ type DBData struct {
 	Regions             map[string]string
 	Locations           map[string]Location
 	HealthReports       map[uint64]bool
-	DB                  *sql.DB
+	DMIs                map[uint32]types.DmiInfo
+	Speeds              map[uint32]types.NetworkTestResult
+
+	DB *sql.DB
 }
 
 func loadNodes(db *sql.DB, data *DBData) error {
@@ -606,6 +610,64 @@ func loadHealthReports(db *sql.DB, data *DBData) error {
 	return nil
 }
 
+func loadDMIs(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT 
+		node_twin_id,
+		bios,
+		baseboard,
+		processor,
+		memory 
+	FROM 
+		dmi_infos;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var dmi types.DmiInfo
+		if err := rows.Scan(
+			&dmi.NodeTwinId,
+			&dmi.BIOS,
+			&dmi.Baseboard,
+			&dmi.Processor,
+			&dmi.Memory,
+		); err != nil {
+			return err
+		}
+		twinId := dmi.NodeTwinId
+		dmi.NodeTwinId = 0 // to omit it as empty, cleaner response
+		data.DMIs[twinId] = dmi
+	}
+
+	return nil
+}
+
+func loadSpeeds(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT 
+		node_twin_id,
+		upload_speed,
+		download_speed
+	FROM 
+		network_test_results;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var speed types.NetworkTestResult
+		if err := rows.Scan(
+			&speed.NodeTwinId,
+			&speed.UploadSpeed,
+			&speed.DownloadSpeed,
+		); err != nil {
+			return err
+		}
+		data.Speeds[speed.NodeTwinId] = speed
+	}
+
+	return nil
+}
+
 func Load(db *sql.DB) (DBData, error) {
 	data := DBData{
 		NodeIDMap:           make(map[string]uint64),
@@ -633,6 +695,8 @@ func Load(db *sql.DB) (DBData, error) {
 		Regions:             make(map[string]string),
 		Locations:           make(map[string]Location),
 		HealthReports:       make(map[uint64]bool),
+		DMIs:                make(map[uint32]types.DmiInfo),
+		Speeds:              make(map[uint32]types.NetworkTestResult),
 		DB:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {
@@ -678,6 +742,12 @@ func Load(db *sql.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadHealthReports(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadDMIs(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadSpeeds(db, &data); err != nil {
 		return data, err
 	}
 	if err := calcNodesUsedResources(&data); err != nil {
