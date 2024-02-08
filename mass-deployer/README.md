@@ -53,7 +53,11 @@ max_retries: 5
 You can use this [example](./example/conf.yaml) for further guidance,
 >**Please** make sure to replace placeholders and adapt the groups based on your actual project details.
 
->**Note:** All storage resources are expected to be in GB
+>**Note:** All storage resources are expected to be in GB.
+
+>**Note:** The VMs may utilize a different number of nodes than requested due
+to the retries filtering out additional nodes in case of failure.
+Consequently, it's possible to utilize more nodes than initially requested.
 
 5.  Run the deployer with path to the config file
 
@@ -115,6 +119,11 @@ tfrobot deploy -c path/to/your/config.yaml
 | :---:   | :---: | :---: |
 | Size | disk size in GB| positive integer min = 15 |
 | Mount | disk mount point | path to mountpoint |
+
+> **Notes:**
+> Ensure that memory precision does not exceed 0.001,
+any value greater than this threshold will be disregarded.
+> In case of YAML input, floating point portion of int values will be ignored.
 
 ## Usage
 

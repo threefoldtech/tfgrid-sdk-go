@@ -33,12 +33,9 @@ type RpcClient struct {
 // it easy to make rpc calls
 func NewRpcClient(
 	ctx context.Context,
-	keytype string,
 	mnemonics string,
-	relayURL string,
-	session string,
 	subManager substrate.Manager,
-	enableEncryption bool) (*RpcClient, error) {
+	opts ...PeerOpt) (*RpcClient, error) {
 
 	rpc := RpcClient{
 		responses: make(map[string]chan incomingEnv),
@@ -49,10 +46,7 @@ func NewRpcClient(
 		mnemonics,
 		subManager,
 		rpc.router,
-		WithEncryption(enableEncryption),
-		WithKeyType(keytype),
-		WithRelay(relayURL),
-		WithSession(session),
+		opts...,
 	)
 
 	if err != nil {

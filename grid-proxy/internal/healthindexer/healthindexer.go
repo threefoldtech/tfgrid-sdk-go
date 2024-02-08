@@ -38,7 +38,7 @@ func NewNodeHealthIndexer(
 	indexerInterval uint,
 ) (*NodeHealthIndexer, error) {
 	sessionId := generateSessionId()
-	rpcClient, err := peer.NewRpcClient(ctx, peer.KeyTypeSr25519, mnemonic, relayUrl, sessionId, subManager, true)
+	rpcClient, err := peer.NewRpcClient(ctx, mnemonic, subManager, peer.WithRelay(relayUrl), peer.WithSession(sessionId))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rmb client: %w", err)
 	}

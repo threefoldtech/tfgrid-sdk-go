@@ -19,13 +19,12 @@ func nodesReport() error {
 
 	client, err := peer.NewRpcClient(
 		context.Background(),
-		peer.KeyTypeSr25519,
 		mnemonics,
-		"wss://relay.dev.grid.tf",
-		"test-report",
 		subManager,
-		true,
+		peer.WithRelay("wss://relay.dev.grid.tf"),
+		peer.WithSession("test-report"),
 	)
+
 	if err != nil {
 		return fmt.Errorf("failed to create rpc client: %w", err)
 	}

@@ -35,7 +35,7 @@ var deployGatewayFQDNCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false)
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false, true)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -61,5 +61,4 @@ func init() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-
 }
