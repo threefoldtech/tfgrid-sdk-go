@@ -662,7 +662,7 @@ func ExampleDeploymentDeployer_Deploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -711,7 +711,7 @@ func ExampleDeploymentDeployer_BatchDeploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -770,7 +770,7 @@ func ExampleDeploymentDeployer_Cancel() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return

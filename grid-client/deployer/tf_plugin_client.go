@@ -105,6 +105,7 @@ func NewTFPluginClient(
 	proxyURL string,
 	rmbTimeout int,
 	showLogs bool,
+	rmbInMemCache bool,
 ) (TFPluginClient, error) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	if showLogs {
@@ -199,16 +200,25 @@ func NewTFPluginClient(
 		tfPluginClient.relayURL = relayURL
 	}
 
-	// default rmbTimeout is 10
+	// default rmbTimeout is 60
 	if rmbTimeout == 0 {
-		rmbTimeout = 10
+		rmbTimeout = 60
 	}
 	tfPluginClient.RMBTimeout = time.Second * time.Duration(rmbTimeout)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	tfPluginClient.cancelRelayContext = cancel
 
-	rmbClient, err := peer.NewRpcClient(ctx, tfPluginClient.mnemonicOrSeed, manager, peer.WithRelay(tfPluginClient.relayURL), peer.WithSession(sessionID), peer.WithKeyType(keyType))
+	peerOpts := []peer.PeerOpt{
+		peer.WithRelay(tfPluginClient.relayURL),
+		peer.WithSession(sessionID),
+		peer.WithKeyType(keyType),
+	}
+
+	if !rmbInMemCache {
+		peerOpts = append(peerOpts, peer.WithTwinCache(10*60*60)) // in seconds that's 10 hours
+	}
+	rmbClient, err := peer.NewRpcClient(ctx, tfPluginClient.mnemonicOrSeed, manager, peerOpts...)
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not create rmb client")
 	}
