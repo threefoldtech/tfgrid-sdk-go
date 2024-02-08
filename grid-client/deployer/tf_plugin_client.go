@@ -209,12 +209,12 @@ func NewTFPluginClient(
 	ctx, cancel := context.WithCancel(context.Background())
 	tfPluginClient.cancelRelayContext = cancel
 
-	 peerOpts := []peer.PeerOpt{
-	          peer.WithRelay(tfPluginClient.relayURL),
-	          peer.WithSession(sessionID)),
-	          peer.WithKeyType(keyType),
-	 }
-	 
+	peerOpts := []peer.PeerOpt{
+		peer.WithRelay(tfPluginClient.relayURL),
+		peer.WithSession(sessionID),
+		peer.WithKeyType(keyType),
+	}
+
 	if !rmbInMemCache {
 		peerOpts = append(peerOpts, peer.WithTwinCache(10*60*60)) // in seconds that's 10 hours
 	}
