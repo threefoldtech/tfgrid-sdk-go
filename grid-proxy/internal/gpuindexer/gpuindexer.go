@@ -149,11 +149,38 @@ func (n *NodeGPUIndexer) getNodes(ctx context.Context, filter types.NodeFilter, 
 	return nodes, nil
 }
 
+func (n *NodeGPUIndexer) discardOldGpus(ctx context.Context, lastAdded uint32, gpuBatch []types.NodeGPU) (uint32, error) {
+	// invalidate the old indexed GPUs for the same node,
+	// but check the batch first to ensure it does not contain related GPUs to node twin it from the last batch.
+
+	nodeTwinIds := []uint32{}
+	for _, gpu := range gpuBatch {
+		if gpu.NodeTwinID == lastAdded {
+			continue
+		}
+		nodeTwinIds = append(nodeTwinIds, gpu.NodeTwinID)
+	}
+
+	err := n.db.DeleteOldGpus(ctx, nodeTwinIds)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete GPU information in GPU indexer")
+	}
+
+	return gpuBatch[len(gpuBatch)-1].NodeTwinID, nil
+}
+
 func (n *NodeGPUIndexer) gpuBatchesDBUpserter(ctx context.Context) {
+	lastAddedGpuNodeTwinId := 0
 	for {
 		select {
 		case gpuBatch := <-n.nodesGPUBatchesChan:
-			err := n.db.UpsertNodesGPU(ctx, gpuBatch)
+			lastAdded, err := n.discardOldGpus(ctx, uint32(lastAddedGpuNodeTwinId), gpuBatch)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to update GPU info in GPU indexer")
+				continue
+			}
+			lastAddedGpuNodeTwinId = int(lastAdded)
+			err = n.db.UpsertNodesGPU(ctx, gpuBatch)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to update GPU info in GPU indexer")
 				continue
@@ -205,7 +232,6 @@ func (n *NodeGPUIndexer) Start(ctx context.Context) {
 	go n.watchNodeTable(ctx)
 
 	log.Info().Msg("GPU indexer started")
-
 }
 
 func (n *NodeGPUIndexer) watchNodeTable(ctx context.Context) {
