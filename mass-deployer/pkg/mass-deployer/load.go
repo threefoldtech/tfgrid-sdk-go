@@ -7,17 +7,15 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
+	"github.com/sethvargo/go-retry"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"gopkg.in/yaml.v3"
-)
-
-const (
-	maxGoroutinesToFetchState = 100
 )
 
 func RunLoader(ctx context.Context, cfg Config, debug bool, output string) error {
@@ -28,36 +26,52 @@ func RunLoader(ctx context.Context, cfg Config, debug bool, output string) error
 		return err
 	}
 
+	outputBytes, err := loadNodeGroupsInfo(ctx, tfPluginClient, cfg, output)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(outputBytes))
+	return os.WriteFile(output, outputBytes, 0644)
+}
+
+func loadNodeGroupsInfo(ctx context.Context, tfPluginClient deployer.TFPluginClient, cfg Config, output string) ([]byte, error) {
+	trial := 1
 	nodeGroupsInfo := map[string][]vmOutput{}
 	failedGroups := map[string]string{}
 
 	// load contracts with node group name
 	for _, nodeGroup := range cfg.NodeGroups {
-		contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroup.Name)
-		if err != nil {
-			log.Debug().Err(err).
-				Str("node group", nodeGroup.Name).
-				Msg("couldn't load from grid")
+		if err := retry.Do(ctx, retry.WithMaxRetries(uint64(cfg.MaxRetries), retry.NewConstant(1*time.Second)), func(ctx context.Context) error {
+			if trial != 1 {
+				log.Debug().Str("Node group", nodeGroup.Name).Int("Deployment trial", trial).Msg("Retrying to load")
+			}
 
-			failedGroups[nodeGroup.Name] = err.Error()
-			continue
-		}
+			contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroup.Name)
+			if err != nil {
+				trial++
+				log.Debug().Err(err).Str("node group", nodeGroup.Name).Msg("couldn't list contracts")
+				return retry.RetryableError(err)
+			}
 
-		info, err := loadNodeGroupInfo(ctx, tfPluginClient, nodeGroup.Name, contracts.NodeContracts)
-		if err != nil {
+			info, err := loadContractsInfo(ctx, tfPluginClient, nodeGroup.Name, contracts.NodeContracts)
+			if err != nil {
+				trial++
+				log.Debug().Err(err).Str("node group", nodeGroup.Name).Msg("couldn't load from grid")
+				return retry.RetryableError(err)
+			}
+
+			nodeGroupsInfo[nodeGroup.Name] = info
+			return nil
+		}); err != nil {
 			failedGroups[nodeGroup.Name] = err.Error()
-			continue
 		}
-		nodeGroupsInfo[nodeGroup.Name] = info
 	}
 
-	outputBytes, err := ParseDeploymentData(nodeGroupsInfo, failedGroups, output)
-	fmt.Println(string(outputBytes))
-
-	return os.WriteFile(output, outputBytes, 0644)
+	return parseDeploymentData(nodeGroupsInfo, failedGroups, output)
 }
 
-func loadNodeGroupInfo(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroup string, contracts []graphql.Contract) ([]vmOutput, error) {
+func loadContractsInfo(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroup string, contracts []graphql.Contract) ([]vmOutput, error) {
 	vmsInfo := []vmOutput{}
 	var multiErr error
 	var lock sync.Mutex
@@ -78,6 +92,10 @@ func loadNodeGroupInfo(ctx context.Context, tfPluginClient deployer.TFPluginClie
 			defer func() { <-sem }()
 
 			deployment, err := workloads.ParseDeploymentData(contract.DeploymentData)
+			if deployment.Type != "vm" {
+				return
+			}
+
 			if err != nil {
 				log.Debug().Err(err).
 					Str("node group", nodeGroup).
@@ -86,6 +104,7 @@ func loadNodeGroupInfo(ctx context.Context, tfPluginClient deployer.TFPluginClie
 				lock.Lock()
 				multiErr = multierror.Append(multiErr, err)
 				lock.Unlock()
+				return
 			}
 
 			log.Debug().
@@ -129,7 +148,9 @@ func loadNodeGroupInfo(ctx context.Context, tfPluginClient deployer.TFPluginClie
 	return vmsInfo, multiErr
 }
 
-func ParseDeploymentData(passedGroups map[string][]vmOutput, failedGroups map[string]string, output string) ([]byte, error) {
+func parseDeploymentData(passedGroups map[string][]vmOutput, failedGroups map[string]string, output string) ([]byte, error) {
+	var err error
+	var outputBytes []byte
 	outData := struct {
 		OK    map[string][]vmOutput `json:"ok"`
 		Error map[string]string     `json:"error"`
@@ -138,15 +159,11 @@ func ParseDeploymentData(passedGroups map[string][]vmOutput, failedGroups map[st
 		Error: failedGroups,
 	}
 
-	var outputBytes []byte
-	var err error
 	if filepath.Ext(output) == ".json" {
 		outputBytes, err = json.MarshalIndent(outData, "", "  ")
 	} else {
 		outputBytes, err = yaml.Marshal(outData)
 	}
-	if err != nil {
-		return []byte{}, err
-	}
+
 	return outputBytes, err
 }

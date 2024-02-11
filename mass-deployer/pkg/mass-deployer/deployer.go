@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -66,10 +67,16 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 
 	endTime := time.Since(deploymentStart)
 
-	err = RunLoader(ctx, cfg, debug, output)
+	log.Info().Msg("Loading deployments")
+	outputBytes, err := loadNodeGroupsInfo(ctx, tfPluginClient, cfg, output)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(outputBytes))
 	log.Info().Msgf("Deployment took %s", endTime)
 
-	return err
+	return os.WriteFile(output, outputBytes, 0644)
 }
 
 func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, groupDeployments *groupDeploymentsInfo, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) error {
