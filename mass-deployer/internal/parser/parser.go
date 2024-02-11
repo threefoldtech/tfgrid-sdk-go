@@ -79,6 +79,10 @@ func ValidateConfig(conf deployer.Config) error {
 		}
 	}
 
+	if err := validateNodeGroups(conf.NodeGroups, conf.Mnemonic, conf.Network); err != nil {
+		return err
+	}
+
 	if err := validateVMs(conf.Vms, conf.NodeGroups, conf.SSHKeys); err != nil {
 		return err
 	}
@@ -116,6 +120,8 @@ func parseValidationError(err error) error {
 			return fmt.Errorf("value of '%s': '%v' is out of range, max value is '%s'", nameSpace, value, boundary)
 		case "min":
 			return fmt.Errorf("value of '%s': '%v' is out of range, min value is '%s'", nameSpace, value, boundary)
+		case "unique":
+			return fmt.Errorf("value of '%s': '%v' is invalid, %s should have unique names", nameSpace, value, nameSpace)
 		}
 	}
 	return nil

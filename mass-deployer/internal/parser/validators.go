@@ -7,9 +7,13 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/cosmos/go-bip39"
-	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"github.com/hashicorp/go-multierror"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	massDeployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
 var alphanumeric = regexp.MustCompile("^[a-z0-9_]+$")
@@ -29,7 +33,42 @@ func validateNetwork(network string) error {
 	return nil
 }
 
-func validateVMs(vms []deployer.Vms, nodeGroups []deployer.NodesGroup, sskKeys map[string]string) error {
+func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, mnemonic, network string) error {
+	tfPluginClient, err := deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, "", "", "", 0, false, false)
+	if err != nil {
+		return err
+	}
+
+	var multiErr error
+	var wg sync.WaitGroup
+	var lock sync.Mutex
+
+	for _, group := range nodeGroups {
+		wg.Add(1)
+		go func(group massDeployer.NodesGroup) {
+			defer wg.Done()
+			nodeGroupName := strings.TrimSpace(group.Name)
+			if !alphanumeric.MatchString(nodeGroupName) {
+				lock.Lock()
+				multiErr = multierror.Append(multiErr, fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName))
+				lock.Unlock()
+				return
+			}
+
+			if _, err = tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName); err == nil {
+				lock.Lock()
+				multiErr = multierror.Append(multiErr, fmt.Errorf("node group name: '%s' is invalid, should be unique name across all deployments", nodeGroupName))
+				lock.Unlock()
+				return
+			}
+		}(group)
+	}
+	wg.Wait()
+
+	return multiErr
+}
+
+func validateVMs(vms []massDeployer.Vms, nodeGroups []massDeployer.NodesGroup, sskKeys map[string]string) error {
 	usedResources := make(map[string]map[string]interface{}, len(nodeGroups))
 	var vmNodeGroupExists bool
 
@@ -107,7 +146,7 @@ func validateFlist(flist, name string) error {
 	return nil
 }
 
-func setVMUsedResources(vmsGroup deployer.Vms, vmUsedResources map[string]interface{}) map[string]interface{} {
+func setVMUsedResources(vmsGroup massDeployer.Vms, vmUsedResources map[string]interface{}) map[string]interface{} {
 	if _, ok := vmUsedResources["free_cpu"]; !ok {
 		vmUsedResources = make(map[string]interface{}, 5)
 		vmUsedResources["free_cpu"] = uint64(0)
