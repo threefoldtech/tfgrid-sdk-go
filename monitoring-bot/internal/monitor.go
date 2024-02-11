@@ -60,7 +60,7 @@ type Monitor struct {
 	farms      map[network]string
 	wallets    wallets
 	managers   map[network]client.Manager
-	rmbClients map[network]*peer.RpcCLient
+	rmbClients map[network]*peer.RpcClient
 }
 
 // NewMonitor creates a new instance of monitor
@@ -93,12 +93,12 @@ func NewMonitor(ctx context.Context, env config, wallets wallets) (Monitor, erro
 	mon.mnemonics[mainNetwork] = mon.env.mainMnemonic
 
 	mon.managers = make(map[network]client.Manager, 4)
-	mon.rmbClients = make(map[network]*peer.RpcCLient, 4)
+	mon.rmbClients = make(map[network]*peer.RpcClient, 4)
 	for _, network := range networks {
 		mon.managers[network] = client.NewManager(SubstrateURLs[network]...)
 
 		sessionID := fmt.Sprintf("monbot-%d", os.Getpid())
-		rmbClient, err := peer.NewRpcClient(ctx, "sr25519", mon.mnemonics[network], RelayURLS[network], sessionID, mon.managers[network], true)
+		rmbClient, err := peer.NewRpcClient(ctx, mon.mnemonics[network], mon.managers[network], peer.WithRelay(RelayURLS[network]), peer.WithSession(sessionID))
 		if err != nil {
 			return mon, fmt.Errorf("couldn't create rpc client in network %s with error: %w", network, err)
 		}
@@ -159,12 +159,11 @@ func (m *Monitor) Start(ctx context.Context) error {
 			len(strings.TrimSpace(m.env.testStellarAddress)) == 0 ||
 			len(strings.TrimSpace(m.env.testStellarSecret)) == 0 {
 			log.Info().Msg("No monitoring for stellar bridges. If you want to monitor it please set the stellar configs")
-			continue
-		}
-
-		log.Debug().Msg("monitoring stellar bridges")
-		if err := m.monitorBridges(); err != nil {
-			log.Error().Err(err).Msg("monitoring bridges failed")
+		} else {
+			log.Debug().Msg("monitoring stellar bridges")
+			if err := m.monitorBridges(); err != nil {
+				log.Error().Err(err).Msg("monitoring bridges failed")
+			}
 		}
 
 		// Time to sleep

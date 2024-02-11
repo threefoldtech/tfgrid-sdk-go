@@ -7,7 +7,9 @@ use (
 	./grid-client
 	./grid-proxy
 	./gridify
+	./mass-deployer
 	./monitoring-bot
 	./rmb-sdk-go
 	./user-contracts-mon
+	./tools/relay-cache-warmer
 )

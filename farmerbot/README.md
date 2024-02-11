@@ -6,6 +6,8 @@ Farmerbot is a service that farmers can run allowing them to automatically manag
 
 ## How to use
 
+> :warning: **Be careful**: Make sure to run one farmerbot for each farm, otherwise the relay connection will close in all instances.
+
 > :warning: **Be careful**: The timezone of the farmerbot will be the same as the time zone of the machine the farmerbot running inside.
 
 - add your [configurations](#config)
@@ -36,11 +38,12 @@ Global Flags:
 -m, --mnemonic string   the mnemonic of the account of the farmer
 -n, --network string    the grid network to use, available networks: dev, qa, test, and main (default "main")
 -s, --seed string       the hex seed of the account of the farmer
+-k, --key-type string   key type for mnemonic (default "sr25519")
 ```
 
 > Note: you should only provide **`mnemonic`** or **`seed`**
 
-> Note: If you provided **`env`** flag, you shouldn't provide **`seed`**, **`mnemonic`**, or **`network`** flags
+> Note: If you provided **`env`** flag, you shouldn't provide **`seed`**, **`key-type`**, **`mnemonic`**, or **`network`** flags
 
 ## Download
 
@@ -72,7 +75,7 @@ docker build -t farmerbot -f Dockerfile ../
 4. run (mount `.env` and `config.yml` from your current directory to the container using `-v`)
 
 ```bash
-docker run -v $(pwd)/config.yaml:/config.yml -v $(pwd)/.env:/.env farmerbot run -e /.env -c /config.yml -d
+docker run -v $(pwd)/config.yml:/config.yml -v $(pwd)/.env:/.env farmerbot run -e /.env -c /config.yml -d
 ```
 
 ## Build
@@ -89,7 +92,7 @@ make build
 
 ```yml
 farm_id: "<your farm ID, required>"
-included_nodes:
+included_nodes: [optional, if no nodes are added then the farmerbot will include all nodes in the farm, farm should contain at least 2 nodes]
   - "<your node ID to be included, required at least 2>"
 excluded_nodes:
   - "<your node ID to be excluded, optional>"
@@ -121,6 +124,7 @@ Global Flags:
 -m, --mnemonic string   the mnemonic of the account of the farmer
 -n, --network string    the grid network to use (default "main")
 -s, --seed string       the hex seed of the account of the farmer
+-k, --key-type string   key type for mnemonic (default "sr25519")
 ```
 
 - `start all`:  to start (power on) all nodes in a farm
@@ -140,6 +144,7 @@ Global Flags:
 -m, --mnemonic string   the mnemonic of the account of the farmer
 -n, --network string    the grid network to use (default "main")
 -s, --seed string       the hex seed of the account of the farmer
+-k, --key-type string   key type for mnemonic (default "sr25519")
 ```
 
 - `version`: to get the current version of farmerbot
@@ -166,9 +171,9 @@ Arguments (all arguments are optional):
 - _public_ips_ => how much public ips you need
 - _dedicated_ => whether you want a dedicated node (rent the full node)
 - _node_exclude_ => the list of node ids you want to exclude in your search
-- _hru_ => the amount of hru required in kilobytes
-- _sru_ => the amount of sru required in kilobytes
-- _mru_ => the amount of mru required in kilobytes
+- _hru_ => the amount of hru required in gigabytes
+- _sru_ => the amount of sru required in gigabytes
+- _mru_ => the amount of mru required in gigabytes
 - _cru_ => the amount of cru required
 
 Result:
@@ -203,14 +208,6 @@ Example:
 
 - [power off](./examples/poweroff/main.go)
 
-### farmerbot.farmmanager.version
-
-This call returns the current version of the farmerbot
-
-Example:
-
-- [version](./examples/version/main.go)
-
 ### :warning: farmerbot.powermanager.includenode
 
 This call is only allowed to be executed if it comes from the farmer (the twin ID should equal the farmer's twin ID). It will include an excluded node from power on and off calls (it should be included in the farmerbot configurations)
@@ -223,9 +220,38 @@ Example:
 
 - [include node](./examples/includenode/main.go)
 
+### farmerbot.farmmanager.version
+
+This call returns the current version of the farmerbot
+
+Example:
+
+- [version](./examples/version/main.go)
+
+### farmerbot.farmmanager.report
+
+This call returns the current report of nodes of the farmerbot
+
+Result: a list of node reports, each node report includes:
+
+- `id` => the node id
+- `state` => the power state of the node (ON, OFF, Waking up, Shutting down)
+- `rented` => if the node is rented (has an active rent contract) [true, false]
+- `dedicated` => if the node is dedicated (its farm is dedicated or it has a dedicated node price) [true, false]
+- `public_config` => if the node has public configurations [true, false]
+- `used` => if the node is used (has used resources) [true, false]
+- `random_wakeups` => times of the random wake ups for the node per month
+- `since_power_state_changed` => the duration since last time power state of the node has changed
+- `since_last_time_awake` => the duration since last time the node state was on
+- `until_claimed_resources_timeout` => the duration until claimed resources of the node timeout
+
+Example:
+
+- [report](./examples/report/main.go)
+
 ## Examples
 
-Check the [examples](/examples)
+Check the [examples](./examples)
 
 To run examples:
 

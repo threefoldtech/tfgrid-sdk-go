@@ -36,6 +36,7 @@ type DBData struct {
 	GPUs                map[uint64][]NodeGPU
 	Regions             map[string]string
 	Locations           map[string]Location
+	HealthReports       map[uint64]bool
 	DB                  *sql.DB
 }
 
@@ -516,7 +517,7 @@ func loadCountries(db *sql.DB, data *DBData) error {
 		); err != nil {
 			return err
 		}
-		data.Regions[strings.ToLower(country.Name)] = country.Subregion
+		data.Regions[strings.ToLower(country.Name)] = country.Region
 	}
 
 	return nil
@@ -581,6 +582,30 @@ func loadNodeGPUs(db *sql.DB, data *DBData) error {
 	return nil
 }
 
+func loadHealthReports(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT
+		COALESCE(node_twin_id, 0),
+		COALESCE(healthy, false)
+	FROM
+		health_report;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var health HealthReport
+		if err := rows.Scan(
+			&health.NodeTwinId,
+			&health.Healthy,
+		); err != nil {
+			return err
+		}
+		data.HealthReports[health.NodeTwinId] = health.Healthy
+	}
+
+	return nil
+}
+
 func Load(db *sql.DB) (DBData, error) {
 	data := DBData{
 		NodeIDMap:           make(map[string]uint64),
@@ -607,6 +632,7 @@ func Load(db *sql.DB) (DBData, error) {
 		FarmHasRentedNode:   make(map[uint64]map[uint64]bool),
 		Regions:             make(map[string]string),
 		Locations:           make(map[string]Location),
+		HealthReports:       make(map[uint64]bool),
 		DB:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {
@@ -649,6 +675,9 @@ func Load(db *sql.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadLocations(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadHealthReports(db, &data); err != nil {
 		return data, err
 	}
 	if err := calcNodesUsedResources(&data); err != nil {

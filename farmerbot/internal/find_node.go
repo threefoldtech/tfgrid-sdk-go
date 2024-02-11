@@ -15,10 +15,10 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 	log.Info().Msg("Finding a node")
 
 	nodeOptionsCapacity := capacity{
-		hru: nodeOptions.HRU,
-		sru: nodeOptions.SRU,
+		hru: convertGBToBytes(nodeOptions.HRU),
+		sru: convertGBToBytes(nodeOptions.SRU),
 		cru: nodeOptions.CRU,
-		mru: nodeOptions.MRU,
+		mru: convertGBToBytes(nodeOptions.MRU),
 	}
 
 	if (len(nodeOptions.GPUVendors) > 0 || len(nodeOptions.GPUDevices) > 0) && nodeOptions.NumGPU == 0 {
@@ -153,4 +153,8 @@ func filterGPUsByDevices(gpus []zos.GPU, vendorsOrDevices []string) (filtered []
 		}
 	}
 	return
+}
+
+func convertGBToBytes(gb uint64) uint64 {
+	return gb * 1024 * 1024 * 1024
 }

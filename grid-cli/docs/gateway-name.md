@@ -1,11 +1,11 @@
 # Gateway Name
 
-This document explains Gateway Name related commands using tf-grid-cli.
+This document explains Gateway Name related commands using tfcmd.
 
 ## Deploy
 
 ```bash
-tf-grid-cli deploy gateway name [flags]
+tfcmd deploy gateway name [flags]
 ```
 
 ### Required Flags
@@ -22,7 +22,7 @@ tf-grid-cli deploy gateway name [flags]
 Example:
 
 ```console
-$ tf-grid-cli deploy gateway name -n gatewaytest --node 14 --backends http://93.184.216.34:80
+$ tfcmd deploy gateway name -n gatewaytest --node 14 --backends http://93.184.216.34:80
 3:34PM INF deploying gateway name
 3:34PM INF fqdn: gatewaytest.gent01.dev.grid.tf
 ```
@@ -30,15 +30,15 @@ $ tf-grid-cli deploy gateway name -n gatewaytest --node 14 --backends http://93.
 ## Get
 
 ```bash
-tf-grid-cli get gateway name <gateway>
+tfcmd get gateway name <gateway>
 ```
 
-gateway is the name used when deploying gateway-name using tf-grid-cli.
+gateway is the name used when deploying gateway-name using tfcmd.
 
 Example:
 
 ```console
-$ tf-grid-cli get gateway name gatewaytest
+$ tfcmd get gateway name gatewaytest
 1:56PM INF gateway name:
 {
         "NodeID": 14,
@@ -61,15 +61,15 @@ $ tf-grid-cli get gateway name gatewaytest
 ## Cancel
 
 ```bash
-tf-grid-cli cancel <deployment-name>
+tfcmd cancel <deployment-name>
 ```
 
-deployment-name is the name of the deployment specified in while deploying using tf-grid-cli.
+deployment-name is the name of the deployment specified in while deploying using tfcmd.
 
 Example:
 
 ```console
-$ tf-grid-cli cancel gatewaytest
+$ tfcmd cancel gatewaytest
 3:37PM INF canceling contracts for project gatewaytest
 3:37PM INF gatewaytest canceled
 ```

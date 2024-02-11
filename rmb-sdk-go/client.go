@@ -50,7 +50,7 @@ func NewRMBClient(address string, poolSize ...uint32) (Client, error) {
 		address = DefaultAddress
 	}
 
-	pool, err := newRedisPool(address, poolSize...)
+	pool, err := NewRedisPool(address, poolSize...)
 	if err != nil {
 		return nil, err
 	}

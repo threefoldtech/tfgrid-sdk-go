@@ -1,6 +1,7 @@
 package deployer
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -8,12 +9,14 @@ import (
 )
 
 // CancelByProjectName cancels a deployed project
-func (t *TFPluginClient) CancelByProjectName(projectName string) error {
-	log.Info().Msgf("canceling contracts for project %s", projectName)
-	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName)
+func (t *TFPluginClient) CancelByProjectName(projectName string, noGateways ...bool) error {
+	log.Info().Str("project name", projectName).Msg("canceling contracts")
+
+	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName, noGateways...)
 	if err != nil {
 		return errors.Wrapf(err, "could not load contracts for project %s", projectName)
 	}
+	contractIDS := make([]uint64, 0)
 
 	contractsSlice := append(contracts.NameContracts, contracts.NodeContracts...)
 	for _, contract := range contractsSlice {
@@ -21,12 +24,19 @@ func (t *TFPluginClient) CancelByProjectName(projectName string) error {
 		if err != nil {
 			return errors.Wrapf(err, "could not parse contract %s into uint64", contract.ContractID)
 		}
-		log.Debug().Uint64("canceling contract", contractID)
-		err = t.SubstrateConn.CancelContract(t.Identity, contractID)
-		if err != nil {
-			return errors.Wrapf(err, "could not cancel contract %d", contractID)
-		}
+		contractIDS = append(contractIDS, contractID)
 	}
-	log.Info().Msgf("%s canceled", projectName)
+
+	if len(contractIDS) == 0 {
+		log.Info().Str("project name", projectName).Msg("No contracts exist for the project name")
+		return nil
+	}
+
+	log.Debug().Uints64("contracts IDs", contractIDS).Msg("Batch cancel")
+	if err := t.BatchCancelContract(contractIDS); err != nil {
+		return fmt.Errorf("failed to cancel contracts for project %s: %w", projectName, err)
+	}
+
+	log.Info().Str("project name", projectName).Msg("project is canceled")
 	return nil
 }

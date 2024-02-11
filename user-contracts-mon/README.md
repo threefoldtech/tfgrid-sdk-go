@@ -51,7 +51,7 @@ Ensure that you have installed:
 
      ```bash
         docker build -t contract-mon -f Dockerfile ../
-        docker run -it contract-mon
+        docker run -v $(pwd)/.env:/.env -it contract-mon -e /.env
         ```
 
 ## Create a bot

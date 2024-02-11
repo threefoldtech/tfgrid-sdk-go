@@ -13,7 +13,7 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "start a node in your farm",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		network, mnemonicOrSeed, err := getDefaultFlags(cmd)
+		network, mnemonicOrSeed, keyType, err := getDefaultFlags(cmd)
 		if err != nil {
 			return err
 		}
@@ -23,7 +23,7 @@ var startCmd = &cobra.Command{
 			return fmt.Errorf("invalid node ID '%d'", nodeID)
 		}
 
-		identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonicOrSeed)
+		identity, err := internal.GetIdentityWithKeyType(mnemonicOrSeed, keyType)
 		if err != nil {
 			return err
 		}
@@ -38,7 +38,7 @@ var startCmd = &cobra.Command{
 
 		_, err = subConn.SetNodePowerTarget(identity, nodeID, true)
 		if err != nil {
-			return fmt.Errorf("failed to power on node '%d'", nodeID)
+			return fmt.Errorf("failed to power on node '%d' with error: %w", nodeID, err)
 		}
 
 		log.Info().Msgf("Node %d is started successfully", nodeID)

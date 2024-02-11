@@ -24,6 +24,7 @@ type NodesAggregate struct {
 	cities    []string
 	farmNames []string
 	farmIDs   []uint64
+	nodeIDs   []uint64
 	freeMRUs  []uint64
 	freeSRUs  []uint64
 	freeHRUs  []uint64
@@ -54,6 +55,13 @@ var (
 var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interface{}{
 	"Status": func(agg NodesAggregate) interface{} {
 		return &statuses[rand.Intn(3)]
+	},
+	"Healthy": func(_ NodesAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
 	},
 	"FreeMRU": func(agg NodesAggregate) interface{} {
 		if flip(.1) {
@@ -304,6 +312,17 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 			v = false
 		}
 		return &v
+	},
+	"Excluded": func(agg NodesAggregate) interface{} {
+		shuffledIds := make([]uint64, len(agg.nodeIDs))
+		copy(shuffledIds, agg.nodeIDs)
+		for i := len(shuffledIds) - 1; i > 0; i-- {
+			j := rand.Intn(i + 1)
+			shuffledIds[i], shuffledIds[j] = shuffledIds[j], shuffledIds[i]
+		}
+
+		num := rand.Intn(10)
+		return shuffledIds[:num]
 	},
 }
 
@@ -611,6 +630,7 @@ func calcNodesAggregates(data *mock.DBData) (res NodesAggregate) {
 		res.freeMRUs = append(res.freeMRUs, freeMRU)
 		res.freeSRUs = append(res.freeSRUs, freeSRU)
 		res.freeHRUs = append(res.freeHRUs, freeHRU)
+		res.nodeIDs = append(res.nodeIDs, node.NodeID)
 
 		res.maxTotalMRU = max(res.maxTotalMRU, total.MRU)
 		res.totalMRUs = append(res.totalMRUs, total.MRU)

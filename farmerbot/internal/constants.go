@@ -20,7 +20,10 @@ const minWakeUpThreshold uint8 = 50
 const maxWakeUpThreshold uint8 = 80
 
 // minBalanceToRun min balance the farmer should have to run the bot
-const minBalanceToRun float64 = 100
+const minBalanceToRun float64 = 5
+
+// recommendedBalanceToRun recommended balance the farmer should have to run the bot
+const recommendedBalanceToRun float64 = 50
 
 const (
 	//timeoutRMBResponse a timeout for rmb response
@@ -59,4 +62,11 @@ var relayURLs = map[string]string{
 	TestNetwork: "wss://relay.test.grid.tf",
 	QaNetwork:   "wss://relay.qa.grid.tf",
 	MainNetwork: "wss://relay.grid.tf",
+}
+
+var proxyURLs = map[string]string{
+	DevNetwork:  "https://gridproxy.dev.grid.tf/",
+	TestNetwork: "https://gridproxy.test.grid.tf/",
+	QaNetwork:   "https://gridproxy.qa.grid.tf/",
+	MainNetwork: "https://gridproxy.grid.tf/",
 }

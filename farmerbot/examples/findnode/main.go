@@ -18,13 +18,12 @@ func findNode() (uint32, error) {
 
 	client, err := peer.NewRpcClient(
 		context.Background(),
-		peer.KeyTypeSr25519,
 		mnemonics,
-		"wss://relay.dev.grid.tf",
-		"test-find-node",
 		subManager,
-		true,
+		peer.WithRelay("wss://relay.dev.grid.tf"),
+		peer.WithSession("test-find-node"),
 	)
+
 	if err != nil {
 		return 0, fmt.Errorf("failed to create rpc client: %w", err)
 	}

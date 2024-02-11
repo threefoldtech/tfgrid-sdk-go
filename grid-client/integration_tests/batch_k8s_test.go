@@ -72,7 +72,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -89,7 +89,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -106,7 +106,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -123,7 +123,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -157,14 +157,14 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}()
 
 	// cluster 1
-	result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID1}, k8sCluster1.Master.Name)
+	result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{nodeID1}, k8sCluster1.Master.Name)
 	assert.NoError(t, err)
 
 	// check workers count
 	assert.Equal(t, len(result.Workers), 1)
 
 	// Check that master is reachable
-	masterIP := result.Master.YggIP
+	masterIP := result.Master.PlanetaryIP
 	assert.NotEmpty(t, masterIP)
 
 	// Check wireguard config in output
@@ -175,14 +175,14 @@ func TestBatchK8sDeployment(t *testing.T) {
 	AssertNodesAreReady(t, &result, privateKey)
 
 	// cluster 2
-	result, err = tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID2}, k8sCluster2.Master.Name)
+	result, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{nodeID2}, k8sCluster2.Master.Name)
 	assert.NoError(t, err)
 
 	// check workers count
 	assert.Equal(t, len(result.Workers), 1)
 
 	// Check that master is reachable
-	masterIP = result.Master.YggIP
+	masterIP = result.Master.PlanetaryIP
 	assert.NotEmpty(t, masterIP)
 
 	// Check wireguard config in output

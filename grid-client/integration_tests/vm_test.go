@@ -77,7 +77,7 @@ func TestVMDeployment(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+		v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 		assert.NoError(t, err)
 		assert.Equal(t, v.IP, "10.20.2.5")
 
@@ -85,10 +85,10 @@ func TestVMDeployment(t *testing.T) {
 		assert.NotEmpty(t, publicIP)
 		assert.True(t, TestConnection(publicIP, "22"))
 
-		yggIP := v.YggIP
-		assert.NotEmpty(t, yggIP)
+		planetaryIP := v.PlanetaryIP
+		assert.NotEmpty(t, planetaryIP)
 
-		output, err := RemoteRun("root", yggIP, "ls /", privateKey)
+		output, err := RemoteRun("root", planetaryIP, "ls /", privateKey)
 		assert.NoError(t, err)
 		assert.Contains(t, output, "root")
 	})

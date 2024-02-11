@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -50,8 +51,9 @@ func (d *NetworkDeployer) Validate(ctx context.Context, znet *workloads.ZNet) er
 	return d.InvalidateBrokenAttributes(znet)
 }
 
-// GenerateVersionlessDeployments generates deployments for network deployer without versions
-func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, znet *workloads.ZNet) (map[uint32]gridtypes.Deployment, error) {
+// GenerateVersionlessDeployments generates deployments for network deployer without versions.
+// usedPorts can be used to exclude some ports from being assigned to networks
+func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, znet *workloads.ZNet, usedPorts map[uint32][]uint16) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
 
 	log.Debug().Msgf("nodes: %v", znet.Nodes)
@@ -121,7 +123,7 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 	if err := znet.AssignNodesWGKey(allNodes); err != nil {
 		return nil, errors.Wrap(err, "could not assign node wg keys")
 	}
-	if err := znet.AssignNodesWGPort(ctx, sub, d.tfPluginClient.NcPool, allNodes); err != nil {
+	if err := znet.AssignNodesWGPort(ctx, sub, d.tfPluginClient.NcPool, allNodes, usedPorts); err != nil {
 		return nil, errors.Wrap(err, "could not assign node wg ports")
 	}
 
@@ -274,7 +276,7 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 		return err
 	}
 
-	newDeployments, err := d.GenerateVersionlessDeployments(ctx, znet)
+	newDeployments, err := d.GenerateVersionlessDeployments(ctx, znet, nil)
 	if err != nil {
 		return errors.Wrap(err, "could not generate deployments data")
 	}
@@ -310,19 +312,22 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 }
 
 // BatchDeploy deploys multiple network deployments using the deployer
-func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZNet) error {
+func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZNet, updateMetadata ...bool) error {
 	newDeployments := make(map[uint32][]gridtypes.Deployment)
 	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
-
+	nodePorts := make(map[uint32][]uint16)
+	var multiErr error
 	for _, znet := range znets {
 		err := d.Validate(ctx, znet)
 		if err != nil {
-			return err
+			multiErr = multierror.Append(multiErr, fmt.Errorf("invalid network %s: %w", znet.Name, err))
+			continue
 		}
 
-		dls, err := d.GenerateVersionlessDeployments(ctx, znet)
+		dls, err := d.GenerateVersionlessDeployments(ctx, znet, nodePorts)
 		if err != nil {
-			return errors.Wrap(err, "could not generate deployments data")
+			multiErr = multierror.Append(multiErr, fmt.Errorf("could not generate deployments data for network %s: %w", znet.Name, err))
+			continue
 		}
 
 		for nodeID, dl := range dls {
@@ -338,16 +343,24 @@ func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZN
 	}
 
 	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
+	if err != nil {
+		multiErr = multierror.Append(multiErr, err)
+	}
+
+	update := true
+	if len(updateMetadata) != 0 {
+		update = updateMetadata[0]
+	}
 
 	// update deployment and plugin state
 	// error is not returned immediately before updating state because of untracked failed deployments
 	for _, znet := range znets {
-		if err := d.updateStateFromDeployments(ctx, znet, newDls); err != nil {
+		if err := d.updateStateFromDeployments(ctx, znet, newDls, update); err != nil {
 			return errors.Wrapf(err, "failed to update network '%s' state", znet.Name)
 		}
 	}
 
-	return err
+	return multiErr
 }
 
 // Cancel cancels all the deployments
@@ -376,7 +389,35 @@ func (d *NetworkDeployer) Cancel(ctx context.Context, znet *workloads.ZNet) erro
 	return nil
 }
 
-func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *workloads.ZNet, dls map[uint32][]gridtypes.Deployment) error {
+// BatchCancel cancels all contracts for given networks. if one contracts failed all networks will not be canceled
+// and state won't be updated.
+func (d *NetworkDeployer) BatchCancel(ctx context.Context, znets []*workloads.ZNet) error {
+	var contracts []uint64
+	for _, znet := range znets {
+		for _, contractID := range znet.NodeDeploymentID {
+			if contractID != 0 {
+				contracts = append(contracts, contractID)
+			}
+		}
+	}
+	err := d.tfPluginClient.BatchCancelContract(contracts)
+	if err != nil {
+		return fmt.Errorf("failed to cancel contracts: %w", err)
+	}
+	for _, znet := range znets {
+		for nodeID, contractID := range znet.NodeDeploymentID {
+			d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
+		}
+		znet.NodeDeploymentID = make(map[uint32]uint64)
+		znet.Keys = make(map[uint32]wgtypes.Key)
+		znet.WGPort = make(map[uint32]int)
+		znet.NodesIPRange = make(map[uint32]gridtypes.IPNet)
+		znet.AccessWGConfig = ""
+	}
+	return nil
+}
+
+func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *workloads.ZNet, dls map[uint32][]gridtypes.Deployment, updateMetadata bool) error {
 	znet.NodeDeploymentID = map[uint32]uint64{}
 
 	for _, nodeID := range znet.Nodes {
@@ -386,8 +427,7 @@ func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *
 			if err != nil {
 				return errors.Wrapf(err, "could not get deployment %d data", dl.ContractID)
 			}
-
-			if dlData.Name == znet.Name {
+			if dlData.Name == znet.Name && dl.ContractID != 0 {
 				znet.NodeDeploymentID[nodeID] = dl.ContractID
 			}
 		}
@@ -400,6 +440,9 @@ func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *
 		}
 	}
 
+	if !updateMetadata {
+		return nil
+	}
 	if err := d.ReadNodesConfig(ctx, znet); err != nil {
 		return errors.Wrapf(err, "could not read node's data for network %s", znet.Name)
 	}

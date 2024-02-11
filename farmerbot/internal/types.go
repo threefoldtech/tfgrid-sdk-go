@@ -1,11 +1,14 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	zos "github.com/threefoldtech/zos/client"
 	"github.com/threefoldtech/zos/pkg"
@@ -46,6 +49,8 @@ type node struct {
 	lastTimePowerStateChanged time.Time
 	lastTimeAwake             time.Time
 	timesRandomWakeUps        int
+	// set the time the node wakes up every day
+	lastTimePeriodicWakeUp time.Time
 }
 
 // NodeFilterOption represents the options to find a node
@@ -58,10 +63,116 @@ type NodeFilterOption struct {
 	Dedicated     bool     `json:"dedicated,omitempty"`
 	PublicConfig  bool     `json:"public_config,omitempty"`
 	PublicIPs     uint64   `json:"public_ips,omitempty"`
-	HRU           uint64   `json:"hru,omitempty"`
-	SRU           uint64   `json:"sru,omitempty"`
+	HRU           uint64   `json:"hru,omitempty"` // in GB
+	SRU           uint64   `json:"sru,omitempty"` // in GB
 	CRU           uint64   `json:"cru,omitempty"`
-	MRU           uint64   `json:"mru,omitempty"`
+	MRU           uint64   `json:"mru,omitempty"` // in GB
+}
+
+// TODO: if one update failed maybe other would not fail
+func (n *node) update(
+	ctx context.Context,
+	sub Substrate,
+	rmbNodeClient RMB,
+	neverShutDown,
+	dedicatedFarm bool,
+) error {
+	nodeID := uint32(n.ID)
+	if nodeID == 0 {
+		return fmt.Errorf("invalid node id %d", nodeID)
+	}
+
+	twinID := uint32(n.TwinID)
+	if twinID == 0 {
+		return fmt.Errorf("invalid twin id %d", nodeID)
+	}
+
+	nodeObj, err := sub.GetNode(nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to get node %d from substrate with error: %w", nodeID, err)
+	}
+
+	n.Node = *nodeObj
+	n.neverShutDown = neverShutDown
+
+	price, err := sub.GetDedicatedNodePrice(nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to get node %d dedicated price from substrate with error: %w", nodeID, err)
+	}
+
+	if price != 0 || dedicatedFarm {
+		n.dedicated = true
+	}
+
+	rentContract, err := sub.GetNodeRentContract(nodeID)
+	if errors.Is(err, substrate.ErrNotFound) {
+		n.hasActiveRentContract = false
+	} else if err != nil {
+		return fmt.Errorf("failed to get node %d rent contract from substrate with error: %w", nodeID, err)
+	}
+
+	n.hasActiveRentContract = rentContract != 0
+
+	powerTarget, err := sub.GetPowerTarget(nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to get node %d power target from substrate with error: %w", nodeID, err)
+	}
+
+	if powerTarget.State.IsDown && powerTarget.Target.IsUp && n.powerState != wakingUp {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is waking up")
+		n.powerState = wakingUp
+		n.lastTimePowerStateChanged = time.Now()
+	}
+
+	if powerTarget.State.IsUp && powerTarget.Target.IsUp && n.powerState != on {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is on")
+		n.powerState = on
+		n.lastTimeAwake = time.Now()
+		n.lastTimePowerStateChanged = time.Now()
+	}
+
+	if powerTarget.State.IsUp && powerTarget.Target.IsDown && n.powerState != shuttingDown {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is shutting down")
+		n.powerState = shuttingDown
+		n.lastTimePowerStateChanged = time.Now()
+	}
+
+	if powerTarget.State.IsDown && powerTarget.Target.IsDown && n.powerState != off {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is off")
+		n.powerState = off
+		n.lastTimePowerStateChanged = time.Now()
+	}
+
+	// don't call rmb over off nodes (state and target are off)
+	if n.powerState == off {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node is off, will skip rmb calls")
+		return nil
+	}
+
+	// update resources for nodes that have no claimed resources
+	// we do not update the resources for the nodes that have claimed resources because those resources should not be overwritten until the timeout
+	hasClaimedResources := n.timeoutClaimedResources.After(time.Now())
+	if !hasClaimedResources {
+		stats, err := rmbNodeClient.Statistics(ctx, twinID)
+		if err != nil {
+			return fmt.Errorf("failed to get node %d statistics from rmb with error: %w", nodeID, err)
+		}
+		n.updateResources(stats)
+	}
+
+	pools, err := rmbNodeClient.GetStoragePools(ctx, twinID)
+	if err != nil {
+		return fmt.Errorf("failed to get node %d pools from rmb with error: %w", nodeID, err)
+	}
+	n.pools = pools
+
+	gpus, err := rmbNodeClient.ListGPUs(ctx, twinID)
+	if err != nil {
+		return fmt.Errorf("failed to get node %d gpus from rmb with error: %w", nodeID, err)
+	}
+	n.gpus = gpus
+
+	return nil
 }
 
 // UpdateResources updates the node resources from zos resources stats
@@ -100,7 +211,8 @@ func (n *node) freeCapacity(overProvisionCPU int8) capacity {
 // nodes with public config can't be shutdown
 // Do not shutdown a node that just came up (give it some time `periodicWakeUpDuration`)
 func (n *node) canShutDown() bool {
-	if !n.isUnused() ||
+	if n.powerState != on ||
+		!n.isUnused() ||
 		n.PublicConfig.HasValue ||
 		n.neverShutDown ||
 		n.hasActiveRentContract ||

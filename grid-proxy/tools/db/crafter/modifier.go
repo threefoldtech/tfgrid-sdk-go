@@ -80,12 +80,10 @@ func (g *Crafter) UpdateNodeContractState() error {
 func (g *Crafter) UpdateRentContract() error {
 	updatesCount := 10
 	query := ""
-	states := []string{"Deleted", "GracePeriod"}
+	state := "Deleted"
 
 	for i := 0; i < updatesCount; i++ {
-		// WATCH
 		contractId := r.Intn(int(g.RentContractCount)) + 1
-		state := states[r.Intn(2)]
 		query += fmt.Sprintf("UPDATE rent_contract SET state = '%s' WHERE contract_id = %d;", state, contractId)
 	}
 

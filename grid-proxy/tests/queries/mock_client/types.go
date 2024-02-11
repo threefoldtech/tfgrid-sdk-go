@@ -149,6 +149,11 @@ type NodeGPU struct {
 	Contract   int
 }
 
+type HealthReport struct {
+	NodeTwinId uint64
+	Healthy    bool
+}
+
 type Country struct {
 	ID        string
 	CountryID uint64

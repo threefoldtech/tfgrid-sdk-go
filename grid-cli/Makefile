@@ -19,45 +19,18 @@ coverage: clean
 clean:
 	rm ./coverage -rf
 	rm ./bin -rf
-	
+
 getverifiers:
-	@echo "Installing staticcheck" && go get -u honnef.co/go/tools/cmd/staticcheck && go install honnef.co/go/tools/cmd/staticcheck
-	@echo "Installing gocyclo" && go get -u github.com/fzipp/gocyclo/cmd/gocyclo && go install github.com/fzipp/gocyclo/cmd/gocyclo
-	@echo "Installing deadcode" && go get -u github.com/remyoudompheng/go-misc/deadcode && go install github.com/remyoudompheng/go-misc/deadcode
-	@echo "Installing misspell" && go get -u github.com/client9/misspell/cmd/misspell && go install github.com/client9/misspell/cmd/misspell
-	@echo "Installing golangci-lint" && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
-
-verifiers: fmt lint cyclo deadcode spelling staticcheck
-
-checks: verifiers
-
-fmt:
-	@echo "Running $@"
-	@gofmt -d .
+	@echo "Installing golangci-lint" && go install github.com/golangci/golangci-lint/cmd/golangci-lint
+	go mod tidy
 
 lint:
 	@echo "Running $@"
-	@${GOPATH}/bin/golangci-lint run
-
-cyclo:
-	@echo "Running $@"
-	@${GOPATH}/bin/gocyclo -over 100 .
-
-deadcode:
-	@echo "Running $@"
-	@${GOPATH}/bin/deadcode -test $(shell go list ./...) || true
-
-spelling:
-	@echo "Running $@"
-	@${GOPATH}/bin/misspell -i monitord -error `find .`
-
-staticcheck:
-	@echo "Running $@"
-	@${GOPATH}/bin/staticcheck -- ./...
+	golangci-lint run -c ../.golangci.yml
 
 build:
 	@echo "Running $@"
 	@go build -ldflags=\
 	"-X 'github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit=$(shell git rev-parse HEAD)'\
 	 -X 'github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
-	 -o bin/tf-grid-cli main.go
+	 -o bin/tfcmd main.go

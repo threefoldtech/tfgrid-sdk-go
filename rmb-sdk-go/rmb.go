@@ -131,7 +131,7 @@ type DefaultRouter struct {
 // NewRouter creates a new default router. with the local redis address.
 // Normally you want to do NewRouter(DefaultAddress)
 func NewRouter(address string) (*DefaultRouter, error) {
-	pool, err := newRedisPool(address)
+	pool, err := NewRedisPool(address)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to connect to %s", address)
 	}

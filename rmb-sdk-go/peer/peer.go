@@ -31,6 +31,68 @@ const (
 // messages. An error can be non-nil error if verification or decryption failed
 type Handler func(ctx context.Context, peer Peer, env *types.Envelope, err error)
 
+type cacheFactory = func(inner TwinDB) (TwinDB, error)
+
+type peerCfg struct {
+	relayURL         string
+	keyType          string
+	session          string
+	enableEncryption bool
+	encoder          encoder.Encoder
+	cacheFactory     cacheFactory
+}
+
+type PeerOpt func(*peerCfg)
+
+// WithSession set a custom session name, default is the nil session
+func WithSession(session string) PeerOpt {
+	return func(p *peerCfg) {
+		p.session = session
+	}
+}
+
+// enable or disable encryption, default is enabled
+func WithEncryption(enable bool) PeerOpt {
+	return func(p *peerCfg) {
+		p.enableEncryption = enable
+	}
+}
+
+// WithRelay set up the relay url, default is mainnet relay
+func WithRelay(url string) PeerOpt {
+	return func(p *peerCfg) {
+		p.relayURL = url
+	}
+}
+
+// WithKeyType set up the menmonic key type, default is Sr25519
+func WithKeyType(keyType string) PeerOpt {
+	return func(p *peerCfg) {
+		// to ensure only ed25519 and sr25519 are used
+		if keyType != KeyTypeEd25519 {
+			keyType = KeyTypeSr25519
+		}
+		p.keyType = keyType
+	}
+}
+
+// WithEncoder sets encoding of the payload default is application/json
+func WithEncoder(encoder encoder.Encoder) PeerOpt {
+	return func(p *peerCfg) {
+		p.encoder = encoder
+	}
+}
+
+// WithTwinCache cache twin information for this ttl number of seconds
+// by default twins are cached in memory forever
+func WithTwinCache(ttl uint64) PeerOpt {
+	return func(pc *peerCfg) {
+		pc.cacheFactory = func(inner TwinDB) (TwinDB, error) {
+			return newTmpCache(ttl, inner)
+		}
+	}
+}
+
 // Peer exposes the functionality to talk directly to an rmb relay
 type Peer struct {
 	source  *types.Address
@@ -90,7 +152,11 @@ func NewPeer(
 		session:          "",
 		enableEncryption: true,
 		keyType:          KeyTypeSr25519,
+		cacheFactory: func(inner TwinDB) (TwinDB, error) {
+			return newInMemoryCache(inner), nil
+		},
 	}
+
 	for _, o := range opts {
 		o(cfg)
 	}
@@ -103,7 +169,16 @@ func NewPeer(
 		return nil, err
 	}
 
-	twinDB := NewTwinDB(subManager)
+	subConn, err := subManager.Substrate()
+	if err != nil {
+		return nil, err
+	}
+
+	twinDB, err := cfg.cacheFactory(NewTwinDB(subConn))
+	if err != nil {
+		return nil, err
+	}
+
 	id, err := twinDB.GetByPk(identity.PublicKey())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get twin by public key")
@@ -175,50 +250,6 @@ func NewPeer(
 // Encoder returns the peer's encoder.
 func (p *Peer) Encoder() encoder.Encoder {
 	return p.encoder
-}
-
-type peerCfg struct {
-	relayURL         string
-	keyType          string
-	session          string
-	enableEncryption bool
-	encoder          encoder.Encoder
-}
-
-type PeerOpt func(*peerCfg)
-
-func WithSession(session string) PeerOpt {
-	return func(p *peerCfg) {
-		p.session = session
-	}
-}
-
-func WithEncryption(enable bool) PeerOpt {
-	return func(p *peerCfg) {
-		p.enableEncryption = enable
-	}
-}
-
-func WithRelay(url string) PeerOpt {
-	return func(p *peerCfg) {
-		p.relayURL = url
-	}
-}
-
-func WithKeyType(keyType string) PeerOpt {
-	return func(p *peerCfg) {
-		// to ensure only ed25519 and sr25519 are used
-		if keyType != KeyTypeEd25519 {
-			keyType = KeyTypeSr25519
-		}
-		p.keyType = keyType
-	}
-}
-
-func WithEncoder(encoder encoder.Encoder) PeerOpt {
-	return func(p *peerCfg) {
-		p.encoder = encoder
-	}
 }
 
 func (d Peer) handleIncoming(incoming *types.Envelope) error {

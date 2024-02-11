@@ -16,6 +16,6 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "get farmerbot latest version and commit",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("version: %s", version.Version)
+		fmt.Println(version.Version)
 	},
 }

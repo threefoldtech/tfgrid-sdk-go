@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 
 	"github.com/pkg/errors"
@@ -13,7 +14,7 @@ import (
 )
 
 // Get handles get command logic
-func Get(debug bool) error {
+func Get(ctx context.Context, debug bool) error {
 	path, err := config.GetConfigPath()
 	if err != nil {
 		return errors.Wrap(err, "failed to get configuration file")
@@ -53,7 +54,7 @@ func Get(debug bool) error {
 		return err
 	}
 
-	fqdns, err := deployer.Get()
+	fqdns, err := deployer.Get(ctx)
 	if err != nil {
 		return err
 	}

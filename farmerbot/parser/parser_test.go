@@ -76,26 +76,28 @@ func TestEnvParser(t *testing.T) {
 	t.Run("test invalid env", func(t *testing.T) {
 		content := `invalid`
 
-		_, _, err := ParseEnv(content)
+		_, _, _, err := ParseEnv(content)
 		assert.Error(t, err)
 	})
 
 	t.Run("test invalid env key", func(t *testing.T) {
 		content := `invalid=invalid`
 
-		_, _, err := ParseEnv(content)
+		_, _, _, err := ParseEnv(content)
 		assert.Error(t, err)
 	})
 
 	t.Run("test valid env", func(t *testing.T) {
 		content := `
 NETWORK=dev
-MNEMONIC_OR_SEED=0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a`
+MNEMONIC_OR_SEED=0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a
+KEY_TYPE=ed25519`
 
-		net, seed, err := ParseEnv(content)
+		net, seed, keyType, err := ParseEnv(content)
 		assert.NoError(t, err)
 		assert.Equal(t, net, internal.DevNetwork)
 		assert.Equal(t, seed, "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a")
+		assert.Equal(t, keyType, "ed25519")
 	})
 
 	t.Run("test valid env: network is missing", func(t *testing.T) {
@@ -103,10 +105,11 @@ MNEMONIC_OR_SEED=0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5
 NETWORK=
 MNEMONIC_OR_SEED=0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a`
 
-		net, seed, err := ParseEnv(content)
+		net, seed, keyType, err := ParseEnv(content)
 		assert.NoError(t, err)
 		assert.Equal(t, net, internal.MainNetwork)
 		assert.Equal(t, seed, "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a")
+		assert.Equal(t, keyType, "sr25519")
 	})
 
 	t.Run("test invalid env: network is invalid", func(t *testing.T) {
@@ -114,7 +117,7 @@ MNEMONIC_OR_SEED=0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5
 NETWORK=qenet
 MNEMONIC_OR_SEED=0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a`
 
-		_, _, err := ParseEnv(content)
+		_, _, _, err := ParseEnv(content)
 		assert.Error(t, err)
 	})
 
@@ -123,7 +126,7 @@ MNEMONIC_OR_SEED=0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5
 NETWORK=
 MNEMONIC_OR_SEED=`
 
-		_, _, err := ParseEnv(content)
+		_, _, _, err := ParseEnv(content)
 		assert.Error(t, err)
 	})
 
@@ -132,7 +135,7 @@ MNEMONIC_OR_SEED=`
 NETWORK=
 MNEMONIC_OR_SEED=//alice`
 
-		_, _, err := ParseEnv(content)
+		_, _, _, err := ParseEnv(content)
 		assert.Error(t, err)
 	})
 }
