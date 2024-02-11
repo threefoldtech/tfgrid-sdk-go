@@ -2,17 +2,12 @@ package deployer
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
-	"os"
-	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/sethvargo/go-retry"
-	"gopkg.in/yaml.v3"
 
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -20,11 +15,12 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-const maxDeploymentRetries = 5
-const maxGoroutinesToFetchState = 100
+const (
+	maxDeploymentRetries = 5
+)
 
 func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) error {
-	passedGroups := map[string][]vmOutput{}
+	passedGroups := []string{}
 	failedGroups := map[string]string{}
 
 	tfPluginClient, err := setup(cfg, debug)
@@ -48,15 +44,14 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 				log.Info().Str("Node group", nodeGroup.Name).Int("Deployment trial", trial).Msg("Retrying to deploy")
 			}
 
-			info, err := deployNodeGroup(ctx, tfPluginClient, &groupDeployments, nodeGroup, cfg.Vms, cfg.SSHKeys)
-			if err != nil {
+			if err := deployNodeGroup(ctx, tfPluginClient, &groupDeployments, nodeGroup, cfg.Vms, cfg.SSHKeys); err != nil {
 				trial++
 				log.Debug().Err(err).Str("Node group", nodeGroup.Name).Msg("failed to deploy")
 				return retry.RetryableError(err)
 			}
 
 			log.Info().Str("Node group", nodeGroup.Name).Msg("Done deploying")
-			passedGroups[nodeGroup.Name] = info
+			passedGroups = append(passedGroups, nodeGroup.Name)
 			return nil
 		}); err != nil {
 
@@ -70,35 +65,17 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 
 	endTime := time.Since(deploymentStart)
 
-	outData := struct {
-		OK    map[string][]vmOutput `json:"ok"`
-		Error map[string]string     `json:"error"`
-	}{
-		OK:    passedGroups,
-		Error: failedGroups,
-	}
-
-	var outputBytes []byte
-	if filepath.Ext(output) == ".json" {
-		outputBytes, err = json.MarshalIndent(outData, "", "  ")
-	} else {
-		outputBytes, err = yaml.Marshal(outData)
-	}
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(outputBytes))
+	err = RunLoader(ctx, cfg, debug, output)
 	log.Info().Msgf("Deployment took %s", endTime)
 
-	return os.WriteFile(output, outputBytes, 0644)
+	return err
 }
 
-func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, groupDeployments *groupDeploymentsInfo, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) ([]vmOutput, error) {
+func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, groupDeployments *groupDeploymentsInfo, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) error {
 	log.Info().Str("Node group", nodeGroup.Name).Msg("Filter nodes")
 	nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	log.Debug().Ints("nodes IDs", nodesIDs).Send()
 
@@ -113,13 +90,10 @@ func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient
 	log.Info().Str("Node group", nodeGroup.Name).Msg("Starting mass deployment")
 	err = massDeploy(ctx, tfPluginClient, groupDeployments)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	log.Debug().Msg("Load deployments")
-	vmsInfo, err := loadGroupInfo(ctx, tfPluginClient, groupDeployments.vmDeployments)
-
-	return vmsInfo, err
+	return err
 }
 
 func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
@@ -230,67 +204,6 @@ func getNotDeployedDeployments(tfPluginClient deployer.TFPluginClient, groupDepl
 	}
 
 	return failedNetworkDeployments, failedVmDeployments
-}
-
-func loadGroupInfo(ctx context.Context, tfPluginClient deployer.TFPluginClient, vmDeployments []*workloads.Deployment) ([]vmOutput, error) {
-	vmsInfo := []vmOutput{}
-	var multiErr error
-	var lock sync.Mutex
-	var wg sync.WaitGroup
-
-	// Create a channel to act as a semaphore with a capacity of maxGoroutinesToFetchState
-	sem := make(chan struct{}, maxGoroutinesToFetchState)
-
-	for _, deployment := range vmDeployments {
-		wg.Add(1)
-
-		// Acquire a slot in the semaphore before starting the goroutine
-		sem <- struct{}{}
-
-		go func(deployment workloads.Deployment) {
-			defer wg.Done()
-			// Ensure the slot is released as soon as the goroutine completes or errors
-			defer func() { <-sem }()
-
-			log.Debug().
-				Str("vm", deployment.Name).
-				Msg("loading vm info from state")
-
-			vmDeployment, err := tfPluginClient.State.LoadDeploymentFromGrid(ctx, deployment.NodeID, deployment.Name)
-			if err != nil {
-				lock.Lock()
-				multiErr = multierror.Append(multiErr, err)
-				lock.Unlock()
-
-				log.Debug().Err(err).
-					Str("vm", deployment.Vms[0].Name).
-					Str("deployment", deployment.Name).
-					Uint32("node ID", deployment.NodeID).
-					Msg("couldn't load from state")
-				return
-			}
-
-			vm := vmDeployment.Vms[0]
-			vmInfo := vmOutput{
-				Name:        vm.Name,
-				NetworkName: vmDeployment.NetworkName,
-				NodeID:      vmDeployment.NodeID,
-				ContractID:  vmDeployment.ContractID,
-				PublicIP4:   vm.ComputedIP,
-				PublicIP6:   vm.ComputedIP6,
-				PlanetaryIP: vm.PlanetaryIP,
-				IP:          vm.IP,
-				Mounts:      vm.Mounts,
-			}
-
-			lock.Lock()
-			vmsInfo = append(vmsInfo, vmInfo)
-			lock.Unlock()
-		}(*deployment)
-	}
-	wg.Wait()
-
-	return vmsInfo, multiErr
 }
 
 func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mountsWorkloads []workloads.Mount) {
