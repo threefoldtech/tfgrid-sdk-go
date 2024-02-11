@@ -41,7 +41,7 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 		}
 		return workloads.VM{}, errors.Wrapf(err, "failed to deploy vm on node %d", node)
 	}
-	resVM, err := t.State.LoadVMFromGrid(node, vm.Name, dl.Name)
+	resVM, err := t.State.LoadVMFromGrid(ctx, node, vm.Name, dl.Name)
 	if err != nil {
 		return workloads.VM{}, errors.Wrapf(err, "failed to load vm from node %d", node)
 	}
@@ -88,6 +88,7 @@ func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, mas
 		nodeIDs = append(nodeIDs, worker.Node)
 	}
 	return t.State.LoadK8sFromGrid(
+		ctx,
 		nodeIDs,
 		master.Name,
 	)
@@ -100,7 +101,7 @@ func DeployGatewayName(ctx context.Context, t deployer.TFPluginClient, gateway w
 	if err != nil {
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "failed to deploy gateway on node %d", gateway.NodeID)
 	}
-	return t.State.LoadGatewayNameFromGrid(gateway.NodeID, gateway.Name, gateway.Name)
+	return t.State.LoadGatewayNameFromGrid(ctx, gateway.NodeID, gateway.Name, gateway.Name)
 }
 
 // DeployGatewayFQDN deploys a gateway fqdn
@@ -125,7 +126,7 @@ func DeployZDBs(ctx context.Context, t deployer.TFPluginClient, projectName stri
 
 	var resZDBs []workloads.ZDB
 	for _, zdb := range zdbs {
-		resZDB, err := t.State.LoadZdbFromGrid(node, zdb.Name, dl.Name)
+		resZDB, err := t.State.LoadZdbFromGrid(ctx, node, zdb.Name, dl.Name)
 		if err != nil {
 			return []workloads.ZDB{}, errors.Wrapf(err, "failed to load zdb '%s' from node %d", zdb.Name, node)
 		}

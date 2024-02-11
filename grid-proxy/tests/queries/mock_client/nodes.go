@@ -361,6 +361,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.Excluded != nil && len(f.Excluded) != 0 && slices.Contains(f.Excluded, n.NodeID) {
+		return false
+	}
+
 	rentable := data.NodeRentedBy[n.NodeID] == 0 &&
 		(data.Farms[n.FarmID].DedicatedFarm || len(data.NonDeletedContracts[n.NodeID]) == 0)
 	if f.Rentable != nil && *f.Rentable != rentable {

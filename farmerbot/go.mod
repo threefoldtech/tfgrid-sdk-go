@@ -9,13 +9,15 @@ require (
 	github.com/hashicorp/go-envparse v0.1.0
 	github.com/jedib0t/go-pretty/v6 v6.5.3
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.32.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240101155545-8dfb94126345
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240116163757-68c63d80a9e0
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.14.0
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.10
-	github.com/threefoldtech/zos v0.5.6-0.20231029102142-baf8d9ee77fe
+	github.com/threefoldtech/zos v0.5.6-0.20240201092442-d2ba5be539d2
 	github.com/vedhavyas/go-subkey v1.0.3
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -23,6 +25,7 @@ require (
 	github.com/ChainSafe/go-schnorrkel v1.1.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
+	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/base58 v1.0.5 // indirect
@@ -34,6 +37,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
 	github.com/google/uuid v1.5.0 // indirect
+	github.com/gorilla/schema v1.2.1 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect

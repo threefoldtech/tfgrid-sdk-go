@@ -9,9 +9,10 @@ import (
 )
 
 // CancelByProjectName cancels a deployed project
-func (t *TFPluginClient) CancelByProjectName(projectName string) error {
-	log.Info().Msgf("canceling contracts for project %s", projectName)
-	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName)
+func (t *TFPluginClient) CancelByProjectName(projectName string, noGateways ...bool) error {
+	log.Info().Str("project name", projectName).Msg("canceling contracts")
+
+	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName, noGateways...)
 	if err != nil {
 		return errors.Wrapf(err, "could not load contracts for project %s", projectName)
 	}
@@ -25,10 +26,17 @@ func (t *TFPluginClient) CancelByProjectName(projectName string) error {
 		}
 		contractIDS = append(contractIDS, contractID)
 	}
+
+	if len(contractIDS) == 0 {
+		log.Info().Str("project name", projectName).Msg("No contracts exist for the project name")
+		return nil
+	}
+
+	log.Debug().Uints64("contracts IDs", contractIDS).Msg("Batch cancel")
 	if err := t.BatchCancelContract(contractIDS); err != nil {
 		return fmt.Errorf("failed to cancel contracts for project %s: %w", projectName, err)
 	}
 
-	log.Info().Msgf("%s canceled", projectName)
+	log.Info().Str("project name", projectName).Msg("project is canceled")
 	return nil
 }

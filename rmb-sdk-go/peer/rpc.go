@@ -25,7 +25,7 @@ type incomingEnv struct {
 type RpcClient struct {
 	base      *Peer
 	responses map[string]chan incomingEnv
-	m         sync.Mutex
+	m         sync.RWMutex
 }
 
 // NewRpcClient create a new rpc client
@@ -33,12 +33,9 @@ type RpcClient struct {
 // it easy to make rpc calls
 func NewRpcClient(
 	ctx context.Context,
-	keytype string,
 	mnemonics string,
-	relayURL string,
-	session string,
 	subManager substrate.Manager,
-	enableEncryption bool) (*RpcClient, error) {
+	opts ...PeerOpt) (*RpcClient, error) {
 
 	rpc := RpcClient{
 		responses: make(map[string]chan incomingEnv),
@@ -49,10 +46,7 @@ func NewRpcClient(
 		mnemonics,
 		subManager,
 		rpc.router,
-		WithEncryption(enableEncryption),
-		WithKeyType(keytype),
-		WithRelay(relayURL),
-		WithSession(session),
+		opts...,
 	)
 
 	if err != nil {
@@ -64,8 +58,8 @@ func NewRpcClient(
 }
 
 func (d *RpcClient) router(ctx context.Context, peer Peer, env *types.Envelope, err error) {
-	d.m.Lock()
-	defer d.m.Unlock()
+	d.m.RLock()
+	defer d.m.RUnlock()
 
 	ch, ok := d.responses[env.Uid]
 	if !ok {
@@ -85,7 +79,7 @@ func (d *RpcClient) Call(ctx context.Context, twin uint32, fn string, data inter
 func (d *RpcClient) CallWithSession(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error {
 	id := uuid.NewString()
 
-	ch := make(chan incomingEnv)
+	ch := make(chan incomingEnv, 1)
 	defer func() {
 		close(ch)
 

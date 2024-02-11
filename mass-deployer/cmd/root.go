@@ -14,13 +14,26 @@ var rootCmd = &cobra.Command{
 	Short: "A tool for deploying groups of vms on Threefold Grid",
 }
 
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(deployCmd)
+	rootCmd.AddCommand(cancelCmd)
+
 	err := rootCmd.Execute()
 	if err != nil {
-		os.Exit(1)
+		log.Fatal().Err(err).Send()
 	}
 }
 
 func init() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	deployCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
+	deployCmd.Flags().StringP("config", "c", "", "path to config file")
+	deployCmd.Flags().StringP("output", "o", "output.yaml", "path to output file")
+
+	cancelCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
+	cancelCmd.Flags().StringP("config", "c", "", "path to config file")
 }

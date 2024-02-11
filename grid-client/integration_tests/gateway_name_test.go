@@ -79,10 +79,10 @@ func TestGatewayNameDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	assert.NoError(t, err)
 
-	backend := fmt.Sprintf("http://[%s]:9000", v.YggIP)
+	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
 	gw := workloads.GatewayNameProxy{
 		NodeID:         gwNodeID,
 		Name:           "test",
@@ -98,12 +98,12 @@ func TestGatewayNameDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	result, err := tfPluginClient.State.LoadGatewayNameFromGrid(gwNodeID, gw.Name, gw.Name)
+	result, err := tfPluginClient.State.LoadGatewayNameFromGrid(ctx, gwNodeID, gw.Name, gw.Name)
 	assert.NoError(t, err)
 
 	assert.NotEmpty(t, result.FQDN)
 
-	_, err = RemoteRun("root", v.YggIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+	_, err = RemoteRun("root", v.PlanetaryIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 	assert.NoError(t, err)
 
 	time.Sleep(3 * time.Second)

@@ -27,7 +27,7 @@ type K8sNode struct {
 	FlistChecksum string `json:"flist_checksum"`
 	ComputedIP    string `json:"computedip"`
 	ComputedIP6   string `json:"computedip6"`
-	YggIP         string `json:"ygg_ip"`
+	PlanetaryIP   string `json:"planetary_ip"`
 	IP            string `json:"ip"`
 	CPU           int    `json:"cpu"`
 	Memory        int    `json:"memory"`
@@ -81,12 +81,12 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, 
 		DiskSize:      diskSize,
 		PublicIP:      computedIP != "",
 		PublicIP6:     computedIP6 != "",
-		Planetary:     result.YggIP != "",
+		Planetary:     result.PlanetaryIP != "",
 		Flist:         d.FList,
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    computedIP,
 		ComputedIP6:   computedIP6,
-		YggIP:         result.YggIP,
+		PlanetaryIP:   result.PlanetaryIP,
 		IP:            d.Network.Interfaces[0].IP.String(),
 		CPU:           int(d.ComputeCapacity.CPU),
 		Memory:        int(d.ComputeCapacity.Memory / gridtypes.Megabyte),

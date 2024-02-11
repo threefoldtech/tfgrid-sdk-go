@@ -598,6 +598,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.CertificationType != nil {
 		q = q.Where("node.certification ILIKE ?", *filter.CertificationType)
 	}
+	if filter.Excluded != nil {
+		q = q.Where("node.node_id NOT IN ?", filter.Excluded)
+	}
 
 	// Dedicated nodes filters
 	if filter.InDedicatedFarm != nil {
@@ -884,6 +887,14 @@ func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, nodesGPU []types.
 	err := p.gormDB.WithContext(ctx).Table("node_gpu").Clauses(conflictClause).Create(&nodesGPU).Error
 	if err != nil {
 		return fmt.Errorf("failed to upsert nodes GPU details: %w", err)
+	}
+	return nil
+}
+
+func (p *PostgresDatabase) DeleteOldGpus(ctx context.Context, nodeTwinIds []uint32) error {
+	err := p.gormDB.WithContext(ctx).Table("node_gpu").Where("node_twin_id IN (?)", nodeTwinIds).Delete(types.NodeGPU{}).Error
+	if err != nil {
+		return fmt.Errorf("failed to delete old gpus: %w", err)
 	}
 	return nil
 }

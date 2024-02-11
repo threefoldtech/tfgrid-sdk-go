@@ -143,6 +143,7 @@ type NodeFilter struct {
 	Healthy           *bool    `schema:"healthy,omitempty"`
 	PriceMin          *float64 `schema:"price_min,omitempty"`
 	PriceMax          *float64 `schema:"price_max,omitempty"`
+	Excluded          []uint64 `schema:"excluded,omitempty"`
 }
 
 // NodeGPU holds the info about gpu card
