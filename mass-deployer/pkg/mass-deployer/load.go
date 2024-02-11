@@ -42,7 +42,7 @@ func loadNodeGroupsInfo(ctx context.Context, tfPluginClient deployer.TFPluginCli
 
 	// load contracts with node group name
 	for _, nodeGroup := range cfg.NodeGroups {
-		if err := retry.Do(ctx, retry.WithMaxRetries(uint64(cfg.MaxRetries), retry.NewConstant(1*time.Second)), func(ctx context.Context) error {
+		if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxRetries, retry.NewConstant(1*time.Second)), func(ctx context.Context) error {
 			if trial != 1 {
 				log.Debug().Str("Node group", nodeGroup.Name).Int("Deployment trial", trial).Msg("Retrying to load")
 			}
