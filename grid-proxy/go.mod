@@ -19,7 +19,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4
 	github.com/threefoldtech/zos v0.5.6-0.20240201092442-d2ba5be539d2
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
-	gorm.io/driver/postgres v1.5.4
+	gorm.io/driver/postgres v1.5.6
 	gorm.io/gorm v1.25.7
 
 )
@@ -61,7 +61,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/miekg/dns v1.1.55 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b // indirect
-	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/cors v1.10.1 // indirect
