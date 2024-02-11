@@ -9,7 +9,10 @@ import (
 	"strings"
 
 	"github.com/cosmos/go-bip39"
-	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	massDeployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"golang.org/x/sync/errgroup"
 )
 
 var alphanumeric = regexp.MustCompile("^[a-z0-9_]+$")
@@ -29,7 +32,40 @@ func validateNetwork(network string) error {
 	return nil
 }
 
-func validateVMs(vms []deployer.Vms, nodeGroups []deployer.NodesGroup, sskKeys map[string]string) error {
+func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, mnemonic, network string) error {
+	errGroup := new(errgroup.Group)
+	tfPluginClient, err := deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, "", "", "", 0, false, false)
+	if err != nil {
+		return err
+	}
+
+	for _, group := range nodeGroups {
+		group := group
+
+		errGroup.Go(func() error {
+			nodeGroupName := strings.TrimSpace(group.Name)
+
+			if !alphanumeric.MatchString(nodeGroupName) {
+				return fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
+			}
+
+			contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName, true)
+			if err != nil {
+				return err
+			}
+
+			if len(contracts.NodeContracts) != 0 {
+				return fmt.Errorf("node group name: '%s' is invalid, should be unique name across all deployments", nodeGroupName)
+			}
+
+			return nil
+		})
+	}
+
+	return errGroup.Wait()
+}
+
+func validateVMs(vms []massDeployer.Vms, nodeGroups []massDeployer.NodesGroup, sskKeys map[string]string) error {
 	usedResources := make(map[string]map[string]interface{}, len(nodeGroups))
 	var vmNodeGroupExists bool
 
@@ -107,7 +143,7 @@ func validateFlist(flist, name string) error {
 	return nil
 }
 
-func setVMUsedResources(vmsGroup deployer.Vms, vmUsedResources map[string]interface{}) map[string]interface{} {
+func setVMUsedResources(vmsGroup massDeployer.Vms, vmUsedResources map[string]interface{}) map[string]interface{} {
 	if _, ok := vmUsedResources["free_cpu"]; !ok {
 		vmUsedResources = make(map[string]interface{}, 5)
 		vmUsedResources["free_cpu"] = uint64(0)

@@ -891,6 +891,14 @@ func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, nodesGPU []types.
 	return nil
 }
 
+func (p *PostgresDatabase) DeleteOldGpus(ctx context.Context, nodeTwinIds []uint32) error {
+	err := p.gormDB.WithContext(ctx).Table("node_gpu").Where("node_twin_id IN (?)", nodeTwinIds).Delete(types.NodeGPU{}).Error
+	if err != nil {
+		return fmt.Errorf("failed to delete old gpus: %w", err)
+	}
+	return nil
+}
+
 func (p *PostgresDatabase) GetLastNodeTwinID(ctx context.Context) (int64, error) {
 	var node Node
 	err := p.gormDB.Table("node").Order("twin_id DESC").Limit(1).Scan(&node).Error

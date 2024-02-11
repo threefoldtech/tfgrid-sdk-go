@@ -467,6 +467,12 @@ func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.Error(fmt.Errorf("failed to get get node GPU information from relay: %w", err))
 	}
+
+	// assign the called twin id for clearer response
+	for i := 0; i < len(res); i++ {
+		res[i].NodeTwinID = uint32(node.TwinID)
+	}
+
 	return res, mw.Ok()
 }
 

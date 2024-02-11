@@ -20,8 +20,10 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-const maxDeploymentRetries = 5
-const maxGoroutinesToFetchState = 100
+const (
+	DefaultMaxRetries         = 5
+	maxGoroutinesToFetchState = 100
+)
 
 func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) error {
 	passedGroups := map[string][]vmOutput{}
@@ -35,7 +37,7 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 	deploymentStart := time.Now()
 
 	if cfg.MaxRetries == 0 {
-		cfg.MaxRetries = maxDeploymentRetries
+		cfg.MaxRetries = DefaultMaxRetries
 	}
 
 	for _, nodeGroup := range cfg.NodeGroups {
