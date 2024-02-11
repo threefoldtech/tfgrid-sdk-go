@@ -7,13 +7,12 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/cosmos/go-bip39"
-	"github.com/hashicorp/go-multierror"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	massDeployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"golang.org/x/sync/errgroup"
 )
 
 var alphanumeric = regexp.MustCompile("^[a-z0-9_]+$")
@@ -34,47 +33,40 @@ func validateNetwork(network string) error {
 }
 
 func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, mnemonic, network string) error {
+	errGroup := new(errgroup.Group)
 	tfPluginClient, err := deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, "", "", "", 0, false, false)
 	if err != nil {
 		return err
 	}
 
-	var multiErr error
-	var wg sync.WaitGroup
-	var lock sync.Mutex
-
 	for _, group := range nodeGroups {
-		wg.Add(1)
-		go func(group massDeployer.NodesGroup) {
-			defer wg.Done()
+		group := group
+
+		errGroup.Go(func() error {
 			nodeGroupName := strings.TrimSpace(group.Name)
 
 			if !alphanumeric.MatchString(nodeGroupName) {
-				lock.Lock()
-				multiErr = multierror.Append(multiErr, fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName))
-				lock.Unlock()
-				return
+				return fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
 			}
 
 			contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName, true)
 			if err != nil {
-				lock.Lock()
-				multiErr = multierror.Append(multiErr, err)
-				lock.Unlock()
-				return
+				return err
 			}
 
 			if len(contracts.NodeContracts) != 0 {
-				lock.Lock()
-				multiErr = multierror.Append(multiErr, fmt.Errorf("node group name: '%s' is invalid, should be unique name across all deployments", nodeGroupName))
-				lock.Unlock()
-				return
+				return fmt.Errorf("node group name: '%s' is invalid, should be unique name across all deployments", nodeGroupName)
 			}
-		}(group)
-	}
-	wg.Wait()
 
-	return multiErr
+			return nil
+		})
+	}
+
+	if err := errGroup.Wait(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func validateVMs(vms []massDeployer.Vms, nodeGroups []massDeployer.NodesGroup, sskKeys map[string]string) error {
@@ -187,4 +179,23 @@ func setVMUsedResources(vmsGroup massDeployer.Vms, vmUsedResources map[string]in
 	}
 
 	return vmUsedResources
+}
+
+func validateNodeGroup(groupName string, tfPluginClient deployer.TFPluginClient) error {
+	nodeGroupName := strings.TrimSpace(groupName)
+
+	if !alphanumeric.MatchString(nodeGroupName) {
+		return fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
+	}
+
+	contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName, true)
+	if err != nil {
+		return err
+	}
+
+	if len(contracts.NodeContracts) != 0 {
+		return fmt.Errorf("node group name: '%s' is invalid, should be unique name across all deployments", nodeGroupName)
+	}
+
+	return nil
 }

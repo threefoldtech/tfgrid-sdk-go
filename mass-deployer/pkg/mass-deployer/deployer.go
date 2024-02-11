@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	maxDeploymentRetries      = 5
+	DefaultMaxRetries         = 5
 	maxGoroutinesToFetchState = 100
 )
 
@@ -37,7 +37,7 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 	deploymentStart := time.Now()
 
 	if cfg.MaxRetries == 0 {
-		cfg.MaxRetries = maxDeploymentRetries
+		cfg.MaxRetries = DefaultMaxRetries
 	}
 
 	for _, nodeGroup := range cfg.NodeGroups {
