@@ -68,7 +68,7 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 	endTime := time.Since(deploymentStart)
 
 	log.Info().Msg("Loading deployments")
-	outputBytes, err := loadNodeGroupsInfo(ctx, tfPluginClient, cfg, output)
+	outputBytes, err := loadNodeGroupsInfo(ctx, tfPluginClient, passedGroups, cfg.MaxRetries, output)
 	if err != nil {
 		return err
 	}

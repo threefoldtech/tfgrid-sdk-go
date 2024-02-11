@@ -25,8 +25,12 @@ func RunLoader(ctx context.Context, cfg Config, debug bool, output string) error
 	if err != nil {
 		return err
 	}
+	var nodeGroups []string
+	for _, group := range cfg.NodeGroups {
+		nodeGroups = append(nodeGroups, group.Name)
+	}
 
-	outputBytes, err := loadNodeGroupsInfo(ctx, tfPluginClient, cfg, output)
+	outputBytes, err := loadNodeGroupsInfo(ctx, tfPluginClient, nodeGroups, cfg.MaxRetries, output)
 	if err != nil {
 		return err
 	}
@@ -35,36 +39,36 @@ func RunLoader(ctx context.Context, cfg Config, debug bool, output string) error
 	return os.WriteFile(output, outputBytes, 0644)
 }
 
-func loadNodeGroupsInfo(ctx context.Context, tfPluginClient deployer.TFPluginClient, cfg Config, output string) ([]byte, error) {
+func loadNodeGroupsInfo(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodegroups []string, maxRetries uint64, output string) ([]byte, error) {
 	trial := 1
 	nodeGroupsInfo := map[string][]vmOutput{}
 	failedGroups := map[string]string{}
 
 	// load contracts with node group name
-	for _, nodeGroup := range cfg.NodeGroups {
-		if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxRetries, retry.NewConstant(1*time.Second)), func(ctx context.Context) error {
+	for _, nodeGroup := range nodegroups {
+		if err := retry.Do(ctx, retry.WithMaxRetries(maxRetries, retry.NewConstant(1*time.Second)), func(ctx context.Context) error {
 			if trial != 1 {
-				log.Debug().Str("Node group", nodeGroup.Name).Int("Deployment trial", trial).Msg("Retrying to load")
+				log.Debug().Str("Node group", nodeGroup).Int("Deployment trial", trial).Msg("Retrying to load")
 			}
 
-			contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroup.Name)
+			contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroup)
 			if err != nil {
 				trial++
-				log.Debug().Err(err).Str("node group", nodeGroup.Name).Msg("couldn't list contracts")
+				log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't list contracts")
 				return retry.RetryableError(err)
 			}
 
-			info, err := loadContractsInfo(ctx, tfPluginClient, nodeGroup.Name, contracts.NodeContracts)
+			info, err := loadContractsInfo(ctx, tfPluginClient, nodeGroup, contracts.NodeContracts)
 			if err != nil {
 				trial++
-				log.Debug().Err(err).Str("node group", nodeGroup.Name).Msg("couldn't load from grid")
+				log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't load from grid")
 				return retry.RetryableError(err)
 			}
 
-			nodeGroupsInfo[nodeGroup.Name] = info
+			nodeGroupsInfo[nodeGroup] = info
 			return nil
 		}); err != nil {
-			failedGroups[nodeGroup.Name] = err.Error()
+			failedGroups[nodeGroup] = err.Error()
 		}
 	}
 
