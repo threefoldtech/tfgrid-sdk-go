@@ -320,6 +320,7 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 	"PriceMax": func(_ NodesAggregate) interface{} {
 		v := rand.Float64() * 1000
 		return &v
+	},
 	"Excluded": func(agg NodesAggregate) interface{} {
 		shuffledIds := make([]uint64, len(agg.nodeIDs))
 		copy(shuffledIds, agg.nodeIDs)
