@@ -180,22 +180,3 @@ func setVMUsedResources(vmsGroup massDeployer.Vms, vmUsedResources map[string]in
 
 	return vmUsedResources
 }
-
-func validateNodeGroup(groupName string, tfPluginClient deployer.TFPluginClient) error {
-	nodeGroupName := strings.TrimSpace(groupName)
-
-	if !alphanumeric.MatchString(nodeGroupName) {
-		return fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
-	}
-
-	contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName, true)
-	if err != nil {
-		return err
-	}
-
-	if len(contracts.NodeContracts) != 0 {
-		return fmt.Errorf("node group name: '%s' is invalid, should be unique name across all deployments", nodeGroupName)
-	}
-
-	return nil
-}
