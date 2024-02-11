@@ -54,8 +54,15 @@ func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, mnemonic, network 
 				lock.Unlock()
 				return
 			}
+			contracts, _ := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName, true)
+			if err != nil {
+				lock.Lock()
+				multiErr = multierror.Append(multiErr, err)
+				lock.Unlock()
+				return
+			}
 
-			if _, err = tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName); err == nil {
+			if len(contracts.NodeContracts) != 0 {
 				lock.Lock()
 				multiErr = multierror.Append(multiErr, fmt.Errorf("node group name: '%s' is invalid, should be unique name across all deployments", nodeGroupName))
 				lock.Unlock()
