@@ -62,11 +62,7 @@ func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, mnemonic, network 
 		})
 	}
 
-	if err := errGroup.Wait(); err != nil {
-		return err
-	}
-
-	return nil
+	return errGroup.Wait()
 }
 
 func validateVMs(vms []massDeployer.Vms, nodeGroups []massDeployer.NodesGroup, sskKeys map[string]string) error {
