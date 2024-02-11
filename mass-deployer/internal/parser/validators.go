@@ -48,13 +48,15 @@ func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, mnemonic, network 
 		go func(group massDeployer.NodesGroup) {
 			defer wg.Done()
 			nodeGroupName := strings.TrimSpace(group.Name)
+
 			if !alphanumeric.MatchString(nodeGroupName) {
 				lock.Lock()
 				multiErr = multierror.Append(multiErr, fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName))
 				lock.Unlock()
 				return
 			}
-			contracts, _ := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName, true)
+
+			contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName, true)
 			if err != nil {
 				lock.Lock()
 				multiErr = multierror.Append(multiErr, err)

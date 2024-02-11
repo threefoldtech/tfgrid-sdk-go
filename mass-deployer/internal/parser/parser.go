@@ -35,13 +35,11 @@ func ParseConfig(file io.Reader, jsonFmt bool) (deployer.Config, error) {
 		return deployer.Config{}, err
 	}
 
-	conf.Mnemonic, err = getValueOrEnv(conf.Mnemonic, mnemonicKey)
-	if err != nil {
+	if conf.Mnemonic, err = getValueOrEnv(conf.Mnemonic, mnemonicKey); err != nil {
 		return deployer.Config{}, err
 	}
 
-	conf.Network, err = getValueOrEnv(conf.Network, networkKey)
-	if err != nil {
+	if conf.Network, err = getValueOrEnv(conf.Network, networkKey); err != nil {
 		return deployer.Config{}, err
 	}
 
@@ -73,8 +71,7 @@ func ValidateConfig(conf deployer.Config) error {
 	}
 
 	for name, sshKey := range conf.SSHKeys {
-		_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(sshKey)))
-		if err != nil {
+		if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(strings.TrimSpace(sshKey))); err != nil {
 			return fmt.Errorf("ssh key for `%s` is invalid: %+w", name, err)
 		}
 	}
