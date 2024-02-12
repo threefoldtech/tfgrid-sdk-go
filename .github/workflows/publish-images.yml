@@ -32,6 +32,8 @@ jobs:
             image: "tffarmerbot"
           - dir: "grid-proxy"
             image: "tfgridproxy"
+          - dir: "tools/relay-cache-warmer"
+            image: "relay-cache-warmer"
 
     steps:
       - name: Checkout the repo
