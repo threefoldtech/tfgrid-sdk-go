@@ -104,12 +104,7 @@ func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient
 	}
 
 	log.Info().Str("Node group", nodeGroup.Name).Msg("Starting mass deployment")
-	err = massDeploy(ctx, tfPluginClient, groupDeployments)
-	if err != nil {
-		return err
-	}
-
-	return err
+	return massDeploy(ctx, tfPluginClient, groupDeployments)
 }
 
 func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
