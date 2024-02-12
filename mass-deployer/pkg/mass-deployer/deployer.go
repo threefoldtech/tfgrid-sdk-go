@@ -74,7 +74,7 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 	asJson := filepath.Ext(output) == ".json"
 
 	groupsDeploymentInfo := getDeploymentsInfoFromDeploymentsData(passedGroups)
-	loadedGroups, failedGroups := loadNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, cfg.MaxRetries, asJson)
+	loadedGroups, failedGroups := getNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, cfg.MaxRetries, asJson)
 
 	outputBytes, err := parseDeploymentOutput(loadedGroups, failedGroups, asJson)
 	if err != nil {
