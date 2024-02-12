@@ -53,6 +53,10 @@ type groupDeploymentsInfo struct {
 	vmDeployments      []*workloads.Deployment
 	networkDeployments []*workloads.ZNet
 }
+type deploymentInfo struct {
+	nodeID uint32
+	name   string
+}
 
 type vmOutput struct {
 	Name        string

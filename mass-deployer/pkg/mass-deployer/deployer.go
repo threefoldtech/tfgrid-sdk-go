@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -22,7 +23,7 @@ const (
 )
 
 func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) error {
-	passedGroups := []string{}
+	passedGroups := map[string][]*workloads.Deployment{}
 	failedGroups := map[string]string{}
 
 	tfPluginClient, err := setup(cfg, debug)
@@ -53,7 +54,8 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 			}
 
 			log.Info().Str("Node group", nodeGroup.Name).Msg("Done deploying")
-			passedGroups = append(passedGroups, nodeGroup.Name)
+			passedGroups[nodeGroup.Name] = groupDeployments.vmDeployments
+
 			return nil
 		}); err != nil {
 
@@ -68,7 +70,13 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 	endTime := time.Since(deploymentStart)
 
 	log.Info().Msg("Loading deployments")
-	outputBytes, err := loadNodeGroupsInfo(ctx, tfPluginClient, passedGroups, cfg.MaxRetries, output)
+
+	asJson := filepath.Ext(output) == ".json"
+
+	groupsDeploymentInfo := getDeploymentsInfoFromDeploymentsData(passedGroups)
+	loadedGroups, failedGroups := loadNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, cfg.MaxRetries, asJson)
+
+	outputBytes, err := parseDeploymentOutput(loadedGroups, failedGroups, asJson)
 	if err != nil {
 		return err
 	}
@@ -247,4 +255,16 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 			groupDeployments.networkDeployments[idx].Nodes = []uint32{nodeID}
 		}
 	}
+}
+
+func getDeploymentsInfoFromDeploymentsData(groupsInfo map[string][]*workloads.Deployment) map[string][]deploymentInfo {
+	nodeGroupsDeploymentsInfo := make(map[string][]deploymentInfo)
+	for nodeGroup, groupInfo := range groupsInfo {
+		deployments := []deploymentInfo{}
+		for _, group := range groupInfo {
+			deployments = append(deployments, deploymentInfo{group.NodeID, group.Name})
+		}
+		nodeGroupsDeploymentsInfo[nodeGroup] = deployments
+	}
+	return nodeGroupsDeploymentsInfo
 }
