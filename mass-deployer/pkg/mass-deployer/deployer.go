@@ -254,10 +254,10 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 
 func getDeploymentsInfoFromDeploymentsData(groupsInfo map[string][]*workloads.Deployment) map[string][]deploymentInfo {
 	nodeGroupsDeploymentsInfo := make(map[string][]deploymentInfo)
-	for nodeGroup, groupInfo := range groupsInfo {
+	for nodeGroup, groupDeployments := range groupsInfo {
 		deployments := []deploymentInfo{}
-		for _, group := range groupInfo {
-			deployments = append(deployments, deploymentInfo{group.NodeID, group.Name})
+		for _, deployment := range groupDeployments {
+			deployments = append(deployments, deploymentInfo{deployment.NodeID, deployment.Name})
 		}
 		nodeGroupsDeploymentsInfo[nodeGroup] = deployments
 	}
