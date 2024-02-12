@@ -2,7 +2,7 @@ FROM golang:1.21-alpine as builder
 
 WORKDIR /app
 
-COPY . .
+COPY tools/relay-cache-warmer .
 
 RUN go build -o bin/cache-warmer .
 
