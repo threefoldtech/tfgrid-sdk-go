@@ -238,6 +238,13 @@ type capacity struct {
 	mru uint64
 }
 
+type ThresholdPercentages struct {
+	cru float64
+	sru float64
+	mru float64
+	hru float64
+}
+
 // IsEmpty checks empty capacity
 func (cap *capacity) isEmpty() bool {
 	return cap.cru == 0 && cap.mru == 0 && cap.sru == 0 && cap.hru == 0
