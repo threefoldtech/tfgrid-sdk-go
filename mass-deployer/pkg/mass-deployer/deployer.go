@@ -69,14 +69,21 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 
 	endTime := time.Since(deploymentStart)
 
-	log.Info().Msg("Loading deployments")
-
 	asJson := filepath.Ext(output) == ".json"
+	var loadedGroups map[string][]vmOutput
 
-	groupsDeploymentInfo := getDeploymentsInfoFromDeploymentsData(passedGroups)
-	loadedGroups, failed := getNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, cfg.MaxRetries, asJson)
-	for nodeGroup, err := range failed {
-		failedGroups[nodeGroup] = err
+	if len(passedGroups) > 0 {
+		log.Info().Msg("Loading deployments")
+
+		var failed map[string]string
+
+		groupsDeploymentInfo := getDeploymentsInfoFromDeploymentsData(passedGroups)
+		fmt.Printf("state: %+v\n", tfPluginClient.State)
+		loadedGroups, failed = getNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, cfg.MaxRetries, asJson)
+
+		for nodeGroup, err := range failed {
+			failedGroups[nodeGroup] = err
+		}
 	}
 
 	outputBytes, err := parseDeploymentOutput(loadedGroups, failedGroups, asJson)
@@ -128,7 +135,7 @@ func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, dep
 	var multiErr error
 
 	log.Debug().Msg(fmt.Sprintf("Deploying %d networks, this may to take a while", len(deployments.networkDeployments)))
-	if err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, networks); err != nil {
+	if err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, networks, false); err != nil {
 		multiErr = multierror.Append(multiErr, err)
 	}
 
