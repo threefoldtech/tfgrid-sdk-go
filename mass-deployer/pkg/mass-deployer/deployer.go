@@ -69,24 +69,8 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 
 	endTime := time.Since(deploymentStart)
 
-	asJson := filepath.Ext(output) == ".json"
-	var loadedGroups map[string][]vmOutput
-
-	if len(passedGroups) > 0 {
-		log.Info().Msg("Loading deployments")
-
-		var failed map[string]string
-
-		groupsDeploymentInfo := getDeploymentsInfoFromDeploymentsData(passedGroups)
-		fmt.Printf("state: %+v\n", tfPluginClient.State)
-		loadedGroups, failed = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, cfg.MaxRetries, asJson)
-
-		for nodeGroup, err := range failed {
-			failedGroups[nodeGroup] = err
-		}
-	}
-
-	outputBytes, err := parseDeploymentOutput(loadedGroups, failedGroups, asJson)
+	// load deployed deployments
+	outputBytes, err := loadAfterDeployment(ctx, tfPluginClient, passedGroups, failedGroups, cfg.MaxRetries, filepath.Ext(output) == ".json")
 	if err != nil {
 		return err
 	}
@@ -95,6 +79,31 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 	log.Info().Msgf("Deployment took %s", endTime)
 
 	return os.WriteFile(output, outputBytes, 0644)
+}
+
+func loadAfterDeployment(
+	ctx context.Context,
+	tfPluginClient deployer.TFPluginClient,
+	deployedGroups map[string][]*workloads.Deployment,
+	failedGroups map[string]string,
+	retries uint64,
+	asJson bool,
+) ([]byte, error) {
+	var loadedgroups map[string][]vmOutput
+
+	if len(deployedGroups) > 0 {
+		log.Info().Msg("Loading deployments")
+		groupsDeploymentInfo := getDeploymentsInfoFromDeploymentsData(deployedGroups)
+
+		var failed map[string]string
+		loadedgroups, failed = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, retries, asJson)
+
+		for nodeGroup, err := range failed {
+			failedGroups[nodeGroup] = err
+		}
+	}
+
+	return parseDeploymentOutput(loadedgroups, failedGroups, asJson)
 }
 
 func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, groupDeployments *groupDeploymentsInfo, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) error {
