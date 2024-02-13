@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	DefaultMaxRetries         = 5
-	maxGoroutinesToFetchState = 100
+	DefaultMaxRetries = 5
+	maxGoroutines     = 100
 )
 
 func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) error {
@@ -79,7 +79,7 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 
 		groupsDeploymentInfo := getDeploymentsInfoFromDeploymentsData(passedGroups)
 		fmt.Printf("state: %+v\n", tfPluginClient.State)
-		loadedGroups, failed = getNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, cfg.MaxRetries, asJson)
+		loadedGroups, failed = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, cfg.MaxRetries, asJson)
 
 		for nodeGroup, err := range failed {
 			failedGroups[nodeGroup] = err
@@ -262,12 +262,12 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 	}
 }
 
-func getDeploymentsInfoFromDeploymentsData(groupsInfo map[string][]*workloads.Deployment) map[string][]deploymentInfo {
-	nodeGroupsDeploymentsInfo := make(map[string][]deploymentInfo)
+func getDeploymentsInfoFromDeploymentsData(groupsInfo map[string][]*workloads.Deployment) map[string][]contractsInfo {
+	nodeGroupsDeploymentsInfo := make(map[string][]contractsInfo)
 	for nodeGroup, groupDeployments := range groupsInfo {
-		deployments := []deploymentInfo{}
+		deployments := []contractsInfo{}
 		for _, deployment := range groupDeployments {
-			deployments = append(deployments, deploymentInfo{deployment.NodeID, deployment.Name})
+			deployments = append(deployments, contractsInfo{deployment.NodeID, deployment.ContractID})
 		}
 		nodeGroupsDeploymentsInfo[nodeGroup] = deployments
 	}
