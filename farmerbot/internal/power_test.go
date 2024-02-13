@@ -28,7 +28,7 @@ func TestPowerLargeScale(t *testing.T) {
 		IncludedNodes: []uint32{1, 2, 3, 4, 5, 6, 7},
 	}
 
-	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)
+	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519, false)
 	assert.Error(t, err)
 
 	// mock state
@@ -92,7 +92,7 @@ func TestPower(t *testing.T) {
 		Power:         power{WakeUpThreshold: 30},
 	}
 
-	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)
+	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519, false)
 	assert.Error(t, err)
 
 	// mock state

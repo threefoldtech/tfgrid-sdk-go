@@ -29,7 +29,7 @@ func TestFindNode(t *testing.T) {
 		Power:         power{WakeUpThreshold: 30},
 	}
 
-	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)
+	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519, false)
 	assert.Error(t, err)
 
 	// mock state

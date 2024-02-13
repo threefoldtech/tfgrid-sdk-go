@@ -31,8 +31,8 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
-		farmerBot, err := internal.NewFarmerBot(cmd.Context(), config, network, mnemonicOrSeed, keyType)
+		continueOnPoweringOnError, err := cmd.Flags().GetBool("continue-power-on-error")
+		farmerBot, err := internal.NewFarmerBot(cmd.Context(), config, network, mnemonicOrSeed, keyType, continueOnPoweringOnError)
 		if err != nil {
 			return err
 		}

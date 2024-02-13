@@ -35,7 +35,7 @@ func TestFarmerbot(t *testing.T) {
 		Power:         power{WakeUpThreshold: 50},
 	}
 
-	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)
+	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519, false)
 	assert.Error(t, err)
 	farmerbot.rmbNodeClient = rmb
 	farmerbot.gridProxyClient = proxy
@@ -52,7 +52,7 @@ func TestFarmerbot(t *testing.T) {
 	oldNode2 := farmerbot.nodes[2]
 
 	t.Run("invalid identity", func(t *testing.T) {
-		_, err := NewFarmerBot(ctx, Config{}, "dev", "invalid", peer.KeyTypeSr25519)
+		_, err := NewFarmerBot(ctx, Config{}, "dev", "invalid", peer.KeyTypeSr25519, false)
 		assert.Error(t, err)
 	})
 

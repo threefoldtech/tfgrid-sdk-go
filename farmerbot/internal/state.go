@@ -14,10 +14,11 @@ import (
 
 // state is the state data for farmerbot
 type state struct {
-	farm   substrate.Farm
-	nodes  map[uint32]node
-	config Config
-	m      sync.Mutex
+	farm        substrate.Farm
+	nodes       map[uint32]node
+	failedNodes []uint32
+	config      Config
+	m           sync.Mutex
 }
 
 // NewState creates new state from configs
@@ -44,12 +45,13 @@ func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config,
 
 	s.farm = *farm
 
-	nodes, err := fetchNodes(ctx, sub, rmbNodeClient, cfg, farm.DedicatedFarm)
+	nodes, failedToPowerOnNodes, err := fetchNodes(ctx, sub, rmbNodeClient, cfg, farm.DedicatedFarm)
 	if err != nil {
 		return nil, err
 	}
 
 	s.nodes = nodes
+	s.failedNodes = failedToPowerOnNodes
 
 	if err := s.validate(); err != nil {
 		return nil, err
@@ -58,12 +60,13 @@ func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config,
 	return &s, nil
 }
 
-func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Config, dedicatedFarm bool) (map[uint32]node, error) {
+func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Config, dedicatedFarm bool) (map[uint32]node, []uint32, error) {
 	nodes := make(map[uint32]node)
+	var failedToPowerOnNodes []uint32
 
 	farmNodes, err := sub.GetNodes(config.FarmID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, nodeID := range farmNodes {
@@ -79,13 +82,13 @@ func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Co
 			log.Debug().Uint32("nodeID", nodeID).Msg("Add node")
 			configNode, err := getNode(ctx, sub, rmbNodeClient, nodeID, neverShutDown, false, dedicatedFarm, on)
 			if err != nil {
-				return nil, fmt.Errorf("failed to add node with id %d with error: %w", nodeID, err)
+				failedToPowerOnNodes = append(failedToPowerOnNodes, nodeID)
 			}
 			nodes[nodeID] = configNode
 		}
 	}
 
-	return nodes, nil
+	return nodes, failedToPowerOnNodes, nil
 }
 
 func getNode(

@@ -31,7 +31,7 @@ type FarmerBot struct {
 }
 
 // NewFarmerBot generates a new farmer bot
-func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, keyType string) (FarmerBot, error) {
+func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, keyType string, continueOnPoweringOnErr bool) (FarmerBot, error) {
 	identity, err := GetIdentityWithKeyType(mnemonicOrSeed, keyType)
 	if err != nil {
 		return FarmerBot{}, err
@@ -76,6 +76,10 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, k
 	if err != nil {
 		return FarmerBot{}, err
 	}
+	if !continueOnPoweringOnErr && len(state.failedNodes) > 0 {
+		return FarmerBot{}, fmt.Errorf("could not start the farmerbot because of %v failed to power on nodes, %v", len(state.failedNodes), state.failedNodes)
+	}
+
 	farmerbot.state = state
 
 	return farmerbot, nil
