@@ -39,16 +39,14 @@ var loadCmd = &cobra.Command{
 		}
 		outJsonFmt := filepath.Ext(outputPath) == jsonExt
 		outYmlFmt := filepath.Ext(outputPath) == yamlExt || filepath.Ext(outputPath) == ymlExt
-		if outputPath != "" {
-			if !outJsonFmt && !outYmlFmt {
-				return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
-			}
+		if !outJsonFmt && !outYmlFmt {
+			return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
+		}
 
-			_, err := os.Stat(outputPath)
-			// check if output file is writable
-			if !errors.Is(err, os.ErrNotExist) && unix.Access(outputPath, unix.W_OK) != nil {
-				return fmt.Errorf("output path '%s' is not writable", outputPath)
-			}
+		_, err = os.Stat(outputPath)
+		// check if output file is writable
+		if !errors.Is(err, os.ErrNotExist) && unix.Access(outputPath, unix.W_OK) != nil {
+			return fmt.Errorf("output path '%s' is not writable", outputPath)
 		}
 
 		configPath, err := cmd.Flags().GetString("config")

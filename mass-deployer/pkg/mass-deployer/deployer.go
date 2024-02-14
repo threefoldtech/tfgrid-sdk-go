@@ -108,10 +108,10 @@ func loadAfterDeployment(
 
 	if len(deployedGroups) > 0 {
 		log.Info().Msg("Loading deployments")
-		groupsDeploymentInfo := getDeploymentsContracts(deployedGroups)
+		groupsContracts := getDeploymentsContracts(deployedGroups)
 
 		var failed map[string]string
-		loadedgroups, failed = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, retries, asJson)
+		loadedgroups, failed = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContracts, retries, asJson)
 
 		for nodeGroup, err := range failed {
 			failedGroups[nodeGroup] = err
@@ -134,14 +134,14 @@ func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[stri
 }
 
 func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodesIDs []int, groupDeployments *groupDeploymentsInfo) {
-	var contractsToBeCanceled []*workloads.ZNet
+	var networksToBeCanceled []*workloads.ZNet
 	for idx, network := range groupDeployments.networkDeployments {
 		if groupDeployments.vmDeployments[idx].ContractID == 0 {
-			contractsToBeCanceled = append(contractsToBeCanceled, network)
+			networksToBeCanceled = append(networksToBeCanceled, network)
 		}
 	}
 
-	err := tfPluginClient.NetworkDeployer.BatchCancel(ctx, contractsToBeCanceled)
+	err := tfPluginClient.NetworkDeployer.BatchCancel(ctx, networksToBeCanceled)
 	if err != nil {
 		log.Debug().Err(err)
 	}
@@ -267,13 +267,13 @@ func getNotDeployedDeployments(tfPluginClient deployer.TFPluginClient, groupDepl
 }
 
 func getDeploymentsContracts(groupsInfo map[string][]*workloads.Deployment) map[string][]uint64 {
-	nodeGroupsDeploymentsInfo := make(map[string][]uint64)
+	nodeGroupsContracts := make(map[string][]uint64)
 	for nodeGroup, groupDeployments := range groupsInfo {
-		deployments := []uint64{}
+		contractIDs := []uint64{}
 		for _, deployment := range groupDeployments {
-			deployments = append(deployments, deployment.ContractID)
+			contractIDs = append(contractIDs, deployment.ContractID)
 		}
-		nodeGroupsDeploymentsInfo[nodeGroup] = deployments
+		nodeGroupsContracts[nodeGroup] = contractIDs
 	}
-	return nodeGroupsDeploymentsInfo
+	return nodeGroupsContracts
 }
