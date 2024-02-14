@@ -5,7 +5,7 @@ import "github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 // type config contains configuration used to deploy multiple groups of vms in batches
 // **note: please make sure to run validator (validator.Validate(conf))**
 type Config struct {
-	NodeGroups []NodesGroup      `yaml:"node_groups" validate:"required,min=1,dive,required" json:"node_groups"`
+	NodeGroups []NodesGroup      `yaml:"node_groups" validate:"required,unique=Name,min=1,dive,required" json:"node_groups"`
 	Vms        []Vms             `yaml:"vms" validate:"required,min=1,dive,required" json:"vms"`
 	SSHKeys    map[string]string `yaml:"ssh_keys" validate:"required" json:"ssh_keys"`
 	Mnemonic   string            `yaml:"mnemonic" validate:"required" json:"mnemonic"`
