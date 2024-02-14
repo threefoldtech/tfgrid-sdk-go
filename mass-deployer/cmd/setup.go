@@ -1,4 +1,4 @@
-package deployer
+package cmd
 
 import (
 	"os"
@@ -6,10 +6,11 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	massDeployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
-func setup(conf Config, debug bool) (deployer.TFPluginClient, error) {
+func setup(conf massDeployer.Config, debug bool) (deployer.TFPluginClient, error) {
 	network := conf.Network
 	log.Debug().Str("network", network).Send()
 
@@ -23,14 +24,4 @@ func setup(conf Config, debug bool) (deployer.TFPluginClient, error) {
 		proxyURL = "https://gridproxy.bknd1.ninja.tf"
 	}
 	return deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, "", "", proxyURL, 30, debug, true)
-}
-
-func convertGBToBytes(gb uint64) uint64 {
-	bytes := gb * 1024 * 1024 * 1024
-	return bytes
-}
-
-func convertMBToBytes(mb uint64) uint64 {
-	bytes := mb * 1024 * 1024
-	return bytes
 }

@@ -22,14 +22,9 @@ const (
 	maxGoroutinesCount = 100
 )
 
-func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) error {
+func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPluginClient, output string, debug bool) error {
 	passedGroups := map[string][]*workloads.Deployment{}
 	failedGroups := map[string]string{}
-
-	tfPluginClient, err := setup(cfg, debug)
-	if err != nil {
-		return fmt.Errorf("failed to create deployer: %v", err)
-	}
 
 	deploymentStart := time.Now()
 
@@ -271,12 +266,12 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 	}
 }
 
-func getDeploymentsInfoFromDeploymentsData(groupsInfo map[string][]*workloads.Deployment) map[string][]contractsInfo {
-	nodeGroupsDeploymentsInfo := make(map[string][]contractsInfo)
+func getDeploymentsInfoFromDeploymentsData(groupsInfo map[string][]*workloads.Deployment) map[string][]uint64 {
+	nodeGroupsDeploymentsInfo := make(map[string][]uint64)
 	for nodeGroup, groupDeployments := range groupsInfo {
-		deployments := []contractsInfo{}
+		deployments := []uint64{}
 		for _, deployment := range groupDeployments {
-			deployments = append(deployments, contractsInfo{deployment.NodeID, deployment.ContractID})
+			deployments = append(deployments, deployment.ContractID)
 		}
 		nodeGroupsDeploymentsInfo[nodeGroup] = deployments
 	}

@@ -1,13 +1,10 @@
 package deployer
 
-func RunCanceler(cfg Config, debug bool) error {
-	tfPluginClient, err := setup(cfg, debug)
-	if err != nil {
-		return err
-	}
+import "github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 
+func RunCanceler(cfg Config, tfPluginClient deployer.TFPluginClient, debug bool) error {
 	for _, group := range cfg.NodeGroups {
-		err = tfPluginClient.CancelByProjectName(group.Name, true)
+		err := tfPluginClient.CancelByProjectName(group.Name, true)
 		if err != nil {
 			return err
 		}

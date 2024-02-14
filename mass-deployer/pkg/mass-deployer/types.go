@@ -54,11 +54,6 @@ type groupDeploymentsInfo struct {
 	networkDeployments []*workloads.ZNet
 }
 
-type contractsInfo struct {
-	nodeID     uint32
-	contractID uint64
-}
-
 type vmOutput struct {
 	Name        string
 	NetworkName string

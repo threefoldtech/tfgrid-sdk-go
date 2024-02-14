@@ -85,12 +85,17 @@ var deployCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse configuration file '%s' with error: %w", configPath, err)
 		}
 
-		if err = parser.ValidateConfig(cfg); err != nil {
+		tfPluginClient, err := setup(cfg, debug)
+		if err != nil {
+			return err
+		}
+
+		if err = parser.ValidateConfig(cfg, tfPluginClient); err != nil {
 			return fmt.Errorf("failed to validate configuration file '%s' with error: %w", configPath, err)
 		}
 
 		ctx := context.Background()
-		if err = deployer.RunDeployer(ctx, cfg, outputPath, debug); err != nil {
+		if err = deployer.RunDeployer(ctx, cfg, tfPluginClient, outputPath, debug); err != nil {
 			return fmt.Errorf("failed to run the deployer with error: %w", err)
 		}
 

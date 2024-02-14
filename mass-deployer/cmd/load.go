@@ -77,7 +77,12 @@ var loadCmd = &cobra.Command{
 		}
 
 		ctx := context.Background()
-		err = deployer.RunLoader(ctx, cfg, debug, outputPath)
+		tfPluginClient, err := setup(cfg, debug)
+		if err != nil {
+			return err
+		}
+
+		err = deployer.RunLoader(ctx, cfg, tfPluginClient, debug, outputPath)
 		if err != nil {
 			return fmt.Errorf("failed to load configured deployments with error: %w", err)
 		}
