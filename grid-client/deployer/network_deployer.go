@@ -408,6 +408,8 @@ func (d *NetworkDeployer) BatchCancel(ctx context.Context, znets []*workloads.ZN
 		for nodeID, contractID := range znet.NodeDeploymentID {
 			d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
 		}
+
+		d.tfPluginClient.State.Networks.DeleteNetwork(znet.Name)
 		znet.NodeDeploymentID = make(map[uint32]uint64)
 		znet.Keys = make(map[uint32]wgtypes.Key)
 		znet.WGPort = make(map[uint32]int)
