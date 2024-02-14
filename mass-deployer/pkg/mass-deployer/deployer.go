@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	DefaultMaxRetries = 5
-	maxGoroutines     = 100
+	DefaultMaxRetries  = 5
+	maxGoroutinesCount = 100
 )
 
 func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) error {
@@ -81,31 +81,6 @@ func RunDeployer(ctx context.Context, cfg Config, output string, debug bool) err
 	return os.WriteFile(output, outputBytes, 0644)
 }
 
-func loadAfterDeployment(
-	ctx context.Context,
-	tfPluginClient deployer.TFPluginClient,
-	deployedGroups map[string][]*workloads.Deployment,
-	failedGroups map[string]string,
-	retries uint64,
-	asJson bool,
-) ([]byte, error) {
-	var loadedgroups map[string][]vmOutput
-
-	if len(deployedGroups) > 0 {
-		log.Info().Msg("Loading deployments")
-		groupsDeploymentInfo := getDeploymentsInfoFromDeploymentsData(deployedGroups)
-
-		var failed map[string]string
-		loadedgroups, failed = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, retries, asJson)
-
-		for nodeGroup, err := range failed {
-			failedGroups[nodeGroup] = err
-		}
-	}
-
-	return parseDeploymentOutput(loadedgroups, failedGroups, asJson)
-}
-
 func deployNodeGroup(ctx context.Context, tfPluginClient deployer.TFPluginClient, groupDeployments *groupDeploymentsInfo, nodeGroup NodesGroup, vms []Vms, sshKeys map[string]string) error {
 	log.Info().Str("Node group", nodeGroup.Name).Msg("Filter nodes")
 	nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup)
@@ -154,6 +129,31 @@ func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, dep
 	}
 
 	return multiErr
+}
+
+func loadAfterDeployment(
+	ctx context.Context,
+	tfPluginClient deployer.TFPluginClient,
+	deployedGroups map[string][]*workloads.Deployment,
+	failedGroups map[string]string,
+	retries uint64,
+	asJson bool,
+) ([]byte, error) {
+	var loadedgroups map[string][]vmOutput
+
+	if len(deployedGroups) > 0 {
+		log.Info().Msg("Loading deployments")
+		groupsDeploymentInfo := getDeploymentsInfoFromDeploymentsData(deployedGroups)
+
+		var failed map[string]string
+		loadedgroups, failed = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentInfo, retries, asJson)
+
+		for nodeGroup, err := range failed {
+			failedGroups[nodeGroup] = err
+		}
+	}
+
+	return parseDeploymentOutput(loadedgroups, failedGroups, asJson)
 }
 
 func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
