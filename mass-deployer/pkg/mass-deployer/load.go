@@ -25,8 +25,8 @@ func RunLoader(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlugin
 
 	asJson := filepath.Ext(output) == ".json"
 
-	groupsDeploymentsInfo, failed := getContractsOfNodeGroups(ctx, tfPluginClient, cfg.NodeGroups)
-	passedGroups, failedGroups := batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsDeploymentsInfo, cfg.MaxRetries, asJson)
+	groupsContractIDs, failed := getContractsOfNodeGroups(ctx, tfPluginClient, cfg.NodeGroups)
+	passedGroups, failedGroups := batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContractIDs, cfg.MaxRetries, asJson)
 
 	// add projects failed to be loaded
 	for group, err := range failed {
@@ -40,125 +40,6 @@ func RunLoader(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlugin
 
 	fmt.Println(string(outputBytes))
 	return os.WriteFile(output, outputBytes, 0644)
-}
-
-func batchLoadNodeGroupsInfo(
-	ctx context.Context,
-	tfPluginClient deployer.TFPluginClient,
-	nodeGroupsDeploymentsInfo map[string][]uint64,
-	retries uint64,
-	asJson bool,
-) (map[string][]vmOutput, map[string]string) {
-	trial := 1
-	failedGroups := map[string]string{}
-	nodeGroupsInfo := map[string][]vmOutput{}
-
-	var lock sync.Mutex
-	var wg sync.WaitGroup
-
-	// load contracts with node group name
-	for nodeGroup, contracts := range nodeGroupsDeploymentsInfo {
-		wg.Add(1)
-
-		go func(nodeGroup string, contracts []uint64) {
-			defer wg.Done()
-			if err := retry.Do(ctx, retry.WithMaxRetries(retries, retry.NewConstant(1*time.Nanosecond)), func(ctx context.Context) error {
-				if trial != 1 {
-					log.Debug().Str("Node group", nodeGroup).Int("Deployment trial", trial).Msg("Retrying to load")
-				}
-
-				info, err := batchLoadDeployments(ctx, tfPluginClient, contracts)
-				if err != nil {
-					trial++
-					log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't load from grid")
-					return retry.RetryableError(err)
-				}
-
-				lock.Lock()
-				nodeGroupsInfo[nodeGroup] = info
-				lock.Unlock()
-
-				return nil
-			}); err != nil {
-				lock.Lock()
-				failedGroups[nodeGroup] = err.Error()
-				lock.Unlock()
-			}
-		}(nodeGroup, contracts)
-	}
-
-	wg.Wait()
-	return nodeGroupsInfo, failedGroups
-}
-
-// batch load deployment info with contractID and nodeID
-func batchLoadDeployments(ctx context.Context, tfPluginClient deployer.TFPluginClient, contracts []uint64) ([]vmOutput, error) {
-	var lock sync.Mutex
-	var vmsInfo []vmOutput
-
-	errGroup := new(errgroup.Group)
-	errGroup.SetLimit(maxGoroutinesCount)
-
-	for _, contract := range contracts {
-		contractID := contract
-
-		errGroup.Go(func() error {
-			log.Debug().
-				Uint64("contract ID", contractID).
-				Msg("loading deployment")
-
-			deployment, err := loadDeploymentWithContractInfo(ctx, tfPluginClient, contractID)
-			if err != nil {
-				log.Debug().Err(err).
-					Uint64("contract ID", contractID).
-					Msg("couldn't load ")
-
-				return errors.Wrapf(err, "could load deployment %d", contractID)
-			}
-
-			for _, vm := range deployment.Vms {
-				vmInfo := vmOutput{
-					Name:        vm.Name,
-					NetworkName: deployment.NetworkName,
-					NodeID:      deployment.NodeID,
-					ContractID:  deployment.ContractID,
-					PublicIP4:   vm.ComputedIP,
-					PublicIP6:   vm.ComputedIP6,
-					PlanetaryIP: vm.PlanetaryIP,
-					IP:          vm.IP,
-					Mounts:      vm.Mounts,
-				}
-				lock.Lock()
-				vmsInfo = append(vmsInfo, vmInfo)
-				lock.Unlock()
-			}
-			return nil
-		})
-	}
-	err := errGroup.Wait()
-	return vmsInfo, err
-}
-
-func loadDeploymentWithContractInfo(ctx context.Context, tfPluginClient deployer.TFPluginClient, contractID uint64) (workloads.Deployment, error) {
-	st := tfPluginClient.State
-
-	contract, err := tfPluginClient.SubstrateConn.GetContract(contractID)
-	if err != nil {
-		return workloads.Deployment{}, errors.Wrapf(err, "could not get contract info: %d", contractID)
-	}
-	nodeID := uint32(contract.ContractType.NodeContract.Node)
-
-	nodeClient, err := st.NcPool.GetNodeClient(st.Substrate, nodeID)
-	if err != nil {
-		return workloads.Deployment{}, errors.Wrapf(err, "could not get node client: %d", nodeID)
-	}
-
-	dl, err := nodeClient.DeploymentGet(ctx, contractID)
-	if err != nil {
-		return workloads.Deployment{}, errors.Wrapf(err, "could not get network deployment %d from node %d", contractID, nodeID)
-	}
-
-	return workloads.NewDeploymentFromZosDeployment(dl, nodeID)
 }
 
 func getContractsOfNodeGroups(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroups []NodesGroup) (map[string][]uint64, map[string]string) {
@@ -223,6 +104,55 @@ func getContractsOfNodeGroups(ctx context.Context, tfPluginClient deployer.TFPlu
 	return loadedContracts, failedGroups
 }
 
+func batchLoadNodeGroupsInfo(
+	ctx context.Context,
+	tfPluginClient deployer.TFPluginClient,
+	nodeGroupsDeploymentsInfo map[string][]uint64,
+	retries uint64,
+	asJson bool,
+) (map[string][]vmOutput, map[string]string) {
+	trial := 1
+	failedGroups := map[string]string{}
+	nodeGroupsInfo := map[string][]vmOutput{}
+
+	var lock sync.Mutex
+	var wg sync.WaitGroup
+
+	// load contracts with node group name
+	for nodeGroup, contracts := range nodeGroupsDeploymentsInfo {
+		wg.Add(1)
+
+		go func(nodeGroup string, contracts []uint64) {
+			defer wg.Done()
+			if err := retry.Do(ctx, retry.WithMaxRetries(retries, retry.NewConstant(1*time.Nanosecond)), func(ctx context.Context) error {
+				if trial != 1 {
+					log.Debug().Str("Node group", nodeGroup).Int("Deployment trial", trial).Msg("Retrying to load")
+				}
+
+				info, err := batchLoadDeployments(ctx, tfPluginClient, contracts)
+				if err != nil {
+					trial++
+					log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't load from grid")
+					return retry.RetryableError(err)
+				}
+
+				lock.Lock()
+				nodeGroupsInfo[nodeGroup] = info
+				lock.Unlock()
+
+				return nil
+			}); err != nil {
+				lock.Lock()
+				failedGroups[nodeGroup] = err.Error()
+				lock.Unlock()
+			}
+		}(nodeGroup, contracts)
+	}
+
+	wg.Wait()
+	return nodeGroupsInfo, failedGroups
+}
+
 func parseDeploymentOutput(passedGroups map[string][]vmOutput, failedGroups map[string]string, asJson bool) ([]byte, error) {
 	var err error
 	var outputBytes []byte
@@ -241,4 +171,74 @@ func parseDeploymentOutput(passedGroups map[string][]vmOutput, failedGroups map[
 	}
 
 	return outputBytes, err
+}
+
+// batch load deployment info with contractID and nodeID
+func batchLoadDeployments(ctx context.Context, tfPluginClient deployer.TFPluginClient, contracts []uint64) ([]vmOutput, error) {
+	var lock sync.Mutex
+	var vmsInfo []vmOutput
+
+	errGroup := new(errgroup.Group)
+	errGroup.SetLimit(maxGoroutinesCount)
+
+	for _, contract := range contracts {
+		contractID := contract
+
+		errGroup.Go(func() error {
+			log.Debug().
+				Uint64("contract ID", contractID).
+				Msg("loading deployment")
+
+			deployment, err := loadDeploymentWithContractID(ctx, tfPluginClient, contractID)
+			if err != nil {
+				log.Debug().Err(err).
+					Uint64("contract ID", contractID).
+					Msg("couldn't load ")
+
+				return errors.Wrapf(err, "could load deployment %d", contractID)
+			}
+
+			for _, vm := range deployment.Vms {
+				vmInfo := vmOutput{
+					Name:        vm.Name,
+					NetworkName: deployment.NetworkName,
+					NodeID:      deployment.NodeID,
+					ContractID:  deployment.ContractID,
+					PublicIP4:   vm.ComputedIP,
+					PublicIP6:   vm.ComputedIP6,
+					PlanetaryIP: vm.PlanetaryIP,
+					IP:          vm.IP,
+					Mounts:      vm.Mounts,
+				}
+				lock.Lock()
+				vmsInfo = append(vmsInfo, vmInfo)
+				lock.Unlock()
+			}
+			return nil
+		})
+	}
+	err := errGroup.Wait()
+	return vmsInfo, err
+}
+
+func loadDeploymentWithContractID(ctx context.Context, tfPluginClient deployer.TFPluginClient, contractID uint64) (workloads.Deployment, error) {
+	st := tfPluginClient.State
+
+	contract, err := tfPluginClient.SubstrateConn.GetContract(contractID)
+	if err != nil {
+		return workloads.Deployment{}, errors.Wrapf(err, "could not get contract info: %d", contractID)
+	}
+	nodeID := uint32(contract.ContractType.NodeContract.Node)
+
+	nodeClient, err := st.NcPool.GetNodeClient(st.Substrate, nodeID)
+	if err != nil {
+		return workloads.Deployment{}, errors.Wrapf(err, "could not get node client: %d", nodeID)
+	}
+
+	dl, err := nodeClient.DeploymentGet(ctx, contractID)
+	if err != nil {
+		return workloads.Deployment{}, errors.Wrapf(err, "could not get network deployment %d from node %d", contractID, nodeID)
+	}
+
+	return workloads.NewDeploymentFromZosDeployment(dl, nodeID)
 }
