@@ -28,7 +28,7 @@ jobs:
           - monitoring-bot
           # - rmb-sdk-go
           - user-contracts-mon 
-          - mass-deployer
+          - tfrobot
 
     steps:
       - uses: actions/checkout@v4
