@@ -47,16 +47,14 @@ var deployCmd = &cobra.Command{
 
 		outJsonFmt := filepath.Ext(outputPath) == jsonExt
 		outYmlFmt := filepath.Ext(outputPath) == yamlExt || filepath.Ext(outputPath) == ymlExt
-		if outputPath != "" {
-			if !outJsonFmt && !outYmlFmt {
-				return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
-			}
+		if !outJsonFmt && !outYmlFmt {
+			return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
+		}
 
-			_, err := os.Stat(outputPath)
-			// check if output file is writable
-			if !errors.Is(err, os.ErrNotExist) && unix.Access(outputPath, unix.W_OK) != nil {
-				return fmt.Errorf("output path '%s' is not writable", outputPath)
-			}
+		_, err = os.Stat(outputPath)
+		// check if output file is writable
+		if !errors.Is(err, os.ErrNotExist) && unix.Access(outputPath, unix.W_OK) != nil {
+			return fmt.Errorf("output path '%s' is not writable", outputPath)
 		}
 
 		configPath, err := cmd.Flags().GetString("config")
@@ -85,12 +83,17 @@ var deployCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse configuration file '%s' with error: %w", configPath, err)
 		}
 
-		if err = parser.ValidateConfig(cfg); err != nil {
+		tfPluginClient, err := setup(cfg, debug)
+		if err != nil {
+			return err
+		}
+
+		if err = parser.ValidateConfig(cfg, tfPluginClient); err != nil {
 			return fmt.Errorf("failed to validate configuration file '%s' with error: %w", configPath, err)
 		}
 
 		ctx := context.Background()
-		if err = deployer.RunDeployer(ctx, cfg, outputPath, debug); err != nil {
+		if err = deployer.RunDeployer(ctx, cfg, tfPluginClient, outputPath, debug); err != nil {
 			return fmt.Errorf("failed to run the deployer with error: %w", err)
 		}
 

@@ -11,7 +11,6 @@ import (
 	"github.com/cosmos/go-bip39"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	massDeployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -32,13 +31,8 @@ func validateNetwork(network string) error {
 	return nil
 }
 
-func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, mnemonic, network string) error {
+func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, tfPluginClient deployer.TFPluginClient) error {
 	errGroup := new(errgroup.Group)
-	tfPluginClient, err := deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, "", "", "", 0, false, false)
-	if err != nil {
-		return err
-	}
-
 	for _, group := range nodeGroups {
 		group := group
 

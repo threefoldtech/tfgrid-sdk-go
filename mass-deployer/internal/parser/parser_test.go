@@ -9,7 +9,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
-	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	massDeployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,8 +19,8 @@ func TestParseConfig(t *testing.T) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	validFlist := "https://hub.grid.tf/tf-official-apps/base:latest.flist"
 
-	confStruct := deployer.Config{
-		NodeGroups: []deployer.NodesGroup{
+	confStruct := massDeployer.Config{
+		NodeGroups: []massDeployer.NodesGroup{
 			{
 				Name:       "group_a",
 				NodesCount: 5,
@@ -30,7 +32,7 @@ func TestParseConfig(t *testing.T) {
 				Region:     "Europe",
 			},
 		},
-		Vms: []deployer.Vms{
+		Vms: []massDeployer.Vms{
 			{
 				Name:       "examplevm",
 				Count:      4,
@@ -49,6 +51,10 @@ func TestParseConfig(t *testing.T) {
 		Mnemonic: "rival oyster defense garbage fame disease mask mail family wire village vibrant index fuel dolphin",
 		Network:  "dev",
 	}
+
+	tfpluginClient, err := deployer.NewTFPluginClient(confStruct.Mnemonic, peer.KeyTypeSr25519, confStruct.Network, "", "", "", 30, false, true)
+	assert.NoError(t, err)
+
 	t.Run("invalid yaml format", func(t *testing.T) {
 		conf := ` {
   "node_groups": [
@@ -64,7 +70,7 @@ func TestParseConfig(t *testing.T) {
 
 	t.Run("invalid node_group", func(t *testing.T) {
 		conf := confStruct
-		conf.NodeGroups = []deployer.NodesGroup{}
+		conf.NodeGroups = []massDeployer.NodesGroup{}
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
@@ -74,13 +80,13 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
 	t.Run("invalid vms", func(t *testing.T) {
 		conf := confStruct
-		conf.Vms = []deployer.Vms{}
+		conf.Vms = []massDeployer.Vms{}
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
@@ -90,7 +96,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -106,7 +112,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -150,7 +156,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -168,7 +174,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -186,7 +192,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -204,7 +210,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -222,7 +228,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -240,7 +246,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -258,7 +264,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -276,7 +282,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -294,7 +300,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -312,7 +318,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.Error(t, err)
 	})
 
@@ -327,7 +333,7 @@ func TestParseConfig(t *testing.T) {
 		cfg, err := ParseConfig(configFile, false)
 		assert.NoError(t, err)
 
-		err = ValidateConfig(cfg)
+		err = ValidateConfig(cfg, tfpluginClient)
 		assert.NoError(t, err)
 	})
 
@@ -343,7 +349,7 @@ func TestParseConfig(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, conf, parsedConf)
 
-		err = ValidateConfig(parsedConf)
+		err = ValidateConfig(parsedConf, tfpluginClient)
 		assert.NoError(t, err)
 	})
 }
