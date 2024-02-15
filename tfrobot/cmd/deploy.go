@@ -10,24 +10,31 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/internal/parser"
-	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/internal/parser"
+	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 	"golang.org/x/sys/unix"
 )
 
-var loadCmd = &cobra.Command{
-	Use:   "load",
-	Short: "load deployments of configuration file",
+const (
+	ymlExt  = ".yml"
+	yamlExt = ".yaml"
+	jsonExt = ".json"
+)
+
+var deployCmd = &cobra.Command{
+	Use:   "deploy",
+	Short: "deploy groups of vms in configuration file",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// It doesn't have a subcommand
 		if len(cmd.Flags().Args()) != 0 {
-			return fmt.Errorf("'load' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
+			return fmt.Errorf("'deploy' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
 		}
 
 		debug, err := cmd.Flags().GetBool("debug")
 		if err != nil {
 			return fmt.Errorf("invalid log debug mode input '%v' with error: %w", debug, err)
 		}
+
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		if debug {
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -37,6 +44,7 @@ var loadCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("error in output file: %w", err)
 		}
+
 		outJsonFmt := filepath.Ext(outputPath) == jsonExt
 		outYmlFmt := filepath.Ext(outputPath) == yamlExt || filepath.Ext(outputPath) == ymlExt
 		if !outJsonFmt && !outYmlFmt {
@@ -53,6 +61,7 @@ var loadCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("error in configuration file: %w", err)
 		}
+
 		if configPath == "" {
 			return fmt.Errorf("required configuration file path is empty")
 		}
@@ -74,15 +83,18 @@ var loadCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse configuration file '%s' with error: %w", configPath, err)
 		}
 
-		ctx := context.Background()
 		tfPluginClient, err := setup(cfg, debug)
 		if err != nil {
 			return err
 		}
 
-		err = deployer.RunLoader(ctx, cfg, tfPluginClient, debug, outputPath)
-		if err != nil {
-			return fmt.Errorf("failed to load configured deployments with error: %w", err)
+		if err = parser.ValidateConfig(cfg, tfPluginClient); err != nil {
+			return fmt.Errorf("failed to validate configuration file '%s' with error: %w", configPath, err)
+		}
+
+		ctx := context.Background()
+		if err = deployer.RunDeployer(ctx, cfg, tfPluginClient, outputPath, debug); err != nil {
+			return fmt.Errorf("failed to run the deployer with error: %w", err)
 		}
 
 		return nil
