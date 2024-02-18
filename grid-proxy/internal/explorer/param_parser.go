@@ -83,7 +83,7 @@ func ignoreEmptyParams(params url.Values) url.Values {
 	newParams := make(url.Values)
 	for key, val := range params {
 		for _, v := range val {
-			if v != string("") {
+			if v != "" {
 				newParams[key] = append(newParams[key], v)
 			}
 		}
