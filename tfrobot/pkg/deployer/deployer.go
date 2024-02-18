@@ -33,7 +33,7 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 	deploymentStart := time.Now()
 
 	// close ctx on SIGTERM
-	sigChan := make(chan os.Signal)
+	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigChan
