@@ -6,11 +6,11 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	massDeployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 )
 
-func setup(conf massDeployer.Config, debug bool) (deployer.TFPluginClient, error) {
+func setup(conf tfrobot.Config, debug bool) (deployer.TFPluginClient, error) {
 	network := conf.Network
 	log.Debug().Str("network", network).Send()
 
