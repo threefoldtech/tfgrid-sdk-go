@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/maps"
 )
 
 // powerOn sets the node power state ON
@@ -82,6 +83,18 @@ func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 
 	_, err := sub.SetNodePowerTarget(f.identity, nodeID, false)
 	if err != nil {
+		powerTarget, getErr := sub.GetPowerTarget(nodeID)
+		if getErr != nil {
+			return fmt.Errorf("failed to get node '%d' power target with error: %w", nodeID, getErr)
+		}
+
+		if powerTarget.State.IsDown || powerTarget.Target.IsDown {
+			log.Warn().Uint32("nodeID", nodeID).Msg("Node is shutting down although it failed to set power target in tfchain")
+			node.powerState = shuttingDown
+			node.lastTimePowerStateChanged = time.Now()
+			f.nodes[nodeID] = node
+		}
+
 		return fmt.Errorf("failed to set node '%d' power target to down with error: %w", nodeID, err)
 	}
 
@@ -149,15 +162,22 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 	nodesAllowedToShutdown := f.filterAllowedNodesToShutDown()
 
 	if len(onNodes) <= 1 {
-		log.Debug().Msg("Nothing to shutdown.")
+		log.Debug().Msg("Nothing to shutdown")
 		return nil
 	}
+
+	if len(nodesAllowedToShutdown) == 0 {
+		log.Debug().Msg("No nodes are allowed to shutdown")
+		return nil
+	}
+
+	log.Debug().Uints32("nodes IDs", maps.Keys(nodesAllowedToShutdown)).Msg("Nodes allowed to shutdown")
 
 	newUsedResources := usedResources
 	newTotalResources := totalResources
 	nodesLeftOnline := len(onNodes)
 
-	// shutdown a node if there is more then 1 unused node (aka keep at least one node online)
+	// shutdown a node if there is more than an unused node (aka keep at least one node online)
 	for _, node := range nodesAllowedToShutdown {
 		if nodesLeftOnline == 1 {
 			break
@@ -178,7 +198,12 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 			log.Info().Uint32("nodeID", uint32(node.ID)).Uint8("resources usage", newResourceUsage).Msg("Resource usage too low. Turning off unused node")
 			err := f.powerOff(sub, uint32(node.ID))
 			if err != nil {
-				log.Error().Err(err).Uint32("nodeID", uint32(node.ID)).Msg("Power off node")
+				log.Error().Err(err).Uint32("nodeID", uint32(node.ID)).Msg("Failed to power off node")
+
+				if node.powerState == shuttingDown {
+					continue
+				}
+
 				nodesLeftOnline += 1
 				newUsedResources += node.resources.used.hru + node.resources.used.sru +
 					node.resources.used.mru + node.resources.used.cru

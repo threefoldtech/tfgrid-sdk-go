@@ -1,11 +1,11 @@
 # Kubernetes
 
-This document explains Kubernetes related commands using tf-grid-cli.
+This document explains Kubernetes related commands using tfcmd.
 
 ## Deploy
 
 ```bash
-tf-grid-cli deploy kubernetes [flags]
+tfcmd deploy kubernetes [flags]
 ```
 
 ### Required Flags
@@ -36,24 +36,24 @@ tf-grid-cli deploy kubernetes [flags]
 Example:
 
 ```console
-$ tf-grid-cli deploy kubernetes -n kube --ssh ~/.ssh/id_rsa.pub --master-node 14 --workers-number 2 --workers-node 14
+$ tfcmd deploy kubernetes -n kube --ssh ~/.ssh/id_rsa.pub --master-node 14 --workers-number 2 --workers-node 14
 4:21PM INF deploying network
 4:22PM INF deploying cluster
-4:22PM INF master yggdrasil ip: 300:e9c4:9048:57cf:504f:c86c:9014:d02d
+4:22PM INF master planetary ip: 300:e9c4:9048:57cf:504f:c86c:9014:d02d
 ```
 
 ## Get
 
 ```bash
-tf-grid-cli get kubernetes <kubernetes>
+tfcmd get kubernetes <kubernetes>
 ```
 
-kubernetes is the name used when deploying kubernetes cluster using tf-grid-cli.
+kubernetes is the name used when deploying kubernetes cluster using tfcmd.
 
 Example:
 
 ```console
-$ tf-grid-cli get kubernetes examplevm
+$ tfcmd get kubernetes examplevm
 3:14PM INF k8s cluster:
 {
         "Master": {
@@ -67,7 +67,7 @@ $ tf-grid-cli get kubernetes examplevm
                 "FlistChecksum": "c87cf57e1067d21a3e74332a64ef9723",
                 "ComputedIP": "",
                 "ComputedIP6": "",
-                "YggIP": "300:e9c4:9048:57cf:e8a0:662b:4e66:8faa",
+                "PlanetaryIP": "300:e9c4:9048:57cf:e8a0:662b:4e66:8faa",
                 "IP": "10.20.2.2",
                 "CPU": 1,
                 "Memory": 1024
@@ -84,7 +84,7 @@ $ tf-grid-cli get kubernetes examplevm
                         "FlistChecksum": "c87cf57e1067d21a3e74332a64ef9723",
                         "ComputedIP": "",
                         "ComputedIP6": "",
-                        "YggIP": "300:e9c4:9048:57cf:66d0:3ee4:294e:d134",
+                        "PlanetaryIP": "300:e9c4:9048:57cf:66d0:3ee4:294e:d134",
                         "IP": "10.20.2.2",
                         "CPU": 1,
                         "Memory": 1024
@@ -100,7 +100,7 @@ $ tf-grid-cli get kubernetes examplevm
                         "FlistChecksum": "c87cf57e1067d21a3e74332a64ef9723",
                         "ComputedIP": "",
                         "ComputedIP6": "",
-                        "YggIP": "300:e9c4:9048:57cf:1ae5:cc51:3ffc:81e",
+                        "PlanetaryIP": "300:e9c4:9048:57cf:1ae5:cc51:3ffc:81e",
                         "IP": "10.20.2.2",
                         "CPU": 1,
                         "Memory": 1024
@@ -120,15 +120,15 @@ $ tf-grid-cli get kubernetes examplevm
 ## Cancel
 
 ```bash
-tf-grid-cli cancel <deployment-name>
+tfcmd cancel <deployment-name>
 ```
 
-deployment-name is the name of the deployment specified in while deploying using tf-grid-cli.
+deployment-name is the name of the deployment specified in while deploying using tfcmd.
 
 Example:
 
 ```console
-$ tf-grid-cli cancel kube
+$ tfcmd cancel kube
 3:37PM INF canceling contracts for project kube
 3:37PM INF kube canceled
 ```

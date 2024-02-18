@@ -79,7 +79,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -96,7 +96,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -113,7 +113,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -130,7 +130,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -166,7 +166,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}()
 
 	// cluster 1
-	result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID1}, k8sCluster1.Master.Name)
+	result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{nodeID1}, k8sCluster1.Master.Name)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -177,7 +177,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	// Check that master is reachable
-	masterIP := result.Master.YggIP
+	masterIP := result.Master.PlanetaryIP
 	if !assert.NotEmpty(t, masterIP) {
 		return
 	}
@@ -194,7 +194,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	// cluster 2
-	result, err = tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID2}, k8sCluster2.Master.Name)
+	result, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{nodeID2}, k8sCluster2.Master.Name)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -205,7 +205,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	// Check that master is reachable
-	masterIP = result.Master.YggIP
+	masterIP = result.Master.PlanetaryIP
 	if !assert.NotEmpty(t, masterIP) {
 		return
 	}

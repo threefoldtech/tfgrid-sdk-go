@@ -45,10 +45,7 @@ func setup() (deployer.TFPluginClient, error) {
 	network := os.Getenv("NETWORK")
 	log.Printf("network: %s", network)
 
-	tf, err := deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 50, false)
-	twinID := uint64(tf.TwinID)
-	nodeFilter.AvailableFor = &twinID
-	return tf, err
+	return deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, false, true)
 }
 
 // TestConnection used to test connection

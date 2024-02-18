@@ -14,12 +14,11 @@ var cancelCmd = &cobra.Command{
 	Short: "Cancel resources on Threefold grid",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-
 		cfg, err := config.GetUserConfig()
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false)
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false, true)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -32,5 +31,4 @@ var cancelCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(cancelCmd)
-
 }

@@ -75,7 +75,7 @@ func mockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub *m
 		GetBalance(identity).
 		Return(substrate.Balance{
 			Free: types.U128{
-				Int: big.NewInt(100000),
+				Int: big.NewInt(20000000),
 			},
 		}, nil)
 
@@ -378,7 +378,7 @@ func ExampleGatewayFQDNDeployer_Deploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -404,7 +404,7 @@ func ExampleGatewayFQDNDeployer_BatchDeploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -437,7 +437,7 @@ func ExampleGatewayFQDNDeployer_Cancel() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -446,7 +446,7 @@ func ExampleGatewayFQDNDeployer_Cancel() {
 	// should be a valid and existing name and deploymentName
 	name := "test1.com"
 	deploymentName := "test1"
-	g, err := tfPluginClient.State.LoadGatewayFQDNFromGrid(nodeID, name, deploymentName)
+	g, err := tfPluginClient.State.LoadGatewayFQDNFromGrid(context.Background(), nodeID, name, deploymentName)
 	if err != nil {
 		fmt.Println(err)
 		return

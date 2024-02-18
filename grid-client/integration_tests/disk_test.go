@@ -48,4 +48,8 @@ func TestDiskDeployment(t *testing.T) {
 	if !assert.NoError(t, err) || !assert.Equal(t, disk, resDisk) {
 		return
 	}
+	resDisk, err := tfPluginClient.State.LoadDiskFromGrid(ctx, nodeID, disk.Name, dl.Name)
+	if !assert.NoError(t, err) || !assert.Equal(t, disk, resDisk) {
+		return
+	}
 }

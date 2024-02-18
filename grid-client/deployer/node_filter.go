@@ -3,52 +3,128 @@ package deployer
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/gorilla/schema"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-// FilterNodes filters nodes using proxy
-func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64, optionalLimit ...uint64) ([]types.Node, error) {
-	limit := types.Limit{}
+const requestedPagesPerIteration = 5
 
-	if len(optionalLimit) > 0 {
-		limit = types.Limit{Size: optionalLimit[0]}
-	}
+// FilterNodes filters nodes using proxy
+func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, optionalLimit ...uint64) ([]types.Node, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	if options.AvailableFor == nil {
 		twinID := uint64(tfPlugin.TwinID)
 		options.AvailableFor = &twinID
 	}
+	options.Healthy = &trueVal
+
+	var nodes []types.Node
+	var errs error
+	var lock sync.Mutex
+
+	// default values for no limit
+	requestedPages := 1
+	totalPagesCount := 1
+	limit := types.Limit{}
+	nodesCount := types.DefaultLimit().Size
+
+	if len(optionalLimit) > 0 {
+		var err error
+		nodesCount = optionalLimit[0]
+		limit = types.Limit{Size: nodesCount, RetCount: true}
+		requestedPages = requestedPagesPerIteration
+		totalPagesCount, err = getPagesCount(ctx, tfPlugin, options, limit)
+		if err != nil {
+			return []types.Node{}, err
+		}
+	}
+
+	for i := 1; i <= totalPagesCount; i += requestedPages {
+		nodesOutput := make(chan types.Node)
+
+		var wg sync.WaitGroup
+		for j := 0; j < requestedPages; j++ {
+			limit.Page = uint64(i + j)
+			if limit.Page > uint64(totalPagesCount) {
+				break
+			}
+
+			wg.Add(1)
+			go func(limit types.Limit) {
+				defer wg.Done()
+				err := getNodes(ctx, tfPlugin, options, ssdDisks, hddDisks, rootfs, limit, nodesOutput)
+				if err != nil {
+					lock.Lock()
+					errs = multierror.Append(err)
+					lock.Unlock()
+				}
+			}(limit)
+		}
+
+		go func() {
+			wg.Wait()
+			close(nodesOutput)
+		}()
+
+		for node := range nodesOutput {
+			nodes = append(nodes, node)
+			if uint64(len(nodes)) == nodesCount {
+				log.Debug().Uint64("reached nodes page", limit.Page).Int("total pages", totalPagesCount).Send()
+				return nodes, nil
+			}
+		}
+
+		if len(optionalLimit) == 0 { // no limit and didn't reach default limit
+			return nodes, nil
+		}
+	}
+
+	if errs != nil {
+		return []types.Node{}, errors.Errorf("could not find enough nodes, found errors: %v", errs)
+	}
+
+	opts, err := serializeOptions(options)
+	if err != nil {
+		log.Debug().Err(err).Send()
+	}
+	return []types.Node{}, errors.Errorf("could not find enough nodes with options: %s", opts)
+}
+
+func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, limit types.Limit, output chan<- types.Node) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
 	if err != nil {
-		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
+		return errors.Wrap(err, "could not fetch nodes from the rmb proxy")
 	}
 
 	if len(nodes) == 0 {
-		options, err := serializeOptions(options)
-		if err != nil {
-			log.Debug().Msg(err.Error())
-		}
-		return []types.Node{}, errors.Errorf("could not find any node with options: %s", options)
+		return nil
 	}
 
 	// if no storage needed
 	if options.FreeSRU == nil && options.FreeHRU == nil {
-		// only pinging here because if there is storage required it will be pinged with Pools call
-		return pingNodes(ctx, tfPlugin.NcPool, tfPlugin.SubstrateConn, nodes), nil
+		for _, node := range nodes {
+			output <- node
+		}
+		return nil
 	}
+
 	sort.Slice(ssdDisks, func(i, j int) bool {
 		return ssdDisks[i] > ssdDisks[j]
 	})
@@ -60,79 +136,37 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		return hddDisks[i] > hddDisks[j]
 	})
 
-	// check pools
-	var nodePools []types.Node
-	var wg sync.WaitGroup
-	var lock sync.Mutex
-
 	for _, node := range nodes {
-		wg.Add(1)
-
-		go func(node types.Node) {
-			defer wg.Done()
-
-			client, err := tfPlugin.NcPool.GetNodeClient(tfPlugin.SubstrateConn, uint32(node.NodeID))
-			if err != nil {
-				log.Debug().Err(err).Msgf("failed to get node '%d' client", node.NodeID)
-				return
-			}
-
-			pools, err := client.Pools(ctx)
-			if err != nil {
-				log.Debug().Err(err).Msgf("failed to get node '%d' pools", node.NodeID)
-				return
-			}
-			if hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) && hasEnoughStorage(pools, hddDisks, zos.HDDDevice) {
-				lock.Lock()
-				nodePools = append(nodePools, node)
-				lock.Unlock()
-			}
-		}(node)
-	}
-
-	wg.Wait()
-
-	if len(nodePools) == 0 {
-		var freeSRU uint64
-		if options.FreeSRU != nil {
-			freeSRU = convertBytesToGB(*options.FreeSRU)
-		}
-		var freeHRU uint64
-		if options.FreeHRU != nil {
-			freeHRU = convertBytesToGB(*options.FreeHRU)
+		client, err := tfPlugin.NcPool.GetNodeClient(tfPlugin.SubstrateConn, uint32(node.NodeID))
+		if err != nil {
+			log.Debug().Err(err).Int("node ID", node.NodeID).Msgf("failed to get node client")
+			continue
 		}
 
-		return []types.Node{}, errors.Errorf("could not find any node with free ssd pools: %d GB and free hdd pools: %d GB", freeSRU, freeHRU)
+		pools, err := client.Pools(ctx)
+		if err != nil {
+			log.Debug().Err(err).Int("node ID", node.NodeID).Msg("failed to get node pools")
+			continue
+		}
+
+		if !hasEnoughStorage(pools, hddDisks, zos.HDDDevice) {
+			log.Debug().Err(err).Int("node ID", node.NodeID).Msg("no enough HDDs in node")
+			continue
+		}
+
+		if !hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) {
+			log.Debug().Err(err).Int("node ID", node.NodeID).Msg("no enough SSDs in node")
+			continue
+		}
+
+		select {
+		case output <- node:
+		case <-ctx.Done():
+			return nil
+		}
 	}
 
-	return nodePools, nil
-}
-
-func pingNodes(ctx context.Context, clientGetter client.NodeClientGetter, sub subi.SubstrateExt, nodes []types.Node) []types.Node {
-	var workingNodes []types.Node
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	for _, node := range nodes {
-		wg.Add(1)
-		go func(node types.Node) {
-			defer wg.Done()
-			client, err := clientGetter.GetNodeClient(sub, uint32(node.NodeID))
-			if err != nil {
-				log.Debug().Err(err).Msgf("failed to get node %d client", node.NodeID)
-				return
-			}
-			_, err = client.SystemVersion(ctx)
-			if err != nil {
-				log.Debug().Err(err).Msgf("failed to ping node %d", node.NodeID)
-				return
-			}
-			mu.Lock()
-			workingNodes = append(workingNodes, node)
-			mu.Unlock()
-		}(node)
-	}
-	wg.Wait()
-	return workingNodes
+	return nil
 }
 
 var (
@@ -266,7 +300,10 @@ func serializeOptions(options types.NodeFilter) (string, error) {
 	return filter, nil
 }
 
-func convertBytesToGB(bytes uint64) uint64 {
-	gb := bytes / (1024 * 1024 * 1024)
-	return gb
+func getPagesCount(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, limit types.Limit) (int, error) {
+	_, totalNodesCount, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
+	if err != nil {
+		return 0, err
+	}
+	return int(math.Ceil(float64(totalNodesCount) / float64(limit.Size))), nil
 }

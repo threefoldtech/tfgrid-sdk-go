@@ -17,12 +17,11 @@ func app() error {
 
 	client, err := peer.NewRpcClient(
 		context.Background(),
-		peer.KeyTypeSr25519,
 		mnemonics,
-		"wss://relay.dev.grid.tf",
-		"test-client",
 		subManager,
-		true,
+		peer.WithKeyType(peer.KeyTypeSr25519),
+		peer.WithRelay("wss://relay.dev.grid.tf"),
+		peer.WithSession("test-client"),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create direct client: %w", err)

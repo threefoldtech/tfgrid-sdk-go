@@ -88,6 +88,7 @@ func (c *Crafter) GenerateNodes() error {
 
 	powerState := []string{"Up", "Down"}
 	var locations []string
+	var healthReports []string
 	var nodes []string
 	var totalResources []string
 	var publicConfigs []string
@@ -166,12 +167,15 @@ func (c *Crafter) GenerateNodes() error {
 			secure:            false,
 			virtualized:       false,
 			serial_number:     "",
-			power: nodePower{
+			extra_fee:         0,
+			dedicated:         false,
+		}
+
+		if flip(.3) {
+			node.power = &nodePower{
 				State:  powerState[r.Intn(len(powerState))],
 				Target: powerState[r.Intn(len(powerState))],
-			},
-			extra_fee: 0,
-			dedicated: false,
+			}
 		}
 
 		total_resources := node_resources_total{
@@ -181,6 +185,15 @@ func (c *Crafter) GenerateNodes() error {
 			cru:     cru,
 			mru:     mru,
 			node_id: fmt.Sprintf("node-%d", i),
+		}
+
+		health := true
+		if flip(.5) {
+			health = false
+		}
+		healthReport := health_report{
+			node_twin_id: node.twin_id,
+			healthy:      health,
 		}
 
 		if _, ok := c.dedicatedFarms[node.farm_id]; ok {
@@ -193,6 +206,12 @@ func (c *Crafter) GenerateNodes() error {
 			return fmt.Errorf("failed to convert location object to tuple string: %w", err)
 		}
 		locations = append(locations, locationTuple)
+
+		healthTuple, err := objectToTupleString(healthReport)
+		if err != nil {
+			return fmt.Errorf("failed to convert health report to tuple string: %w", err)
+		}
+		healthReports = append(healthReports, healthTuple)
 
 		nodeTuple, err := objectToTupleString(node)
 		if err != nil {
@@ -229,8 +248,12 @@ func (c *Crafter) GenerateNodes() error {
 		return fmt.Errorf("failed to insert locations: %w", err)
 	}
 
+	if err := c.insertTuples(health_report{}, healthReports); err != nil {
+		return fmt.Errorf("failed to insert health reports: %w", err)
+	}
+
 	if err := c.insertTuples(node{}, nodes); err != nil {
-		return fmt.Errorf("failed to isnert nodes: %w", err)
+		return fmt.Errorf("failed to insert nodes: %w", err)
 	}
 
 	if err := c.insertTuples(node_resources_total{}, totalResources); err != nil {
@@ -816,8 +839,8 @@ func (c *Crafter) GenerateCountries() error {
 			country_id: uint64(index),
 			name:       countryName,
 			code:       countriesCodes[countryName],
-			region:     "unknown",
-			subregion:  region,
+			region:     region,
+			subregion:  "unknown",
 			lat:        fmt.Sprintf("%d", 0),
 			long:       fmt.Sprintf("%d", 0),
 		}

@@ -51,7 +51,7 @@ SELECT
     count(node_contract.contract_id) as node_contracts_count,
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     node.country as country,
-    country.subregion as region
+    country.region as region
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id 
@@ -77,7 +77,7 @@ GROUP BY
     rent_contract.twin_id,
     COALESCE(node_gpu.node_gpu_count, 0),
     node.country,
-    country.subregion;
+    country.region;
 
 DROP TABLE IF EXISTS resources_cache;
 CREATE TABLE IF NOT EXISTS resources_cache(
@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS resources_cache(
 INSERT INTO resources_cache 
 SELECT * 
 FROM resources_cache_view;
+
 
 ----
 -- PublicIpsCache table
@@ -176,7 +177,7 @@ BEGIN
             SET
                 country = NEW.country,
                 region = (
-                    SELECT subregion FROM country WHERE LOWER(country.name) = LOWER(NEW.country)
+                    SELECT region FROM country WHERE LOWER(country.name) = LOWER(NEW.country)
                 )
             WHERE
                 resources_cache.node_id = NEW.node_id;
@@ -380,6 +381,12 @@ CREATE OR REPLACE TRIGGER tg_rent_contract
   - Insert new ip > increment free/total ips + re-aggregate ips object
   - Deleted > decrement total, decrement free ips (if it was used) + re-aggregate ips object
   - Update > increment/decrement free ips based on usage + re-aggregate ips object
+
+  - reserve ip > free_ips decrease
+  - unreserve ip > free_ips increase
+  - insert new ip (expected be free) > free_ips increase
+  - remove reserved ip > free_ips does not change
+  - remove free ip > free_ips decrease
 */
 CREATE OR REPLACE FUNCTION reflect_public_ip_changes() RETURNS TRIGGER AS 
 $$ 
@@ -390,10 +397,12 @@ BEGIN
         SET free_ips = free_ips + (
                 CASE 
                 -- handles insertion/update by freeing ip
-                WHEN TG_OP != 'DELETE' AND NEW.contract_id = 0
+                WHEN TG_OP = 'INSERT' AND NEW.contract_id = 0 OR 
+                     TG_OP = 'UPDATE' AND NEW.contract_id = 0 AND OLD.contract_id != 0
                     THEN 1 
                 -- handles deletion/update by reserving ip
-                WHEN TG_OP != 'INSERT' AND OLD.contract_id = 0
+                WHEN TG_OP = 'DELETE' AND OLD.contract_id = 0 OR
+                     TG_OP = 'UPDATE' AND OLD.contract_id = 0 AND NEW.contract_id != 0
                     THEN -1
                 -- handles delete reserved ips
                 ELSE 0

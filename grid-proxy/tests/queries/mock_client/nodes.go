@@ -40,6 +40,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				ID:              node.ID,
 				NodeID:          int(node.NodeID),
 				FarmID:          int(node.FarmID),
+				FarmName:        g.data.Farms[node.FarmID].Name,
 				TwinID:          int(node.TwinID),
 				Country:         node.Country,
 				City:            node.City,
@@ -86,6 +87,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				},
 				NumGPU:   numGPU,
 				ExtraFee: node.ExtraFee,
+				Healthy:  g.data.HealthReports[node.TwinID],
 			})
 		}
 	}
@@ -123,6 +125,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		ID:              node.ID,
 		NodeID:          int(node.NodeID),
 		FarmID:          int(node.FarmID),
+		FarmName:        g.data.Farms[node.FarmID].Name,
 		TwinID:          int(node.TwinID),
 		Country:         node.Country,
 		City:            node.City,
@@ -171,6 +174,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		},
 		NumGPU:   numGPU,
 		ExtraFee: node.ExtraFee,
+		Healthy:  g.data.HealthReports[node.TwinID],
 	}
 	return
 }
@@ -208,6 +212,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if f.FreeHRU != nil && int64(*f.FreeHRU) > int64(free.HRU) {
+		return false
+	}
+
+	if f.Healthy != nil && *f.Healthy != data.HealthReports[n.TwinID] {
 		return false
 	}
 
@@ -284,6 +292,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if f.Dedicated != nil && *f.Dedicated != isDedicatedNode(*data, *n) {
+		return false
+	}
+
+	if f.Excluded != nil && len(f.Excluded) != 0 && slices.Contains(f.Excluded, n.NodeID) {
 		return false
 	}
 

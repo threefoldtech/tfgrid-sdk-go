@@ -22,7 +22,7 @@ func app() error {
 
 	subManager := substrate.NewManager(subNodeURL)
 
-	client, err := peer.NewRpcClient(context.Background(), peer.KeyTypeSr25519, mnemonics, relayURL, "test-client", subManager, true)
+	client, err := peer.NewRpcClient(context.Background(), mnemonics, subManager, peer.WithRelay(relayURL), peer.WithSession("test-client"))
 	if err != nil {
 		return fmt.Errorf("failed to create direct client: %w", err)
 	}

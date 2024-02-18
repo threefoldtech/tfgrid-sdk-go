@@ -97,7 +97,7 @@ func TestPresearchDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -110,12 +110,12 @@ func TestPresearchDeployment(t *testing.T) {
 		t.Errorf("public ip is not reachable")
 	}
 
-	yggIP := v.YggIP
+	planetaryIP := v.PlanetaryIP
 	if !assert.NotEmpty(t, yggIP) {
 		return
 	}
 
-	output, err := RemoteRun("root", yggIP, "cat /proc/1/environ", privateKey)
+	output, err := RemoteRun("root", planetaryIP, "cat /proc/1/environ", privateKey)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -126,7 +126,7 @@ func TestPresearchDeployment(t *testing.T) {
 	ticker := time.NewTicker(2 * time.Second)
 	for now := time.Now(); time.Since(now) < 1*time.Minute; {
 		<-ticker.C
-		output, err = RemoteRun("root", yggIP, "zinit list", privateKey)
+		output, err = RemoteRun("root", planetaryIP, "zinit list", privateKey)
 		if err == nil && strings.Contains(output, "prenode: Success") {
 			break
 		}

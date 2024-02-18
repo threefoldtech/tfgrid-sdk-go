@@ -79,7 +79,7 @@ func TestNameDeployer(t *testing.T) {
 			GetBalance(d.tfPluginClient.Identity).
 			Return(substrate.Balance{
 				Free: types.U128{
-					Int: big.NewInt(100000),
+					Int: big.NewInt(20000000),
 				},
 			}, nil)
 		cl.
@@ -412,7 +412,7 @@ func ExampleGatewayNameDeployer_Deploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -438,7 +438,7 @@ func ExampleGatewayNameDeployer_BatchDeploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -472,7 +472,7 @@ func ExampleGatewayNameDeployer_Cancel() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -481,7 +481,7 @@ func ExampleGatewayNameDeployer_Cancel() {
 	// should be a valid and existing name and deploymentName
 	name := "test.com"
 	deploymentName := "test"
-	g, err := tfPluginClient.State.LoadGatewayNameFromGrid(nodeID, name, deploymentName)
+	g, err := tfPluginClient.State.LoadGatewayNameFromGrid(context.Background(), nodeID, name, deploymentName)
 	if err != nil {
 		fmt.Println(err)
 		return

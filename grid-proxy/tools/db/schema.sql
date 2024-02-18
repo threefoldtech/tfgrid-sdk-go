@@ -458,6 +458,17 @@ CREATE TABLE IF NOT EXISTS public.node_gpu (
 ALTER TABLE public.node_gpu OWNER TO postgres;
 
 --
+-- Name: health_report; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS public.health_report (
+    node_twin_id bigint NOT NULL,
+    healthy boolean
+);
+
+ALTER TABLE public.health_report OWNER TO postgres;
+
+--
 -- Name: refund_transaction; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -869,8 +880,7 @@ ALTER TABLE ONLY public.node_resources_total
 --
 
 ALTER TABLE ONLY public.node_gpu
-    ADD CONSTRAINT node_gpu_pkey PRIMARY KEY (id);
-
+    ADD CONSTRAINT node_gpu_pkey PRIMARY KEY (id, node_twin_id);
 
 
 --

@@ -825,6 +825,7 @@ const docTemplate = `{
                     },
                     {
                         "enum": [
+                            "status",
                             "node_id",
                             "farm_id",
                             "twin_id",
@@ -913,6 +914,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Node status filter, 'up': for only up nodes, 'down': for only down nodes \u0026 'standby' for powered-off nodes by farmerbot.",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Healthy nodes filter, 'true' for nodes that responded to rmb call in the last 5 mins",
+                        "name": "healthy",
                         "in": "query"
                     },
                     {
@@ -1568,11 +1575,17 @@ const docTemplate = `{
                 "farmId": {
                     "type": "integer"
                 },
+                "farmName": {
+                    "type": "string"
+                },
                 "farmingPolicyId": {
                     "type": "integer"
                 },
                 "gridVersion": {
                     "type": "integer"
+                },
+                "healthy": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "string"
@@ -1605,7 +1618,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "description": "added node status field for up or down",
                     "type": "string"
                 },
                 "total_resources": {
@@ -1731,11 +1743,17 @@ const docTemplate = `{
                 "farmId": {
                     "type": "integer"
                 },
+                "farmName": {
+                    "type": "string"
+                },
                 "farmingPolicyId": {
                     "type": "integer"
                 },
                 "gridVersion": {
                     "type": "integer"
+                },
+                "healthy": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "string"

@@ -78,11 +78,11 @@ func TestDeploymentsDeploy(t *testing.T) {
 			t.Log(err)
 		}
 	})
-	dl, err := tf.State.LoadDeploymentFromGrid(node, d.Name)
+	dl, err := tf.State.LoadDeploymentFromGrid(context.Background(), node, "deployment1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	dl2, err := tf.State.LoadDeploymentFromGrid(node, d2.Name)
+	dl2, err := tf.State.LoadDeploymentFromGrid(context.Background(), node, "deployment2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dl, err = tf.State.LoadDeploymentFromGrid(node, d.Name)
+	dl, err = tf.State.LoadDeploymentFromGrid(context.Background(), node, "deployment1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,11 +184,11 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		t.Fatalf("expected 6 used IPs but got %d", len(usedIPs))
 	}
 
-	dl, err := tf.State.LoadDeploymentFromGrid(node, d.Name)
+	dl, err := tf.State.LoadDeploymentFromGrid(context.Background(), node, "deployment1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	dl2, err := tf.State.LoadDeploymentFromGrid(node, d2.Name)
+	dl2, err := tf.State.LoadDeploymentFromGrid(context.Background(), node, "deployment2")
 	if err != nil {
 		t.Fatal(err)
 	}

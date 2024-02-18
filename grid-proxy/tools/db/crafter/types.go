@@ -158,7 +158,7 @@ type node struct {
 	created_at        uint64
 	updated_at        uint64
 	location_id       string
-	power             nodePower `gorm:"type:jsonb"`
+	power             *nodePower `gorm:"type:jsonb"`
 	extra_fee         uint64
 	dedicated         bool
 }
@@ -263,4 +263,9 @@ type country struct {
 	subregion  string
 	lat        string
 	long       string
+}
+
+type health_report struct {
+	node_twin_id uint64
+	healthy      bool
 }

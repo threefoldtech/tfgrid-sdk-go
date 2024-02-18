@@ -101,15 +101,14 @@ func TestQSFSDeployment(t *testing.T) {
 	resDataZDBs := []workloads.ZDB{}
 	resMetaZDBs := []workloads.ZDB{}
 	for i := 1; i <= DataZDBNum; i++ {
-		res, err := tfPluginClient.State.LoadZdbFromGrid(nodeID, "qsfsDataZdb"+strconv.Itoa(i), dl1.Name)
+		res, err := tfPluginClient.State.LoadZdbFromGrid(ctx, nodeID, "qsfsDataZdb"+strconv.Itoa(i), dl1.Name)
 		if !assert.NoError(t, err) || !assert.NotEmpty(t, res) {
 			return
 		}
-
 		resDataZDBs = append(resDataZDBs, res)
 	}
 	for i := 1; i <= MetaZDBNum; i++ {
-		res, err := tfPluginClient.State.LoadZdbFromGrid(nodeID, "qsfsMetaZdb"+strconv.Itoa(i), dl1.Name)
+		res, err := tfPluginClient.State.LoadZdbFromGrid(ctx, nodeID, "qsfsMetaZdb"+strconv.Itoa(i), dl1.Name)
 		if !assert.NoError(t, err) || !assert.NotEmpty(t, res) {
 			return
 		}
@@ -193,12 +192,12 @@ func TestQSFSDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	resVM, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl2.Name)
+	resVM, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl2.Name)
 	if !assert.NoError(t, err) {
 		return
 	}
 
-	resQSFS, err := tfPluginClient.State.LoadQSFSFromGrid(nodeID, qsfs.Name, dl2.Name)
+	resQSFS, err := tfPluginClient.State.LoadQSFSFromGrid(ctx, nodeID, qsfs.Name, dl2.Name)
 	if !assert.NoError(t, err) || !assert.NotEmpty(t, resQSFS.MetricsEndpoint) {
 		return
 	}
@@ -209,7 +208,7 @@ func TestQSFSDeployment(t *testing.T) {
 		return
 	}
 
-	yggIP := resVM.YggIP
+	planetaryIP := resVM.PlanetaryIP
 	if !assert.NotEmpty(t, yggIP) {
 		return
 	}
@@ -222,7 +221,7 @@ func TestQSFSDeployment(t *testing.T) {
 	}
 
 	// try write to a file in mounted disk
-	_, err = RemoteRun("root", yggIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
+	_, err = RemoteRun("root", planetaryIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
 	if !assert.NoError(t, err) {
 		return
 	}

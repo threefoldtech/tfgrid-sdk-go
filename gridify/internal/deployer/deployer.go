@@ -83,7 +83,7 @@ func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint, depl
 		return map[uint]string{}, errors.Wrapf(err, "could not deploy vm %s on node %d", dl.Name, node)
 	}
 
-	resVM, err := d.tfPluginClient.LoadVMFromGrid(node, dl.Name, dl.Name)
+	resVM, err := d.tfPluginClient.LoadVMFromGrid(ctx, node, dl.Name, dl.Name)
 	if err != nil {
 		return map[uint]string{}, errors.Wrapf(err, "could not load vm %s on node %d", dl.Name, node)
 	}
@@ -100,7 +100,7 @@ func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint, depl
 		if err != nil {
 			return map[uint]string{}, errors.Wrapf(err, "could not deploy gateway %s on node %d", gateway.Name, node)
 		}
-		resGateway, err := d.tfPluginClient.LoadGatewayNameFromGrid(node, gateway.Name, gateway.Name)
+		resGateway, err := d.tfPluginClient.LoadGatewayNameFromGrid(ctx, node, gateway.Name, gateway.Name)
 		if err != nil {
 			return map[uint]string{}, errors.Wrapf(err, "could not load gateway %s on node %d", gateway.Name, node)
 		}
@@ -118,7 +118,7 @@ func (d *Deployer) Destroy() error {
 }
 
 // Get returns deployed project domains
-func (d *Deployer) Get() (map[string]string, error) {
+func (d *Deployer) Get(ctx context.Context) (map[string]string, error) {
 	d.logger.Info().Msgf("getting contracts for project %s", d.projectName)
 	contracts, err := d.tfPluginClient.ListContractsOfProjectName(d.projectName)
 	if err != nil {
@@ -139,7 +139,7 @@ func (d *Deployer) Get() (map[string]string, error) {
 			return map[string]string{}, errors.Wrapf(err, "could not parse contract %s into uint64", contract.ContractID)
 		}
 		d.tfPluginClient.SetState(contract.NodeID, []uint64{contractID})
-		gateway, err := d.tfPluginClient.LoadGatewayNameFromGrid(contract.NodeID, deploymentData.Name, deploymentData.Name)
+		gateway, err := d.tfPluginClient.LoadGatewayNameFromGrid(ctx, contract.NodeID, deploymentData.Name, deploymentData.Name)
 		if err != nil {
 			return map[string]string{}, err
 		}

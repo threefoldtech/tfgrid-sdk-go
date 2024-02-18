@@ -48,7 +48,7 @@ func TestZDBDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	z, err := tfPluginClient.State.LoadZdbFromGrid(nodeID, zdb.Name, dl.Name)
+	z, err := tfPluginClient.State.LoadZdbFromGrid(ctx, nodeID, zdb.Name, dl.Name)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, z.IPs)
 	assert.NotEmpty(t, z.Namespace)

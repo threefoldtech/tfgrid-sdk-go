@@ -15,6 +15,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/parser"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
+	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"github.com/vedhavyas/go-subkey"
 )
 
@@ -47,11 +48,13 @@ func init() {
 	farmerBotCmd.PersistentFlags().StringP("network", "n", internal.MainNetwork, fmt.Sprintf("the grid network to use, available networks: %s, %s, %s, and %s", internal.DevNetwork, internal.QaNetwork, internal.TestNetwork, internal.MainNetwork))
 	farmerBotCmd.PersistentFlags().StringP("mnemonic", "m", "", "the mnemonic of the account of the farmer")
 	farmerBotCmd.PersistentFlags().StringP("seed", "s", "", "the hex seed of the account of the farmer")
+	farmerBotCmd.PersistentFlags().StringP("key-type", "k", peer.KeyTypeSr25519, "key type for mnemonic")
 	farmerBotCmd.MarkFlagsMutuallyExclusive("mnemonic", "seed")
 
 	farmerBotCmd.MarkFlagsMutuallyExclusive("env", "network")
 	farmerBotCmd.MarkFlagsMutuallyExclusive("env", "seed")
 	farmerBotCmd.MarkFlagsMutuallyExclusive("env", "mnemonic")
+	farmerBotCmd.MarkFlagsMutuallyExclusive("env", "key-type")
 
 	farmerBotCmd.PersistentFlags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
 
@@ -62,7 +65,7 @@ func init() {
 	startAllCmd.Flags().Uint32("farm", 0, "enter the farm ID you want to start your nodes in")
 }
 
-func getDefaultFlags(cmd *cobra.Command) (network string, mnemonicOrSeed string, err error) {
+func getDefaultFlags(cmd *cobra.Command) (network string, mnemonicOrSeed string, keyType string, err error) {
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
 		err = fmt.Errorf("invalid log debug mode input '%v' with error: %w", debug, err)
@@ -83,10 +86,20 @@ func getDefaultFlags(cmd *cobra.Command) (network string, mnemonicOrSeed string,
 	if len(envPath) != 0 {
 		envContent, err := parser.ReadFile(envPath)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 
 		return parser.ParseEnv(string(envContent))
+	}
+
+	keyType, err = cmd.Flags().GetString("key-type")
+	if err != nil {
+		err = fmt.Errorf("invalid key type input '%s' with error: %w", keyType, err)
+		return
+	}
+
+	if keyType != peer.KeyTypeEd25519 && keyType != peer.KeyTypeSr25519 {
+		return "", "", "", fmt.Errorf("invalid key type input %q", keyType)
 	}
 
 	network, err = cmd.Flags().GetString("network")

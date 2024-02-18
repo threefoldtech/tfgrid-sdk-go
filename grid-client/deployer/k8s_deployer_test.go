@@ -68,7 +68,7 @@ func k8sMockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub
 		GetBalance(d.tfPluginClient.Identity).
 		Return(substrate.Balance{
 			Free: types.U128{
-				Int: big.NewInt(100000),
+				Int: big.NewInt(20000000),
 			},
 		}, nil)
 
@@ -106,7 +106,7 @@ func constructK8sCluster() (workloads.K8sCluster, error) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "5.5.5.5/24",
 		ComputedIP6:   "::7/64",
-		YggIP:         "::8/64",
+		PlanetaryIP:   "::8/64",
 		IP:            "10.1.0.2",
 		CPU:           2,
 		Memory:        1024,
@@ -123,7 +123,7 @@ func constructK8sCluster() (workloads.K8sCluster, error) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -324,7 +324,7 @@ func ExampleK8sDeployer_Deploy() {
 		return
 	}
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -397,7 +397,7 @@ func ExampleK8sDeployer_BatchDeploy() {
 		return
 	}
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -474,7 +474,7 @@ func ExampleK8sDeployer_Cancel() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -482,7 +482,7 @@ func ExampleK8sDeployer_Cancel() {
 
 	// should be a valid and existing k8s cluster deployment name
 	deploymentName := "K8sForTesting"
-	cluster, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID}, deploymentName)
+	cluster, err := tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{nodeID}, deploymentName)
 	if err != nil {
 		fmt.Println(err)
 		return

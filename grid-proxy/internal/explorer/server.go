@@ -118,7 +118,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of nodes"
-// @Param sort_by query string false "Sort by specific node filed" Enums(node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
+// @Param sort_by query string false "Sort by specific node filed" Enums(status, node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
 // @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"
@@ -129,6 +129,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param total_hru query int false "Total hru in bytes"
 // @Param free_ips query int false "Min number of free ips in the farm of the node"
 // @Param status query string false "Node status filter, 'up': for only up nodes, 'down': for only down nodes & 'standby' for powered-off nodes by farmerbot."
+// @Param healthy query bool false "Healthy nodes filter, 'true' for nodes that responded to rmb call in the last 5 mins"
 // @Param city query string false "Node city filter"
 // @Param country query string false "Node country filter"
 // @Param region query string false "Node region"
@@ -466,6 +467,12 @@ func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.Error(fmt.Errorf("failed to get get node GPU information from relay: %w", err))
 	}
+
+	// assign the called twin id for clearer response
+	for i := 0; i < len(res); i++ {
+		res[i].NodeTwinID = uint32(node.TwinID)
+	}
+
 	return res, mw.Ok()
 }
 

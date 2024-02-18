@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -23,7 +24,7 @@ func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID ui
 }
 
 // GetVM gets a vm with its project name
-func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
+func GetVM(ctx context.Context, t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
 	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
 	if err != nil {
 		return workloads.Deployment{}, err
@@ -44,11 +45,11 @@ func GetVM(t deployer.TFPluginClient, name string) (workloads.Deployment, error)
 		nodeID = node
 	}
 
-	return t.State.LoadDeploymentFromGrid(nodeID, name)
+	return t.State.LoadDeploymentFromGrid(ctx, nodeID, name)
 }
 
 // GetK8sCluster gets a kubernetes cluster with its project name
-func GetK8sCluster(t deployer.TFPluginClient, name string) (workloads.K8sCluster, error) {
+func GetK8sCluster(ctx context.Context, t deployer.TFPluginClient, name string) (workloads.K8sCluster, error) {
 	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.K8sType, name)
 	if err != nil {
 		return workloads.K8sCluster{}, err
@@ -70,11 +71,11 @@ func GetK8sCluster(t deployer.TFPluginClient, name string) (workloads.K8sCluster
 		nodeIDs = append(nodeIDs, node)
 	}
 
-	return t.State.LoadK8sFromGrid(nodeIDs, name)
+	return t.State.LoadK8sFromGrid(ctx, nodeIDs, name)
 }
 
 // GetGatewayName gets a gateway name with its project name
-func GetGatewayName(t deployer.TFPluginClient, name string) (workloads.GatewayNameProxy, error) {
+func GetGatewayName(ctx context.Context, t deployer.TFPluginClient, name string) (workloads.GatewayNameProxy, error) {
 	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.GatewayNameType, name)
 	if err != nil {
 		return workloads.GatewayNameProxy{}, err
@@ -85,11 +86,11 @@ func GetGatewayName(t deployer.TFPluginClient, name string) (workloads.GatewayNa
 		nodeID = node
 	}
 
-	return t.State.LoadGatewayNameFromGrid(nodeID, name, name)
+	return t.State.LoadGatewayNameFromGrid(ctx, nodeID, name, name)
 }
 
 // GetGatewayFQDN gets a gateway fqdn with its project name
-func GetGatewayFQDN(t deployer.TFPluginClient, name string) (workloads.GatewayFQDNProxy, error) {
+func GetGatewayFQDN(ctx context.Context, t deployer.TFPluginClient, name string) (workloads.GatewayFQDNProxy, error) {
 	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.GatewayFQDNType, name)
 	if err != nil {
 		return workloads.GatewayFQDNProxy{}, err
@@ -100,11 +101,11 @@ func GetGatewayFQDN(t deployer.TFPluginClient, name string) (workloads.GatewayFQ
 		nodeID = node
 	}
 
-	return t.State.LoadGatewayFQDNFromGrid(nodeID, name, name)
+	return t.State.LoadGatewayFQDNFromGrid(ctx, nodeID, name, name)
 }
 
 // GetDeployment gets a deployment with its project name
-func GetDeployment(t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
+func GetDeployment(ctx context.Context, t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
 	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
 	if err != nil {
 		return workloads.Deployment{}, err
@@ -116,5 +117,5 @@ func GetDeployment(t deployer.TFPluginClient, name string) (workloads.Deployment
 		nodeID = node
 	}
 
-	return t.State.LoadDeploymentFromGrid(nodeID, name)
+	return t.State.LoadDeploymentFromGrid(ctx, nodeID, name)
 }

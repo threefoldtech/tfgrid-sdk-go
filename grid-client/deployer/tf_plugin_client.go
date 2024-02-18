@@ -26,14 +26,14 @@ import (
 
 var (
 	// SubstrateURLs are substrate urls
-	SubstrateURLs = map[string]string{
-		"dev":  "wss://tfchain.dev.grid.tf/ws",
-		"test": "wss://tfchain.test.grid.tf/ws",
-		"qa":   "wss://tfchain.qa.grid.tf/ws",
-		"main": "wss://tfchain.grid.tf/ws",
+	SubstrateURLs = map[string][]string{
+		"dev":  {"wss://tfchain.dev.grid.tf/ws", "wss://tfchain.dev.grid.tf:443"},
+		"test": {"wss://tfchain.test.grid.tf/ws", "wss://tfchain.test.grid.tf:443"},
+		"qa":   {"wss://tfchain.qa.grid.tf/ws", "wss://tfchain.qa.grid.tf:443"},
+		"main": {"wss://tfchain.grid.tf/ws", "wss://tfchain.grid.tf:443"},
 	}
-	// RMBProxyURLs are rmb proxy urls
-	RMBProxyURLs = map[string]string{
+	// ProxyURLs are rmb proxy urls
+	ProxyURLs = map[string]string{
 		"dev":  "https://gridproxy.dev.grid.tf/",
 		"test": "https://gridproxy.test.grid.tf/",
 		"qa":   "https://gridproxy.qa.grid.tf/",
@@ -60,10 +60,10 @@ type TFPluginClient struct {
 	TwinID         uint32
 	mnemonicOrSeed string
 	Identity       substrate.Identity
-	substrateURL   string
+	substrateURL   []string
 	relayURL       string
 	RMBTimeout     time.Duration
-	rmbProxyURL    string
+	proxyURL       string
 	useRmbProxy    bool
 
 	// network
@@ -102,9 +102,10 @@ func NewTFPluginClient(
 	network string,
 	substrateURL string,
 	relayURL string,
-	rmbProxyURL string,
+	proxyURL string,
 	rmbTimeout int,
 	showLogs bool,
+	rmbInMemCache bool,
 ) (TFPluginClient, error) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	if showLogs {
@@ -155,10 +156,10 @@ func NewTFPluginClient(
 		if err := validateWssURL(substrateURL); err != nil {
 			return TFPluginClient{}, errors.Wrapf(err, "could not validate substrate url %s", substrateURL)
 		}
-		tfPluginClient.substrateURL = substrateURL
+		tfPluginClient.substrateURL = []string{substrateURL}
 	}
 
-	manager := subi.NewManager(tfPluginClient.substrateURL)
+	manager := subi.NewManager(tfPluginClient.substrateURL...)
 	sub, err := manager.SubstrateExt()
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not get substrate client")
@@ -179,12 +180,12 @@ func NewTFPluginClient(
 	}
 	tfPluginClient.TwinID = twinID
 
-	tfPluginClient.rmbProxyURL = RMBProxyURLs[network]
-	if len(strings.TrimSpace(rmbProxyURL)) != 0 {
-		if err := validateProxyURL(rmbProxyURL); err != nil {
-			return TFPluginClient{}, errors.Wrapf(err, "could not validate rmb proxy url %s", rmbProxyURL)
+	tfPluginClient.proxyURL = ProxyURLs[network]
+	if len(strings.TrimSpace(proxyURL)) != 0 {
+		if err := validateProxyURL(proxyURL); err != nil {
+			return TFPluginClient{}, errors.Wrapf(err, "could not validate proxy url %s", proxyURL)
 		}
-		tfPluginClient.rmbProxyURL = rmbProxyURL
+		tfPluginClient.proxyURL = proxyURL
 	}
 
 	tfPluginClient.useRmbProxy = true
@@ -199,23 +200,32 @@ func NewTFPluginClient(
 		tfPluginClient.relayURL = relayURL
 	}
 
-	// default rmbTimeout is 10
+	// default rmbTimeout is 60
 	if rmbTimeout == 0 {
-		rmbTimeout = 10
+		rmbTimeout = 60
 	}
 	tfPluginClient.RMBTimeout = time.Second * time.Duration(rmbTimeout)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	tfPluginClient.cancelRelayContext = cancel
 
-	rmbClient, err := peer.NewRpcClient(ctx, keyType, tfPluginClient.mnemonicOrSeed, tfPluginClient.relayURL, sessionID, manager, true)
+	peerOpts := []peer.PeerOpt{
+		peer.WithRelay(tfPluginClient.relayURL),
+		peer.WithSession(sessionID),
+		peer.WithKeyType(keyType),
+	}
+
+	if !rmbInMemCache {
+		peerOpts = append(peerOpts, peer.WithTwinCache(10*60*60)) // in seconds that's 10 hours
+	}
+	rmbClient, err := peer.NewRpcClient(ctx, tfPluginClient.mnemonicOrSeed, manager, peerOpts...)
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not create rmb client")
 	}
 
 	tfPluginClient.RMB = rmbClient
 
-	gridProxyClient := proxy.NewClient(tfPluginClient.rmbProxyURL)
+	gridProxyClient := proxy.NewClient(tfPluginClient.proxyURL)
 	if err := validateRMBProxyServer(gridProxyClient); err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not validate rmb proxy server")
 	}

@@ -75,6 +75,7 @@ import (
 	"context"
 	"math/rand"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/pkg/errors"
@@ -417,16 +418,17 @@ func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc N
 }
 
 // GetNodeFreeWGPort returns node free wireguard port
-func (n *NodeClient) GetNodeFreeWGPort(ctx context.Context, nodeID uint32) (int, error) {
-	freePorts, err := n.NetworkListWGPorts(ctx)
+func (n *NodeClient) GetNodeFreeWGPort(ctx context.Context, nodeID uint32, usedPorts []uint16) (int, error) {
+	nodeUsedPorts, err := n.NetworkListWGPorts(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to list wg ports")
 	}
-	log.Debug().Msgf("reserved ports for node %d: %v", nodeID, freePorts)
-	p := uint(rand.Intn(6000) + 2000)
+	log.Debug().Msgf("reserved ports for node %d: %v", nodeID, nodeUsedPorts)
+	// from 1024 to 32767 (the lower limit for ephemeral ports)
+	p := uint(rand.Intn(32768-1024) + 1024)
 
-	for contains(freePorts, uint16(p)) {
-		p = uint(rand.Intn(6000) + 2000)
+	for contains(nodeUsedPorts, uint16(p)) || slices.Contains(usedPorts, uint16(p)) {
+		p = uint(rand.Intn(32768-1024) + 1024)
 	}
 	log.Debug().Msgf("Selected port for node %d is %d", nodeID, p)
 	return int(p), nil

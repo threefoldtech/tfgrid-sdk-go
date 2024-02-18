@@ -17,7 +17,7 @@ import (
 func AssertNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, privateKey string) bool {
 	t.Helper()
 
-	masterYggIP := k8sCluster.Master.YggIP
+	masterYggIP := k8sCluster.Master.PlanetaryIP
 	if !assert.NotEmpty(t, masterYggIP) {
 		return false
 	}
@@ -102,7 +102,7 @@ func TestK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -119,7 +119,7 @@ func TestK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -136,7 +136,7 @@ func TestK8sDeployment(t *testing.T) {
 		FlistChecksum: flistCheckSum,
 		ComputedIP:    "",
 		ComputedIP6:   "",
-		YggIP:         "",
+		PlanetaryIP:   "",
 		IP:            "",
 		CPU:           2,
 		Memory:        1024,
@@ -164,7 +164,7 @@ func TestK8sDeployment(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
+		result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
 		if !assert.NoError(t, err) {
 			return
 		}
@@ -175,7 +175,7 @@ func TestK8sDeployment(t *testing.T) {
 		}
 
 		// Check that master is reachable
-		masterIP := result.Master.YggIP
+		masterIP := result.Master.PlanetaryIP
 		if !assert.NotEmpty(t, masterIP) {
 			return
 		}
@@ -215,7 +215,7 @@ func TestK8sDeployment(t *testing.T) {
 			assert.NoError(t, err)
 		}()
 
-		result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{masterNodeID}, k8sCluster.Master.Name)
+		result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID}, k8sCluster.Master.Name)
 		if !assert.NoError(t, err) {
 			return
 		}
@@ -226,7 +226,7 @@ func TestK8sDeployment(t *testing.T) {
 		}
 
 		// Check that master is reachable
-		masterIP := result.Master.YggIP
+		masterIP := result.Master.PlanetaryIP
 		if !assert.NotEmpty(t, masterIP) {
 			return
 		}
@@ -241,7 +241,7 @@ func TestK8sDeployment(t *testing.T) {
 			return
 		}
 
-		result, err = tfPluginClient.State.LoadK8sFromGrid([]uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
+		result, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
 		if !assert.NoError(t, err) {
 			return
 		}

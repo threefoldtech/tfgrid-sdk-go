@@ -89,23 +89,23 @@ func TestVmDisk(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	if !assert.NoError(t, err) {
 		return
 	}
 
-	resDisk, err := tfPluginClient.State.LoadDiskFromGrid(nodeID, disk.Name, dl.Name)
+	resDisk, err := tfPluginClient.State.LoadDiskFromGrid(ctx, nodeID, disk.Name, dl.Name)
 	if !assert.NoError(t, err) || !assert.Equal(t, disk, resDisk) {
 		return
 	}
 
-	yggIP := v.YggIP
+	planetaryIP := v.PlanetaryIP
 	if !assert.NotEmpty(t, yggIP) {
 		return
 	}
 
 	// Check that disk has been mounted successfully
-	output, err := RemoteRun("root", yggIP, "df -h | grep -w /disk", privateKey)
+	output, err := RemoteRun("root", planetaryIP, "df -h | grep -w /disk", privateKey)
 	if !assert.NoError(t, err) {
 		return
 	}
