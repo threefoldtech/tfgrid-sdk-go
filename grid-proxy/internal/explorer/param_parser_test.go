@@ -70,3 +70,17 @@ func TestUnknownParam(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestDecodesMixedParams(t *testing.T) {
+	r := &http.Request{
+		URL: &url.URL{
+			RawQuery: "status=up&farm_storage=1024&size=10",
+		},
+	}
+
+	gotFilter := types.NodeFilter{}
+	gotLimit := types.Limit{}
+	err := parseQueryParams(r, &gotFilter, &gotLimit)
+
+	assert.Error(t, err)
+}
