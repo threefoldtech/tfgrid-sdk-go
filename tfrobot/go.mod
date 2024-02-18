@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid-sdk-go/mass-deployer
+module github.com/threefoldtech/tfgrid-sdk-go/tfrobot
 
 go 1.21
 

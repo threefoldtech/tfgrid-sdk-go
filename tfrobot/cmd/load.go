@@ -2,40 +2,57 @@
 package cmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/internal/parser"
-	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/internal/parser"
+	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
+	"golang.org/x/sys/unix"
 )
 
-var cancelCmd = &cobra.Command{
-	Use:   "cancel",
-	Short: "cancel all deployments of configuration file",
+var loadCmd = &cobra.Command{
+	Use:   "load",
+	Short: "load deployments of configuration file",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// It doesn't have a subcommand
 		if len(cmd.Flags().Args()) != 0 {
-			return fmt.Errorf("'cancel' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
+			return fmt.Errorf("'load' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
 		}
 
 		debug, err := cmd.Flags().GetBool("debug")
 		if err != nil {
 			return fmt.Errorf("invalid log debug mode input '%v' with error: %w", debug, err)
 		}
-
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		if debug {
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		}
+
+		outputPath, err := cmd.Flags().GetString("output")
+		if err != nil {
+			return fmt.Errorf("error in output file: %w", err)
+		}
+		outJsonFmt := filepath.Ext(outputPath) == jsonExt
+		outYmlFmt := filepath.Ext(outputPath) == yamlExt || filepath.Ext(outputPath) == ymlExt
+		if !outJsonFmt && !outYmlFmt {
+			return fmt.Errorf("unsupported output file format '%s', should be [yaml, yml, json]", outputPath)
+		}
+
+		_, err = os.Stat(outputPath)
+		// check if output file is writable
+		if !errors.Is(err, os.ErrNotExist) && unix.Access(outputPath, unix.W_OK) != nil {
+			return fmt.Errorf("output path '%s' is not writable", outputPath)
 		}
 
 		configPath, err := cmd.Flags().GetString("config")
 		if err != nil {
 			return fmt.Errorf("error in configuration file: %w", err)
 		}
-
 		if configPath == "" {
 			return fmt.Errorf("required configuration file path is empty")
 		}
@@ -57,14 +74,15 @@ var cancelCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse configuration file '%s' with error: %w", configPath, err)
 		}
 
+		ctx := context.Background()
 		tfPluginClient, err := setup(cfg, debug)
 		if err != nil {
 			return err
 		}
 
-		err = deployer.RunCanceler(cfg, tfPluginClient, debug)
+		err = deployer.RunLoader(ctx, cfg, tfPluginClient, debug, outputPath)
 		if err != nil {
-			return fmt.Errorf("failed to cancel configured deployments with error: %w", err)
+			return fmt.Errorf("failed to load configured deployments with error: %w", err)
 		}
 
 		return nil
