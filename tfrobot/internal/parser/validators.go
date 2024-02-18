@@ -10,7 +10,7 @@ import (
 
 	"github.com/cosmos/go-bip39"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	massDeployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -31,7 +31,7 @@ func validateNetwork(network string) error {
 	return nil
 }
 
-func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, tfPluginClient deployer.TFPluginClient) error {
+func validateNodeGroups(nodeGroups []tfrobot.NodesGroup, tfPluginClient deployer.TFPluginClient) error {
 	errGroup := new(errgroup.Group)
 	for _, group := range nodeGroups {
 		group := group
@@ -59,7 +59,7 @@ func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, tfPluginClient dep
 	return errGroup.Wait()
 }
 
-func validateVMs(vms []massDeployer.Vms, nodeGroups []massDeployer.NodesGroup, sskKeys map[string]string) error {
+func validateVMs(vms []tfrobot.Vms, nodeGroups []tfrobot.NodesGroup, sskKeys map[string]string) error {
 	usedResources := make(map[string]map[string]interface{}, len(nodeGroups))
 	var vmNodeGroupExists bool
 
@@ -137,7 +137,7 @@ func validateFlist(flist, name string) error {
 	return nil
 }
 
-func setVMUsedResources(vmsGroup massDeployer.Vms, vmUsedResources map[string]interface{}) map[string]interface{} {
+func setVMUsedResources(vmsGroup tfrobot.Vms, vmUsedResources map[string]interface{}) map[string]interface{} {
 	if _, ok := vmUsedResources["free_cpu"]; !ok {
 		vmUsedResources = make(map[string]interface{}, 5)
 		vmUsedResources["free_cpu"] = uint64(0)

@@ -10,8 +10,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	massDeployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,8 +19,8 @@ func TestParseConfig(t *testing.T) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	validFlist := "https://hub.grid.tf/tf-official-apps/base:latest.flist"
 
-	confStruct := massDeployer.Config{
-		NodeGroups: []massDeployer.NodesGroup{
+	confStruct := tfrobot.Config{
+		NodeGroups: []tfrobot.NodesGroup{
 			{
 				Name:       "group_a",
 				NodesCount: 5,
@@ -32,7 +32,7 @@ func TestParseConfig(t *testing.T) {
 				Region:     "Europe",
 			},
 		},
-		Vms: []massDeployer.Vms{
+		Vms: []tfrobot.Vms{
 			{
 				Name:       "examplevm",
 				Count:      4,
@@ -70,7 +70,7 @@ func TestParseConfig(t *testing.T) {
 
 	t.Run("invalid node_group", func(t *testing.T) {
 		conf := confStruct
-		conf.NodeGroups = []massDeployer.NodesGroup{}
+		conf.NodeGroups = []tfrobot.NodesGroup{}
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)
@@ -86,7 +86,7 @@ func TestParseConfig(t *testing.T) {
 
 	t.Run("invalid vms", func(t *testing.T) {
 		conf := confStruct
-		conf.Vms = []massDeployer.Vms{}
+		conf.Vms = []tfrobot.Vms{}
 
 		data, err := yaml.Marshal(conf)
 		assert.NoError(t, err)

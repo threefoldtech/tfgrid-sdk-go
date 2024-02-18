@@ -189,3 +189,12 @@ To run the deployer tests run the following command inside the repo directory:
 ```bash
 make test
 ```
+
+## Logs
+
+To ensure a complete log history, append `2>&1 | tee path/to/log/file`
+to the command being executed.
+
+```bash
+tfrobot deploy -c path/to/your/config.yaml 2>&1 | tee path/to/log/file
+```
