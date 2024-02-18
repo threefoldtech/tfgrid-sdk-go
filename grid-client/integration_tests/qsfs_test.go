@@ -209,7 +209,7 @@ func TestQSFSDeployment(t *testing.T) {
 	}
 
 	planetaryIP := resVM.PlanetaryIP
-	if !assert.NotEmpty(t, yggIP) {
+	if !assert.NotEmpty(t, planetaryIP) {
 		return
 	}
 

@@ -98,7 +98,7 @@ func TestVMDeployment(t *testing.T) {
 		}
 
 		planetaryIP := v.PlanetaryIP
-		if !assert.NotEmpty(t, yggIP) {
+		if !assert.NotEmpty(t, planetaryIP) {
 			return
 		}
 
