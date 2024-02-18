@@ -13,9 +13,9 @@ WORKDIR /src/grid-proxy
 
 COPY /grid-proxy .
 
-WORKDIR /src/mass-deployer
+WORKDIR /src/tfrobot
 
-COPY /mass-deployer/ .
+COPY /tfrobot/ .
 
 RUN go mod download
 
@@ -26,6 +26,6 @@ FROM alpine:3.19
 
 WORKDIR /app
 
-COPY --from=builder /src/mass-deployer/bin/tfrobot .
+COPY --from=builder /src/tfrobot/bin/tfrobot .
 
 ENTRYPOINT ["./tfrobot"]

@@ -28,7 +28,7 @@ jobs:
           - monitoring-bot
           # - rmb-sdk-go
           - user-contracts-mon 
-          - mass-deployer
+          - tfrobot
 
     steps:
       - uses: actions/checkout@v4
@@ -48,8 +48,6 @@ jobs:
             cmds/proxy_server/server -v
           elif [ ${{ matrix.dir }} == 'grid-cli' ]; then
             bin/tfcmd version
-          elif [ ${{ matrix.dir }} == 'mass-deployer' ]; then
-            bin/tfrobot  version
           else
             bin/${{ matrix.dir }} version
           fi
@@ -69,7 +67,7 @@ jobs:
           - monitoring-bot
           # - rmb-sdk-go
           - user-contracts-mon 
-          - mass-deployer
+          - tfrobot
 
     steps:
       - name: Checkout the repo

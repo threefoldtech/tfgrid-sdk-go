@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid-sdk-go/mass-deployer
+module github.com/threefoldtech/tfgrid-sdk-go/tfrobot
 
 go 1.21
 
@@ -7,6 +7,7 @@ require (
 	github.com/gliderlabs/ssh v0.3.6
 	github.com/go-playground/validator/v10 v10.17.0
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.32.0
 	github.com/sethvargo/go-retry v0.2.4
 	github.com/spf13/cobra v1.8.0
@@ -15,6 +16,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.13.4
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.13.4
 	github.com/threefoldtech/zos v0.5.6-0.20240201092442-d2ba5be539d2
+	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -51,7 +53,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b // indirect
 	github.com/pierrec/xxHash v0.1.5 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -60,7 +61,6 @@ require (
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/net v0.20.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	google.golang.org/protobuf v1.31.0 // indirect

@@ -17,8 +17,8 @@ lint:
 build:
 	@echo "Running $@"
 	@go build -ldflags=\
-	"-X 'github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/cmd.commit=$(shell git rev-parse HEAD)'\
-	 -X 'github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/cmd.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
+	"-X 'github.com/threefoldtech/tfgrid-sdk-go/tfrobot/cmd.commit=$(shell git rev-parse HEAD)'\
+	 -X 'github.com/threefoldtech/tfgrid-sdk-go/tfrobot/cmd.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
 	 -o bin/tfrobot main.go
 
 coverage: clean 

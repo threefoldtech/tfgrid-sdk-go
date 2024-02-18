@@ -491,6 +491,12 @@ CREATE OR REPLACE TRIGGER tg_speed
   - Insert new ip > increment free/total ips + re-aggregate ips object
   - Deleted > decrement total, decrement free ips (if it was used) + re-aggregate ips object
   - Update > increment/decrement free ips based on usage + re-aggregate ips object
+
+  - reserve ip > free_ips decrease
+  - unreserve ip > free_ips increase
+  - insert new ip (expected be free) > free_ips increase
+  - remove reserved ip > free_ips does not change
+  - remove free ip > free_ips decrease
 */
 CREATE OR REPLACE FUNCTION reflect_public_ip_changes() RETURNS TRIGGER AS 
 $$ 
@@ -501,10 +507,12 @@ BEGIN
         SET free_ips = free_ips + (
                 CASE 
                 -- handles insertion/update by freeing ip
-                WHEN TG_OP != 'DELETE' AND NEW.contract_id = 0
+                WHEN TG_OP = 'INSERT' AND NEW.contract_id = 0 OR 
+                     TG_OP = 'UPDATE' AND NEW.contract_id = 0 AND OLD.contract_id != 0
                     THEN 1 
                 -- handles deletion/update by reserving ip
-                WHEN TG_OP != 'INSERT' AND OLD.contract_id = 0
+                WHEN TG_OP = 'DELETE' AND OLD.contract_id = 0 OR
+                     TG_OP = 'UPDATE' AND OLD.contract_id = 0 AND NEW.contract_id != 0
                     THEN -1
                 -- handles delete reserved ips
                 ELSE 0

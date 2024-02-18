@@ -48,7 +48,7 @@ builds:
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit={{.Commit}}
 
-  - dir: ./mass-deployer
+  - dir: ./tfrobot
     env:
       - CGO_ENABLED=0
     goos:
@@ -61,8 +61,8 @@ builds:
     ignore:
       - goos: windows
     ldflags:
-      - -X github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/cmd.version={{.Tag}}
-      - -X github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/cmd.commit={{.Commit}}
+      - -X github.com/threefoldtech/tfgrid-sdk-go/tfrobot/cmd.version={{.Tag}}
+      - -X github.com/threefoldtech/tfgrid-sdk-go/tfrobot/cmd.commit={{.Commit}}
 
   - dir: ./grid-proxy/cmds/proxy_server
     env:
