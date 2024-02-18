@@ -59,7 +59,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 		Healthy:           info.Healthy,
-		Dmi: types.DmiInfo{
+		Dmi: types.Dmi{
 			Processor: info.Processor,
 			Memory:    info.Memory,
 			BIOS:      info.Bios,
@@ -143,7 +143,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 		Healthy:           info.Healthy,
-		Dmi: types.DmiInfo{
+		Dmi: types.Dmi{
 			Processor: info.Processor,
 			Memory:    info.Memory,
 			BIOS:      info.Bios,

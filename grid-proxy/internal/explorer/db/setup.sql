@@ -52,12 +52,12 @@ SELECT
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     node.country as country,
     country.region as region,
-    COALESCE(dmi_infos.bios, '{}') as bios,
-    COALESCE(dmi_infos.baseboard, '{}') as baseboard,
-    COALESCE(dmi_infos.processor, '[]') as processor,
-    COALESCE(dmi_infos.memory, '[]') as memory,
-    COALESCE(network_test_results.upload_speed, 0) as upload_speed,
-    COALESCE(network_test_results.download_speed, 0) as download_speed
+    COALESCE(dmi.bios, '{}') as bios,
+    COALESCE(dmi.baseboard, '{}') as baseboard,
+    COALESCE(dmi.processor, '[]') as processor,
+    COALESCE(dmi.memory, '[]') as memory,
+    COALESCE(speed.upload, 0) as upload_speed,
+    COALESCE(speed.download, 0) as download_speed
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id 
@@ -72,8 +72,8 @@ FROM node
             node_twin_id
     ) AS node_gpu ON node.twin_id = node_gpu.node_twin_id
     LEFT JOIN country ON LOWER(node.country) = LOWER(country.name)
-    LEFT JOIN network_test_results ON node.twin_id = network_test_results.node_twin_id
-    LEFT JOIN dmi_infos ON node.twin_id = dmi_infos.node_twin_id
+    LEFT JOIN speed ON node.twin_id = speed.node_twin_id
+    LEFT JOIN dmi ON node.twin_id = dmi.node_twin_id
 GROUP BY
     node.node_id,
     node_resources_total.mru,
@@ -86,12 +86,12 @@ GROUP BY
     COALESCE(node_gpu.node_gpu_count, 0),
     node.country,
     country.region,
-    COALESCE(dmi_infos.bios, '{}'),
-    COALESCE(dmi_infos.baseboard, '{}'),
-    COALESCE(dmi_infos.processor, '[]'),
-    COALESCE(dmi_infos.memory, '[]'),
-    COALESCE(network_test_results.upload_speed, 0),
-    COALESCE(network_test_results.download_speed, 0);
+    COALESCE(dmi.bios, '{}'),
+    COALESCE(dmi.baseboard, '{}'),
+    COALESCE(dmi.processor, '[]'),
+    COALESCE(dmi.memory, '[]'),
+    COALESCE(speed.upload, 0),
+    COALESCE(speed.download, 0);
 
 DROP TABLE IF EXISTS resources_cache;
 CREATE TABLE IF NOT EXISTS resources_cache(
@@ -397,6 +397,40 @@ CREATE OR REPLACE TRIGGER tg_rent_contract
     EXECUTE PROCEDURE reflect_rent_contract_changes();
 
 /*
+ Gpu trigger
+    - Insert new node_gpu > increase the gpu_num in resources cache
+    - Delete node_gpu > decrease the gpu_num in resources cache
+*/
+CREATE OR REPLACE FUNCTION reflect_node_gpu_count_change() RETURNS TRIGGER AS
+$$
+BEGIN
+    BEGIN
+        UPDATE resources_cache
+        SET node_gpu_count = node_gpu_count + (
+            CASE 
+            WHEN TG_OP != 'DELETE'
+                THEN -1 
+            WHEN TG_OP != 'INSERT'
+                THEN 1
+            ELSE 0
+            END
+        )
+        WHERE resources_cache.node_id = (
+            SELECT node_id from node where node.twin_id = NEW.node_twin_id
+        );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating resources_cache gpu fields %', SQLERRM;
+    END;
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER tg_node_gpu_count
+    AFTER INSERT OR DELETE ON node_gpu FOR EACH ROW
+    EXECUTE PROCEDURE reflect_node_gpu_count_change();
+
+/*
  Dmi trigger
     - Insert new record/Update > update resources_cache
 */
@@ -421,9 +455,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER tg_dmi
-    AFTER INSERT OR UPDATE ON dmi_infos FOR EACH ROW
+    AFTER INSERT OR UPDATE ON dmi FOR EACH ROW
     EXECUTE PROCEDURE reflect_dmi_changes();
-
 
 
 /*
@@ -435,8 +468,8 @@ $$
 BEGIN
     BEGIN
         UPDATE resources_cache
-        SET upload_speed = NEW.upload_speed,
-            download_speed = NEW.download_speed
+        SET upload_speed = NEW.upload,
+            download_speed = NEW.download
         WHERE resources_cache.node_id = (
             SELECT node_id from node where node.twin_id = NEW.node_twin_id
         );
@@ -449,7 +482,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER tg_speed
-    AFTER INSERT OR UPDATE ON network_test_results FOR EACH ROW
+    AFTER INSERT OR UPDATE ON speed FOR EACH ROW
     EXECUTE PROCEDURE reflect_speed_changes();
 
 

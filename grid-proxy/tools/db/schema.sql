@@ -1029,7 +1029,8 @@ CREATE TABLE IF NOT EXISTS public.node_gpu (
     node_twin_id bigint NOT NULL,
     vendor text,
     device text,
-    contract bigint
+    contract bigint,
+    updated_at timestamp with time zone
 );
 
 ALTER TABLE public.node_gpu 
@@ -1053,29 +1054,29 @@ ALTER TABLE public.health_report
 
 
 --
--- Name: dmi_infos; Type: TABLE; Schema: public; Owner: postgres
+-- Name: dmi; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.dmi_infos(
-    node_twin_id bigint PRIMARY KEY,
+CREATE TABLE public.dmi(
+    node_twin_id bigint NOT NULL,
     bios jsonb,
     baseboard jsonb,
     processor jsonb,
     memory jsonb
 );
 
-ALTER TABLE public.dmi_infos 
+ALTER TABLE public.dmi 
     OWNER TO postgres;
 
 --
--- Name: network_test_results; Type: TABLE; Schema: public; Owner: postgres
+-- Name: speed; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.network_test_results(
-    node_twin_id bigint PRIMARY KEY,
-    upload_speed numeric,
-    download_speed numeric
+CREATE TABLE public.speed(
+    node_twin_id bigint NOT NULL,
+    upload numeric,
+    download numeric
 );
 
-ALTER TABLE public.network_test_results 
+ALTER TABLE public.speed 
     OWNER TO postgres;

@@ -8,54 +8,59 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	zosDmiTypes "github.com/threefoldtech/zos/pkg/capacity/dmi"
 )
 
 const (
-	DmiCallCmd       = "zos.system.dmi"
-	flushingInterval = 60 * time.Second
-	dmiBatchSize     = 20
+	DmiCallCmd = "zos.system.dmi"
 )
 
-type DmiWatcher struct {
+type DmiIndexer struct {
 	database        db.Database
 	rmbClient       *peer.RpcClient
-	nodeTwinIdsChan chan uint32
-	resultChan      chan types.DmiInfo
 	interval        time.Duration
 	workers         uint
 	batchSize       uint
+	nodeTwinIdsChan chan uint32
+	resultChan      chan types.Dmi
+	batchChan       chan []types.Dmi
 }
 
-func NewDmiWatcher(
-	ctx context.Context,
-	database db.Database,
+func NewDmiIndexer(
 	rmbClient *peer.RpcClient,
+	database db.Database,
+	batchSize uint,
 	interval uint,
 	workers uint,
-) *DmiWatcher {
-	return &DmiWatcher{
+) *DmiIndexer {
+	return &DmiIndexer{
 		database:        database,
 		rmbClient:       rmbClient,
-		nodeTwinIdsChan: make(chan uint32),
-		resultChan:      make(chan types.DmiInfo),
 		interval:        time.Duration(interval) * time.Minute,
 		workers:         workers,
-		batchSize:       dmiBatchSize,
+		batchSize:       batchSize,
+		nodeTwinIdsChan: make(chan uint32),
+		resultChan:      make(chan types.Dmi),
+		batchChan:       make(chan []types.Dmi),
 	}
 }
 
-func (w *DmiWatcher) Start(ctx context.Context) {
-	go w.startNodeQuerier(ctx)
+func (w *DmiIndexer) Start(ctx context.Context) {
+	go w.startNodeTableWatcher(ctx)
+	go w.StartNodeFinder(ctx)
 
 	for i := uint(0); i < w.workers; i++ {
-		go w.startNodeCaller(ctx)
+		go w.StartNodeCaller(ctx)
 	}
 
-	go w.startUpserter(ctx, w.database)
+	for i := uint(0); i < w.workers; i++ {
+		go w.StartResultBatcher(ctx)
+	}
+
+	go w.StartBatchUpserter(ctx)
 }
 
-// TODO: not only on interval but also on any node goes from down>up or newly added nodes
-func (w *DmiWatcher) startNodeQuerier(ctx context.Context) {
+func (w *DmiIndexer) StartNodeFinder(ctx context.Context) {
 	ticker := time.NewTicker(w.interval)
 	queryUpNodes(ctx, w.database, w.nodeTwinIdsChan)
 	for {
@@ -68,58 +73,67 @@ func (w *DmiWatcher) startNodeQuerier(ctx context.Context) {
 	}
 }
 
-func (w *DmiWatcher) startNodeCaller(ctx context.Context) {
+func (n *DmiIndexer) startNodeTableWatcher(ctx context.Context) {
+	ticker := time.NewTicker(newNodesCheckInterval)
+	latestCheckedID, err := n.database.GetLastNodeTwinID(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get last node twin id")
+	}
+
 	for {
 		select {
-		case twinId := <-w.nodeTwinIdsChan:
-			response, err := w.callNode(ctx, twinId)
+		case <-ticker.C:
+			newIDs, err := n.database.GetNodeTwinIDsAfter(ctx, latestCheckedID)
 			if err != nil {
+				log.Error().Err(err).Msgf("failed to get node twin ids after %d", latestCheckedID)
 				continue
 			}
-			parsedDmi := parseDmiResponse(response)
-			parsedDmi.NodeTwinId = twinId
-			w.resultChan <- parsedDmi
+			if len(newIDs) == 0 {
+				continue
+			}
+
+			latestCheckedID = newIDs[0]
+			for _, id := range newIDs {
+				n.nodeTwinIdsChan <- id
+			}
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-// TODO: make it generic and then assert the result in each watcher
-func (w *DmiWatcher) callNode(ctx context.Context, twinId uint32) (DMI, error) {
-	var result DMI
-	subCtx, cancel := context.WithTimeout(ctx, indexerCallTimeout)
-	defer cancel()
+func (w *DmiIndexer) StartNodeCaller(ctx context.Context) {
+	for {
+		select {
+		case twinId := <-w.nodeTwinIdsChan:
+			var dmi zosDmiTypes.DMI
+			err := callNode(ctx, w.rmbClient, DmiCallCmd, nil, twinId, &dmi)
+			if err != nil {
+				continue
+			}
 
-	err := w.rmbClient.Call(subCtx, twinId, DmiCallCmd, nil, &result)
-	if err != nil {
-		log.Error().Err(err).Uint32("twinId", twinId).Msg("failed to call node")
+			w.resultChan <- parseDmiResponse(dmi, twinId)
+		case <-ctx.Done():
+			return
+		}
 	}
-
-	return result, err
 }
 
-func (w *DmiWatcher) startUpserter(ctx context.Context, database db.Database) {
-	buffer := make([]types.DmiInfo, 0, w.batchSize)
+func (w *DmiIndexer) StartResultBatcher(ctx context.Context) {
+	buffer := make([]types.Dmi, 0, w.batchSize)
 
-	ticker := time.NewTicker(flushingInterval)
+	ticker := time.NewTicker(flushingBufferInterval)
 	for {
 		select {
 		case dmiData := <-w.resultChan:
 			buffer = append(buffer, dmiData)
 			if len(buffer) >= int(w.batchSize) {
-				err := w.database.UpsertNodeDmi(ctx, buffer)
-				if err != nil {
-					log.Error().Err(err).Msgf("failed")
-				}
+				w.batchChan <- buffer
 				buffer = nil
 			}
 		case <-ticker.C:
 			if len(buffer) != 0 {
-				err := w.database.UpsertNodeDmi(ctx, buffer)
-				if err != nil {
-					log.Error().Err(err).Msgf("failed")
-				}
+				w.batchChan <- buffer
 				buffer = nil
 			}
 		case <-ctx.Done():
@@ -128,8 +142,23 @@ func (w *DmiWatcher) startUpserter(ctx context.Context, database db.Database) {
 	}
 }
 
-func parseDmiResponse(dmiResponse DMI) types.DmiInfo {
-	var info types.DmiInfo
+func (w *DmiIndexer) StartBatchUpserter(ctx context.Context) {
+	for {
+
+		select {
+		case batch := <-w.batchChan:
+			err := w.database.UpsertNodeDmi(ctx, batch)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to upsert node dmi")
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func parseDmiResponse(dmiResponse zosDmiTypes.DMI, twinId uint32) types.Dmi {
+	var info types.Dmi
 	for _, sec := range dmiResponse.Sections {
 		if sec.TypeStr == "Processor" {
 			for _, subSec := range sec.SubSections {
@@ -172,5 +201,6 @@ func parseDmiResponse(dmiResponse DMI) types.DmiInfo {
 		}
 	}
 
+	info.NodeTwinId = twinId
 	return info
 }

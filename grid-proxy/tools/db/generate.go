@@ -125,5 +125,9 @@ func generateData(db *sql.DB, gormDB *gorm.DB, seed int) error {
 		return fmt.Errorf("failed to generate dmi reports: %w", err)
 	}
 
+	if err := generator.GenerateHealthReports(); err != nil {
+		return fmt.Errorf("failed to generate dmi reports: %w", err)
+	}
+
 	return nil
 }

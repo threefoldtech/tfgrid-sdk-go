@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 
 	_ "embed"
@@ -79,7 +77,12 @@ func (d *PostgresDatabase) Close() error {
 }
 
 func (d *PostgresDatabase) Initialize() error {
-	err := d.gormDB.AutoMigrate(&NodeGPU{}, &HealthReport{}, &types.DmiInfo{}, &types.NetworkTestResult{})
+	err := d.gormDB.AutoMigrate(
+		&types.NodeGPU{},
+		&types.HealthReport{},
+		&types.Dmi{},
+		&types.Speed{},
+	)
 	if err != nil {
 		return errors.Wrap(err, "failed to migrate indexer tables")
 	}
@@ -191,17 +194,6 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 	}
 
 	return stats, nil
-}
-
-// Scan is a custom decoder for jsonb filed. executed while scanning the node.
-func (np *NodePower) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	if data, ok := value.([]byte); ok {
-		return json.Unmarshal(data, np)
-	}
-	return fmt.Errorf("failed to unmarshal NodePower")
 }
 
 // GetNode returns node info
@@ -876,67 +868,4 @@ func (d *PostgresDatabase) GetContractBills(ctx context.Context, contractID uint
 	}
 
 	return bills, uint(count), nil
-}
-
-func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, nodesGPU []types.NodeGPU) error {
-	// For upsert operation
-	conflictClause := clause.OnConflict{
-		Columns:   []clause.Column{{Name: "id"}, {Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"vendor", "device", "contract"}),
-	}
-	err := p.gormDB.WithContext(ctx).Table("node_gpu").Clauses(conflictClause).Create(&nodesGPU).Error
-	if err != nil {
-		return fmt.Errorf("failed to upsert nodes GPU details: %w", err)
-	}
-	return nil
-}
-
-func (p *PostgresDatabase) DeleteOldGpus(ctx context.Context, nodeTwinIds []uint32) error {
-	err := p.gormDB.WithContext(ctx).Table("node_gpu").Where("node_twin_id IN (?)", nodeTwinIds).Delete(types.NodeGPU{}).Error
-	if err != nil {
-		return fmt.Errorf("failed to delete old gpus: %w", err)
-	}
-	return nil
-}
-
-func (p *PostgresDatabase) GetLastNodeTwinID(ctx context.Context) (int64, error) {
-	var node Node
-	err := p.gormDB.Table("node").Order("twin_id DESC").Limit(1).Scan(&node).Error
-	return node.TwinID, err
-}
-
-func (p *PostgresDatabase) GetNodeTwinIDsAfter(ctx context.Context, twinID int64) ([]int64, error) {
-	nodeTwinIDs := make([]int64, 0)
-	err := p.gormDB.Table("node").Select("twin_id").Where("twin_id > ?", twinID).Order("twin_id DESC").Scan(&nodeTwinIDs).Error
-	return nodeTwinIDs, err
-}
-
-func (p *PostgresDatabase) UpsertNodeHealth(ctx context.Context, healthReport types.HealthReport) error {
-	conflictClause := clause.OnConflict{
-		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"healthy"}),
-	}
-	return p.gormDB.WithContext(ctx).Table("health_report").Clauses(conflictClause).Create(&healthReport).Error
-}
-
-func (p *PostgresDatabase) GetHealthyNodeTwinIds(ctx context.Context) ([]int64, error) {
-	nodeTwinIDs := make([]int64, 0)
-	err := p.gormDB.Table("health_report").Select("node_twin_id").Where("healthy = true").Scan(&nodeTwinIDs).Error
-	return nodeTwinIDs, err
-}
-
-func (p *PostgresDatabase) UpsertNodeDmi(ctx context.Context, dmi []types.DmiInfo) error {
-	conflictClause := clause.OnConflict{
-		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"bios", "baseboard", "processor", "memory"}),
-	}
-	return p.gormDB.WithContext(ctx).Table("dmi_infos").Clauses(conflictClause).Create(&dmi).Error
-}
-
-func (p *PostgresDatabase) UpsertNetworkSpeed(ctx context.Context, report []types.NetworkTestResult) error {
-	conflictClause := clause.OnConflict{
-		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"download_speed", "upload_speed"}),
-	}
-	return p.gormDB.WithContext(ctx).Table("network_test_results").Clauses(conflictClause).Create(&report).Error
 }

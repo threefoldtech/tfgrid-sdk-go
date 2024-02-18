@@ -2,7 +2,6 @@ package indexer
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -12,230 +11,78 @@ import (
 )
 
 const (
-	resultsBatcherCleanupInterval = 10 * time.Second
-	minListenerReconnectInterval  = 10 * time.Second
-	lingerBatch                   = 10 * time.Second
-	newNodesCheckInterval         = 5 * time.Minute
+	gpuListCmd = "zos.gpu.list"
 )
 
 type NodeGPUIndexer struct {
-	db                     db.Database
-	rpcClient              *peer.RpcClient
-	checkInterval          time.Duration
-	batchSize              uint
-	nodesGPUResultsChan    chan []types.NodeGPU
-	nodesGPUBatchesChan    chan []types.NodeGPU
-	newNodeTwinIDChan      chan []uint32
-	nodesGPUResultsWorkers uint
-	nodesGPUBufferWorkers  uint
+	database        db.Database
+	rmbClient       *peer.RpcClient
+	interval        time.Duration
+	workers         uint
+	batchSize       uint
+	nodeTwinIdsChan chan uint32
+	resultChan      chan types.NodeGPU
+	batchChan       chan []types.NodeGPU
 }
 
-func NewNodeGPUIndexer(
-	ctx context.Context,
-	rpcClient *peer.RpcClient,
-	db db.Database,
-	indexerCheckIntervalMins,
-	batchSize,
-	nodesGPUResultsWorkers,
-	nodesGPUBufferWorkers uint) *NodeGPUIndexer {
+func NewGPUIndexer(
+	rmbClient *peer.RpcClient,
+	database db.Database,
+	batchSize uint,
+	interval uint,
+	workers uint,
+) *NodeGPUIndexer {
 	return &NodeGPUIndexer{
-		db:                     db,
-		rpcClient:              rpcClient,
-		nodesGPUResultsChan:    make(chan []types.NodeGPU),
-		nodesGPUBatchesChan:    make(chan []types.NodeGPU),
-		newNodeTwinIDChan:      make(chan []uint32),
-		checkInterval:          time.Duration(indexerCheckIntervalMins) * time.Minute,
-		batchSize:              batchSize,
-		nodesGPUResultsWorkers: nodesGPUResultsWorkers,
-		nodesGPUBufferWorkers:  nodesGPUBufferWorkers,
-	}
-}
-
-func (n *NodeGPUIndexer) queryGridNodes(ctx context.Context) {
-	ticker := time.NewTicker(n.checkInterval)
-	n.runQueryGridNodes(ctx)
-	for {
-		select {
-		case <-ticker.C:
-			n.runQueryGridNodes(ctx)
-		case twinIDs := <-n.newNodeTwinIDChan:
-			n.queryNewNodes(ctx, twinIDs)
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (n *NodeGPUIndexer) queryNewNodes(ctx context.Context, twinIDs []uint32) {
-	for _, twinID := range twinIDs {
-		err := n.getNodeGPUInfo(ctx, twinID)
-		log.Error().Err(err).Msgf("failed to send get GPU info request from relay in GPU indexer for node %d", twinID)
-	}
-}
-
-// TODO: use the node in utils
-func (n *NodeGPUIndexer) runQueryGridNodes(ctx context.Context) {
-	status := "up"
-	filter := types.NodeFilter{
-		Status: &status,
-	}
-
-	limit := types.Limit{
-		Size:     100,
-		RetCount: true,
-		Page:     1,
-	}
-
-	hasNext := true
-	for hasNext {
-		nodes, err := n.getNodes(ctx, filter, limit)
-		if err != nil {
-			log.Error().Err(err).Msg("unable to query nodes in GPU indexer")
-			return
-		}
-
-		if len(nodes) < int(limit.Size) {
-			hasNext = false
-		}
-
-		for _, node := range nodes {
-			if err := n.getNodeGPUInfo(ctx, uint32(node.TwinID)); err != nil {
-				log.Error().Err(err).Msgf("failed to send get GPU info request from relay in GPU indexer for node %d", node.NodeID)
-			}
-		}
-
-		limit.Page++
-	}
-}
-
-func (n *NodeGPUIndexer) getNodeGPUInfo(ctx context.Context, nodeTwinID uint32) error {
-	subCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	var nodesGPU []types.NodeGPU
-	err := n.rpcClient.Call(subCtx, nodeTwinID, "zos.gpu.list", nil, &nodesGPU)
-	if err != nil {
-		return err
-	}
-	log.Debug().Msgf("gpu indexer: %+v", nodesGPU)
-
-	for i := range nodesGPU {
-		nodesGPU[i].NodeTwinID = nodeTwinID
-	}
-
-	if len(nodesGPU) != 0 {
-		n.nodesGPUResultsChan <- nodesGPU
-	}
-
-	return nil
-}
-
-func (n *NodeGPUIndexer) getNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]db.Node, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
-	defer cancel()
-
-	nodes, _, err := n.db.GetNodes(ctx, filter, limit)
-	if err != nil {
-		return nil, err
-	}
-
-	return nodes, nil
-}
-
-func (n *NodeGPUIndexer) discardOldGpus(ctx context.Context, lastAdded uint32, gpuBatch []types.NodeGPU) (uint32, error) {
-	// invalidate the old indexed GPUs for the same node,
-	// but check the batch first to ensure it does not contain related GPUs to node twin it from the last batch.
-
-	nodeTwinIds := []uint32{}
-	for _, gpu := range gpuBatch {
-		if gpu.NodeTwinID == lastAdded {
-			continue
-		}
-		nodeTwinIds = append(nodeTwinIds, gpu.NodeTwinID)
-	}
-
-	err := n.db.DeleteOldGpus(ctx, nodeTwinIds)
-	if err != nil {
-		return 0, fmt.Errorf("failed to delete GPU information in GPU indexer")
-	}
-
-	return gpuBatch[len(gpuBatch)-1].NodeTwinID, nil
-}
-
-func (n *NodeGPUIndexer) gpuBatchesDBUpserter(ctx context.Context) {
-	lastAddedGpuNodeTwinId := 0
-	for {
-		select {
-		case gpuBatch := <-n.nodesGPUBatchesChan:
-			lastAdded, err := n.discardOldGpus(ctx, uint32(lastAddedGpuNodeTwinId), gpuBatch)
-			if err != nil {
-				log.Error().Err(err).Msg("failed to update GPU info in GPU indexer")
-				continue
-			}
-			lastAddedGpuNodeTwinId = int(lastAdded)
-			err = n.db.UpsertNodesGPU(ctx, gpuBatch)
-			if err != nil {
-				log.Error().Err(err).Msg("failed to update GPU info in GPU indexer")
-				continue
-			}
-		case <-ctx.Done():
-			log.Error().Err(ctx.Err()).Msg("Nodes GPU DB Upserter exited")
-			return
-		}
-	}
-}
-
-func (n *NodeGPUIndexer) gpuNodeResultsBatcher(ctx context.Context) {
-	nodesGPUBuffer := make([]types.NodeGPU, 0, n.batchSize)
-	ticker := time.NewTicker(lingerBatch)
-	for {
-		select {
-		case nodesGPU := <-n.nodesGPUResultsChan:
-			nodesGPUBuffer = append(nodesGPUBuffer, nodesGPU...)
-			if len(nodesGPUBuffer) >= int(n.batchSize) {
-				log.Debug().Msg("flushing gpu indexer buffer")
-				n.nodesGPUBatchesChan <- nodesGPUBuffer
-				nodesGPUBuffer = nil
-			}
-		// This case covers flushing data when the limit for the batch wasn't met
-		case <-ticker.C:
-			if len(nodesGPUBuffer) != 0 {
-				log.Debug().Msg("cleaning up gpu indexer buffer")
-				n.nodesGPUBatchesChan <- nodesGPUBuffer
-				nodesGPUBuffer = nil
-			}
-		case <-ctx.Done():
-			log.Error().Err(ctx.Err()).Msg("Node GPU results batcher exited")
-			return
-		}
+		database:        database,
+		rmbClient:       rmbClient,
+		batchSize:       batchSize,
+		workers:         workers,
+		interval:        time.Duration(interval) * time.Minute,
+		nodeTwinIdsChan: make(chan uint32),
+		resultChan:      make(chan types.NodeGPU),
+		batchChan:       make(chan []types.NodeGPU),
 	}
 }
 
 func (n *NodeGPUIndexer) Start(ctx context.Context) {
-	for i := uint(0); i < n.nodesGPUResultsWorkers; i++ {
-		go n.gpuNodeResultsBatcher(ctx)
+	go n.StartNodeFinder(ctx)
+	go n.startNodeTableWatcher(ctx)
+
+	for i := uint(0); i < n.workers; i++ {
+		go n.StartNodeCaller(ctx)
 	}
 
-	for i := uint(0); i < n.nodesGPUBufferWorkers; i++ {
-		go n.gpuBatchesDBUpserter(ctx)
+	for i := uint(0); i < n.workers; i++ {
+		go n.StartResultBatcher(ctx)
 	}
 
-	go n.queryGridNodes(ctx)
-
-	go n.watchNodeTable(ctx)
-
+	go n.StartBatchUpserter(ctx)
 }
 
-func (n *NodeGPUIndexer) watchNodeTable(ctx context.Context) {
-	ticker := time.NewTicker(newNodesCheckInterval)
-	latestCheckedID, err := n.db.GetLastNodeTwinID(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to get last node twin id")
-	}
+func (n *NodeGPUIndexer) StartNodeFinder(ctx context.Context) {
+	ticker := time.NewTicker(n.interval)
+	queryUpNodes(ctx, n.database, n.nodeTwinIdsChan)
 	for {
 		select {
 		case <-ticker.C:
-			newIDs, err := n.db.GetNodeTwinIDsAfter(ctx, latestCheckedID)
+			queryUpNodes(ctx, n.database, n.nodeTwinIdsChan)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (n *NodeGPUIndexer) startNodeTableWatcher(ctx context.Context) {
+	ticker := time.NewTicker(newNodesCheckInterval)
+	latestCheckedID, err := n.database.GetLastNodeTwinID(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get last node twin id")
+	}
+
+	for {
+		select {
+		case <-ticker.C:
+			newIDs, err := n.database.GetNodeTwinIDsAfter(ctx, latestCheckedID)
 			if err != nil {
 				log.Error().Err(err).Msgf("failed to get node twin ids after %d", latestCheckedID)
 				continue
@@ -243,15 +90,90 @@ func (n *NodeGPUIndexer) watchNodeTable(ctx context.Context) {
 			if len(newIDs) == 0 {
 				continue
 			}
-			nodeTwinIDs := make([]uint32, 0)
-			for _, id := range newIDs {
-				nodeTwinIDs = append(nodeTwinIDs, uint32(id))
-			}
 
-			n.newNodeTwinIDChan <- nodeTwinIDs
-			latestCheckedID = int64(nodeTwinIDs[0])
+			latestCheckedID = newIDs[0]
+			for _, id := range newIDs {
+				n.nodeTwinIdsChan <- id
+			}
 		case <-ctx.Done():
 			return
 		}
 	}
+}
+
+func (n *NodeGPUIndexer) StartNodeCaller(ctx context.Context) {
+	for {
+		select {
+		case twinId := <-n.nodeTwinIdsChan:
+			var gpus []types.NodeGPU
+			err := callNode(ctx, n.rmbClient, gpuListCmd, nil, twinId, &gpus)
+			if err != nil {
+				continue
+			}
+
+			for i := 0; i < len(gpus); i++ {
+				gpus[i].NodeTwinID = twinId
+				gpus[i].UpdatedAt = time.Now().Unix()
+				log.Info().Msgf("%+v", gpus[i])
+				n.resultChan <- gpus[i]
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (n *NodeGPUIndexer) StartResultBatcher(ctx context.Context) {
+	buffer := make([]types.NodeGPU, 0, n.batchSize)
+
+	ticker := time.NewTicker(flushingBufferInterval)
+	for {
+		select {
+		case gpus := <-n.resultChan:
+			buffer = append(buffer, gpus)
+			if len(buffer) >= int(n.batchSize) {
+				n.batchChan <- buffer
+				buffer = nil
+			}
+		case <-ticker.C:
+			if len(buffer) != 0 {
+				n.batchChan <- buffer
+				buffer = nil
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+func (n *NodeGPUIndexer) StartBatchUpserter(ctx context.Context) {
+	for {
+		select {
+		case batch := <-n.batchChan:
+			log.Info().Msgf("%+v", batch)
+			err := discardOldGpus(ctx, n.database, n.interval, batch)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to remove old GPUs")
+			}
+
+			err = n.database.UpsertNodesGPU(ctx, batch)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to upsert new GPUs")
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func discardOldGpus(ctx context.Context, database db.Database, interval time.Duration, gpuBatch []types.NodeGPU) error {
+	// invalidate the old indexed GPUs for the same node,
+	// but check the batch first to ensure it does not contain related GPUs to node twin it from the last batch.
+	// TODO: if timestamp > 1
+	nodeTwinIds := []uint32{}
+	for _, gpu := range gpuBatch {
+		nodeTwinIds = append(nodeTwinIds, gpu.NodeTwinID)
+	}
+
+	expiration := time.Now().Unix() - int64(interval.Seconds())
+	return database.DeleteOldGpus(ctx, nodeTwinIds, expiration)
 }

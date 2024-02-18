@@ -90,7 +90,6 @@ func (c *Crafter) GenerateNodes() error {
 
 	powerState := []string{"Up", "Down"}
 	var locations []string
-	var healthReports []string
 	var nodes []string
 	var totalResources []string
 	var publicConfigs []string
@@ -138,7 +137,7 @@ func (c *Crafter) GenerateNodes() error {
 		c.nodesHRU[i] = hru
 		c.nodeUP[i] = up
 
-		// location latitude and longitue needs to be castable to decimal
+		// location latitude and longitude needs to be castable to decimal
 		// if not, the convert_to_decimal function will raise a notice
 		// reporting the incident, which downgrades performance
 		locationId := fmt.Sprintf("location-%d", uint64(start)+i)
@@ -189,15 +188,6 @@ func (c *Crafter) GenerateNodes() error {
 			node_id: fmt.Sprintf("node-%d", i),
 		}
 
-		health := true
-		if flip(.5) {
-			health = false
-		}
-		healthReport := health_report{
-			node_twin_id: node.twin_id,
-			healthy:      health,
-		}
-
 		if _, ok := c.dedicatedFarms[node.farm_id]; ok {
 			c.availableRentNodes[i] = struct{}{}
 			c.availableRentNodesList = append(c.availableRentNodesList, i)
@@ -208,12 +198,6 @@ func (c *Crafter) GenerateNodes() error {
 			return fmt.Errorf("failed to convert location object to tuple string: %w", err)
 		}
 		locations = append(locations, locationTuple)
-
-		healthTuple, err := objectToTupleString(healthReport)
-		if err != nil {
-			return fmt.Errorf("failed to convert health report to tuple string: %w", err)
-		}
-		healthReports = append(healthReports, healthTuple)
 
 		nodeTuple, err := objectToTupleString(node)
 		if err != nil {
@@ -248,10 +232,6 @@ func (c *Crafter) GenerateNodes() error {
 
 	if err := c.insertTuples(location{}, locations); err != nil {
 		return fmt.Errorf("failed to insert locations: %w", err)
-	}
-
-	if err := c.insertTuples(health_report{}, healthReports); err != nil {
-		return fmt.Errorf("failed to insert health reports: %w", err)
 	}
 
 	if err := c.insertTuples(node{}, nodes); err != nil {
@@ -792,7 +772,7 @@ func (c *Crafter) updateNodeContractPublicIPs(nodeContracts []uint64) error {
 }
 
 func (c *Crafter) GenerateNodeGPUs() error {
-	var GPUs []string
+	var gpus []string
 	vendors := []string{"NVIDIA Corporation", "AMD", "Intel Corporation"}
 	devices := []string{"GeForce RTX 3080", "Radeon RX 6800 XT", "Intel Iris Xe MAX"}
 
@@ -803,7 +783,6 @@ func (c *Crafter) GenerateNodeGPUs() error {
 		gpuNum := len(vendors) - 1
 		for j := 0; j <= gpuNum; j++ {
 			g := node_gpu{
-				// WATCH
 				node_twin_id: uint64(nodeTwinsStart + uint(i)),
 				vendor:       vendors[j],
 				device:       devices[j],
@@ -814,11 +793,11 @@ func (c *Crafter) GenerateNodeGPUs() error {
 			if err != nil {
 				return fmt.Errorf("failed to convert gpu object to tuple string: %w", err)
 			}
-			GPUs = append(GPUs, gpuTuple)
+			gpus = append(gpus, gpuTuple)
 		}
 	}
 
-	if err := c.insertTuples(node_gpu{}, GPUs); err != nil {
+	if err := c.insertTuples(node_gpu{}, gpus); err != nil {
 		return fmt.Errorf("failed to insert node gpu: %w", err)
 	}
 
@@ -867,12 +846,12 @@ func (c *Crafter) GenerateSpeedReports() error {
 	end := c.NodeStart + c.NodeCount
 	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
 
-	var speedReports []types.NetworkTestResult
+	var speedReports []types.Speed
 	for i := start; i < end; i += 2 {
-		speedReport := types.NetworkTestResult{
-			NodeTwinId:    uint32(nodeTwinsStart + i),
-			UploadSpeed:   rand.Float64() * float64(rand.Intn(9999999)),
-			DownloadSpeed: rand.Float64() * float64(rand.Intn(9999999)),
+		speedReport := types.Speed{
+			NodeTwinId: uint32(nodeTwinsStart + i),
+			Upload:     rand.Float64() * float64(rand.Intn(9999999)),
+			Download:   rand.Float64() * float64(rand.Intn(9999999)),
 		}
 		speedReports = append(speedReports, speedReport)
 	}
@@ -890,9 +869,9 @@ func (c *Crafter) GenerateDmi() error {
 	end := c.NodeStart + c.NodeCount
 	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
 
-	var dmis []types.DmiInfo
+	var dmis []types.Dmi
 	for i := start; i < end; i++ {
-		dmi := types.DmiInfo{
+		dmi := types.Dmi{
 			NodeTwinId: uint32(nodeTwinsStart + i),
 			BIOS:       bios[rand.Intn(len(bios))],
 			Baseboard:  baseboard[rand.Intn(len(baseboard))],
@@ -906,6 +885,33 @@ func (c *Crafter) GenerateDmi() error {
 		return fmt.Errorf("failed to insert dmi: %w", err)
 	}
 	fmt.Println("dmi reports generated")
+
+	return nil
+}
+
+func (c *Crafter) GenerateHealthReports() error {
+	start := c.NodeStart
+	end := c.NodeStart + c.NodeCount
+	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
+
+	var healthReports []types.HealthReport
+	for i := start; i < end; i++ {
+		health := true
+		if flip(.5) {
+			health = false
+		}
+
+		healthReport := types.HealthReport{
+			NodeTwinId: uint32(nodeTwinsStart + i),
+			Healthy:    health,
+		}
+		healthReports = append(healthReports, healthReport)
+	}
+
+	if err := c.gormDB.Create(healthReports).Error; err != nil {
+		return fmt.Errorf("failed to insert health reports: %w", err)
+	}
+	fmt.Println("health reports generated")
 
 	return nil
 }

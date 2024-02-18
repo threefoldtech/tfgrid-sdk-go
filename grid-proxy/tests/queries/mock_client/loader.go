@@ -34,12 +34,12 @@ type DBData struct {
 	BillReports         uint32
 	ContractResources   map[string]ContractResources
 	NonDeletedContracts map[uint64][]uint64
-	GPUs                map[uint64][]NodeGPU
+	GPUs                map[uint32][]types.NodeGPU
 	Regions             map[string]string
 	Locations           map[string]Location
-	HealthReports       map[uint64]bool
-	DMIs                map[uint32]types.DmiInfo
-	Speeds              map[uint32]types.NetworkTestResult
+	HealthReports       map[uint32]bool
+	DMIs                map[uint32]types.Dmi
+	Speeds              map[uint32]types.Speed
 
 	DB *sql.DB
 }
@@ -571,7 +571,7 @@ func loadNodeGPUs(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var gpu NodeGPU
+		var gpu types.NodeGPU
 		if err := rows.Scan(
 			&gpu.ID,
 			&gpu.Contract,
@@ -597,7 +597,7 @@ func loadHealthReports(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var health HealthReport
+		var health types.HealthReport
 		if err := rows.Scan(
 			&health.NodeTwinId,
 			&health.Healthy,
@@ -619,12 +619,12 @@ func loadDMIs(db *sql.DB, data *DBData) error {
 		processor,
 		memory 
 	FROM 
-		dmi_infos;`)
+		dmi;`)
 	if err != nil {
 		return err
 	}
 	for rows.Next() {
-		var dmi types.DmiInfo
+		var dmi types.Dmi
 		if err := rows.Scan(
 			&dmi.NodeTwinId,
 			&dmi.BIOS,
@@ -646,19 +646,19 @@ func loadSpeeds(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 	SELECT 
 		node_twin_id,
-		upload_speed,
-		download_speed
+		upload,
+		download
 	FROM 
-		network_test_results;`)
+		speed;`)
 	if err != nil {
 		return err
 	}
 	for rows.Next() {
-		var speed types.NetworkTestResult
+		var speed types.Speed
 		if err := rows.Scan(
 			&speed.NodeTwinId,
-			&speed.UploadSpeed,
-			&speed.DownloadSpeed,
+			&speed.Upload,
+			&speed.Download,
 		); err != nil {
 			return err
 		}
@@ -690,13 +690,13 @@ func Load(db *sql.DB) (DBData, error) {
 		NodeTotalResources:  make(map[uint64]NodeResourcesTotal),
 		NodeUsedResources:   make(map[uint64]NodeResourcesTotal),
 		NonDeletedContracts: make(map[uint64][]uint64),
-		GPUs:                make(map[uint64][]NodeGPU),
+		GPUs:                make(map[uint32][]types.NodeGPU),
 		FarmHasRentedNode:   make(map[uint64]map[uint64]bool),
 		Regions:             make(map[string]string),
 		Locations:           make(map[string]Location),
-		HealthReports:       make(map[uint64]bool),
-		DMIs:                make(map[uint32]types.DmiInfo),
-		Speeds:              make(map[uint32]types.NetworkTestResult),
+		HealthReports:       make(map[uint32]bool),
+		DMIs:                make(map[uint32]types.Dmi),
+		Speeds:              make(map[uint32]types.Speed),
 		DB:                  db,
 	}
 	if err := loadNodes(db, &data); err != nil {

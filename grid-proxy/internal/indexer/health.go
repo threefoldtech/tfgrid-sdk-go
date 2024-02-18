@@ -15,85 +15,94 @@ const (
 )
 
 type NodeHealthIndexer struct {
-	db              db.Database
-	relayClient     *peer.RpcClient
+	database        db.Database
+	rmbClient       *peer.RpcClient
 	nodeTwinIdsChan chan uint32
+	resultChan      chan types.HealthReport
+	batchChan       chan []types.HealthReport
 	indexerInterval time.Duration
 	indexerWorkers  uint
+	batchSize       uint
 }
 
 func NewNodeHealthIndexer(
-	ctx context.Context,
 	rpcClient *peer.RpcClient,
-	db db.Database,
+	database db.Database,
+	batchSize uint,
 	indexerWorkers uint,
 	indexerInterval uint,
 ) *NodeHealthIndexer {
 	return &NodeHealthIndexer{
-		db:              db,
-		relayClient:     rpcClient,
+		database:        database,
+		rmbClient:       rpcClient,
 		nodeTwinIdsChan: make(chan uint32),
+		resultChan:      make(chan types.HealthReport),
+		batchChan:       make(chan []types.HealthReport),
+		batchSize:       batchSize,
 		indexerWorkers:  indexerWorkers,
 		indexerInterval: time.Duration(indexerInterval) * time.Minute,
 	}
 }
 
 func (c *NodeHealthIndexer) Start(ctx context.Context) {
+	go c.StartNodeFinder(ctx)
 
-	// start the node querier, push twin-ids into chan
-	go c.startNodeQuerier(ctx)
-
-	// start the health indexer workers, pop from twin-ids chan and update the db
 	for i := uint(0); i < c.indexerWorkers; i++ {
-		go c.checkNodeHealth(ctx)
+		go c.StartNodeCaller(ctx)
 	}
 
+	for i := uint(0); i < c.indexerWorkers; i++ {
+		go c.StartResultBatcher(ctx)
+	}
+
+	go c.StartBatchUpserter(ctx)
 }
 
-func (c *NodeHealthIndexer) startNodeQuerier(ctx context.Context) {
+func (c *NodeHealthIndexer) StartNodeFinder(ctx context.Context) {
 	ticker := time.NewTicker(c.indexerInterval)
-	c.queryHealthyNodes(ctx)
-	queryUpNodes(ctx, c.db, c.nodeTwinIdsChan)
+
+	queryHealthyNodes(ctx, c.database, c.nodeTwinIdsChan) // to revalidate the reports if node went down
+	queryUpNodes(ctx, c.database, c.nodeTwinIdsChan)
 	for {
 		select {
 		case <-ticker.C:
-			c.queryHealthyNodes(ctx)
-			queryUpNodes(ctx, c.db, c.nodeTwinIdsChan)
+			queryHealthyNodes(ctx, c.database, c.nodeTwinIdsChan)
+			queryUpNodes(ctx, c.database, c.nodeTwinIdsChan)
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-// to revalidate the reports
-func (c *NodeHealthIndexer) queryHealthyNodes(ctx context.Context) {
-	ids, err := c.db.GetHealthyNodeTwinIds(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to query healthy nodes")
-	}
-
-	for _, id := range ids {
-		c.nodeTwinIdsChan <- uint32(id)
-	}
-}
-
-func (c *NodeHealthIndexer) checkNodeHealth(ctx context.Context) {
-	var result interface{}
+func (c *NodeHealthIndexer) StartNodeCaller(ctx context.Context) {
 	for {
 		select {
 		case twinId := <-c.nodeTwinIdsChan:
-			subCtx, cancel := context.WithTimeout(ctx, indexerCallTimeout)
-			err := c.relayClient.Call(subCtx, twinId, healthCallCmd, nil, &result)
-			cancel()
+			var response types.HealthReport
+			err := callNode(ctx, c.rmbClient, healthCallCmd, nil, twinId, &response)
+			c.resultChan <- getHealthReport(response, err, twinId)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
 
-			healthReport := types.HealthReport{
-				NodeTwinId: twinId,
-				Healthy:    isHealthy(err),
+func (c *NodeHealthIndexer) StartResultBatcher(ctx context.Context) {
+	buffer := make([]types.HealthReport, 0, c.batchSize)
+
+	ticker := time.NewTicker(flushingBufferInterval)
+	for {
+		select {
+		case report := <-c.resultChan:
+			buffer = append(buffer, report)
+			if len(buffer) >= int(c.batchSize) {
+				c.batchChan <- buffer
+				buffer = nil
 			}
-			// TODO: separate this on a different channel
-			err = c.db.UpsertNodeHealth(ctx, healthReport)
-			if err != nil {
-				log.Error().Err(err).Msgf("failed to update health report for node with twin id %d", twinId)
+		case <-ticker.C:
+			if len(buffer) != 0 {
+				c.batchChan <- buffer
+				buffer = nil
 			}
 		case <-ctx.Done():
 			return
@@ -101,6 +110,30 @@ func (c *NodeHealthIndexer) checkNodeHealth(ctx context.Context) {
 	}
 }
 
-func isHealthy(err error) bool {
-	return err == nil
+func (c *NodeHealthIndexer) StartBatchUpserter(ctx context.Context) {
+	for {
+		select {
+		case batch := <-c.batchChan:
+			err := c.database.UpsertNodeHealth(ctx, batch)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to upsert node health")
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func getHealthReport(response interface{}, err error, twinId uint32) types.HealthReport {
+	report := types.HealthReport{
+		NodeTwinId: twinId,
+		Healthy:    false,
+	}
+
+	if err != nil {
+		return report
+	}
+
+	report.Healthy = true
+	return report
 }
