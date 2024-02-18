@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -25,8 +27,18 @@ const (
 func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPluginClient, output string, debug bool) error {
 	passedGroups := map[string][]*workloads.Deployment{}
 	failedGroups := map[string]string{}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	deploymentStart := time.Now()
+
+	// close ctx on SIGTERM
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		cancel()
+	}()
 
 	if cfg.MaxRetries == 0 {
 		cfg.MaxRetries = DefaultMaxRetries
@@ -60,6 +72,17 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 				log.Debug().Err(err).Send()
 			}
 		}
+	}
+
+	// cancel all deployments if ctx is closed
+	if err := ctx.Err(); err != nil {
+		for _, group := range cfg.NodeGroups {
+			err := tfPluginClient.CancelByProjectName(group.Name)
+			if err != nil {
+				log.Debug().Err(err).Send()
+			}
+		}
+		log.Fatal().Err(fmt.Errorf("failed to run deployer, deployment was interrupted with signal SIGTERM")).Send()
 	}
 
 	endTime := time.Since(deploymentStart)
