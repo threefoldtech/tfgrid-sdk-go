@@ -502,7 +502,7 @@ func (a *App) getContract(r *http.Request) (interface{}, mw.Response) {
 // getContractBills godoc
 // @Summary Show single contract bills
 // @Description Get all bills reports for a single contract with its id
-// @Tags ContractDills
+// @Tags ContractBills
 // @Param contract_id path int yes "Contract ID"
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
