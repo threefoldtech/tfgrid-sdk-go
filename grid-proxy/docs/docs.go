@@ -220,7 +220,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "ContractDills"
+                    "ContractBills"
                 ],
                 "summary": "Show single contract bills",
                 "parameters": [
