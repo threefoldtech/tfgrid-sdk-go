@@ -45,6 +45,7 @@ type Node struct {
 	NumGPU            int          `json:"num_gpu" sort:"num_gpu"`
 	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
 	Healthy           bool         `json:"healthy"`
+	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -81,6 +82,7 @@ type NodeWithNestedCapacity struct {
 	NumGPU            int            `json:"num_gpu"`
 	ExtraFee          uint64         `json:"extraFee"`
 	Healthy           bool           `json:"healthy"`
+	PriceUsd          float64        `json:"price_usd"`
 }
 
 // PublicConfig node public config
@@ -139,6 +141,8 @@ type NodeFilter struct {
 	GpuVendorName     *string  `schema:"gpu_vendor_name,omitempty"`
 	GpuAvailable      *bool    `schema:"gpu_available,omitempty"`
 	Healthy           *bool    `schema:"healthy,omitempty"`
+	PriceMin          *float64 `schema:"price_min,omitempty"`
+	PriceMax          *float64 `schema:"price_max,omitempty"`
 	Excluded          []uint64 `schema:"excluded,omitempty"`
 }
 
