@@ -47,7 +47,7 @@ func main() {
 		panic(errors.Wrap(err, "failed to open db"))
 	}
 	gormDB, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{
-		Logger: logger.Default.LogMode(4),
+		Logger: logger.Default.LogMode(1),
 	})
 	if err != nil {
 		panic(fmt.Errorf("failed to generate gorm db: %w", err))
