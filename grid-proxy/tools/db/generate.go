@@ -129,5 +129,8 @@ func generateData(db *sql.DB, gormDB *gorm.DB, seed int) error {
 		return fmt.Errorf("failed to generate dmi reports: %w", err)
 	}
 
+	if err := generator.GeneratePricingPolicies(); err != nil {
+		return fmt.Errorf("failed to generate PricingPolicies: %w", err)
+	}
 	return nil
 }

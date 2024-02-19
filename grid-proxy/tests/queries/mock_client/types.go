@@ -146,3 +146,22 @@ type Location struct {
 	Longitude *float64
 	Latitude  *float64
 }
+
+type Unit struct {
+	Value int
+	Unit  string
+}
+
+type PricingPolicy struct {
+	ID                    uint
+	GridVersion           int
+	PricingPolicyID       int
+	Name                  string
+	SU                    Unit
+	CU                    Unit
+	NU                    Unit
+	IPU                   Unit
+	FoundationAccount     string
+	CertifiedSalesAccount string
+	DedicatedNodeDiscount int
+}

@@ -95,6 +95,7 @@ type Node struct {
 	Processor          []types.Processor `gorm:"type:jsonb;serializer:json"`
 	UploadSpeed        float64
 	DownloadSpeed      float64
+	PriceUsd           float64
 }
 
 // NodePower struct is the farmerbot report for node status

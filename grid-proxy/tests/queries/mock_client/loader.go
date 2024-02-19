@@ -2,6 +2,7 @@ package mock
 
 import (
 	"database/sql"
+	"encoding/json"
 	"math"
 	"strings"
 
@@ -41,6 +42,7 @@ type DBData struct {
 	HealthReports       map[uint32]bool
 	DMIs                map[uint32]types.Dmi
 	Speeds              map[uint32]types.Speed
+	PricingPolicies     map[uint]PricingPolicy
 
 	DB *sql.DB
 }
@@ -603,8 +605,62 @@ func loadSpeeds(db *sql.DB, data *DBData) error {
 		}
 		data.Speeds[speed.NodeTwinId] = speed
 	}
+	return nil
+}
+
+func loadPricingPolicies(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+		SELECT
+			id,
+			grid_version,
+			pricing_policy_id,
+			name,
+			su,
+			cu,
+			nu,
+			ipu,
+			foundation_account,
+			certified_sales_account,
+			dedicated_node_discount
+		FROM
+			pricing_policy;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var policy PricingPolicy
+		var su, cu, nu, ipu string
+		if err := rows.Scan(
+			&policy.ID,
+			&policy.GridVersion,
+			&policy.PricingPolicyID,
+			&policy.Name,
+			&su,
+			&cu,
+			&nu,
+			&ipu,
+			&policy.FoundationAccount,
+			&policy.CertifiedSalesAccount,
+			&policy.DedicatedNodeDiscount,
+		); err != nil {
+			return err
+		}
+
+		policy.SU = parseUnit(su)
+		policy.CU = parseUnit(cu)
+		policy.NU = parseUnit(nu)
+		policy.IPU = parseUnit(ipu)
+
+		data.PricingPolicies[policy.ID] = policy
+	}
 
 	return nil
+}
+
+func parseUnit(unitString string) Unit {
+	var unit Unit
+	_ = json.Unmarshal([]byte(unitString), &unit)
+	return unit
 }
 
 func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
@@ -636,6 +692,7 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		HealthReports:       make(map[uint32]bool),
 		DMIs:                make(map[uint32]types.Dmi),
 		Speeds:              make(map[uint32]types.Speed),
+		PricingPolicies:     make(map[uint]PricingPolicy),
 		DB:                  db,
 	}
 	if err := loadNodes(db, gormDB, &data); err != nil {
@@ -687,6 +744,9 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadSpeeds(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadPricingPolicies(db, &data); err != nil {
 		return data, err
 	}
 	if err := calcNodesUsedResources(&data); err != nil {

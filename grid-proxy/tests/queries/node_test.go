@@ -313,6 +313,14 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &v
 	},
+	"PriceMin": func(_ NodesAggregate) interface{} {
+		v := rand.Float64() * 1000
+		return &v
+	},
+	"PriceMax": func(_ NodesAggregate) interface{} {
+		v := rand.Float64() * 1000
+		return &v
+	},
 	"Excluded": func(agg NodesAggregate) interface{} {
 		shuffledIds := make([]uint64, len(agg.nodeIDs))
 		copy(shuffledIds, agg.nodeIDs)
@@ -486,6 +494,21 @@ func TestNode(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, len(nodes), len(localNodes), "gpu_available filter did not work")
+	})
+
+	t.Run("node staking discount", func(t *testing.T) {
+		t.Parallel()
+
+		limits := proxytypes.DefaultLimit()
+		limits.Balance = 9999999999 // in usd
+
+		got, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{}, limits)
+		assert.NoError(t, err)
+
+		want, _, err := mockClient.Nodes(context.Background(), types.NodeFilter{}, limits)
+		assert.NoError(t, err)
+
+		require.True(t, reflect.DeepEqual(want, got), "failed on testing staking discount", fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
 	})
 }
 
