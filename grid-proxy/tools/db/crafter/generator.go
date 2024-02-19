@@ -859,3 +859,26 @@ func (c *Crafter) GenerateCountries() error {
 
 	return nil
 }
+
+func (c *Crafter) GeneratePricingPolicies() error {
+	query := `
+	INSERT INTO public.pricing_policy (
+		id, grid_version, pricing_policy_id, name, su, cu, nu, ipu,
+		foundation_account, certified_sales_account, dedicated_node_discount
+	) VALUES (
+		'1', 2, 1, 'threefold_default_pricing_policy',
+		'{"value": 50000, "unit": "Gigabytes"}',
+		'{"value": 100000, "unit": "Gigabytes"}',
+		'{"value": 15000, "unit": "Gigabytes"}',
+		'{"value": 40000, "unit": "Gigabytes"}',
+		'5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY',
+		'5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY',
+		50
+	);`
+
+	_, err := c.db.Exec(query)
+
+	fmt.Println("pricing policies generated")
+
+	return err
+}
