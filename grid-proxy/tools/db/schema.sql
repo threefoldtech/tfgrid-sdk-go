@@ -1030,7 +1030,7 @@ CREATE TABLE IF NOT EXISTS public.node_gpu (
     vendor text,
     device text,
     contract bigint,
-    updated_at timestamp with time zone
+    updated_at bigint
 );
 
 ALTER TABLE public.node_gpu 

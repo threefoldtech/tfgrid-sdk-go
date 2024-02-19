@@ -114,7 +114,6 @@ func (n *NodeGPUIndexer) StartNodeCaller(ctx context.Context) {
 			for i := 0; i < len(gpus); i++ {
 				gpus[i].NodeTwinID = twinId
 				gpus[i].UpdatedAt = time.Now().Unix()
-				log.Info().Msgf("%+v", gpus[i])
 				n.resultChan <- gpus[i]
 			}
 		case <-ctx.Done():
@@ -149,7 +148,6 @@ func (n *NodeGPUIndexer) StartBatchUpserter(ctx context.Context) {
 	for {
 		select {
 		case batch := <-n.batchChan:
-			log.Info().Msgf("%+v", batch)
 			err := discardOldGpus(ctx, n.database, n.interval, batch)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to remove old GPUs")

@@ -174,8 +174,8 @@ func main() {
 	)
 	manager.Register("Speed", speedIndexer)
 
-	manager.Start()
 	if !f.noIndexer {
+		manager.Start()
 	} else {
 		log.Info().Msg("Indexers Manager did not start")
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"gorm.io/gorm"
 )
 
 const deleted = "Deleted"
@@ -44,58 +45,13 @@ type DBData struct {
 	DB *sql.DB
 }
 
-func loadNodes(db *sql.DB, data *DBData) error {
-	rows, err := db.Query(`
-	SELECT
-		COALESCE(id, ''),
-		COALESCE(grid_version, 0),
-		COALESCE(node_id, 0),
-		COALESCE(farm_id, 0),
-		COALESCE(twin_id, 0),
-		COALESCE(country, ''),
-		COALESCE(city, ''),
-		COALESCE(uptime, 0),
-		COALESCE(created, 0),
-		COALESCE(farming_policy_id, 0),
-		COALESCE(certification, ''),
-		COALESCE(secure, false),
-		COALESCE(virtualized, false),
-		COALESCE(serial_number, ''),
-		COALESCE(created_at, 0),
-		COALESCE(updated_at, 0),
-		COALESCE(location_id, ''),
-		COALESCE(extra_fee, 0),
-		power
-	FROM
-		node;`)
+func loadNodes(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
+	var nodes []Node
+	err := gormDB.Table("node").Scan(&nodes).Error
 	if err != nil {
 		return err
 	}
-	for rows.Next() {
-		var node Node
-		if err := rows.Scan(
-			&node.ID,
-			&node.GridVersion,
-			&node.NodeID,
-			&node.FarmID,
-			&node.TwinID,
-			&node.Country,
-			&node.City,
-			&node.Uptime,
-			&node.Created,
-			&node.FarmingPolicyID,
-			&node.Certification,
-			&node.Secure,
-			&node.Virtualized,
-			&node.SerialNumber,
-			&node.CreatedAt,
-			&node.UpdatedAt,
-			&node.LocationID,
-			&node.ExtraFee,
-			&node.Power,
-		); err != nil {
-			return err
-		}
+	for _, node := range nodes {
 		data.Nodes[node.NodeID] = node
 		data.NodeIDMap[node.ID] = node.NodeID
 	}
@@ -610,30 +566,13 @@ func loadHealthReports(db *sql.DB, data *DBData) error {
 	return nil
 }
 
-func loadDMIs(db *sql.DB, data *DBData) error {
-	rows, err := db.Query(`
-	SELECT 
-		node_twin_id,
-		bios,
-		baseboard,
-		processor,
-		memory 
-	FROM 
-		dmi;`)
+func loadDMIs(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
+	var dmis []types.Dmi
+	err := gormDB.Table("dmi").Scan(&dmis).Error
 	if err != nil {
 		return err
 	}
-	for rows.Next() {
-		var dmi types.Dmi
-		if err := rows.Scan(
-			&dmi.NodeTwinId,
-			&dmi.BIOS,
-			&dmi.Baseboard,
-			&dmi.Processor,
-			&dmi.Memory,
-		); err != nil {
-			return err
-		}
+	for _, dmi := range dmis {
 		twinId := dmi.NodeTwinId
 		dmi.NodeTwinId = 0 // to omit it as empty, cleaner response
 		data.DMIs[twinId] = dmi
@@ -668,7 +607,7 @@ func loadSpeeds(db *sql.DB, data *DBData) error {
 	return nil
 }
 
-func Load(db *sql.DB) (DBData, error) {
+func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 	data := DBData{
 		NodeIDMap:           make(map[string]uint64),
 		FarmIDMap:           make(map[string]uint64),
@@ -699,7 +638,7 @@ func Load(db *sql.DB) (DBData, error) {
 		Speeds:              make(map[uint32]types.Speed),
 		DB:                  db,
 	}
-	if err := loadNodes(db, &data); err != nil {
+	if err := loadNodes(db, gormDB, &data); err != nil {
 		return data, err
 	}
 	if err := loadFarms(db, &data); err != nil {
@@ -744,7 +683,7 @@ func Load(db *sql.DB) (DBData, error) {
 	if err := loadHealthReports(db, &data); err != nil {
 		return data, err
 	}
-	if err := loadDMIs(db, &data); err != nil {
+	if err := loadDMIs(db, gormDB, &data); err != nil {
 		return data, err
 	}
 	if err := loadSpeeds(db, &data); err != nil {

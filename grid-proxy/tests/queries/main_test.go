@@ -93,7 +93,7 @@ func TestMain(m *testing.M) {
 	DBClient = &dbClient
 
 	// load mock client
-	data, err = mock.Load(db)
+	data, err = mock.Load(db, gormDB)
 	if err != nil {
 		panic(err)
 	}
@@ -103,7 +103,7 @@ func TestMain(m *testing.M) {
 		if err != nil {
 			panic(err)
 		}
-		data, err = mock.Load(db)
+		data, err = mock.Load(db, gormDB)
 		if err != nil {
 			panic(err)
 		}
