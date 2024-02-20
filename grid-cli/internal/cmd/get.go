@@ -10,29 +10,41 @@ import (
 )
 
 func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID uint64) {
-
 	for _, n := range t.State.CurrentNodeDeployments[node] {
-
 		if n == contractID {
 			return
 		}
-
 	}
 
 	t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
-
 }
 
 // GetVM gets a vm with its project name
 func GetVM(ctx context.Context, t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
-	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
+	// try to get contracts with the new project name format "vm/<name>"
+	projectName := fmt.Sprintf("vm/%s", name)
+
+	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.VMType, name)
 	if err != nil {
 		return workloads.Deployment{}, err
 	}
 
-	networkContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
+	networkContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
 	if err != nil {
 		return workloads.Deployment{}, err
+	}
+
+	if len(nodeContractIDs) == 0 && len(networkContractIDs) == 0 {
+		// if could not find any contracts try to get contracts with the old project name format "<name>"
+		nodeContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
+		if err != nil {
+			return workloads.Deployment{}, err
+		}
+
+		networkContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
+		if err != nil {
+			return workloads.Deployment{}, err
+		}
 	}
 
 	for node, contractID := range networkContractIDs {
