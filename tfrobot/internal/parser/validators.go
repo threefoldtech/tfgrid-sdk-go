@@ -43,7 +43,18 @@ func validateNodeGroups(nodeGroups []tfrobot.NodesGroup, tfPluginClient deployer
 				return fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
 			}
 
+			// check if the node group name was used previously with the old name format <name>
 			contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName, true)
+			if err != nil {
+				return err
+			}
+
+			if len(contracts.NodeContracts) != 0 {
+				return fmt.Errorf("node group name: '%s' is invalid, should be unique name across all deployments", nodeGroupName)
+			}
+
+			// check if the node group name was used previously with the new name format "vm/<name>"
+			contracts, err = tfPluginClient.ContractsGetter.ListContractsOfProjectName(fmt.Sprintf("vm/%s", nodeGroupName), true)
 			if err != nil {
 				return err
 			}
