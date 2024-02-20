@@ -118,8 +118,8 @@ tfrobot deploy -c path/to/your/config.yaml
 
 | Field | Description| Supported Values|
 | :---:   | :---: | :---: |
-| Size | disk size in GB| positive integer min = 15 |
-| Mount | disk mount point | path to mountpoint |
+| size | disk size in GB| positive integer min = 15 |
+| mount_point | disk mount point | path to mountpoint |
 
 > **Notes:**
 > Ensure that memory precision does not exceed 0.001,
