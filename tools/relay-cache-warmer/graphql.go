@@ -86,14 +86,14 @@ func warmTwins(pool *redis.Pool, graphql string) error {
 		if err != nil {
 			return err
 		}
-		if !pagination.PageInfo.HasNextPage {
-			break
-		}
 		offset = pagination.PageInfo.EndCursor
 
 		err = writeTwins(pool, twins)
 		if err != nil {
 			return err
+		}
+		if !pagination.PageInfo.HasNextPage {
+			break
 		}
 		time.Sleep(requestsInterval)
 	}
