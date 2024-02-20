@@ -210,7 +210,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 			envVars = map[string]string{}
 		}
 		envVars["SSH_KEY"] = sshKeys[vmGroup.SSHKey]
-		solutionType := fmt.Sprintf("vm/%s", vmGroup.Name)
+		solutionType := fmt.Sprintf("vm/%s", vmGroup.NodeGroup)
 
 		for i := 0; i < int(vmGroup.Count); i++ {
 			nodeID := uint32(nodesIDs[nodesIDsIdx])
