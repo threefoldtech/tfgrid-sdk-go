@@ -114,7 +114,7 @@ func TestNetworkDeployer(t *testing.T) {
 		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), []zos.Peer{}, string(metadata))
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
-		networkDl.Metadata = "{\"type\":\"network\",\"name\":\"network\",\"projectName\":\"Network\"}"
+		networkDl.Metadata = "{\"version\":3,\"type\":\"network\",\"name\":\"network\",\"projectName\":\"Network\"}"
 
 		assert.Equal(t, len(networkDl.Workloads), len(dls[znet.Nodes[0]].Workloads))
 		assert.Equal(t, networkDl.Workloads, dls[znet.Nodes[0]].Workloads)

@@ -16,6 +16,7 @@ var (
 
 // DeploymentData for deployments meta data
 type DeploymentData struct {
+	Version     int    `json:"version"`
 	Type        string `json:"type"`
 	Name        string `json:"name"`
 	ProjectName string `json:"projectName"`

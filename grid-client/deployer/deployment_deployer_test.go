@@ -341,7 +341,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		dls, _, err := d.GenerateVersionlessDeployments(context.Background(), &dl, ips)
 		assert.NoError(t, err)
 
-		assert.Equal(t, dls[nodeID].Metadata, "{\"type\":\"vm\",\"name\":\"test\",\"projectName\":\"Virtual Machine\"}")
+		assert.Equal(t, dls[nodeID].Metadata, "{\"version\":3,\"type\":\"vm\",\"name\":\"test\",\"projectName\":\"vm/test\"}")
 
 		t.Run("Validation failed", func(t *testing.T) {
 			sub.EXPECT().
