@@ -16,14 +16,15 @@ import (
 // DeployVM deploys a vm with mounts
 func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, mount workloads.Disk, node uint32) (workloads.VM, error) {
 	networkName := fmt.Sprintf("%snetwork", vm.Name)
-	network := buildNetwork(networkName, vm.Name, []uint32{node})
+	projectName := fmt.Sprintf("vm/%s", vm.Name)
+	network := buildNetwork(networkName, projectName, []uint32{node})
 
 	mounts := []workloads.Disk{}
 	if mount.SizeGB != 0 {
 		mounts = append(mounts, mount)
 	}
 	vm.NetworkName = networkName
-	dl := workloads.NewDeployment(vm.Name, node, vm.Name, nil, networkName, mounts, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, mounts, nil, []workloads.VM{vm}, nil)
 
 	log.Info().Msg("deploying network")
 	err := t.NetworkDeployer.Deploy(ctx, &network)
@@ -50,7 +51,6 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 
 // DeployKubernetesCluster deploys a kubernetes cluster
 func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, master workloads.K8sNode, workers []workloads.K8sNode, sshKey string) (workloads.K8sCluster, error) {
-
 	networkName := fmt.Sprintf("%snetwork", master.Name)
 	networkNodes := []uint32{master.Node}
 	if len(workers) > 0 && workers[0].Node != master.Node {
@@ -106,7 +106,6 @@ func DeployGatewayName(ctx context.Context, t deployer.TFPluginClient, gateway w
 
 // DeployGatewayFQDN deploys a gateway fqdn
 func DeployGatewayFQDN(ctx context.Context, t deployer.TFPluginClient, gateway workloads.GatewayFQDNProxy) error {
-
 	log.Info().Msg("deploying gateway fqdn")
 	err := t.GatewayFQDNDeployer.Deploy(ctx, &gateway)
 	if err != nil {

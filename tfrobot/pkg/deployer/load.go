@@ -56,38 +56,17 @@ func getContractsOfNodeGroups(ctx context.Context, tfPluginClient deployer.TFPlu
 		go func(nodeGroup string) {
 			defer wg.Done()
 
-			contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroup, true)
+			ContractIDs, err := getContractsWithProjectName(ctx, tfPluginClient, nodeGroup)
 			if err != nil {
-				log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't list contracts")
-
 				lock.Lock()
-				failedGroups[nodeGroup] = fmt.Sprintf("couldn't list contracts of node group %s: %s", nodeGroup, err.Error())
+				failedGroups[nodeGroup] = err.Error()
 				lock.Unlock()
 				return
 			}
-			if len(contracts.NodeContracts) == 0 {
-				log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't find any contracts")
-
-				lock.Lock()
-				failedGroups[nodeGroup] = fmt.Sprintf("couldn't find any contracts of node group %s", nodeGroup)
-				lock.Unlock()
-				return
-			}
-
-			ContractIDs, err := getContractIDs(contracts.NodeContracts)
-			if err != nil {
-				log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't parse contract id")
-
-				lock.Lock()
-				failedGroups[nodeGroup] = fmt.Sprintf("couldn't parse contract id of node group %s: %s", nodeGroup, err.Error())
-				lock.Unlock()
-				return
-			}
-
 			lock.Lock()
-			defer lock.Unlock()
 
 			loadedContracts[nodeGroup] = ContractIDs
+			lock.Unlock()
 		}(nodeGroup.Name)
 	}
 
@@ -246,4 +225,37 @@ func loadDeploymentWithContractID(ctx context.Context, tfPluginClient deployer.T
 	}
 
 	return workloads.NewDeploymentFromZosDeployment(dl, nodeID)
+}
+
+func getContractsWithProjectName(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroup string) ([]uint64, error) {
+	// try to load group with the new name format "vm/<group name>"
+	name := fmt.Sprintf("vm/%s", nodeGroup)
+
+	contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(name, true)
+	if err != nil {
+		log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't list contracts")
+		return nil, fmt.Errorf("couldn't list contracts of node group %s: %w", nodeGroup, err)
+	}
+
+	if len(contracts.NodeContracts) == 0 {
+		// if load failed try to load group with the old name format "<group name>"
+		contracts, err = tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroup, true)
+		if err != nil {
+			log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't list contracts")
+			return nil, fmt.Errorf("couldn't list contracts of node group %s: %w", nodeGroup, err)
+		}
+
+		if len(contracts.NodeContracts) == 0 {
+			log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't find any contracts")
+			return nil, fmt.Errorf("couldn't find any contracts of node group %s", nodeGroup)
+		}
+	}
+
+	ContractIDs, err := getContractIDs(contracts.NodeContracts)
+	if err != nil {
+		log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't parse contract id")
+
+		return nil, fmt.Errorf("couldn't parse contract id of node group %s: %w", nodeGroup, err)
+	}
+	return ContractIDs, nil
 }

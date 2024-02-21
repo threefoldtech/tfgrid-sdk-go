@@ -43,6 +43,8 @@ type Contract struct {
 	Name string `json:"name"`
 }
 
+var ErrorContractsNotFound = fmt.Errorf("could not find any contracts")
+
 // NewContractsGetter return a new Getter for contracts
 func NewContractsGetter(twinID uint32, graphql GraphQl, substrateConn subi.SubstrateExt, ncPool client.NodeClientGetter) ContractsGetter {
 	return ContractsGetter{
@@ -96,7 +98,6 @@ func (c *ContractsGetter) ListContractsByTwinID(states []string) (Contracts, err
 			"nameContractsCount": nameContractsCount,
 			"rentContractsCount": rentContractsCount,
 		})
-
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -179,7 +180,7 @@ func (c *ContractsGetter) GetNodeContractsByTypeAndName(projectName, deploymentT
 		}
 	}
 	if len(nodeContractIDs) == 0 {
-		return map[uint32]uint64{}, fmt.Errorf("no %s with name %s found", deploymentType, deploymentName)
+		return map[uint32]uint64{}, errors.Wrapf(ErrorContractsNotFound, "no %s with name %s found", deploymentType, deploymentName)
 	}
 	return nodeContractIDs, nil
 }
