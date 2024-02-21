@@ -168,9 +168,14 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 		externalIP = znet.ExternalIP.String()
 	}
 	metadata := workloads.NetworkMetaData{
-		UserAccessIP: externalIP,
-		PrivateKey:   znet.ExternalSK.String(),
-		PublicNodeID: znet.PublicNodeID,
+		Version: workloads.Version,
+		UserAccess: []workloads.UserAccess{
+			{
+				Subnet:     externalIP,
+				PrivateKey: znet.ExternalSK.String(),
+				NodeID:     znet.PublicNodeID,
+			},
+		},
 	}
 
 	metadataBytes, err := json.Marshal(metadata)
