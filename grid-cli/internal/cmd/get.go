@@ -3,35 +3,50 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
 func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID uint64) {
-
 	for _, n := range t.State.CurrentNodeDeployments[node] {
-
 		if n == contractID {
 			return
 		}
-
 	}
 
 	t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
-
 }
 
 // GetVM gets a vm with its project name
 func GetVM(ctx context.Context, t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
-	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
-	if err != nil {
-		return workloads.Deployment{}, err
-	}
+	// try to get contracts with the new project name format "vm/<name>"
+	projectName := fmt.Sprintf("vm/%s", name)
 
-	networkContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
-	if err != nil {
+	var networkContractIDs map[uint32]uint64
+
+	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.VMType, name)
+	if err == nil {
+		networkContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
+		if err != nil {
+			return workloads.Deployment{}, err
+		}
+
+	} else if errors.Is(err, graphql.ErrorContractsNotFound) {
+		// if could not find any contracts try to get contracts with the old project name format "<name>"
+		nodeContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
+		if err != nil {
+			return workloads.Deployment{}, err
+		}
+
+		networkContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
+		if err != nil {
+			return workloads.Deployment{}, err
+		}
+	} else {
 		return workloads.Deployment{}, err
 	}
 

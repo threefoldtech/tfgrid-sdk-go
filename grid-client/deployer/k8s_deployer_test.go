@@ -172,7 +172,7 @@ func TestK8sDeployer(t *testing.T) {
 
 		wl := nodeWorkloads[nodeID]
 		testDl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, wl)
-		testDl.Metadata = "{\"type\":\"kubernetes\",\"name\":\"K8sForTesting\",\"projectName\":\"Kubernetes\"}"
+		testDl.Metadata = "{\"version\":3,\"type\":\"kubernetes\",\"name\":\"K8sForTesting\",\"projectName\":\"K8sForTesting\"}"
 
 		assert.Equal(t, dls, map[uint32]gridtypes.Deployment{
 			nodeID: testDl,

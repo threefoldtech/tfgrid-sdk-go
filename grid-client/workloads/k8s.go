@@ -44,11 +44,11 @@ type K8sCluster struct {
 	Token       string
 	NetworkName string
 
-	//optional
+	// optional
 	SolutionType string
 	SSHKey       string
 
-	//computed
+	// computed
 	NodesIPRange     map[uint32]gridtypes.IPNet
 	NodeDeploymentID map[uint32]uint64
 }
@@ -122,10 +122,11 @@ func (k *K8sCluster) ZosWorkloads() ([]gridtypes.Workload, error) {
 // GenerateMetadata generates deployment metadata
 func (k *K8sCluster) GenerateMetadata() (string, error) {
 	if len(k.SolutionType) == 0 {
-		k.SolutionType = "Kubernetes"
+		k.SolutionType = k.Master.Name
 	}
 
 	deploymentData := DeploymentData{
+		Version:     Version,
 		Name:        k.Master.Name,
 		Type:        "kubernetes",
 		ProjectName: k.SolutionType,

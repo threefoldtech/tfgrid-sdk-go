@@ -176,6 +176,7 @@ func (znet *ZNet) GenerateMetadata() (string, error) {
 	}
 
 	deploymentData := DeploymentData{
+		Version:     Version,
 		Name:        znet.Name,
 		Type:        "network",
 		ProjectName: znet.SolutionType,
@@ -295,12 +296,10 @@ func WgIP(ip gridtypes.IPNet) gridtypes.IPNet {
 		IP:   net.IPv4(100, 64, a, b),
 		Mask: net.CIDRMask(32, 32),
 	})
-
 }
 
 // GenerateWGConfig generates wireguard configs
 func GenerateWGConfig(Address string, AccessPrivatekey string, NodePublicKey string, NodeEndpoint string, NetworkIPRange string) string {
-
 	return fmt.Sprintf(`
 [Interface]
 Address = %s

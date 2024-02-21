@@ -2,6 +2,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
@@ -22,6 +24,13 @@ var cancelCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
+
+		projectName := fmt.Sprintf("vm/%s", args[0])
+		err = t.CancelByProjectName(projectName)
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
 		err = t.CancelByProjectName(args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
