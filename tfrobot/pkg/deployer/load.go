@@ -232,17 +232,21 @@ func getContractsWithProjectName(ctx context.Context, tfPluginClient deployer.TF
 	name := fmt.Sprintf("vm/%s", nodeGroup)
 
 	contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(name, true)
-	if err != nil || len(contracts.NodeContracts) == 0 {
+	if err != nil {
+		log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't list contracts")
+		return nil, fmt.Errorf("couldn't list contracts of node group %s: %w", nodeGroup, err)
+	}
+
+	if len(contracts.NodeContracts) == 0 {
 		// if load failed try to load group with the old name format "<group name>"
 		contracts, err = tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroup, true)
 		if err != nil {
 			log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't list contracts")
-
-			return nil, fmt.Errorf("couldn't list contracts of node group %s: %s", nodeGroup, err.Error())
+			return nil, fmt.Errorf("couldn't list contracts of node group %s: %w", nodeGroup, err)
 		}
+
 		if len(contracts.NodeContracts) == 0 {
 			log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't find any contracts")
-
 			return nil, fmt.Errorf("couldn't find any contracts of node group %s", nodeGroup)
 		}
 	}
@@ -251,7 +255,7 @@ func getContractsWithProjectName(ctx context.Context, tfPluginClient deployer.TF
 	if err != nil {
 		log.Debug().Err(err).Str("node group", nodeGroup).Msg("couldn't parse contract id")
 
-		return nil, fmt.Errorf("couldn't parse contract id of node group %s: %s", nodeGroup, err.Error())
+		return nil, fmt.Errorf("couldn't parse contract id of node group %s: %w", nodeGroup, err)
 	}
 	return ContractIDs, nil
 }

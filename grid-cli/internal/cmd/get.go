@@ -24,17 +24,16 @@ func GetVM(ctx context.Context, t deployer.TFPluginClient, name string) (workloa
 	// try to get contracts with the new project name format "vm/<name>"
 	projectName := fmt.Sprintf("vm/%s", name)
 
+	var networkContractIDs map[uint32]uint64
+
 	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.VMType, name)
-	if err != nil {
-		return workloads.Deployment{}, err
-	}
+	if err == nil {
+		networkContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
+		if err != nil {
+			return workloads.Deployment{}, err
+		}
 
-	networkContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
-	if err != nil {
-		return workloads.Deployment{}, err
-	}
-
-	if len(nodeContractIDs) == 0 && len(networkContractIDs) == 0 {
+	} else {
 		// if could not find any contracts try to get contracts with the old project name format "<name>"
 		nodeContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
 		if err != nil {
