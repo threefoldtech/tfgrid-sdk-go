@@ -61,6 +61,7 @@ network: main # eg: main, test, qa, dev
 
 ```
 
+You can use this [example](./example/conf.yaml) for further guidance
 
 >**Please** make sure to replace placeholders and adapt the groups based on your actual project details.
 
