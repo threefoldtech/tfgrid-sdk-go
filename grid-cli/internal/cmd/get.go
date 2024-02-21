@@ -3,9 +3,11 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
@@ -33,7 +35,7 @@ func GetVM(ctx context.Context, t deployer.TFPluginClient, name string) (workloa
 			return workloads.Deployment{}, err
 		}
 
-	} else {
+	} else if errors.Is(err, graphql.ErrorContractsNotFound) {
 		// if could not find any contracts try to get contracts with the old project name format "<name>"
 		nodeContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
 		if err != nil {
@@ -44,6 +46,8 @@ func GetVM(ctx context.Context, t deployer.TFPluginClient, name string) (workloa
 		if err != nil {
 			return workloads.Deployment{}, err
 		}
+	} else {
+		return workloads.Deployment{}, err
 	}
 
 	for node, contractID := range networkContractIDs {
