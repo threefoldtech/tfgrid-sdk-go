@@ -16,27 +16,35 @@ func (t *TFPluginClient) CancelByProjectName(projectName string, noGateways ...b
 	if err != nil {
 		return errors.Wrapf(err, "could not load contracts for project %s", projectName)
 	}
-	contractIDS := make([]uint64, 0)
 
 	contractsSlice := append(contracts.NameContracts, contracts.NodeContracts...)
-	for _, contract := range contractsSlice {
-		contractID, err := strconv.ParseUint(contract.ContractID, 0, 64)
-		if err != nil {
-			return errors.Wrapf(err, "could not parse contract %s into uint64", contract.ContractID)
+
+	const batchSize = 400 // Process contracts in groups of 400
+
+	for i := 0; i < len(contractsSlice); i += batchSize {
+		end := i + batchSize
+		if end > len(contractsSlice) {
+			end = len(contractsSlice)
 		}
-		contractIDS = append(contractIDS, contractID)
-	}
 
-	if len(contractIDS) == 0 {
-		log.Info().Str("project name", projectName).Msg("No contracts exist for the project name")
-		return nil
-	}
+		batchContractIDS := make([]uint64, 0, batchSize) // New slice for each batch
+		for _, contract := range contractsSlice[i:end] {
+			contractID, err := strconv.ParseUint(contract.ContractID, 0, 64)
+			if err != nil {
+				return errors.Wrapf(err, "could not parse contract %s into uint64", contract.ContractID)
+			}
+			batchContractIDS = append(batchContractIDS, contractID)
+		}
 
-	log.Debug().Uints64("contracts IDs", contractIDS).Msg("Batch cancel")
-	if err := t.BatchCancelContract(contractIDS); err != nil {
-		return fmt.Errorf("failed to cancel contracts for project %s: %w", projectName, err)
-	}
+		if len(batchContractIDS) == 0 {
+			continue // Skip empty batches
+		}
 
+		log.Debug().Uints64("contracts IDs", batchContractIDS).Msg("Batch cancel")
+		if err := t.BatchCancelContract(batchContractIDS); err != nil {
+			return fmt.Errorf("failed to cancel contracts (batch %d-%d) for project %s: %w", i, end, projectName, err)
+		}
+	}
 	log.Info().Str("project name", projectName).Msg("project is canceled")
 	return nil
 }

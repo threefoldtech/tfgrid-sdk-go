@@ -10,8 +10,7 @@ import (
 
 	"github.com/cosmos/go-bip39"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	massDeployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -32,13 +31,8 @@ func validateNetwork(network string) error {
 	return nil
 }
 
-func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, mnemonic, network string) error {
+func validateNodeGroups(nodeGroups []tfrobot.NodesGroup, tfPluginClient deployer.TFPluginClient) error {
 	errGroup := new(errgroup.Group)
-	tfPluginClient, err := deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, "", "", "", 0, false, false)
-	if err != nil {
-		return err
-	}
-
 	for _, group := range nodeGroups {
 		group := group
 
@@ -49,7 +43,18 @@ func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, mnemonic, network 
 				return fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
 			}
 
+			// check if the node group name was used previously with the old name format <name>
 			contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName, true)
+			if err != nil {
+				return err
+			}
+
+			if len(contracts.NodeContracts) != 0 {
+				return fmt.Errorf("node group name: '%s' is invalid, should be unique name across all deployments", nodeGroupName)
+			}
+
+			// check if the node group name was used previously with the new name format "vm/<name>"
+			contracts, err = tfPluginClient.ContractsGetter.ListContractsOfProjectName(fmt.Sprintf("vm/%s", nodeGroupName), true)
 			if err != nil {
 				return err
 			}
@@ -65,7 +70,7 @@ func validateNodeGroups(nodeGroups []massDeployer.NodesGroup, mnemonic, network 
 	return errGroup.Wait()
 }
 
-func validateVMs(vms []massDeployer.Vms, nodeGroups []massDeployer.NodesGroup, sskKeys map[string]string) error {
+func validateVMs(vms []tfrobot.Vms, nodeGroups []tfrobot.NodesGroup, sskKeys map[string]string) error {
 	usedResources := make(map[string]map[string]interface{}, len(nodeGroups))
 	var vmNodeGroupExists bool
 
@@ -143,7 +148,7 @@ func validateFlist(flist, name string) error {
 	return nil
 }
 
-func setVMUsedResources(vmsGroup massDeployer.Vms, vmUsedResources map[string]interface{}) map[string]interface{} {
+func setVMUsedResources(vmsGroup tfrobot.Vms, vmUsedResources map[string]interface{}) map[string]interface{} {
 	if _, ok := vmUsedResources["free_cpu"]; !ok {
 		vmUsedResources = make(map[string]interface{}, 5)
 		vmUsedResources["free_cpu"] = uint64(0)

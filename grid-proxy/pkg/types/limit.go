@@ -66,6 +66,7 @@ type Limit struct {
 	Randomize bool      `schema:"randomize,omitempty"`
 	SortBy    SortBy    `schema:"sort_by,omitempty"`
 	SortOrder SortOrder `schema:"sort_order,omitempty"`
+	Balance   float64   `schema:"balance,omitempty"`
 }
 
 // Valid validates the sorting values
@@ -88,5 +89,6 @@ func DefaultLimit() Limit {
 		Randomize: false,
 		SortBy:    "",
 		SortOrder: "",
+		Balance:   0,
 	}
 }

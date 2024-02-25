@@ -7,7 +7,7 @@ use (
 	./grid-client
 	./grid-proxy
 	./gridify
-	./mass-deployer
+	./tfrobot
 	./monitoring-bot
 	./rmb-sdk-go
 	./user-contracts-mon

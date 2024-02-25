@@ -81,6 +81,7 @@ type Node struct {
 	ExtraFee           uint64
 	NodeContractsCount uint64 `gorm:"node_contracts_count"`
 	Healthy            bool
+	PriceUsd           float64
 }
 
 // NodePower struct is the farmerbot report for node status

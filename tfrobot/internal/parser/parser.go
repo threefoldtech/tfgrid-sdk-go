@@ -10,7 +10,8 @@ import (
 	"github.com/gliderlabs/ssh"
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog/log"
-	deployer "github.com/threefoldtech/tfgrid-sdk-go/mass-deployer/pkg/mass-deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,12 +20,12 @@ const (
 	networkKey  = "NETWORK"
 )
 
-func ParseConfig(file io.Reader, jsonFmt bool) (deployer.Config, error) {
-	conf := deployer.Config{}
+func ParseConfig(file io.Reader, jsonFmt bool) (tfrobot.Config, error) {
+	conf := tfrobot.Config{}
 
 	configFile, err := io.ReadAll(file)
 	if err != nil {
-		return deployer.Config{}, fmt.Errorf("failed to read the config file: %+w", err)
+		return tfrobot.Config{}, fmt.Errorf("failed to read the config file: %+w", err)
 	}
 	if jsonFmt {
 		err = json.Unmarshal(configFile, &conf)
@@ -32,36 +33,36 @@ func ParseConfig(file io.Reader, jsonFmt bool) (deployer.Config, error) {
 		err = yaml.Unmarshal(configFile, &conf)
 	}
 	if err != nil {
-		return deployer.Config{}, err
+		return tfrobot.Config{}, err
 	}
 
 	if conf.Mnemonic, err = getValueOrEnv(conf.Mnemonic, mnemonicKey); err != nil {
-		return deployer.Config{}, err
+		return tfrobot.Config{}, err
 	}
 
 	if conf.Network, err = getValueOrEnv(conf.Network, networkKey); err != nil {
-		return deployer.Config{}, err
+		return tfrobot.Config{}, err
 	}
 
 	if err := validateNetwork(conf.Network); err != nil {
-		return deployer.Config{}, err
+		return tfrobot.Config{}, err
 	}
 
 	if err := validateMnemonic(conf.Mnemonic); err != nil {
-		return deployer.Config{}, err
+		return tfrobot.Config{}, err
 	}
 
 	for _, nodeGroup := range conf.NodeGroups {
 		nodeGroupName := strings.TrimSpace(nodeGroup.Name)
 		if !alphanumeric.MatchString(nodeGroupName) {
-			return deployer.Config{}, fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
+			return tfrobot.Config{}, fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
 		}
 	}
 
 	return conf, nil
 }
 
-func ValidateConfig(conf deployer.Config) error {
+func ValidateConfig(conf tfrobot.Config, tfPluginClient deployer.TFPluginClient) error {
 	log.Info().Msg("validating configuration file")
 
 	v := validator.New(validator.WithRequiredStructEnabled())
@@ -76,7 +77,7 @@ func ValidateConfig(conf deployer.Config) error {
 		}
 	}
 
-	if err := validateNodeGroups(conf.NodeGroups, conf.Mnemonic, conf.Network); err != nil {
+	if err := validateNodeGroups(conf.NodeGroups, tfPluginClient); err != nil {
 		return err
 	}
 

@@ -126,7 +126,9 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to initialize database")
 	}
 
-	dbClient := explorer.DBClient{DB: &db}
+	dbClient := explorer.DBClient{
+		DB: &db,
+	}
 
 	indexer, err := gpuindexer.NewNodeGPUIndexer(
 		ctx,

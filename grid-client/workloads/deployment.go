@@ -3,6 +3,7 @@ package workloads
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"sort"
 	"strings"
@@ -11,6 +12,8 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
+
+const Version = 3
 
 // Deployment struct
 type Deployment struct {
@@ -69,10 +72,11 @@ func (d *Deployment) Validate() error {
 // GenerateMetadata generates deployment metadata
 func (d *Deployment) GenerateMetadata() (string, error) {
 	if len(d.SolutionType) == 0 {
-		d.SolutionType = "Virtual Machine"
+		d.SolutionType = fmt.Sprintf("vm/%s", d.Name)
 	}
 
 	deploymentData := DeploymentData{
+		Version:     Version,
 		Name:        d.Name,
 		Type:        "vm",
 		ProjectName: d.SolutionType,
@@ -160,7 +164,7 @@ func (d *Deployment) ZosDeployment(twin uint32) (gridtypes.Deployment, error) {
 
 	return gridtypes.Deployment{
 		Version: 0,
-		TwinID:  twin, //LocalTwin,
+		TwinID:  twin, // LocalTwin,
 		// this contract id must match the one on substrate
 		ContractID: d.ContractID,
 		Workloads:  wls,
@@ -180,7 +184,7 @@ func (d *Deployment) ZosDeployment(twin uint32) (gridtypes.Deployment, error) {
 func NewGridDeployment(twin uint32, workloads []gridtypes.Workload) gridtypes.Deployment {
 	return gridtypes.Deployment{
 		Version: 0,
-		TwinID:  twin, //LocalTwin,
+		TwinID:  twin, // LocalTwin,
 		// this contract id must match the one on substrate
 		Workloads: workloads,
 		SignatureRequirement: gridtypes.SignatureRequirement{
