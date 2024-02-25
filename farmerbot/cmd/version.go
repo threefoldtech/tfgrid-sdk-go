@@ -15,7 +15,12 @@ import (
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "get farmerbot latest version and commit",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(cmd.Flags().Args()) != 0 {
+			return fmt.Errorf("'run' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
+		}
+
 		fmt.Println(version.Version)
+		return nil
 	},
 }

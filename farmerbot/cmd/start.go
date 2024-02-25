@@ -13,6 +13,10 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "start a node in your farm",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(cmd.Flags().Args()) != 0 {
+			return fmt.Errorf("'start' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
+		}
+
 		network, mnemonicOrSeed, keyType, err := getDefaultFlags(cmd)
 		if err != nil {
 			return err
