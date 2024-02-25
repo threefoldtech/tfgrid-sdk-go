@@ -55,10 +55,14 @@ func createNodeReport(n node) NodeReport {
 	}
 
 	var usage uint8
+	var resourcesNum uint8 = 3
 	used, total := calculateResourceUsage(map[uint32]node{nodeID: n})
-	if total != 0 {
-		usage = uint8(100 * used / total)
+	if total.hru != 0 {
+		resourcesNum = 4
+		usage += uint8(100 * used.hru / total.hru)
 	}
+	usage += uint8(100*used.cru/total.cru) + uint8(100*used.sru/total.sru) + uint8(100*used.mru/total.mru)
+	usage /= resourcesNum
 
 	return NodeReport{
 		ID:                           nodeID,
