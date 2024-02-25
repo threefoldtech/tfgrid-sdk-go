@@ -21,18 +21,41 @@ var ExternalSKZeroValue = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 // UserAccess struct
 type UserAccess struct {
-	UserAddress        string
-	UserSecretKey      string
-	PublicNodePK       string
-	AllowedIPs         []string
-	PublicNodeEndpoint string
+	Subnet     string `json:"subnet"`
+	PrivateKey string `json:"private_key"`
+	NodeID     uint32 `json:"node_id"`
 }
 
 // NetworkMetaData is added to network workloads to help rebuilding networks when retrieved from the grid
 type NetworkMetaData struct {
-	UserAccessIP string `json:"ip"`
-	PrivateKey   string `json:"priv_key"`
-	PublicNodeID uint32 `json:"node_id"`
+	Version    int          `json:"version"`
+	UserAccess []UserAccess `json:"user_access"`
+}
+
+func (m *NetworkMetaData) UnmarshalJSON(data []byte) error {
+	var deprecated struct {
+		Version    int          `json:"version"`
+		UserAccess []UserAccess `json:"user_access"`
+		// deprecated fields
+
+		UserAccessIP string `json:"ip"`
+		PrivateKey   string `json:"priv_key"`
+		PublicNodeID uint32 `json:"node_id"`
+	}
+	if err := json.Unmarshal(data, &deprecated); err != nil {
+		return err
+	}
+	m.Version = deprecated.Version
+	m.UserAccess = deprecated.UserAccess
+	if deprecated.UserAccessIP != "" || deprecated.PrivateKey != "" || deprecated.PublicNodeID != 0 {
+		// it must be deprecated format
+		m.UserAccess = []UserAccess{{
+			Subnet:     deprecated.UserAccessIP,
+			PrivateKey: deprecated.PrivateKey,
+			NodeID:     deprecated.PublicNodeID,
+		}}
+	}
+	return nil
 }
 
 // ZNet is zos network workload
@@ -89,9 +112,9 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 	}
 
 	var externalIP *gridtypes.IPNet
-	if metadata.UserAccessIP != "" {
+	if len(metadata.UserAccess) > 0 && metadata.UserAccess[0].Subnet != "" {
 
-		ipNet, err := gridtypes.ParseIPNet(metadata.UserAccessIP)
+		ipNet, err := gridtypes.ParseIPNet(metadata.UserAccess[0].Subnet)
 		if err != nil {
 			return ZNet{}, err
 		}
@@ -100,12 +123,16 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 	}
 
 	var externalSK wgtypes.Key
-	if metadata.PrivateKey != "" {
-		key, err := wgtypes.ParseKey(metadata.PrivateKey)
+	if len(metadata.UserAccess) > 0 && metadata.UserAccess[0].PrivateKey != "" {
+		key, err := wgtypes.ParseKey(metadata.UserAccess[0].PrivateKey)
 		if err != nil {
 			return ZNet{}, errors.Wrap(err, "failed to parse user access private key")
 		}
 		externalSK = key
+	}
+	var publicNodeID uint32
+	if len(metadata.UserAccess) > 0 {
+		publicNodeID = metadata.UserAccess[0].NodeID
 	}
 	var myceliumKey []byte
 	if data.Mycelium != nil {
@@ -121,7 +148,7 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		WGPort:       wgPort,
 		Keys:         keys,
 		AddWGAccess:  externalIP != nil,
-		PublicNodeID: metadata.PublicNodeID,
+		PublicNodeID: publicNodeID,
 		ExternalIP:   externalIP,
 		ExternalSK:   externalSK,
 		MyceliumKey:  myceliumKey,
@@ -176,6 +203,7 @@ func (znet *ZNet) GenerateMetadata() (string, error) {
 	}
 
 	deploymentData := DeploymentData{
+		Version:     Version,
 		Name:        znet.Name,
 		Type:        "network",
 		ProjectName: znet.SolutionType,
@@ -295,12 +323,10 @@ func WgIP(ip gridtypes.IPNet) gridtypes.IPNet {
 		IP:   net.IPv4(100, 64, a, b),
 		Mask: net.CIDRMask(32, 32),
 	})
-
 }
 
 // GenerateWGConfig generates wireguard configs
 func GenerateWGConfig(Address string, AccessPrivatekey string, NodePublicKey string, NodeEndpoint string, NetworkIPRange string) string {
-
 	return fmt.Sprintf(`
 [Interface]
 Address = %s

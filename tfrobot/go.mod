@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid-sdk-go/mass-deployer
+module github.com/threefoldtech/tfgrid-sdk-go/tfrobot
 
 go 1.21
 
@@ -15,6 +15,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.13.4
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.13.4
 	github.com/threefoldtech/zos v0.5.6-0.20240201092442-d2ba5be539d2
+	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -60,7 +61,6 @@ require (
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/net v0.20.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	google.golang.org/protobuf v1.31.0 // indirect

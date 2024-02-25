@@ -12,6 +12,10 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run farmerbot to manage your farm",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(cmd.Flags().Args()) != 0 {
+			return fmt.Errorf("'run' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
+		}
+
 		network, mnemonicOrSeed, keyType, err := getDefaultFlags(cmd)
 		if err != nil {
 			return err
@@ -20,6 +24,11 @@ var runCmd = &cobra.Command{
 		configPath, err := cmd.Flags().GetString("config")
 		if err != nil {
 			return fmt.Errorf("invalid config path '%s'", configPath)
+		}
+
+		continueOnPoweringOnErr, err := cmd.Flags().GetBool("continue-power-on-error")
+		if err != nil {
+			return fmt.Errorf("invalid `continue-power-on-error` flag %v", continueOnPoweringOnErr)
 		}
 
 		fileContent, err := parser.ReadFile(configPath)
@@ -31,6 +40,8 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		config.ContinueOnPoweringOnErr = continueOnPoweringOnErr
 
 		farmerBot, err := internal.NewFarmerBot(cmd.Context(), config, network, mnemonicOrSeed, keyType)
 		if err != nil {

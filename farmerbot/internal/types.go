@@ -17,11 +17,12 @@ import (
 
 // Config is the inputs for configuration for farmerbot
 type Config struct {
-	FarmID             uint32   `yaml:"farm_id"`
-	IncludedNodes      []uint32 `yaml:"included_nodes"`
-	ExcludedNodes      []uint32 `yaml:"excluded_nodes"`
-	NeverShutDownNodes []uint32 `yaml:"never_shutdown_nodes"`
-	Power              power    `yaml:"power"`
+	FarmID                  uint32   `yaml:"farm_id"`
+	IncludedNodes           []uint32 `yaml:"included_nodes"`
+	ExcludedNodes           []uint32 `yaml:"excluded_nodes"`
+	NeverShutDownNodes      []uint32 `yaml:"never_shutdown_nodes"`
+	Power                   power    `yaml:"power"`
+	ContinueOnPoweringOnErr bool
 }
 
 type powerState uint8
@@ -75,7 +76,8 @@ func (n *node) update(
 	sub Substrate,
 	rmbNodeClient RMB,
 	neverShutDown,
-	dedicatedFarm bool,
+	dedicatedFarm,
+	continueOnPoweringOnErr bool,
 ) error {
 	nodeID := uint32(n.ID)
 	if nodeID == 0 {
@@ -144,7 +146,8 @@ func (n *node) update(
 	}
 
 	// don't call rmb over off nodes (state and target are off)
-	if n.powerState == off {
+	if (n.powerState == off || n.powerState == wakingUp) &&
+		continueOnPoweringOnErr {
 		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node is off, will skip rmb calls")
 		return nil
 	}

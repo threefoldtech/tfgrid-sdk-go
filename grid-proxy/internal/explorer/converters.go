@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"encoding/json"
+	"math"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
@@ -59,6 +60,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 		Healthy:           info.Healthy,
+		PriceUsd:          math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
@@ -82,7 +84,6 @@ func farmFromDBFarm(info db.Farm) (types.Farm, error) {
 }
 
 func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity {
-
 	node := types.NodeWithNestedCapacity{
 		ID:              info.ID,
 		NodeID:          int(info.NodeID),
@@ -133,6 +134,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 		Healthy:           info.Healthy,
+		PriceUsd:          math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0

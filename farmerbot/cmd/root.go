@@ -59,6 +59,7 @@ func init() {
 	farmerBotCmd.PersistentFlags().BoolP("debug", "d", false, "by setting this flag the farmerbot will print debug logs too")
 
 	runCmd.Flags().StringP("config", "c", "", "enter your config file that includes your farm, node and power configs. Allowed format is yml/yaml")
+	runCmd.Flags().BoolP("continue-power-on-error", "", false, "when set, the farmerbot will run even if there was an error powering on some of the nodes")
 
 	startCmd.Flags().Uint32("node", 0, "enter the node ID you want to use")
 

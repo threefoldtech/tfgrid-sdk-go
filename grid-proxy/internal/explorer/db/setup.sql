@@ -20,6 +20,75 @@ RETURN v_dec_value;
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION calc_discount(
+    cost NUMERIC,
+    balance NUMERIC
+) RETURNS NUMERIC AS $$
+
+DECLARE
+    discount NUMERIC;
+
+BEGIN
+    discount := (
+    CASE 
+        WHEN balance >= cost * 18 THEN 0.6
+        WHEN balance >= cost * 6 THEN 0.4
+        WHEN balance >= cost * 3 THEN 0.3
+        WHEN balance >= cost * 1.5 THEN 0.2
+        ELSE 0
+    END);
+
+    RETURN cost - cost * discount;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION calc_price(
+    cru NUMERIC,
+    sru NUMERIC,
+    hru NUMERIC,
+    mru NUMERIC,
+    certified BOOLEAN,
+    policy_id INTEGER,
+    extra_fee NUMERIC
+) RETURNS NUMERIC AS $$
+
+DECLARE
+    su NUMERIC;
+    cu NUMERIC;
+    su_value NUMERIC;
+    cu_value NUMERIC;
+    cost_per_month NUMERIC;
+
+BEGIN
+    SELECT pricing_policy.cu->'value'
+    INTO cu_value
+    FROM pricing_policy
+    WHERE pricing_policy_id = policy_id;
+
+    SELECT pricing_policy.su->'value'
+    INTO su_value
+    FROM pricing_policy
+    WHERE pricing_policy_id = policy_id;
+
+    IF cu_value IS NULL OR su_value IS NULL THEN
+        RAISE EXCEPTION 'pricing values not found for policy_id: %', policy_id;
+    END IF;
+
+    cu := (LEAST(
+        GREATEST(mru / 4, cru / 2),
+        GREATEST(mru / 8, cru),
+        GREATEST(mru / 2, cru / 4)
+    ));
+
+    su := (hru / 1200 + sru / 200);
+
+    cost_per_month := (cu * cu_value + su * su_value + extra_fee) *
+        (CASE certified WHEN true THEN 1.25 ELSE 1 END) *
+        (24 * 30);
+
+    RETURN cost_per_month / 10000000; -- 1e7
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
 
 ----
 -- Clean old triggers
@@ -51,7 +120,10 @@ SELECT
     count(node_contract.contract_id) as node_contracts_count,
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     node.country as country,
-    country.region as region
+    country.region as region,
+    CASE WHEN node.certification = 'Certified' THEN true ELSE false END as certified,
+    farm.pricing_policy_id as policy_id,
+    COALESCE(node.extra_fee, 0) as extra_fee
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id 
@@ -66,6 +138,7 @@ FROM node
             node_twin_id
     ) AS node_gpu ON node.twin_id = node_gpu.node_twin_id
     LEFT JOIN country ON LOWER(node.country) = LOWER(country.name)
+    LEFT JOIN farm ON farm.farm_id = node.farm_id
 GROUP BY
     node.node_id,
     node_resources_total.mru,
@@ -77,6 +150,9 @@ GROUP BY
     rent_contract.twin_id,
     COALESCE(node_gpu.node_gpu_count, 0),
     node.country,
+    node.certification,
+    node.extra_fee,
+    farm.pricing_policy_id,
     country.region;
 
 DROP TABLE IF EXISTS resources_cache;
@@ -99,7 +175,21 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     node_contracts_count INTEGER NOT NULL,
     node_gpu_count INTEGER NOT NULL,
     country TEXT,
-    region TEXT
+    region TEXT,
+    certified BOOLEAN,
+    policy_id INTEGER,
+    extra_fee NUMERIC,
+    price_usd NUMERIC GENERATED ALWAYS AS (
+        calc_price(
+            total_cru,
+            total_sru / (1024*1024*1024),
+            total_hru / (1024*1024*1024),
+            total_mru / (1024*1024*1024),
+            certified,
+            policy_id,
+            extra_fee
+        )
+    ) STORED
     );
 
 INSERT INTO resources_cache 
@@ -381,6 +471,12 @@ CREATE OR REPLACE TRIGGER tg_rent_contract
   - Insert new ip > increment free/total ips + re-aggregate ips object
   - Deleted > decrement total, decrement free ips (if it was used) + re-aggregate ips object
   - Update > increment/decrement free ips based on usage + re-aggregate ips object
+
+  - reserve ip > free_ips decrease
+  - unreserve ip > free_ips increase
+  - insert new ip (expected be free) > free_ips increase
+  - remove reserved ip > free_ips does not change
+  - remove free ip > free_ips decrease
 */
 CREATE OR REPLACE FUNCTION reflect_public_ip_changes() RETURNS TRIGGER AS 
 $$ 
@@ -391,10 +487,12 @@ BEGIN
         SET free_ips = free_ips + (
                 CASE 
                 -- handles insertion/update by freeing ip
-                WHEN TG_OP != 'DELETE' AND NEW.contract_id = 0
+                WHEN TG_OP = 'INSERT' AND NEW.contract_id = 0 OR 
+                     TG_OP = 'UPDATE' AND NEW.contract_id = 0 AND OLD.contract_id != 0
                     THEN 1 
                 -- handles deletion/update by reserving ip
-                WHEN TG_OP != 'INSERT' AND OLD.contract_id = 0
+                WHEN TG_OP = 'DELETE' AND OLD.contract_id = 0 OR
+                     TG_OP = 'UPDATE' AND OLD.contract_id = 0 AND NEW.contract_id != 0
                     THEN -1
                 -- handles delete reserved ips
                 ELSE 0

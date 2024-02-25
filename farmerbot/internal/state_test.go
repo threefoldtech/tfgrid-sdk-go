@@ -83,9 +83,9 @@ func mockRMBAndSubstrateCalls(
 			return
 		}
 
-		if !on {
-			continue
-		}
+		// if !on {
+		// 	continue
+		// }
 
 		rmb.EXPECT().Statistics(ctx, uint32(twinIDVal)).Return(zos.Counters{Total: resources}, statsErr)
 		if statsErr != nil {
