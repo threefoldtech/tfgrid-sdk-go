@@ -77,8 +77,12 @@ func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Co
 			neverShutDown := slices.Contains(config.NeverShutDownNodes, nodeID)
 
 			log.Debug().Uint32("nodeID", nodeID).Msg("Add node")
-			configNode, err := getNode(ctx, sub, rmbNodeClient, nodeID, neverShutDown, false, dedicatedFarm, on)
+			configNode, err := getNode(ctx, sub, rmbNodeClient, nodeID, config.ContinueOnPoweringOnErr, neverShutDown, false, dedicatedFarm, on)
 			if err != nil {
+				if !config.ContinueOnPoweringOnErr {
+					log.Warn().Msg("you can enable `continue-power-on-error` flag to skip rmb errors")
+				}
+
 				return nil, fmt.Errorf("failed to add node with id %d with error: %w", nodeID, err)
 			}
 			nodes[nodeID] = configNode
@@ -93,6 +97,7 @@ func getNode(
 	sub Substrate,
 	rmbNodeClient RMB,
 	nodeID uint32,
+	continueOnPoweringOnErr,
 	neverShutDown,
 	hasClaimedResources,
 	dedicatedFarm bool,
@@ -158,9 +163,10 @@ func getNode(
 		configNode.lastTimePowerStateChanged = time.Now()
 	}
 
-	// don't call rmb over off nodes (state and target are off) allow adding them in farmerbot
-	if configNode.powerState == off {
-		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node is off, will skip rmb calls")
+	// don't call rmb over off nodes (state and target are off/wakingUp) allow adding them in farmerbot
+	if (configNode.powerState == off || configNode.powerState == wakingUp) &&
+		continueOnPoweringOnErr {
+		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node state is off, will skip rmb calls")
 		return configNode, nil
 	}
 
