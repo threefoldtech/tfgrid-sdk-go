@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
@@ -19,124 +18,43 @@ const (
 	testName        = "iperf"
 )
 
-type SpeedIndexer struct {
-	database        db.Database
-	rmbClient       *peer.RpcClient
-	interval        time.Duration
-	workers         uint
-	batchSize       uint
-	nodeTwinIdsChan chan uint32
-	resultChan      chan types.Speed
-	batchChan       chan []types.Speed
+type SpeedWork struct {
+	findersInterval map[string]time.Duration
 }
 
-func NewSpeedIndexer(
-	rmbClient *peer.RpcClient,
-	database db.Database,
-	batchSize uint,
-	interval uint,
-	workers uint,
-) *SpeedIndexer {
-	return &SpeedIndexer{
-		database:        database,
-		rmbClient:       rmbClient,
-		batchSize:       batchSize,
-		interval:        time.Duration(interval) * time.Minute,
-		workers:         workers,
-		nodeTwinIdsChan: make(chan uint32),
-		resultChan:      make(chan types.Speed),
-		batchChan:       make(chan []types.Speed),
+func NewSpeedWork(interval uint) *SpeedWork {
+	return &SpeedWork{
+		findersInterval: map[string]time.Duration{
+			"up": time.Duration(interval) * time.Minute,
+		},
 	}
 }
 
-func (w *SpeedIndexer) Start(ctx context.Context) {
-	go w.StartNodeFinder(ctx)
-
-	for i := uint(0); i < w.workers; i++ {
-		go w.StartNodeCaller(ctx)
-	}
-
-	for i := uint(0); i < w.workers; i++ {
-		go w.StartResultBatcher(ctx)
-	}
-
-	go w.StartBatchUpserter(ctx)
+func (w *SpeedWork) Finders() map[string]time.Duration {
+	return w.findersInterval
 }
 
-func (w *SpeedIndexer) StartNodeFinder(ctx context.Context) {
-	ticker := time.NewTicker(w.interval)
-	queryUpNodes(ctx, w.database, w.nodeTwinIdsChan)
-	for {
-		select {
-		case <-ticker.C:
-			queryUpNodes(ctx, w.database, w.nodeTwinIdsChan)
-		case <-ctx.Done():
-			return
-		}
+func (w *SpeedWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.Speed, error) {
+	payload := struct {
+		Name string
+	}{
+		Name: testName,
 	}
+	var response zosPerfPkg.TaskResult
+	if err := callNode(ctx, rmb, perfTestCallCmd, payload, twinId, &response); err != nil {
+		return []types.Speed{}, err
+	}
+
+	speedReport, err := parseSpeed(response, twinId)
+	if err != nil {
+		return []types.Speed{}, err
+	}
+
+	return []types.Speed{speedReport}, nil
 }
 
-func (w *SpeedIndexer) StartNodeCaller(ctx context.Context) {
-	for {
-		select {
-		case twinId := <-w.nodeTwinIdsChan:
-			payload := struct {
-				Name string
-			}{
-				Name: testName,
-			}
-			var response zosPerfPkg.TaskResult
-			if err := callNode(ctx, w.rmbClient, perfTestCallCmd, payload, twinId, &response); err != nil {
-				continue
-			}
-
-			speedReport, err := parseSpeed(response, twinId)
-			if err != nil {
-				continue
-			}
-
-			w.resultChan <- speedReport
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (w *SpeedIndexer) StartResultBatcher(ctx context.Context) {
-	buffer := make([]types.Speed, 0, w.batchSize)
-
-	ticker := time.NewTicker(flushingBufferInterval)
-	for {
-		select {
-		case report := <-w.resultChan:
-			buffer = append(buffer, report)
-			if len(buffer) >= int(w.batchSize) {
-				w.batchChan <- buffer
-				buffer = nil
-			}
-		case <-ticker.C:
-			if len(buffer) != 0 {
-				w.batchChan <- buffer
-				buffer = nil
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (w *SpeedIndexer) StartBatchUpserter(ctx context.Context) {
-	for {
-		select {
-		case batch := <-w.batchChan:
-			err := w.database.UpsertNetworkSpeed(ctx, batch)
-			if err != nil {
-				log.Error().Err(err).Msg("failed to upsert network speed")
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
+func (w *SpeedWork) Upsert(ctx context.Context, db db.Database, batch []types.Speed) error {
+	return db.UpsertNetworkSpeed(ctx, batch)
 }
 
 func parseSpeed(res zosPerfPkg.TaskResult, twinId uint32) (types.Speed, error) {

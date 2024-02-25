@@ -49,6 +49,7 @@ server-start: ## Start the proxy server			(Args: `m=<MNEMONICS>`)
 		-no-indexer \
 		--address :8080 \
 		--log-level debug \
+		--sql-log-level 4 \
 		--postgres-host $(PQ_HOST) \
 		--postgres-db tfgrid-graphql \
 		--postgres-password postgres \

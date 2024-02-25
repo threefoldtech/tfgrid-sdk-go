@@ -20,6 +20,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/indexer"
 	logging "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"gorm.io/gorm/logger"
@@ -136,48 +137,11 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create relay client")
 	}
-	manager := indexer.NewManager(ctx)
-
-	gpuIndexer := indexer.NewGPUIndexer(
-		rpcRmbClient,
-		&db,
-		f.indexerUpserterBatchSize,
-		f.gpuIndexerIntervalMins,
-		f.gpuIndexerNumWorkers,
-	)
-	manager.Register("GPU", gpuIndexer)
-
-	healthIndexer := indexer.NewNodeHealthIndexer(
-		rpcRmbClient,
-		&db,
-		f.indexerUpserterBatchSize,
-		f.healthIndexerNumWorkers,
-		f.healthIndexerIntervalMins,
-	)
-	manager.Register("Health", healthIndexer)
-
-	dmiIndexer := indexer.NewDmiIndexer(
-		rpcRmbClient,
-		&db,
-		f.indexerUpserterBatchSize,
-		f.dmiIndexerIntervalMins,
-		f.dmiIndexerNumWorkers,
-	)
-	manager.Register("DMI", dmiIndexer)
-
-	speedIndexer := indexer.NewSpeedIndexer(
-		rpcRmbClient,
-		&db,
-		f.indexerUpserterBatchSize,
-		f.speedIndexerIntervalMins,
-		f.speedIndexerNumWorkers,
-	)
-	manager.Register("Speed", speedIndexer)
 
 	if !f.noIndexer {
-		manager.Start()
+		startIndexers(ctx, f, &db, rpcRmbClient)
 	} else {
-		log.Info().Msg("Indexers Manager did not start")
+		log.Info().Msg("Indexers did not start")
 	}
 
 	s, err := createServer(f, dbClient, GitCommit, rpcRmbClient)
@@ -189,6 +153,44 @@ func main() {
 		log.Fatal().Msg(err.Error())
 	}
 
+}
+
+func startIndexers(ctx context.Context, f flags, db db.Database, rpcRmbClient *peer.RpcClient) {
+	gpuIdx := indexer.NewIndexer[types.NodeGPU](
+		indexer.NewGPUWork(f.gpuIndexerIntervalMins),
+		"GPU",
+		db,
+		rpcRmbClient,
+		f.gpuIndexerNumWorkers,
+	)
+	gpuIdx.Start(ctx)
+
+	healthIdx := indexer.NewIndexer[types.HealthReport](
+		indexer.NewHealthWork(f.healthIndexerIntervalMins),
+		"Health",
+		db,
+		rpcRmbClient,
+		f.healthIndexerNumWorkers,
+	)
+	healthIdx.Start(ctx)
+
+	dmiIdx := indexer.NewIndexer[types.Dmi](
+		indexer.NewDMIWork(f.dmiIndexerIntervalMins),
+		"DMI",
+		db,
+		rpcRmbClient,
+		f.dmiIndexerNumWorkers,
+	)
+	dmiIdx.Start(ctx)
+
+	speedIdx := indexer.NewIndexer[types.Speed](
+		indexer.NewSpeedWork(f.speedIndexerIntervalMins),
+		"Speed",
+		db,
+		rpcRmbClient,
+		f.speedIndexerNumWorkers,
+	)
+	speedIdx.Start(ctx)
 }
 
 func app(s *http.Server, f flags) error {

@@ -4,10 +4,6 @@ Initially the node periodically reports its data to the chain, data like capacit
 Things looks fine, but when it comes to a bigger data like gpu/dmi it is not the best solution to store these data on the chain.
 And that what the `Node-Indexers` solves by periodically calling the nodes based on a configurable interval to get the data and store it on the same postgres database and then it can be served to apis. only `proxy-api` for now.
 
-## The manager
-
-The manager is a service started from the `cmds/main.go` and it has multiple indexer each looking for a kind of data on the nodes and it is configured by command line flags.
-
 ## The indexer structure
 
 Each indexer has
@@ -18,18 +14,23 @@ two clients:
 
 three channels:
 
-- `NodeTwinIdsChan`: it collects the twin ids for the nodes the indexer will call.
+- `IdChan`: it collects the twin ids for the nodes the indexer will call.
 - `ResultChan`: it collects the results returned by the rmb call to the node.
 - `BatchChan`: transfer batches of results ready to directly upserted.
 
 four types of workers:
 
-- `Finder`: this worker calls the database to filter nodes and push its data to the `NodeTwinIdsChan`
-- `Caller`: this worker pop the twins from `NodeTwinIdsChan` and call the node with the `RmbClient` to get data and then push the result to `ResultChan`
+- `Finder`: this worker calls the database to filter nodes and push its data to the `IdChan`
+- `Getter`: this worker pop the twins from `IdChan` and call the node with the `RmbClient` to get data and then push the result to `ResultChan`
 - `Batcher`: this worker collect results from `ResultChan` in batches and send it to the `BatchChan`
 - `Upserter`: this worker get data from `BatchChan` then update/insert to the `Database`
 
-Each indexer could have some extra feature based on the use case, but these are essential.
+The indexer struct is generic and each indexer functionality differ from the others based on its Work.
+Work a struct that implement the interface `Work` which have three methods:
+
+- `Finders`: this is a map of string and interval to decide which finders this node should use.
+- `Get`: a method that prepare the payload from rmb call and parse the response to return a ready db model data.
+- `Upsert`: calling the equivalent db upserting method with the ability to remove old expired data.
 
 ## Registered Indexers
 
