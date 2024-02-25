@@ -12,6 +12,10 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run farmerbot to manage your farm",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(cmd.Flags().Args()) != 0 {
+			return fmt.Errorf("'run' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
+		}
+
 		network, mnemonicOrSeed, keyType, err := getDefaultFlags(cmd)
 		if err != nil {
 			return err

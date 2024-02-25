@@ -298,9 +298,14 @@ func TestLoadK8sFromGrid(t *testing.T) {
 	}
 
 	metadata, err := json.Marshal(workloads.NetworkMetaData{
-		UserAccessIP: "",
-		PrivateKey:   "",
-		PublicNodeID: 0,
+		Version: workloads.Version,
+		UserAccess: []workloads.UserAccess{
+			{
+				Subnet:     "",
+				PrivateKey: "",
+				NodeID:     0,
+			},
+		},
 	})
 	assert.NoError(t, err)
 
@@ -369,9 +374,14 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 	}
 
 	metadata, err := json.Marshal(workloads.NetworkMetaData{
-		UserAccessIP: "",
-		PrivateKey:   "",
-		PublicNodeID: 0,
+		Version: workloads.Version,
+		UserAccess: []workloads.UserAccess{
+			{
+				Subnet:     "",
+				PrivateKey: "",
+				NodeID:     0,
+			},
+		},
 	})
 	assert.NoError(t, err)
 
