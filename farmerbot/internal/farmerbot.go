@@ -349,7 +349,7 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 
 	oldNode, nodeExists := f.state.nodes[nodeID]
 	if nodeExists {
-		updateErr := oldNode.update(ctx, subConn, f.rmbNodeClient, neverShutDown, f.state.farm.DedicatedFarm)
+		updateErr := oldNode.update(ctx, subConn, f.rmbNodeClient, neverShutDown, f.state.farm.DedicatedFarm, f.config.ContinueOnPoweringOnErr)
 
 		// update old node state even if it failed
 		if err := f.state.updateNode(oldNode); err != nil {
