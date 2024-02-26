@@ -233,7 +233,7 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 			}
 		}
 
-		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), peers, string(metadataBytes))
+		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), peers, string(metadataBytes), znet.MyceliumKeys[nodeID])
 		deployment := workloads.NewGridDeployment(d.tfPluginClient.TwinID, []gridtypes.Workload{workload})
 
 		// add metadata
@@ -259,7 +259,7 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 				Endpoint: fmt.Sprintf("%s:%d", endpoints[znet.PublicNodeID], znet.WGPort[znet.PublicNodeID]),
 			})
 		}
-		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), peers, string(metadataBytes))
+		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), peers, string(metadataBytes), znet.MyceliumKeys[nodeID])
 		deployment := workloads.NewGridDeployment(d.tfPluginClient.TwinID, []gridtypes.Workload{workload})
 
 		// add metadata
