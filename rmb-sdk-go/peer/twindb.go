@@ -3,6 +3,7 @@ package peer
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -118,8 +119,12 @@ type tmpCache struct {
 	inner TwinDB
 }
 
-func newTmpCache(ttl uint64, inner TwinDB) (TwinDB, error) {
-	path := filepath.Join(os.TempDir(), "rmb-cache")
+func newTmpCache(ttl uint64, inner TwinDB, chainURL string) (TwinDB, error) {
+	u, err := url.Parse(chainURL)
+	if err != nil {
+		return nil, err
+	}
+	path := filepath.Join(os.TempDir(), "rmb-cache", u.Host)
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return nil, err
 	}
