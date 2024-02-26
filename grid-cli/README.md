@@ -8,11 +8,13 @@ Threefold CLI to manage deployments on Threefold Grid.
 
 First [download](#download) tfcmd binaries.
 
-Login using your [mnemonics](https://threefoldtech.github.io/info_grid/dashboard/portal/dashboard_portal_polkadot_create_account.html) and specify which grid network (mainnet/testnet) to deploy on by running:
+Login using your mnemonics and specify which grid network (mainnet/testnet) to deploy on by running:
 
 ```bash
 tfcmd login
 ```
+
+Check [Wallet Connector](https://manual.grid.tf/dashboard/wallet_connector.html) for more details if you do not have mnemonics yet.
 
 For examples and description of tfcmd commands check out:
 
