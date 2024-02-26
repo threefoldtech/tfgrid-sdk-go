@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 // state is the state data for farmerbot
@@ -166,6 +167,13 @@ func getNode(
 	// don't call rmb over off nodes (state and target are off/wakingUp) allow adding them in farmerbot
 	if (configNode.powerState == off || configNode.powerState == wakingUp) &&
 		continueOnPoweringOnErr {
+		// update the total node resources from substrate
+		configNode.resources.total.update(gridtypes.Capacity{
+			CRU: uint64(configNode.Resources.CRU),
+			SRU: gridtypes.Unit(configNode.Resources.SRU),
+			HRU: gridtypes.Unit(configNode.Resources.HRU),
+			MRU: gridtypes.Unit(configNode.Resources.MRU),
+		})
 		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node state is off, will skip rmb calls")
 		return configNode, nil
 	}
@@ -268,13 +276,13 @@ func (s *state) validate() error {
 			return fmt.Errorf("node %d: twin_id is required", n.ID)
 		}
 
-		if n.resources.total.sru == 0 && n.Resources.SRU == 0 {
+		if n.resources.total.sru == 0 {
 			return fmt.Errorf("node %d: total SRU is required", n.ID)
 		}
-		if n.resources.total.cru == 0 && n.Resources.CRU == 0 {
+		if n.resources.total.cru == 0 {
 			return fmt.Errorf("node %d: total CRU is required", n.ID)
 		}
-		if n.resources.total.mru == 0 && n.Resources.MRU == 0 {
+		if n.resources.total.mru == 0 {
 			return fmt.Errorf("node %d: total MRU is required", n.ID)
 		}
 

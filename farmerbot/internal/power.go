@@ -114,11 +114,21 @@ func (f *FarmerBot) manageNodesPower(sub Substrate) error {
 
 	demand := calculateDemandBasedOnThresholds(totalResources, usedResources, f.config.Power.WakeUpThresholdPercentages)
 	if demand.cru == 0 || demand.mru == 0 || demand.sru == 0 || demand.hru == 0 {
-		log.Info().Any("resources usage", usedResources).Msg("Too low resource usage")
+		log.Info().Msgf("Too low resource usage, resources usage for online nodes: CRU:%v%%, SRU:%v%%, MRU:%v%%, HRU:%v%%",
+			math.Ceil(float64(usedResources.cru)/float64(totalResources.cru)*100),
+			math.Ceil(float64(usedResources.sru)/float64(totalResources.sru)*100),
+			math.Ceil(float64(usedResources.mru)/float64(totalResources.mru)*100),
+			math.Ceil(float64(usedResources.hru)/float64(totalResources.hru)*100),
+		)
 		return f.resourceUsageTooLow(sub, usedResources, totalResources)
 	}
 
-	log.Info().Any("resources usage", usedResources).Msg("Too high resource usage")
+	log.Info().Msgf("Too high resource usage, resources usage for online nodes: CRU:%v%%, SRU:%v%%, MRU:%v%%, HRU:%v%%",
+		math.Ceil(float64(usedResources.cru)/float64(totalResources.cru)*100),
+		math.Ceil(float64(usedResources.sru)/float64(totalResources.sru)*100),
+		math.Ceil(float64(usedResources.mru)/float64(totalResources.mru)*100),
+		math.Ceil(float64(usedResources.hru)/float64(totalResources.hru)*100),
+	)
 	return f.resourceUsageTooHigh(sub, demand)
 }
 
