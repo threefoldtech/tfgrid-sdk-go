@@ -14,7 +14,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.13.4
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.13.4
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.13.4
-	github.com/threefoldtech/zos v0.5.6-0.20240201092442-d2ba5be539d2
+	github.com/threefoldtech/zos v0.5.6-0.20240226114056-364e04acbed3
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
