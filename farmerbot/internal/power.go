@@ -113,23 +113,23 @@ func (f *FarmerBot) manageNodesPower(sub Substrate) error {
 	usedResources, totalResources := calculateResourceUsage(nodes)
 
 	demand := calculateDemandBasedOnThresholds(totalResources, usedResources, f.config.Power.WakeUpThresholdPercentages)
-	if demand.cru == 0 || demand.mru == 0 || demand.sru == 0 || demand.hru == 0 {
-		log.Info().Msgf("Too low resource usage, resources usage for online nodes: CRU:%v%%, SRU:%v%%, MRU:%v%%, HRU:%v%%",
+	if demand.cru > 0 || demand.mru > 0 || demand.sru > 0 || demand.hru > 0 {
+		log.Info().Msgf("Too high resource usage, resources usage for online nodes: CRU:%v%%, SRU:%v%%, MRU:%v%%, HRU:%v%%",
 			math.Ceil(float64(usedResources.cru)/float64(totalResources.cru)*100),
 			math.Ceil(float64(usedResources.sru)/float64(totalResources.sru)*100),
 			math.Ceil(float64(usedResources.mru)/float64(totalResources.mru)*100),
 			math.Ceil(float64(usedResources.hru)/float64(totalResources.hru)*100),
 		)
-		return f.resourceUsageTooLow(sub, usedResources, totalResources)
+		return f.resourceUsageTooHigh(sub, demand)
 	}
 
-	log.Info().Msgf("Too high resource usage, resources usage for online nodes: CRU:%v%%, SRU:%v%%, MRU:%v%%, HRU:%v%%",
+	log.Info().Msgf("Too low resource usage, resources usage for online nodes: CRU:%v%%, SRU:%v%%, MRU:%v%%, HRU:%v%%",
 		math.Ceil(float64(usedResources.cru)/float64(totalResources.cru)*100),
 		math.Ceil(float64(usedResources.sru)/float64(totalResources.sru)*100),
 		math.Ceil(float64(usedResources.mru)/float64(totalResources.mru)*100),
 		math.Ceil(float64(usedResources.hru)/float64(totalResources.hru)*100),
 	)
-	return f.resourceUsageTooHigh(sub, demand)
+	return f.resourceUsageTooLow(sub, usedResources, totalResources)
 }
 
 func calculateDemandBasedOnThresholds(total, used capacity, thresholdPercentages ThresholdPercentages) capacity {
@@ -285,7 +285,7 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 		currentDemand := calculateDemandBasedOnThresholds(newTotalResources, newUsedResources, f.config.Power.WakeUpThresholdPercentages)
 
 		if checkResourcesMeetDemand(newTotalResources, newUsedResources, currentDemand) {
-			log.Info().Uint32("nodeID", uint32(node.ID)).Any("resources usage", newUsedResources).Msg("Resource usage too low. Turning off unused node")
+			log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Resource usage too low. Turning off unused node")
 			err := f.powerOff(sub, uint32(node.ID))
 			if err != nil {
 				log.Error().Err(err).Uint32("nodeID", uint32(node.ID)).Msg("Failed to power off node")
