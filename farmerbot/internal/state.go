@@ -285,23 +285,62 @@ func (s *state) validate() error {
 	}
 
 	// required values for power
-	if s.config.Power.WakeUpThreshold == 0 {
-		s.config.Power.WakeUpThreshold = defaultWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold has not been set. setting it to %d", defaultWakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.CRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for cru has not been set. setting it to %v", defaultWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.MRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.MRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for mru has not been set. setting it to %v", defaultWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.HRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.HRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for hru has not been set. setting it to %v", defaultWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.SRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.SRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for sru has not been set. setting it to %v", defaultWakeUpThreshold)
 	}
 
-	if s.config.Power.WakeUpThreshold < 1 || s.config.Power.WakeUpThreshold > 100 {
-		return fmt.Errorf("invalid wake-up threshold %d, should be between [1-100]", s.config.Power.WakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU < 1 || s.config.Power.WakeUpThresholdPercentages.CRU > 100 ||
+		s.config.Power.WakeUpThresholdPercentages.HRU < 1 || s.config.Power.WakeUpThresholdPercentages.HRU > 100 ||
+		s.config.Power.WakeUpThresholdPercentages.SRU < 1 || s.config.Power.WakeUpThresholdPercentages.SRU > 100 ||
+		s.config.Power.WakeUpThresholdPercentages.MRU < 1 || s.config.Power.WakeUpThresholdPercentages.MRU > 100 {
+		return fmt.Errorf("invalid wake-up threshold %v, should be between [1-100]", s.config.Power.WakeUpThresholdPercentages)
 	}
 
-	if s.config.Power.WakeUpThreshold < minWakeUpThreshold {
-		s.config.Power.WakeUpThreshold = minWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]. Setting it to minimum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.CRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for cru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.MRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.MRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for mru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.HRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.HRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for hru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.SRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.SRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for sru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
 	}
 
-	if s.config.Power.WakeUpThreshold > maxWakeUpThreshold {
-		s.config.Power.WakeUpThreshold = maxWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]. Setting it to maximum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.CRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for cru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.MRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.MRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for mru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.HRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.HRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for hru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.SRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.SRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for sru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
 	}
 
 	if s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {

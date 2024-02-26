@@ -9,8 +9,6 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-var thresholdPercentages = ThresholdPercentages{cru: 80, mru: 80, sru: 80, hru: 80}
-
 // powerOn sets the node power state ON
 func (f *FarmerBot) powerOn(sub Substrate, nodeID uint32) error {
 	log.Info().Uint32("nodeID", nodeID).Msg("POWER ON")
@@ -114,7 +112,7 @@ func (f *FarmerBot) manageNodesPower(sub Substrate) error {
 
 	usedResources, totalResources := calculateResourceUsage(nodes)
 
-	demand := calculateDemandBasedOnThresholds(totalResources, usedResources, thresholdPercentages)
+	demand := calculateDemandBasedOnThresholds(totalResources, usedResources, f.config.Power.WakeUpThresholdPercentages)
 	if demand.cru == 0 || demand.mru == 0 || demand.sru == 0 || demand.hru == 0 {
 		log.Info().Any("resources usage", usedResources).Msg("Too low resource usage")
 		return f.resourceUsageTooLow(sub, usedResources, totalResources)
@@ -127,17 +125,17 @@ func (f *FarmerBot) manageNodesPower(sub Substrate) error {
 func calculateDemandBasedOnThresholds(total, used capacity, thresholdPercentages ThresholdPercentages) capacity {
 	var demand capacity
 
-	if float64(used.cru)/float64(total.cru)*100 > thresholdPercentages.cru {
-		demand.cru = uint64(math.Ceil((float64(used.cru)/float64(total.cru)*100 - thresholdPercentages.cru) / 100 * float64(total.cru)))
+	if float64(used.cru)/float64(total.cru)*100 > thresholdPercentages.CRU {
+		demand.cru = uint64(math.Ceil((float64(used.cru)/float64(total.cru)*100 - thresholdPercentages.CRU) / 100 * float64(total.cru)))
 	}
-	if float64(used.mru)/float64(total.mru)*100 > thresholdPercentages.mru {
-		demand.mru = uint64(math.Ceil((float64(used.mru)/float64(total.mru)*100 - thresholdPercentages.mru) / 100 * float64(total.mru)))
+	if float64(used.mru)/float64(total.mru)*100 > thresholdPercentages.MRU {
+		demand.mru = uint64(math.Ceil((float64(used.mru)/float64(total.mru)*100 - thresholdPercentages.MRU) / 100 * float64(total.mru)))
 	}
-	if float64(used.sru)/float64(total.sru)*100 > thresholdPercentages.sru {
-		demand.sru = uint64(math.Ceil((float64(used.sru)/float64(total.sru)*100 - thresholdPercentages.sru) / 100 * float64(total.sru)))
+	if float64(used.sru)/float64(total.sru)*100 > thresholdPercentages.SRU {
+		demand.sru = uint64(math.Ceil((float64(used.sru)/float64(total.sru)*100 - thresholdPercentages.SRU) / 100 * float64(total.sru)))
 	}
-	if total.hru > 0 && float64(used.hru)/float64(total.hru)*100 > thresholdPercentages.hru {
-		demand.hru = uint64(math.Ceil((float64(used.hru)/float64(total.hru)*100 - thresholdPercentages.hru) / 100 * float64(total.hru)))
+	if total.hru > 0 && float64(used.hru)/float64(total.hru)*100 > thresholdPercentages.HRU {
+		demand.hru = uint64(math.Ceil((float64(used.hru)/float64(total.hru)*100 - thresholdPercentages.HRU) / 100 * float64(total.hru)))
 	}
 
 	return demand
@@ -274,7 +272,7 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 			break
 		}
 
-		currentDemand := calculateDemandBasedOnThresholds(newTotalResources, newUsedResources, thresholdPercentages)
+		currentDemand := calculateDemandBasedOnThresholds(newTotalResources, newUsedResources, f.config.Power.WakeUpThresholdPercentages)
 
 		if checkResourcesMeetDemand(newTotalResources, newUsedResources, currentDemand) {
 			log.Info().Uint32("nodeID", uint32(node.ID)).Any("resources usage", newUsedResources).Msg("Resource usage too low. Turning off unused node")

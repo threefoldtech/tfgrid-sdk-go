@@ -65,7 +65,12 @@ func TestNodeModel(t *testing.T) {
 
 func TestPowerModel(t *testing.T) {
 	power := power{
-		WakeUpThreshold:     80,
+		WakeUpThresholdPercentages: ThresholdPercentages{
+			CRU: 80,
+			SRU: 80,
+			MRU: 80,
+			HRU: 80,
+		},
 		PeriodicWakeUpStart: wakeUpDate(time.Now()),
 	}
 	oldPower := time.Time(power.PeriodicWakeUpStart)

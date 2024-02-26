@@ -241,13 +241,6 @@ type capacity struct {
 	mru uint64
 }
 
-type ThresholdPercentages struct {
-	cru float64
-	sru float64
-	mru float64
-	hru float64
-}
-
 // IsEmpty checks empty capacity
 func (cap *capacity) isEmpty() bool {
 	return cap.cru == 0 && cap.mru == 0 && cap.sru == 0 && cap.hru == 0
@@ -284,12 +277,20 @@ func subtractOrZero(a uint64, b uint64) uint64 {
 	return 0
 }
 
+// ThresholdPercentages are the wakeUp threshold for each resource type
+type ThresholdPercentages struct {
+	CRU float64 `yaml:"cru"`
+	SRU float64 `yaml:"sru"`
+	MRU float64 `yaml:"mru"`
+	HRU float64 `yaml:"hru"`
+}
+
 // Power represents power configuration
 type power struct {
-	WakeUpThreshold     uint8      `yaml:"wake_up_threshold"`
-	PeriodicWakeUpStart wakeUpDate `yaml:"periodic_wake_up_start"`
-	PeriodicWakeUpLimit uint8      `yaml:"periodic_wake_up_limit"`
-	OverProvisionCPU    int8       `yaml:"overprovision_cpu,omitempty"`
+	WakeUpThresholdPercentages ThresholdPercentages `yaml:"wake_up_threshold"`
+	PeriodicWakeUpStart        wakeUpDate           `yaml:"periodic_wake_up_start"`
+	PeriodicWakeUpLimit        uint8                `yaml:"periodic_wake_up_limit"`
+	OverProvisionCPU           int8                 `yaml:"overprovision_cpu,omitempty"`
 }
 
 // wakeUpDate is the date to wake up all nodes

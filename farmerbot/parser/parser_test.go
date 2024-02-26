@@ -40,7 +40,11 @@ never_shutdown_nodes:
   - 2
 power:
   periodic_wake_up_start: 08:30AM
-  wake_up_threshold: 30
+  wake_up_threshold: 
+    cru: 30 
+    mru: 30 
+    sru: 30 
+    hru: 30
   periodic_wake_up_limit: 2
   overprovision_cpu: 2`
 
@@ -50,7 +54,12 @@ power:
 		assert.Equal(t, c.IncludedNodes, []uint32{1, 2})
 		assert.Equal(t, c.ExcludedNodes, []uint32{3})
 		assert.Equal(t, c.NeverShutDownNodes, []uint32{2})
-		assert.Equal(t, c.Power.WakeUpThreshold, uint8(30))
+		assert.Equal(t, c.Power.WakeUpThresholdPercentages, internal.ThresholdPercentages{
+			CRU: 30,
+			SRU: 30,
+			MRU: 30,
+			HRU: 30,
+		})
 
 		now := time.Now()
 		assert.Equal(t, c.Power.PeriodicWakeUpStart.PeriodicWakeUpTime(), time.Date(now.Year(), now.Month(), now.Day(), 8, 30, 0, 0, time.Local))
