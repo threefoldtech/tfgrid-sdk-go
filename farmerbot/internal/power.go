@@ -227,7 +227,7 @@ func (f *FarmerBot) resourceUsageTooHigh(sub Substrate, demand capacity) error {
 		if node.powerState == off {
 			log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Too much resource usage. Turning on node")
 			if err := f.powerOn(sub, uint32(node.ID)); err != nil {
-				return fmt.Errorf("couldn't power on node %v with error: %w", node.ID, err)
+				log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("couldn't power on node")
 			}
 		}
 	}
