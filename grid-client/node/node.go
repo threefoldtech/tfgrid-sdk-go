@@ -210,6 +210,17 @@ func (n *NodeClient) DeploymentDelete(ctx context.Context, contractID uint64) er
 	return n.bus.Call(ctx, n.nodeTwin, cmd, in, nil)
 }
 
+// DeploymentList gets all deployments for a twin
+func (n *NodeClient) DeploymentList(ctx context.Context) (dls []gridtypes.Deployment, err error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
+	const cmd = "zos.deployment.list"
+
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &dls)
+	return
+}
+
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
 func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
@@ -237,6 +248,21 @@ func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, 
 	}
 
 	return result.Total, result.Used, nil
+}
+
+// NetworkListPrivateIPs list private ips reserved for a network
+func (n *NodeClient) NetworkListPrivateIPs(ctx context.Context, networkName string) ([]string, error) {
+	const cmd = "zos.network.list_private_ips"
+	var result []string
+	in := rmbCmdArgs{
+		"network_name": networkName,
+	}
+
+	if err := n.bus.Call(ctx, n.nodeTwin, cmd, in, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // NetworkListWGPorts return a list of all "taken" ports on the node. A new deployment
