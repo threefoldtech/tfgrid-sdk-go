@@ -26,7 +26,11 @@ type TFPluginClientInterface interface {
 
 // NewTFPluginClient returns new tfPluginClient given mnemonics and grid network
 func NewTFPluginClient(mnemonics, network string) (TFPluginClient, error) {
-	t, err := gridDeployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 100, false, true)
+	opts := []gridDeployer.PluginOpt{
+		gridDeployer.WithRMBInMemCache(),
+		gridDeployer.WithRMBTimeout(100),
+	}
+	t, err := gridDeployer.NewTFPluginClient(mnemonics, "sr25519", network, opts...)
 	if err != nil {
 		return TFPluginClient{}, err
 	}
