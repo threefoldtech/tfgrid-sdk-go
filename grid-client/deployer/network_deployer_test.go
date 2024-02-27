@@ -106,7 +106,7 @@ func TestNetworkDeployer(t *testing.T) {
 
 		metadata, err := json.Marshal(workloads.NetworkMetaData{
 			Version: workloads.Version,
-			UserAccess: []workloads.UserAccess{
+			UserAccesses: []workloads.UserAccess{
 				{
 					Subnet:     externalIP,
 					PrivateKey: znet.ExternalSK.String(),
