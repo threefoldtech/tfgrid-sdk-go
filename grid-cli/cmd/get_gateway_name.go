@@ -20,6 +20,7 @@ var getGatewayNameCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
+
 		opts := []deployer.PluginOpt{
 			deployer.WithRMBInMemCache(),
 			deployer.WithRMBTimeout(100),

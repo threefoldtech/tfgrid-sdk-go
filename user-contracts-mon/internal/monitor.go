@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containerd/containerd/pkg/cri/opts"
 	tgapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
