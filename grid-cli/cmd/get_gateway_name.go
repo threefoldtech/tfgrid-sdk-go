@@ -20,7 +20,11 @@ var getGatewayNameCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false, true)
+		opts := []deployer.PluginOpt{
+			deployer.WithRMBInMemCache(),
+			deployer.WithRMBTimeout(100),
+		}
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
