@@ -324,7 +324,7 @@ func ExampleK8sDeployer_Deploy() {
 		return
 	}
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, WithRMBInMemCache())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -397,7 +397,7 @@ func ExampleK8sDeployer_BatchDeploy() {
 		return
 	}
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, WithRMBInMemCache())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -474,7 +474,7 @@ func ExampleK8sDeployer_Cancel() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, WithRMBInMemCache())
 	if err != nil {
 		fmt.Println(err)
 		return

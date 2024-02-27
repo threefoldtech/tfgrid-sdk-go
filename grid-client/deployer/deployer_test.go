@@ -45,7 +45,7 @@ func setup() (TFPluginClient, error) {
 	}
 	seed := subkey.EncodeHex(keyPair.Seed())
 
-	plugin, err := NewTFPluginClient(seed, "sr25519", network, "", "", "", 0, true, true)
+	plugin, err := NewTFPluginClient(seed, "sr25519", network, WithLogs(), WithRMBInMemCache())
 	if err != nil {
 		return TFPluginClient{}, err
 	}
