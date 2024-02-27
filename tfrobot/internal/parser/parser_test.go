@@ -52,7 +52,12 @@ func TestParseConfig(t *testing.T) {
 		Network:  "dev",
 	}
 
-	tfpluginClient, err := deployer.NewTFPluginClient(confStruct.Mnemonic, peer.KeyTypeSr25519, confStruct.Network, "", "", "", 30, false, true)
+	opts := []deployer.PluginOpt{
+		deployer.WithRMBTimeout(30),
+		deployer.WithRMBInMemCache(),
+	}
+
+	tfpluginClient, err := deployer.NewTFPluginClient(confStruct.Mnemonic, peer.KeyTypeSr25519, confStruct.Network, opts...)
 	assert.NoError(t, err)
 
 	t.Run("invalid yaml format", func(t *testing.T) {

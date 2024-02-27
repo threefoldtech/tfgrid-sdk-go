@@ -23,5 +23,15 @@ func setup(conf tfrobot.Config, debug bool) (deployer.TFPluginClient, error) {
 	if network == "main" && noNinjaProxyURL == "" {
 		proxyURL = "https://gridproxy.bknd1.ninja.tf"
 	}
-	return deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, "", "", proxyURL, 30, debug, true)
+
+	opts := []deployer.PluginOpt{
+		deployer.WithProxyURL(proxyURL),
+		deployer.WithRMBTimeout(30),
+		deployer.WithRMBInMemCache(),
+	}
+	if debug {
+		opts = append(opts, deployer.WithLogs())
+	}
+
+	return deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, opts...)
 }
