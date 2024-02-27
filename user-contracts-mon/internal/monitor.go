@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containerd/containerd/pkg/cri/opts"
 	tgapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
@@ -86,7 +87,11 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 
 		case <-ticker.C:
 			for chatID, user := range users {
-				tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, "", "", "", 0, true, true)
+				opts := []deployer.PluginOpt{
+					deployer.WithLogs(),
+					deployer.WithRMBInMemCache(),
+				}
+				tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, opts...)
 				if err != nil {
 					log.Println("failed to connect")
 					mon.sendResponse(err.Error(), chatID)
@@ -105,7 +110,11 @@ func (mon Monitor) StartMonitoring(addChatChan chan User, stopChatChan chan int6
 			}
 
 		case user := <-addChatChan:
-			tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, "", "", "", 0, true, true)
+			opts := []deployer.PluginOpt{
+				deployer.WithLogs(),
+				deployer.WithRMBInMemCache(),
+			}
+			tfPluginClient, err := deployer.NewTFPluginClient(user.mnemonic, "sr25519", user.network, opts...)
 			if err != nil {
 				log.Println("failed to connect")
 				mon.sendResponse(err.Error(), user.ChatID)
