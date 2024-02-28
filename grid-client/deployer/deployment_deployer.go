@@ -38,13 +38,16 @@ func (d *DeploymentDeployer) Validate(ctx context.Context, dls []*workloads.Depl
 
 	var wg sync.WaitGroup
 	var errs error
+	var mu sync.Mutex
 
 	for _, dl := range dls {
 		wg.Add(1)
 		go func(dl *workloads.Deployment) {
 			defer wg.Done()
 			if err := dl.Validate(); err != nil {
-				errs = multierror.Append(err)
+				mu.Lock()
+				defer mu.Unlock()
+				errs = multierror.Append(errs, err)
 				return
 			}
 		}(dl)
@@ -64,7 +67,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 	}
 
 	var wg sync.WaitGroup
-	var lock sync.Mutex
+	var mu sync.Mutex
 	var errs error
 
 	for _, dl := range dls {
@@ -85,7 +88,9 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 			for idx, q := range dl.QSFS {
 				qsfsWorkload, err := q.ZosWorkload()
 				if err != nil {
-					errs = multierror.Append(errors.Wrapf(err, "failed to generate QSFS %d in deployment '%s'", idx, dl.Name))
+					mu.Lock()
+					defer mu.Unlock()
+					errs = multierror.Append(errs, errors.Wrapf(err, "failed to generate QSFS %d in deployment '%s'", idx, dl.Name))
 					return
 				}
 				newDl.Workloads = append(newDl.Workloads, qsfsWorkload)
@@ -93,13 +98,15 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 
 			newDl.Metadata, err = dl.GenerateMetadata()
 			if err != nil {
-				errs = multierror.Append(errors.Wrapf(err, "failed to generate deployment '%s' metadata", dl.Name))
+				mu.Lock()
+				defer mu.Unlock()
+				errs = multierror.Append(errs, errors.Wrapf(err, "failed to generate deployment '%s' metadata", dl.Name))
 				return
 			}
 
-			lock.Lock()
+			mu.Lock()
+			defer mu.Unlock()
 			gridDlsPerNodes[dl.NodeID] = append(gridDlsPerNodes[dl.NodeID], newDl)
-			lock.Unlock()
 		}(dl)
 	}
 
@@ -122,7 +129,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 		return errors.Wrap(err, "could not generate deployments data")
 	}
 
-	if len(dlsPerNodes[dl.NodeID]) <= 0 {
+	if len(dlsPerNodes[dl.NodeID]) == 0 {
 		return errors.Wrap(err, "failed to generate the grid deployment")
 	}
 
@@ -214,13 +221,13 @@ func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl 
 
 func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls []*workloads.Deployment) (map[string]map[uint32][]byte, error) {
 	var wg sync.WaitGroup
-	var lock sync.Mutex
+	var mu sync.Mutex
 	var errs error
 	usedHosts := make(map[string]map[uint32][]byte)
 
 	// calculate used host IDs per network
 	for _, dl := range dls {
-		lock.Lock()
+		mu.Lock()
 		if _, ok := usedHosts[dl.NetworkName]; !ok {
 			usedHosts[dl.NetworkName] = make(map[uint32][]byte)
 		}
@@ -228,7 +235,7 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 		if _, ok := usedHosts[dl.NetworkName][dl.NodeID]; ok {
 			continue
 		}
-		lock.Unlock()
+		mu.Unlock()
 
 		wg.Add(1)
 		go func(dl *workloads.Deployment) {
@@ -236,13 +243,17 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 
 			nodeClient, err := d.tfPluginClient.NcPool.GetNodeClient(d.tfPluginClient.SubstrateConn, dl.NodeID)
 			if err != nil {
-				errs = multierror.Append(errors.Wrapf(err, "could not get node client for node %d", dl.NodeID))
+				mu.Lock()
+				defer mu.Unlock()
+				errs = multierror.Append(errs, errors.Wrapf(err, "could not get node client for node %d", dl.NodeID))
 				return
 			}
 
 			privateIPs, err := nodeClient.NetworkListPrivateIPs(ctx, dl.NetworkName)
 			if err != nil {
-				errs = multierror.Append(errors.Wrapf(err, "could not list private ips from node %d", dl.NodeID))
+				mu.Lock()
+				defer mu.Unlock()
+				errs = multierror.Append(errs, errors.Wrapf(err, "could not list private ips from node %d", dl.NodeID))
 				return
 			}
 
@@ -251,7 +262,9 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 
 			_, ipRangeCIDR, err := net.ParseCIDR(ipRange)
 			if err != nil {
-				errs = multierror.Append(errors.Wrapf(err, "invalid ip range %s", ipRange))
+				mu.Lock()
+				defer mu.Unlock()
+				errs = multierror.Append(errs, errors.Wrapf(err, "invalid ip range %s", ipRange))
 				return
 			}
 
@@ -260,9 +273,9 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 				parsedPrivateIP := net.ParseIP(privateIP).To4()
 
 				if ipRangeCIDR.Contains(parsedPrivateIP) {
-					lock.Lock()
+					mu.Lock()
+					defer mu.Unlock()
 					usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], parsedPrivateIP[3])
-					lock.Unlock()
 				}
 			}
 		}(dl)
@@ -274,7 +287,7 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 
 func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*workloads.Deployment) error {
 	var wg sync.WaitGroup
-	var lock sync.Mutex
+	var mu sync.Mutex
 	var errs error
 
 	usedHosts, err := d.calculateNetworksUsedIPs(ctx, dls)
@@ -295,7 +308,9 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 
 			ip, ipRangeCIDR, err := net.ParseCIDR(ipRange)
 			if err != nil {
-				errs = multierror.Append(errors.Wrapf(err, "invalid ip range %s", ipRange))
+				mu.Lock()
+				defer mu.Unlock()
+				errs = multierror.Append(errs, errors.Wrapf(err, "invalid ip range %s", ipRange))
 				return
 			}
 
@@ -315,13 +330,15 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 					}
 
 					if !ipRangeCIDR.Contains(vmIP) {
-						errs = multierror.Append(fmt.Errorf("deployment ip range '%v' doesn't contain ip '%v' for vm '%s'", ipRange, vmIP, vm.Name))
+						mu.Lock()
+						defer mu.Unlock()
+						errs = multierror.Append(errs, fmt.Errorf("deployment ip range '%v' doesn't contain ip '%v' for vm '%s'", ipRange, vmIP, vm.Name))
 						return
 					}
 
-					lock.Lock()
+					mu.Lock()
 					usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], vmHostID)
-					lock.Unlock()
+					mu.Unlock()
 
 					continue
 				}
@@ -329,15 +346,17 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 				// try to find available host ID in the deployment ip range
 				for slices.Contains(usedHosts[dl.NetworkName][dl.NodeID], curHostID) {
 					if curHostID == 254 {
-						errs = multierror.Append(errors.New("all 253 ips of the network are exhausted"))
+						mu.Lock()
+						defer mu.Unlock()
+						errs = multierror.Append(errs, errors.New("all 253 ips of the network are exhausted"))
 						return
 					}
 					curHostID++
 				}
 
-				lock.Lock()
+				mu.Lock()
 				usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], curHostID)
-				lock.Unlock()
+				mu.Unlock()
 
 				vmIP = ip.To4()
 				vmIP[3] = curHostID
