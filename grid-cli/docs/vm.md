@@ -63,7 +63,7 @@ $ tfcmd get vm examplevm
 {
         "Name": "examplevm",
         "NodeID": 15,
-        "SolutionType": "examplevm",
+        "SolutionType": "vm/examplevm",
         "SolutionProvider": null,
         "NetworkName": "examplevmnetwork",
         "Disks": [

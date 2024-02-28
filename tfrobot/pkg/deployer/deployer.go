@@ -67,7 +67,7 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 		}); err != nil {
 
 			failedGroups[nodeGroup.Name] = err.Error()
-			err := tfPluginClient.CancelByProjectName(nodeGroup.Name)
+			err := tfPluginClient.CancelByProjectName(fmt.Sprintf("vm/%s", nodeGroup.Name))
 			if err != nil {
 				log.Debug().Err(err).Send()
 			}
@@ -77,7 +77,7 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 	// cancel all deployments if ctx is closed
 	if err := ctx.Err(); err != nil {
 		for _, group := range cfg.NodeGroups {
-			err := tfPluginClient.CancelByProjectName(group.Name)
+			err := tfPluginClient.CancelByProjectName(fmt.Sprintf("vm/%s", group.Name))
 			if err != nil {
 				log.Debug().Err(err).Send()
 			}

@@ -64,10 +64,12 @@ func TestNetworkDeployer(t *testing.T) {
 		d, _, _, _ := constructTestNetworkDeployer(t, tfPluginClient, false)
 
 		znet.IPRange.Mask = net.CIDRMask(20, 32)
-		assert.Error(t, d.Validate(context.Background(), &znet))
+		_, err := d.Validate(context.Background(), []*workloads.ZNet{&znet})
+		assert.Error(t, err)
 
 		znet.IPRange.Mask = net.CIDRMask(16, 32)
-		assert.NoError(t, d.Validate(context.Background(), &znet))
+		_, err = d.Validate(context.Background(), []*workloads.ZNet{&znet})
+		assert.NoError(t, err)
 	})
 
 	d, cl, sub, ncPool := constructTestNetworkDeployer(t, tfPluginClient, true)
@@ -96,7 +98,7 @@ func TestNetworkDeployer(t *testing.T) {
 			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil).
 			AnyTimes()
 
-		dls, err := d.GenerateVersionlessDeployments(context.Background(), &znet, nil)
+		dls, err := d.GenerateVersionlessDeployments(context.Background(), []*workloads.ZNet{&znet})
 		assert.NoError(t, err)
 
 		externalIP := ""
@@ -106,7 +108,7 @@ func TestNetworkDeployer(t *testing.T) {
 
 		metadata, err := json.Marshal(workloads.NetworkMetaData{
 			Version: workloads.Version,
-			UserAccess: []workloads.UserAccess{
+			UserAccesses: []workloads.UserAccess{
 				{
 					Subnet:     externalIP,
 					PrivateKey: znet.ExternalSK.String(),
@@ -116,15 +118,15 @@ func TestNetworkDeployer(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), []zos.Peer{}, string(metadata))
+		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), []zos.Peer{}, string(metadata), nil)
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
 		networkDl.Metadata = "{\"version\":3,\"type\":\"network\",\"name\":\"network\",\"projectName\":\"Network\"}"
 
-		assert.Equal(t, len(networkDl.Workloads), len(dls[znet.Nodes[0]].Workloads))
-		assert.Equal(t, networkDl.Workloads, dls[znet.Nodes[0]].Workloads)
-		assert.Equal(t, dls, map[uint32]gridtypes.Deployment{
-			nodeID: networkDl,
+		assert.Equal(t, len(networkDl.Workloads), len(dls[znet.Nodes[0]][0].Workloads))
+		assert.Equal(t, networkDl.Workloads, dls[znet.Nodes[0]][0].Workloads)
+		assert.Equal(t, dls, map[uint32][]gridtypes.Deployment{
+			nodeID: {networkDl},
 		})
 	})
 }

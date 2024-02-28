@@ -31,6 +31,8 @@ var farmerBotCmd = &cobra.Command{
 func Execute() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
+	farmerBotCmd.Root().CompletionOptions.DisableDefaultCmd = true
+
 	farmerBotCmd.AddCommand(versionCmd)
 	farmerBotCmd.AddCommand(runCmd)
 	farmerBotCmd.AddCommand(startCmd)

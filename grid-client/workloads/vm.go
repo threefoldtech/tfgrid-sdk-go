@@ -28,9 +28,9 @@ type VM struct {
 	ComputedIP    string `json:"computedip"`
 	ComputedIP6   string `json:"computedip6"`
 	PlanetaryIP   string `json:"planetary_ip"`
+	MyceliumIP    string `json:"mycelium_ip"`
 	IP            string `json:"ip"`
-	// used to get the same mycelium ip for the vm. if not set and planetary is used
-	// it will fallback to yggdrasil.
+	// used to get the same mycelium ip for the vm.
 	MyceliumIPSeed []byte            `json:"mycelium_ip_seed"`
 	Description    string            `json:"description"`
 	GPUs           []zos.GPU         `json:"gpus"`
@@ -86,29 +86,36 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, er
 		pubIP6 = pubIPRes.IPv6.String()
 	}
 
+	var myceliumIPSeed []byte
+	if data.Network.Mycelium != nil {
+		myceliumIPSeed = data.Network.Mycelium.Seed
+	}
+
 	return VM{
-		Name:          wl.Name.String(),
-		Description:   wl.Description,
-		Flist:         data.FList,
-		FlistChecksum: "",
-		PublicIP:      !pubIPRes.IP.Nil(),
-		ComputedIP:    pubIP4,
-		PublicIP6:     !pubIPRes.IPv6.Nil(),
-		ComputedIP6:   pubIP6,
-		Planetary:     result.PlanetaryIP != "",
-		Corex:         data.Corex,
-		PlanetaryIP:   result.PlanetaryIP,
-		IP:            data.Network.Interfaces[0].IP.String(),
-		CPU:           int(data.ComputeCapacity.CPU),
-		GPUs:          data.GPU,
-		Memory:        int(data.ComputeCapacity.Memory / gridtypes.Megabyte),
-		RootfsSize:    int(data.Size / gridtypes.Megabyte),
-		Entrypoint:    data.Entrypoint,
-		Mounts:        mounts(data.Mounts),
-		Zlogs:         zlogs(dl, wl.Name.String()),
-		EnvVars:       data.Env,
-		NetworkName:   string(data.Network.Interfaces[0].Network),
-		ConsoleURL:    result.ConsoleURL,
+		Name:           wl.Name.String(),
+		Description:    wl.Description,
+		Flist:          data.FList,
+		FlistChecksum:  "",
+		PublicIP:       !pubIPRes.IP.Nil(),
+		ComputedIP:     pubIP4,
+		PublicIP6:      !pubIPRes.IPv6.Nil(),
+		ComputedIP6:    pubIP6,
+		Planetary:      result.PlanetaryIP != "",
+		Corex:          data.Corex,
+		PlanetaryIP:    result.PlanetaryIP,
+		MyceliumIP:     result.MyceliumIP,
+		MyceliumIPSeed: myceliumIPSeed,
+		IP:             data.Network.Interfaces[0].IP.String(),
+		CPU:            int(data.ComputeCapacity.CPU),
+		GPUs:           data.GPU,
+		Memory:         int(data.ComputeCapacity.Memory / gridtypes.Megabyte),
+		RootfsSize:     int(data.Size / gridtypes.Megabyte),
+		Entrypoint:     data.Entrypoint,
+		Mounts:         mounts(data.Mounts),
+		Zlogs:          zlogs(dl, wl.Name.String()),
+		EnvVars:        data.Env,
+		NetworkName:    string(data.Network.Interfaces[0].Network),
+		ConsoleURL:     result.ConsoleURL,
 	}, nil
 }
 
