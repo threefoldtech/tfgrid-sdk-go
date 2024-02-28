@@ -96,7 +96,7 @@ func TestNetworkDeployer(t *testing.T) {
 			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil).
 			AnyTimes()
 
-		dls, err := d.GenerateVersionlessDeployments(context.Background(), &znet, nil)
+		dls, err := d.GenerateVersionlessDeployments(context.Background(), []*workloads.ZNet{&znet})
 		assert.NoError(t, err)
 
 		externalIP := ""
@@ -121,10 +121,10 @@ func TestNetworkDeployer(t *testing.T) {
 
 		networkDl.Metadata = "{\"version\":3,\"type\":\"network\",\"name\":\"network\",\"projectName\":\"Network\"}"
 
-		assert.Equal(t, len(networkDl.Workloads), len(dls[znet.Nodes[0]].Workloads))
-		assert.Equal(t, networkDl.Workloads, dls[znet.Nodes[0]].Workloads)
-		assert.Equal(t, dls, map[uint32]gridtypes.Deployment{
-			nodeID: networkDl,
+		assert.Equal(t, len(networkDl.Workloads), len(dls[znet.Nodes[0]][0].Workloads))
+		assert.Equal(t, networkDl.Workloads, dls[znet.Nodes[0]][0].Workloads)
+		assert.Equal(t, dls, map[uint32][]gridtypes.Deployment{
+			nodeID: {networkDl},
 		})
 	})
 }
