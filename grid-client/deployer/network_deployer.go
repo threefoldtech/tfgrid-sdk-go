@@ -122,6 +122,10 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 			)
 		}
 	}
+	// here we check that the we managed to get a public node
+	// and that public node wasn't already processed. if we got
+	// an error while getting public node, then node id will be 0
+	// and we will skip getting its data.
 	if _, ok := endpoints[publicNode]; !ok && publicNode != 0 {
 		endpoint, usedPorts, err := d.getNodeEndpointAndPorts(ctx, publicNode)
 		if err != nil {
