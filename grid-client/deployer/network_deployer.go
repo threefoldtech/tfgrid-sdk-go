@@ -153,6 +153,10 @@ func (d *NetworkDeployer) getNodeEndpointAndPorts(ctx context.Context, nodeID ui
 
 func needPublicNode(znets []*workloads.ZNet) bool {
 	// entering here means all nodes for all networks are either hidden or ipv6 only
+	// we need an extra public node in two cases:
+	// - the user asked for WireGuard access
+	// - there are multiple nodes in the network and none of them have ipv4.
+	//   because networks must communicate through ipv4
 	for _, znet := range znets {
 		if znet.AddWGAccess {
 			return true
