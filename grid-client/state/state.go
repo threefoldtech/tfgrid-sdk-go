@@ -52,6 +52,12 @@ func (st *State) StoreContractIDs(nodeID uint32, contractIDs ContractIDs) {
 	}
 }
 
+func (st *State) RemoveContractIDs(nodeID uint32, contractIDs ContractIDs) {
+	for _, contractID := range contractIDs {
+		st.CurrentNodeDeployments[nodeID] = workloads.Delete(st.CurrentNodeDeployments[nodeID], contractID)
+	}
+}
+
 // LoadDiskFromGrid loads a disk from grid
 func (st *State) LoadDiskFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.Disk, error) {
 	wl, dl, err := st.GetWorkloadInDeployment(ctx, nodeID, name, deploymentName)
