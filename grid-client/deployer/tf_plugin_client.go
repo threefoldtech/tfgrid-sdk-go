@@ -142,7 +142,7 @@ func WithRMBInMemCache() PluginOpt {
 	}
 }
 
-func parsePluginOpts(network string, opts ...PluginOpt) (pluginCfg, error) {
+func parsePluginOpts(opts ...PluginOpt) pluginCfg {
 	cfg := pluginCfg{
 		substrateURL:  []string{},
 		proxyURL:      "",
@@ -156,41 +156,7 @@ func parsePluginOpts(network string, opts ...PluginOpt) (pluginCfg, error) {
 		o(&cfg)
 	}
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	if cfg.showLogs {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		baseLog.SetOutput(io.Discard)
-	}
-
-	if len(cfg.substrateURL) == 0 {
-		cfg.substrateURL = SubstrateURLs[network]
-	} else {
-		for _, url := range cfg.substrateURL {
-			if err := validateWssURL(url); err != nil {
-				return cfg, errors.Wrapf(err, "could not validate substrate url %s", url)
-			}
-		}
-	}
-
-	if len(strings.TrimSpace(cfg.proxyURL)) == 0 {
-		cfg.proxyURL = ProxyURLs[network]
-	} else {
-		if err := validateProxyURL(cfg.proxyURL); err != nil {
-			return cfg, errors.Wrapf(err, "could not validate proxy url %s", cfg.proxyURL)
-		}
-	}
-
-	if len(strings.TrimSpace(cfg.relayURL)) == 0 {
-		cfg.relayURL = RelayURLS[network]
-	} else {
-		if err := validateWssURL(cfg.relayURL); err != nil {
-			return cfg, errors.Wrapf(err, "could not validate relay url %s", cfg.relayURL)
-		}
-	}
-
-	return cfg, nil
+	return cfg
 }
 
 // NewTFPluginClient generates a new tf plugin client
@@ -200,11 +166,17 @@ func NewTFPluginClient(
 	network string,
 	opts ...PluginOpt,
 ) (TFPluginClient, error) {
-	cfg, err := parsePluginOpts(network, opts...)
-	if err != nil {
-		return TFPluginClient{}, err
+	cfg := parsePluginOpts(opts...)
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	if cfg.showLogs {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		baseLog.SetOutput(io.Discard)
 	}
 
+	var err error
 	tfPluginClient := TFPluginClient{}
 
 	if valid := validateMnemonics(mnemonicOrSeed); !valid {
@@ -240,10 +212,15 @@ func NewTFPluginClient(
 	}
 	tfPluginClient.Network = network
 
-	tfPluginClient.substrateURL = cfg.substrateURL
-	tfPluginClient.proxyURL = cfg.proxyURL
-	tfPluginClient.relayURL = cfg.relayURL
-	tfPluginClient.RMBTimeout = time.Second * time.Duration(cfg.rmbTimeout)
+	tfPluginClient.substrateURL = SubstrateURLs[network]
+	if len(cfg.substrateURL) != 0 {
+		for _, url := range cfg.substrateURL {
+			if err := validateWssURL(url); err != nil {
+				return TFPluginClient{}, errors.Wrapf(err, "could not validate substrate url %s", url)
+			}
+		}
+		tfPluginClient.substrateURL = cfg.substrateURL
+	}
 
 	manager := subi.NewManager(tfPluginClient.substrateURL...)
 	sub, err := manager.SubstrateExt()
@@ -266,9 +243,30 @@ func NewTFPluginClient(
 	}
 	tfPluginClient.TwinID = twinID
 
+	tfPluginClient.proxyURL = ProxyURLs[network]
+	if len(strings.TrimSpace(cfg.proxyURL)) != 0 {
+		if err := validateProxyURL(cfg.proxyURL); err != nil {
+			return TFPluginClient{}, errors.Wrapf(err, "could not validate proxy url %s", cfg.proxyURL)
+		}
+		tfPluginClient.proxyURL = cfg.proxyURL
+	}
+
 	tfPluginClient.useRmbProxy = true
 	// if tfPluginClient.useRmbProxy
 	sessionID := generateSessionID()
+
+	if len(strings.TrimSpace(cfg.relayURL)) != 0 {
+		if err := validateWssURL(cfg.relayURL); err != nil {
+			return TFPluginClient{}, errors.Wrapf(err, "could not validate relay url %s", cfg.relayURL)
+		}
+		tfPluginClient.relayURL = cfg.relayURL
+	}
+
+	// default rmbTimeout is 60
+	if cfg.rmbTimeout == 0 {
+		cfg.rmbTimeout = 60
+	}
+	tfPluginClient.RMBTimeout = time.Second * time.Duration(cfg.rmbTimeout)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	tfPluginClient.cancelRelayContext = cancel
