@@ -159,7 +159,7 @@ func WithTwinCache() PluginOpt {
 func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 	cfg := pluginCfg{
 		network:       "main",
-		keyType:       "Sr25519",
+		keyType:       peer.KeyTypeSr25519,
 		substrateURL:  []string{},
 		proxyURL:      "",
 		relayURL:      "",
