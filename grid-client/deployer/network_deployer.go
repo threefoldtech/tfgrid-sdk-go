@@ -96,14 +96,25 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 	var publicNode uint32
 	var err error
 	for nodeID := range allNodes {
+		// we check first that there is a public node in all nodes in the networks.
+		// that way we can save extra requests to get a new public node
+		// and its used ports and endpoints. this public node also might not be used
+		// as access node if there is no need for it.
 		if endpoints[nodeID] != nil && endpoints[nodeID].To4() != nil {
 			publicNode = nodeID
 			break
 		}
 	}
 
+	// if none of the nodes used are public (have ipv4 endpoint) we do
+	// an extra check that at least one network needs a public node before
+	// fetching a public node. we can use this one node as an access point
+	// to all networks that need it.
 	if publicNode == 0 && needPublicNode(znets) {
 		publicNode, err = GetPublicNode(ctx, *d.tfPluginClient, nil)
+		// we don't return immediately here as there might be some
+		// networks that don't need a public node so they should continue
+		// processing fine
 		if err != nil {
 			multiErr = multierror.Append(
 				multiErr,
@@ -225,6 +236,8 @@ func (d *NetworkDeployer) generateDeployments(znet *workloads.ZNet, endpointIPs 
 	if znet.WGPort == nil {
 		znet.WGPort = make(map[uint32]int)
 	}
+
+	// assign WireGuard ports
 	for _, nodeID := range allNodes {
 		nodeUsedPorts := usedPorts[nodeID]
 		p := uint16(rand.Intn(32768-1024) + 1024)
