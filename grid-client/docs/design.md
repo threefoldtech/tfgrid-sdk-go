@@ -189,8 +189,14 @@ grid3_go is a go client created to interact with threefold grid. It should manag
 ### Example
 
 ```go
+// define customized plugin opts
+opts := []deloyer.PluginOpt{
+  deployer.WithRMBTimeout(100),
+  deployer.WithLogs(),
+}
+
 // Create Threefold plugin client
-tfPlugin, err := deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", true, true)
+tfPlugin, err := deployer.NewTFPluginClient(mnemonics, "sr25519", network, opts...)
 
 // Get a suitable node to deploy
 filter := NodeFilter{
