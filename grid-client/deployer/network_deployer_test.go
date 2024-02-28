@@ -64,10 +64,12 @@ func TestNetworkDeployer(t *testing.T) {
 		d, _, _, _ := constructTestNetworkDeployer(t, tfPluginClient, false)
 
 		znet.IPRange.Mask = net.CIDRMask(20, 32)
-		assert.Error(t, d.Validate(context.Background(), &znet))
+		_, err := d.Validate(context.Background(), []*workloads.ZNet{&znet})
+		assert.Error(t, err)
 
 		znet.IPRange.Mask = net.CIDRMask(16, 32)
-		assert.NoError(t, d.Validate(context.Background(), &znet))
+		_, err = d.Validate(context.Background(), []*workloads.ZNet{&znet})
+		assert.NoError(t, err)
 	})
 
 	d, cl, sub, ncPool := constructTestNetworkDeployer(t, tfPluginClient, true)

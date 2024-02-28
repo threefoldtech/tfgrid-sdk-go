@@ -36,23 +36,27 @@ func NewNetworkDeployer(tfPluginClient *TFPluginClient) NetworkDeployer {
 }
 
 // Validate validates a network deployer
-func (d *NetworkDeployer) Validate(ctx context.Context, znet *workloads.ZNet) error {
+func (d *NetworkDeployer) Validate(ctx context.Context, znets []*workloads.ZNet) ([]*workloads.ZNet, error) {
 	sub := d.tfPluginClient.SubstrateConn
+	var multiErr error
 
 	if err := validateAccountBalanceForExtrinsics(sub, d.tfPluginClient.Identity); err != nil {
-		return err
+		return nil, err
 	}
+	filteredZNets := make([]*workloads.ZNet, 0)
+	for _, znet := range znets {
+		if err := znet.Validate(); err != nil {
+			multiErr = multierror.Append(multiErr, err)
+			continue
+		}
 
-	if err := znet.Validate(); err != nil {
-		return err
+		if err := d.InvalidateBrokenAttributes(znet); err != nil {
+			multiErr = multierror.Append(multiErr, err)
+			continue
+		}
+		filteredZNets = append(filteredZNets, znet)
 	}
-
-	err := client.AreNodesUp(ctx, sub, znet.Nodes, d.tfPluginClient.NcPool)
-	if err != nil {
-		return err
-	}
-
-	return d.InvalidateBrokenAttributes(znet)
+	return filteredZNets, multiErr
 }
 
 // GenerateVersionlessDeployments generates deployments for network deployer without versions.
@@ -402,12 +406,12 @@ func (d *NetworkDeployer) generateDeployments(znet *workloads.ZNet, endpointIPs 
 
 // Deploy deploys the network deployments using the deployer
 func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) error {
-	err := d.Validate(ctx, znet)
+	znets, err := d.Validate(ctx, []*workloads.ZNet{znet})
 	if err != nil {
 		return err
 	}
 
-	nodeDeployments, err := d.GenerateVersionlessDeployments(ctx, []*workloads.ZNet{znet})
+	nodeDeployments, err := d.GenerateVersionlessDeployments(ctx, znets)
 	if err != nil {
 		return errors.Wrap(err, "could not generate deployments data")
 	}
@@ -453,26 +457,21 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 
 // BatchDeploy deploys multiple network deployments using the deployer
 func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZNet, updateMetadata ...bool) error {
-	filteredZNets := make([]*workloads.ZNet, 0)
 	var multiErr error
-	if err := validateAccountBalanceForExtrinsics(d.tfPluginClient.SubstrateConn, d.tfPluginClient.Identity); err != nil {
-		return err
+	filteredZNets, err := d.Validate(ctx, znets)
+	if err != nil {
+		multiErr = multierror.Append(multiErr, err)
 	}
-	for _, znet := range znets {
-		if err := znet.Validate(); err != nil {
-			multiErr = multierror.Append(multiErr, err)
-			continue
-		}
-		if err := d.InvalidateBrokenAttributes(znet); err != nil {
-			multiErr = multierror.Append(multiErr, err)
-			continue
-		}
-		filteredZNets = append(filteredZNets, znet)
+	if len(filteredZNets) == 0 {
+		return multiErr
 	}
 
 	newDeployments, err := d.GenerateVersionlessDeployments(ctx, filteredZNets)
+	if err != nil {
+		multiErr = multierror.Append(multiErr, err)
+	}
 	if len(newDeployments) == 0 {
-		return err
+		return multiErr
 	}
 
 	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, make(map[uint32][]*uint64))
@@ -498,7 +497,7 @@ func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZN
 
 // Cancel cancels all the deployments
 func (d *NetworkDeployer) Cancel(ctx context.Context, znet *workloads.ZNet) error {
-	err := d.Validate(ctx, znet)
+	err := validateAccountBalanceForExtrinsics(d.tfPluginClient.SubstrateConn, d.tfPluginClient.Identity)
 	if err != nil {
 		return err
 	}
