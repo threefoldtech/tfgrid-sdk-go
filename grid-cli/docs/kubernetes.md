@@ -108,7 +108,7 @@ $ tfcmd get kubernetes examplevm
         ],
         "Token": "",
         "NetworkName": "",
-        "SolutionType": "kube",
+        "SolutionType": "kubernetes/kube",
         "SSHKey": "",
         "NodesIPRange": null,
         "NodeDeploymentID": {
