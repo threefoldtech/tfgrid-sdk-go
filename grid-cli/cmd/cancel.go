@@ -25,8 +25,12 @@ var cancelCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		projectName := fmt.Sprintf("vm/%s", args[0])
-		err = t.CancelByProjectName(projectName)
+		err = t.CancelByProjectName(fmt.Sprintf("vm/%s", args[0]))
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		err = t.CancelByProjectName(fmt.Sprintf("kubernetes/%s", args[0]))
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

@@ -122,7 +122,7 @@ func (k *K8sCluster) ZosWorkloads() ([]gridtypes.Workload, error) {
 // GenerateMetadata generates deployment metadata
 func (k *K8sCluster) GenerateMetadata() (string, error) {
 	if len(k.SolutionType) == 0 {
-		k.SolutionType = k.Master.Name
+		k.SolutionType = fmt.Sprintf("kubernetes/%s", k.Master.Name)
 	}
 
 	deploymentData := DeploymentData{
