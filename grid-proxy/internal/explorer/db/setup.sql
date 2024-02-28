@@ -427,6 +427,40 @@ CREATE OR REPLACE TRIGGER tg_node_contract
     EXECUTE PROCEDURE reflect_node_contract_changes();
 
 /*
+ Gpu trigger
+    - Insert new node_gpu > increase the gpu_num in resources cache
+    - Delete node_gpu > decrease the gpu_num in resources cache
+*/
+CREATE OR REPLACE FUNCTION reflect_node_gpu_count_change() RETURNS TRIGGER AS
+$$
+BEGIN
+    BEGIN
+        UPDATE resources_cache
+        SET node_gpu_count = node_gpu_count + (
+            CASE 
+            WHEN TG_OP = 'INSERT' 
+                THEN 1 
+            WHEN TG_OP = 'DELETE'
+                THEN -1
+            ELSE 0
+            END
+        )
+        WHERE resources_cache.node_id = (
+            SELECT node_id from node where node.twin_id = COALESCE(NEW.node_twin_id, OLD.node_twin_id)
+        );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating resources_cache gpu fields %', SQLERRM;
+    END;
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER tg_node_gpu_count
+    AFTER INSERT OR DELETE ON node_gpu FOR EACH ROW
+    EXECUTE PROCEDURE reflect_node_gpu_count_change();
+
+/*
  Rent contract trigger
     - Insert new rent contract > Update resources_cache renter/rent_contract_id
     - Update (state to 'Deleted') > nullify resources_cache renter/rent_contract_id
