@@ -106,7 +106,7 @@ func TestNetworkDeployer(t *testing.T) {
 
 		metadata, err := json.Marshal(workloads.NetworkMetaData{
 			Version: workloads.Version,
-			UserAccess: []workloads.UserAccess{
+			UserAccesses: []workloads.UserAccess{
 				{
 					Subnet:     externalIP,
 					PrivateKey: znet.ExternalSK.String(),
@@ -116,7 +116,7 @@ func TestNetworkDeployer(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), []zos.Peer{}, string(metadata))
+		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), []zos.Peer{}, string(metadata), nil)
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
 		networkDl.Metadata = "{\"version\":3,\"type\":\"network\",\"name\":\"network\",\"projectName\":\"Network\"}"
