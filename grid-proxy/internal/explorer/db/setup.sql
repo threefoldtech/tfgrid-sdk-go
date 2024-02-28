@@ -440,7 +440,7 @@ BEGIN
             CASE 
             WHEN TG_OP = 'INSERT' 
                 THEN 1 
-            WHEn TG_OP = 'DELETE'
+            WHEN TG_OP = 'DELETE'
                 THEN -1
             ELSE 0
             END
