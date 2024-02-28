@@ -252,6 +252,9 @@ func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, 
 
 // NetworkListPrivateIPs list private ips reserved for a network
 func (n *NodeClient) NetworkListPrivateIPs(ctx context.Context, networkName string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
 	const cmd = "zos.network.list_private_ips"
 	var result []string
 	in := rmbCmdArgs{

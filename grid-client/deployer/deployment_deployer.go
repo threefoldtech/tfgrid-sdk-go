@@ -155,12 +155,16 @@ func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.D
 	var multiErr error
 
 	if err := d.Validate(ctx, dls); err != nil {
-		return fmt.Errorf("invalid deployment: %w", err)
+		multiErr = multierror.Append(multiErr, fmt.Errorf("invalid deployments: %w", err))
 	}
 
 	newDeployments, err := d.GenerateVersionlessDeployments(ctx, dls)
 	if err != nil {
-		return fmt.Errorf("could not generate grid deployments: %w", err)
+		multiErr = multierror.Append(multiErr, fmt.Errorf("could not generate grid deployments: %w", err))
+	}
+
+	if len(newDeployments) == 0 {
+		return errors.Wrap(err, "failed to generate the grid deployments")
 	}
 
 	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
@@ -219,6 +223,47 @@ func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl 
 	return nil
 }
 
+func (d *DeploymentDeployer) getUsedHostIDsOfNodeWithinNetwork(ctx context.Context, nodeID uint32, networkName string) ([]byte, error) {
+	var usedHostIDs []byte
+
+	nodeClient, err := d.tfPluginClient.NcPool.GetNodeClient(d.tfPluginClient.SubstrateConn, nodeID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not get node client for node %d", nodeID)
+	}
+
+	privateIPs, err := nodeClient.NetworkListPrivateIPs(ctx, networkName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not list private ips from node %d", nodeID)
+	}
+
+	network := d.tfPluginClient.State.Networks.GetNetwork(networkName)
+	ipRange := network.GetNodeSubnet(nodeID)
+
+	_, ipRangeCIDR, err := net.ParseCIDR(ipRange)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid ip range %s", ipRange)
+	}
+
+	// get used host IDs of the deployment node using the private IPs list of the node
+	for _, privateIP := range privateIPs {
+		parsedPrivateIP := net.ParseIP(privateIP).To4()
+
+		if parsedPrivateIP == nil {
+			log.Debug().Err(fmt.Errorf("[Error]: network %s has a nil private ip %s", networkName, privateIP)).Send()
+			continue
+		}
+
+		if ipRangeCIDR.Contains(parsedPrivateIP) {
+			usedHostIDs = append(usedHostIDs, parsedPrivateIP[3])
+			continue
+		}
+
+		log.Debug().Err(fmt.Errorf("[Error]: network %s ip range %s doesn't contain the private ip %s found in the network", networkName, ipRange, privateIP)).Send()
+	}
+
+	return usedHostIDs, nil
+}
+
 func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls []*workloads.Deployment) (map[string]map[uint32][]byte, error) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -233,6 +278,7 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 		}
 
 		if _, ok := usedHosts[dl.NetworkName][dl.NodeID]; ok {
+			mu.Unlock()
 			continue
 		}
 		mu.Unlock()
@@ -240,44 +286,17 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 		wg.Add(1)
 		go func(dl *workloads.Deployment) {
 			defer wg.Done()
-
-			nodeClient, err := d.tfPluginClient.NcPool.GetNodeClient(d.tfPluginClient.SubstrateConn, dl.NodeID)
+			usedHostIDs, err := d.getUsedHostIDsOfNodeWithinNetwork(ctx, dl.NodeID, dl.NetworkName)
 			if err != nil {
 				mu.Lock()
 				defer mu.Unlock()
-				errs = multierror.Append(errs, errors.Wrapf(err, "could not get node client for node %d", dl.NodeID))
+				errs = multierror.Append(errs, errors.Wrapf(err, "failed to get used host ids for network %s node %d", dl.NetworkName, dl.NodeID))
 				return
 			}
 
-			privateIPs, err := nodeClient.NetworkListPrivateIPs(ctx, dl.NetworkName)
-			if err != nil {
-				mu.Lock()
-				defer mu.Unlock()
-				errs = multierror.Append(errs, errors.Wrapf(err, "could not list private ips from node %d", dl.NodeID))
-				return
-			}
-
-			network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
-			ipRange := network.GetNodeSubnet(dl.NodeID)
-
-			_, ipRangeCIDR, err := net.ParseCIDR(ipRange)
-			if err != nil {
-				mu.Lock()
-				defer mu.Unlock()
-				errs = multierror.Append(errs, errors.Wrapf(err, "invalid ip range %s", ipRange))
-				return
-			}
-
-			// get used host IDs of the deployment node using the private IPs list of the node
-			for _, privateIP := range privateIPs {
-				parsedPrivateIP := net.ParseIP(privateIP).To4()
-
-				if ipRangeCIDR.Contains(parsedPrivateIP) {
-					mu.Lock()
-					defer mu.Unlock()
-					usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], parsedPrivateIP[3])
-				}
-			}
+			mu.Lock()
+			defer mu.Unlock()
+			usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], usedHostIDs...)
 		}(dl)
 	}
 
