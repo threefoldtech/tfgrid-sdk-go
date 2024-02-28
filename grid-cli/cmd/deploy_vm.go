@@ -120,7 +120,7 @@ var deployVMCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, deployer.WithRMBInMemCache())
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network))
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

@@ -76,7 +76,7 @@ func ExampleFilterNodes() {
 	const mnemonic = "<mnemonics goes here>"
 	const network = "<dev, test, qa, main>"
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, WithRMBInMemCache())
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return
