@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"net"
+	"slices"
+	"sync"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -32,32 +36,161 @@ func NewNetworkDeployer(tfPluginClient *TFPluginClient) NetworkDeployer {
 }
 
 // Validate validates a network deployer
-func (d *NetworkDeployer) Validate(ctx context.Context, znet *workloads.ZNet) error {
+func (d *NetworkDeployer) Validate(ctx context.Context, znets []*workloads.ZNet) ([]*workloads.ZNet, error) {
 	sub := d.tfPluginClient.SubstrateConn
+	var multiErr error
 
 	if err := validateAccountBalanceForExtrinsics(sub, d.tfPluginClient.Identity); err != nil {
-		return err
+		return nil, err
 	}
+	filteredZNets := make([]*workloads.ZNet, 0)
+	for _, znet := range znets {
+		if err := znet.Validate(); err != nil {
+			multiErr = multierror.Append(multiErr, err)
+			continue
+		}
 
-	if err := znet.Validate(); err != nil {
-		return err
+		if err := d.InvalidateBrokenAttributes(znet); err != nil {
+			multiErr = multierror.Append(multiErr, err)
+			continue
+		}
+		filteredZNets = append(filteredZNets, znet)
 	}
-
-	err := client.AreNodesUp(ctx, sub, znet.Nodes, d.tfPluginClient.NcPool)
-	if err != nil {
-		return err
-	}
-
-	return d.InvalidateBrokenAttributes(znet)
+	return filteredZNets, multiErr
 }
 
 // GenerateVersionlessDeployments generates deployments for network deployer without versions.
-// usedPorts can be used to exclude some ports from being assigned to networks
-func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, znet *workloads.ZNet, usedPorts map[uint32][]uint16) (map[uint32]gridtypes.Deployment, error) {
+func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, znets []*workloads.ZNet) (map[uint32][]gridtypes.Deployment, error) {
+	deployments := make(map[uint32][]gridtypes.Deployment)
+	endpoints := make(map[uint32]net.IP)
+	nodeUsedPorts := make(map[uint32][]uint16)
+	allNodes := make(map[uint32]struct{})
+	var multiErr error
+
+	for _, znet := range znets {
+		for _, node := range znet.Nodes {
+			allNodes[node] = struct{}{}
+		}
+		if znet.PublicNodeID != 0 {
+			allNodes[znet.PublicNodeID] = struct{}{}
+		}
+	}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	for nodeID := range allNodes {
+		wg.Add(1)
+		go func(nodeID uint32) {
+			defer wg.Done()
+			endpoint, usedPorts, err := d.getNodeEndpointAndPorts(ctx, nodeID)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				multiErr = multierror.Append(multiErr, err)
+				return
+			}
+			endpoints[nodeID] = endpoint
+			nodeUsedPorts[nodeID] = usedPorts
+		}(nodeID)
+
+	}
+	wg.Wait()
+
+	var publicNode uint32
+	var err error
+	for nodeID := range allNodes {
+		// we check first that there is a public node in all nodes in the networks.
+		// that way we can save extra requests to get a new public node
+		// and its used ports and endpoints. this public node also might not be used
+		// as access node if there is no need for it.
+		if endpoints[nodeID] != nil && endpoints[nodeID].To4() != nil {
+			publicNode = nodeID
+			break
+		}
+	}
+
+	// if none of the nodes used are public (have ipv4 endpoint) we do
+	// an extra check that at least one network needs a public node before
+	// fetching a public node. we can use this one node as an access point
+	// to all networks that need it.
+	if publicNode == 0 && needPublicNode(znets) {
+		publicNode, err = GetPublicNode(ctx, *d.tfPluginClient, nil)
+		// we don't return immediately here as there might be some
+		// networks that don't need a public node so they should continue
+		// processing fine
+		if err != nil {
+			multiErr = multierror.Append(
+				multiErr,
+				fmt.Errorf("failed to get public node: %w", err),
+			)
+		}
+	}
+	// here we check that the we managed to get a public node
+	// and that public node wasn't already processed. if we got
+	// an error while getting public node, then node id will be 0
+	// and we will skip getting its data.
+	if _, ok := endpoints[publicNode]; !ok && publicNode != 0 {
+		endpoint, usedPorts, err := d.getNodeEndpointAndPorts(ctx, publicNode)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		} else {
+			endpoints[publicNode] = endpoint
+			nodeUsedPorts[publicNode] = usedPorts
+		}
+	}
+
+	for _, znet := range znets {
+		dls, err := d.generateDeployments(znet, endpoints, nodeUsedPorts, publicNode)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+			continue
+		}
+		for nodeID, dl := range dls {
+			deployments[nodeID] = append(deployments[nodeID], dl)
+		}
+	}
+
+	return deployments, multiErr
+}
+
+func (d *NetworkDeployer) getNodeEndpointAndPorts(ctx context.Context, nodeID uint32) (net.IP, []uint16, error) {
+	nodeClient, err := d.tfPluginClient.NcPool.GetNodeClient(d.tfPluginClient.SubstrateConn, nodeID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get node %d client: %w", nodeID, err)
+	}
+	endpoint, err := nodeClient.GetNodeEndpoint(ctx)
+	if err != nil && !errors.Is(err, client.ErrNoAccessibleInterfaceFound) {
+		return nil, nil, fmt.Errorf("failed to get node %d endpoint: %w", nodeID, err)
+	}
+	usedPorts, err := nodeClient.NetworkListWGPorts(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get node %d used ports: %w", nodeID, err)
+	}
+	return endpoint, usedPorts, nil
+}
+
+func needPublicNode(znets []*workloads.ZNet) bool {
+	// entering here means all nodes for all networks are either hidden or ipv6 only
+	// we need an extra public node in two cases:
+	// - the user asked for WireGuard access
+	// - there are multiple nodes in the network and none of them have ipv4.
+	//   because networks must communicate through ipv4
+	for _, znet := range znets {
+		if znet.AddWGAccess {
+			return true
+		}
+		if len(znet.Nodes) > 1 {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *NetworkDeployer) generateDeployments(znet *workloads.ZNet, endpointIPs map[uint32]net.IP, usedPorts map[uint32][]uint16, publicNode uint32) (map[uint32]gridtypes.Deployment, error) {
 	deployments := make(map[uint32]gridtypes.Deployment)
 
 	log.Debug().Msgf("nodes: %v", znet.Nodes)
-	sub := d.tfPluginClient.SubstrateConn
 
 	endpoints := make(map[uint32]string)
 	hiddenNodes := make([]uint32, 0)
@@ -65,23 +198,20 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 	var ipv4Node uint32
 
 	for _, nodeID := range znet.Nodes {
-		nodeClient, err := d.tfPluginClient.NcPool.GetNodeClient(sub, nodeID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not get node %d client", nodeID)
+		if _, ok := endpointIPs[nodeID]; !ok {
+			// means the network has a failing node
+			// we will skip generating deployments for it.
+			return nil, fmt.Errorf("failed to process network %s", znet.Name)
 		}
-
-		endpoint, err := nodeClient.GetNodeEndpoint(ctx)
-		if errors.Is(err, client.ErrNoAccessibleInterfaceFound) {
+		if endpointIPs[nodeID] == nil {
 			hiddenNodes = append(hiddenNodes, nodeID)
-		} else if err != nil {
-			return nil, errors.Wrapf(err, "failed to get node %d endpoint", nodeID)
-		} else if endpoint.To4() != nil {
+		} else if endpointIPs[nodeID].To4() != nil {
 			accessibleNodes = append(accessibleNodes, nodeID)
 			ipv4Node = nodeID
-			endpoints[nodeID] = endpoint.String()
+			endpoints[nodeID] = endpointIPs[nodeID].String()
 		} else {
 			accessibleNodes = append(accessibleNodes, nodeID)
-			endpoints[nodeID] = fmt.Sprintf("[%s]", endpoint.String())
+			endpoints[nodeID] = fmt.Sprintf("[%s]", endpointIPs[nodeID].String())
 		}
 	}
 
@@ -94,25 +224,13 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 			}
 		} else if ipv4Node != 0 { // there's one in the network original nodes
 			znet.PublicNodeID = ipv4Node
+		} else if _, ok := endpointIPs[publicNode]; !ok || publicNode == 0 {
+			// that means either we didn't find a public node
+			// or we failed to get its endpoint, so can't continue with the network
+			return nil, fmt.Errorf("failed to get public node for %s", znet.Name)
 		} else {
-			publicNode, err := GetPublicNode(ctx, *d.tfPluginClient, []uint32{})
-			if err != nil {
-				return nil, errors.Wrap(err, "public node needed because you requested adding wg access or a hidden node is added to the network")
-			}
 			znet.PublicNodeID = publicNode
 			accessibleNodes = append(accessibleNodes, publicNode)
-		}
-
-		if endpoints[znet.PublicNodeID] == "" { // old or new outsider
-			cl, err := d.tfPluginClient.NcPool.GetNodeClient(sub, znet.PublicNodeID)
-			if err != nil {
-				return nil, errors.Wrapf(err, "could not get node %d client", znet.PublicNodeID)
-			}
-			endpoint, err := cl.GetNodeEndpoint(ctx)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to get node %d endpoint", znet.PublicNodeID)
-			}
-			endpoints[znet.PublicNodeID] = endpoint.String()
 		}
 	}
 
@@ -123,8 +241,20 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 	if err := znet.AssignNodesWGKey(allNodes); err != nil {
 		return nil, errors.Wrap(err, "could not assign node wg keys")
 	}
-	if err := znet.AssignNodesWGPort(ctx, sub, d.tfPluginClient.NcPool, allNodes, usedPorts); err != nil {
-		return nil, errors.Wrap(err, "could not assign node wg ports")
+	if znet.WGPort == nil {
+		znet.WGPort = make(map[uint32]int)
+	}
+
+	// assign WireGuard ports
+	for _, nodeID := range allNodes {
+		nodeUsedPorts := usedPorts[nodeID]
+		p := uint16(rand.Intn(32768-1024) + 1024)
+		for slices.Contains(nodeUsedPorts, p) {
+			p = uint16(rand.Intn(32768-1024) + 1024)
+		}
+		nodeUsedPorts = append(nodeUsedPorts, p)
+		usedPorts[nodeID] = nodeUsedPorts
+		znet.WGPort[nodeID] = int(p)
 	}
 
 	nonAccessibleIPRanges := []gridtypes.IPNet{}
@@ -169,7 +299,7 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 	}
 	metadata := workloads.NetworkMetaData{
 		Version: workloads.Version,
-		UserAccess: []workloads.UserAccess{
+		UserAccesses: []workloads.UserAccess{
 			{
 				Subnet:     externalIP,
 				PrivateKey: znet.ExternalSK.String(),
@@ -276,14 +406,23 @@ func (d *NetworkDeployer) GenerateVersionlessDeployments(ctx context.Context, zn
 
 // Deploy deploys the network deployments using the deployer
 func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) error {
-	err := d.Validate(ctx, znet)
+	znets, err := d.Validate(ctx, []*workloads.ZNet{znet})
 	if err != nil {
 		return err
 	}
 
-	newDeployments, err := d.GenerateVersionlessDeployments(ctx, znet, nil)
+	nodeDeployments, err := d.GenerateVersionlessDeployments(ctx, znets)
 	if err != nil {
 		return errors.Wrap(err, "could not generate deployments data")
+	}
+	newDeployments := make(map[uint32]gridtypes.Deployment)
+	for node, deployments := range nodeDeployments {
+		if len(deployments) != 1 {
+			// this should never happen
+			log.Debug().Uint32("node id", node).Msgf("got number of deployment %d, should be 1", len(deployments))
+			continue
+		}
+		newDeployments[node] = deployments[0]
 	}
 
 	newDeploymentsSolutionProvider := make(map[uint32]*uint64)
@@ -318,36 +457,24 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 
 // BatchDeploy deploys multiple network deployments using the deployer
 func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZNet, updateMetadata ...bool) error {
-	newDeployments := make(map[uint32][]gridtypes.Deployment)
-	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
-	nodePorts := make(map[uint32][]uint16)
 	var multiErr error
-	for _, znet := range znets {
-		err := d.Validate(ctx, znet)
-		if err != nil {
-			multiErr = multierror.Append(multiErr, fmt.Errorf("invalid network %s: %w", znet.Name, err))
-			continue
-		}
-
-		dls, err := d.GenerateVersionlessDeployments(ctx, znet, nodePorts)
-		if err != nil {
-			multiErr = multierror.Append(multiErr, fmt.Errorf("could not generate deployments data for network %s: %w", znet.Name, err))
-			continue
-		}
-
-		for nodeID, dl := range dls {
-			// solution providers
-			newDeploymentsSolutionProvider[nodeID] = nil
-
-			if _, ok := newDeployments[nodeID]; !ok {
-				newDeployments[nodeID] = []gridtypes.Deployment{dl}
-				continue
-			}
-			newDeployments[nodeID] = append(newDeployments[nodeID], dl)
-		}
+	filteredZNets, err := d.Validate(ctx, znets)
+	if err != nil {
+		multiErr = multierror.Append(multiErr, err)
+	}
+	if len(filteredZNets) == 0 {
+		return multiErr
 	}
 
-	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
+	newDeployments, err := d.GenerateVersionlessDeployments(ctx, filteredZNets)
+	if err != nil {
+		multiErr = multierror.Append(multiErr, err)
+	}
+	if len(newDeployments) == 0 {
+		return multiErr
+	}
+
+	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, make(map[uint32][]*uint64))
 	if err != nil {
 		multiErr = multierror.Append(multiErr, err)
 	}
@@ -370,7 +497,7 @@ func (d *NetworkDeployer) BatchDeploy(ctx context.Context, znets []*workloads.ZN
 
 // Cancel cancels all the deployments
 func (d *NetworkDeployer) Cancel(ctx context.Context, znet *workloads.ZNet) error {
-	err := d.Validate(ctx, znet)
+	err := validateAccountBalanceForExtrinsics(d.tfPluginClient.SubstrateConn, d.tfPluginClient.Identity)
 	if err != nil {
 		return err
 	}

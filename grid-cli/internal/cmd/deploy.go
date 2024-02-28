@@ -63,7 +63,7 @@ func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, mas
 		Workers: workers,
 		// TODO: should be randomized
 		Token:        "securetoken",
-		SolutionType: master.Name,
+		SolutionType: fmt.Sprintf("kubernetes/%s", master.Name),
 		SSHKey:       sshKey,
 		NetworkName:  networkName,
 	}

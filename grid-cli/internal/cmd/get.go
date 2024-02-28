@@ -65,13 +65,31 @@ func GetVM(ctx context.Context, t deployer.TFPluginClient, name string) (workloa
 
 // GetK8sCluster gets a kubernetes cluster with its project name
 func GetK8sCluster(ctx context.Context, t deployer.TFPluginClient, name string) (workloads.K8sCluster, error) {
-	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.K8sType, name)
-	if err != nil {
-		return workloads.K8sCluster{}, err
-	}
+	// try to get contracts with the new project name format "kubernetes/<name>"
+	projectName := fmt.Sprintf("kubernetes/%s", name)
 
-	networkContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
-	if err != nil {
+	var networkContractIDs map[uint32]uint64
+
+	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.K8sType, name)
+	if err == nil {
+		networkContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
+		if err != nil {
+			return workloads.K8sCluster{}, err
+		}
+
+	} else if errors.Is(err, graphql.ErrorContractsNotFound) {
+		// if could not find any contracts try to get contracts with the old project name format "<name>"
+		nodeContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.K8sType, name)
+		if err != nil {
+			return workloads.K8sCluster{}, err
+		}
+
+		networkContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
+		if err != nil {
+			return workloads.K8sCluster{}, err
+		}
+
+	} else {
 		return workloads.K8sCluster{}, err
 	}
 
