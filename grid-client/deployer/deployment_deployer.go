@@ -111,11 +111,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 	}
 
 	wg.Wait()
-
-	if errs != nil {
-		return nil, errs
-	}
-	return gridDlsPerNodes, nil
+	return gridDlsPerNodes, errs
 }
 
 // Deploy deploys a new deployment
@@ -130,7 +126,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 	}
 
 	if len(dlsPerNodes[dl.NodeID]) == 0 {
-		return errors.Wrap(err, "failed to generate the grid deployment")
+		return fmt.Errorf("failed to generate the grid deployment")
 	}
 
 	dl.NodeDeploymentID, err = d.deployer.Deploy(
@@ -164,7 +160,7 @@ func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.D
 	}
 
 	if len(newDeployments) == 0 {
-		return errors.Wrap(err, "failed to generate the grid deployments")
+		return errors.Wrap(multiErr, "failed to generate the grid deployments")
 	}
 
 	newDls, err := d.deployer.BatchDeploy(ctx, newDeployments, newDeploymentsSolutionProvider)
@@ -249,7 +245,7 @@ func (d *DeploymentDeployer) getUsedHostIDsOfNodeWithinNetwork(ctx context.Conte
 		parsedPrivateIP := net.ParseIP(privateIP).To4()
 
 		if parsedPrivateIP == nil {
-			log.Debug().Err(fmt.Errorf("[Error]: network %s has a nil private ip %s", networkName, privateIP)).Send()
+			log.Debug().Err(fmt.Errorf("[Error]: network %s has invalid private ip %s", networkName, privateIP)).Send()
 			continue
 		}
 
