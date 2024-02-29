@@ -174,23 +174,24 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 
 	if strings.TrimSpace(cfg.proxyURL) == "" {
 		cfg.proxyURL = ProxyURLs[cfg.network]
-
-		if err := validateProxyURL(cfg.proxyURL); err != nil {
-			return cfg, errors.Wrapf(err, "could not validate proxy url %s", cfg.proxyURL)
-		}
+	}
+	if err := validateProxyURL(cfg.proxyURL); err != nil {
+		return cfg, errors.Wrapf(err, "could not validate proxy url %s", cfg.proxyURL)
 	}
 
 	if strings.TrimSpace(cfg.relayURL) == "" {
 		cfg.relayURL = RelayURLS[cfg.network]
 	}
+	if err := validateWssURL(cfg.relayURL); err != nil {
+		return cfg, errors.Wrapf(err, "could not validate relay url %s", cfg.relayURL)
+	}
 
 	if len(cfg.substrateURL) == 0 {
 		cfg.substrateURL = SubstrateURLs[cfg.network]
-
-		for _, url := range cfg.substrateURL {
-			if err := validateWssURL(url); err != nil {
-				return cfg, errors.Wrapf(err, "could not validate substrate url %s", url)
-			}
+	}
+	for _, url := range cfg.substrateURL {
+		if err := validateWssURL(url); err != nil {
+			return cfg, errors.Wrapf(err, "could not validate substrate url %s", url)
 		}
 	}
 
