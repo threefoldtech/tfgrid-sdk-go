@@ -52,18 +52,19 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 // DeployKubernetesCluster deploys a kubernetes cluster
 func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, master workloads.K8sNode, workers []workloads.K8sNode, sshKey string) (workloads.K8sCluster, error) {
 	networkName := fmt.Sprintf("%snetwork", master.Name)
+	projectName := fmt.Sprintf("kubernetes/%s", master.Name)
 	networkNodes := []uint32{master.Node}
 	if len(workers) > 0 && workers[0].Node != master.Node {
 		networkNodes = append(networkNodes, workers[0].Node)
 	}
-	network := buildNetwork(networkName, master.Name, networkNodes)
+	network := buildNetwork(networkName, projectName, networkNodes)
 
 	cluster := workloads.K8sCluster{
 		Master:  &master,
 		Workers: workers,
 		// TODO: should be randomized
 		Token:        "securetoken",
-		SolutionType: fmt.Sprintf("kubernetes/%s", master.Name),
+		SolutionType: projectName,
 		SSHKey:       sshKey,
 		NetworkName:  networkName,
 	}
