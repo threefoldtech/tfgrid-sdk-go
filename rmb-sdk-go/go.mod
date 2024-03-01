@@ -13,7 +13,7 @@ require (
 	github.com/gtank/merlin v0.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.32.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240116163757-68c63d80a9e0
 	google.golang.org/protobuf v1.31.0
 )
