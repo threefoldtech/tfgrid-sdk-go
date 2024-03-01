@@ -9,7 +9,7 @@ require (
 	github.com/rs/zerolog v1.32.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stellar/go v0.0.0-20231121172327-69266de4154f
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240116163757-68c63d80a9e0
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.9
 )
@@ -54,7 +54,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stellar/go-xdr v0.0.0-20230919160922-6c7b68458206 // indirect
-	github.com/stretchr/objx v0.5.1 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/valyala/fasthttp v1.40.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
