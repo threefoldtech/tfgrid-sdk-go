@@ -293,6 +293,8 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"node.certification",
 			"farm.dedicated_farm as farm_dedicated",
 			"resources_cache.rent_contract_id as rent_contract_id",
+			"(farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0) AND resources_cache.renter is null as rentable",
+			"resources_cache.renter is not null as rented",
 			"resources_cache.renter",
 			"node.serial_number",
 			"convert_to_decimal(location.longitude) as longitude",
