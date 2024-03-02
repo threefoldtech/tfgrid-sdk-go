@@ -291,8 +291,11 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"public_config.ipv4",
 			"public_config.ipv6",
 			"node.certification",
-			"farm.dedicated_farm as farm_dedicated",
-			"resources_cache.rent_contract_id as rent_contract_id",
+			"farm.dedicated_farm",
+			"resources_cache.dedicated_node",
+			"resources_cache.shared",
+			"resources_cache.rentable",
+			"resources_cache.rented",
 			"resources_cache.renter",
 			"node.serial_number",
 			"convert_to_decimal(location.longitude) as longitude",
@@ -413,7 +416,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	q := d.farmTableQuery(ctx, filter, nodeQuery)
 
 	if filter.NodeAvailableFor != nil {
-		q = q.Where("COALESCE(resources_cache.renter, 0) = ? OR (resources_cache.renter IS NULL AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
+		q = q.Where("COALESCE(resources_cache.renter, 0) = ? OR resources_cache.shared = true", *filter.NodeAvailableFor)
 	}
 
 	if filter.FreeIPs != nil {
@@ -605,24 +608,28 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	}
 
 	// Dedicated nodes filters
-	if filter.InDedicatedFarm != nil {
-		q = q.Where(`farm.dedicated_farm = ?`, *filter.InDedicatedFarm)
+	if filter.DedicatedFarm != nil {
+		q = q.Where(`farm.dedicated_farm = ?`, *filter.DedicatedFarm)
 	}
-	if filter.Dedicated != nil {
-		q = q.Where(`? = (farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0 OR resources_cache.renter is not null)`, *filter.Dedicated)
+	if filter.DedicatedNode != nil {
+		q = q.Where(`COALESCE(resources_cache.dedicated_node, false) = ?`, *filter.DedicatedNode)
+	}
+	if filter.Shared != nil {
+		q = q.Where(`COALESCE(resources_cache.shared, false) = ?`, *filter.Shared)
 	}
 	if filter.Rentable != nil {
-		q = q.Where(`? = ((farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0) AND resources_cache.renter is null)`, *filter.Rentable)
-	}
-	if filter.AvailableFor != nil {
-		q = q.Where(`COALESCE(resources_cache.renter, 0) = ? OR (resources_cache.renter is null AND farm.dedicated_farm = false)`, *filter.AvailableFor)
-	}
-	if filter.RentedBy != nil {
-		q = q.Where(`COALESCE(resources_cache.renter, 0) = ?`, *filter.RentedBy)
+		q = q.Where(`COALESCE(resources_cache.rentable, false) = ?`, *filter.Rentable)
 	}
 	if filter.Rented != nil {
-		q = q.Where(`? = (resources_cache.renter is not null)`, *filter.Rented)
+		q = q.Where(`COALESCE(resources_cache.rented, false) = ?`, *filter.Rented)
 	}
+	if filter.Renter != nil {
+		q = q.Where(`COALESCE(resources_cache.renter, 0) = ?`, *filter.Renter)
+	}
+	if filter.AvailableFor != nil {
+		q = q.Where(`COALESCE(resources_cache.renter, 0) = ? OR COALESCE(resources_cache.shared, false) = true`, *filter.AvailableFor)
+	}
+
 	if filter.OwnedBy != nil {
 		q = q.Where(`COALESCE(farm.twin_id, 0) = ?`, *filter.OwnedBy)
 	}

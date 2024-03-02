@@ -104,6 +104,7 @@ CREATE OR REPLACE VIEW resources_cache_view AS
 SELECT
     node.node_id as node_id,
     node.farm_id as farm_id,
+
     COALESCE(node_resources_total.hru, 0) as total_hru,
     COALESCE(node_resources_total.mru, 0) as total_mru,
     COALESCE(node_resources_total.sru, 0) as total_sru,
@@ -115,8 +116,13 @@ SELECT
     COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST( (node_resources_total.mru / 10) AS bigint), 2147483648 ) as used_mru,
     COALESCE(sum(contract_resources.sru), 0) + 21474836480 as used_sru,
     COALESCE(sum(contract_resources.cru), 0) as used_cru,
+
+    farm.dedicated_farm = true OR count(node_contract.contract_id) = 0 OR rent_contract.twin_id is not null as dedicated_node,
+    farm.dedicated_farm = false AND rent_contract.twin_id is null as shared,
+    (farm.dedicated_farm = true OR count(node_contract.contract_id) = 0) AND rent_contract.twin_id is null as rentable,
+    rent_contract.twin_id is not null as rented,
     rent_contract.twin_id as renter,
-    rent_contract.contract_id as rent_contract_id,
+
     count(node_contract.contract_id) as node_contracts_count,
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     node.country as country,
@@ -146,8 +152,8 @@ GROUP BY
     node_resources_total.hru,
     node_resources_total.cru,
     node.farm_id,
-    rent_contract.contract_id,
     rent_contract.twin_id,
+    farm.dedicated_farm,
     COALESCE(node_gpu.node_gpu_count, 0),
     node.country,
     node.certification,
@@ -170,8 +176,11 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     used_mru NUMERIC NOT NULL,
     used_sru NUMERIC NOT NULL,
     used_cru NUMERIC NOT NULL,
+    dedicated_node BOOLEAN,
+    shared BOOLEAN,
+    rentable BOOLEAN,
+    rented BOOLEAN,
     renter INTEGER,
-    rent_contract_id INTEGER,
     node_contracts_count INTEGER NOT NULL,
     node_gpu_count INTEGER NOT NULL,
     country TEXT,
@@ -391,18 +400,23 @@ BEGIN
             SET (used_cru, used_mru, used_sru, used_hru, free_mru, free_sru, free_hru, node_contracts_count) = 
             (
                 SELECT
-                    resources_cache.used_cru - cru,
-                    resources_cache.used_mru - mru,
-                    resources_cache.used_sru - sru,
-                    resources_cache.used_hru - hru,
-                    resources_cache.free_mru + mru,
-                    resources_cache.free_sru + sru,
-                    resources_cache.free_hru + hru,
+                    resources_cache.used_cru - COALESCE(cru,0),
+                    resources_cache.used_mru - COALESCE(mru,0),
+                    resources_cache.used_sru - COALESCE(sru,0),
+                    resources_cache.used_hru - COALESCE(hru,0),
+                    resources_cache.free_mru + COALESCE(mru,0),
+                    resources_cache.free_sru + COALESCE(sru,0),
+                    resources_cache.free_hru + COALESCE(hru,0),
                     resources_cache.node_contracts_count - 1
                 FROM resources_cache
                 LEFT JOIN contract_resources ON contract_resources.contract_id = NEW.id 
                 WHERE resources_cache.node_id = NEW.node_id
-            ) WHERE resources_cache.node_id = NEW.node_id;
+            ),
+            -- if it will be empty and not rented then change
+            dedicated_node = (CASE WHEN (node_contracts_count = 1 AND rented = false) THEN true ELSE false END),
+            rentable = (CASE WHEN (node_contracts_count = 1 AND rented = false) THEN true ELSE false END)
+             
+            WHERE resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
             RAISE NOTICE 'Error reflecting node_contract updates %', SQLERRM;
@@ -411,7 +425,11 @@ BEGIN
     ELSIF (TG_OP = 'INSERT') THEN
         BEGIN
             UPDATE resources_cache 
-            SET node_contracts_count = node_contracts_count + 1 
+            SET node_contracts_count = node_contracts_count + 1,
+                -- if it was empty and not rented then change
+                rentable = (CASE WHEN (node_contracts_count = 0 AND rented = false) THEN false ELSE true END),
+                dedicated_node = (CASE WHEN (node_contracts_count = 0 AND rented = false) THEN false ELSE true END)
+                
             WHERE resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
@@ -439,7 +457,11 @@ BEGIN
         BEGIN
             UPDATE resources_cache
             SET renter = NULL,
-                rent_contract_id = NULL
+                rented = false,
+                rentable = true,
+                shared = (NOT (
+                    SELECT dedicated_farm from farm WHERE farm.farm_id = resources_cache.farm_id
+                )) -- if not dedicated_farm then true
             WHERE
                 resources_cache.node_id = NEW.node_id;
         EXCEPTION
@@ -450,7 +472,9 @@ BEGIN
         BEGIN
             UPDATE resources_cache 
             SET renter = NEW.twin_id,
-                rent_contract_id = NEW.contract_id
+                rented = true,
+                rentable = false,
+                shared = false
             WHERE
                 resources_cache.node_id = NEW.node_id;
         EXCEPTION
@@ -543,6 +567,12 @@ CREATE OR REPLACE TRIGGER tg_public_ip
     EXECUTE PROCEDURE reflect_public_ip_changes();
 
 
+/*
+    Farms:
+    - Update dedicated filed:
+        - set true: all should be a defaults dedicated
+        - set false: it was dedicated so also all rest should be defaults
+*/
 CREATE OR REPLACE FUNCTION reflect_farm_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
@@ -565,7 +595,27 @@ BEGIN
         EXCEPTION
             WHEN OTHERS THEN
                 RAISE NOTICE 'Error deleting public_ips_cache record %s', SQLERRM;
-        END; 
+        END;
+
+    ELSIF (TG_OP = 'UPDATE') THEN
+        BEGIN
+            IF NEW.dedicated_farm = true THEN
+                UPDATE resources_cache
+                SET dedicated_node = true,
+                    rentable = true,
+                    shared = false
+                WHERE
+                    resources_cache.farm_id = NEW.farm_id;
+            ELSE
+                UPDATE resources_cache
+                SET shared = true
+                WHERE
+                    resources_cache.farm_id = NEW.farm_id;
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE NOTICE 'Error updating rent fields for resources_cache %s', SQLERRM;
+        END;
     END IF;
 
 RETURN NULL;
@@ -573,7 +623,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER tg_farm
-    AFTER INSERT OR DELETE ON farm FOR EACH ROW 
+    AFTER INSERT OR DELETE OR UPDATE OF dedicated_farm ON farm FOR EACH ROW 
     EXECUTE PROCEDURE reflect_farm_changes();
 
 COMMIT;

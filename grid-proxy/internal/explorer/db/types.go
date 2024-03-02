@@ -70,9 +70,12 @@ type Node struct {
 	Ipv4               string
 	Ipv6               string
 	Certification      string
-	FarmDedicated      bool `gorm:"farm_dedicated"`
-	RentContractID     int64
-	Renter             int64
+	DedicatedFarm      bool
+	DedicatedNode      bool
+	Shared             bool
+	Rentable           bool
+	Rented             bool
+	Renter             uint64
 	SerialNumber       string
 	Longitude          *float64
 	Latitude           *float64

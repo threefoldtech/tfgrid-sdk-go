@@ -222,14 +222,21 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &v
 	},
-	"InDedicatedFarm": func(agg NodesAggregate) interface{} {
+	"DedicatedFarm": func(agg NodesAggregate) interface{} {
 		v := true
 		if flip(.5) {
 			v = false
 		}
 		return &v
 	},
-	"Dedicated": func(agg NodesAggregate) interface{} {
+	"DedicatedNode": func(agg NodesAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
+	"Shared": func(agg NodesAggregate) interface{} {
 		v := true
 		if flip(.5) {
 			v = false
@@ -250,7 +257,7 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &v
 	},
-	"RentedBy": func(agg NodesAggregate) interface{} {
+	"Renter": func(agg NodesAggregate) interface{} {
 		c := agg.twins[rand.Intn(len(agg.twins))]
 		if flip(.9) && len(agg.nodeRenters) != 0 {
 			c = agg.nodeRenters[rand.Intn(len(agg.nodeRenters))]

@@ -19,6 +19,28 @@ func isDedicatedNode(db DBData, node Node) bool {
 		db.NodeRentedBy[node.NodeID] != 0
 }
 
+func isShared(db DBData, node Node) bool {
+	return !db.Farms[node.FarmID].DedicatedFarm &&
+		db.NodeRentedBy[node.NodeID] == 0
+}
+
+func isRentable(db DBData, node Node) bool {
+	return db.NodeRentedBy[node.NodeID] == 0 &&
+		(db.Farms[node.FarmID].DedicatedFarm ||
+			len(db.NonDeletedContracts[node.NodeID]) == 0)
+}
+
+func buildRentInfo(db DBData, node Node) types.RentInfo {
+	return types.RentInfo{
+		DedicatedFarm: db.Farms[node.FarmID].DedicatedFarm,
+		DedicatedNode: isDedicatedNode(db, node),
+		Shared:        isShared(db, node),
+		Rentable:      isRentable(db, node),
+		Rented:        db.NodeRentContractID[node.NodeID] != 0,
+		Renter:        db.NodeRentedBy[node.NodeID],
+	}
+}
+
 func calculateCU(cru, mru float64) float64 {
 	MruUsed1 := mru / 4
 	CruUsed1 := cru / 2
@@ -140,10 +162,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				Status:            status,
 				CertificationType: node.Certification,
 				UpdatedAt:         int64(node.UpdatedAt),
-				InDedicatedFarm:   g.data.Farms[node.FarmID].DedicatedFarm,
-				Dedicated:         isDedicatedNode(g.data, node),
-				RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
-				RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
+				RentInfo:          buildRentInfo(g.data, node),
 				SerialNumber:      node.SerialNumber,
 				Power: types.NodePower{
 					State:  node.Power.State,
@@ -161,12 +180,12 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 		return res[i].NodeID < res[j].NodeID
 	})
 
-	if filter.AvailableFor != nil {
-		sort.Slice(res, func(i, j int) bool {
+	// if filter.AvailableFor != nil {
+	// 	sort.Slice(res, func(i, j int) bool {
 
-			return g.data.NodeRentContractID[uint64(res[i].NodeID)] != 0
-		})
-	}
+	// 		return g.data.NodeRentContractID[uint64(res[i].NodeID)] != 0
+	// 	})
+	// }
 
 	res, totalCount = getPage(res, limit)
 
@@ -228,10 +247,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		Status:            status,
 		CertificationType: node.Certification,
 		UpdatedAt:         int64(node.UpdatedAt),
-		InDedicatedFarm:   g.data.Farms[node.FarmID].DedicatedFarm,
-		Dedicated:         isDedicatedNode(g.data, node),
-		RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
-		RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
+		RentInfo:          buildRentInfo(g.data, node),
 		SerialNumber:      node.SerialNumber,
 		Power: types.NodePower{
 			State:  node.Power.State,
@@ -353,21 +369,19 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.InDedicatedFarm != nil && *f.InDedicatedFarm != data.Farms[n.FarmID].DedicatedFarm {
+	if f.DedicatedFarm != nil && *f.DedicatedFarm != data.Farms[n.FarmID].DedicatedFarm {
 		return false
 	}
 
-	if f.Dedicated != nil && *f.Dedicated != isDedicatedNode(*data, *n) {
+	if f.DedicatedNode != nil && *f.DedicatedNode != isDedicatedNode(*data, *n) {
 		return false
 	}
 
-	if f.Excluded != nil && len(f.Excluded) != 0 && slices.Contains(f.Excluded, n.NodeID) {
+	if f.Shared != nil && *f.Shared != isShared(*data, *n) {
 		return false
 	}
 
-	rentable := data.NodeRentedBy[n.NodeID] == 0 &&
-		(data.Farms[n.FarmID].DedicatedFarm || len(data.NonDeletedContracts[n.NodeID]) == 0)
-	if f.Rentable != nil && *f.Rentable != rentable {
+	if f.Rentable != nil && *f.Rentable != isRentable(*data, *n) {
 		return false
 	}
 
@@ -376,7 +390,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.RentedBy != nil && *f.RentedBy != data.NodeRentedBy[n.NodeID] {
+	if f.Renter != nil && *f.Renter != data.NodeRentedBy[n.NodeID] {
 		return false
 	}
 
@@ -384,6 +398,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	if f.AvailableFor != nil &&
 		((ok && renter != *f.AvailableFor) ||
 			(!ok && data.Farms[n.FarmID].DedicatedFarm)) {
+		return false
+	}
+
+	if f.Excluded != nil && len(f.Excluded) != 0 && slices.Contains(f.Excluded, n.NodeID) {
 		return false
 	}
 

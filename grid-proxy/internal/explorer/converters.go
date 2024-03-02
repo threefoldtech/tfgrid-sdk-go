@@ -51,10 +51,15 @@ func nodeFromDBNode(info db.Node) types.Node {
 			Ipv4:   info.Ipv4,
 			Ipv6:   info.Ipv6,
 		},
-		InDedicatedFarm:   info.FarmDedicated,
+		RentInfo: types.RentInfo{
+			DedicatedFarm: info.DedicatedFarm,
+			DedicatedNode: info.DedicatedNode,
+			Shared:        info.Shared,
+			Rentable:      info.Rentable,
+			Rented:        info.Rented,
+			Renter:        info.Renter,
+		},
 		CertificationType: info.Certification,
-		RentContractID:    uint(info.RentContractID),
-		RentedByTwinID:    uint(info.Renter),
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
 		NumGPU:            info.NumGPU,
@@ -63,7 +68,6 @@ func nodeFromDBNode(info db.Node) types.Node {
 		PriceUsd:          math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
-	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
 	return node
 }
 
@@ -125,10 +129,15 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 			Ipv4:   info.Ipv4,
 			Ipv6:   info.Ipv6,
 		},
-		InDedicatedFarm:   info.FarmDedicated,
+		RentInfo: types.RentInfo{
+			DedicatedFarm: info.DedicatedFarm,
+			DedicatedNode: info.DedicatedNode,
+			Shared:        info.Shared,
+			Rentable:      info.Rentable,
+			Rented:        info.Rented,
+			Renter:        info.Renter,
+		},
 		CertificationType: info.Certification,
-		RentContractID:    uint(info.RentContractID),
-		RentedByTwinID:    uint(info.Renter),
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
 		NumGPU:            info.NumGPU,
@@ -137,7 +146,6 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		PriceUsd:          math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
-	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
 	return node
 }
 

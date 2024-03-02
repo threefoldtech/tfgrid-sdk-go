@@ -34,13 +34,10 @@ type Node struct {
 	UsedResources     Capacity     `json:"used_resources" sort:"used_"`
 	Location          Location     `json:"location"`
 	PublicConfig      PublicConfig `json:"publicConfig"`
-	Status            string       `json:"status" sort:"status"`
+	RentInfo          RentInfo     `json:"rent"`
 	CertificationType string       `json:"certificationType"`
-	Dedicated         bool         `json:"dedicated"`
-	InDedicatedFarm   bool         `json:"inDedicatedFarm" sort:"dedicated_farm"`
-	RentContractID    uint         `json:"rentContractId" sort:"rent_contract_id"`
-	RentedByTwinID    uint         `json:"rentedByTwinId"`
 	SerialNumber      string       `json:"serialNumber"`
+	Status            string       `json:"status" sort:"status"`
 	Power             NodePower    `json:"power"`
 	NumGPU            int          `json:"num_gpu" sort:"num_gpu"`
 	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
@@ -71,18 +68,24 @@ type NodeWithNestedCapacity struct {
 	Capacity          CapacityResult `json:"capacity"`
 	Location          Location       `json:"location"`
 	PublicConfig      PublicConfig   `json:"publicConfig"`
-	Status            string         `json:"status"` // added node status field for up or down
+	RentInfo          RentInfo       `json:"rent"`
 	CertificationType string         `json:"certificationType"`
-	Dedicated         bool           `json:"dedicated"`
-	InDedicatedFarm   bool           `json:"inDedicatedFarm"`
-	RentContractID    uint           `json:"rentContractId"`
-	RentedByTwinID    uint           `json:"rentedByTwinId"`
 	SerialNumber      string         `json:"serialNumber"`
+	Status            string         `json:"status"`
 	Power             NodePower      `json:"power"`
 	NumGPU            int            `json:"num_gpu"`
 	ExtraFee          uint64         `json:"extraFee"`
 	Healthy           bool           `json:"healthy"`
 	PriceUsd          float64        `json:"price_usd"`
+}
+
+type RentInfo struct {
+	DedicatedFarm bool   `json:"dedicated_farm"`
+	DedicatedNode bool   `json:"dedicated_node"`
+	Shared        bool   `json:"shared"`
+	Rentable      bool   `json:"rentable"`
+	Rented        bool   `json:"rented"`
+	Renter        uint64 `json:"renter"`
 }
 
 // PublicConfig node public config
@@ -124,13 +127,14 @@ type NodeFilter struct {
 	IPv4              *bool    `schema:"ipv4,omitempty"`
 	IPv6              *bool    `schema:"ipv6,omitempty"`
 	Domain            *bool    `schema:"domain,omitempty"`
-	Dedicated         *bool    `schema:"dedicated,omitempty"`
-	InDedicatedFarm   *bool    `schema:"in_dedicated_farm,omitempty"`
+	DedicatedFarm     *bool    `schema:"dedicated_farm,omitempty"`
+	DedicatedNode     *bool    `schema:"dedicated_node,omitempty"`
+	Shared            *bool    `schema:"shared,omitempty"`
 	Rentable          *bool    `schema:"rentable,omitempty"`
-	OwnedBy           *uint64  `schema:"owned_by,omitempty"`
 	Rented            *bool    `schema:"rented,omitempty"`
-	RentedBy          *uint64  `schema:"rented_by,omitempty"`
+	Renter            *uint64  `schema:"renter,omitempty"`
 	AvailableFor      *uint64  `schema:"available_for,omitempty"`
+	OwnedBy           *uint64  `schema:"owned_by,omitempty"`
 	NodeID            *uint64  `schema:"node_id,omitempty"`
 	TwinID            *uint64  `schema:"twin_id,omitempty"`
 	CertificationType *string  `schema:"certification_type,omitempty"`
