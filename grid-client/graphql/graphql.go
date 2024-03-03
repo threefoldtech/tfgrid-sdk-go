@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -33,7 +34,10 @@ func (g *GraphQl) GetItemTotalCount(itemName string, options string) (float64, e
 
 	bodyReader := bytes.NewReader(jsonBody)
 
-	countResponse, err := http.Post(g.url, "application/json", bodyReader)
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	countResponse, err := cl.Post(g.url, "application/json", bodyReader)
 	if err != nil {
 		return 0, err
 	}
@@ -62,7 +66,10 @@ func (g *GraphQl) Query(body string, variables map[string]interface{}) (map[stri
 
 	bodyReader := bytes.NewReader(jsonBody)
 
-	resp, err := http.Post(g.url, "application/json", bodyReader)
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := cl.Post(g.url, "application/json", bodyReader)
 	if err != nil {
 		return result, err
 	}

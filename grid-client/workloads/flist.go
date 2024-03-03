@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // FlistChecksumURL returns flist check sum url format
@@ -15,7 +16,10 @@ func FlistChecksumURL(url string) string {
 
 // GetFlistChecksum gets flist check sum url
 func GetFlistChecksum(url string) (string, error) {
-	response, err := http.Get(FlistChecksumURL(url))
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	response, err := cl.Get(FlistChecksumURL(url))
 	if err != nil {
 		return "", err
 	}
