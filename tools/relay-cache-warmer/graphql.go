@@ -107,7 +107,11 @@ func queryGraphql(graphql, body string) (paginationData, []graphqlTwin, error) {
 		return paginationData{}, nil, err
 	}
 	reader := bytes.NewReader(bodyBytes)
-	resp, err := http.Post(graphql, "application/json", reader)
+
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := cl.Post(graphql, "application/json", reader)
 	if err != nil {
 		return paginationData{}, nil, err
 	}
