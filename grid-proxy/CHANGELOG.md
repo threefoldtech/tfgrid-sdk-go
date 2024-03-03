@@ -12,6 +12,12 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.14.8
+
+---
+
+- `feat` add rentable/rented fields in the node response.
+
 ### v0.14.7
 
 ---
