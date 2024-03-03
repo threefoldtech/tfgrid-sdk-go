@@ -24,9 +24,10 @@ func setup(conf tfrobot.Config, debug bool) (deployer.TFPluginClient, error) {
 	}
 
 	opts := []deployer.PluginOpt{
-		deployer.WithProxyURL(proxyURL),
+		deployer.WithTwinCache(),
 		deployer.WithRMBTimeout(30),
 		deployer.WithNetwork(network),
+		deployer.WithProxyURL(proxyURL),
 	}
 	if debug {
 		opts = append(opts, deployer.WithLogs())
