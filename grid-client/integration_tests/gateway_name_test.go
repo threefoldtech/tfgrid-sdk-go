@@ -107,7 +107,10 @@ func TestGatewayNameDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	time.Sleep(3 * time.Second)
-	response, err := http.Get(fmt.Sprintf("https://%s", result.FQDN))
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	response, err := cl.Get(fmt.Sprintf("https://%s", result.FQDN))
 	assert.NoError(t, err)
 
 	body, err := io.ReadAll(response.Body)
