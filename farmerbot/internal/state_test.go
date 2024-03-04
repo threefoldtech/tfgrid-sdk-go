@@ -22,7 +22,7 @@ func mockRMBAndSubstrateCalls(
 	inputs Config, on bool, noFarm bool,
 	resources gridtypes.Capacity, errs []string, emptyNode, emptyTwin bool,
 ) {
-	farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, powerErr, statsErr, poolsErr, gpusErr := mocksErr(errs)
+	farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, contractsErr, powerErr, statsErr, poolsErr, gpusErr := mocksErr(errs)
 
 	// farm calls
 	if !noFarm {
@@ -66,6 +66,11 @@ func mockRMBAndSubstrateCalls(
 
 		sub.EXPECT().GetNodeRentContract(nodeID).Return(uint64(0), rentErr)
 		if rentErr != nil && rentErr != substrate.ErrNotFound {
+			return
+		}
+
+		sub.EXPECT().GetNodeContracts(nodeID).Return([]types.U64{}, contractsErr)
+		if contractsErr != nil {
 			return
 		}
 
@@ -319,7 +324,7 @@ func TestStateModel(t *testing.T) {
 	})
 }
 
-func mocksErr(errs []string) (farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, powerErr, statsErr, poolsErr, gpusErr error) {
+func mocksErr(errs []string) (farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, contractsErr, powerErr, statsErr, poolsErr, gpusErr error) {
 	// errors
 	if slices.Contains(errs, "farm") {
 		farmErr = fmt.Errorf("error")
@@ -339,6 +344,10 @@ func mocksErr(errs []string) (farmErr, nodesErr, nodeErr, dedicatedErr, rentErr,
 
 	if slices.Contains(errs, "rent") {
 		rentErr = fmt.Errorf("error")
+	}
+
+	if slices.Contains(errs, "contracts") {
+		contractsErr = fmt.Errorf("error")
 	}
 
 	if slices.Contains(errs, "rentNotExist") {
