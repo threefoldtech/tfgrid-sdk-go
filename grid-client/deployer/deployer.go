@@ -326,10 +326,8 @@ func (d *Deployer) Wait(
 
 	deploymentError := backoff.Retry(func() error {
 		stateOk := 0
-		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
 
-		deploymentChanges, err := nodeClient.DeploymentChanges(sub, deploymentID)
+		deploymentChanges, err := nodeClient.DeploymentChanges(ctx, deploymentID)
 		if err != nil {
 			return backoff.Permanent(err)
 		}
@@ -495,7 +493,7 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
-				multiErr = multierror.Append(multiErr, errors.Wrap(err, "error waiting deployment"))
+				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error waiting deployment on node %d", node))
 				failedContracts = append(failedContracts, dl.ContractID)
 				return
 			}

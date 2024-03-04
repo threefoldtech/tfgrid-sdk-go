@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 	"gopkg.in/yaml.v3"
 )
@@ -52,7 +51,7 @@ func TestParseConfig(t *testing.T) {
 		Network:  "dev",
 	}
 
-	tfpluginClient, err := deployer.NewTFPluginClient(confStruct.Mnemonic, peer.KeyTypeSr25519, confStruct.Network, "", "", "", 30, false, true)
+	tfpluginClient, err := deployer.NewTFPluginClient(confStruct.Mnemonic, deployer.WithNetwork(confStruct.Network), deployer.WithRMBTimeout(30))
 	assert.NoError(t, err)
 
 	t.Run("invalid yaml format", func(t *testing.T) {
