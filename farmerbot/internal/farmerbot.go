@@ -317,7 +317,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 			}
 		}
 
-		if f.shouldWakeUp(ctx, subConn, &node, roundStart, wakeUpCalls) {
+		if f.shouldWakeUp(ctx, &node, roundStart, wakeUpCalls) {
 			err = f.state.updateNode(node)
 			if err != nil {
 				log.Error().Err(err).Send()
@@ -375,7 +375,7 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 	return nil
 }
 
-func (f *FarmerBot) shouldWakeUp(ctx context.Context, sub Substrate, node *node, roundStart time.Time, wakeUpCalls uint8) bool {
+func (f *FarmerBot) shouldWakeUp(ctx context.Context, node *node, roundStart time.Time, wakeUpCalls uint8) bool {
 	if node.powerState != off ||
 		wakeUpCalls >= f.config.Power.PeriodicWakeUpLimit {
 		return false

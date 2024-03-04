@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.3
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240116163757-68c63d80a9e0
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240227171040-f2a20ee3e965
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4
 	github.com/threefoldtech/zos v0.5.6-0.20240226114056-364e04acbed3
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d

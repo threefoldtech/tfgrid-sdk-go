@@ -55,7 +55,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240116163757-68c63d80a9e0 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240227171040-f2a20ee3e965 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.13.4 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	golang.org/x/crypto v0.20.0 // indirect

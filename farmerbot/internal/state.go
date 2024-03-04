@@ -132,6 +132,13 @@ func getNode(
 
 	configNode.hasActiveRentContract = rentContract != 0
 
+	activeContracts, err := sub.GetNodeContracts(nodeID)
+	if err != nil {
+		return node{}, fmt.Errorf("failed to get node %d active contracts from substrate with error: %w", nodeID, err)
+	}
+
+	configNode.hasActiveContracts = len(activeContracts) > 0
+
 	powerTarget, err := sub.GetPowerTarget(nodeID)
 	if err != nil {
 		return node{}, fmt.Errorf("failed to get node %d power target from substrate with error: %w", nodeID, err)
