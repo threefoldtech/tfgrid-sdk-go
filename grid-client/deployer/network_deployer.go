@@ -231,6 +231,7 @@ func (d *NetworkDeployer) generateDeployments(znet *workloads.ZNet, endpointIPs 
 		} else {
 			znet.PublicNodeID = publicNode
 			accessibleNodes = append(accessibleNodes, publicNode)
+			endpoints[publicNode] = endpointIPs[publicNode].String()
 		}
 	}
 
