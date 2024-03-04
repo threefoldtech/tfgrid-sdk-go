@@ -59,6 +59,9 @@ func (d *K8sDeployer) Validate(ctx context.Context, k8sCluster *workloads.K8sClu
 	if err := k8sCluster.ValidateChecksums(); err != nil {
 		return err
 	}
+	if err := k8sCluster.ValidateMyceliumSeed(); err != nil {
+		return err
+	}
 
 	// validate cluster nodes
 	var nodes []uint32
