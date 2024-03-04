@@ -26,7 +26,12 @@ func TestFindNode(t *testing.T) {
 	inputs := Config{
 		FarmID:        1,
 		IncludedNodes: []uint32{1, 2},
-		Power:         power{WakeUpThreshold: 30},
+		Power: power{WakeUpThresholdPercentages: ThresholdPercentages{
+			CRU: 30,
+			SRU: 30,
+			MRU: 30,
+			HRU: 30,
+		}},
 	}
 
 	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)

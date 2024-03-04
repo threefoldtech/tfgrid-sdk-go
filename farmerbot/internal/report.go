@@ -16,7 +16,10 @@ type NodeReport struct {
 	HasActiveRentContract        bool          `json:"rented"`
 	Dedicated                    bool          `json:"dedicated"`
 	PublicConfig                 bool          `json:"public_config"`
-	UsagePercentage              uint8         `json:"usage_percentage"`
+	CRUUsagePercentage           uint8         `json:"cru_usage_percentage"`
+	SRUUsagePercentage           uint8         `json:"sru_usage_percentage"`
+	MRUUsagePercentage           uint8         `json:"mru_usage_percentage"`
+	HRUUsagePercentage           uint8         `json:"hru_usage_percentage"`
 	TimesRandomWakeUps           int           `json:"random_wakeups"`
 	SincePowerStateChanged       time.Duration `json:"since_power_state_changed"`
 	SinceLastTimeAwake           time.Duration `json:"since_last_time_awake"`
@@ -54,10 +57,11 @@ func createNodeReport(n node) NodeReport {
 		sinceLastTimeAwake = time.Since(n.lastTimeAwake)
 	}
 
-	var usage uint8
 	used, total := calculateResourceUsage(map[uint32]node{nodeID: n})
-	if total != 0 {
-		usage = uint8(100 * used / total)
+
+	var hruUsage uint8
+	if total.hru != 0 {
+		hruUsage += uint8(100 * used.hru / total.hru)
 	}
 
 	return NodeReport{
@@ -66,7 +70,10 @@ func createNodeReport(n node) NodeReport {
 		HasActiveRentContract:        n.hasActiveRentContract,
 		Dedicated:                    n.dedicated,
 		PublicConfig:                 n.PublicConfig.HasValue,
-		UsagePercentage:              usage,
+		CRUUsagePercentage:           uint8(100 * used.cru / total.cru),
+		SRUUsagePercentage:           uint8(100 * used.sru / total.sru),
+		MRUUsagePercentage:           uint8(100 * used.mru / total.mru),
+		HRUUsagePercentage:           hruUsage,
 		TimesRandomWakeUps:           n.timesRandomWakeUps,
 		SincePowerStateChanged:       sincePowerStateChanged,
 		SinceLastTimeAwake:           sinceLastTimeAwake,
@@ -112,7 +119,7 @@ func (f *FarmerBot) report() string {
 			nodeReport.HasActiveRentContract,
 			nodeReport.Dedicated,
 			nodeReport.PublicConfig,
-			fmt.Sprintf("%d%%", nodeReport.UsagePercentage),
+			fmt.Sprintf("CRU:%d%%, SRU:%d%%,\nMRU:%d%%, HRU:%d%%", nodeReport.CRUUsagePercentage, nodeReport.SRUUsagePercentage, nodeReport.MRUUsagePercentage, nodeReport.HRUUsagePercentage),
 			nodeReport.TimesRandomWakeUps,
 			periodicWakeup,
 			nodeReport.SincePowerStateChanged,

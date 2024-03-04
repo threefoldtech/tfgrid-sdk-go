@@ -11,13 +11,13 @@ const defaultPeriodicWakeUPLimit uint8 = 1
 const defaultCPUProvision int8 = 2
 
 // defaultWakeUpThreshold default threshold to wake up a new node
-const defaultWakeUpThreshold uint8 = 80
+const defaultWakeUpThreshold float64 = 80
 
 // minWakeUpThreshold min threshold to wake up a new node
-const minWakeUpThreshold uint8 = 50
+const minWakeUpThreshold float64 = 50
 
 // maxWakeUpThreshold max threshold to wake up a new node
-const maxWakeUpThreshold uint8 = 80
+const maxWakeUpThreshold float64 = 80
 
 // minBalanceToRun min balance the farmer should have to run the bot
 const minBalanceToRun float64 = 5

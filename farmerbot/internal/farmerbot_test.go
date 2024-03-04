@@ -32,7 +32,12 @@ func TestFarmerbot(t *testing.T) {
 	inputs := Config{
 		FarmID:        1,
 		IncludedNodes: []uint32{1, 2},
-		Power:         power{WakeUpThreshold: 50},
+		Power: power{WakeUpThresholdPercentages: ThresholdPercentages{
+			CRU: 50,
+			SRU: 50,
+			MRU: 50,
+			HRU: 50,
+		}},
 	}
 
 	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)
