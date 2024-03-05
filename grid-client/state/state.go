@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
@@ -40,6 +41,20 @@ func NewState(ncPool client.NodeClientGetter, substrate subi.SubstrateExt) *Stat
 		Networks:               NetworkState{},
 		NcPool:                 ncPool,
 		Substrate:              substrate,
+	}
+}
+
+func (st *State) StoreContractIDs(nodeID uint32, contractIDs ContractIDs) {
+	for _, contractID := range contractIDs {
+		if !slices.Contains(st.CurrentNodeDeployments[nodeID], contractID) {
+			st.CurrentNodeDeployments[nodeID] = append(st.CurrentNodeDeployments[nodeID], contractID)
+		}
+	}
+}
+
+func (st *State) RemoveContractIDs(nodeID uint32, contractIDs ContractIDs) {
+	for _, contractID := range contractIDs {
+		st.CurrentNodeDeployments[nodeID] = workloads.Delete(st.CurrentNodeDeployments[nodeID], contractID)
 	}
 }
 
