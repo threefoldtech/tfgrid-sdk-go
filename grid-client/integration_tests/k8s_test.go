@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"reflect"
 	"strings"
@@ -58,7 +59,7 @@ func TestK8sDeployment(t *testing.T) {
 	workerNodeID := uint32(nodes[1].NodeID)
 
 	network := workloads.ZNet{
-		Name:        generateRandString(10),
+		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
 		Description: "network for testing",
 		Nodes:       []uint32{masterNodeID, workerNodeID},
 		IPRange: gridtypes.NewIPNet(net.IPNet{

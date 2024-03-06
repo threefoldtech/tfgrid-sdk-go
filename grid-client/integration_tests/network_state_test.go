@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 
@@ -54,7 +55,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 			t.Log(err)
 		}
 	})
-	d := workloads.NewDeployment(generateRandString(10), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
+	d := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
 	err = tf.DeploymentDeployer.Deploy(context.Background(), &d)
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +67,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 		}
 	})
 
-	d2 := workloads.NewDeployment(generateRandString(10), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
+	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
 	err = tf.DeploymentDeployer.Deploy(context.Background(), &d2)
 	if err != nil {
 		t.Fatal(err)
@@ -158,11 +159,11 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 			t.Log(err)
 		}
 	})
-	d := workloads.NewDeployment(generateRandString(10), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
+	d := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
 	d.Vms[1].Name = vm2Name
 	d.Vms[2].Name = vm3Name
 
-	d2 := workloads.NewDeployment(generateRandString(10), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
+	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
 	d2.Vms[1].Name = vm2Name
 	d2.Vms[2].Name = vm3Name
 

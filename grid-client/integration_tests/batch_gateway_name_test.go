@@ -40,7 +40,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network := workloads.ZNet{
-		Name:        generateRandString(10),
+		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID1, nodeID2},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -71,7 +71,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	dl := workloads.NewDeployment(generateRandString(10), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	require.NoError(t, err)
 

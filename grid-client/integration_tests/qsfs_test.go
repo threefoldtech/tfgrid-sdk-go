@@ -47,7 +47,7 @@ func TestQSFSDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network := workloads.ZNet{
-		Name:        generateRandString(10),
+		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -83,7 +83,7 @@ func TestQSFSDeployment(t *testing.T) {
 		metaZDBs = append(metaZDBs, zdb)
 	}
 
-	dl1 := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, "", nil, append(dataZDBs, metaZDBs...), nil, nil)
+	dl1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, append(dataZDBs, metaZDBs...), nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl1)
 	require.NoError(t, err)
 
@@ -172,7 +172,7 @@ func TestQSFSDeployment(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	dl2 := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, network.Name, nil, append(dataZDBs, metaZDBs...), []workloads.VM{vm}, []workloads.QSFS{qsfs})
+	dl2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, append(dataZDBs, metaZDBs...), []workloads.VM{vm}, []workloads.QSFS{qsfs})
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl2)
 	require.NoError(t, err)
 

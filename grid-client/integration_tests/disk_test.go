@@ -3,6 +3,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -32,7 +33,7 @@ func TestDiskDeployment(t *testing.T) {
 		Description: "disk test",
 	}
 
-	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, "", []workloads.Disk{disk}, nil, nil, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", []workloads.Disk{disk}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	require.NoError(t, err)
 

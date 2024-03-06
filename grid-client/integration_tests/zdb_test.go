@@ -3,6 +3,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -36,7 +37,7 @@ func TestZDBDeployment(t *testing.T) {
 		Mode:        zos.ZDBModeUser,
 	}
 
-	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	require.NoError(t, err)
 
