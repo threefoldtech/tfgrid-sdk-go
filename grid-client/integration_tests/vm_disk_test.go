@@ -17,7 +17,7 @@ func TestVMWithTwoDisk(t *testing.T) {
 	tfPluginClient, err := setup()
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
@@ -140,5 +140,6 @@ func TestVMWithTwoDisk(t *testing.T) {
 	// copy same file -> d1 (not enough space)
 
 	_, err = RemoteRun("root", v.PlanetaryIP, "cp /disk2/test.txt /disk1/test2.txt", privateKey)
-	require.NoError(t, err)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "No space left on device")
 }

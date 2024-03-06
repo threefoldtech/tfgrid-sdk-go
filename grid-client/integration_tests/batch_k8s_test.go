@@ -150,7 +150,6 @@ func TestBatchK8sDeployment(t *testing.T) {
 	// ssh to master node
 	requireNodesAreReady(t, &k2, privateKey)
 
-	// TODO:
 	// different ips generated
 	require.Equal(t, len(slices.Compact[[]string, string]([]string{k1.Master.IP, k2.Master.IP, k1.Workers[0].IP, k2.Workers[0].IP})), 4)
 

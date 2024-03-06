@@ -18,7 +18,7 @@ func TestNetworkDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, generateNodeFilter(), nil, nil, nil, 2)
@@ -54,7 +54,7 @@ func TestNetworkDeployment(t *testing.T) {
 		net, err := tfPluginClient.State.LoadNetworkFromGrid(ctx, network.Name)
 		require.NoError(t, err)
 
-		require.Empty(t, net.AccessWGConfig) //TODO:
+		require.NotEmpty(t, net.AccessWGConfig)
 	})
 
 	t.Run("deploy network with wireguard access on different nodes", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestNetworkDeployment(t *testing.T) {
 		net, err := tfPluginClient.State.LoadNetworkFromGrid(ctx, network.Name)
 		require.NoError(t, err)
 
-		require.Empty(t, net.AccessWGConfig) //TODO:
+		require.NotEmpty(t, net.AccessWGConfig)
 	})
 
 	t.Run("update network remove wireguard access", func(t *testing.T) {

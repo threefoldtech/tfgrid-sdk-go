@@ -17,7 +17,7 @@ func TestVMDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()

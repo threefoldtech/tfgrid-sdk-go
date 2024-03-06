@@ -25,7 +25,7 @@ func TestQSFSDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
@@ -202,6 +202,8 @@ func TestQSFSDeployment(t *testing.T) {
 	// try write to a file in mounted disk
 	_, err = RemoteRun("root", planetaryIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
 	require.NoError(t, err)
+
+	time.Sleep(5 * time.Second)
 
 	// get metrics after write
 	cmd = exec.Command("curl", metrics)

@@ -16,7 +16,7 @@ func TestDiskDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	nodes, err := deployer.FilterNodes(

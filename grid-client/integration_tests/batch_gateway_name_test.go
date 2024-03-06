@@ -22,7 +22,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()

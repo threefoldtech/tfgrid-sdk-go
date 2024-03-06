@@ -20,7 +20,7 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	nodes, err := deployer.FilterNodes(

@@ -24,7 +24,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		context.Background(),
 		tfPluginClient,
-		generateNodeFilter(),
+		generateNodeFilter(WithFreeMRU(*convertGBToBytes(4 * minMemory))),
 		nil,
 		nil,
 		nil,
@@ -59,13 +59,14 @@ func TestDeploymentsDeploy(t *testing.T) {
 		}
 	})
 
-	d := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
-	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &d)
+	d1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &d1)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Cleanup(func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &d)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &d1)
 		if err != nil {
 			t.Log(err)
 		}
@@ -83,11 +84,12 @@ func TestDeploymentsDeploy(t *testing.T) {
 			t.Log(err)
 		}
 	})
-	dl, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, "deployment1")
+
+	dl, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, d1.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	dl2, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, "deployment2")
+	dl2, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, d2.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,22 +103,22 @@ func TestDeploymentsDeploy(t *testing.T) {
 	}
 
 	// replace first vm and add another one
-	d.Vms[0] = vm1
-	d.Vms[0].Name = vm2Name
-	d.Vms = append(d.Vms, vm1)
-	d.Vms[1].Name = vm3Name
+	d1.Vms[0] = vm1
+	d1.Vms[0].Name = vm2Name
+	d1.Vms = append(d1.Vms, vm1)
+	d1.Vms[1].Name = vm3Name
 
-	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &d)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &d1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dl, err = tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, "deployment1")
+	dl, err = tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, d1.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if workloads.Contains(usedIPs, net.ParseIP(dl.Vms[0].IP).To4()[3]) || workloads.Contains(usedIPs, net.ParseIP(dl.Vms[1].IP).To4()[3]) {
-		t.Fatal("expected new vms to not use previously assinged ips")
+		t.Fatal("expected new vms to not use previously assigned ips")
 	}
 
 	networkState = tfPluginClient.State.Networks.GetNetwork(network.Name)
@@ -135,7 +137,7 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		context.Background(),
 		tfPluginClient,
-		generateNodeFilter(),
+		generateNodeFilter(WithFreeMRU(*convertGBToBytes(6 * minMemory))),
 		nil,
 		nil,
 		nil,
@@ -166,21 +168,22 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 			t.Log(err)
 		}
 	})
-	d := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
-	d.Vms[1].Name = vm2Name
-	d.Vms[2].Name = vm3Name
+
+	d1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
+	d1.Vms[1].Name = vm2Name
+	d1.Vms[2].Name = vm3Name
 
 	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
 	d2.Vms[1].Name = vm2Name
 	d2.Vms[2].Name = vm3Name
 
-	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&d, &d2})
+	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&d1, &d2})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Cleanup(func() {
-		err = tfPluginClient.BatchCancelContract([]uint64{d.ContractID, d2.ContractID})
+		err = tfPluginClient.BatchCancelContract([]uint64{d1.ContractID, d2.ContractID})
 		if err != nil {
 			t.Log(err)
 		}
@@ -192,14 +195,16 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		t.Fatalf("expected 6 used IPs but got %d", len(usedIPs))
 	}
 
-	dl, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, "deployment1")
+	dl, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, d1.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	dl2, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, "deployment2")
+
+	dl2, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, d2.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	ips := make([]byte, 0)
 	for _, vm := range dl.Vms {
 		ip := net.ParseIP(vm.IP).To4()
@@ -212,6 +217,7 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		}
 		ips = append(ips, ip[3])
 	}
+
 	for _, vm := range dl2.Vms {
 		ip := net.ParseIP(vm.IP).To4()
 		if ip == nil {

@@ -25,7 +25,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 		t.Skip("test is not supported in any network but dev")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
@@ -34,7 +34,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		ctx,
 		tfPluginClient,
-		generateNodeFilter(),
+		generateNodeFilter(WithDomain()),
 		nil,
 		nil,
 		nil,
