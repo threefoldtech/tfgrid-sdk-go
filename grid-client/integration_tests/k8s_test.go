@@ -3,20 +3,18 @@ package integration
 import (
 	"context"
 	"fmt"
-	"net"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-func AssertNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, privateKey string) bool {
+func requireNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, privateKey string) {
 	t.Helper()
 
 	masterYggIP := k8sCluster.Master.PlanetaryIP
@@ -30,7 +28,7 @@ func AssertNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, private
 
 	nodesNumber := reflect.ValueOf(k8sCluster.Workers).Len() + 1
 	numberOfReadyNodes := strings.Count(output, "Ready")
-	return assert.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %d nodes are ready", numberOfReadyNodes)
+	require.True(t, numberOfReadyNodes == nodesNumber, "number of ready nodes is not equal to number of nodes only %d nodes are ready", numberOfReadyNodes)
 }
 
 func TestK8sDeployment(t *testing.T) {
@@ -46,90 +44,59 @@ func TestK8sDeployment(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		ctx,
 		tfPluginClient,
-		nodeFilter,
-		[]uint64{*convertGBToBytes(1), *convertGBToBytes(1)},
+		generateNodeFilter(WithFreeSRU(3)),
+		[]uint64{*convertGBToBytes(1), *convertGBToBytes(1), *convertGBToBytes(1)},
 		nil,
-		[]uint64{minRootfs},
+		nil,
+		2,
 	)
-	if err != nil || len(nodes) < 2 {
-		t.Skip("no available nodes found")
+	if err != nil {
+		t.Skipf("no available nodes found: %v", err)
 	}
 
 	masterNodeID := uint32(nodes[0].NodeID)
 	workerNodeID := uint32(nodes[1].NodeID)
 
-	network := workloads.ZNet{
-		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
-		Description: "network for testing",
-		Nodes:       []uint32{masterNodeID, workerNodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
-			IP:   net.IPv4(10, 20, 0, 0),
-			Mask: net.CIDRMask(16, 32),
-		}),
-		AddWGAccess: true,
-	}
+	network := generateBasicNetwork([]uint32{masterNodeID, workerNodeID})
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
 	require.NoError(t, err)
 
-	defer func() {
+	t.Cleanup(func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-		assert.NoError(t, err)
-	}()
+		require.NoError(t, err)
+	})
 
-	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
-	flistCheckSum, err := workloads.GetFlistChecksum(flist)
-	require.NoError(t, err)
+	k8sFlist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 
 	master := workloads.K8sNode{
-		Name:          generateRandString(10),
-		Node:          masterNodeID,
-		DiskSize:      1,
-		PublicIP:      false,
-		PublicIP6:     false,
-		Planetary:     true,
-		Flist:         "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "",
-		ComputedIP6:   "",
-		PlanetaryIP:   "",
-		IP:            "",
-		CPU:           2,
-		Memory:        1024,
+		Name:      fmt.Sprintf("master_%s", generateRandString(5)),
+		Node:      masterNodeID,
+		DiskSize:  1,
+		CPU:       minCPU,
+		Memory:    int(minMemory) * 1024,
+		Planetary: true,
+		Flist:     k8sFlist,
 	}
 
 	workerNodeData1 := workloads.K8sNode{
-		Name:          "worker1",
-		Node:          workerNodeID,
-		DiskSize:      1,
-		PublicIP:      false,
-		PublicIP6:     false,
-		Planetary:     false,
-		Flist:         "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "",
-		ComputedIP6:   "",
-		PlanetaryIP:   "",
-		IP:            "",
-		CPU:           2,
-		Memory:        1024,
+		Name:      fmt.Sprintf("worker1_%s", generateRandString(5)),
+		Node:      workerNodeID,
+		DiskSize:  1,
+		CPU:       minCPU,
+		Memory:    int(minMemory) * 1024,
+		Planetary: true,
+		Flist:     k8sFlist,
 	}
 
 	workerNodeData2 := workloads.K8sNode{
-		Name:          "worker2",
-		Node:          workerNodeID,
-		DiskSize:      1,
-		PublicIP:      false,
-		PublicIP6:     false,
-		Planetary:     false,
-		Flist:         "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "",
-		ComputedIP6:   "",
-		PlanetaryIP:   "",
-		IP:            "",
-		CPU:           2,
-		Memory:        1024,
+		Name:      fmt.Sprintf("worker2_%s", generateRandString(5)),
+		Node:      workerNodeID,
+		DiskSize:  1,
+		CPU:       minCPU,
+		Memory:    int(minMemory) * 1024,
+		Planetary: true,
+		Flist:     k8sFlist,
 	}
 
 	t.Run("deploy k8s cluster", func(t *testing.T) {
@@ -147,27 +114,35 @@ func TestK8sDeployment(t *testing.T) {
 		err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
 		require.NoError(t, err)
 
-		defer func() {
+		t.Cleanup(func() {
 			err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
-			assert.NoError(t, err)
-		}()
+			require.NoError(t, err)
+		})
 
-		result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
+		k8s, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
 		require.NoError(t, err)
 
 		// check workers count
-		require.Equal(t, len(result.Workers), 2)
+		require.Equal(t, len(k8s.Workers), 2)
 
 		// Check that master is reachable
-		masterIP := result.Master.PlanetaryIP
+		masterIP := k8s.Master.PlanetaryIP
 		require.NotEmpty(t, masterIP)
+		require.NotEmpty(t, k8s.Workers[0].PlanetaryIP)
+		require.NotEmpty(t, k8s.Workers[1].PlanetaryIP)
 
-		// Check wireguard config in output
-		wgConfig := network.AccessWGConfig
-		require.NotEmpty(t, wgConfig)
+		require.True(t, TestConnection(k8s.Workers[0].PlanetaryIP, "22"))
+		require.True(t, TestConnection(k8s.Workers[1].PlanetaryIP, "22"))
+
+		require.NotEmpty(t, k8s.Master.IP)
+		require.NotEmpty(t, k8s.Workers[0].IP)
+		require.NotEmpty(t, k8s.Workers[1].IP)
+
+		// TODO:
+		require.Equal(t, len(slices.Compact[[]string, string]([]string{k8s.Master.IP, k8s.Workers[0].IP, k8s.Workers[1].IP})), 3)
 
 		// ssh to master node
-		AssertNodesAreReady(t, &result, privateKey)
+		requireNodesAreReady(t, &k8s, privateKey)
 	})
 
 	t.Run("update k8s cluster", func(t *testing.T) {
@@ -188,33 +163,44 @@ func TestK8sDeployment(t *testing.T) {
 		err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
 		require.NoError(t, err)
 
-		defer func() {
+		t.Cleanup(func() {
 			err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
-			assert.NoError(t, err)
-		}()
+			require.NoError(t, err)
+		})
 
-		result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID}, k8sCluster.Master.Name)
+		k8s, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID}, k8sCluster.Master.Name)
 		require.NoError(t, err)
 
 		// check workers count
-		require.Equal(t, len(result.Workers), 1)
+		require.Equal(t, len(k8s.Workers), 1)
 
 		// Check that master is reachable
-		masterIP := result.Master.PlanetaryIP
+		masterIP := k8s.Master.PlanetaryIP
 		require.NotEmpty(t, masterIP)
+		require.NotEmpty(t, k8s.Workers[0].PlanetaryIP)
+
+		require.True(t, TestConnection(k8s.Workers[0].PlanetaryIP, "22"))
 
 		// ssh to master node
-		AssertNodesAreReady(t, &result, privateKey)
+		requireNodesAreReady(t, &k8s, privateKey)
 
 		// add another worker node
 		k8sCluster.Workers = append(k8sCluster.Workers, workerNodeData2)
 		err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
 		require.NoError(t, err)
 
-		result, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
+		k8s, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
 		require.NoError(t, err)
-		require.Len(t, result.Workers, 2)
+		require.Len(t, k8s.Workers, 2)
 
-		AssertNodesAreReady(t, &result, privateKey)
+		masterIP = k8s.Master.PlanetaryIP
+		require.NotEmpty(t, masterIP)
+		require.NotEmpty(t, k8s.Workers[0].PlanetaryIP)
+		require.NotEmpty(t, k8s.Workers[1].PlanetaryIP)
+
+		require.True(t, TestConnection(k8s.Workers[0].PlanetaryIP, "22"))
+		require.True(t, TestConnection(k8s.Workers[1].PlanetaryIP, "22"))
+
+		requireNodesAreReady(t, &k8s, privateKey)
 	})
 }

@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -20,9 +19,17 @@ func TestDiskDeployment(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, nil)
+	nodes, err := deployer.FilterNodes(
+		ctx,
+		tfPluginClient,
+		generateNodeFilter(WithFreeSRU(1)),
+		[]uint64{*convertGBToBytes(1)},
+		nil,
+		nil,
+		1,
+	)
 	if err != nil {
-		t.Skip("no available nodes found")
+		t.Skipf("no available nodes found: %v", err)
 	}
 
 	nodeID := uint32(nodes[0].NodeID)
@@ -37,10 +44,10 @@ func TestDiskDeployment(t *testing.T) {
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	require.NoError(t, err)
 
-	defer func() {
+	t.Cleanup(func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-		assert.NoError(t, err)
-	}()
+		require.NoError(t, err)
+	})
 
 	resDisk, err := tfPluginClient.State.LoadDiskFromGrid(ctx, nodeID, disk.Name, dl.Name)
 	require.NoError(t, err)

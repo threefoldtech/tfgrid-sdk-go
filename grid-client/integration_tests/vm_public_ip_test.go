@@ -4,26 +4,18 @@ package integration
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func TestGatewayFQDNDeployment(t *testing.T) {
+func TestVMDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
 	require.NoError(t, err)
-
-	if tfPluginClient.Network != "dev" {
-		t.Skip("test is not supported in any network but dev")
-	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -34,10 +26,9 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		ctx,
 		tfPluginClient,
-		generateNodeFilter(),
-		nil,
-		nil,
-		nil,
+		generateNodeFilter(WithFreeIPs(1), WithIPV4()),
+		nil, nil,
+		[]uint64{*convertGBToBytes(minRootfs)},
 		1,
 	)
 	if err != nil {
@@ -51,8 +42,11 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	vm := workloads.VM{
 		Name:        "vm",
 		NetworkName: network.Name,
+		IP:          "10.20.2.5",
 		CPU:         minCPU,
 		Memory:      int(minMemory) * 1024,
+		RootfsSize:  int(minRootfs) * 1024,
+		PublicIP:    true,
 		Planetary:   true,
 		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 		Entrypoint:  "/sbin/zinit init",
@@ -80,44 +74,21 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
 	require.NoError(t, err)
+	require.Equal(t, v.IP, "10.20.2.5")
 
-	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
-	fqdn := "hamada1.3x0.me" // points to node 15 devnet
-	gatewayNode := nodeID
-	gw := workloads.GatewayFQDNProxy{
-		NodeID:         gatewayNode,
-		Name:           generateRandString(10),
-		TLSPassthrough: false,
-		Backends:       []zos.Backend{zos.Backend(backend)},
-		FQDN:           fqdn,
-	}
+	publicIP := strings.Split(v.ComputedIP, "/")[0]
+	require.NotEmpty(t, publicIP)
+	require.True(t, TestConnection(publicIP, "22"))
 
-	err = tfPluginClient.GatewayFQDNDeployer.Deploy(ctx, &gw)
+	output, err := RemoteRun("root", publicIP, "ls /", privateKey)
 	require.NoError(t, err)
+	require.Contains(t, output, "root")
 
-	t.Cleanup(func() {
-		err = tfPluginClient.GatewayFQDNDeployer.Cancel(ctx, &gw)
-		require.NoError(t, err)
-	})
+	planetaryIP := v.PlanetaryIP
+	require.NotEmpty(t, planetaryIP)
+	require.True(t, TestConnection(planetaryIP, "22"))
 
-	_, err = tfPluginClient.State.LoadGatewayFQDNFromGrid(ctx, gatewayNode, gw.Name, gw.Name)
+	output, err = RemoteRun("root", planetaryIP, "ls /", privateKey)
 	require.NoError(t, err)
-
-	_, err = RemoteRun("root", v.PlanetaryIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
-	require.NoError(t, err)
-
-	time.Sleep(3 * time.Second)
-
-	cl := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-	response, err := cl.Get(fmt.Sprintf("https://%s", gw.FQDN))
-	require.NoError(t, err)
-
-	body, err := io.ReadAll(response.Body)
-	require.NoError(t, err)
-	if body != nil {
-		defer response.Body.Close()
-	}
-	require.Contains(t, string(body), "Directory listing for")
+	require.Contains(t, output, "root")
 }

@@ -4,7 +4,6 @@ package integration
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,8 +15,8 @@ func TestContractsGetter(t *testing.T) {
 	require.NoError(t, err)
 
 	contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName("badName")
-	assert.Empty(t, contracts.NameContracts)
-	assert.Empty(t, contracts.NodeContracts)
-	assert.Empty(t, contracts.RentContracts)
-	assert.NoError(t, err)
+	require.Empty(t, contracts.NameContracts)
+	require.Empty(t, contracts.NodeContracts)
+	require.Empty(t, contracts.RentContracts)
+	require.NoError(t, err)
 }

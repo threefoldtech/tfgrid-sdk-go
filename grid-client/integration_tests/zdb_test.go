@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/go-redis/redis"
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -21,19 +21,29 @@ func TestZDBDeployment(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, []uint64{*convertGBToBytes(10)}, nil)
+	zdbSize := 10
+
+	nodes, err := deployer.FilterNodes(
+		ctx,
+		tfPluginClient,
+		generateNodeFilter(WithFreeHRU(uint64(zdbSize))),
+		nil,
+		[]uint64{*convertGBToBytes(uint64(zdbSize))},
+		nil,
+		1,
+	)
 	if err != nil {
-		t.Skip("no available nodes found")
+		t.Skipf("no available nodes found: %v", err)
 	}
 
 	nodeID := uint32(nodes[0].NodeID)
 
 	zdb := workloads.ZDB{
-		Name:        generateRandString(10),
+		Name:        fmt.Sprintf("zdb_%s", generateRandString(10)),
 		Password:    "password",
 		Public:      true,
-		Size:        10,
-		Description: "test des",
+		Size:        zdbSize,
+		Description: "test zdb",
 		Mode:        zos.ZDBModeUser,
 	}
 
@@ -41,19 +51,29 @@ func TestZDBDeployment(t *testing.T) {
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
 	require.NoError(t, err)
 
-	defer func() {
+	t.Cleanup(func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-		assert.NoError(t, err)
-	}()
+		require.NoError(t, err)
+	})
 
 	z, err := tfPluginClient.State.LoadZdbFromGrid(ctx, nodeID, zdb.Name, dl.Name)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, z.IPs)
-	assert.NotEmpty(t, z.Namespace)
-	assert.NotEmpty(t, z.Port)
+	require.NoError(t, err)
+	require.NotEmpty(t, z.IPs)
+	require.NotEmpty(t, z.Namespace)
+	require.NotEmpty(t, z.Port)
 
-	z.IPs = nil
-	z.Port = 0
-	z.Namespace = ""
-	assert.Equal(t, zdb, z)
+	zdbEndpoint := fmt.Sprintf("[%s]:%v", z.IPs[1], z.Port)
+
+	redisDB := redis.NewClient(&redis.Options{
+		Addr: zdbEndpoint,
+	})
+	_, err = redisDB.Do("SELECT", z.Namespace, z.Password).Result()
+	require.NoError(t, err)
+
+	_, err = redisDB.Set("key1", "val1", 0).Result()
+	require.NoError(t, err)
+
+	res, err := redisDB.Get("key1").Result()
+	require.NoError(t, err)
+	require.Equal(t, res, "val1")
 }
