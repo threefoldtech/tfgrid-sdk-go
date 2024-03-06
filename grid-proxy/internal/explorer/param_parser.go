@@ -15,6 +15,10 @@ var decoder *schema.Decoder
 
 func init() {
 	decoder = schema.NewDecoder()
+
+	decoder.RegisterConverter([]string{}, func(input string) reflect.Value {
+		return reflect.ValueOf(strings.Split(input, ","))
+	})
 }
 
 func parseQueryParams(r *http.Request, types_ ...interface{}) error {
