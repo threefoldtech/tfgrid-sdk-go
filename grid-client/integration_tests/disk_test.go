@@ -3,17 +3,19 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
 func TestDiskDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
@@ -26,14 +28,14 @@ func TestDiskDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	disk := workloads.Disk{
-		Name:        "testName",
+		Name:        generateRandString(10),
 		SizeGB:      1,
 		Description: "disk test",
 	}
 
-	dl := workloads.NewDeployment("disk", nodeID, "", nil, "", []workloads.Disk{disk}, nil, nil, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", []workloads.Disk{disk}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -41,6 +43,6 @@ func TestDiskDeployment(t *testing.T) {
 	}()
 
 	resDisk, err := tfPluginClient.State.LoadDiskFromGrid(ctx, nodeID, disk.Name, dl.Name)
-	assert.NoError(t, err)
-	assert.Equal(t, disk, resDisk)
+	require.NoError(t, err)
+	require.Equal(t, disk, resDisk)
 }
