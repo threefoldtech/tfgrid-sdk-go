@@ -3,6 +3,7 @@ package mock
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -16,6 +17,79 @@ func isDedicatedNode(db DBData, node Node) bool {
 	return db.Farms[node.FarmID].DedicatedFarm ||
 		len(db.NonDeletedContracts[node.NodeID]) == 0 ||
 		db.NodeRentedBy[node.NodeID] != 0
+}
+
+func isRentable(db DBData, node Node) bool {
+	return db.NodeRentedBy[node.NodeID] == 0 &&
+		(db.Farms[node.FarmID].DedicatedFarm ||
+			len(db.NonDeletedContracts[node.NodeID]) == 0)
+}
+func isRented(db DBData, node Node) bool {
+	_, ok := db.NodeRentedBy[node.NodeID]
+	return ok
+}
+
+func calculateCU(cru, mru float64) float64 {
+	MruUsed1 := mru / 4
+	CruUsed1 := cru / 2
+	cu1 := math.Max(MruUsed1, CruUsed1)
+
+	MruUsed2 := mru / 8
+	CruUsed2 := cru
+	cu2 := math.Max(MruUsed2, CruUsed2)
+
+	MruUsed3 := mru / 2
+	CruUsed3 := cru / 4
+	cu3 := math.Max(MruUsed3, CruUsed3)
+
+	cu := math.Min(cu1, cu2)
+	cu = math.Min(cu, cu3)
+
+	return cu
+}
+
+func calculateSU(hru, sru float64) float64 {
+	return hru/1200 + sru/200
+}
+
+func calcNodePrice(db DBData, node Node) float64 {
+	cu := calculateCU(float64(db.NodeTotalResources[node.NodeID].CRU),
+		float64(db.NodeTotalResources[node.NodeID].MRU)/(1024*1024*1024))
+	su := calculateSU(float64(db.NodeTotalResources[node.NodeID].HRU)/(1024*1024*1024),
+		float64(db.NodeTotalResources[node.NodeID].SRU)/(1024*1024*1024))
+
+	pricingPolicy := db.PricingPolicies[uint(db.Farms[node.FarmID].PricingPolicyID)]
+	certifiedFactor := float64(1)
+	if node.Certification == "Certified" {
+		certifiedFactor = 1.25
+	}
+
+	costPerMonth := (cu*float64(pricingPolicy.CU.Value) +
+		su*float64(pricingPolicy.SU.Value) +
+		float64(node.ExtraFee)) *
+		certifiedFactor * 24 * 30
+
+	costInUsd := costPerMonth / 1e7
+	return math.Round(costInUsd*1000) / 1000
+}
+
+func calcDiscount(cost, balance float64) float64 {
+	var discount float64
+	switch {
+	case balance > cost*18:
+		discount = 0.6
+	case balance > cost*6:
+		discount = 0.4
+	case balance > cost*3:
+		discount = 0.3
+	case balance > cost*1.5:
+		discount = 0.2
+	default:
+		discount = 0
+	}
+
+	cost = cost - cost*discount
+	return math.Round(cost*1000) / 1000
 }
 
 // Nodes returns nodes with the given filters and pagination parameters
@@ -80,6 +154,8 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				Dedicated:         isDedicatedNode(g.data, node),
 				RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 				RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
+				Rented:            isRented(g.data, node),
+				Rentable:          isRentable(g.data, node),
 				SerialNumber:      node.SerialNumber,
 				Power: types.NodePower{
 					State:  node.Power.State,
@@ -88,6 +164,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				NumGPU:   numGPU,
 				ExtraFee: node.ExtraFee,
 				Healthy:  g.data.HealthReports[node.TwinID],
+				PriceUsd: calcDiscount(calcNodePrice(g.data, node), limit.Balance),
 			})
 		}
 	}
@@ -167,6 +244,8 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		Dedicated:         isDedicatedNode(g.data, node),
 		RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 		RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
+		Rented:            isRented(g.data, node),
+		Rentable:          isRentable(g.data, node),
 		SerialNumber:      node.SerialNumber,
 		Power: types.NodePower{
 			State:  node.Power.State,
@@ -175,6 +254,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		NumGPU:   numGPU,
 		ExtraFee: node.ExtraFee,
 		Healthy:  g.data.HealthReports[node.TwinID],
+		PriceUsd: calcNodePrice(g.data, node),
 	}
 	return
 }
@@ -299,14 +379,11 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	rentable := data.NodeRentedBy[n.NodeID] == 0 &&
-		(data.Farms[n.FarmID].DedicatedFarm || len(data.NonDeletedContracts[n.NodeID]) == 0)
-	if f.Rentable != nil && *f.Rentable != rentable {
+	if f.Rentable != nil && *f.Rentable != isRentable(*data, *n) {
 		return false
 	}
 
-	_, ok := data.NodeRentedBy[n.NodeID]
-	if f.Rented != nil && *f.Rented != ok {
+	if f.Rented != nil && *f.Rented != isRented(*data, *n) {
 		return false
 	}
 
@@ -334,6 +411,14 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if f.CertificationType != nil && *f.CertificationType != n.Certification {
+		return false
+	}
+
+	if f.PriceMin != nil && *f.PriceMin >= calcNodePrice(*data, *n) {
+		return false
+	}
+
+	if f.PriceMax != nil && *f.PriceMax <= calcNodePrice(*data, *n) {
 		return false
 	}
 

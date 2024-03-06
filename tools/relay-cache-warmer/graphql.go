@@ -86,14 +86,14 @@ func warmTwins(pool *redis.Pool, graphql string) error {
 		if err != nil {
 			return err
 		}
-		if !pagination.PageInfo.HasNextPage {
-			break
-		}
 		offset = pagination.PageInfo.EndCursor
 
 		err = writeTwins(pool, twins)
 		if err != nil {
 			return err
+		}
+		if !pagination.PageInfo.HasNextPage {
+			break
 		}
 		time.Sleep(requestsInterval)
 	}
@@ -107,7 +107,11 @@ func queryGraphql(graphql, body string) (paginationData, []graphqlTwin, error) {
 		return paginationData{}, nil, err
 	}
 	reader := bytes.NewReader(bodyBytes)
-	resp, err := http.Post(graphql, "application/json", reader)
+
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := cl.Post(graphql, "application/json", reader)
 	if err != nil {
 		return paginationData{}, nil, err
 	}

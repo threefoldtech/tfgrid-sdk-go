@@ -73,6 +73,8 @@ type Node struct {
 	FarmDedicated      bool `gorm:"farm_dedicated"`
 	RentContractID     int64
 	Renter             int64
+	Rented             bool
+	Rentable           bool
 	SerialNumber       string
 	Longitude          *float64
 	Latitude           *float64
@@ -81,6 +83,7 @@ type Node struct {
 	ExtraFee           uint64
 	NodeContractsCount uint64 `gorm:"node_contracts_count"`
 	Healthy            bool
+	PriceUsd           float64
 }
 
 // NodePower struct is the farmerbot report for node status

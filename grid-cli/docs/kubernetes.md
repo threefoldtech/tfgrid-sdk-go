@@ -22,6 +22,7 @@ tfcmd deploy kubernetes [flags]
 - ipv4: assign public ipv4 for master node (default false).
 - ipv6: assign public ipv6 for master node (default false).
 - ygg: assign yggdrasil ip for master node (default true).
+- mycelium: assign mycelium ip for master node (default true).
 - master-cpu: number of cpu units for master node (default 1).
 - master-memory: master node memory size in GB (default 1).
 - master-disk: master node disk size in GB (default 2).
@@ -29,6 +30,7 @@ tfcmd deploy kubernetes [flags]
 - workers-ipv4: assign public ipv4 for each worker node (default false)
 - workers-ipv6: assign public ipv6 for each worker node (default false)
 - workers-ygg: assign yggdrasil ip for each worker node (default true)
+- workers-mycelium: assign mycelium ip for each worker node (default true)
 - workers-cpu: number of cpu units for each worker node (default 1).
 - workers-memory: memory size for each worker node in GB (default 1).
 - workers-disk: disk size in GB for each worker node (default 2).
@@ -37,9 +39,18 @@ Example:
 
 ```console
 $ tfcmd deploy kubernetes -n kube --ssh ~/.ssh/id_rsa.pub --master-node 14 --workers-number 2 --workers-node 14
-4:21PM INF deploying network
-4:22PM INF deploying cluster
-4:22PM INF master planetary ip: 300:e9c4:9048:57cf:504f:c86c:9014:d02d
+11:43AM INF starting peer session=tf-1510734 twin=192
+11:43AM INF deploying network
+11:43AM INF deploying cluster
+11:43AM INF master wireguard ip: 10.20.2.2
+11:43AM INF master planetary ip: 300:e9c4:9048:57cf:d73d:eb4c:7a6d:503
+11:43AM INF master mycelium ip: 423:16f5:ca74:b600:ff0f:9ee:d57e:827a
+11:43AM INF worker1 wireguard ip: 10.20.2.3
+11:43AM INF worker0 wireguard ip: 10.20.2.3
+11:43AM INF worker1 planetary ip: 300:e9c4:9048:57cf:3c4f:d477:b4a5:890b
+11:43AM INF worker0 planetary ip: 300:e9c4:9048:57cf:77ca:5424:21da:4fff
+11:43AM INF worker1 mycelium ip: 423:16f5:ca74:b600:ff0f:e02f:1ad7:d74e
+11:43AM INF worker0 mycelium ip: 423:16f5:ca74:b600:ff0f:bb5a:6036:56f6
 ```
 
 ## Get
@@ -53,66 +64,87 @@ kubernetes is the name used when deploying kubernetes cluster using tfcmd.
 Example:
 
 ```console
-$ tfcmd get kubernetes examplevm
-3:14PM INF k8s cluster:
+$ tfcmd get kubernetes kube
+11:44AM INF starting peer session=tf-1511628 twin=192
+11:44AM INF k8s cluster:
 {
         "Master": {
-                "Name": "kube",
-                "Node": 14,
-                "DiskSize": 2,
-                "PublicIP": false,
-                "PublicIP6": false,
-                "Planetary": true,
-                "Flist": "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-                "FlistChecksum": "c87cf57e1067d21a3e74332a64ef9723",
-                "ComputedIP": "",
-                "ComputedIP6": "",
-                "PlanetaryIP": "300:e9c4:9048:57cf:e8a0:662b:4e66:8faa",
-                "IP": "10.20.2.2",
-                "CPU": 1,
-                "Memory": 1024
+                "name": "kube",
+                "node": 14,
+                "disk_size": 10,
+                "publicip": false,
+                "publicip6": false,
+                "planetary": true,
+                "flist": "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
+                "flist_checksum": "c87cf57e1067d21a3e74332a64ef9723",
+                "computedip": "",
+                "computedip6": "",
+                "planetary_ip": "300:e9c4:9048:57cf:d73d:eb4c:7a6d:503",
+                "mycelium_ip": "423:16f5:ca74:b600:ff0f:9ee:d57e:827a",
+                "mycelium_ip_seed": "Ce7VfoJ6",
+                "ip": "10.20.2.2",
+                "cpu": 2,
+                "memory": 4096,
+                "network_name": "kubenetwork",
+                "token": "securetoken",
+                "ssh_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDcGrS1RT36rHAGLK3/4FMazGXjIYgWVnZ4bCvxxg8KosEEbs/DeUKT2T2LYV91jUq3yibTWwK0nc6O+K5kdShV4qsQlPmIbdur6x2zWHPeaGXqejbbACEJcQMCj8szSbG8aKwH8Nbi8BNytgzJ20Ysaaj2QpjObCZ4Ncp+89pFahzDEIJx2HjXe6njbp6eCduoA+IE2H9vgwbIDVMQz6y/TzjdQjgbMOJRTlP+CzfbDBb6Ux+ed8F184bMPwkFrpHs9MSfQVbqfIz8wuq/wjewcnb3wK9dmIot6CxV2f2xuOZHgNQmVGratK8TyBnOd5x4oZKLIh3qM9Bi7r81xCkXyxAZbWYu3gGdvo3h85zeCPGK8OEPdYWMmIAIiANE42xPmY9HslPz8PAYq6v0WwdkBlDWrG3DD3GX6qTt9lbSHEgpUP2UOnqGL4O1+g5Rm9x16HWefZWMjJsP6OV70PnMjo9MPnH+yrBkXISw4CGEEXryTvupfaO5sL01mn+UOyE= abdulrahman@AElawady-PC\n",
+                "console_url": "10.20.2.0:20002"
         },
         "Workers": [
                 {
-                        "Name": "worker1",
-                        "Node": 14,
-                        "DiskSize": 2,
-                        "PublicIP": false,
-                        "PublicIP6": false,
-                        "Planetary": true,
-                        "Flist": "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-                        "FlistChecksum": "c87cf57e1067d21a3e74332a64ef9723",
-                        "ComputedIP": "",
-                        "ComputedIP6": "",
-                        "PlanetaryIP": "300:e9c4:9048:57cf:66d0:3ee4:294e:d134",
-                        "IP": "10.20.2.2",
-                        "CPU": 1,
-                        "Memory": 1024
+                        "name": "worker1",
+                        "node": 14,
+                        "disk_size": 10,
+                        "publicip": false,
+                        "publicip6": false,
+                        "planetary": true,
+                        "flist": "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
+                        "flist_checksum": "c87cf57e1067d21a3e74332a64ef9723",
+                        "computedip": "",
+                        "computedip6": "",
+                        "planetary_ip": "300:e9c4:9048:57cf:3c4f:d477:b4a5:890b",
+                        "mycelium_ip": "423:16f5:ca74:b600:ff0f:e02f:1ad7:d74e",
+                        "mycelium_ip_seed": "4C8a19dO",
+                        "ip": "10.20.2.3",
+                        "cpu": 2,
+                        "memory": 4096,
+                        "network_name": "kubenetwork",
+                        "token": "securetoken",
+                        "ssh_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDcGrS1RT36rHAGLK3/4FMazGXjIYgWVnZ4bCvxxg8KosEEbs/DeUKT2T2LYV91jUq3yibTWwK0nc6O+K5kdShV4qsQlPmIbdur6x2zWHPeaGXqejbbACEJcQMCj8szSbG8aKwH8Nbi8BNytgzJ20Ysaaj2QpjObCZ4Ncp+89pFahzDEIJx2HjXe6njbp6eCduoA+IE2H9vgwbIDVMQz6y/TzjdQjgbMOJRTlP+CzfbDBb6Ux+ed8F184bMPwkFrpHs9MSfQVbqfIz8wuq/wjewcnb3wK9dmIot6CxV2f2xuOZHgNQmVGratK8TyBnOd5x4oZKLIh3qM9Bi7r81xCkXyxAZbWYu3gGdvo3h85zeCPGK8OEPdYWMmIAIiANE42xPmY9HslPz8PAYq6v0WwdkBlDWrG3DD3GX6qTt9lbSHEgpUP2UOnqGL4O1+g5Rm9x16HWefZWMjJsP6OV70PnMjo9MPnH+yrBkXISw4CGEEXryTvupfaO5sL01mn+UOyE= abdulrahman@AElawady-PC\n",
+                        "console_url": "10.20.2.0:20003"
                 },
                 {
-                        "Name": "worker0",
-                        "Node": 14,
-                        "DiskSize": 2,
-                        "PublicIP": false,
-                        "PublicIP6": false,
-                        "Planetary": true,
-                        "Flist": "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-                        "FlistChecksum": "c87cf57e1067d21a3e74332a64ef9723",
-                        "ComputedIP": "",
-                        "ComputedIP6": "",
-                        "PlanetaryIP": "300:e9c4:9048:57cf:1ae5:cc51:3ffc:81e",
-                        "IP": "10.20.2.2",
-                        "CPU": 1,
-                        "Memory": 1024
+                        "name": "worker0",
+                        "node": 14,
+                        "disk_size": 10,
+                        "publicip": false,
+                        "publicip6": false,
+                        "planetary": true,
+                        "flist": "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
+                        "flist_checksum": "c87cf57e1067d21a3e74332a64ef9723",
+                        "computedip": "",
+                        "computedip6": "",
+                        "planetary_ip": "300:e9c4:9048:57cf:77ca:5424:21da:4fff",
+                        "mycelium_ip": "423:16f5:ca74:b600:ff0f:bb5a:6036:56f6",
+                        "mycelium_ip_seed": "u1pgNlb2",
+                        "ip": "10.20.2.3",
+                        "cpu": 2,
+                        "memory": 4096,
+                        "network_name": "kubenetwork",
+                        "token": "securetoken",
+                        "ssh_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDcGrS1RT36rHAGLK3/4FMazGXjIYgWVnZ4bCvxxg8KosEEbs/DeUKT2T2LYV91jUq3yibTWwK0nc6O+K5kdShV4qsQlPmIbdur6x2zWHPeaGXqejbbACEJcQMCj8szSbG8aKwH8Nbi8BNytgzJ20Ysaaj2QpjObCZ4Ncp+89pFahzDEIJx2HjXe6njbp6eCduoA+IE2H9vgwbIDVMQz6y/TzjdQjgbMOJRTlP+CzfbDBb6Ux+ed8F184bMPwkFrpHs9MSfQVbqfIz8wuq/wjewcnb3wK9dmIot6CxV2f2xuOZHgNQmVGratK8TyBnOd5x4oZKLIh3qM9Bi7r81xCkXyxAZbWYu3gGdvo3h85zeCPGK8OEPdYWMmIAIiANE42xPmY9HslPz8PAYq6v0WwdkBlDWrG3DD3GX6qTt9lbSHEgpUP2UOnqGL4O1+g5Rm9x16HWefZWMjJsP6OV70PnMjo9MPnH+yrBkXISw4CGEEXryTvupfaO5sL01mn+UOyE= abdulrahman@AElawady-PC\n",
+                        "console_url": "10.20.2.0:20003"
                 }
         ],
-        "Token": "",
-        "NetworkName": "",
-        "SolutionType": "kube",
-        "SSHKey": "",
-        "NodesIPRange": null,
+        "Token": "securetoken",
+        "NetworkName": "kubenetwork",
+        "SolutionType": "kubernetes/kube",
+        "SSHKey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDcGrS1RT36rHAGLK3/4FMazGXjIYgWVnZ4bCvxxg8KosEEbs/DeUKT2T2LYV91jUq3yibTWwK0nc6O+K5kdShV4qsQlPmIbdur6x2zWHPeaGXqejbbACEJcQMCj8szSbG8aKwH8Nbi8BNytgzJ20Ysaaj2QpjObCZ4Ncp+89pFahzDEIJx2HjXe6njbp6eCduoA+IE2H9vgwbIDVMQz6y/TzjdQjgbMOJRTlP+CzfbDBb6Ux+ed8F184bMPwkFrpHs9MSfQVbqfIz8wuq/wjewcnb3wK9dmIot6CxV2f2xuOZHgNQmVGratK8TyBnOd5x4oZKLIh3qM9Bi7r81xCkXyxAZbWYu3gGdvo3h85zeCPGK8OEPdYWMmIAIiANE42xPmY9HslPz8PAYq6v0WwdkBlDWrG3DD3GX6qTt9lbSHEgpUP2UOnqGL4O1+g5Rm9x16HWefZWMjJsP6OV70PnMjo9MPnH+yrBkXISw4CGEEXryTvupfaO5sL01mn+UOyE= abdulrahman@AElawady-PC\n",
+        "NodesIPRange": {
+                "14": "10.20.2.0/24"
+        },
         "NodeDeploymentID": {
-                "14": 22743
+                "14": 100050
         }
 }
 ```

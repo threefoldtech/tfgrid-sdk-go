@@ -59,6 +59,9 @@ func (d *K8sDeployer) Validate(ctx context.Context, k8sCluster *workloads.K8sClu
 	if err := k8sCluster.ValidateChecksums(); err != nil {
 		return err
 	}
+	if err := k8sCluster.ValidateMyceliumSeed(); err != nil {
+		return err
+	}
 
 	// validate cluster nodes
 	var nodes []uint32
@@ -436,7 +439,7 @@ func (d *K8sDeployer) getK8sUsedIPs(k8s *workloads.K8sCluster) map[uint32][]byte
 	usedIPs[k8s.Master.Node] = append(usedIPs[k8s.Master.Node], network.GetUsedNetworkHostIDs(k8s.Master.Node)...)
 	for _, w := range k8s.Workers {
 		if w.IP != "" {
-			ip := net.ParseIP(k8s.Master.IP).To4()
+			ip := net.ParseIP(w.IP).To4()
 			if ip != nil {
 				usedIPs[w.Node] = append(usedIPs[w.Node], ip[3])
 			}

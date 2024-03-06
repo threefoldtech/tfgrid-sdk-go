@@ -76,6 +76,7 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, k
 	if err != nil {
 		return FarmerBot{}, err
 	}
+
 	farmerbot.state = state
 
 	return farmerbot, nil
@@ -185,7 +186,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		}
 
 		neverShutDown := slices.Contains(f.config.NeverShutDownNodes, nodeID)
-		node, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, neverShutDown, false, f.farm.DedicatedFarm, on)
+		node, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, f.config.ContinueOnPoweringOnErr, neverShutDown, false, f.farm.DedicatedFarm, on)
 		if err != nil {
 			return nil, fmt.Errorf("failed to include node with id %d with error: %w", nodeID, err)
 		}
@@ -316,7 +317,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 			}
 		}
 
-		if f.shouldWakeUp(ctx, subConn, &node, roundStart, wakeUpCalls) {
+		if f.shouldWakeUp(ctx, &node, roundStart, wakeUpCalls) {
 			err = f.state.updateNode(node)
 			if err != nil {
 				log.Error().Err(err).Send()
@@ -348,7 +349,7 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 
 	oldNode, nodeExists := f.state.nodes[nodeID]
 	if nodeExists {
-		updateErr := oldNode.update(ctx, subConn, f.rmbNodeClient, neverShutDown, f.state.farm.DedicatedFarm)
+		updateErr := oldNode.update(ctx, subConn, f.rmbNodeClient, neverShutDown, f.state.farm.DedicatedFarm, f.config.ContinueOnPoweringOnErr)
 
 		// update old node state even if it failed
 		if err := f.state.updateNode(oldNode); err != nil {
@@ -364,7 +365,7 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 	}
 
 	// if node doesn't exist, we should add it
-	nodeObj, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, neverShutDown, false, f.state.farm.DedicatedFarm, on)
+	nodeObj, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, f.config.ContinueOnPoweringOnErr, neverShutDown, false, f.state.farm.DedicatedFarm, on)
 	if err != nil {
 		return fmt.Errorf("failed to get node %d: %w", nodeID, err)
 	}
@@ -374,7 +375,7 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 	return nil
 }
 
-func (f *FarmerBot) shouldWakeUp(ctx context.Context, sub Substrate, node *node, roundStart time.Time, wakeUpCalls uint8) bool {
+func (f *FarmerBot) shouldWakeUp(ctx context.Context, node *node, roundStart time.Time, wakeUpCalls uint8) bool {
 	if node.powerState != off ||
 		wakeUpCalls >= f.config.Power.PeriodicWakeUpLimit {
 		return false

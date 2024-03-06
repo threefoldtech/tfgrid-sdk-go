@@ -127,6 +127,8 @@ definitions:
         type: integer
       power:
         $ref: '#/definitions/types.NodePower'
+      price_usd:
+        type: number
       publicConfig:
         $ref: '#/definitions/types.PublicConfig'
       rentContractId:
@@ -237,6 +239,8 @@ definitions:
         type: integer
       power:
         $ref: '#/definitions/types.NodePower'
+      price_usd:
+        type: number
       publicConfig:
         $ref: '#/definitions/types.PublicConfig'
       rentContractId:
@@ -510,7 +514,7 @@ paths:
             type: string
       summary: Show single contract bills
       tags:
-      - ContractDills
+      - ContractBills
   /farms:
     get:
       consumes:
@@ -916,6 +920,10 @@ paths:
         in: query
         name: sort_order
         type: string
+      - description: a balance in usd, used to apply staking discount on nodes price
+        in: query
+        name: balance
+        type: string
       - description: Min free reservable mru in bytes
         in: query
         name: free_mru
@@ -1049,6 +1057,14 @@ paths:
         in: query
         name: owned_by
         type: integer
+      - description: get nodes with price greater than this
+        in: query
+        name: price_min
+        type: string
+      - description: get nodes with price smaller than this
+        in: query
+        name: price_max
+        type: string
       produces:
       - application/json
       responses:

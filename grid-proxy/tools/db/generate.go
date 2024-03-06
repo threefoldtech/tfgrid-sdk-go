@@ -115,5 +115,9 @@ func generateData(db *sql.DB, seed int) error {
 	if err := generator.GenerateCountries(); err != nil {
 		return fmt.Errorf("failed to generate countries: %w", err)
 	}
+
+	if err := generator.GeneratePricingPolicies(); err != nil {
+		return fmt.Errorf("failed to generate PricingPolicies: %w", err)
+	}
 	return nil
 }

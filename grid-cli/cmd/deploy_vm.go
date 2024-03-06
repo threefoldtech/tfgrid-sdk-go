@@ -96,18 +96,30 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		mycelium, err := cmd.Flags().GetBool("mycelium")
+		if err != nil {
+			return err
+		}
+		var seed []byte
+		if mycelium {
+			seed, err = workloads.RandomMyceliumIPSeed()
+			if err != nil {
+				log.Fatal().Err(err).Send()
+			}
+		}
 		vm := workloads.VM{
-			Name:       name,
-			EnvVars:    map[string]string{"SSH_KEY": string(sshKey)},
-			CPU:        cpu,
-			Memory:     memory * 1024,
-			GPUs:       convertGPUsToZosGPUs(gpus),
-			RootfsSize: rootfs * 1024,
-			Flist:      flist,
-			Entrypoint: entrypoint,
-			PublicIP:   ipv4,
-			PublicIP6:  ipv6,
-			Planetary:  ygg,
+			Name:           name,
+			EnvVars:        map[string]string{"SSH_KEY": string(sshKey)},
+			CPU:            cpu,
+			Memory:         memory * 1024,
+			GPUs:           convertGPUsToZosGPUs(gpus),
+			RootfsSize:     rootfs * 1024,
+			Flist:          flist,
+			Entrypoint:     entrypoint,
+			PublicIP:       ipv4,
+			PublicIP6:      ipv6,
+			MyceliumIPSeed: seed,
+			Planetary:      ygg,
 		}
 		var mount workloads.Disk
 		if disk != 0 {
@@ -119,7 +131,8 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 0, false, true)
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network))
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -153,6 +166,9 @@ var deployVMCmd = &cobra.Command{
 		}
 		if ygg {
 			log.Info().Msgf("vm planetary ip: %s", resVM.PlanetaryIP)
+		}
+		if mycelium {
+			log.Info().Msgf("vm mycelium ip: %s", resVM.MyceliumIP)
 		}
 		return nil
 	},
@@ -191,4 +207,5 @@ func init() {
 	deployVMCmd.Flags().Bool("ipv4", false, "assign public ipv4 for vm")
 	deployVMCmd.Flags().Bool("ipv6", false, "assign public ipv6 for vm")
 	deployVMCmd.Flags().Bool("ygg", true, "assign yggdrasil ip for vm")
+	deployVMCmd.Flags().Bool("mycelium", true, "assign mycelium ip for vm")
 }

@@ -7,9 +7,9 @@ use (
 	./grid-client
 	./grid-proxy
 	./gridify
-	./tfrobot
 	./monitoring-bot
 	./rmb-sdk-go
-	./user-contracts-mon
+	./tfrobot
 	./tools/relay-cache-warmer
+	./user-contracts-mon
 )
