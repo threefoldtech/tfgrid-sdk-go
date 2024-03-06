@@ -5,18 +5,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestContractsGetter(t *testing.T) {
 	tfPluginClient, err := setup()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	_, err = tfPluginClient.ContractsGetter.ListContractsByTwinID([]string{"Created, GracePeriod"})
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName("badName")
 	assert.Empty(t, contracts.NameContracts)

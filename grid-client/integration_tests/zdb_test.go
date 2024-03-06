@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -14,9 +15,7 @@ import (
 
 func TestZDBDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
@@ -39,9 +38,7 @@ func TestZDBDeployment(t *testing.T) {
 
 	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)

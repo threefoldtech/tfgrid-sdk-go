@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -21,9 +22,7 @@ import (
 
 func TestGatewayFQDNDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	if tfPluginClient.Network != "dev" {
 		t.Skip("network is not dev")
@@ -33,9 +32,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
 	if err != nil {
@@ -69,9 +66,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -80,9 +75,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 
 	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -90,9 +83,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
 	fqdn := "hamada1.3x0.me" // points to node 15 devnet
@@ -106,9 +97,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.GatewayFQDNDeployer.Deploy(ctx, &gw)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.GatewayFQDNDeployer.Cancel(ctx, &gw)
@@ -116,14 +105,10 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	}()
 
 	_, err = tfPluginClient.State.LoadGatewayFQDNFromGrid(ctx, gatewayNode, gw.Name, gw.Name)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	_, err = RemoteRun("root", v.PlanetaryIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	time.Sleep(3 * time.Second)
 
@@ -134,9 +119,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	assert.NoError(t, err)
 
 	body, err := io.ReadAll(response.Body)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 	if body != nil {
 		defer response.Body.Close()
 	}

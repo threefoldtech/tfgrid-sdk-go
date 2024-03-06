@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -16,17 +17,13 @@ import (
 
 func TestVMDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	nodeFilter := nodeFilter
 	nodeFilter.IPv4 = &trueVal
@@ -67,9 +64,7 @@ func TestVMDeployment(t *testing.T) {
 
 	t.Run("check single vm with public ip", func(t *testing.T) {
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		defer func() {
 			err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -78,9 +73,7 @@ func TestVMDeployment(t *testing.T) {
 
 		dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 		err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		defer func() {
 			err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -88,23 +81,18 @@ func TestVMDeployment(t *testing.T) {
 		}()
 
 		v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
-		if !assert.NoError(t, err) || !assert.Equal(t, v.IP, "10.20.2.5") {
-			return
-		}
+		require.NoError(t, err)
+		require.Equal(t, v.IP, "10.20.2.5")
 
 		publicIP := strings.Split(v.ComputedIP, "/")[0]
-		if !assert.NotEmpty(t, publicIP) || !assert.True(t, TestConnection(publicIP, "22")) {
-			return
-		}
+		require.NotEmpty(t, publicIP)
+		require.True(t, TestConnection(publicIP, "22"))
 
 		planetaryIP := v.PlanetaryIP
-		if !assert.NotEmpty(t, planetaryIP) {
-			return
-		}
+		require.NotEmpty(t, planetaryIP)
 
 		output, err := RemoteRun("root", planetaryIP, "ls /", privateKey)
-		if !assert.NoError(t, err) || !assert.Contains(t, output, "root") {
-			return
-		}
+		require.NoError(t, err)
+		require.Contains(t, output, "root")
 	})
 }

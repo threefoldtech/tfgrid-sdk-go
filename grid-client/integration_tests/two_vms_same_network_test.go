@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -17,14 +18,10 @@ import (
 
 func TestTwoVMsSameNetwork(t *testing.T) {
 	tfPluginClient, err := setup()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -78,9 +75,7 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -90,9 +85,7 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 	t.Run("public ipv6 and yggdrasil", func(t *testing.T) {
 		dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm2}, nil)
 		err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		defer func() {
 			err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -100,21 +93,16 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 		}()
 
 		v1, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm1.Name, dl.Name)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		v2, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm2.Name, dl.Name)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		yggIP1 := v1.PlanetaryIP
 		yggIP2 := v2.PlanetaryIP
 
-		if !assert.NotEmpty(t, yggIP1) || !assert.NotEmpty(t, yggIP2) {
-			return
-		}
+		require.NotEmpty(t, yggIP1)
+		require.NotEmpty(t, yggIP2)
 
 		privateIP1 := v1.IP
 		privateIP2 := v2.IP
@@ -123,14 +111,10 @@ func TestTwoVMsSameNetwork(t *testing.T) {
 		publicIP6_2 := strings.Split(v2.ComputedIP6, "/")[0]
 
 		_, err = RemoteRun("root", yggIP1, "apt install -y netcat", privateKey)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		_, err = RemoteRun("root", yggIP2, "apt install -y netcat", privateKey)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		// check privateIP2 from vm1
 		_, err = RemoteRun("root", yggIP1, fmt.Sprintf("nc -z %s 22", privateIP2), privateKey)

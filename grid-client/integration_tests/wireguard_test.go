@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -21,17 +22,13 @@ import (
 
 func TestWG(t *testing.T) {
 	tfPluginClient, err := setup()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
 	if err != nil {
@@ -64,9 +61,7 @@ func TestWG(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -75,9 +70,7 @@ func TestWG(t *testing.T) {
 
 	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -85,40 +78,28 @@ func TestWG(t *testing.T) {
 	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	// wireguard
 	n, err := tfPluginClient.State.LoadNetworkFromGrid(ctx, dl.NetworkName)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	wgConfig := n.AccessWGConfig
-	if !assert.NotEmpty(t, wgConfig) {
-		return
-	}
+	require.NotEmpty(t, wgConfig)
 
 	tempDir := t.TempDir()
 	conf, err := UpWg(wgConfig, tempDir)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		_, err := DownWG(conf)
 		assert.NoError(t, err)
 	}()
 
-	if !assert.True(t, TestConnection(v.IP, "22")) {
-		return
-	}
+	require.True(t, TestConnection(v.IP, "22"))
 
 	err = AreWgIPsReachable(wgConfig, []string{v.IP}, privateKey)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 }
 
 // UpWg used for setting up the wireguard interface

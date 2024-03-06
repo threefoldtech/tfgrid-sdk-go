@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -16,17 +17,13 @@ import (
 
 func TestVmDisk(t *testing.T) {
 	tfPluginClient, err := setup()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, []uint64{minRootfs})
 	if err != nil {
@@ -69,9 +66,7 @@ func TestVmDisk(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -80,9 +75,7 @@ func TestVmDisk(t *testing.T) {
 
 	dl := workloads.NewDeployment(generateRandString(10), nodeID, "", nil, network.Name, []workloads.Disk{disk}, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -90,24 +83,17 @@ func TestVmDisk(t *testing.T) {
 	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	resDisk, err := tfPluginClient.State.LoadDiskFromGrid(ctx, nodeID, disk.Name, dl.Name)
-	if !assert.NoError(t, err) || !assert.Equal(t, disk, resDisk) {
-		return
-	}
+	require.NoError(t, err)
+	require.Equal(t, disk, resDisk)
 
 	planetaryIP := v.PlanetaryIP
-	if !assert.NotEmpty(t, planetaryIP) {
-		return
-	}
+	require.NotEmpty(t, planetaryIP)
 
 	// Check that disk has been mounted successfully
 	output, err := RemoteRun("root", planetaryIP, "df -h | grep -w /disk", privateKey)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 	assert.Contains(t, output, fmt.Sprintf("%d.0G", disk.SizeGB))
 }

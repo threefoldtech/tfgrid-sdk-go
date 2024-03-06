@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -18,17 +19,13 @@ func AssertNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, private
 	t.Helper()
 
 	masterYggIP := k8sCluster.Master.PlanetaryIP
-	if !assert.NotEmpty(t, masterYggIP) {
-		return false
-	}
+	require.NotEmpty(t, masterYggIP)
 
 	// Check that the outputs not empty
 	time.Sleep(30 * time.Second)
 	output, err := RemoteRun("root", masterYggIP, "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && kubectl get node", privateKey)
 	output = strings.TrimSpace(output)
-	if !assert.Empty(t, err) {
-		return false
-	}
+	require.NoError(t, err)
 
 	nodesNumber := reflect.ValueOf(k8sCluster.Workers).Len() + 1
 	numberOfReadyNodes := strings.Count(output, "Ready")
@@ -37,17 +34,13 @@ func AssertNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, private
 
 func TestK8sDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(
 		ctx,
@@ -76,9 +69,7 @@ func TestK8sDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -87,9 +78,7 @@ func TestK8sDeployment(t *testing.T) {
 
 	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 	flistCheckSum, err := workloads.GetFlistChecksum(flist)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	master := workloads.K8sNode{
 		Name:          generateRandString(10),
@@ -155,9 +144,7 @@ func TestK8sDeployment(t *testing.T) {
 		}
 
 		err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		defer func() {
 			err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
@@ -165,26 +152,18 @@ func TestK8sDeployment(t *testing.T) {
 		}()
 
 		result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		// check workers count
-		if !assert.Equal(t, len(result.Workers), 2) {
-			return
-		}
+		require.Equal(t, len(result.Workers), 2)
 
 		// Check that master is reachable
 		masterIP := result.Master.PlanetaryIP
-		if !assert.NotEmpty(t, masterIP) {
-			return
-		}
+		require.NotEmpty(t, masterIP)
 
 		// Check wireguard config in output
 		wgConfig := network.AccessWGConfig
-		if !assert.NotEmpty(t, wgConfig) {
-			return
-		}
+		require.NotEmpty(t, wgConfig)
 
 		// ssh to master node
 		AssertNodesAreReady(t, &result, privateKey)
@@ -206,9 +185,7 @@ func TestK8sDeployment(t *testing.T) {
 		}
 
 		err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		defer func() {
 			err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
@@ -216,20 +193,14 @@ func TestK8sDeployment(t *testing.T) {
 		}()
 
 		result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID}, k8sCluster.Master.Name)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		// check workers count
-		if !assert.Equal(t, len(result.Workers), 1) {
-			return
-		}
+		require.Equal(t, len(result.Workers), 1)
 
 		// Check that master is reachable
 		masterIP := result.Master.PlanetaryIP
-		if !assert.NotEmpty(t, masterIP) {
-			return
-		}
+		require.NotEmpty(t, masterIP)
 
 		// ssh to master node
 		AssertNodesAreReady(t, &result, privateKey)
@@ -237,18 +208,11 @@ func TestK8sDeployment(t *testing.T) {
 		// add another worker node
 		k8sCluster.Workers = append(k8sCluster.Workers, workerNodeData2)
 		err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
-		if !assert.NoError(t, err) {
-			return
-		}
+		require.NoError(t, err)
 
 		result, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
-		if !assert.NoError(t, err) {
-			return
-		}
-
-		if !assert.Len(t, result.Workers, 2) {
-			return
-		}
+		require.NoError(t, err)
+		require.Len(t, result.Workers, 2)
 
 		AssertNodesAreReady(t, &result, privateKey)
 	})

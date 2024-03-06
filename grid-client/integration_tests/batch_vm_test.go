@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -15,17 +16,13 @@ import (
 
 func TestBatchVMDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
 	if err != nil || len(nodes) < 2 {
@@ -77,9 +74,7 @@ func TestBatchVMDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.BatchDeploy(ctx, []*workloads.ZNet{&network1, &network2})
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network1)
@@ -92,9 +87,7 @@ func TestBatchVMDeployment(t *testing.T) {
 	dl1 := workloads.NewDeployment(generateRandString(10), nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil)
 	dl2 := workloads.NewDeployment(generateRandString(10), nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil)
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, []*workloads.Deployment{&dl1, &dl2})
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl1)
@@ -105,22 +98,18 @@ func TestBatchVMDeployment(t *testing.T) {
 	}()
 
 	v1, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID1, vm1.Name, dl1.Name)
-	if !assert.NoError(t, err) || !assert.NotEmpty(t, v1.PlanetaryIP) {
-		return
-	}
+	require.NoError(t, err)
+	require.NotEmpty(t, v1.PlanetaryIP)
 
 	output, err := RemoteRun("root", v1.PlanetaryIP, "ls /", privateKey)
-	if !assert.NoError(t, err) || !assert.Contains(t, output, "root") {
-		return
-	}
+	require.NoError(t, err)
+	require.Contains(t, output, "root")
 
 	v2, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID2, vm2.Name, dl2.Name)
-	if !assert.NoError(t, err) || !assert.NotEmpty(t, v2.PlanetaryIP) {
-		return
-	}
+	require.NoError(t, err)
+	require.NotEmpty(t, v2.PlanetaryIP)
 
 	output, err = RemoteRun("root", v2.PlanetaryIP, "ls /", privateKey)
-	if !assert.NoError(t, err) || !assert.Contains(t, output, "root") {
-		return
-	}
+	require.NoError(t, err)
+	require.Contains(t, output, "root")
 }

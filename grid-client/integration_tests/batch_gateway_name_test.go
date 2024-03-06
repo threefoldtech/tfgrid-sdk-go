@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -19,17 +20,13 @@ import (
 
 func TestBatchGatewayNameDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, _, err := GenerateSSHKeyPair()
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	nodeFilter := nodeFilter
 	nodeFilter.Domain = &trueVal
@@ -67,9 +64,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -78,9 +73,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 
 	dl := workloads.NewDeployment(generateRandString(10), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -88,9 +81,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID1, vm.Name, dl.Name)
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
 	gw1 := workloads.GatewayNameProxy{
@@ -108,9 +99,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.GatewayNameDeployer.BatchDeploy(ctx, []*workloads.GatewayNameProxy{&gw1, &gw2})
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.GatewayNameDeployer.Cancel(ctx, &gw1)
@@ -121,12 +110,10 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	}()
 
 	result, err := tfPluginClient.State.LoadGatewayNameFromGrid(ctx, nodeID1, gw1.Name, gw1.Name)
-	if !assert.NoError(t, err) || !assert.NotEmpty(t, result.FQDN) {
-		return
-	}
+	require.NoError(t, err)
+	require.NotEmpty(t, result.FQDN)
 
 	result, err = tfPluginClient.State.LoadGatewayNameFromGrid(ctx, nodeID2, gw2.Name, gw2.Name)
-	if !assert.NoError(t, err) || !assert.NotEmpty(t, result.FQDN) {
-		return
-	}
+	require.NoError(t, err)
+	require.NotEmpty(t, result.FQDN)
 }
