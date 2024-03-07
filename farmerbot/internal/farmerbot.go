@@ -118,8 +118,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	nodeRouter := farmerbot.SubRoute("nodemanager")
 	powerRouter := farmerbot.SubRoute("powermanager")
 
-	// TODO: didn't work
-	// powerRouter.Use(f.authorize)
+	powerRouter.Use(f.authorize)
 
 	subConn, err := f.substrateManager.Substrate()
 	if err != nil {
@@ -165,11 +164,6 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	powerRouter.WithHandler("includenode", func(ctx context.Context, payload []byte) (interface{}, error) {
-		err := authorize(ctx, f.twinID)
-		if err != nil {
-			return nil, err
-		}
-
 		var nodeID uint32
 		if err := json.Unmarshal(payload, &nodeID); err != nil {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
@@ -196,11 +190,6 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	powerRouter.WithHandler("poweroff", func(ctx context.Context, payload []byte) (interface{}, error) {
-		err := authorize(ctx, f.twinID)
-		if err != nil {
-			return nil, err
-		}
-
 		if err := f.validateAccountEnoughBalance(subConn); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
@@ -222,11 +211,6 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	powerRouter.WithHandler("poweron", func(ctx context.Context, payload []byte) (interface{}, error) {
-		err := authorize(ctx, f.twinID)
-		if err != nil {
-			return nil, err
-		}
-
 		if err := f.validateAccountEnoughBalance(subConn); err != nil {
 			return nil, fmt.Errorf("failed to validate account balance: %w", err)
 		}
@@ -460,10 +444,10 @@ func (f *FarmerBot) validateAccountEnoughBalance(sub *substrate.Substrate) error
 	return nil
 }
 
-func authorize(ctx context.Context, farmerTwinID uint32) error {
+func (f *FarmerBot) authorize(ctx context.Context, payload []byte) (context.Context, error) {
 	twinID := peer.GetTwinID(ctx)
-	if twinID != farmerTwinID {
-		return fmt.Errorf("you are not authorized for this action. your twin id is `%d`, only the farm owner with twin id `%d` is authorized", twinID, farmerTwinID)
+	if twinID != f.twinID {
+		return ctx, fmt.Errorf("you are not authorized for this action. your twin id is `%d`, only the farm owner with twin id `%d` is authorized", twinID, f.twinID)
 	}
-	return nil
+	return ctx, nil
 }
