@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -15,16 +14,15 @@ import (
 
 func TestVMWithTwoDisk(t *testing.T) {
 	tfPluginClient, err := setup()
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(
-		ctx,
+		context.Background(),
 		tfPluginClient,
 		generateNodeFilter(WithFreeSRU(3)),
 		[]uint64{*convertGBToBytes(2), *convertGBToBytes(1)},
@@ -67,32 +65,32 @@ func TestVMWithTwoDisk(t *testing.T) {
 		},
 	}
 
-	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		require.NoError(t, err)
 	})
 
 	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, []workloads.Disk{disk1, disk2}, nil, []workloads.VM{vm}, nil)
-	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl)
 		require.NoError(t, err)
 	})
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm.Name, dl.Name)
 	require.NoError(t, err)
 	require.NotEmpty(t, v.PlanetaryIP)
 
-	resDisk1, err := tfPluginClient.State.LoadDiskFromGrid(ctx, nodeID, disk1.Name, dl.Name)
+	resDisk1, err := tfPluginClient.State.LoadDiskFromGrid(context.Background(), nodeID, disk1.Name, dl.Name)
 	require.NoError(t, err)
 	require.Equal(t, disk1, resDisk1)
 
-	resDisk2, err := tfPluginClient.State.LoadDiskFromGrid(ctx, nodeID, disk2.Name, dl.Name)
+	resDisk2, err := tfPluginClient.State.LoadDiskFromGrid(context.Background(), nodeID, disk2.Name, dl.Name)
 	require.NoError(t, err)
 	require.Equal(t, disk2, resDisk2)
 

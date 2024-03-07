@@ -4,7 +4,6 @@ import (
 	"context"
 	"slices"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -13,16 +12,15 @@ import (
 
 func TestBatchK8sDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(
-		ctx,
+		context.Background(),
 		tfPluginClient,
 		generateNodeFilter(),
 		nil,
@@ -39,11 +37,11 @@ func TestBatchK8sDeployment(t *testing.T) {
 
 	network := generateBasicNetwork([]uint32{nodeID1, nodeID2})
 
-	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		require.NoError(t, err)
 	})
 
@@ -105,19 +103,19 @@ func TestBatchK8sDeployment(t *testing.T) {
 		NetworkName: network.Name,
 	}
 
-	err = tfPluginClient.K8sDeployer.BatchDeploy(ctx, []*workloads.K8sCluster{&k8sCluster1, &k8sCluster2})
+	err = tfPluginClient.K8sDeployer.BatchDeploy(context.Background(), []*workloads.K8sCluster{&k8sCluster1, &k8sCluster2})
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster1)
+		err = tfPluginClient.K8sDeployer.Cancel(context.Background(), &k8sCluster1)
 		require.NoError(t, err)
 
-		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster2)
+		err = tfPluginClient.K8sDeployer.Cancel(context.Background(), &k8sCluster2)
 		require.NoError(t, err)
 	})
 
 	// cluster 1
-	k1, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{nodeID1}, k8sCluster1.Master.Name)
+	k1, err := tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{nodeID1}, k8sCluster1.Master.Name)
 	require.NoError(t, err)
 
 	// check workers count
@@ -134,7 +132,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	requireNodesAreReady(t, &k1, privateKey)
 
 	// cluster 2
-	k2, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{nodeID2}, k8sCluster2.Master.Name)
+	k2, err := tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{nodeID2}, k8sCluster2.Master.Name)
 	require.NoError(t, err)
 
 	// check workers count

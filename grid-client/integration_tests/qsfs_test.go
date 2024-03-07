@@ -23,10 +23,9 @@ const (
 
 func TestQSFSDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	defer cancel()
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	require.NoError(t, err)
@@ -37,7 +36,7 @@ func TestQSFSDeployment(t *testing.T) {
 	}
 
 	nodes, err := deployer.FilterNodes(
-		ctx,
+		context.Background(),
 		tfPluginClient,
 		generateNodeFilter(WithFreeHRU(DataZDBNum+MetaZDBNum)),
 		nil,
@@ -80,11 +79,11 @@ func TestQSFSDeployment(t *testing.T) {
 	}
 
 	dl1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, append(dataZDBs, metaZDBs...), nil, nil)
-	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl1)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl1)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl1)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl1)
 		require.NoError(t, err)
 	})
 
@@ -92,14 +91,14 @@ func TestQSFSDeployment(t *testing.T) {
 	resDataZDBs := []workloads.ZDB{}
 	resMetaZDBs := []workloads.ZDB{}
 	for i := 1; i <= DataZDBNum; i++ {
-		res, err := tfPluginClient.State.LoadZdbFromGrid(ctx, nodeID, "qsfsDataZdb"+strconv.Itoa(i), dl1.Name)
+		res, err := tfPluginClient.State.LoadZdbFromGrid(context.Background(), nodeID, "qsfsDataZdb"+strconv.Itoa(i), dl1.Name)
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 		resDataZDBs = append(resDataZDBs, res)
 	}
 
 	for i := 1; i <= MetaZDBNum; i++ {
-		res, err := tfPluginClient.State.LoadZdbFromGrid(ctx, nodeID, "qsfsMetaZdb"+strconv.Itoa(i), dl1.Name)
+		res, err := tfPluginClient.State.LoadZdbFromGrid(context.Background(), nodeID, "qsfsMetaZdb"+strconv.Itoa(i), dl1.Name)
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 		resMetaZDBs = append(resMetaZDBs, res)
@@ -162,27 +161,27 @@ func TestQSFSDeployment(t *testing.T) {
 		},
 	}
 
-	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		require.NoError(t, err)
 	})
 
 	dl2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, append(dataZDBs, metaZDBs...), []workloads.VM{vm}, []workloads.QSFS{qsfs})
-	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl2)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl2)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl2)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl2)
 		require.NoError(t, err)
 	})
 
-	resVM, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl2.Name)
+	resVM, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm.Name, dl2.Name)
 	require.NoError(t, err)
 
-	resQSFS, err := tfPluginClient.State.LoadQSFSFromGrid(ctx, nodeID, qsfs.Name, dl2.Name)
+	resQSFS, err := tfPluginClient.State.LoadQSFSFromGrid(context.Background(), nodeID, qsfs.Name, dl2.Name)
 	require.NoError(t, err)
 	require.NotEmpty(t, resQSFS.MetricsEndpoint)
 

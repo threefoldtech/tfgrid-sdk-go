@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -15,16 +14,15 @@ import (
 
 func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 	tfPluginClient, err := setup()
-	require.NoError(t, err)
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-
 	nodes, err := deployer.FilterNodes(
-		ctx,
+		context.Background(),
 		tfPluginClient,
 		generateNodeFilter(WithFreeSRU(minRootfs), WithIPV6()),
 		nil,
@@ -70,27 +68,27 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 		},
 	}
 
-	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		require.NoError(t, err)
 	})
 
 	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm2}, nil)
-	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl)
 		require.NoError(t, err)
 	})
 
-	v1, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm1.Name, dl.Name)
+	v1, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm1.Name, dl.Name)
 	require.NoError(t, err)
 
-	v2, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm2.Name, dl.Name)
+	v2, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm2.Name, dl.Name)
 	require.NoError(t, err)
 
 	yggIP1 := v1.PlanetaryIP

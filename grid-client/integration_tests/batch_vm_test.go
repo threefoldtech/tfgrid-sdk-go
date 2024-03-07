@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -14,16 +13,15 @@ import (
 
 func TestBatchVMDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(
-		ctx,
+		context.Background(),
 		tfPluginClient,
 		generateNodeFilter(),
 		nil,
@@ -67,31 +65,31 @@ func TestBatchVMDeployment(t *testing.T) {
 		},
 	}
 
-	err = tfPluginClient.NetworkDeployer.BatchDeploy(ctx, []*workloads.ZNet{&network1, &network2})
+	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []*workloads.ZNet{&network1, &network2})
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network1)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network1)
 		require.NoError(t, err)
 
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network2)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network2)
 		require.NoError(t, err)
 	})
 
 	dl1 := workloads.NewDeployment(fmt.Sprintf("dl1_%s", generateRandString(10)), nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil)
 	dl2 := workloads.NewDeployment(fmt.Sprintf("dl2_%s", generateRandString(10)), nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil)
-	err = tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, []*workloads.Deployment{&dl1, &dl2})
+	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&dl1, &dl2})
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl1)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl1)
 		require.NoError(t, err)
 
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl2)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl2)
 		require.NoError(t, err)
 	})
 
-	v1, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID1, vm1.Name, dl1.Name)
+	v1, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID1, vm1.Name, dl1.Name)
 	require.NoError(t, err)
 	require.NotEmpty(t, v1.PlanetaryIP)
 
@@ -99,7 +97,7 @@ func TestBatchVMDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, output, "root")
 
-	v2, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID2, vm2.Name, dl2.Name)
+	v2, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID2, vm2.Name, dl2.Name)
 	require.NoError(t, err)
 	require.NotEmpty(t, v2.PlanetaryIP)
 

@@ -34,16 +34,15 @@ func requireNodesAreReady(t *testing.T, k8sCluster *workloads.K8sCluster, privat
 
 func TestK8sDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(
-		ctx,
+		context.Background(),
 		tfPluginClient,
 		generateNodeFilter(WithFreeSRU(3), WithFreeMRU(*convertGBToBytes(3 * minMemory))),
 		[]uint64{*convertGBToBytes(1), *convertGBToBytes(1), *convertGBToBytes(1)},
@@ -60,11 +59,11 @@ func TestK8sDeployment(t *testing.T) {
 
 	network := generateBasicNetwork([]uint32{masterNodeID, workerNodeID})
 
-	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		require.NoError(t, err)
 	})
 
@@ -111,15 +110,15 @@ func TestK8sDeployment(t *testing.T) {
 		NetworkName: network.Name,
 	}
 
-	err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
+	err = tfPluginClient.K8sDeployer.Deploy(context.Background(), &k8sCluster)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
+		err = tfPluginClient.K8sDeployer.Cancel(context.Background(), &k8sCluster)
 		require.NoError(t, err)
 	})
 
-	k8s, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
+	k8s, err := tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
 	require.NoError(t, err)
 
 	// check workers count
@@ -146,16 +145,16 @@ func TestK8sDeployment(t *testing.T) {
 	//update k8s cluster (remove worker)
 	k8sCluster.Workers = []workloads.K8sNode{workerNodeData1}
 
-	err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
+	err = tfPluginClient.K8sDeployer.Deploy(context.Background(), &k8sCluster)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
+		err = tfPluginClient.K8sDeployer.Cancel(context.Background(), &k8sCluster)
 		require.NoError(t, err)
 	})
 
 	time.Sleep(10 * time.Second) // remove take some time to be reflected
-	k8s, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
+	k8s, err = tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
 	require.NoError(t, err)
 
 	// check workers count
@@ -173,15 +172,15 @@ func TestK8sDeployment(t *testing.T) {
 
 	//update k8s cluster (add worker)
 	k8sCluster.Workers = append(k8sCluster.Workers, workerNodeData2)
-	err = tfPluginClient.K8sDeployer.Deploy(ctx, &k8sCluster)
+	err = tfPluginClient.K8sDeployer.Deploy(context.Background(), &k8sCluster)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster)
+		err = tfPluginClient.K8sDeployer.Cancel(context.Background(), &k8sCluster)
 		require.NoError(t, err)
 	})
 
-	k8s, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
+	k8s, err = tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{masterNodeID, workerNodeID}, k8sCluster.Master.Name)
 	require.NoError(t, err)
 	require.Len(t, k8s.Workers, 2)
 

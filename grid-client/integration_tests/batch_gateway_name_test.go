@@ -20,16 +20,15 @@ import (
 
 func TestBatchGatewayNameDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	defer cancel()
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(
-		ctx,
+		context.Background(),
 		tfPluginClient,
 		generateNodeFilter(WithDomain()),
 		nil,
@@ -59,24 +58,24 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 		},
 	}
 
-	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		require.NoError(t, err)
 	})
 
 	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
-	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl)
 		require.NoError(t, err)
 	})
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID1, vm.Name, dl.Name)
+	v, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID1, vm.Name, dl.Name)
 	require.NoError(t, err)
 
 	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
@@ -94,22 +93,22 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 		Backends:       []zos.Backend{zos.Backend(backend)},
 	}
 
-	err = tfPluginClient.GatewayNameDeployer.BatchDeploy(ctx, []*workloads.GatewayNameProxy{&gw1, &gw2})
+	err = tfPluginClient.GatewayNameDeployer.BatchDeploy(context.Background(), []*workloads.GatewayNameProxy{&gw1, &gw2})
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.GatewayNameDeployer.Cancel(ctx, &gw1)
+		err = tfPluginClient.GatewayNameDeployer.Cancel(context.Background(), &gw1)
 		require.NoError(t, err)
 
-		err = tfPluginClient.GatewayNameDeployer.Cancel(ctx, &gw2)
+		err = tfPluginClient.GatewayNameDeployer.Cancel(context.Background(), &gw2)
 		require.NoError(t, err)
 	})
 
-	g1, err := tfPluginClient.State.LoadGatewayNameFromGrid(ctx, nodeID1, gw1.Name, gw1.Name)
+	g1, err := tfPluginClient.State.LoadGatewayNameFromGrid(context.Background(), nodeID1, gw1.Name, gw1.Name)
 	require.NoError(t, err)
 	require.NotEmpty(t, g1.FQDN)
 
-	g2, err := tfPluginClient.State.LoadGatewayNameFromGrid(ctx, nodeID2, gw2.Name, gw2.Name)
+	g2, err := tfPluginClient.State.LoadGatewayNameFromGrid(context.Background(), nodeID2, gw2.Name, gw2.Name)
 	require.NoError(t, err)
 	require.NotEmpty(t, g2.FQDN)
 

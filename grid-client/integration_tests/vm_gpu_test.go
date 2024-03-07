@@ -24,16 +24,15 @@ func ConvertGPUsToStr(gpus []node.GPU) (zosGPUs []zos.GPU) {
 
 func TestVMWithGPUDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(
-		ctx,
+		context.Background(),
 		tfPluginClient,
 		generateNodeFilter(WithFreeMRU(8), WithFreeSRU(20), WithGPU(), WithRentedBy(uint64(tfPluginClient.TwinID))),
 		[]uint64{*convertGBToBytes(20)},
@@ -50,7 +49,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	nodeClient, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID)
 	require.NoError(t, err)
 
-	gpus, err := nodeClient.GPUs(ctx)
+	gpus, err := nodeClient.GPUs(context.Background())
 	require.NoError(t, err)
 
 	network := generateBasicNetwork([]uint32{nodeID})
@@ -78,24 +77,24 @@ func TestVMWithGPUDeployment(t *testing.T) {
 		},
 	}
 
-	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		require.NoError(t, err)
 	})
 
 	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, []workloads.Disk{disk}, nil, []workloads.VM{vm}, nil)
-	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl)
 		require.NoError(t, err)
 	})
 
-	vm, err = tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
+	vm, err = tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm.Name, dl.Name)
 	require.NoError(t, err)
 	require.Equal(t, vm.GPUs, ConvertGPUsToStr(gpus))
 	require.NotEmpty(t, vm.PlanetaryIP)

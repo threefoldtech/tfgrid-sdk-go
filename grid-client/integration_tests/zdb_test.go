@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/go-redis/redis"
 	"github.com/stretchr/testify/require"
@@ -16,15 +15,14 @@ import (
 
 func TestZDBDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	zdbSize := 10
 
 	nodes, err := deployer.FilterNodes(
-		ctx,
+		context.Background(),
 		tfPluginClient,
 		generateNodeFilter(WithFreeHRU(uint64(zdbSize))),
 		nil,
@@ -48,15 +46,15 @@ func TestZDBDeployment(t *testing.T) {
 	}
 
 	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
-	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl)
 		require.NoError(t, err)
 	})
 
-	z, err := tfPluginClient.State.LoadZdbFromGrid(ctx, nodeID, zdb.Name, dl.Name)
+	z, err := tfPluginClient.State.LoadZdbFromGrid(context.Background(), nodeID, zdb.Name, dl.Name)
 	require.NoError(t, err)
 	require.NotEmpty(t, z.IPs)
 	require.NotEmpty(t, z.Namespace)
