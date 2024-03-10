@@ -51,4 +51,4 @@ jobs:
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
-        run: go test -v ./integration_tests -timeout 1800s
+        run: make integration
