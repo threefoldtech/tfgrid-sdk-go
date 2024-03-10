@@ -56,8 +56,7 @@ func constructTestK8s(t *testing.T, mock bool) (
 	}
 	net := constructTestNetwork()
 	tfPluginClient.State.Networks = state.NetworkState{net.Name: state.Network{
-		Subnets:               map[uint32]string{nodeID: net.IPRange.String()},
-		NodeDeploymentHostIDs: map[uint32]state.DeploymentHostIDs{nodeID: map[uint64][]byte{contractID: {}}},
+		Subnets: map[uint32]string{nodeID: net.IPRange.String()},
 	}}
 
 	return tfPluginClient.K8sDeployer, cl, sub, ncPool, deployer, gridProxyCl
