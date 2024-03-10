@@ -130,8 +130,8 @@ func TestK8sDeployment(t *testing.T) {
 	require.NotEmpty(t, k8s.Workers[0].PlanetaryIP)
 	require.NotEmpty(t, k8s.Workers[1].PlanetaryIP)
 
-	require.True(t, TestConnection(k8s.Workers[0].PlanetaryIP, "22"))
-	require.True(t, TestConnection(k8s.Workers[1].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k8s.Workers[0].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k8s.Workers[1].PlanetaryIP, "22"))
 
 	require.NotEmpty(t, k8s.Master.IP)
 	require.NotEmpty(t, k8s.Workers[0].IP)
@@ -165,7 +165,7 @@ func TestK8sDeployment(t *testing.T) {
 	require.NotEmpty(t, masterIP)
 	require.NotEmpty(t, k8s.Workers[0].PlanetaryIP)
 
-	require.True(t, TestConnection(k8s.Workers[0].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k8s.Workers[0].PlanetaryIP, "22"))
 
 	// ssh to master node
 	requireNodesAreReady(t, &k8s, privateKey)
@@ -189,8 +189,8 @@ func TestK8sDeployment(t *testing.T) {
 	require.NotEmpty(t, k8s.Workers[0].PlanetaryIP)
 	require.NotEmpty(t, k8s.Workers[1].PlanetaryIP)
 
-	require.True(t, TestConnection(k8s.Workers[0].PlanetaryIP, "22"))
-	require.True(t, TestConnection(k8s.Workers[1].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k8s.Workers[0].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k8s.Workers[1].PlanetaryIP, "22"))
 
 	requireNodesAreReady(t, &k8s, privateKey)
 }

@@ -27,7 +27,7 @@ func setup() (deployer.TFPluginClient, error) {
 	network := os.Getenv("NETWORK")
 	log.Printf("network: %s", network)
 
-	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network), deployer.WithLogs())
+	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network))
 }
 
 func generateBasicNetwork(nodeIDs []uint32) workloads.ZNet {
@@ -42,8 +42,8 @@ func generateBasicNetwork(nodeIDs []uint32) workloads.ZNet {
 	}
 }
 
-// TestConnection used to test connection
-func TestConnection(addr string, port string) bool {
+// CheckConnection used to test connection
+func CheckConnection(addr string, port string) bool {
 	for t := time.Now(); time.Since(t) < 3*time.Second; {
 		con, err := net.DialTimeout("tcp", net.JoinHostPort(addr, port), time.Second*12)
 		if err == nil {

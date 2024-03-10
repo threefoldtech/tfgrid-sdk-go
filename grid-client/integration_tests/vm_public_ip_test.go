@@ -76,7 +76,7 @@ func TestVMDeployment(t *testing.T) {
 
 	publicIP := strings.Split(v.ComputedIP, "/")[0]
 	require.NotEmpty(t, publicIP)
-	require.True(t, TestConnection(publicIP, "22"))
+	require.True(t, CheckConnection(publicIP, "22"))
 
 	output, err := RemoteRun("root", publicIP, "ls /", privateKey)
 	require.NoError(t, err)
@@ -84,7 +84,7 @@ func TestVMDeployment(t *testing.T) {
 
 	planetaryIP := v.PlanetaryIP
 	require.NotEmpty(t, planetaryIP)
-	require.True(t, TestConnection(planetaryIP, "22"))
+	require.True(t, CheckConnection(planetaryIP, "22"))
 
 	output, err = RemoteRun("root", planetaryIP, "ls /", privateKey)
 	require.NoError(t, err)

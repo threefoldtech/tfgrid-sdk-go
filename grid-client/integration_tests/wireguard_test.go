@@ -93,7 +93,7 @@ func TestWG(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	require.True(t, TestConnection(v.IP, "22"))
+	require.True(t, CheckConnection(v.IP, "22"))
 	require.NoError(t, AreWgIPsReachable(wgConfig, []string{v.IP}, privateKey))
 }
 

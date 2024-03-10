@@ -126,7 +126,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	require.NotEmpty(t, k1.Master.IP)
 	require.NotEqual(t, k1.Master.IP, k1.Workers[0].IP)
 
-	require.True(t, TestConnection(k1.Workers[0].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k1.Workers[0].PlanetaryIP, "22"))
 
 	// ssh to master node
 	requireNodesAreReady(t, &k1, privateKey)
@@ -143,7 +143,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	require.NotEmpty(t, k1.Master.IP)
 	require.NotEqual(t, k1.Master.IP, k2.Workers[0].IP)
 
-	require.True(t, TestConnection(k2.Workers[0].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k2.Workers[0].PlanetaryIP, "22"))
 
 	// ssh to master node
 	requireNodesAreReady(t, &k2, privateKey)
