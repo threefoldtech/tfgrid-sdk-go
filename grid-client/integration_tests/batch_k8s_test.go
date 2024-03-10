@@ -2,12 +2,13 @@ package integration
 
 import (
 	"context"
-
+	"fmt"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -15,13 +16,13 @@ import (
 
 func TestBatchK8sDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(
 		ctx,
@@ -39,7 +40,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "k8sTestingNetwork",
+		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID1, nodeID2},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -50,7 +51,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -59,10 +60,10 @@ func TestBatchK8sDeployment(t *testing.T) {
 
 	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 	flistCheckSum, err := workloads.GetFlistChecksum(flist)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	master1 := workloads.K8sNode{
-		Name:          "K8sForTesting",
+		Name:          generateRandString(10),
 		Node:          nodeID1,
 		DiskSize:      1,
 		PublicIP:      false,
@@ -79,7 +80,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	master2 := workloads.K8sNode{
-		Name:          "K8sForTesting2",
+		Name:          generateRandString(10),
 		Node:          nodeID2,
 		DiskSize:      1,
 		PublicIP:      false,
@@ -96,7 +97,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	workerNodeData1 := workloads.K8sNode{
-		Name:          "worker1",
+		Name:          generateRandString(10),
 		Node:          nodeID1,
 		DiskSize:      1,
 		PublicIP:      false,
@@ -113,7 +114,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	workerNodeData2 := workloads.K8sNode{
-		Name:          "worker2",
+		Name:          generateRandString(10),
 		Node:          nodeID2,
 		DiskSize:      1,
 		PublicIP:      false,
@@ -146,7 +147,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.K8sDeployer.BatchDeploy(ctx, []*workloads.K8sCluster{&k8sCluster1, &k8sCluster2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster1)
@@ -158,36 +159,36 @@ func TestBatchK8sDeployment(t *testing.T) {
 
 	// cluster 1
 	result, err := tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{nodeID1}, k8sCluster1.Master.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// check workers count
-	assert.Equal(t, len(result.Workers), 1)
+	require.Equal(t, len(result.Workers), 1)
 
 	// Check that master is reachable
 	masterIP := result.Master.PlanetaryIP
-	assert.NotEmpty(t, masterIP)
+	require.NotEmpty(t, masterIP)
 
 	// Check wireguard config in output
 	wgConfig := network.AccessWGConfig
-	assert.NotEmpty(t, wgConfig)
+	require.NotEmpty(t, wgConfig)
 
 	// ssh to master node
 	AssertNodesAreReady(t, &result, privateKey)
 
 	// cluster 2
 	result, err = tfPluginClient.State.LoadK8sFromGrid(ctx, []uint32{nodeID2}, k8sCluster2.Master.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// check workers count
-	assert.Equal(t, len(result.Workers), 1)
+	require.Equal(t, len(result.Workers), 1)
 
 	// Check that master is reachable
 	masterIP = result.Master.PlanetaryIP
-	assert.NotEmpty(t, masterIP)
+	require.NotEmpty(t, masterIP)
 
 	// Check wireguard config in output
 	wgConfig = network.AccessWGConfig
-	assert.NotEmpty(t, wgConfig)
+	require.NotEmpty(t, wgConfig)
 
 	// ssh to master node
 	AssertNodesAreReady(t, &result, privateKey)

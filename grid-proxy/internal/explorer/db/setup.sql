@@ -122,7 +122,7 @@ SELECT
     node.country as country,
     country.region as region,
     CASE WHEN node.certification = 'Certified' THEN true ELSE false END as certified,
-    farm.pricing_policy_id as policy_id,
+    CASE WHEN farm.pricing_policy_id = 0 THEN 1 ELSE farm.pricing_policy_id END as policy_id,
     COALESCE(node.extra_fee, 0) as extra_fee
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
