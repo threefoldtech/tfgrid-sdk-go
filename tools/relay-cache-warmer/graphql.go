@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -82,6 +83,7 @@ func warmTwins(pool *redis.Pool, graphql string) error {
 		if err != nil {
 			return err
 		}
+		invalidateTwins(gtwins)
 		twins, err := graphqlTwinsToRelayTwins(gtwins)
 		if err != nil {
 			return err
@@ -99,6 +101,40 @@ func warmTwins(pool *redis.Pool, graphql string) error {
 	}
 
 	return nil
+}
+
+func invalidateTwins(twins []graphqlTwin) {
+	for i, twin := range twins {
+		if twin.Relay == nil {
+			continue
+		}
+		if !validRelay(*twin.Relay) {
+			twins[i].Relay = nil
+		}
+	}
+}
+
+func validRelay(relay string) bool {
+	if len(relay) == 0 {
+		return false
+	}
+	relays := strings.Split(relay, "_")
+	for _, relay := range relays {
+		// it can't be an ip
+		if ip := net.ParseIP(relay); ip != nil {
+			return false
+		}
+		if !strings.Contains(relay, ".") {
+			return false
+		}
+		parts := strings.Split(relay, ".")
+		for _, part := range parts {
+			if len(part) == 0 {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func queryGraphql(graphql, body string) (paginationData, []graphqlTwin, error) {
