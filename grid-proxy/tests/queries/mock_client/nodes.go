@@ -295,6 +295,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.HasIpv6 != nil && *f.HasIpv6 != data.NodeIpv6[uint32(n.TwinID)] {
+		return false
+	}
+
 	if f.FreeSRU != nil && int64(*f.FreeSRU) > int64(free.SRU) {
 		return false
 	}

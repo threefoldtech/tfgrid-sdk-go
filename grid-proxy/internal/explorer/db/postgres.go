@@ -82,6 +82,7 @@ func (d *PostgresDatabase) Initialize() error {
 		&types.HealthReport{},
 		&types.Dmi{},
 		&types.Speed{},
+		&types.HasIpv6{},
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to migrate indexer tables")
@@ -296,6 +297,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.node_contracts_count",
 			"resources_cache.node_gpu_count AS num_gpu",
 			"health_report.healthy",
+			"node_ipv6.has_ipv6",
 			"resources_cache.bios",
 			"resources_cache.baseboard",
 			"resources_cache.memory",
@@ -311,6 +313,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			LEFT JOIN farm ON node.farm_id = farm.farm_id
 			LEFT JOIN location ON node.location_id = location.id
 			LEFT JOIN health_report ON node.twin_id = health_report.node_twin_id
+			LEFT JOIN node_ipv6 ON node.twin_id = node_ipv6.node_twin_id
 		`)
 
 	if filter.HasGPU != nil || filter.GpuDeviceName != nil ||
@@ -531,6 +534,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 
 	if filter.Healthy != nil {
 		q = q.Where("health_report.healthy = ? ", *filter.Healthy)
+	}
+	if filter.HasIpv6 != nil {
+		q = q.Where("COALESCE(node_ipv6.has_ipv6, false) = ? ", *filter.HasIpv6)
 	}
 	if filter.FreeMRU != nil {
 		q = q.Where("resources_cache.free_mru >= ?", *filter.FreeMRU)
