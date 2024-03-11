@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -76,6 +77,10 @@ func TestVMDeployment(t *testing.T) {
 
 	publicIP := strings.Split(v.ComputedIP, "/")[0]
 	require.NotEmpty(t, publicIP)
+	// sometimes it fails because of assigning same previously used IPs
+	if !CheckConnection(publicIP, "22") {
+		time.Sleep(10 * time.Second)
+	}
 	require.True(t, CheckConnection(publicIP, "22"))
 
 	output, err := RemoteRun("root", publicIP, "ls /", privateKey)
