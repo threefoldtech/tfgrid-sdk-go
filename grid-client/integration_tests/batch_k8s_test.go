@@ -129,7 +129,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	require.True(t, CheckConnection(k1.Workers[0].PlanetaryIP, "22"))
 
 	// ssh to master node
-	requireNodesAreReady(t, &k1, privateKey)
+	require.NoError(t, requireNodesAreReady(len(k1.Workers)+1, k1.Master.PlanetaryIP, privateKey))
 
 	// cluster 2
 	k2, err := tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{nodeID2}, k8sCluster2.Master.Name)
@@ -146,7 +146,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	require.True(t, CheckConnection(k2.Workers[0].PlanetaryIP, "22"))
 
 	// ssh to master node
-	requireNodesAreReady(t, &k2, privateKey)
+	require.NoError(t, requireNodesAreReady(len(k2.Workers)+1, k2.Master.PlanetaryIP, privateKey))
 
 	// different ips generated
 	require.Equal(t, len(slices.Compact[[]string, string]([]string{k1.Master.IP, k2.Master.IP, k1.Workers[0].IP, k2.Workers[0].IP})), 4)
