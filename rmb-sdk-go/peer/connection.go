@@ -100,6 +100,7 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output,
 			// we return nil to try again
 			return nil
 		case data := <-input:
+			lastPong = time.Now()
 			if err := con.WriteMessage(websocket.BinaryMessage, data); err != nil {
 				return err
 			}
