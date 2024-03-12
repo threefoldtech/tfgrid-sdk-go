@@ -46,8 +46,11 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 
 	for _, nodeGroup := range cfg.NodeGroups {
 		log.Info().Str("Node group", nodeGroup.Name).Msg("Running deployment")
+
 		var groupDeployments groupDeploymentsInfo
 		var excludedNodes []uint64
+
+		requiredNodesCount := nodeGroup.NodesCount
 		trial := 1
 
 		if err := retry.Do(ctx, retry.WithMaxRetries(cfg.MaxRetries, retry.NewConstant(1*time.Nanosecond)), func(ctx context.Context) error {
@@ -55,10 +58,15 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 				log.Info().Str("Node group", nodeGroup.Name).Int("Deployment trial", trial).Msg("Retrying to deploy")
 			}
 
-			if err := deployNodeGroup(ctx, tfPluginClient, &groupDeployments, nodeGroup, excludedNodes, cfg.Vms, cfg.SSHKeys); err != nil {
+			if err := deployNodeGroup(ctx, tfPluginClient, &groupDeployments, nodeGroup, excludedNodes, requiredNodesCount, cfg.Vms, cfg.SSHKeys); err != nil {
 				trial++
-				excludedNodes = append(excludedNodes, getBlockedNodes(groupDeployments)...)
 				log.Debug().Err(err).Str("Node group", nodeGroup.Name).Msg("failed to deploy")
+
+				blockedNodes := getBlockedNodes(groupDeployments)
+				fmt.Println(blockedNodes)
+				requiredNodesCount = uint64(len(blockedNodes))
+				excludedNodes = append(excludedNodes, blockedNodes...)
+
 				return retry.RetryableError(err)
 			}
 
@@ -107,15 +115,17 @@ func deployNodeGroup(
 	groupDeployments *groupDeploymentsInfo,
 	nodeGroup NodesGroup,
 	excludedNodes []uint64,
+	requiredNodesCount uint64,
 	vms []Vms,
 	sshKeys map[string]string,
 ) error {
 	log.Info().Str("Node group", nodeGroup.Name).Msg("Filter nodes")
-	nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup, excludedNodes)
+	nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup, excludedNodes, requiredNodesCount)
 	if err != nil {
 		return err
 	}
 	log.Debug().Ints("nodes IDs", nodesIDs).Send()
+	fmt.Println(nodesIDs)
 
 	if groupDeployments.networkDeployments == nil {
 		log.Debug().Str("Node group", nodeGroup.Name).Msg("Parsing vms group")
