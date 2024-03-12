@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -19,15 +20,17 @@ import (
 
 func TestBatchGatewayNameDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, _, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
+	nodeFilter := nodeFilter
 	nodeFilter.Domain = &trueVal
+
 	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
 	if err != nil || len(nodes) < 2 {
 		t.Skip("no available nodes found")
@@ -37,7 +40,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "testingNameGatewayNetwork",
+		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID1, nodeID2},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -61,16 +64,16 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
 		assert.NoError(t, err)
 	}()
 
-	dl := workloads.NewDeployment("vm", nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -78,25 +81,25 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	}()
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID1, vm.Name, dl.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
 	gw1 := workloads.GatewayNameProxy{
 		NodeID:         nodeID1,
-		Name:           "test",
+		Name:           generateRandString(10),
 		TLSPassthrough: false,
 		Backends:       []zos.Backend{zos.Backend(backend)},
 	}
 
 	gw2 := workloads.GatewayNameProxy{
 		NodeID:         nodeID2,
-		Name:           "test2",
+		Name:           generateRandString(10),
 		TLSPassthrough: false,
 		Backends:       []zos.Backend{zos.Backend(backend)},
 	}
 
 	err = tfPluginClient.GatewayNameDeployer.BatchDeploy(ctx, []*workloads.GatewayNameProxy{&gw1, &gw2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.GatewayNameDeployer.Cancel(ctx, &gw1)
@@ -107,10 +110,10 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	}()
 
 	result, err := tfPluginClient.State.LoadGatewayNameFromGrid(ctx, nodeID1, gw1.Name, gw1.Name)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, result.FQDN)
+	require.NoError(t, err)
+	require.NotEmpty(t, result.FQDN)
 
 	result, err = tfPluginClient.State.LoadGatewayNameFromGrid(ctx, nodeID2, gw2.Name, gw2.Name)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, result.FQDN)
+	require.NoError(t, err)
+	require.NotEmpty(t, result.FQDN)
 }

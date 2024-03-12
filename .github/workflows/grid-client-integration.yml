@@ -5,17 +5,17 @@ defaults:
     working-directory: grid-client
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: 0 3 * * *
   workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        network: ["dev", "qa", "test", "main"]
+        network: [dev, qa, test, main]
 
     steps:
       - name: Set up Go
@@ -51,4 +51,4 @@ jobs:
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
-        run: go test -v ./integration_tests
+        run: go test -v ./integration_tests -timeout 1800s

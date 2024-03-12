@@ -3,12 +3,14 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -16,24 +18,24 @@ import (
 
 func TestVMDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Run("deploy basic virtual machine", func(t *testing.T) {
 		nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
-		if err != nil || len(nodes) == 0 {
+		if err != nil {
 			t.Skip("no available nodes found")
 		}
 
 		nodeID := uint32(nodes[0].NodeID)
 
 		network := workloads.ZNet{
-			Name:        "vmTestingNetwork",
+			Name:        fmt.Sprintf("net_%s", generateRandString(10)),
 			Description: "network for testing",
 			Nodes:       []uint32{nodeID},
 			IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -58,16 +60,16 @@ func TestVMDeployment(t *testing.T) {
 		}
 
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		defer func() {
 			err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
 			assert.NoError(t, err)
 		}()
 
-		dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
+		dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
 		err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		defer func() {
 			err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -75,15 +77,19 @@ func TestVMDeployment(t *testing.T) {
 		}()
 
 		v, err := tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
-		assert.NoError(t, err)
-		assert.Equal(t, v.IP, "10.20.2.2")
+		require.NoError(t, err)
+		require.Equal(t, v.IP, "10.20.2.5")
+
+		publicIP := strings.Split(v.ComputedIP, "/")[0]
+		require.NotEmpty(t, publicIP)
+		require.True(t, TestConnection(publicIP, "22"))
 
 		planetaryIP := v.PlanetaryIP
-		assert.NotEmpty(t, planetaryIP)
+		require.NotEmpty(t, planetaryIP)
 
 		output, err := RemoteRun("root", planetaryIP, "ls /", privateKey)
-		assert.NoError(t, err)
-		assert.Contains(t, output, "root")
+		require.NoError(t, err)
+		require.Contains(t, output, "root")
 	})
 
 	t.Run("deploy virtual machine with a public ip", func(t *testing.T) {

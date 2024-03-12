@@ -32,7 +32,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 
 	node := uint32(nodes[0].NodeID)
 	network := workloads.ZNet{
-		Name:  "network_two_deployments",
+		Name:  generateRandString(10),
 		Nodes: []uint32{node},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
@@ -61,7 +61,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 		}
 	})
 
-	d1 := workloads.NewDeployment("deployment1", node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
+	d1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
 	err = tf.DeploymentDeployer.Deploy(context.Background(), &d1)
 	if err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 		}
 	})
 
-	d2 := workloads.NewDeployment("deployment2", node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
+	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
 	err = tf.DeploymentDeployer.Deploy(context.Background(), &d2)
 	if err != nil {
 		t.Fatal(err)
@@ -87,12 +87,12 @@ func TestDeploymentsDeploy(t *testing.T) {
 		}
 	})
 
-	dl1, err := tf.State.LoadDeploymentFromGrid(context.Background(), node, "deployment1")
+	dl1, err := tf.State.LoadDeploymentFromGrid(context.Background(), node, d1.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dl2, err := tf.State.LoadDeploymentFromGrid(context.Background(), node, "deployment2")
+	dl2, err := tf.State.LoadDeploymentFromGrid(context.Background(), node, d2.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dl1, err = tf.State.LoadDeploymentFromGrid(context.Background(), node, "deployment1")
+	dl1, err = tf.State.LoadDeploymentFromGrid(context.Background(), node, d1.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,15 +180,15 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		}
 	})
 
-	d1 := workloads.NewDeployment("deployment1", nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
+	d1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
 	d1.Vms[1].Name = vm2Name
 	d1.Vms[2].Name = vm3Name
 
-	d2 := workloads.NewDeployment("deployment2", nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
+	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
 	d2.Vms[1].Name = vm2Name
 	d2.Vms[2].Name = vm3Name
 
-	d3 := workloads.NewDeployment("deployment3", nodeID2, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
+	d3 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID2, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil)
 	d3.Vms[1].Name = vm2Name
 	d3.Vms[2].Name = vm3Name
 
@@ -224,17 +224,17 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		t.Fatalf("expected 3 used private IPs but got %d", len(privateIPs))
 	}
 
-	dl1, err := tf.State.LoadDeploymentFromGrid(context.Background(), nodeID1, "deployment1")
+	dl1, err := tf.State.LoadDeploymentFromGrid(context.Background(), nodeID1, d1.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dl2, err := tf.State.LoadDeploymentFromGrid(context.Background(), nodeID1, "deployment2")
+	dl2, err := tf.State.LoadDeploymentFromGrid(context.Background(), nodeID1, d2.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dl3, err := tf.State.LoadDeploymentFromGrid(context.Background(), nodeID2, "deployment3")
+	dl3, err := tf.State.LoadDeploymentFromGrid(context.Background(), nodeID2, d3.Name)
 	if err != nil {
 		t.Fatal(err)
 	}

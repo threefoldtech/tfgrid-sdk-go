@@ -8,9 +8,15 @@ Check `/version` on any instance to know the version.
 
 ---
 
-- include releases from v0.13.5 to v0.14.7
+- include releases from v0.13.5 to v0.14.11
 
 ## Releases
+
+### v0.14.11
+
+---
+
+- `fix` fix the policy id 0 farms to be the default 1
 
 ### v0.14.8
 
