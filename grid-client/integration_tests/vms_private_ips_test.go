@@ -212,7 +212,7 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	assert.NoError(t, err)
 
 	if len(slices.Compact(privateIPs)) != 6 {
-		t.Fatalf("expected 6 used private IPs but got %d", len(privateIPs))
+		t.Fatalf("expected 6 unique used private IPs but got %d -> %v", len(slices.Compact(privateIPs)), privateIPs)
 	}
 
 	nodeClient2, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID2)
@@ -222,7 +222,7 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	assert.NoError(t, err)
 
 	if len(slices.Compact[[]string, string](privateIPs2)) != 3 {
-		t.Fatalf("expected 3 used private IPs but got %d", len(privateIPs))
+		t.Fatalf("expected 3 unique used private IPs but got %d -> %v", len(slices.Compact(privateIPs)), privateIPs)
 	}
 
 	dl1, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID1, d1.Name)
