@@ -280,133 +280,139 @@ func musUnmarshal(t *testing.T, bs json.RawMessage, v interface{}) {
 	assert.NoError(t, err)
 }
 
-func TestDeploymentDeployer(t *testing.T) {
+func TestDeploymentDeployerValidate(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 
-	t.Run("test validate", func(t *testing.T) {
+	d, _, sub, _, _ := constructTestDeployer(t, tfPluginClient, false)
+
+	t.Run("test validate flist checksum ", func(t *testing.T) {
 		dl := constructTestDeployment()
-		d, _, _, _, _ := constructTestDeployer(t, tfPluginClient, false)
 
 		network := dl.NetworkName
 		checksum := dl.Vms[0].FlistChecksum
 		dl.NetworkName = network
 
 		dl.Vms[0].FlistChecksum += " "
-		assert.Error(t, d.Validate(context.Background(), &dl))
+		assert.Error(t, d.Validate(context.Background(), []*workloads.Deployment{&dl}))
 
 		dl.Vms[0].FlistChecksum = checksum
-		assert.NoError(t, d.Validate(context.Background(), &dl))
+		assert.NoError(t, d.Validate(context.Background(), []*workloads.Deployment{&dl}))
 	})
+
+	t.Run("Validation failed", func(t *testing.T) {
+		dl := constructTestDeployment()
+
+		sub.EXPECT().
+			GetBalance(d.tfPluginClient.Identity).
+			Return(substrate.Balance{
+				Free: types.U128{
+					Int: big.NewInt(10),
+				},
+			}, nil)
+
+		assert.Error(t, d.Deploy(context.Background(), &dl))
+
+		// nothing should change
+		assert.Empty(t, dl.NodeDeploymentID)
+		assert.Empty(t, dl.ContractID)
+		assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{})
+	})
+}
+
+func TestDeploymentDeployerDeploy(t *testing.T) {
+	tfPluginClient, err := setup()
+	assert.NoError(t, err)
 
 	d, cl, sub, ncPool, deployer := constructTestDeployer(t, tfPluginClient, true)
 	dl := constructTestDeployment()
+	net := constructTestNetwork()
 
 	t.Run("test generate deployment", func(t *testing.T) {
 		gridDl, err := dl.ZosDeployment(twinID)
 		assert.NoError(t, err)
 
-		net := constructTestNetwork()
-		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "", nil)
-		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
-
 		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], netContractID)
 		d.tfPluginClient.State.Networks = state.NetworkState{net.Name: state.Network{
-			Subnets:               map[uint32]string{nodeID: net.IPRange.String()},
-			NodeDeploymentHostIDs: map[uint32]state.DeploymentHostIDs{nodeID: map[uint64][]byte{contractID: {}}},
+			Subnets: map[uint32]string{nodeID: net.IPRange.String()},
 		}}
 
 		ncPool.EXPECT().
 			GetNodeClient(sub, nodeID).
-			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil)
+			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil).AnyTimes()
 
 		cl.EXPECT().
-			Call(gomock.Any(), twinID, "zos.deployment.get", gomock.Any(), gomock.Any()).
+			Call(gomock.Any(), twinID, "zos.network.list_private_ips", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
-				*res = networkDl
+				var res *[]string = result.(*[]string)
+				*res = []string{}
 				return nil
 			}).AnyTimes()
 
-		ips := make([]byte, 0)
-		dls, _, err := d.GenerateVersionlessDeployments(context.Background(), &dl, ips)
+		dls, err := d.GenerateVersionlessDeployments(context.Background(), []*workloads.Deployment{&dl})
 		assert.NoError(t, err)
 
-		assert.Equal(t, len(gridDl.Workloads), len(dls[dl.NodeID].Workloads))
-		assert.Equal(t, gridDl.Workloads, dls[dl.NodeID].Workloads)
+		assert.Equal(t, len(gridDl.Workloads), len(dls[dl.NodeID][0].Workloads))
+		assert.Equal(t, gridDl.Workloads, dls[dl.NodeID][0].Workloads)
+
+		assert.Equal(t, dls[nodeID][0].Metadata, "{\"version\":3,\"type\":\"vm\",\"name\":\"test\",\"projectName\":\"vm/test\"}")
 	})
 
-	t.Run("test sync", func(t *testing.T) {
-		ips := make([]byte, 0)
-		dls, _, err := d.GenerateVersionlessDeployments(context.Background(), &dl, ips)
-		assert.NoError(t, err)
+	t.Run("Deploying failed", func(t *testing.T) {
+		sub.EXPECT().
+			GetBalance(d.tfPluginClient.Identity).
+			Return(substrate.Balance{
+				Free: types.U128{
+					Int: big.NewInt(20000000),
+				},
+			}, nil)
 
-		assert.Equal(t, dls[nodeID].Metadata, "{\"version\":3,\"type\":\"vm\",\"name\":\"test\",\"projectName\":\"vm/test\"}")
+		deployer.EXPECT().Deploy(
+			gomock.Any(),
+			dl.NodeDeploymentID,
+			gomock.Any(),
+			gomock.Any(),
+		).Return(map[uint32]uint64{}, errors.New("error"))
 
-		t.Run("Validation failed", func(t *testing.T) {
-			sub.EXPECT().
-				GetBalance(d.tfPluginClient.Identity).
-				Return(substrate.Balance{
-					Free: types.U128{
-						Int: big.NewInt(10),
-					},
-				}, nil)
+		assert.Error(t, d.Deploy(context.Background(), &dl))
 
-			assert.Error(t, d.Deploy(context.Background(), &dl))
-
-			// nothing should change
-			assert.Empty(t, dl.NodeDeploymentID)
-			assert.Empty(t, dl.ContractID)
-			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {netContractID}})
-		})
-
-		t.Run("Deploying failed", func(t *testing.T) {
-			sub.EXPECT().
-				GetBalance(d.tfPluginClient.Identity).
-				Return(substrate.Balance{
-					Free: types.U128{
-						Int: big.NewInt(20000000),
-					},
-				}, nil)
-
-			deployer.EXPECT().Deploy(
-				gomock.Any(),
-				dl.NodeDeploymentID,
-				dls,
-				gomock.Any(),
-			).Return(map[uint32]uint64{}, errors.New("error"))
-
-			assert.Error(t, d.Deploy(context.Background(), &dl))
-
-			// nothing should change
-			assert.Empty(t, dl.NodeDeploymentID)
-			assert.Empty(t, dl.ContractID)
-			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {netContractID}})
-		})
-		t.Run("Deploying succeeded", func(t *testing.T) {
-			dl.NodeDeploymentID = map[uint32]uint64{}
-			sub.EXPECT().
-				GetBalance(d.tfPluginClient.Identity).
-				Return(substrate.Balance{
-					Free: types.U128{
-						Int: big.NewInt(20000000),
-					},
-				}, nil)
-
-			deployer.EXPECT().Deploy(
-				gomock.Any(),
-				dl.NodeDeploymentID,
-				dls,
-				gomock.Any(),
-			).Return(map[uint32]uint64{nodeID: contractID}, nil)
-			assert.NoError(t, d.Deploy(context.Background(), &dl))
-
-			// should reflect on deployment and state
-			assert.Equal(t, dl.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
-			assert.Equal(t, dl.ContractID, contractID)
-			assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {netContractID, contractID}})
-		})
+		// nothing should change
+		assert.Empty(t, dl.NodeDeploymentID)
+		assert.Empty(t, dl.ContractID)
+		assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {netContractID}})
 	})
+
+	t.Run("Deploying succeeded", func(t *testing.T) {
+		dl.NodeDeploymentID = map[uint32]uint64{}
+		sub.EXPECT().
+			GetBalance(d.tfPluginClient.Identity).
+			Return(substrate.Balance{
+				Free: types.U128{
+					Int: big.NewInt(20000000),
+				},
+			}, nil)
+
+		deployer.EXPECT().Deploy(
+			gomock.Any(),
+			dl.NodeDeploymentID,
+			gomock.Any(),
+			gomock.Any(),
+		).Return(map[uint32]uint64{nodeID: contractID}, nil)
+		assert.NoError(t, d.Deploy(context.Background(), &dl))
+
+		// should reflect on deployment and state
+		assert.Equal(t, dl.NodeDeploymentID, map[uint32]uint64{nodeID: contractID})
+		assert.Equal(t, dl.ContractID, contractID)
+		assert.Equal(t, d.tfPluginClient.State.CurrentNodeDeployments, map[uint32]state.ContractIDs{nodeID: {netContractID, contractID}})
+	})
+}
+
+func TestDeploymentDeployerDelete(t *testing.T) {
+	tfPluginClient, err := setup()
+	assert.NoError(t, err)
+
+	d, _, sub, _, deployer := constructTestDeployer(t, tfPluginClient, true)
+	dl := constructTestDeployment()
 
 	t.Run("test delete", func(t *testing.T) {
 		dl.ContractID = contractID
@@ -470,6 +476,14 @@ func TestDeploymentDeployer(t *testing.T) {
 			assert.Empty(t, dl.NodeDeploymentID)
 		})
 	})
+}
+
+func TestDeploymentDeployerSync(t *testing.T) {
+	tfPluginClient, err := setup()
+	assert.NoError(t, err)
+
+	d, cl, sub, ncPool, deployer := constructTestDeployer(t, tfPluginClient, true)
+	dl := constructTestDeployment()
 
 	t.Run("test sync", func(t *testing.T) {
 		dl.ContractID = contractID
@@ -485,13 +499,12 @@ func TestDeploymentDeployer(t *testing.T) {
 				Subnets: map[uint32]string{
 					nodeID: net.IPRange.String(),
 				},
-				NodeDeploymentHostIDs: make(state.NodeDeploymentHostIDs),
 			},
 		}
 
 		ncPool.EXPECT().
 			GetNodeClient(sub, nodeID).
-			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil)
+			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil).AnyTimes()
 
 		cl.EXPECT().
 			Call(gomock.Any(), twinID, "zos.deployment.get", gomock.Any(), gomock.Any()).
@@ -501,11 +514,22 @@ func TestDeploymentDeployer(t *testing.T) {
 				return nil
 			}).AnyTimes()
 
-		ips := make([]byte, 0)
-		dls, _, err := d.GenerateVersionlessDeployments(context.Background(), &dl, ips)
+		ncPool.EXPECT().
+			GetNodeClient(sub, nodeID).
+			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil)
+
+		cl.EXPECT().
+			Call(gomock.Any(), twinID, "zos.network.list_private_ips", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
+				var res *[]string = result.(*[]string)
+				*res = []string{}
+				return nil
+			})
+
+		dls, err := d.GenerateVersionlessDeployments(context.Background(), []*workloads.Deployment{&dl})
 		assert.NoError(t, err)
 
-		gridDl := dls[dl.NodeID]
+		gridDl := dls[dl.NodeID][0]
 		err = json.NewEncoder(log.Writer()).Encode(gridDl.Workloads)
 		assert.NoError(t, err)
 

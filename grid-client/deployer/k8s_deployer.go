@@ -417,25 +417,23 @@ func (d *K8sDeployer) removeDeletedContracts(ctx context.Context, k8sCluster *wo
 	return nil
 }
 
+// TODO: integrate new list private ips function
 func (d *K8sDeployer) getK8sUsedIPs(k8s *workloads.K8sCluster) map[uint32][]byte {
 	usedIPs := make(map[uint32][]byte)
-	network := d.tfPluginClient.State.Networks.GetNetwork(k8s.NetworkName)
 
 	if k8s.Master.IP != "" {
 		ip := net.ParseIP(k8s.Master.IP).To4()
 		if ip != nil {
 			usedIPs[k8s.Master.Node] = append(usedIPs[k8s.Master.Node], ip[3])
 		}
-
 	}
-	usedIPs[k8s.Master.Node] = append(usedIPs[k8s.Master.Node], network.GetUsedNetworkHostIDs(k8s.Master.Node)...)
+
 	for _, w := range k8s.Workers {
 		if w.IP != "" {
 			ip := net.ParseIP(w.IP).To4()
 			if ip != nil {
 				usedIPs[w.Node] = append(usedIPs[w.Node], ip[3])
 			}
-			usedIPs[w.Node] = append(usedIPs[w.Node], network.GetUsedNetworkHostIDs(w.Node)...)
 		}
 	}
 
