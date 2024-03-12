@@ -65,6 +65,7 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 
 				var blockedNodes []uint64
 				blockedNodes, requiredNodesCount = updateBlockedNodes(excludedNodes, groupDeployments)
+				fmt.Println("blocked nodes", blockedNodes)
 				excludedNodes = append(excludedNodes, blockedNodes...)
 
 				return retry.RetryableError(err)
@@ -124,6 +125,8 @@ func deployNodeGroup(
 	if err != nil {
 		return err
 	}
+	fmt.Println("filtered nodes", nodesIDs)
+
 	log.Debug().Ints("nodes IDs", nodesIDs).Send()
 
 	if groupDeployments.networkDeployments == nil {
@@ -153,7 +156,7 @@ func loadAfterDeployment(
 		groupsContracts := getDeploymentsContracts(deployedGroups)
 
 		var failed map[string]string
-		loadedgroups, failed = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContracts, retries, asJson)
+		loadedgroups, failed = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContracts, retries)
 
 		for nodeGroup, err := range failed {
 			failedGroups[nodeGroup] = err
@@ -172,7 +175,7 @@ func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[stri
 	}
 
 	log.Debug().Str("Node group", nodeGroup).Msg("Build deployments")
-	return buildDeployments(vmsOfNodeGroup, nodeGroup, nodesIDs, sshKeys)
+	return buildDeployments(vmsOfNodeGroup, nodesIDs, sshKeys)
 }
 
 func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodesIDs []int, groupDeployments *groupDeploymentsInfo) {
@@ -199,7 +202,7 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 
 func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, deployments *groupDeploymentsInfo) error {
 	// deploy only contracts that need to be deployed
-	networks, vms := getNotDeployedDeployments(tfPluginClient, deployments)
+	networks, vms := getNotDeployedDeployments(deployments)
 	var multiErr error
 
 	log.Debug().Msg(fmt.Sprintf("Deploying %d networks, this may to take a while", len(deployments.networkDeployments)))
@@ -215,7 +218,7 @@ func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, dep
 	return multiErr
 }
 
-func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
+func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
 	var vmDeployments []*workloads.Deployment
 	var networkDeployments []*workloads.ZNet
 	var nodesIDsIdx int
@@ -291,7 +294,7 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 	return
 }
 
-func getNotDeployedDeployments(tfPluginClient deployer.TFPluginClient, groupDeployments *groupDeploymentsInfo) ([]*workloads.ZNet, []*workloads.Deployment) {
+func getNotDeployedDeployments(groupDeployments *groupDeploymentsInfo) ([]*workloads.ZNet, []*workloads.Deployment) {
 	var failedVmDeployments []*workloads.Deployment
 	var failedNetworkDeployments []*workloads.ZNet
 
@@ -326,7 +329,6 @@ func updateBlockedNodes(blockedNodes []uint64, groupDeployments groupDeployments
 	for _, deployment := range groupDeployments.vmDeployments {
 		if deployment.ContractID == 0 && !slices.Contains(blockedNodes, uint64(deployment.NodeID)) {
 			cnt++
-			fmt.Println(deployment.ContractID, deployment.NodeID)
 			blockedNodes = append(blockedNodes, uint64(deployment.NodeID))
 		}
 	}
