@@ -61,14 +61,14 @@ func (d *DeploymentDeployer) Validate(ctx context.Context, dls []*workloads.Depl
 func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context, dls []*workloads.Deployment) (map[uint32][]gridtypes.Deployment, error) {
 	gridDlsPerNodes := make(map[uint32][]gridtypes.Deployment)
 
-	err := d.assignPrivateIPs(ctx, dls)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to assign node ips")
-	}
-
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var errs error
+
+	err := d.assignPrivateIPs(ctx, dls)
+	if err != nil {
+		errs = multierror.Append(errs, errors.Wrap(err, "failed to assign node ips"))
+	}
 
 	for _, dl := range dls {
 		wg.Add(1)
@@ -96,16 +96,14 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 				newDl.Workloads = append(newDl.Workloads, qsfsWorkload)
 			}
 
+			mu.Lock()
+			defer mu.Unlock()
 			newDl.Metadata, err = dl.GenerateMetadata()
 			if err != nil {
-				mu.Lock()
-				defer mu.Unlock()
 				errs = multierror.Append(errs, errors.Wrapf(err, "failed to generate deployment '%s' metadata", dl.Name))
 				return
 			}
 
-			mu.Lock()
-			defer mu.Unlock()
 			gridDlsPerNodes[dl.NodeID] = append(gridDlsPerNodes[dl.NodeID], newDl)
 		}(dl)
 	}
@@ -268,6 +266,10 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 
 	// calculate used host IDs per network
 	for _, dl := range dls {
+		if len(dl.Vms) == 0 {
+			continue
+		}
+
 		mu.Lock()
 		if _, ok := usedHosts[dl.NetworkName]; !ok {
 			usedHosts[dl.NetworkName] = make(map[uint32][]byte)
@@ -318,6 +320,7 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 		wg.Add(1)
 		go func(dl *workloads.Deployment) {
 			defer wg.Done()
+
 			network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
 			ipRange := network.GetNodeSubnet(dl.NodeID)
 
@@ -338,8 +341,12 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 				if vmIP != nil {
 					vmHostID := vmIP[3] // host ID of the private ip
 
+					mu.Lock()
+					nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
+					mu.Unlock()
+
 					// TODO: use of a duplicate IP vs an updated vm with a new/old IP
-					if slices.Contains(usedHosts[dl.NetworkName][dl.NodeID], vmHostID) {
+					if slices.Contains(nodeUsedHostIDs, vmHostID) {
 						continue
 						// return fmt.Errorf("duplicate private ip '%v' in vm '%s' is used", vmIP, vm.Name)
 					}
@@ -358,8 +365,12 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 					continue
 				}
 
+				mu.Lock()
+				nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
+				mu.Unlock()
+
 				// try to find available host ID in the deployment ip range
-				for slices.Contains(usedHosts[dl.NetworkName][dl.NodeID], curHostID) {
+				for slices.Contains(nodeUsedHostIDs, curHostID) {
 					if curHostID == 254 {
 						mu.Lock()
 						defer mu.Unlock()
