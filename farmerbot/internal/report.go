@@ -17,7 +17,7 @@ type NodeReport struct {
 	HasActiveContracts           bool          `json:"has_active_contracts"`
 	Dedicated                    bool          `json:"dedicated"`
 	PublicConfig                 bool          `json:"public_config"`
-	UsagePercentage              uint8         `json:"usage_percentage"`
+	UsagePercentage              float32       `json:"usage_percentage"`
 	TimesRandomWakeUps           int           `json:"random_wakeups"`
 	SincePowerStateChanged       time.Duration `json:"since_power_state_changed"`
 	SinceLastTimeAwake           time.Duration `json:"since_last_time_awake"`
@@ -55,10 +55,10 @@ func createNodeReport(n node) NodeReport {
 		sinceLastTimeAwake = time.Since(n.lastTimeAwake)
 	}
 
-	var usage uint8
+	var usage float32
 	used, total := calculateResourceUsage(map[uint32]node{nodeID: n})
 	if total != 0 {
-		usage = uint8(100 * used / total)
+		usage = 100 * float32(used) / float32(total)
 	}
 
 	return NodeReport{
@@ -115,7 +115,7 @@ func (f *FarmerBot) report() string {
 			nodeReport.HasActiveRentContract,
 			nodeReport.Dedicated,
 			nodeReport.PublicConfig,
-			fmt.Sprintf("%d%%", nodeReport.UsagePercentage),
+			fmt.Sprintf("%.1f%%", nodeReport.UsagePercentage),
 			nodeReport.HasActiveContracts,
 			nodeReport.TimesRandomWakeUps,
 			periodicWakeup,
