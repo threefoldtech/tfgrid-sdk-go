@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"syscall"
 	"time"
 
@@ -44,12 +45,12 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 		cfg.MaxRetries = DefaultMaxRetries
 	}
 
+	var excludedNodes []uint64
+
 	for _, nodeGroup := range cfg.NodeGroups {
 		log.Info().Str("Node group", nodeGroup.Name).Msg("Running deployment")
 
 		var groupDeployments groupDeploymentsInfo
-		var excludedNodes []uint64
-
 		requiredNodesCount := nodeGroup.NodesCount
 		trial := 1
 
@@ -62,9 +63,8 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 				trial++
 				log.Debug().Err(err).Str("Node group", nodeGroup.Name).Msg("failed to deploy")
 
-				blockedNodes := getBlockedNodes(groupDeployments)
-				fmt.Println(blockedNodes)
-				requiredNodesCount = uint64(len(blockedNodes))
+				var blockedNodes []uint64
+				blockedNodes, requiredNodesCount = updateBlockedNodes(excludedNodes, groupDeployments)
 				excludedNodes = append(excludedNodes, blockedNodes...)
 
 				return retry.RetryableError(err)
@@ -125,7 +125,6 @@ func deployNodeGroup(
 		return err
 	}
 	log.Debug().Ints("nodes IDs", nodesIDs).Send()
-	fmt.Println(nodesIDs)
 
 	if groupDeployments.networkDeployments == nil {
 		log.Debug().Str("Node group", nodeGroup.Name).Msg("Parsing vms group")
@@ -186,7 +185,7 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 
 	err := tfPluginClient.NetworkDeployer.BatchCancel(ctx, networksToBeCanceled)
 	if err != nil {
-		log.Debug().Err(err)
+		log.Debug().Err(err).Send()
 	}
 
 	for idx, deployment := range groupDeployments.vmDeployments {
@@ -322,12 +321,15 @@ func getDeploymentsContracts(groupsInfo map[string][]*workloads.Deployment) map[
 	return nodeGroupsContracts
 }
 
-func getBlockedNodes(groupDeployments groupDeploymentsInfo) []uint64 {
-	var excludedNodes []uint64
+func updateBlockedNodes(blockedNodes []uint64, groupDeployments groupDeploymentsInfo) ([]uint64, uint64) {
+	var cnt uint64
 	for _, deployment := range groupDeployments.vmDeployments {
-		if deployment.ContractID == 0 {
-			excludedNodes = append(excludedNodes, uint64(deployment.NodeID))
+		if deployment.ContractID == 0 && !slices.Contains(blockedNodes, uint64(deployment.NodeID)) {
+			cnt++
+			fmt.Println(deployment.ContractID, deployment.NodeID)
+			blockedNodes = append(blockedNodes, uint64(deployment.NodeID))
 		}
 	}
-	return excludedNodes
+
+	return blockedNodes, cnt
 }
