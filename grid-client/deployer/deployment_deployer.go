@@ -139,7 +139,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 	// error is not returned immediately before updating state because of untracked failed deployments
 	if contractID, ok := dl.NodeDeploymentID[dl.NodeID]; ok && contractID != 0 {
 		dl.ContractID = contractID
-		d.tfPluginClient.State.StoreContractIDs(dl.NodeID, []uint64{dl.ContractID})
+		d.tfPluginClient.State.StoreContractIDs(dl.NodeID, dl.ContractID)
 	}
 
 	return err
@@ -192,7 +192,7 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, dl *workloads.Deploymen
 
 	// update state
 	delete(dl.NodeDeploymentID, dl.NodeID)
-	d.tfPluginClient.State.RemoveContractIDs(dl.NodeID, []uint64{dl.ContractID})
+	d.tfPluginClient.State.RemoveContractIDs(dl.NodeID, dl.ContractID)
 	dl.ContractID = 0
 
 	return nil
@@ -211,7 +211,7 @@ func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl 
 			if newDl.ContractID != 0 {
 				dl.NodeDeploymentID[dl.NodeID] = newDl.ContractID
 				dl.ContractID = newDl.ContractID
-				d.tfPluginClient.State.StoreContractIDs(dl.NodeID, []uint64{dl.ContractID})
+				d.tfPluginClient.State.StoreContractIDs(dl.NodeID, dl.ContractID)
 			}
 		}
 	}

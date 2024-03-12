@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 const (
@@ -20,79 +19,80 @@ const (
 )
 
 func TestDeploymentsDeploy(t *testing.T) {
-	tf, err := setup()
+	tfPluginClient, err := setup()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	nodes, err := deployer.FilterNodes(context.Background(), tf, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, []uint64{minRootfs})
-	if err != nil || len(nodes) == 0 {
-		t.Skip("no available nodes found")
+	nodes, err := deployer.FilterNodes(
+		context.Background(),
+		tfPluginClient,
+		generateNodeFilter(WithFreeMRU(*convertGBToBytes(4 * minMemory))),
+		nil,
+		nil,
+		nil,
+		1,
+	)
+	if err != nil {
+		t.Skipf("no available nodes found: %v", err)
 	}
 
-	node := uint32(nodes[0].NodeID)
-	network := workloads.ZNet{
-		Name:  generateRandString(10),
-		Nodes: []uint32{node},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
-			IP:   net.IPv4(10, 1, 0, 0),
-			Mask: net.CIDRMask(16, 32),
-		}),
-	}
+	nodeID := uint32(nodes[0].NodeID)
+
+	network := generateBasicNetwork([]uint32{nodeID})
 
 	vm1 := workloads.VM{
 		Name:        vm1Name,
-		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
-		CPU:         2,
-		Memory:      1024,
-		Entrypoint:  "/sbin/zinit init",
 		NetworkName: network.Name,
+		CPU:         minCPU,
+		Memory:      int(minMemory) * 1024,
+		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
+		Entrypoint:  "/sbin/zinit init",
 	}
 
-	err = tf.NetworkDeployer.Deploy(context.Background(), &network)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Cleanup(func() {
-		err = tf.NetworkDeployer.Cancel(context.Background(), &network)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		if err != nil {
 			t.Log(err)
 		}
 	})
 
-	d1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
-	err = tf.DeploymentDeployer.Deploy(context.Background(), &d1)
+	d1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &d1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Cleanup(func() {
-		err = tf.DeploymentDeployer.Cancel(context.Background(), &d1)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &d1)
 		if err != nil {
 			t.Log(err)
 		}
 	})
 
-	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), node, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
-	err = tf.DeploymentDeployer.Deploy(context.Background(), &d2)
+	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &d2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Cleanup(func() {
-		err = tf.DeploymentDeployer.Cancel(context.Background(), &d2)
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &d2)
 		if err != nil {
 			t.Log(err)
 		}
 	})
 
-	dl1, err := tf.State.LoadDeploymentFromGrid(context.Background(), node, d1.Name)
+	dl1, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, d1.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	dl2, err := tf.State.LoadDeploymentFromGrid(context.Background(), node, d2.Name)
+	dl2, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, d2.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 		t.Fatal("expected vms in the same network to have different ips but got the same ip")
 	}
 
-	nodeClient, err := tf.NcPool.GetNodeClient(tf.SubstrateConn, node)
+	nodeClient, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID)
 	assert.NoError(t, err)
 
 	privateIPs, err := nodeClient.NetworkListPrivateIPs(context.Background(), network.Name)
@@ -118,12 +118,12 @@ func TestDeploymentsDeploy(t *testing.T) {
 	d1.Vms = append(d1.Vms, vm1)
 	d1.Vms[2].Name = vm3Name
 
-	err = tf.DeploymentDeployer.Deploy(context.Background(), &d1)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &d1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dl1, err = tf.State.LoadDeploymentFromGrid(context.Background(), node, d1.Name)
+	dl1, err = tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID, d1.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,44 +137,44 @@ func TestDeploymentsDeploy(t *testing.T) {
 }
 
 func TestDeploymentsBatchDeploy(t *testing.T) {
-	tf, err := setup()
+	tfPluginClient, err := setup()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	nodes, err := deployer.FilterNodes(context.Background(), tf, nodeFilter, []uint64{*convertGBToBytes(1)}, nil, []uint64{minRootfs}, 2)
+	nodes, err := deployer.FilterNodes(
+		context.Background(),
+		tfPluginClient,
+		generateNodeFilter(WithFreeMRU(*convertGBToBytes(6 * minMemory))),
+		nil,
+		nil,
+		nil,
+		2,
+	)
 	if err != nil {
-		t.Skip("no available nodes found")
+		t.Skipf("no available nodes found: %v", err)
 	}
 
 	nodeID1 := uint32(nodes[0].NodeID)
-	nodeID2 := uint32(nodes[1].NodeID)
-
-	network := workloads.ZNet{
-		Name:  "network_two_deployments_batch",
-		Nodes: []uint32{nodeID1, nodeID2},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
-			IP:   net.IPv4(10, 1, 0, 0),
-			Mask: net.CIDRMask(16, 32),
-		}),
-	}
+	nodeID2 := uint32(nodes[0].NodeID)
+	network := generateBasicNetwork([]uint32{nodeID1, nodeID2})
 
 	vm1 := workloads.VM{
 		Name:        vm1Name,
-		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
-		CPU:         2,
-		Memory:      1024,
-		Entrypoint:  "/sbin/zinit init",
 		NetworkName: network.Name,
+		CPU:         minCPU,
+		Memory:      int(minMemory) * 1024,
+		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
+		Entrypoint:  "/sbin/zinit init",
 	}
 
-	err = tf.NetworkDeployer.Deploy(context.Background(), &network)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Cleanup(func() {
-		err = tf.NetworkDeployer.Cancel(context.Background(), &network)
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		if err != nil {
 			t.Log(err)
 		}
@@ -192,19 +192,19 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	d3.Vms[1].Name = vm2Name
 	d3.Vms[2].Name = vm3Name
 
-	err = tf.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&d1, &d2, &d3})
+	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&d1, &d2, &d3})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Cleanup(func() {
-		err = tf.BatchCancelContract([]uint64{d1.ContractID, d2.ContractID, d3.ContractID})
+		err = tfPluginClient.BatchCancelContract([]uint64{d1.ContractID, d2.ContractID, d3.ContractID})
 		if err != nil {
 			t.Log(err)
 		}
 	})
 
-	nodeClient, err := tf.NcPool.GetNodeClient(tf.SubstrateConn, nodeID1)
+	nodeClient, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID1)
 	assert.NoError(t, err)
 
 	privateIPs, err := nodeClient.NetworkListPrivateIPs(context.Background(), network.Name)
@@ -214,7 +214,7 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		t.Fatalf("expected 6 used private IPs but got %d", len(privateIPs))
 	}
 
-	nodeClient2, err := tf.NcPool.GetNodeClient(tf.SubstrateConn, nodeID2)
+	nodeClient2, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID2)
 	assert.NoError(t, err)
 
 	privateIPs2, err := nodeClient2.NetworkListPrivateIPs(context.Background(), network.Name)
@@ -224,17 +224,17 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		t.Fatalf("expected 3 used private IPs but got %d", len(privateIPs))
 	}
 
-	dl1, err := tf.State.LoadDeploymentFromGrid(context.Background(), nodeID1, d1.Name)
+	dl1, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID1, d1.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dl2, err := tf.State.LoadDeploymentFromGrid(context.Background(), nodeID1, d2.Name)
+	dl2, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID1, d2.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dl3, err := tf.State.LoadDeploymentFromGrid(context.Background(), nodeID2, d3.Name)
+	dl3, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID2, d3.Name)
 	if err != nil {
 		t.Fatal(err)
 	}

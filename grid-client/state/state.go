@@ -44,7 +44,7 @@ func NewState(ncPool client.NodeClientGetter, substrate subi.SubstrateExt) *Stat
 	}
 }
 
-func (st *State) StoreContractIDs(nodeID uint32, contractIDs ContractIDs) {
+func (st *State) StoreContractIDs(nodeID uint32, contractIDs ...uint64) {
 	for _, contractID := range contractIDs {
 		if !slices.Contains(st.CurrentNodeDeployments[nodeID], contractID) {
 			st.CurrentNodeDeployments[nodeID] = append(st.CurrentNodeDeployments[nodeID], contractID)
@@ -52,7 +52,7 @@ func (st *State) StoreContractIDs(nodeID uint32, contractIDs ContractIDs) {
 	}
 }
 
-func (st *State) RemoveContractIDs(nodeID uint32, contractIDs ContractIDs) {
+func (st *State) RemoveContractIDs(nodeID uint32, contractIDs ...uint64) {
 	for _, contractID := range contractIDs {
 		st.CurrentNodeDeployments[nodeID] = workloads.Delete(st.CurrentNodeDeployments[nodeID], contractID)
 	}
@@ -167,7 +167,7 @@ func (st *State) LoadK8sFromGrid(ctx context.Context, nodeIDs []uint32, deployme
 			if workload.Type != zos.ZMachineType {
 				continue
 			}
-			workloadDiskSize, workloadComputedIP, workloadComputedIP6, err := st.computeK8sDeploymentResources(nodeID, deployment)
+			workloadDiskSize, workloadComputedIP, workloadComputedIP6, err := st.computeK8sDeploymentResources(deployment)
 			if err != nil {
 				return workloads.K8sCluster{}, errors.Wrapf(err, "could not compute node %s, resources", workload.Name)
 			}
@@ -230,7 +230,7 @@ func isMasterNode(workload gridtypes.Workload) (bool, error) {
 	return false, nil
 }
 
-func (st *State) computeK8sDeploymentResources(nodeID uint32, dl gridtypes.Deployment) (
+func (st *State) computeK8sDeploymentResources(dl gridtypes.Deployment) (
 	workloadDiskSize map[string]int,
 	workloadComputedIP map[string]string,
 	workloadComputedIP6 map[string]string,
@@ -305,12 +305,13 @@ func (st *State) LoadNetworkFromGrid(ctx context.Context, name string) (znet wor
 			for _, wl := range dl.Workloads {
 				if wl.Type == zos.NetworkType && wl.Name == gridtypes.Name(name) {
 					znet, err = workloads.NewNetworkFromWorkload(wl, nodeID)
-					znet.SolutionType = deploymentData.ProjectName
-					zNets = append(zNets, znet)
-					nodeDeploymentsIDs[nodeID] = dl.ContractID
 					if err != nil {
 						return workloads.ZNet{}, errors.Wrapf(err, "failed to get network from workload %s", name)
 					}
+
+					znet.SolutionType = deploymentData.ProjectName
+					zNets = append(zNets, znet)
+					nodeDeploymentsIDs[nodeID] = dl.ContractID
 
 					if znet.PublicNodeID == nodeID {
 						// this is the network's public node

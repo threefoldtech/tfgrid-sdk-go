@@ -130,13 +130,9 @@ func (d *K8sDeployer) Deploy(ctx context.Context, k8sCluster *workloads.K8sClust
 	// update deployments state
 	// error is not returned immediately before updating state because of untracked failed deployments
 	if contractID, ok := k8sCluster.NodeDeploymentID[k8sCluster.Master.Node]; ok && contractID != 0 {
-		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.Node], contractID) {
-			d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.Node] = append(d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.Node], contractID)
-		}
+		d.tfPluginClient.State.StoreContractIDs(k8sCluster.Master.Node, contractID)
 		for _, w := range k8sCluster.Workers {
-			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[w.Node], k8sCluster.NodeDeploymentID[w.Node]) {
-				d.tfPluginClient.State.CurrentNodeDeployments[w.Node] = append(d.tfPluginClient.State.CurrentNodeDeployments[w.Node], k8sCluster.NodeDeploymentID[w.Node])
-			}
+			d.tfPluginClient.State.StoreContractIDs(w.Node, k8sCluster.NodeDeploymentID[w.Node])
 		}
 	}
 
@@ -194,10 +190,6 @@ func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.
 
 // Cancel cancels a k8s cluster deployment
 func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sCluster) (err error) {
-	if err := d.Validate(ctx, k8sCluster); err != nil {
-		return err
-	}
-
 	for nodeID, contractID := range k8sCluster.NodeDeploymentID {
 		if k8sCluster.Master.Node == nodeID {
 			err = d.deployer.Cancel(ctx, contractID)
