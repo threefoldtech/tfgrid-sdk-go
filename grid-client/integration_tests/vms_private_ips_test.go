@@ -131,7 +131,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 	privateIPs, err = nodeClient.NetworkListPrivateIPs(context.Background(), network.Name)
 	assert.NoError(t, err)
 
-	if len(slices.Compact[[]string, string](privateIPs)) != 4 {
+	if len(slices.Compact(privateIPs)) != 4 {
 		t.Fatalf("expected 4 unique used private IPs but got %d", len(privateIPs))
 	}
 }
@@ -156,7 +156,8 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	}
 
 	nodeID1 := uint32(nodes[0].NodeID)
-	nodeID2 := uint32(nodes[0].NodeID)
+	nodeID2 := uint32(nodes[1].NodeID)
+
 	network := generateBasicNetwork([]uint32{nodeID1, nodeID2})
 
 	vm1 := workloads.VM{
@@ -210,7 +211,7 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	privateIPs, err := nodeClient.NetworkListPrivateIPs(context.Background(), network.Name)
 	assert.NoError(t, err)
 
-	if len(slices.Compact[[]string, string](privateIPs)) != 6 {
+	if len(slices.Compact(privateIPs)) != 6 {
 		t.Fatalf("expected 6 used private IPs but got %d", len(privateIPs))
 	}
 
@@ -248,7 +249,7 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	ips = append(ips, ips3...)
 
 	// make sure we have different 9 ips
-	assert.Equal(t, len(slices.Compact[[]byte, byte](ips)), 9)
+	assert.Equal(t, len(slices.Compact(ips)), 9)
 }
 
 func calcDeploymentHostIDs(dl workloads.Deployment) ([]byte, error) {
