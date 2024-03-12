@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -23,7 +26,8 @@ type InnerConnection struct {
 	twinID   uint32
 	session  string
 	identity substrate.Identity
-	url      string
+	urls     []string
+	m        sync.Mutex
 }
 
 // Writer is a channel that sends outgoing messages
@@ -41,11 +45,11 @@ func (r Reader) Read() []byte {
 }
 
 // NewConnection creates a new InnerConnection instance
-func NewConnection(identity substrate.Identity, url string, session string, twinID uint32) InnerConnection {
+func NewConnection(identity substrate.Identity, urls []string, session string, twinID uint32) InnerConnection {
 	return InnerConnection{
 		twinID:   twinID,
 		identity: identity,
-		url:      url,
+		urls:     urls,
 		session:  session,
 	}
 }
@@ -131,7 +135,7 @@ func (c *InnerConnection) Start(ctx context.Context) (Reader, Writer) {
 			if err == context.Canceled {
 				break
 			} else if err != nil {
-				log.Error().Err(err)
+				log.Error().Err(err).Send()
 			}
 
 			<-time.After(2 * time.Second)
@@ -157,23 +161,49 @@ func (c *InnerConnection) connect() (*websocket.Conn, error) {
 		return nil, errors.Wrap(err, "could not create new jwt")
 	}
 
-	relayURL := fmt.Sprintf("%s?%s", c.url, token)
+	var (
+		con        *websocket.Conn
+		resp       *http.Response
+		maxRetries uint64 = 2
+		i                 = rand.Intn(len(c.urls))
+	)
 
-	con, resp, err := websocket.DefaultDialer.Dial(relayURL, nil)
-	if err != nil {
-		var body []byte
-		var status string
-		if resp != nil {
-			status = resp.Status
-			body, _ = io.ReadAll(resp.Body)
+	// implementation is not thread-safe.
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	b := backoff.WithMaxRetries(
+		backoff.NewConstantBackOff(time.Nanosecond),
+		maxRetries*uint64(len(c.urls)),
+	)
+
+	err = backoff.RetryNotify(func() error {
+		url := c.urls[i%len(c.urls)]
+		relayURL := fmt.Sprintf("%s?%s", url, token)
+		log.Debug().Str("url", url).Msg("connecting")
+
+		con, resp, err = websocket.DefaultDialer.Dial(relayURL, nil)
+		if err != nil {
+			var body []byte
+			var status string
+			if resp != nil {
+				status = resp.Status
+				body, _ = io.ReadAll(resp.Body)
+			}
+
+			i++
+			return errors.Wrapf(err, "failed to connect (%s): %s", status, string(body))
 		}
 
-		return nil, errors.Wrapf(err, "failed to connect (%s): %s", status, string(body))
-	}
+		if resp.StatusCode != http.StatusSwitchingProtocols {
+			i++
+			return fmt.Errorf("invalid response %s", resp.Status)
+		}
 
-	if resp.StatusCode != http.StatusSwitchingProtocols {
-		return nil, fmt.Errorf("invalid response %s", resp.Status)
-	}
+		return nil
+	}, b, func(err error, _ time.Duration) {
+		log.Error().Err(err).Msg("failed to connect to relay, retrying")
+	})
 
-	return con, nil
+	return con, err
 }

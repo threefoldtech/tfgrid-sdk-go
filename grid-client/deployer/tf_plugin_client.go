@@ -47,11 +47,11 @@ var (
 		"main": "https://graphql.grid.tf/graphql",
 	}
 	// RelayURLS relay urls
-	RelayURLS = map[string]string{
-		"dev":  "wss://relay.dev.grid.tf",
-		"test": "wss://relay.test.grid.tf",
-		"qa":   "wss://relay.qa.grid.tf",
-		"main": "wss://relay.grid.tf",
+	RelayURLS = map[string][]string{
+		"dev":  {"wss://relay.dev.grid.tf", "wss://relay.02.dev.grid.tf"},
+		"test": {"wss://relay.test.grid.tf", "wss://relay.02.test.grid.tf"},
+		"qa":   {"wss://relay.qa.grid.tf"},
+		"main": {"wss://relay.grid.tf"},
 	}
 )
 
@@ -61,7 +61,7 @@ type TFPluginClient struct {
 	mnemonicOrSeed string
 	Identity       substrate.Identity
 	substrateURL   []string
-	relayURL       string
+	relayURLs      []string
 	RMBTimeout     time.Duration
 	proxyURL       string
 	useRmbProxy    bool
@@ -99,7 +99,7 @@ type pluginCfg struct {
 	keyType       string
 	network       string
 	substrateURL  []string
-	relayURL      string
+	relayURLs     []string
 	proxyURL      string
 	rmbTimeout    int
 	showLogs      bool
@@ -126,9 +126,9 @@ func WithSubstrateURL(substrateURL ...string) PluginOpt {
 	}
 }
 
-func WithRelayURL(relayURL string) PluginOpt {
+func WithRelayURL(relayURLs ...string) PluginOpt {
 	return func(p *pluginCfg) {
-		p.relayURL = relayURL
+		p.relayURLs = relayURLs
 	}
 }
 
@@ -162,7 +162,7 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 		keyType:       peer.KeyTypeSr25519,
 		substrateURL:  []string{},
 		proxyURL:      "",
-		relayURL:      "",
+		relayURLs:     []string{},
 		rmbTimeout:    60, // default rmbTimeout is 60
 		showLogs:      false,
 		rmbInMemCache: true,
@@ -179,11 +179,13 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 		return cfg, errors.Wrapf(err, "could not validate proxy url %s", cfg.proxyURL)
 	}
 
-	if strings.TrimSpace(cfg.relayURL) == "" {
-		cfg.relayURL = RelayURLS[cfg.network]
+	if len(cfg.relayURLs) == 0 {
+		cfg.relayURLs = RelayURLS[cfg.network]
 	}
-	if err := validateWssURL(cfg.relayURL); err != nil {
-		return cfg, errors.Wrapf(err, "could not validate relay url %s", cfg.relayURL)
+	for _, url := range cfg.relayURLs {
+		if err := validateWssURL(url); err != nil {
+			return cfg, errors.Wrapf(err, "could not validate relay url %s", url)
+		}
 	}
 
 	if len(cfg.substrateURL) == 0 {
@@ -253,7 +255,7 @@ func NewTFPluginClient(
 
 	tfPluginClient.substrateURL = cfg.substrateURL
 	tfPluginClient.proxyURL = cfg.proxyURL
-	tfPluginClient.relayURL = cfg.relayURL
+	tfPluginClient.relayURLs = cfg.relayURLs
 
 	manager := subi.NewManager(tfPluginClient.substrateURL...)
 	sub, err := manager.SubstrateExt()
@@ -290,7 +292,7 @@ func NewTFPluginClient(
 	tfPluginClient.cancelRelayContext = cancel
 
 	peerOpts := []peer.PeerOpt{
-		peer.WithRelay(tfPluginClient.relayURL),
+		peer.WithRelay(tfPluginClient.relayURLs...),
 		peer.WithSession(sessionID),
 		peer.WithKeyType(cfg.keyType),
 	}

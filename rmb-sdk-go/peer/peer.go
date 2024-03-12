@@ -34,7 +34,7 @@ type Handler func(ctx context.Context, peer Peer, env *types.Envelope, err error
 type cacheFactory = func(inner TwinDB, chainURL string) (TwinDB, error)
 
 type peerCfg struct {
-	relayURL         string
+	relayURLs        []string
 	keyType          string
 	session          string
 	enableEncryption bool
@@ -59,13 +59,13 @@ func WithEncryption(enable bool) PeerOpt {
 }
 
 // WithRelay set up the relay url, default is mainnet relay
-func WithRelay(url string) PeerOpt {
+func WithRelay(urls ...string) PeerOpt {
 	return func(p *peerCfg) {
-		p.relayURL = url
+		p.relayURLs = urls
 	}
 }
 
-// WithKeyType set up the menmonic key type, default is Sr25519
+// WithKeyType set up the mnemonic key type, default is Sr25519
 func WithKeyType(keyType string) PeerOpt {
 	return func(p *peerCfg) {
 		// to ensure only ed25519 and sr25519 are used
@@ -148,7 +148,7 @@ func NewPeer(
 	opts ...PeerOpt) (*Peer, error) {
 
 	cfg := &peerCfg{
-		relayURL:         "wss://relay.grid.tf",
+		relayURLs:        []string{"wss://relay.grid.tf"},
 		session:          "",
 		enableEncryption: true,
 		keyType:          KeyTypeSr25519,
@@ -196,11 +196,6 @@ func NewPeer(
 		return nil, errors.Wrapf(err, "failed to get twin id: %d", id)
 	}
 
-	url, err := url.Parse(cfg.relayURL)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse url: %s", cfg.relayURL)
-	}
-
 	var publicKey []byte
 	var privKey *secp256k1.PrivateKey
 	if cfg.enableEncryption {
@@ -212,19 +207,27 @@ func NewPeer(
 		publicKey = privKey.PubKey().SerializeCompressed()
 	}
 
-	if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || url.Hostname() != *twin.Relay {
-		log.Info().Msg("twin relay/public key didn't match, updating on chain ...")
-		subConn, err := subManager.Substrate()
+	for _, relayURL := range cfg.relayURLs {
+		url, err := url.Parse(relayURL)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not start substrate connection")
+			return nil, errors.Wrapf(err, "failed to parse url: %s", relayURL)
 		}
-		defer subConn.Close()
 
-		if _, err = subConn.UpdateTwin(identity, url.Hostname(), publicKey); err != nil {
-			return nil, errors.Wrap(err, "could not update twin relay information")
+		if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || url.Hostname() != *twin.Relay {
+			log.Info().Str("Relay", url.Hostname()).Msg("twin relay/public key didn't match, updating on chain ...")
+			subConn, err := subManager.Substrate()
+			if err != nil {
+				return nil, errors.Wrap(err, "could not start substrate connection")
+			}
+			defer subConn.Close()
+
+			if _, err = subConn.UpdateTwin(identity, url.Hostname(), publicKey); err != nil {
+				return nil, errors.Wrap(err, "could not update twin relay information")
+			}
 		}
 	}
-	conn := NewConnection(identity, cfg.relayURL, cfg.session, twin.ID)
+
+	conn := NewConnection(identity, cfg.relayURLs, cfg.session, twin.ID)
 
 	reader, writer := conn.Start(ctx)
 	var sessionP *string
