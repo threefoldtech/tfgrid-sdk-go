@@ -3,11 +3,13 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	node "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -26,13 +28,13 @@ func ConvertGPUsToStr(gpus []node.GPU) (zosGPUs []zos.GPU) {
 
 func TestVMWithGPUDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	twinID := uint64(tfPluginClient.TwinID)
 	nodeFilter := types.NodeFilter{
@@ -50,13 +52,13 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	nodeClient, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	gpus, err := nodeClient.GPUs(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	network := workloads.ZNet{
-		Name:        "gpuNetwork",
+		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
 		Description: "network for testing gpu",
 		Nodes:       []uint32{nodeID},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -89,16 +91,16 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
 		assert.NoError(t, err)
 	}()
 
-	dl := workloads.NewDeployment("gpu", nodeID, "", nil, network.Name, []workloads.Disk{disk}, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, []workloads.Disk{disk}, nil, []workloads.VM{vm}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
@@ -106,8 +108,8 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	}()
 
 	vm, err = tfPluginClient.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
-	assert.NoError(t, err)
-	assert.Equal(t, vm.GPUs, ConvertGPUsToStr(gpus))
+	require.NoError(t, err)
+	require.Equal(t, vm.GPUs, ConvertGPUsToStr(gpus))
 
 	time.Sleep(30 * time.Second)
 	output, err := RemoteRun("root", vm.PlanetaryIP, "lspci -v", privateKey)

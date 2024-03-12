@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"log"
+	mrand "math/rand"
 	"net"
 	"os"
 	"time"
@@ -19,7 +20,6 @@ import (
 
 var (
 	trueVal   = true
-	falseVal  = false
 	statusUp  = "up"
 	value1    = uint64(1)
 	minRootfs = *convertGBToBytes(2)
@@ -31,7 +31,6 @@ var nodeFilter = types.NodeFilter{
 	FreeHRU: convertGBToBytes(2),
 	FreeMRU: convertGBToBytes(2),
 	FarmIDs: []uint64{1},
-	Rented:  &falseVal,
 }
 
 func convertGBToBytes(gb uint64) *uint64 {
@@ -46,7 +45,7 @@ func setup() (deployer.TFPluginClient, error) {
 	network := os.Getenv("NETWORK")
 	log.Printf("network: %s", network)
 
-	return deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, false, true)
+	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network))
 }
 
 // TestConnection used to test connection
@@ -113,4 +112,13 @@ func GenerateSSHKeyPair() (string, string, error) {
 	}
 	authorizedKey := ssh.MarshalAuthorizedKey(pub)
 	return string(authorizedKey), string(privateKey), nil
+}
+
+func generateRandString(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyz123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[mrand.Intn(len(letters))]
+	}
+	return string(b)
 }

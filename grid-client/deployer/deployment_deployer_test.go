@@ -307,7 +307,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		assert.NoError(t, err)
 
 		net := constructTestNetwork()
-		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "")
+		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "", nil)
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
 		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], netContractID)
@@ -476,7 +476,7 @@ func TestDeploymentDeployer(t *testing.T) {
 		dl.NodeDeploymentID = make(map[uint32]uint64)
 
 		net := constructTestNetwork()
-		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "")
+		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "", nil)
 		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
 
 		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
@@ -662,7 +662,7 @@ func ExampleDeploymentDeployer_Deploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -711,7 +711,7 @@ func ExampleDeploymentDeployer_BatchDeploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -770,7 +770,7 @@ func ExampleDeploymentDeployer_Cancel() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -1,6 +1,6 @@
 # Farmerbot
 
-<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-78%25-brightgreen.svg?longCache=true&style=flat)</a>
+<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-75%25-brightgreen.svg?longCache=true&style=flat)</a>
 
 Farmerbot is a service that farmers can run allowing them to automatically manage power of the nodes of their farm.
 
@@ -30,7 +30,9 @@ Where:
 
 ```bash
 Flags:
--c, --config string     your config file that includes your farm, node and power configs. Available format is yml/yaml
+-c, --config string             your config file that includes your farm, node and power configs. Available format is yml/yaml
+    --continue-power-on-error   when set, the farmerbot will run even if there was an error powering on some of the nodes
+-h, --help                      help for run
 
 Global Flags:
 -d, --debug             by setting this flag the farmerbot will print debug logs too
@@ -62,6 +64,7 @@ mv farmerbot /usr/local/bin
 ```env
 NETWORK="the grid network to use (default is mainnet)"
 MNEMONIC_OR_SEED="your farm mnemonic or seed"
+KEY_TYPE="your key type [ed25519, sr25519], default is sr25519"
 ```
 
 2. Add your [configurations](#config)

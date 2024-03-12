@@ -11,6 +11,7 @@ type Substrate interface {
 	GetPowerTarget(nodeID uint32) (power substrate.NodePower, err error)
 
 	GetNodeRentContract(nodeID uint32) (uint64, error)
+	GetNodeContracts(nodeID uint32) ([]types.U64, error)
 	GetNode(nodeID uint32) (*substrate.Node, error)
 	GetFarm(id uint32) (*substrate.Farm, error)
 	GetNodes(farmID uint32) ([]uint32, error)

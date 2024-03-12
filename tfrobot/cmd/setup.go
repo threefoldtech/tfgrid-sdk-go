@@ -6,7 +6,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 )
 
@@ -23,5 +22,16 @@ func setup(conf tfrobot.Config, debug bool) (deployer.TFPluginClient, error) {
 	if network == "main" && noNinjaProxyURL == "" {
 		proxyURL = "https://gridproxy.bknd1.ninja.tf"
 	}
-	return deployer.NewTFPluginClient(mnemonic, peer.KeyTypeSr25519, network, "", "", proxyURL, 30, debug, true)
+
+	opts := []deployer.PluginOpt{
+		deployer.WithTwinCache(),
+		deployer.WithRMBTimeout(30),
+		deployer.WithNetwork(network),
+		deployer.WithProxyURL(proxyURL),
+	}
+	if debug {
+		opts = append(opts, deployer.WithLogs())
+	}
+
+	return deployer.NewTFPluginClient(mnemonic, opts...)
 }

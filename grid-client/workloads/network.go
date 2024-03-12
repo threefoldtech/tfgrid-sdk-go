@@ -28,14 +28,14 @@ type UserAccess struct {
 
 // NetworkMetaData is added to network workloads to help rebuilding networks when retrieved from the grid
 type NetworkMetaData struct {
-	Version    int          `json:"version"`
-	UserAccess []UserAccess `json:"user_access"`
+	Version      int          `json:"version"`
+	UserAccesses []UserAccess `json:"user_accesses"`
 }
 
 func (m *NetworkMetaData) UnmarshalJSON(data []byte) error {
 	var deprecated struct {
-		Version    int          `json:"version"`
-		UserAccess []UserAccess `json:"user_access"`
+		Version      int          `json:"version"`
+		UserAccesses []UserAccess `json:"user_accesses"`
 		// deprecated fields
 
 		UserAccessIP string `json:"ip"`
@@ -46,10 +46,10 @@ func (m *NetworkMetaData) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	m.Version = deprecated.Version
-	m.UserAccess = deprecated.UserAccess
+	m.UserAccesses = deprecated.UserAccesses
 	if deprecated.UserAccessIP != "" || deprecated.PrivateKey != "" || deprecated.PublicNodeID != 0 {
 		// it must be deprecated format
-		m.UserAccess = []UserAccess{{
+		m.UserAccesses = []UserAccess{{
 			Subnet:     deprecated.UserAccessIP,
 			PrivateKey: deprecated.PrivateKey,
 			NodeID:     deprecated.PublicNodeID,
@@ -60,12 +60,12 @@ func (m *NetworkMetaData) UnmarshalJSON(data []byte) error {
 
 // ZNet is zos network workload
 type ZNet struct {
-	Name        string
-	Description string
-	Nodes       []uint32
-	IPRange     gridtypes.IPNet
-	AddWGAccess bool
-	MyceliumKey []byte
+	Name         string
+	Description  string
+	Nodes        []uint32
+	IPRange      gridtypes.IPNet
+	AddWGAccess  bool
+	MyceliumKeys map[uint32][]byte
 
 	// computed
 	SolutionType     string
@@ -112,9 +112,9 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 	}
 
 	var externalIP *gridtypes.IPNet
-	if len(metadata.UserAccess) > 0 && metadata.UserAccess[0].Subnet != "" {
+	if len(metadata.UserAccesses) > 0 && metadata.UserAccesses[0].Subnet != "" {
 
-		ipNet, err := gridtypes.ParseIPNet(metadata.UserAccess[0].Subnet)
+		ipNet, err := gridtypes.ParseIPNet(metadata.UserAccesses[0].Subnet)
 		if err != nil {
 			return ZNet{}, err
 		}
@@ -123,20 +123,20 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 	}
 
 	var externalSK wgtypes.Key
-	if len(metadata.UserAccess) > 0 && metadata.UserAccess[0].PrivateKey != "" {
-		key, err := wgtypes.ParseKey(metadata.UserAccess[0].PrivateKey)
+	if len(metadata.UserAccesses) > 0 && metadata.UserAccesses[0].PrivateKey != "" {
+		key, err := wgtypes.ParseKey(metadata.UserAccesses[0].PrivateKey)
 		if err != nil {
 			return ZNet{}, errors.Wrap(err, "failed to parse user access private key")
 		}
 		externalSK = key
 	}
 	var publicNodeID uint32
-	if len(metadata.UserAccess) > 0 {
-		publicNodeID = metadata.UserAccess[0].NodeID
+	if len(metadata.UserAccesses) > 0 {
+		publicNodeID = metadata.UserAccesses[0].NodeID
 	}
-	var myceliumKey []byte
+	myceliumKeys := make(map[uint32][]byte)
 	if data.Mycelium != nil {
-		myceliumKey = data.Mycelium.Key
+		myceliumKeys[nodeID] = data.Mycelium.Key
 	}
 
 	return ZNet{
@@ -151,7 +151,7 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		PublicNodeID: publicNodeID,
 		ExternalIP:   externalIP,
 		ExternalSK:   externalSK,
-		MyceliumKey:  myceliumKey,
+		MyceliumKeys: myceliumKeys,
 	}, nil
 }
 
@@ -166,18 +166,20 @@ func (znet *ZNet) Validate() error {
 	if ones, _ := mask.Size(); ones != 16 {
 		return errors.Errorf("subnet in ip range %s should be 16", znet.IPRange.String())
 	}
-	if len(znet.MyceliumKey) != zos.MyceliumKeyLen && len(znet.MyceliumKey) != 0 {
-		return fmt.Errorf("invalid mycelium key length %d must be %d or empty", len(znet.MyceliumKey), zos.MyceliumKeyLen)
+	for _, key := range znet.MyceliumKeys {
+		if len(key) != zos.MyceliumKeyLen && len(key) != 0 {
+			return fmt.Errorf("invalid mycelium key length %d must be %d or empty", len(key), zos.MyceliumKeyLen)
+		}
 	}
 
 	return nil
 }
 
 // ZosWorkload generates a zos workload from a network
-func (znet *ZNet) ZosWorkload(subnet gridtypes.IPNet, wgPrivateKey string, wgListenPort uint16, peers []zos.Peer, metadata string) gridtypes.Workload {
+func (znet *ZNet) ZosWorkload(subnet gridtypes.IPNet, wgPrivateKey string, wgListenPort uint16, peers []zos.Peer, metadata string, myceliumKey []byte) gridtypes.Workload {
 	var mycelium *zos.Mycelium
-	if len(znet.MyceliumKey) != 0 {
-		mycelium = &zos.Mycelium{Key: znet.MyceliumKey}
+	if len(myceliumKey) != 0 {
+		mycelium = &zos.Mycelium{Key: myceliumKey}
 	}
 	return gridtypes.Workload{
 		Version:     0,

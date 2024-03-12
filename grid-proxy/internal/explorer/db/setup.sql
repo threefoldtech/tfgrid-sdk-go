@@ -122,7 +122,7 @@ SELECT
     node.country as country,
     country.region as region,
     CASE WHEN node.certification = 'Certified' THEN true ELSE false END as certified,
-    farm.pricing_policy_id as policy_id,
+    CASE WHEN farm.pricing_policy_id = 0 THEN 1 ELSE farm.pricing_policy_id END as policy_id,
     COALESCE(node.extra_fee, 0) as extra_fee
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
@@ -425,6 +425,40 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER tg_node_contract
     AFTER INSERT OR UPDATE OF state ON node_contract FOR EACH ROW 
     EXECUTE PROCEDURE reflect_node_contract_changes();
+
+/*
+ Gpu trigger
+    - Insert new node_gpu > increase the gpu_num in resources cache
+    - Delete node_gpu > decrease the gpu_num in resources cache
+*/
+CREATE OR REPLACE FUNCTION reflect_node_gpu_count_change() RETURNS TRIGGER AS
+$$
+BEGIN
+    BEGIN
+        UPDATE resources_cache
+        SET node_gpu_count = node_gpu_count + (
+            CASE 
+            WHEN TG_OP = 'INSERT' 
+                THEN 1 
+            WHEN TG_OP = 'DELETE'
+                THEN -1
+            ELSE 0
+            END
+        )
+        WHERE resources_cache.node_id = (
+            SELECT node_id from node where node.twin_id = COALESCE(NEW.node_twin_id, OLD.node_twin_id)
+        );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating resources_cache gpu fields %', SQLERRM;
+    END;
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER tg_node_gpu_count
+    AFTER INSERT OR DELETE ON node_gpu FOR EACH ROW
+    EXECUTE PROCEDURE reflect_node_gpu_count_change();
 
 /*
  Rent contract trigger

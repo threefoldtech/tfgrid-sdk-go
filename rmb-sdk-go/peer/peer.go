@@ -31,7 +31,7 @@ const (
 // messages. An error can be non-nil error if verification or decryption failed
 type Handler func(ctx context.Context, peer Peer, env *types.Envelope, err error)
 
-type cacheFactory = func(inner TwinDB) (TwinDB, error)
+type cacheFactory = func(inner TwinDB, chainURL string) (TwinDB, error)
 
 type peerCfg struct {
 	relayURL         string
@@ -87,8 +87,8 @@ func WithEncoder(encoder encoder.Encoder) PeerOpt {
 // by default twins are cached in memory forever
 func WithTwinCache(ttl uint64) PeerOpt {
 	return func(pc *peerCfg) {
-		pc.cacheFactory = func(inner TwinDB) (TwinDB, error) {
-			return newTmpCache(ttl, inner)
+		pc.cacheFactory = func(inner TwinDB, chainURL string) (TwinDB, error) {
+			return newTmpCache(ttl, inner, chainURL)
 		}
 	}
 }
@@ -152,7 +152,7 @@ func NewPeer(
 		session:          "",
 		enableEncryption: true,
 		keyType:          KeyTypeSr25519,
-		cacheFactory: func(inner TwinDB) (TwinDB, error) {
+		cacheFactory: func(inner TwinDB, _ string) (TwinDB, error) {
 			return newInMemoryCache(inner), nil
 		},
 	}
@@ -174,7 +174,12 @@ func NewPeer(
 		return nil, err
 	}
 
-	twinDB, err := cfg.cacheFactory(NewTwinDB(subConn))
+	api, _, err := subManager.Raw()
+	if err != nil {
+		return nil, err
+	}
+
+	twinDB, err := cfg.cacheFactory(NewTwinDB(subConn), api.Client.URL())
 	if err != nil {
 		return nil, err
 	}

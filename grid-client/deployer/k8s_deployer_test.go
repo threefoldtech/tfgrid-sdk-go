@@ -172,7 +172,7 @@ func TestK8sDeployer(t *testing.T) {
 
 		wl := nodeWorkloads[nodeID]
 		testDl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, wl)
-		testDl.Metadata = "{\"version\":3,\"type\":\"kubernetes\",\"name\":\"K8sForTesting\",\"projectName\":\"K8sForTesting\"}"
+		testDl.Metadata = "{\"version\":3,\"type\":\"kubernetes\",\"name\":\"K8sForTesting\",\"projectName\":\"kubernetes/K8sForTesting\"}"
 
 		assert.Equal(t, dls, map[uint32]gridtypes.Deployment{
 			nodeID: testDl,
@@ -324,7 +324,7 @@ func ExampleK8sDeployer_Deploy() {
 		return
 	}
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -397,7 +397,7 @@ func ExampleK8sDeployer_BatchDeploy() {
 		return
 	}
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -474,7 +474,7 @@ func ExampleK8sDeployer_Cancel() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return

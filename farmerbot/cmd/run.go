@@ -26,6 +26,11 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("invalid config path '%s'", configPath)
 		}
 
+		continueOnPoweringOnErr, err := cmd.Flags().GetBool("continue-power-on-error")
+		if err != nil {
+			return fmt.Errorf("invalid `continue-power-on-error` flag %v", continueOnPoweringOnErr)
+		}
+
 		fileContent, err := parser.ReadFile(configPath)
 		if err != nil {
 			return err
@@ -35,6 +40,8 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		config.ContinueOnPoweringOnErr = continueOnPoweringOnErr
 
 		farmerBot, err := internal.NewFarmerBot(cmd.Context(), config, network, mnemonicOrSeed, keyType)
 		if err != nil {
