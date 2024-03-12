@@ -268,6 +268,10 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 
 	// calculate used host IDs per network
 	for _, dl := range dls {
+		if len(dl.Vms) == 0 {
+			continue
+		}
+
 		mu.Lock()
 		if _, ok := usedHosts[dl.NetworkName]; !ok {
 			usedHosts[dl.NetworkName] = make(map[uint32][]byte)
