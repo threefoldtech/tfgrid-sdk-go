@@ -61,14 +61,14 @@ func (d *DeploymentDeployer) Validate(ctx context.Context, dls []*workloads.Depl
 func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context, dls []*workloads.Deployment) (map[uint32][]gridtypes.Deployment, error) {
 	gridDlsPerNodes := make(map[uint32][]gridtypes.Deployment)
 
-	err := d.assignPrivateIPs(ctx, dls)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to assign node ips")
-	}
-
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var errs error
+
+	err := d.assignPrivateIPs(ctx, dls)
+	if err != nil {
+		errs = multierror.Append(errs, errors.Wrap(err, "failed to assign node ips"))
+	}
 
 	for _, dl := range dls {
 		wg.Add(1)
@@ -96,16 +96,14 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 				newDl.Workloads = append(newDl.Workloads, qsfsWorkload)
 			}
 
+			mu.Lock()
+			defer mu.Unlock()
 			newDl.Metadata, err = dl.GenerateMetadata()
 			if err != nil {
-				mu.Lock()
-				defer mu.Unlock()
 				errs = multierror.Append(errs, errors.Wrapf(err, "failed to generate deployment '%s' metadata", dl.Name))
 				return
 			}
 
-			mu.Lock()
-			defer mu.Unlock()
 			gridDlsPerNodes[dl.NodeID] = append(gridDlsPerNodes[dl.NodeID], newDl)
 		}(dl)
 	}
