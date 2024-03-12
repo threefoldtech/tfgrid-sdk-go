@@ -18,8 +18,15 @@ import (
     "github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
+
+// define customized plugin opts
+opts := []deloyer.PluginOpt{
+  deployer.WithProxyURL("https://gridproxy.bknd1.ninja.tf"),
+  deployer.WithNetwork("dev"),
+}
+
 // Create Threefold plugin client
-tfPluginClient, err := deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", true, true)
+tfPlugin, err := deployer.NewTFPluginClient(mnemonics, opts...)
 
 // Get a free node to deploy
 nodeID := 14

@@ -97,7 +97,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.Deployment) error {
 	newDeployments := make(map[uint32][]gridtypes.Deployment)
 	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
-	networkUsedIPs := make(map[string][]byte)
+	networkUsedIPs := make(map[string]map[uint32][]byte)
 	var multiErr error
 	for _, dl := range dls {
 		if err := d.Validate(ctx, dl); err != nil {
@@ -105,15 +105,16 @@ func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.D
 			continue
 		}
 		if _, ok := networkUsedIPs[dl.NetworkName]; !ok {
+			networkUsedIPs[dl.NetworkName] = make(map[uint32][]byte)
 			network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
-			networkUsedIPs[dl.NetworkName] = network.GetUsedNetworkHostIDs(dl.NodeID)
+			networkUsedIPs[dl.NetworkName][dl.NodeID] = network.GetUsedNetworkHostIDs(dl.NodeID)
 		}
-		generatedDls, usedHosts, err := d.GenerateVersionlessDeployments(ctx, dl, networkUsedIPs[dl.NetworkName])
+		generatedDls, usedHosts, err := d.GenerateVersionlessDeployments(ctx, dl, networkUsedIPs[dl.NetworkName][dl.NodeID])
 		if err != nil {
 			multiErr = multierror.Append(multiErr, fmt.Errorf("could not generate deployments data for deployment %s: %w", dl.Name, err))
 			continue
 		}
-		networkUsedIPs[dl.NetworkName] = usedHosts
+		networkUsedIPs[dl.NetworkName][dl.NodeID] = usedHosts
 
 		for nodeID, generatedDl := range generatedDls {
 			if _, ok := newDeployments[nodeID]; !ok {

@@ -3,11 +3,13 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -15,7 +17,7 @@ import (
 
 func TestNetworkDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -29,7 +31,7 @@ func TestNetworkDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network := workloads.ZNet{
-		Name:        "net1",
+		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
 		Description: "not skynet",
 		Nodes:       []uint32{nodeID1},
 		IPRange: gridtypes.NewIPNet(net.IPNet{
@@ -43,7 +45,7 @@ func TestNetworkDeployment(t *testing.T) {
 
 	t.Run("deploy network with wireguard access", func(t *testing.T) {
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		defer func() {
 			err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
@@ -58,7 +60,7 @@ func TestNetworkDeployment(t *testing.T) {
 		networkCp.Nodes = []uint32{nodeID2}
 
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &networkCp)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err := tfPluginClient.State.LoadNetworkFromGrid(ctx, networkCp.Name)
 		assert.NoError(t, err)
@@ -69,7 +71,7 @@ func TestNetworkDeployment(t *testing.T) {
 		networkCp.Nodes = []uint32{nodeID2}
 
 		err = tfPluginClient.NetworkDeployer.Deploy(ctx, &networkCp)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		defer func() {
 			err = tfPluginClient.NetworkDeployer.Cancel(ctx, &networkCp)

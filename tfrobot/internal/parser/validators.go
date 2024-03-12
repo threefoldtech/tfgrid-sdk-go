@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/cosmos/go-bip39"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -43,7 +44,18 @@ func validateNodeGroups(nodeGroups []tfrobot.NodesGroup, tfPluginClient deployer
 				return fmt.Errorf("node group name: '%s' is invalid, should be lowercase alphanumeric and underscore only", nodeGroupName)
 			}
 
+			// check if the node group name was used previously with the old name format <name>
 			contracts, err := tfPluginClient.ContractsGetter.ListContractsOfProjectName(nodeGroupName, true)
+			if err != nil {
+				return err
+			}
+
+			if len(contracts.NodeContracts) != 0 {
+				return fmt.Errorf("node group name: '%s' is invalid, should be unique name across all deployments", nodeGroupName)
+			}
+
+			// check if the node group name was used previously with the new name format "vm/<name>"
+			contracts, err = tfPluginClient.ContractsGetter.ListContractsOfProjectName(fmt.Sprintf("vm/%s", nodeGroupName), true)
 			if err != nil {
 				return err
 			}
@@ -128,7 +140,12 @@ func validateFlist(flist, name string) error {
 	if flistExt != ".fl" && flistExt != ".flist" {
 		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, should have a valid flist extension", name, flist)
 	}
-	response, err := http.Head(flist)
+
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	response, err := cl.Head(flist)
 	if err != nil || response.StatusCode != http.StatusOK {
 		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, failed to download flist", name, flist)
 	}

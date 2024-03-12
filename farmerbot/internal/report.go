@@ -14,6 +14,7 @@ type NodeReport struct {
 	ID                           uint32        `json:"id"`
 	State                        string        `json:"state"`
 	HasActiveRentContract        bool          `json:"rented"`
+	HasActiveContracts           bool          `json:"has_active_contracts"`
 	Dedicated                    bool          `json:"dedicated"`
 	PublicConfig                 bool          `json:"public_config"`
 	UsagePercentage              uint8         `json:"usage_percentage"`
@@ -64,6 +65,7 @@ func createNodeReport(n node) NodeReport {
 		ID:                           nodeID,
 		State:                        state,
 		HasActiveRentContract:        n.hasActiveRentContract,
+		HasActiveContracts:           n.hasActiveContracts,
 		Dedicated:                    n.dedicated,
 		PublicConfig:                 n.PublicConfig.HasValue,
 		UsagePercentage:              usage,
@@ -86,6 +88,7 @@ func (f *FarmerBot) report() string {
 		"Dedicated",
 		"public config",
 		"Usage",
+		"Active node contracts",
 		"Random wake-ups",
 		"Periodic wake-up",
 		"last time state changed",
@@ -113,6 +116,7 @@ func (f *FarmerBot) report() string {
 			nodeReport.Dedicated,
 			nodeReport.PublicConfig,
 			fmt.Sprintf("%d%%", nodeReport.UsagePercentage),
+			nodeReport.HasActiveContracts,
 			nodeReport.TimesRandomWakeUps,
 			periodicWakeup,
 			nodeReport.SincePowerStateChanged,

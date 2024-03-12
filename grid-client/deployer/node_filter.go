@@ -89,6 +89,13 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		}
 
 		if len(optionalLimit) == 0 { // no limit and didn't reach default limit
+			if len(nodes) == 0 {
+				opts, err := serializeOptions(options)
+				if err != nil {
+					log.Debug().Err(err).Send()
+				}
+				return []types.Node{}, fmt.Errorf("could not find enough nodes with options: %s", opts)
+			}
 			return nodes, nil
 		}
 	}

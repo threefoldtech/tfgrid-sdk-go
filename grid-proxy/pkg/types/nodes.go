@@ -39,6 +39,8 @@ type Node struct {
 	Dedicated         bool         `json:"dedicated"`
 	InDedicatedFarm   bool         `json:"inDedicatedFarm" sort:"dedicated_farm"`
 	RentContractID    uint         `json:"rentContractId" sort:"rent_contract_id"`
+	Rented            bool         `json:"rented" sort:"rented"`
+	Rentable          bool         `json:"rentable" sort:"rentable"`
 	RentedByTwinID    uint         `json:"rentedByTwinId"`
 	SerialNumber      string       `json:"serialNumber"`
 	Power             NodePower    `json:"power"`
@@ -79,6 +81,8 @@ type NodeWithNestedCapacity struct {
 	InDedicatedFarm   bool           `json:"inDedicatedFarm"`
 	RentContractID    uint           `json:"rentContractId"`
 	RentedByTwinID    uint           `json:"rentedByTwinId"`
+	Rented            bool           `json:"rented"`
+	Rentable          bool           `json:"rentable"`
 	SerialNumber      string         `json:"serialNumber"`
 	Power             NodePower      `json:"power"`
 	NumGPU            int            `json:"num_gpu"`

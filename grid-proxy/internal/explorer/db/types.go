@@ -81,6 +81,8 @@ type Node struct {
 	FarmDedicated      bool `gorm:"farm_dedicated"`
 	RentContractID     int64
 	Renter             int64
+	Rented             bool
+	Rentable           bool
 	SerialNumber       string
 	Longitude          *float64
 	Latitude           *float64

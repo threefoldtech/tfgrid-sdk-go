@@ -67,7 +67,7 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 		}); err != nil {
 
 			failedGroups[nodeGroup.Name] = err.Error()
-			err := tfPluginClient.CancelByProjectName(nodeGroup.Name)
+			err := tfPluginClient.CancelByProjectName(fmt.Sprintf("vm/%s", nodeGroup.Name))
 			if err != nil {
 				log.Debug().Err(err).Send()
 			}
@@ -77,7 +77,7 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 	// cancel all deployments if ctx is closed
 	if err := ctx.Err(); err != nil {
 		for _, group := range cfg.NodeGroups {
-			err := tfPluginClient.CancelByProjectName(group.Name)
+			err := tfPluginClient.CancelByProjectName(fmt.Sprintf("vm/%s", group.Name))
 			if err != nil {
 				log.Debug().Err(err).Send()
 			}
@@ -210,6 +210,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 			envVars = map[string]string{}
 		}
 		envVars["SSH_KEY"] = sshKeys[vmGroup.SSHKey]
+		solutionType := fmt.Sprintf("vm/%s", vmGroup.NodeGroup)
 
 		for i := 0; i < int(vmGroup.Count); i++ {
 			nodeID := uint32(nodesIDs[nodesIDsIdx])
@@ -227,7 +228,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 					Mask: net.CIDRMask(16, 32),
 				}),
 				AddWGAccess:  false,
-				SolutionType: nodeGroup,
+				SolutionType: solutionType,
 			}
 
 			if !vmGroup.PublicIP4 && !vmGroup.Planetary {
@@ -249,7 +250,7 @@ func buildDeployments(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[s
 				EnvVars:     envVars,
 				Mounts:      mounts,
 			}
-			deployment := workloads.NewDeployment(vm.Name, nodeID, nodeGroup, nil, network.Name, disks, nil, []workloads.VM{vm}, nil)
+			deployment := workloads.NewDeployment(vm.Name, nodeID, solutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil)
 
 			vmDeployments = append(vmDeployments, &deployment)
 			networkDeployments = append(networkDeployments, &network)

@@ -3,10 +3,12 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -14,7 +16,7 @@ import (
 
 func TestZDBDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
@@ -27,7 +29,7 @@ func TestZDBDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	zdb := workloads.ZDB{
-		Name:        "testName",
+		Name:        generateRandString(10),
 		Password:    "password",
 		Public:      true,
 		Size:        10,
@@ -35,9 +37,9 @@ func TestZDBDeployment(t *testing.T) {
 		Mode:        zos.ZDBModeUser,
 	}
 
-	dl := workloads.NewDeployment("zdb", nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	defer func() {
 		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)

@@ -19,6 +19,16 @@ func isDedicatedNode(db DBData, node Node) bool {
 		db.NodeRentedBy[node.NodeID] != 0
 }
 
+func isRentable(db DBData, node Node) bool {
+	return db.NodeRentedBy[node.NodeID] == 0 &&
+		(db.Farms[node.FarmID].DedicatedFarm ||
+			len(db.NonDeletedContracts[node.NodeID]) == 0)
+}
+func isRented(db DBData, node Node) bool {
+	_, ok := db.NodeRentedBy[node.NodeID]
+	return ok
+}
+
 func calculateCU(cru, mru float64) float64 {
 	MruUsed1 := mru / 4
 	CruUsed1 := cru / 2
@@ -144,6 +154,8 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				Dedicated:         isDedicatedNode(g.data, node),
 				RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 				RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
+				Rented:            isRented(g.data, node),
+				Rentable:          isRentable(g.data, node),
 				SerialNumber:      node.SerialNumber,
 				Power: types.NodePower{
 					State:  node.Power.State,
@@ -237,6 +249,8 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		Dedicated:         isDedicatedNode(g.data, node),
 		RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 		RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
+		Rented:            isRented(g.data, node),
+		Rentable:          isRentable(g.data, node),
 		SerialNumber:      node.SerialNumber,
 		Power: types.NodePower{
 			State:  node.Power.State,
@@ -375,14 +389,11 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	rentable := data.NodeRentedBy[n.NodeID] == 0 &&
-		(data.Farms[n.FarmID].DedicatedFarm || len(data.NonDeletedContracts[n.NodeID]) == 0)
-	if f.Rentable != nil && *f.Rentable != rentable {
+	if f.Rentable != nil && *f.Rentable != isRentable(*data, *n) {
 		return false
 	}
 
-	_, ok := data.NodeRentedBy[n.NodeID]
-	if f.Rented != nil && *f.Rented != ok {
+	if f.Rented != nil && *f.Rented != isRented(*data, *n) {
 		return false
 	}
 
