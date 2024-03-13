@@ -40,6 +40,8 @@ type DBContract struct {
 	DeploymentHash    string
 	NumberOfPublicIps uint
 	Type              string
+	FarmName          string
+	FarmId            uint64
 }
 
 // Node data about a node which is calculated from the chain
