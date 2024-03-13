@@ -154,6 +154,8 @@ func contractFromDBContract(info db.DBContract) (types.Contract, error) {
 			DeploymentData:    info.DeploymentData,
 			DeploymentHash:    info.DeploymentHash,
 			NumberOfPublicIps: info.NumberOfPublicIps,
+			FarmName:          info.FarmName,
+			FarmId:            info.FarmId,
 		}
 	case "name":
 		details = types.NameContractDetails{
@@ -161,7 +163,9 @@ func contractFromDBContract(info db.DBContract) (types.Contract, error) {
 		}
 	case "rent":
 		details = types.RentContractDetails{
-			NodeID: info.NodeID,
+			NodeID:   info.NodeID,
+			FarmName: info.FarmName,
+			FarmId:   info.FarmId,
 		}
 	}
 	contract := types.Contract{

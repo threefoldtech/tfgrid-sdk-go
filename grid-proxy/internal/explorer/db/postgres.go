@@ -763,16 +763,21 @@ func (d *PostgresDatabase) contractTableQuery() *gorm.DB {
 	return d.gormDB.Table(contractTablesQuery).
 		Select(
 			"contracts.contract_id",
-			"twin_id",
+			"contracts.twin_id",
 			"state",
 			"created_at",
-			"name",
+			"contracts.name",
 			"node_id",
 			"deployment_data",
 			"deployment_hash",
 			"number_of_public_i_ps as number_of_public_ips",
 			"type",
-		)
+			"farm.name as farm_name",
+			"farm.farm_id",
+		).
+		Joins(`LEFT JOIN farm ON farm.farm_id = (
+			SELECT farm_id from node WHERE node.node_id = contracts.node_id
+		)`)
 }
 
 // GetContracts returns contracts filtered and paginated
@@ -787,7 +792,7 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 		q = q.Where("state ILIKE ?", *filter.State)
 	}
 	if filter.TwinID != nil {
-		q = q.Where("twin_id = ?", *filter.TwinID)
+		q = q.Where("contracts.twin_id = ?", *filter.TwinID)
 	}
 	if filter.ContractID != nil {
 		q = q.Where("contracts.contract_id = ?", *filter.ContractID)
@@ -799,13 +804,19 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 		q = q.Where("number_of_public_i_ps >= ?", *filter.NumberOfPublicIps)
 	}
 	if filter.Name != nil {
-		q = q.Where("name = ?", *filter.Name)
+		q = q.Where("contracts.name = ?", *filter.Name)
 	}
 	if filter.DeploymentData != nil {
 		q = q.Where("deployment_data = ?", *filter.DeploymentData)
 	}
 	if filter.DeploymentHash != nil {
 		q = q.Where("deployment_hash = ?", *filter.DeploymentHash)
+	}
+	if filter.FarmName != nil {
+		q = q.Where("farm.name ILIKE ?", *filter.FarmName)
+	}
+	if filter.FarmId != nil {
+		q = q.Where("farm.farm_id = ?", *filter.FarmId)
 	}
 
 	// Sorting
