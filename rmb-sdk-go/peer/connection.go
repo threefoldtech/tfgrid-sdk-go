@@ -50,7 +50,7 @@ func NewConnection(identity substrate.Identity, url string, session string, twin
 	}
 }
 
-func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc, con *websocket.Conn, reader chan []byte) {
+func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc, con *websocket.Conn, reader chan []byte, newMessage chan int) {
 	for {
 		typ, data, err := con.ReadMessage()
 		if err != nil {
@@ -70,6 +70,8 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 			return
 		case reader <- data:
 		}
+
+		newMessage <- 1
 	}
 }
 
@@ -88,7 +90,10 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output,
 		return nil
 	})
 
-	go c.reader(local, cancel, con, output)
+	outputChan := make(chan int)
+	defer close(outputChan)
+
+	go c.reader(local, cancel, con, output, outputChan)
 
 	lastPong := time.Now()
 	for {
@@ -96,11 +101,10 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output,
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-local.Done():
-			// error happened with the connection
-			// we return nil to try again
-			return nil
-		case data := <-input:
+			return nil // error happened with the connection, return nil to try again
+		case <-outputChan:
 			lastPong = time.Now()
+		case data := <-input:
 			if err := con.WriteMessage(websocket.BinaryMessage, data); err != nil {
 				return err
 			}
@@ -131,7 +135,7 @@ func (c *InnerConnection) Start(ctx context.Context) (Reader, Writer) {
 			if err == context.Canceled {
 				break
 			} else if err != nil {
-				log.Error().Err(err)
+				log.Error().Err(err).Send()
 			}
 
 			<-time.After(2 * time.Second)
