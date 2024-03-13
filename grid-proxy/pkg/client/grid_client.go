@@ -8,7 +8,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/schema"
@@ -16,7 +18,19 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-var encoder = schema.NewEncoder()
+var encoder *schema.Encoder
+
+func init() {
+	encoder = schema.NewEncoder()
+
+	encoder.RegisterEncoder([]string{}, func(value reflect.Value) string {
+		if value.Kind() == reflect.Slice && value.Type().Elem().Kind() == reflect.String {
+			slice := value.Interface().([]string)
+			return strings.Join(slice, ",")
+		}
+		return ""
+	})
+}
 
 type DBClient interface {
 	Nodes(ctx context.Context, filter types.NodeFilter, pagination types.Limit) (res []types.Node, totalCount int, err error)

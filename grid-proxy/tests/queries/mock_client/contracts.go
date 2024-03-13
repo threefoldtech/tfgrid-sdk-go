@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -96,7 +97,7 @@ func (c *RentContract) satisfies(f types.ContractFilter) bool {
 		return false
 	}
 
-	if f.State != nil && *f.State != c.State {
+	if f.State != nil && len(f.State) != 0 && !containsState(f.State, c.State) {
 		return false
 	}
 
@@ -136,7 +137,7 @@ func (c *NodeContract) satisfies(f types.ContractFilter) bool {
 		return false
 	}
 
-	if f.State != nil && *f.State != c.State {
+	if f.State != nil && len(f.State) != 0 && !containsState(f.State, c.State) {
 		return false
 	}
 
@@ -176,7 +177,7 @@ func (c *NameContract) satisfies(f types.ContractFilter) bool {
 		return false
 	}
 
-	if f.State != nil && *f.State != c.State {
+	if f.State != nil && len(f.State) != 0 && !containsState(f.State, c.State) {
 		return false
 	}
 
@@ -268,4 +269,14 @@ func (g *GridProxyMockClient) ContractBills(ctx context.Context, contractID uint
 
 	totalCount = uint(len(bills))
 	return res, totalCount, err
+}
+
+func containsState(states []string, state string) bool {
+	for _, _state := range states {
+		if strings.EqualFold(_state, state) {
+			return true
+		}
+	}
+
+	return false
 }
