@@ -309,7 +309,7 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 
 	usedHosts, err := d.calculateNetworksUsedIPs(ctx, dls)
 	if err != nil {
-		return errors.Wrap(err, "couldn't calculate network used ips")
+		errs = multierror.Append(errs, errors.Wrap(err, "couldn't calculate networks used ips"))
 	}
 
 	for _, dl := range dls {
