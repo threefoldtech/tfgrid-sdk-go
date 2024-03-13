@@ -3,6 +3,7 @@ package state
 
 import (
 	"net"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,9 +30,16 @@ func TestNetworkState(t *testing.T) {
 	net := constructTestNetwork()
 	nodeID = net.Nodes[0]
 
-	networkState := NetworkState{net.Name: Network{
+	networkState := NetworkState{
+		State:     make(map[string]Network),
+		StateLock: sync.Mutex{},
+	}
+
+	networkState.State[net.Name] = Network{
 		Subnets: map[uint32]string{nodeID: net.IPRange.String()},
-	}}
+	}
+
+	// networkState := NetworkState{net.Name: }
 	network := networkState.GetNetwork(net.Name)
 
 	assert.Equal(t, network.GetNodeSubnet(nodeID), net.IPRange.String())
