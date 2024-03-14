@@ -315,6 +315,7 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 
 	for _, dl := range dls {
 		if len(dl.Vms) == 0 {
+			newdls = append(newdls, dl)
 			continue
 		}
 
