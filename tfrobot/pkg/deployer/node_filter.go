@@ -7,7 +7,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, group NodesGroup, excludedNodes []uint64, limit uint64) ([]int, error) {
+func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, group NodesGroup, excludedNodes []uint64) ([]int, error) {
 	filter := types.NodeFilter{}
 	filter.Excluded = excludedNodes
 
@@ -51,7 +51,7 @@ func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, gr
 		freeHDD = nil
 	}
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, filter, freeSSD, freeHDD, nil, limit)
+	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, filter, freeSSD, freeHDD, nil, group.NodesCount)
 	if err != nil {
 		return []int{}, err
 	}
