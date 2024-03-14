@@ -170,7 +170,7 @@ func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.D
 	// error is not returned immediately before updating state because of untracked failed deployments
 	for _, dl := range dls {
 		if err := d.updateStateFromDeployments(ctx, dl, newDls); err != nil {
-			return errors.Wrapf(err, "failed to update deployment '%s' state", dl.Name)
+			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to update deployment '%s' state", dl.Name))
 		}
 	}
 
