@@ -65,7 +65,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 	var mu sync.Mutex
 	var errs error
 
-	err := d.assignPrivateIPs(ctx, dls)
+	dls, err := d.assignPrivateIPs(ctx, dls)
 	if err != nil {
 		errs = multierror.Append(errs, errors.Wrap(err, "failed to assign node ips"))
 	}
@@ -302,10 +302,12 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 	return usedHosts, errs
 }
 
-func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*workloads.Deployment) error {
+func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*workloads.Deployment) ([]*workloads.Deployment, error) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var errs error
+
+	var newdls []*workloads.Deployment
 
 	usedHosts, err := d.calculateNetworksUsedIPs(ctx, dls)
 	if err != nil {
@@ -390,11 +392,15 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 			}
 
 			dl.IPrange = ipRange
+
+			mu.Lock()
+			newdls = append(newdls, dl)
+			mu.Unlock()
 		}(dl)
 	}
 
 	wg.Wait()
-	return errs
+	return newdls, errs
 }
 
 func (d *DeploymentDeployer) syncContract(ctx context.Context, dl *workloads.Deployment) error {
