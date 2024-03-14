@@ -63,9 +63,8 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 				trial++
 				log.Debug().Err(err).Str("Node group", nodeGroup.Name).Msg("failed to deploy")
 
-				var blockedNodes []uint64
-				blockedNodes, requiredNodesCount = updateBlockedNodes(excludedNodes, groupDeployments)
-				fmt.Println("blocked nodes", blockedNodes)
+				blockedNodes := getBlockedNodes(groupDeployments)
+				requiredNodesCount = uint64(len(blockedNodes))
 				excludedNodes = append(excludedNodes, blockedNodes...)
 
 				return retry.RetryableError(err)
@@ -125,8 +124,6 @@ func deployNodeGroup(
 	if err != nil {
 		return err
 	}
-	fmt.Println("filtered nodes", nodesIDs)
-
 	log.Debug().Ints("nodes IDs", nodesIDs).Send()
 
 	if groupDeployments.networkDeployments == nil {
@@ -207,11 +204,13 @@ func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, dep
 
 	log.Debug().Msg(fmt.Sprintf("Deploying %d networks, this may to take a while", len(deployments.networkDeployments)))
 	if err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, networks, false); err != nil {
+		log.Debug().Err(err).Send()
 		multiErr = multierror.Append(multiErr, err)
 	}
 
 	log.Debug().Msg(fmt.Sprintf("Deploying %d virtual machines, this may to take a while", len(deployments.vmDeployments)))
 	if err := tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, vms); err != nil {
+		log.Debug().Err(err).Send()
 		multiErr = multierror.Append(multiErr, err)
 	}
 
@@ -324,14 +323,14 @@ func getDeploymentsContracts(groupsInfo map[string][]*workloads.Deployment) map[
 	return nodeGroupsContracts
 }
 
-func updateBlockedNodes(blockedNodes []uint64, groupDeployments groupDeploymentsInfo) ([]uint64, uint64) {
-	var cnt uint64
+func getBlockedNodes(groupDeployments groupDeploymentsInfo) []uint64 {
+	var blockedNodes []uint64
+
 	for _, deployment := range groupDeployments.vmDeployments {
 		if deployment.ContractID == 0 && !slices.Contains(blockedNodes, uint64(deployment.NodeID)) {
-			cnt++
 			blockedNodes = append(blockedNodes, uint64(deployment.NodeID))
 		}
 	}
 
-	return blockedNodes, cnt
+	return blockedNodes
 }

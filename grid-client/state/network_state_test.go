@@ -29,9 +29,12 @@ func TestNetworkState(t *testing.T) {
 	net := constructTestNetwork()
 	nodeID = net.Nodes[0]
 
-	networkState := NetworkState{net.Name: Network{
-		Subnets: map[uint32]string{nodeID: net.IPRange.String()},
-	}}
+	networkState := NetworkState{
+		State: map[string]Network{
+			net.Name: {Subnets: map[uint32]string{nodeID: net.IPRange.String()}},
+		},
+	}
+
 	network := networkState.GetNetwork(net.Name)
 
 	assert.Equal(t, network.GetNodeSubnet(nodeID), net.IPRange.String())

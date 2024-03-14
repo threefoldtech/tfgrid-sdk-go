@@ -333,9 +333,11 @@ func TestDeploymentDeployerDeploy(t *testing.T) {
 		assert.NoError(t, err)
 
 		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], netContractID)
-		d.tfPluginClient.State.Networks = state.NetworkState{net.Name: state.Network{
-			Subnets: map[uint32]string{nodeID: net.IPRange.String()},
-		}}
+		d.tfPluginClient.State.Networks = state.NetworkState{
+			State: map[string]state.Network{net.Name: {
+				Subnets: map[uint32]string{nodeID: net.IPRange.String()},
+			}},
+		}
 
 		ncPool.EXPECT().
 			GetNodeClient(sub, nodeID).
@@ -495,11 +497,9 @@ func TestDeploymentDeployerSync(t *testing.T) {
 
 		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
 		d.tfPluginClient.State.Networks = state.NetworkState{
-			net.Name: state.Network{
-				Subnets: map[uint32]string{
-					nodeID: net.IPRange.String(),
-				},
-			},
+			State: map[string]state.Network{net.Name: {
+				Subnets: map[uint32]string{nodeID: net.IPRange.String()},
+			}},
 		}
 
 		ncPool.EXPECT().
