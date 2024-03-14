@@ -38,7 +38,7 @@ var ErrNotFound = errors.New("not found")
 func NewState(ncPool client.NodeClientGetter, substrate subi.SubstrateExt) *State {
 	return &State{
 		CurrentNodeDeployments: make(map[uint32]ContractIDs),
-		Networks:               NetworkState{},
+		Networks:               NetworkState{State: make(map[string]Network)},
 		NcPool:                 ncPool,
 		Substrate:              substrate,
 	}

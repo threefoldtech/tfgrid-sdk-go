@@ -65,12 +65,12 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 	var mu sync.Mutex
 	var errs error
 
-	err := d.assignPrivateIPs(ctx, dls)
+	newDls, err := d.assignPrivateIPs(ctx, dls)
 	if err != nil {
 		errs = multierror.Append(errs, errors.Wrap(err, "failed to assign node ips"))
 	}
 
-	for _, dl := range dls {
+	for _, dl := range newDls {
 		wg.Add(1)
 		go func(dl *workloads.Deployment) {
 			defer wg.Done()
@@ -170,7 +170,7 @@ func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.D
 	// error is not returned immediately before updating state because of untracked failed deployments
 	for _, dl := range dls {
 		if err := d.updateStateFromDeployments(ctx, dl, newDls); err != nil {
-			return errors.Wrapf(err, "failed to update deployment '%s' state", dl.Name)
+			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to update deployment '%s' state", dl.Name))
 		}
 	}
 
@@ -302,18 +302,20 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 	return usedHosts, errs
 }
 
-func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*workloads.Deployment) error {
+func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*workloads.Deployment) ([]*workloads.Deployment, error) {
+	var newdls []*workloads.Deployment
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var errs error
 
 	usedHosts, err := d.calculateNetworksUsedIPs(ctx, dls)
 	if err != nil {
-		return errors.Wrap(err, "couldn't calculate network used ips")
+		errs = multierror.Append(errs, errors.Wrap(err, "couldn't calculate networks used ips"))
 	}
 
 	for _, dl := range dls {
 		if len(dl.Vms) == 0 {
+			newdls = append(newdls, dl)
 			continue
 		}
 
@@ -390,11 +392,15 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 			}
 
 			dl.IPrange = ipRange
+
+			mu.Lock()
+			newdls = append(newdls, dl)
+			mu.Unlock()
 		}(dl)
 	}
 
 	wg.Wait()
-	return errs
+	return newdls, errs
 }
 
 func (d *DeploymentDeployer) syncContract(ctx context.Context, dl *workloads.Deployment) error {
