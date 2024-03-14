@@ -10,7 +10,7 @@ import (
 // NetworkState is a struct of networks names and their networks and mutex to protect the state
 type NetworkState struct {
 	State     map[string]Network
-	StateLock sync.Mutex
+	stateLock sync.Mutex
 }
 
 // Network struct includes Subnets and node IPs
@@ -27,8 +27,8 @@ func NewNetwork() Network {
 
 // GetNetwork get a Network using its name
 func (nm *NetworkState) GetNetwork(networkName string) Network {
-	nm.StateLock.Lock()
-	defer nm.StateLock.Unlock()
+	nm.stateLock.Lock()
+	defer nm.stateLock.Unlock()
 
 	if _, ok := nm.State[networkName]; !ok {
 		nm.State[networkName] = NewNetwork()
@@ -45,15 +45,15 @@ func (nm *NetworkState) UpdateNetworkSubnets(networkName string, ipRange map[uin
 		network.SetNodeSubnet(nodeID, subnet.String())
 	}
 
-	nm.StateLock.Lock()
-	defer nm.StateLock.Unlock()
+	nm.stateLock.Lock()
+	defer nm.stateLock.Unlock()
 	nm.State[networkName] = network
 }
 
 // DeleteNetwork deletes a Network using its name
 func (nm *NetworkState) DeleteNetwork(networkName string) {
-	nm.StateLock.Lock()
-	defer nm.StateLock.Unlock()
+	nm.stateLock.Lock()
+	defer nm.stateLock.Unlock()
 	delete(nm.State, networkName)
 }
 
