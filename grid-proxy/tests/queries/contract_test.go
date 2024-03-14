@@ -25,6 +25,8 @@ type ContractsAggregate struct {
 	Names            []string
 	DeploymentsData  []string
 	DeploymentHashes []string
+	farmNames        []string
+	farmIds          []uint64
 
 	maxNumberOfPublicIPs uint64
 }
@@ -76,6 +78,18 @@ var contractFilterRandomValueGenerator = map[string]func(agg ContractsAggregate)
 			return nil
 		}
 		return &c
+	},
+	"FarmName": func(agg ContractsAggregate) interface{} {
+		name := changeCase(agg.farmNames[rand.Intn(len(agg.farmNames))])
+		if len(name) == 0 {
+			return nil
+		}
+
+		return &name
+	},
+	"FarmId": func(agg ContractsAggregate) interface{} {
+		farmID := agg.farmIds[rand.Intn(len(agg.farmIds))]
+		return &farmID
 	},
 }
 
@@ -299,6 +313,11 @@ func calcContractsAggregates(data *mock.DBData) (res ContractsAggregate) {
 	sort.Slice(res.DeploymentHashes, func(i, j int) bool {
 		return res.DeploymentHashes[i] < res.DeploymentHashes[j]
 	})
+
+	for _, farm := range data.Farms {
+		res.farmIds = append(res.farmIds, farm.FarmID)
+		res.farmNames = append(res.farmNames, farm.Name)
+	}
 	return
 }
 

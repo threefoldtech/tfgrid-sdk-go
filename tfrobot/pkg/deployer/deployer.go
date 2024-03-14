@@ -185,11 +185,13 @@ func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, dep
 
 	log.Debug().Msg(fmt.Sprintf("Deploying %d networks, this may to take a while", len(deployments.networkDeployments)))
 	if err := tfPluginClient.NetworkDeployer.BatchDeploy(ctx, networks, false); err != nil {
+		log.Debug().Err(err).Send()
 		multiErr = multierror.Append(multiErr, err)
 	}
 
 	log.Debug().Msg(fmt.Sprintf("Deploying %d virtual machines, this may to take a while", len(deployments.vmDeployments)))
 	if err := tfPluginClient.DeploymentDeployer.BatchDeploy(ctx, vms); err != nil {
+		log.Debug().Err(err).Send()
 		multiErr = multierror.Append(multiErr, err)
 	}
 

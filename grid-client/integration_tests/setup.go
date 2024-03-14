@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"log"
 	mrand "math/rand"
 	"net"
@@ -14,29 +15,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"golang.org/x/crypto/ssh"
 )
-
-var (
-	trueVal   = true
-	statusUp  = "up"
-	value1    = uint64(1)
-	minRootfs = *convertGBToBytes(2)
-)
-
-var nodeFilter = types.NodeFilter{
-	Status:  &statusUp,
-	FreeSRU: convertGBToBytes(10),
-	FreeHRU: convertGBToBytes(2),
-	FreeMRU: convertGBToBytes(2),
-	FarmIDs: []uint64{1},
-}
-
-func convertGBToBytes(gb uint64) *uint64 {
-	bytes := gb * 1024 * 1024 * 1024
-	return &bytes
-}
 
 func setup() (deployer.TFPluginClient, error) {
 	mnemonics := os.Getenv("MNEMONICS")
@@ -48,8 +30,20 @@ func setup() (deployer.TFPluginClient, error) {
 	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network))
 }
 
-// TestConnection used to test connection
-func TestConnection(addr string, port string) bool {
+func generateBasicNetwork(nodeIDs []uint32) workloads.ZNet {
+	return workloads.ZNet{
+		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
+		Description: "network for testing",
+		Nodes:       nodeIDs,
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 20, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+	}
+}
+
+// CheckConnection used to test connection
+func CheckConnection(addr string, port string) bool {
 	for t := time.Now(); time.Since(t) < 3*time.Second; {
 		con, err := net.DialTimeout("tcp", net.JoinHostPort(addr, port), time.Second*12)
 		if err == nil {

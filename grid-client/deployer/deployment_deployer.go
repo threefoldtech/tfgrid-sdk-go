@@ -61,16 +61,16 @@ func (d *DeploymentDeployer) Validate(ctx context.Context, dls []*workloads.Depl
 func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context, dls []*workloads.Deployment) (map[uint32][]gridtypes.Deployment, error) {
 	gridDlsPerNodes := make(map[uint32][]gridtypes.Deployment)
 
-	err := d.assignPrivateIPs(ctx, dls)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to assign node ips")
-	}
-
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var errs error
 
-	for _, dl := range dls {
+	newDls, err := d.assignPrivateIPs(ctx, dls)
+	if err != nil {
+		errs = multierror.Append(errs, errors.Wrap(err, "failed to assign node ips"))
+	}
+
+	for _, dl := range newDls {
 		wg.Add(1)
 		go func(dl *workloads.Deployment) {
 			defer wg.Done()
@@ -96,16 +96,14 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 				newDl.Workloads = append(newDl.Workloads, qsfsWorkload)
 			}
 
+			mu.Lock()
+			defer mu.Unlock()
 			newDl.Metadata, err = dl.GenerateMetadata()
 			if err != nil {
-				mu.Lock()
-				defer mu.Unlock()
 				errs = multierror.Append(errs, errors.Wrapf(err, "failed to generate deployment '%s' metadata", dl.Name))
 				return
 			}
 
-			mu.Lock()
-			defer mu.Unlock()
 			gridDlsPerNodes[dl.NodeID] = append(gridDlsPerNodes[dl.NodeID], newDl)
 		}(dl)
 	}
@@ -139,7 +137,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 	// error is not returned immediately before updating state because of untracked failed deployments
 	if contractID, ok := dl.NodeDeploymentID[dl.NodeID]; ok && contractID != 0 {
 		dl.ContractID = contractID
-		d.tfPluginClient.State.StoreContractIDs(dl.NodeID, []uint64{dl.ContractID})
+		d.tfPluginClient.State.StoreContractIDs(dl.NodeID, dl.ContractID)
 	}
 
 	return err
@@ -172,7 +170,7 @@ func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.D
 	// error is not returned immediately before updating state because of untracked failed deployments
 	for _, dl := range dls {
 		if err := d.updateStateFromDeployments(ctx, dl, newDls); err != nil {
-			return errors.Wrapf(err, "failed to update deployment '%s' state", dl.Name)
+			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to update deployment '%s' state", dl.Name))
 		}
 	}
 
@@ -192,7 +190,7 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, dl *workloads.Deploymen
 
 	// update state
 	delete(dl.NodeDeploymentID, dl.NodeID)
-	d.tfPluginClient.State.RemoveContractIDs(dl.NodeID, []uint64{dl.ContractID})
+	d.tfPluginClient.State.RemoveContractIDs(dl.NodeID, dl.ContractID)
 	dl.ContractID = 0
 
 	return nil
@@ -211,7 +209,7 @@ func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl 
 			if newDl.ContractID != 0 {
 				dl.NodeDeploymentID[dl.NodeID] = newDl.ContractID
 				dl.ContractID = newDl.ContractID
-				d.tfPluginClient.State.StoreContractIDs(dl.NodeID, []uint64{dl.ContractID})
+				d.tfPluginClient.State.StoreContractIDs(dl.NodeID, dl.ContractID)
 			}
 		}
 	}
@@ -268,6 +266,10 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 
 	// calculate used host IDs per network
 	for _, dl := range dls {
+		if len(dl.Vms) == 0 {
+			continue
+		}
+
 		mu.Lock()
 		if _, ok := usedHosts[dl.NetworkName]; !ok {
 			usedHosts[dl.NetworkName] = make(map[uint32][]byte)
@@ -300,24 +302,27 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 	return usedHosts, errs
 }
 
-func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*workloads.Deployment) error {
+func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*workloads.Deployment) ([]*workloads.Deployment, error) {
+	var newdls []*workloads.Deployment
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var errs error
 
 	usedHosts, err := d.calculateNetworksUsedIPs(ctx, dls)
 	if err != nil {
-		return errors.Wrap(err, "couldn't calculate network used ips")
+		errs = multierror.Append(errs, errors.Wrap(err, "couldn't calculate networks used ips"))
 	}
 
 	for _, dl := range dls {
 		if len(dl.Vms) == 0 {
+			newdls = append(newdls, dl)
 			continue
 		}
 
 		wg.Add(1)
 		go func(dl *workloads.Deployment) {
 			defer wg.Done()
+
 			network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
 			ipRange := network.GetNodeSubnet(dl.NodeID)
 
@@ -338,8 +343,12 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 				if vmIP != nil {
 					vmHostID := vmIP[3] // host ID of the private ip
 
+					mu.Lock()
+					nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
+					mu.Unlock()
+
 					// TODO: use of a duplicate IP vs an updated vm with a new/old IP
-					if slices.Contains(usedHosts[dl.NetworkName][dl.NodeID], vmHostID) {
+					if slices.Contains(nodeUsedHostIDs, vmHostID) {
 						continue
 						// return fmt.Errorf("duplicate private ip '%v' in vm '%s' is used", vmIP, vm.Name)
 					}
@@ -358,8 +367,12 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 					continue
 				}
 
+				mu.Lock()
+				nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
+				mu.Unlock()
+
 				// try to find available host ID in the deployment ip range
-				for slices.Contains(usedHosts[dl.NetworkName][dl.NodeID], curHostID) {
+				for slices.Contains(nodeUsedHostIDs, curHostID) {
 					if curHostID == 254 {
 						mu.Lock()
 						defer mu.Unlock()
@@ -379,11 +392,15 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 			}
 
 			dl.IPrange = ipRange
+
+			mu.Lock()
+			newdls = append(newdls, dl)
+			mu.Unlock()
 		}(dl)
 	}
 
 	wg.Wait()
-	return errs
+	return newdls, errs
 }
 
 func (d *DeploymentDeployer) syncContract(ctx context.Context, dl *workloads.Deployment) error {

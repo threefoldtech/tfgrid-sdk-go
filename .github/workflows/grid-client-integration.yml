@@ -43,12 +43,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install yggdrasil
           sudo systemctl enable yggdrasil
-          PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
-          sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
+          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
+          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
+          sudo systemctl stop yggdrasil
           sudo systemctl start yggdrasil
 
       - name: Test
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
-        run: go test -v ./integration_tests -timeout 1800s
+        # run: make integration
+        run: |
+          for test in $(go run scripts/scrap_tests.go)
+          do
+            go test -v ./integration_tests -run $test
+          done
