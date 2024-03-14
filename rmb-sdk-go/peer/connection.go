@@ -92,7 +92,10 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output,
 		return nil
 	})
 
-	go c.reader(local, cancel, con, output)
+	outputCh := make(chan []byte)
+	defer close(outputCh)
+
+	go c.reader(local, cancel, con, outputCh)
 
 	lastPong := time.Now()
 	for {
@@ -100,11 +103,11 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output,
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-local.Done():
-			// error happened with the connection
-			// we return nil to try again
-			return nil
-		case data := <-input:
+			return nil // error happened with the connection, return nil to try again
+		case data := <-outputCh:
+			output <- data
 			lastPong = time.Now()
+		case data := <-input:
 			if err := con.WriteMessage(websocket.BinaryMessage, data); err != nil {
 				return err
 			}
