@@ -135,21 +135,17 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 		return stats, errors.Wrap(res.Error, "couldn't get nodes total resources")
 	}
 
-	publicConfig := struct {
-		AccessNodesCount int64
-		GatewaysCount    int64
-	}{}
 	if res := d.gormDB.WithContext(ctx).
 		Table("node").
 		Select(
-			"count(COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '') as access_nodes_count",
-			"count((COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '') AND COALESCE(public_config.domain, '') != '') as gateway_count",
+			"count(COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '') as access_nodes",
+			"count((COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '') AND COALESCE(public_config.domain, '') != '') as gateways",
 		).
-		Joins("RIGHT JOIN public_config ON node.id = public_config.node_id").Scan(&publicConfig); res.Error != nil {
+		Joins("RIGHT JOIN public_config ON node.id = public_config.node_id").
+		Where(condition).
+		Scan(&stats); res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get public config")
 	}
-	stats.AccessNodes = publicConfig.AccessNodesCount
-	stats.Gateways = publicConfig.GatewaysCount
 
 	var distribution []NodesDistribution
 	if res := d.gormDB.WithContext(ctx).Table("node").
