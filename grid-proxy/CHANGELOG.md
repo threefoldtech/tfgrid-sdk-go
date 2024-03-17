@@ -12,6 +12,13 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.14.13
+
+---
+
+- `feat` add farm name/id to contract response
+- `feat` optimize queries on stats endpoint
+
 ### v0.14.11
 
 ---
