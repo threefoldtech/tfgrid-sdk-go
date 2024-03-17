@@ -134,54 +134,50 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 		Scan(&stats); res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get nodes total resources")
 	}
-	if res := d.gormDB.WithContext(ctx).Table("node").
-		Where(condition).Count(&stats.Nodes); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get node count")
-	}
-	if res := d.gormDB.WithContext(ctx).Table("node").
-		Where(condition).Distinct("country").Count(&stats.Countries); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get country count")
-	}
-	query := d.gormDB.WithContext(ctx).
-		Table("node").
-		Joins("RIGHT JOIN public_config ON node.id = public_config.node_id")
 
-	if res := query.Where(condition).Where("COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != ''").Count(&stats.AccessNodes); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get access node count")
+	publicConfig := struct {
+		AccessNodesCount int64
+		GatewaysCount    int64
+	}{}
+	if res := d.gormDB.WithContext(ctx).
+		Table("node").
+		Select(
+			"count(COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '') as access_nodes_count",
+			"count((COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '') AND COALESCE(public_config.domain, '') != '') as gateway_count",
+		).
+		Joins("RIGHT JOIN public_config ON node.id = public_config.node_id").Scan(&publicConfig); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get public config")
 	}
-	if res := query.Where(condition).Where("COALESCE(public_config.domain, '') != '' AND (COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '')").Count(&stats.Gateways); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get gateway count")
-	}
+	stats.AccessNodes = publicConfig.AccessNodesCount
+	stats.Gateways = publicConfig.GatewaysCount
+
 	var distribution []NodesDistribution
 	if res := d.gormDB.WithContext(ctx).Table("node").
 		Select("country, count(node_id) as nodes").Where(condition).Group("country").Scan(&distribution); res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get nodes distribution")
 	}
-	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&stats.GPUs); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get node with GPU count")
-	}
 	nodesDistribution := map[string]int64{}
 	for _, d := range distribution {
 		nodesDistribution[d.Country] = d.Nodes
+		stats.Nodes += d.Nodes
+		stats.Countries++
 	}
 	stats.NodesDistribution = nodesDistribution
 
-	nonDeletedNodeContracts := d.gormDB.Table("node_contract").
-		Select("DISTINCT ON (node_id) node_id, contract_id").
-		Where("state IN ('Created', 'GracePeriod')")
+	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
+		Joins("LEFT JOIN resources_cache ON resources_cache.node_id = node.node_id").
+		Where("node_gpu_count != 0").
+		Count(&stats.GPUs); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get node with GPU count")
+	}
 
 	res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
-		Joins(
-			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
-		).
-		Joins(
-			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", nonDeletedNodeContracts,
-		).
-		Joins(
-			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
-		).
+		Joins(`
+			LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id
+			LEFT JOIN farm ON node.farm_id = farm.farm_id
+		`).
 		Where(
-			"farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0",
+			"farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0 OR resources_cache.renter is not null",
 		).
 		Count(&stats.DedicatedNodes)
 	if res.Error != nil {
