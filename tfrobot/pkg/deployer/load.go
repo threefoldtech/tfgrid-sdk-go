@@ -29,7 +29,7 @@ func RunLoader(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlugin
 	asJson := filepath.Ext(output) == ".json"
 
 	groupsContracts, failed := getGroupsContracts(ctx, tfPluginClient, cfg.NodeGroups)
-	passedGroups, failedGroups := batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContracts, cfg.MaxRetries, asJson)
+	passedGroups, failedGroups := batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContracts, cfg.MaxRetries)
 
 	// add projects failed to be loaded
 	for group, err := range failed {
@@ -59,7 +59,7 @@ func getGroupsContracts(ctx context.Context, tfPluginClient deployer.TFPluginCli
 		go func(nodeGroup string) {
 			defer wg.Done()
 
-			nodesContracts, err := getContractsWithProjectName(ctx, tfPluginClient, nodeGroup)
+			nodesContracts, err := getContractsWithProjectName(tfPluginClient, nodeGroup)
 
 			lock.Lock()
 			defer lock.Unlock()
@@ -82,7 +82,6 @@ func batchLoadNodeGroupsInfo(
 	tfPluginClient deployer.TFPluginClient,
 	groupsContracts map[string]NodeContracts,
 	retries uint64,
-	asJson bool,
 ) (map[string][]vmOutput, map[string]string) {
 	trial := 1
 	failedGroups := map[string]string{}
@@ -202,44 +201,30 @@ func loadNodeDeployments(ctx context.Context, tfPluginClient deployer.TFPluginCl
 	}
 
 	var deployments []workloads.Deployment
-	for _, contractID := range contractIDs {
-		var dlsContracts []uint64
-		for _, dl := range dls {
-			dlsContracts = append(dlsContracts, dl.ContractID)
+	for _, dl := range dls {
+
+		if !slices.Contains(contractIDs, dl.ContractID) {
+			continue
 		}
 
-		log.Debug().
-			Uint64("contract ID", contractID).
-			Msg("loading deployment")
+		log.Debug().Uint64("contract ID", dl.ContractID).Msg("loading deployment ")
 
-		idx := slices.Index(dlsContracts, contractID)
-		if idx == -1 {
-			log.Debug().Err(err).
-				Uint64("contract ID", contractID).
-				Msg("couldn't load ")
-
-			return nil, err
-		}
-
-		dl := dls[idx]
 		deployment, err := workloads.NewDeploymentFromZosDeployment(dl, nodeID)
 		if err != nil {
-			log.Debug().Err(err).
-				Uint64("contract ID", dl.ContractID).
-				Msg("couldn't load ")
-
+			log.Debug().Err(err).Uint64("contract ID", dl.ContractID).Msg("couldn't load ")
 			return nil, err
 		}
 
 		if len(deployment.Vms) != 0 {
 			deployments = append(deployments, deployment)
 		}
+
 	}
 
 	return deployments, nil
 }
 
-func getContractsWithProjectName(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroup string) (NodeContracts, error) {
+func getContractsWithProjectName(tfPluginClient deployer.TFPluginClient, nodeGroup string) (NodeContracts, error) {
 	// try to load group with the new name format "vm/<group name>"
 	name := fmt.Sprintf("vm/%s", nodeGroup)
 
