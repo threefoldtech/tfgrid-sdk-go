@@ -26,7 +26,7 @@ func RunLoader(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlugin
 	asJson := filepath.Ext(output) == ".json"
 
 	groupsContractIDs, failed := getContractsOfNodeGroups(ctx, tfPluginClient, cfg.NodeGroups)
-	passedGroups, failedGroups := batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContractIDs, cfg.MaxRetries, asJson)
+	passedGroups, failedGroups := batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContractIDs, cfg.MaxRetries)
 
 	// add projects failed to be loaded
 	for group, err := range failed {
@@ -56,7 +56,7 @@ func getContractsOfNodeGroups(ctx context.Context, tfPluginClient deployer.TFPlu
 		go func(nodeGroup string) {
 			defer wg.Done()
 
-			ContractIDs, err := getContractsWithProjectName(ctx, tfPluginClient, nodeGroup)
+			ContractIDs, err := getContractsWithProjectName(tfPluginClient, nodeGroup)
 			if err != nil {
 				lock.Lock()
 				failedGroups[nodeGroup] = err.Error()
@@ -92,7 +92,6 @@ func batchLoadNodeGroupsInfo(
 	tfPluginClient deployer.TFPluginClient,
 	groupsContracts map[string][]uint64,
 	retries uint64,
-	asJson bool,
 ) (map[string][]vmOutput, map[string]string) {
 	trial := 1
 	failedGroups := map[string]string{}
@@ -227,7 +226,7 @@ func loadDeploymentWithContractID(ctx context.Context, tfPluginClient deployer.T
 	return workloads.NewDeploymentFromZosDeployment(dl, nodeID)
 }
 
-func getContractsWithProjectName(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroup string) ([]uint64, error) {
+func getContractsWithProjectName(tfPluginClient deployer.TFPluginClient, nodeGroup string) ([]uint64, error) {
 	// try to load group with the new name format "vm/<group name>"
 	name := fmt.Sprintf("vm/%s", nodeGroup)
 
