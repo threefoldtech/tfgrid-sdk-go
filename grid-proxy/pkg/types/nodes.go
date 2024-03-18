@@ -48,6 +48,7 @@ type Node struct {
 	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
 	Healthy           bool         `json:"healthy"`
 	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
+	_                 string       `sort:"free_cru"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it

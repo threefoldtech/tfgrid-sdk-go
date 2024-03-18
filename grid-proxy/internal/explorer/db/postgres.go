@@ -642,7 +642,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 			}
 
 			if limit.SortBy == "status" {
-				q.Order(nodestatus.DecideNodeStatusOrdering(order))
+				q = q.Order(nodestatus.DecideNodeStatusOrdering(order))
+			} else if limit.SortBy == "free_cru" {
+				q = q.Order(fmt.Sprintf("total_cru-used_cru %s", order))
 			} else {
 				q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 			}
