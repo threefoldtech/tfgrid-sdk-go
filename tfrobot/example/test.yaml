@@ -14,7 +14,7 @@ node_groups:
   - name: group_c
     nodes_count: 100
     free_cpu: 2
-    free_mru: 4
+    free_mru: 8
 
 vms:
   - name: example_a #test deployment of vms with public ip
@@ -40,7 +40,7 @@ vms:
     ssh_key: key1
 
   - name: example_c #test deployment of large number of vms
-    vms_count: 400
+    vms_count: 500
     node_group: group_c
     cpu: 1
     mem: 1

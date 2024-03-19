@@ -5,7 +5,7 @@ defaults:
     working-directory: tfrobot
 on:
   schedule:
-    - cron: 0 3 * * *
+    - cron: 0 4 * * *
   workflow_dispatch:
 
 jobs:
@@ -14,8 +14,6 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix:
-        network: [dev, main]
 
     steps:
       - name: Set up Go
@@ -34,9 +32,9 @@ jobs:
       - name: Test
         env:
           MNEMONIC: ${{ secrets.MNEMONICS }}
-          NETWORK: ${{ matrix.network }}
+          NETWORK: main
         # run: make integration
         run: |
             go run main.go deploy -c ./example/test.yaml
-            sleep 120 #sleep to make sure graphql is up to date
+            sleep 120 # sleep to make sure graphql is up to date
             go run main.go cancel -c ./example/test.yaml -d
