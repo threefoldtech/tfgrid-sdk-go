@@ -309,14 +309,14 @@ func getNotDeployedDeployments(groupDeployments *groupDeploymentsInfo) ([]*workl
 	return failedNetworkDeployments, failedVmDeployments
 }
 
-func getDeploymentsContracts(groupsInfo map[string][]*workloads.Deployment) map[string][]uint64 {
-	nodeGroupsContracts := make(map[string][]uint64)
+func getDeploymentsContracts(groupsInfo map[string][]*workloads.Deployment) map[string]NodeContracts {
+	nodeGroupsContracts := make(map[string]NodeContracts)
 	for nodeGroup, groupDeployments := range groupsInfo {
-		contractIDs := []uint64{}
+		contracts := make(NodeContracts)
 		for _, deployment := range groupDeployments {
-			contractIDs = append(contractIDs, deployment.ContractID)
+			contracts[deployment.NodeID] = append(contracts[deployment.NodeID], deployment.ContractID)
 		}
-		nodeGroupsContracts[nodeGroup] = contractIDs
+		nodeGroupsContracts[nodeGroup] = contracts
 	}
 	return nodeGroupsContracts
 }
