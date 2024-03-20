@@ -12,6 +12,14 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.14.14
+
+---
+
+- `feat` refactor the indexer code using generics
+- `feat` add network speed and dmi indexers
+- `feat` add last-deployment-timestamp on nodes statistics call response
+
 ### v0.14.13
 
 ---
