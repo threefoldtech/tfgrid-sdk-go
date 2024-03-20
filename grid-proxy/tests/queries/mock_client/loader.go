@@ -40,6 +40,7 @@ type DBData struct {
 	Regions             map[string]string
 	Locations           map[string]Location
 	HealthReports       map[uint32]bool
+	NodeIpv6            map[uint32]bool
 	DMIs                map[uint32]types.Dmi
 	Speeds              map[uint32]types.Speed
 	PricingPolicies     map[uint]PricingPolicy
@@ -568,6 +569,30 @@ func loadHealthReports(db *sql.DB, data *DBData) error {
 	return nil
 }
 
+func loadNodeIpv6(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT
+		COALESCE(node_twin_id, 0),
+		COALESCE(has_ipv6, false)
+	FROM
+		node_ipv6;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var node types.HasIpv6
+		if err := rows.Scan(
+			&node.NodeTwinId,
+			&node.HasIpv6,
+		); err != nil {
+			return err
+		}
+		data.NodeIpv6[node.NodeTwinId] = node.HasIpv6
+	}
+
+	return nil
+}
+
 func loadDMIs(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
 	var dmis []types.Dmi
 	err := gormDB.Table("dmi").Scan(&dmis).Error
@@ -738,6 +763,9 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadHealthReports(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadNodeIpv6(db, &data); err != nil {
 		return data, err
 	}
 	if err := loadDMIs(db, gormDB, &data); err != nil {

@@ -937,3 +937,30 @@ func (c *Crafter) GeneratePricingPolicies() error {
 
 	return err
 }
+
+func (c *Crafter) GenerateNodeIpv6() error {
+	start := c.NodeStart
+	end := c.NodeStart + c.NodeCount
+	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
+
+	var reports []types.HasIpv6
+	for i := start; i < end; i++ {
+		has_ipv6 := true
+		if flip(.5) {
+			has_ipv6 = false
+		}
+
+		report := types.HasIpv6{
+			NodeTwinId: uint32(nodeTwinsStart + i),
+			HasIpv6:    has_ipv6,
+		}
+		reports = append(reports, report)
+	}
+
+	if err := c.gormDB.Create(reports).Error; err != nil {
+		return fmt.Errorf("failed to insert node has ipv6 reports: %w", err)
+	}
+	fmt.Println("node has ipv6 reports generated")
+
+	return nil
+}

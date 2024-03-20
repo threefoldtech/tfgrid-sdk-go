@@ -3,6 +3,11 @@ PQ_HOST = $(shell docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddr
 PQ_CONTAINER = postgres
 count = 3
 
+NAMESPACE := tfchain-dev
+DB_POD := $(shell kubectl --namespace $(NAMESPACE) get pods | grep processor-db | awk '{print $$1}')
+DUMP_CMD := PGPASSWORD="postgres" pg_dump -U postgres tfgrid-graphql > /tmp/dump.sql
+
+
 install-swag: 
 	@go install github.com/swaggo/swag/cmd/swag@v1.8.12;
 
@@ -34,6 +39,14 @@ db-fill: ## Fill the database with a randomly generated data
 		--reset \
 		--seed 13
 
+
+db-dump-make:
+	kubectl exec -it $(DB_POD) -n $(NAMESPACE) -- /bin/sh -c "$(DUMP_CMD)";
+db-dump-copy:
+	kubectl -n $(NAMESPACE) cp $(DB_POD):/tmp/dump.sql ~/Downloads/dump.sql;
+
+db-dump-get: db-dump-make db-dump-copy ## get a dump from processor_db on tfchain_dev cluster 
+
 db-dump: ## Load a dump of the database 		(Args: `p=<path/to/file.sql`)
 	@docker cp $(p) postgres:/dump.sql;
 	@docker exec $(PQ_CONTAINER) bash -c "psql -U postgres  -d tfgrid-graphql < ./dump.sql"
@@ -46,7 +59,6 @@ db-refill: db-stop db-start sleep db-fill
 server-start: ## Start the proxy server			(Args: `m=<MNEMONICS>`)
 	@go run cmds/proxy_server/main.go \
 		-no-cert \
-		-no-indexer \
 		--address :8080 \
 		--log-level debug \
 		--sql-log-level 4 \

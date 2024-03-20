@@ -66,6 +66,8 @@ type flags struct {
 	dmiIndexerIntervalMins    uint
 	speedIndexerNumWorkers    uint
 	speedIndexerIntervalMins  uint
+	ipv6IndexerNumWorkers     uint
+	ipv6IndexerIntervalMins   uint
 }
 
 func main() {
@@ -99,6 +101,8 @@ func main() {
 	flag.UintVar(&f.dmiIndexerNumWorkers, "dmi-indexer-workers", 1, "number of workers checking on node dmi")
 	flag.UintVar(&f.speedIndexerIntervalMins, "speed-indexer-interval", 5, "node speed check interval in min")
 	flag.UintVar(&f.speedIndexerNumWorkers, "speed-indexer-workers", 100, "number of workers checking on node speed")
+	flag.UintVar(&f.ipv6IndexerIntervalMins, "ipv6-indexer-interval", 1, "node ipv6 check interval in min")
+	flag.UintVar(&f.ipv6IndexerNumWorkers, "ipv6-indexer-workers", 10, "number of workers checking on node having ipv6")
 	flag.Parse()
 
 	// shows version and exit
@@ -191,6 +195,15 @@ func startIndexers(ctx context.Context, f flags, db db.Database, rpcRmbClient *p
 		f.speedIndexerNumWorkers,
 	)
 	speedIdx.Start(ctx)
+
+	ipv6Idx := indexer.NewIndexer[types.HasIpv6](
+		indexer.NewIpv6Work(f.ipv6IndexerIntervalMins),
+		"IPV6",
+		db,
+		rpcRmbClient,
+		f.ipv6IndexerNumWorkers,
+	)
+	ipv6Idx.Start(ctx)
 }
 
 func app(s *http.Server, f flags) error {
