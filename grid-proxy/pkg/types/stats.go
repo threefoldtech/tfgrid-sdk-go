@@ -35,8 +35,9 @@ type NodeStatisticsResources struct {
 
 // NodeStatisticsUsers users info returned on node statistics
 type NodeStatisticsUsers struct {
-	Deployments int `json:"deployments"`
-	Workloads   int `json:"workloads"`
+	Deployments             int    `json:"deployments"`
+	Workloads               int    `json:"workloads"`
+	LastDeploymentTimestamp uint64 `json:"last_deployment_timestamp"`
 }
 
 // NodeStatistics node statistics info
