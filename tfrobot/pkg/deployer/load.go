@@ -159,7 +159,7 @@ func loadGroupDeployments(ctx context.Context, tfPluginClient deployer.TFPluginC
 		errGroup.Go(func() error {
 			deployments, err := loadNodeDeployments(ctx, tfPluginClient, nodeID, contractIDs)
 			if err != nil {
-				return fmt.Errorf("could load deployments of node %d: %w", nodeID, err)
+				return err
 			}
 
 			lock.Lock()
