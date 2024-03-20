@@ -3,6 +3,8 @@ package crafter
 import (
 	"database/sql"
 	"math/rand"
+
+	"gorm.io/gorm"
 )
 
 const (
@@ -21,30 +23,11 @@ const (
 
 var (
 	r *rand.Rand
-
-	countries = []string{"Belgium", "United States", "Egypt", "United Kingdom"}
-	regions   = map[string]string{
-		"Belgium":        "Europe",
-		"United States":  "Americas",
-		"Egypt":          "Africa",
-		"United Kingdom": "Europe",
-	}
-	countriesCodes = map[string]string{
-		"Belgium":        "BG",
-		"United States":  "US",
-		"Egypt":          "EG",
-		"United Kingdom": "UK",
-	}
-	cities = map[string][]string{
-		"Belgium":        {"Brussels", "Antwerp", "Ghent", "Charleroi"},
-		"United States":  {"New York", "Chicago", "Los Angeles", "San Francisco"},
-		"Egypt":          {"Cairo", "Giza", "October", "Nasr City"},
-		"United Kingdom": {"London", "Liverpool", "Manchester", "Cambridge"},
-	}
 )
 
 type Crafter struct {
-	db *sql.DB
+	db     *sql.DB
+	gormDB *gorm.DB
 
 	nodesMRU               map[uint64]uint64
 	nodesSRU               map[uint64]uint64
@@ -72,7 +55,7 @@ type Crafter struct {
 	PublicIPStart uint
 }
 
-func NewCrafter(db *sql.DB,
+func NewCrafter(db *sql.DB, gormDB *gorm.DB,
 	seed int,
 	nodeCount,
 	farmCount,
@@ -91,7 +74,8 @@ func NewCrafter(db *sql.DB,
 	r = rand.New(rand.NewSource(int64(seed)))
 
 	return Crafter{
-		db: db,
+		db:     db,
+		gormDB: gormDB,
 
 		nodesMRU:               make(map[uint64]uint64),
 		nodesSRU:               make(map[uint64]uint64),
@@ -158,7 +142,7 @@ type node struct {
 	created_at        uint64
 	updated_at        uint64
 	location_id       string
-	power             *nodePower `gorm:"type:jsonb"`
+	power             *nodePower `gorm:"type:jsonb;serializer:json"`
 	extra_fee         uint64
 	dedicated         bool
 }
@@ -263,9 +247,4 @@ type country struct {
 	subregion  string
 	lat        string
 	long       string
-}
-
-type health_report struct {
-	node_twin_id uint64
-	healthy      bool
 }

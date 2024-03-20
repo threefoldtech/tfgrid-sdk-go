@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 
 	_ "embed"
@@ -62,14 +60,6 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string, m
 		return PostgresDatabase{}, errors.Wrap(err, "failed to configure DB connection")
 	}
 
-	err = gormDB.AutoMigrate(&NodeGPU{})
-	if err != nil {
-		return PostgresDatabase{}, errors.Wrap(err, "failed to migrate node_gpu table")
-	}
-	err = gormDB.AutoMigrate(&HealthReport{})
-	if err != nil {
-		return PostgresDatabase{}, errors.Wrap(err, "failed to migrate health_report table")
-	}
 	sql.SetMaxIdleConns(3)
 	sql.SetMaxOpenConns(maxConns)
 
@@ -87,7 +77,22 @@ func (d *PostgresDatabase) Close() error {
 }
 
 func (d *PostgresDatabase) Initialize() error {
-	return d.gormDB.Exec(setupFile).Error
+	err := d.gormDB.AutoMigrate(
+		&types.NodeGPU{},
+		&types.HealthReport{},
+		&types.Dmi{},
+		&types.Speed{},
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to migrate indexer tables")
+	}
+
+	err = d.gormDB.Exec(setupFile).Error
+	if err != nil {
+		return errors.Wrap(err, "failed to setup cache tables")
+	}
+
+	return nil
 }
 
 // GetStats returns aggregate info about the grid
@@ -181,17 +186,6 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 	}
 
 	return stats, nil
-}
-
-// Scan is a custom decoder for jsonb filed. executed while scanning the node.
-func (np *NodePower) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	if data, ok := value.([]byte); ok {
-		return json.Unmarshal(data, np)
-	}
-	return fmt.Errorf("failed to unmarshal NodePower")
 }
 
 // GetNode returns node info
@@ -296,6 +290,12 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.node_contracts_count",
 			"resources_cache.node_gpu_count AS num_gpu",
 			"health_report.healthy",
+			"resources_cache.bios",
+			"resources_cache.baseboard",
+			"resources_cache.memory",
+			"resources_cache.processor",
+			"resources_cache.upload_speed",
+			"resources_cache.download_speed",
 			calculatedDiscountColumn,
 		).
 		Joins(`
@@ -885,51 +885,4 @@ func (d *PostgresDatabase) GetContractBills(ctx context.Context, contractID uint
 	}
 
 	return bills, uint(count), nil
-}
-
-func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, nodesGPU []types.NodeGPU) error {
-	// For upsert operation
-	conflictClause := clause.OnConflict{
-		Columns:   []clause.Column{{Name: "id"}, {Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"vendor", "device", "contract"}),
-	}
-	err := p.gormDB.WithContext(ctx).Table("node_gpu").Clauses(conflictClause).Create(&nodesGPU).Error
-	if err != nil {
-		return fmt.Errorf("failed to upsert nodes GPU details: %w", err)
-	}
-	return nil
-}
-
-func (p *PostgresDatabase) DeleteOldGpus(ctx context.Context, nodeTwinIds []uint32) error {
-	err := p.gormDB.WithContext(ctx).Table("node_gpu").Where("node_twin_id IN (?)", nodeTwinIds).Delete(types.NodeGPU{}).Error
-	if err != nil {
-		return fmt.Errorf("failed to delete old gpus: %w", err)
-	}
-	return nil
-}
-
-func (p *PostgresDatabase) GetLastNodeTwinID(ctx context.Context) (int64, error) {
-	var node Node
-	err := p.gormDB.Table("node").Order("twin_id DESC").Limit(1).Scan(&node).Error
-	return node.TwinID, err
-}
-
-func (p *PostgresDatabase) GetNodeTwinIDsAfter(ctx context.Context, twinID int64) ([]int64, error) {
-	nodeTwinIDs := make([]int64, 0)
-	err := p.gormDB.Table("node").Select("twin_id").Where("twin_id > ?", twinID).Order("twin_id DESC").Scan(&nodeTwinIDs).Error
-	return nodeTwinIDs, err
-}
-
-func (p *PostgresDatabase) UpsertNodeHealth(ctx context.Context, healthReport types.HealthReport) error {
-	conflictClause := clause.OnConflict{
-		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"healthy"}),
-	}
-	return p.gormDB.WithContext(ctx).Table("health_report").Clauses(conflictClause).Create(&healthReport).Error
-}
-
-func (p *PostgresDatabase) GetHealthyNodeTwinIds(ctx context.Context) ([]int64, error) {
-	nodeTwinIDs := make([]int64, 0)
-	err := p.gormDB.Table("health_report").Select("node_twin_id").Where("healthy = true").Scan(&nodeTwinIDs).Error
-	return nodeTwinIDs, err
 }

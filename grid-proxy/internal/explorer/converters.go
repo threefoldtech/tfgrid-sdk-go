@@ -62,7 +62,17 @@ func nodeFromDBNode(info db.Node) types.Node {
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 		Healthy:           info.Healthy,
-		PriceUsd:          math.Round(info.PriceUsd*1000) / 1000,
+		Dmi: types.Dmi{
+			Processor: info.Processor,
+			Memory:    info.Memory,
+			BIOS:      info.Bios,
+			Baseboard: info.Baseboard,
+		},
+		Speed: types.Speed{
+			Upload:   info.UploadSpeed,
+			Download: info.DownloadSpeed,
+		},
+		PriceUsd: math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
@@ -138,7 +148,17 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 		Healthy:           info.Healthy,
-		PriceUsd:          math.Round(info.PriceUsd*1000) / 1000,
+		Dmi: types.Dmi{
+			Processor: info.Processor,
+			Memory:    info.Memory,
+			BIOS:      info.Bios,
+			Baseboard: info.Baseboard,
+		},
+		Speed: types.Speed{
+			Upload:   info.UploadSpeed,
+			Download: info.DownloadSpeed,
+		},
+		PriceUsd: math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
