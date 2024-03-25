@@ -20,3 +20,5 @@ coverage/
 bin/
 
 dist/
+
+.hypothesis
