@@ -160,9 +160,11 @@ func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte
 		wg.Add(1)
 		go func(con *websocket.Conn) {
 			defer wg.Done()
-			m.Lock()
-			defer m.Unlock()
-			err = multierror.Append(err, c.loop(ctx, con, output, input))
+			if loopErr := c.loop(ctx, con, output, input); loopErr != nil {
+				m.Lock()
+				defer m.Unlock()
+				err = multierror.Append(err, loopErr)
+			}
 		}(con)
 	}
 
