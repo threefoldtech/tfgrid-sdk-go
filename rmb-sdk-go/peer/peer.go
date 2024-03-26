@@ -10,6 +10,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net/url"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -207,23 +209,28 @@ func NewPeer(
 		publicKey = privKey.PubKey().SerializeCompressed()
 	}
 
+	var relayURLs []string
 	for _, relayURL := range cfg.relayURLs {
 		url, err := url.Parse(relayURL)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse url: %s", relayURL)
 		}
+		relayURLs = append(relayURLs, url.Host)
+	}
 
-		if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || url.Hostname() != *twin.Relay {
-			log.Info().Str("Relay", url.Hostname()).Msg("twin relay/public key didn't match, updating on chain ...")
-			subConn, err := subManager.Substrate()
-			if err != nil {
-				return nil, errors.Wrap(err, "could not start substrate connection")
-			}
-			defer subConn.Close()
+	sort.Slice(relayURLs, func(i, j int) bool { return strings.ToLower(relayURLs[i]) < strings.ToLower(relayURLs[j]) })
+	joinURLs := strings.Join(relayURLs, "_")
 
-			if _, err = subConn.UpdateTwin(identity, url.Hostname(), publicKey); err != nil {
-				return nil, errors.Wrap(err, "could not update twin relay information")
-			}
+	if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || joinURLs != *twin.Relay {
+		log.Info().Str("Relay url/s", joinURLs).Msg("twin relay/public key didn't match, updating on chain ...")
+		subConn, err := subManager.Substrate()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not start substrate connection")
+		}
+		defer subConn.Close()
+
+		if _, err = subConn.UpdateTwin(identity, joinURLs, publicKey); err != nil {
+			return nil, errors.Wrap(err, "could not update twin relay information")
 		}
 	}
 
