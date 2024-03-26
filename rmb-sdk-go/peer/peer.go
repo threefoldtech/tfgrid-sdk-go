@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -218,7 +219,10 @@ func NewPeer(
 		relayURLs = append(relayURLs, url.Host)
 	}
 
+	// sort and remove duplicates
 	sort.Slice(relayURLs, func(i, j int) bool { return strings.ToLower(relayURLs[i]) < strings.ToLower(relayURLs[j]) })
+	relayURLs = slices.Compact(relayURLs)
+
 	joinURLs := strings.Join(relayURLs, "_")
 
 	if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || joinURLs != *twin.Relay {
