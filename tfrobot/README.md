@@ -61,14 +61,15 @@ network: main # eg: main, test, qa, dev
 
 ```
 
+You can use this [example](./example/conf.yaml) for further guidance
 
 >**Please** make sure to replace placeholders and adapt the groups based on your actual project details.
 
->**Note:** All storage resources are expected to be in GB.
-
->**Note:** The VMs may utilize a different number of nodes than requested due
+>**Notes:**
+>> The VMs may utilize a different number of nodes than requested due
 to the retries filtering out additional nodes in case of failure.
 Consequently, it's possible to utilize more nodes than initially requested.
+>> Duplicate field values are ignored; only last occurrence will be considered.
 
 5.  Run the deployer with path to the config file
 
@@ -132,9 +133,12 @@ tfrobot deploy -c path/to/your/config.yaml
 | mount_point | disk mount point | path to mountpoint |
 
 > **Notes:**
-> Ensure that memory precision does not exceed 0.001,
+>> All storage resources are expected to be in GB.
+
+>> In case of YAML input, floating point portion of int values will be ignored.
+
+>> Ensure that memory precision does not exceed 0.001,
 any value greater than this threshold will be disregarded.
-> In case of YAML input, floating point portion of int values will be ignored.
 
 ## Usage
 
@@ -166,9 +170,13 @@ tfrobot load -c path/to/your/config.yaml
 | -o | used to specify path to output file to store the output info in |
 | -d | allow debug logs to appear in the output logs |
 | -h | help |
-> **Note:** Parsing is based on file extension, json format if the file had json extension, yaml format otherwise
 
-> **Note:** Make sure to use every flag once. If the flag is repeated, it will ignore all values and take the last value of the flag.
+> **Notes:**
+>> Parsing is based on file extension, json format if the file had json
+extension, yaml format otherwise
+
+>> Make sure to use every flag once. If the flag is repeated,
+it will ignore all values and take the last value of the flag.
 
 ## Using Docker
 

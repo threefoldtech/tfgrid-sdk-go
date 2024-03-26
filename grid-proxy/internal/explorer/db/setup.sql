@@ -121,6 +121,12 @@ SELECT
     COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     node.country as country,
     country.region as region,
+    COALESCE(dmi.bios, '{}') as bios,
+    COALESCE(dmi.baseboard, '{}') as baseboard,
+    COALESCE(dmi.processor, '[]') as processor,
+    COALESCE(dmi.memory, '[]') as memory,
+    COALESCE(speed.upload, 0) as upload_speed,
+    COALESCE(speed.download, 0) as download_speed,
     CASE WHEN node.certification = 'Certified' THEN true ELSE false END as certified,
     CASE WHEN farm.pricing_policy_id = 0 THEN 1 ELSE farm.pricing_policy_id END as policy_id,
     COALESCE(node.extra_fee, 0) as extra_fee
@@ -138,6 +144,8 @@ FROM node
             node_twin_id
     ) AS node_gpu ON node.twin_id = node_gpu.node_twin_id
     LEFT JOIN country ON LOWER(node.country) = LOWER(country.name)
+    LEFT JOIN speed ON node.twin_id = speed.node_twin_id
+    LEFT JOIN dmi ON node.twin_id = dmi.node_twin_id
     LEFT JOIN farm ON farm.farm_id = node.farm_id
 GROUP BY
     node.node_id,
@@ -150,6 +158,13 @@ GROUP BY
     rent_contract.twin_id,
     COALESCE(node_gpu.node_gpu_count, 0),
     node.country,
+    country.region,
+    COALESCE(dmi.bios, '{}'),
+    COALESCE(dmi.baseboard, '{}'),
+    COALESCE(dmi.processor, '[]'),
+    COALESCE(dmi.memory, '[]'),
+    COALESCE(speed.upload, 0),
+    COALESCE(speed.download, 0),
     node.certification,
     node.extra_fee,
     farm.pricing_policy_id,
@@ -176,6 +191,12 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     node_gpu_count INTEGER NOT NULL,
     country TEXT,
     region TEXT,
+    bios jsonb,
+    baseboard jsonb,
+    processor jsonb,
+    memory jsonb,
+    upload_speed numeric,
+    download_speed numeric,
     certified BOOLEAN,
     policy_id INTEGER,
     extra_fee NUMERIC,
@@ -499,6 +520,62 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER tg_rent_contract
     AFTER INSERT OR UPDATE OF state ON rent_contract FOR EACH ROW
     EXECUTE PROCEDURE reflect_rent_contract_changes();
+
+/*
+ Dmi trigger
+    - Insert new record/Update > update resources_cache
+*/
+CREATE OR REPLACE FUNCTION reflect_dmi_changes() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    BEGIN
+        UPDATE resources_cache
+        SET bios = NEW.bios,
+            baseboard = NEW.baseboard,
+            processor = NEW.processor,
+            memory = NEW.memory
+        WHERE resources_cache.node_id = (
+            SELECT node_id from node where node.twin_id = NEW.node_twin_id
+        );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating resources_cache dmi fields %', SQLERRM;
+    END; 
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER tg_dmi
+    AFTER INSERT OR UPDATE ON dmi FOR EACH ROW
+    EXECUTE PROCEDURE reflect_dmi_changes();
+
+
+/*
+ speed trigger
+    - Insert new record/Update > update resources_cache
+*/
+CREATE OR REPLACE FUNCTION reflect_speed_changes() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    BEGIN
+        UPDATE resources_cache
+        SET upload_speed = NEW.upload,
+            download_speed = NEW.download
+        WHERE resources_cache.node_id = (
+            SELECT node_id from node where node.twin_id = NEW.node_twin_id
+        );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating resources_cache speed fields %', SQLERRM;
+    END; 
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER tg_speed
+    AFTER INSERT OR UPDATE ON speed FOR EACH ROW
+    EXECUTE PROCEDURE reflect_speed_changes();
+
 
 /*
  Public ips trigger

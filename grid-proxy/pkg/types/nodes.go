@@ -47,6 +47,8 @@ type Node struct {
 	NumGPU            int          `json:"num_gpu" sort:"num_gpu"`
 	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
 	Healthy           bool         `json:"healthy"`
+	Dmi               Dmi          `json:"dmi"`
+	Speed             Speed        `json:"speed"`
 	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
 }
 
@@ -86,6 +88,8 @@ type NodeWithNestedCapacity struct {
 	NumGPU            int            `json:"num_gpu"`
 	ExtraFee          uint64         `json:"extraFee"`
 	Healthy           bool           `json:"healthy"`
+	Dmi               Dmi            `json:"dmi"`
+	Speed             Speed          `json:"speed"`
 	PriceUsd          float64        `json:"price_usd"`
 }
 
@@ -148,19 +152,4 @@ type NodeFilter struct {
 	PriceMin          *float64 `schema:"price_min,omitempty"`
 	PriceMax          *float64 `schema:"price_max,omitempty"`
 	Excluded          []uint64 `schema:"excluded,omitempty"`
-}
-
-// NodeGPU holds the info about gpu card
-type NodeGPU struct {
-	NodeTwinID uint32 `json:"node_twin_id"`
-	ID         string `json:"id"`
-	Vendor     string `json:"vendor"`
-	Device     string `json:"device"`
-	Contract   int    `json:"contract"`
-}
-
-// HeathReport holds the info of node health
-type HealthReport struct {
-	NodeTwinId uint32
-	Healthy    bool
 }

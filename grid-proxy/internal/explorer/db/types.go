@@ -8,6 +8,9 @@ import (
 
 // Database interface for storing and fetching grid info
 type Database interface {
+	GetConnectionString() string
+
+	// server getters
 	GetStats(ctx context.Context, filter types.StatsFilter) (types.Stats, error)
 	GetNode(ctx context.Context, nodeID uint32) (Node, error)
 	GetFarm(ctx context.Context, farmID uint32) (Farm, error)
@@ -17,13 +20,18 @@ type Database interface {
 	GetContracts(ctx context.Context, filter types.ContractFilter, limit types.Limit) ([]DBContract, uint, error)
 	GetContract(ctx context.Context, contractID uint32) (DBContract, error)
 	GetContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]ContractBilling, uint, error)
-	UpsertNodesGPU(ctx context.Context, nodesGPU []types.NodeGPU) error
-	GetLastNodeTwinID(ctx context.Context) (int64, error)
-	GetNodeTwinIDsAfter(ctx context.Context, twinID int64) ([]int64, error)
-	DeleteOldGpus(ctx context.Context, nodeTwinIds []uint32) error
-	UpsertNodeHealth(ctx context.Context, healthReport types.HealthReport) error
-	GetHealthyNodeTwinIds(ctx context.Context) ([]int64, error)
-	GetConnectionString() string
+
+	// indexer utils
+	DeleteOldGpus(ctx context.Context, nodeTwinIds []uint32, expiration int64) error
+	GetLastNodeTwinID(ctx context.Context) (uint32, error)
+	GetNodeTwinIDsAfter(ctx context.Context, twinID uint32) ([]uint32, error)
+	GetHealthyNodeTwinIds(ctx context.Context) ([]uint32, error)
+
+	// indexer upserters
+	UpsertNodesGPU(ctx context.Context, gpus []types.NodeGPU) error
+	UpsertNodeHealth(ctx context.Context, healthReports []types.HealthReport) error
+	UpsertNodeDmi(ctx context.Context, dmis []types.Dmi) error
+	UpsertNetworkSpeed(ctx context.Context, speeds []types.Speed) error
 }
 
 type ContractBilling types.ContractBilling
@@ -80,11 +88,17 @@ type Node struct {
 	SerialNumber       string
 	Longitude          *float64
 	Latitude           *float64
-	Power              NodePower `gorm:"type:jsonb"`
+	Power              NodePower `gorm:"type:jsonb;serializer:json"`
 	NumGPU             int       `gorm:"num_gpu"`
 	ExtraFee           uint64
 	NodeContractsCount uint64 `gorm:"node_contracts_count"`
 	Healthy            bool
+	Bios               types.BIOS        `gorm:"type:jsonb;serializer:json"`
+	Baseboard          types.Baseboard   `gorm:"type:jsonb;serializer:json"`
+	Memory             []types.Memory    `gorm:"type:jsonb;serializer:json"`
+	Processor          []types.Processor `gorm:"type:jsonb;serializer:json"`
+	UploadSpeed        float64
+	DownloadSpeed      float64
 	PriceUsd           float64
 }
 
@@ -110,25 +124,4 @@ type Farm struct {
 type NodesDistribution struct {
 	Country string `json:"country"`
 	Nodes   int64  `json:"nodes"`
-}
-
-type NodeGPU struct {
-	NodeTwinID int    `gorm:"primaryKey;autoIncrement:false"`
-	ID         string `gorm:"primaryKey"`
-	Vendor     string
-	Device     string
-	Contract   int
-}
-
-func (NodeGPU) TableName() string {
-	return "node_gpu"
-}
-
-type HealthReport struct {
-	NodeTwinId int `gorm:"unique;not null"`
-	Healthy    bool
-}
-
-func (HealthReport) TableName() string {
-	return "health_report"
 }

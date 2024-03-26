@@ -153,7 +153,7 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			continue
 		}
 
-		_, ok := data.GPUs[node.TwinID]
+		_, ok := data.GPUs[uint32(node.TwinID)]
 		if filter.NodeHasGPU != nil && ok != *filter.NodeHasGPU {
 			continue
 		}
