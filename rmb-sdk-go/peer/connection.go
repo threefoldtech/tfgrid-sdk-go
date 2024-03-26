@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/cenkalti/backoff"
 	"github.com/gorilla/websocket"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -27,7 +26,6 @@ type InnerConnection struct {
 	session  string
 	identity substrate.Identity
 	urls     []string
-	m        sync.Mutex
 }
 
 // Writer is a channel that sends outgoing messages
@@ -150,42 +148,40 @@ func (c *InnerConnection) Start(ctx context.Context) (Reader, Writer) {
 
 // listenAndServe creates the websocket connection, and if successful, listens for and serves incoming and outgoing messages.
 func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte, input chan []byte) error {
-	con, err := c.connect()
+	connections, err := c.connect()
 	if err != nil {
 		return errors.Wrap(err, "failed to reconnect")
 	}
 
-	return c.loop(ctx, con, output, input)
+	var m sync.Mutex
+	var wg sync.WaitGroup
+
+	for _, con := range connections {
+		wg.Add(1)
+		go func(con *websocket.Conn) {
+			defer wg.Done()
+			m.Lock()
+			defer m.Unlock()
+			err = multierror.Append(err, c.loop(ctx, con, output, input))
+		}(con)
+	}
+
+	wg.Wait()
+	return err
 }
 
-func (c *InnerConnection) connect() (*websocket.Conn, error) {
+func (c *InnerConnection) connect() ([]*websocket.Conn, error) {
 	token, err := NewJWT(c.identity, c.twinID, c.session, 60)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create new jwt")
 	}
 
-	var (
-		con        *websocket.Conn
-		resp       *http.Response
-		maxRetries uint64 = 2
-		i                 = rand.Intn(len(c.urls))
-	)
-
-	// implementation is not thread-safe.
-	c.m.Lock()
-	defer c.m.Unlock()
-
-	b := backoff.WithMaxRetries(
-		backoff.NewConstantBackOff(time.Nanosecond),
-		maxRetries*uint64(len(c.urls)),
-	)
-
-	err = backoff.RetryNotify(func() error {
-		url := c.urls[i%len(c.urls)]
+	var connections []*websocket.Conn
+	for _, url := range c.urls {
 		relayURL := fmt.Sprintf("%s?%s", url, token)
 		log.Debug().Str("url", url).Msg("connecting")
 
-		con, resp, err = websocket.DefaultDialer.Dial(relayURL, nil)
+		con, resp, err := websocket.DefaultDialer.Dial(relayURL, nil)
 		if err != nil {
 			var body []byte
 			var status string
@@ -194,19 +190,15 @@ func (c *InnerConnection) connect() (*websocket.Conn, error) {
 				body, _ = io.ReadAll(resp.Body)
 			}
 
-			i++
-			return errors.Wrapf(err, "failed to connect (%s): %s", status, string(body))
+			return nil, errors.Wrapf(err, "failed to connect (%s): %s", status, string(body))
 		}
 
 		if resp.StatusCode != http.StatusSwitchingProtocols {
-			i++
-			return fmt.Errorf("invalid response %s", resp.Status)
+			return nil, fmt.Errorf("invalid response %s", resp.Status)
 		}
 
-		return nil
-	}, b, func(err error, _ time.Duration) {
-		log.Error().Err(err).Msg("failed to connect to relay, retrying")
-	})
+		connections = append(connections, con)
+	}
 
-	return con, err
+	return connections, err
 }
