@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -23,7 +25,7 @@ type InnerConnection struct {
 	twinID   uint32
 	session  string
 	identity substrate.Identity
-	url      string
+	urls     []string
 }
 
 // Writer is a channel that sends outgoing messages
@@ -41,11 +43,11 @@ func (r Reader) Read() []byte {
 }
 
 // NewConnection creates a new InnerConnection instance
-func NewConnection(identity substrate.Identity, url string, session string, twinID uint32) InnerConnection {
+func NewConnection(identity substrate.Identity, urls []string, session string, twinID uint32) InnerConnection {
 	return InnerConnection{
 		twinID:   twinID,
 		identity: identity,
-		url:      url,
+		urls:     urls,
 		session:  session,
 	}
 }
@@ -146,37 +148,59 @@ func (c *InnerConnection) Start(ctx context.Context) (Reader, Writer) {
 
 // listenAndServe creates the websocket connection, and if successful, listens for and serves incoming and outgoing messages.
 func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte, input chan []byte) error {
-	con, err := c.connect()
+	connections, err := c.connect()
 	if err != nil {
 		return errors.Wrap(err, "failed to reconnect")
 	}
 
-	return c.loop(ctx, con, output, input)
+	var m sync.Mutex
+	var wg sync.WaitGroup
+
+	for _, con := range connections {
+		wg.Add(1)
+		go func(con *websocket.Conn) {
+			defer wg.Done()
+			if loopErr := c.loop(ctx, con, output, input); loopErr != nil {
+				m.Lock()
+				defer m.Unlock()
+				err = multierror.Append(err, loopErr)
+			}
+		}(con)
+	}
+
+	wg.Wait()
+	return err
 }
 
-func (c *InnerConnection) connect() (*websocket.Conn, error) {
+func (c *InnerConnection) connect() ([]*websocket.Conn, error) {
 	token, err := NewJWT(c.identity, c.twinID, c.session, 60)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create new jwt")
 	}
 
-	relayURL := fmt.Sprintf("%s?%s", c.url, token)
+	var connections []*websocket.Conn
+	for _, url := range c.urls {
+		relayURL := fmt.Sprintf("%s?%s", url, token)
+		log.Debug().Str("url", url).Msg("connecting")
 
-	con, resp, err := websocket.DefaultDialer.Dial(relayURL, nil)
-	if err != nil {
-		var body []byte
-		var status string
-		if resp != nil {
-			status = resp.Status
-			body, _ = io.ReadAll(resp.Body)
+		con, resp, err := websocket.DefaultDialer.Dial(relayURL, nil)
+		if err != nil {
+			var body []byte
+			var status string
+			if resp != nil {
+				status = resp.Status
+				body, _ = io.ReadAll(resp.Body)
+			}
+
+			return nil, errors.Wrapf(err, "failed to connect (%s): %s", status, string(body))
 		}
 
-		return nil, errors.Wrapf(err, "failed to connect (%s): %s", status, string(body))
+		if resp.StatusCode != http.StatusSwitchingProtocols {
+			return nil, fmt.Errorf("invalid response %s", resp.Status)
+		}
+
+		connections = append(connections, con)
 	}
 
-	if resp.StatusCode != http.StatusSwitchingProtocols {
-		return nil, fmt.Errorf("invalid response %s", resp.Status)
-	}
-
-	return con, nil
+	return connections, err
 }
