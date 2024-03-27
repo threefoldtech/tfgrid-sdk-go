@@ -17,7 +17,7 @@ require (
 	github.com/swaggo/swag v1.16.3
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240227171040-f2a20ee3e965
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4
-	github.com/threefoldtech/zos v0.5.6-0.20240226114056-364e04acbed3
+	github.com/threefoldtech/zos v0.5.6-0.20240314134720-6d680d5deaa9
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	gorm.io/driver/postgres v1.5.6
 	gorm.io/gorm v1.25.7
@@ -74,6 +74,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/swaggo/files v1.0.1 // indirect
 	github.com/threefoldtech/zbus v1.0.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
