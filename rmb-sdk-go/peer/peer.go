@@ -106,6 +106,7 @@ type Peer struct {
 	writer  Writer
 	handler Handler
 	encoder encoder.Encoder
+	relays  []string
 }
 
 func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, error) {
@@ -259,6 +260,7 @@ func NewPeer(
 		writer:  writer,
 		handler: handler,
 		encoder: cfg.encoder,
+		relays:  relayURLs,
 	}
 
 	go cl.process(ctx)
@@ -418,6 +420,7 @@ func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string
 			Connection: session,
 		},
 		Schema: &schema,
+		Relays: d.relays,
 	}
 
 	if err != nil {
