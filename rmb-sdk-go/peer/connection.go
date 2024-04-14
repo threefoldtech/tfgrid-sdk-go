@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -75,7 +76,36 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 	}
 }
 
-func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output, input chan []byte) error {
+func (c *InnerConnection) writer(ctx context.Context, cons []*websocket.Conn, input chan []byte) error {
+	var errs error
+	local, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-local.Done():
+			return nil // error happened with the connection, return nil to try again
+		case data := <-input:
+			for _, con := range cons {
+				if err := con.WriteMessage(websocket.BinaryMessage, data); err != nil {
+					errs = multierror.Append(errs, err)
+					con.Close()
+					continue
+				}
+				errs = nil
+				break
+			}
+
+			if errs != nil {
+				return errs
+			}
+		}
+	}
+}
+
+func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output chan []byte) error {
 	defer con.Close()
 
 	local, cancel := context.WithCancel(ctx)
@@ -105,10 +135,6 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output,
 		case data := <-outputCh:
 			output <- data
 			lastPong = time.Now()
-		case data := <-input:
-			if err := con.WriteMessage(websocket.BinaryMessage, data); err != nil {
-				return err
-			}
 		case <-pong:
 			lastPong = time.Now()
 		case <-time.After(pingInterval):
@@ -160,13 +186,20 @@ func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte
 		wg.Add(1)
 		go func(con *websocket.Conn) {
 			defer wg.Done()
-			if loopErr := c.loop(ctx, con, output, input); loopErr != nil {
+			if loopErr := c.loop(ctx, con, output); loopErr != nil {
 				m.Lock()
 				defer m.Unlock()
 				err = multierror.Append(err, loopErr)
 			}
 		}(con)
 	}
+
+	go func() {
+		if writerErr := c.writer(ctx, connections, input); writerErr != nil {
+			err = multierror.Append(err, writerErr)
+			return
+		}
+	}()
 
 	wg.Wait()
 	return err
@@ -179,6 +212,8 @@ func (c *InnerConnection) connect() ([]*websocket.Conn, error) {
 	}
 
 	var connections []*websocket.Conn
+	rand.Shuffle(len(c.urls), func(i, j int) { c.urls[i], c.urls[j] = c.urls[j], c.urls[i] })
+
 	for _, url := range c.urls {
 		relayURL := fmt.Sprintf("%s?%s", url, token)
 		log.Debug().Str("url", url).Msg("connecting")

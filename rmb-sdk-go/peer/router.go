@@ -71,13 +71,13 @@ func (r *Router) Use(mw Middleware) {
 }
 
 func (r *Router) Serve(ctx context.Context, peer Peer, env *types.Envelope, err error) {
-	handlerCtx := context.WithValue(ctx, twinKeyID{}, env.Source.Twin)
-	handlerCtx = context.WithValue(handlerCtx, envelopeKey{}, env)
-
 	if err != nil {
 		log.Error().Err(err).Msg("bad request")
 		return
 	}
+
+	handlerCtx := context.WithValue(ctx, twinKeyID{}, env.Source.Twin)
+	handlerCtx = context.WithValue(handlerCtx, envelopeKey{}, env)
 
 	go func() {
 		// parse and call request
