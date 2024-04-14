@@ -143,6 +143,7 @@ type NodeFilter struct {
 	TwinID            *uint64  `schema:"twin_id,omitempty"`
 	CertificationType *string  `schema:"certification_type,omitempty"`
 	HasGPU            *bool    `schema:"has_gpu,omitempty"`
+	NumGPU            *uint64  `schema:"num_gpu,omitempty"`
 	GpuDeviceID       *string  `schema:"gpu_device_id,omitempty"`
 	GpuDeviceName     *string  `schema:"gpu_device_name,omitempty"`
 	GpuVendorID       *string  `schema:"gpu_vendor_id,omitempty"`
