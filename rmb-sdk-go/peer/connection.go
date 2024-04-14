@@ -197,7 +197,6 @@ func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte
 	go func() {
 		if writerErr := c.writer(ctx, connections, input); writerErr != nil {
 			err = multierror.Append(err, writerErr)
-			return
 		}
 	}()
 
