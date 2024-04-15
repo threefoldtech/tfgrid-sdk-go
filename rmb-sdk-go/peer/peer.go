@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -103,7 +104,7 @@ type Peer struct {
 	twinDB  TwinDB
 	privKey *secp256k1.PrivateKey
 	reader  Reader
-	writer  Writer
+	cons    []InnerConnection
 	handler Handler
 	encoder encoder.Encoder
 }
@@ -238,9 +239,15 @@ func NewPeer(
 		}
 	}
 
-	conn := NewConnection(identity, cfg.relayURLs, cfg.session, twin.ID)
+	reader := make(chan []byte)
 
-	reader, writer := conn.Start(ctx)
+	var cons []InnerConnection
+	for _, url := range cfg.relayURLs {
+		conn := NewConnection(identity, url, cfg.session, twin.ID)
+		conn.Start(ctx, reader)
+		cons = append(cons, conn)
+	}
+
 	var sessionP *string
 	if cfg.session != "" {
 		sessionP = &cfg.session
@@ -256,7 +263,7 @@ func NewPeer(
 		twinDB:  twinDB,
 		privKey: privKey,
 		reader:  reader,
-		writer:  writer,
+		cons:    cons,
 		handler: handler,
 		encoder: cfg.encoder,
 	}
@@ -476,19 +483,25 @@ func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string
 }
 
 func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
-
 	bytes, err := proto.Marshal(request)
 	if err != nil {
 		return err
 	}
 
-	select {
-	case d.writer <- bytes:
-	case <-ctx.Done():
-		return ctx.Err()
+	var errs error
+	for _, con := range d.cons {
+		err := con.send(ctx, bytes)
+		if err != nil {
+			errs = multierror.Append(errs, err)
+			continue
+		}
+
+		// move successful connection to first pos
+		// d.cons = append([]InnerConnection{con}, append(d.cons[:i], d.cons[i+1:]...)...)
+		return nil
 	}
 
-	return nil
+	return errs
 
 }
 
@@ -517,7 +530,7 @@ func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session 
 	return nil
 }
 
-// SendRequest sends an rmb message to the relay
+// SendResponse sends an rmb message to the relay
 func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session *string, responseError error, data interface{}) error {
 	payload, err := d.encoder.Encode(data)
 	if err != nil {
