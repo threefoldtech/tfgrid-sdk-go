@@ -443,6 +443,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.NumGPU != nil && *f.NumGPU != 0 && *f.NumGPU < uint64(len(data.GPUs[uint32(n.TwinID)])) {
+		return false
+	}
+
 	foundSuitableCard := false
 	for _, gpu := range gpus {
 		if gpuSatisfied(gpu, f) {
