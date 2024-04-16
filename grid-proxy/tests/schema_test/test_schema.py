@@ -11,7 +11,7 @@ if network == 'main':
 elif network == '':
     url = 'http://localhost:8080'
     swagger = "docs/swagger.json"
-    schemathesis.from_path(swagger, base_url = url)
+    schema = schemathesis.from_path(swagger, base_url = url)
 else:
     url = 'https://gridproxy.' + network + '.grid.tf'
     swagger = 'https://gridproxy.' + network + '.grid.tf/swagger/doc.json'
