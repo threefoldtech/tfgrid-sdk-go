@@ -526,9 +526,8 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	q = q.Where(condition)
 
 	if filter.NumGPU != nil {
-		q = q.Where("resources_cache.node_gpu_count >= ?", *filter.NumGPU)
+		q = q.Where("COALESCE(resources_cache.node_gpu_count, 0) >= ?", *filter.NumGPU)
 	}
-
 	if filter.Healthy != nil {
 		q = q.Where("health_report.healthy = ? ", *filter.Healthy)
 	}
