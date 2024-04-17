@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -82,12 +83,10 @@ func warmTwins(pool *redis.Pool, graphql string) error {
 		if err != nil {
 			return err
 		}
+		invalidateTwins(gtwins)
 		twins, err := graphqlTwinsToRelayTwins(gtwins)
 		if err != nil {
 			return err
-		}
-		if !pagination.PageInfo.HasNextPage {
-			break
 		}
 		offset = pagination.PageInfo.EndCursor
 
@@ -95,10 +94,47 @@ func warmTwins(pool *redis.Pool, graphql string) error {
 		if err != nil {
 			return err
 		}
+		if !pagination.PageInfo.HasNextPage {
+			break
+		}
 		time.Sleep(requestsInterval)
 	}
 
 	return nil
+}
+
+func invalidateTwins(twins []graphqlTwin) {
+	for i, twin := range twins {
+		if twin.Relay == nil {
+			continue
+		}
+		if !validRelay(*twin.Relay) {
+			twins[i].Relay = nil
+		}
+	}
+}
+
+func validRelay(relay string) bool {
+	if len(relay) == 0 {
+		return false
+	}
+	relays := strings.Split(relay, "_")
+	for _, relay := range relays {
+		// it can't be an ip
+		if ip := net.ParseIP(relay); ip != nil {
+			return false
+		}
+		if !strings.Contains(relay, ".") {
+			return false
+		}
+		parts := strings.Split(relay, ".")
+		for _, part := range parts {
+			if len(part) == 0 {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func queryGraphql(graphql, body string) (paginationData, []graphqlTwin, error) {
@@ -107,7 +143,11 @@ func queryGraphql(graphql, body string) (paginationData, []graphqlTwin, error) {
 		return paginationData{}, nil, err
 	}
 	reader := bytes.NewReader(bodyBytes)
-	resp, err := http.Post(graphql, "application/json", reader)
+
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := cl.Post(graphql, "application/json", reader)
 	if err != nil {
 		return paginationData{}, nil, err
 	}

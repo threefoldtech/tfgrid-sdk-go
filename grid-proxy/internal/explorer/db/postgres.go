@@ -140,54 +140,46 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 		Scan(&stats); res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get nodes total resources")
 	}
-	if res := d.gormDB.WithContext(ctx).Table("node").
-		Where(condition).Count(&stats.Nodes); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get node count")
-	}
-	if res := d.gormDB.WithContext(ctx).Table("node").
-		Where(condition).Distinct("country").Count(&stats.Countries); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get country count")
-	}
-	query := d.gormDB.WithContext(ctx).
-		Table("node").
-		Joins("RIGHT JOIN public_config ON node.id = public_config.node_id")
 
-	if res := query.Where(condition).Where("COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != ''").Count(&stats.AccessNodes); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get access node count")
+	if res := d.gormDB.WithContext(ctx).
+		Table("node").
+		Select(
+			"count(COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '') as access_nodes",
+			"count((COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '') AND COALESCE(public_config.domain, '') != '') as gateways",
+		).
+		Joins("RIGHT JOIN public_config ON node.id = public_config.node_id").
+		Where(condition).
+		Scan(&stats); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get public config")
 	}
-	if res := query.Where(condition).Where("COALESCE(public_config.domain, '') != '' AND (COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '')").Count(&stats.Gateways); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get gateway count")
-	}
+
 	var distribution []NodesDistribution
 	if res := d.gormDB.WithContext(ctx).Table("node").
 		Select("country, count(node_id) as nodes").Where(condition).Group("country").Scan(&distribution); res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get nodes distribution")
 	}
-	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&stats.GPUs); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get node with GPU count")
-	}
 	nodesDistribution := map[string]int64{}
 	for _, d := range distribution {
 		nodesDistribution[d.Country] = d.Nodes
+		stats.Nodes += d.Nodes
+		stats.Countries++
 	}
 	stats.NodesDistribution = nodesDistribution
 
-	nonDeletedNodeContracts := d.gormDB.Table("node_contract").
-		Select("DISTINCT ON (node_id) node_id, contract_id").
-		Where("state IN ('Created', 'GracePeriod')")
+	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
+		Joins("LEFT JOIN resources_cache ON resources_cache.node_id = node.node_id").
+		Where("node_gpu_count != 0").
+		Count(&stats.GPUs); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get node with GPU count")
+	}
 
 	res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
-		Joins(
-			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
-		).
-		Joins(
-			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", nonDeletedNodeContracts,
-		).
-		Joins(
-			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
-		).
+		Joins(`
+			LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id
+			LEFT JOIN farm ON node.farm_id = farm.farm_id
+		`).
 		Where(
-			"farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0",
+			"farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0 OR resources_cache.renter is not null",
 		).
 		Count(&stats.DedicatedNodes)
 	if res.Error != nil {
@@ -288,6 +280,8 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"node.certification",
 			"farm.dedicated_farm as farm_dedicated",
 			"resources_cache.rent_contract_id as rent_contract_id",
+			"(farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0) AND resources_cache.renter is null as rentable",
+			"resources_cache.renter is not null as rented",
 			"resources_cache.renter",
 			"node.serial_number",
 			"convert_to_decimal(location.longitude) as longitude",
@@ -454,12 +448,6 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	if filter.Dedicated != nil {
 		q = q.Where("farm.dedicated_farm = ?", *filter.Dedicated)
 	}
-	var count int64
-	if limit.Randomize || limit.RetCount {
-		if res := q.Count(&count); res.Error != nil {
-			return nil, 0, errors.Wrap(res.Error, "couldn't get farm count")
-		}
-	}
 
 	// Sorting
 	if limit.Randomize {
@@ -476,6 +464,14 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 			q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 		} else {
 			q = q.Order("farm.farm_id")
+		}
+	}
+
+	var count int64
+	if limit.RetCount {
+		countQuery := q.Session(&gorm.Session{})
+		if res := countQuery.Count(&count); res.Error != nil {
+			return nil, 0, errors.Wrap(res.Error, "couldn't get farm count")
 		}
 	}
 
@@ -532,6 +528,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 
 	q = q.Where(condition)
 
+	if filter.NumGPU != nil {
+		q = q.Where("COALESCE(resources_cache.node_gpu_count, 0) >= ?", *filter.NumGPU)
+	}
 	if filter.Healthy != nil {
 		q = q.Where("health_report.healthy = ? ", *filter.Healthy)
 	}
@@ -637,18 +636,6 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where(`calc_discount(resources_cache.price_usd, ?) <= ?`, limit.Balance, *filter.PriceMax)
 	}
 
-	var count int64
-	if limit.Randomize || limit.RetCount {
-		q = q.Session(&gorm.Session{})
-		res := q.Count(&count)
-		if d.shouldRetry(res.Error) {
-			res = q.Count(&count)
-		}
-		if res.Error != nil {
-			return nil, 0, res.Error
-		}
-	}
-
 	// Sorting
 	if limit.Randomize {
 		q = q.Order("random()")
@@ -664,7 +651,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 			}
 
 			if limit.SortBy == "status" {
-				q.Order(nodestatus.DecideNodeStatusOrdering(order))
+				q = q.Order(nodestatus.DecideNodeStatusOrdering(order))
+			} else if limit.SortBy == "free_cru" {
+				q = q.Order(fmt.Sprintf("total_cru-used_cru %s", order))
 			} else {
 				q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 			}
@@ -672,6 +661,15 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 			q = q.Order("node.node_id")
 		}
 	}
+
+	var count int64
+	if limit.RetCount {
+		countQuery := q.Session(&gorm.Session{})
+		if res := countQuery.Count(&count); res.Error != nil {
+			return nil, 0, errors.Wrap(res.Error, "couldn't get node count")
+		}
+	}
+
 	// Pagination
 	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
 
@@ -720,12 +718,6 @@ func (d *PostgresDatabase) GetTwins(ctx context.Context, filter types.TwinFilter
 	if filter.PublicKey != nil {
 		q = q.Where("public_key = ?", *filter.PublicKey)
 	}
-	var count int64
-	if limit.Randomize || limit.RetCount {
-		if res := q.Count(&count); res.Error != nil {
-			return nil, 0, errors.Wrap(res.Error, "couldn't get twin count")
-		}
-	}
 
 	// Sorting
 	if limit.Randomize {
@@ -738,6 +730,14 @@ func (d *PostgresDatabase) GetTwins(ctx context.Context, filter types.TwinFilter
 		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 	} else {
 		q = q.Order("twin.twin_id")
+	}
+
+	var count int64
+	if limit.RetCount {
+		countQuery := q.Session(&gorm.Session{})
+		if res := countQuery.Count(&count); res.Error != nil {
+			return nil, 0, errors.Wrap(res.Error, "couldn't get twin count")
+		}
 	}
 
 	// Pagination
@@ -766,16 +766,21 @@ func (d *PostgresDatabase) contractTableQuery() *gorm.DB {
 	return d.gormDB.Table(contractTablesQuery).
 		Select(
 			"contracts.contract_id",
-			"twin_id",
+			"contracts.twin_id",
 			"state",
 			"created_at",
-			"name",
+			"contracts.name",
 			"node_id",
 			"deployment_data",
 			"deployment_hash",
 			"number_of_public_i_ps as number_of_public_ips",
 			"type",
-		)
+			"farm.name as farm_name",
+			"farm.farm_id",
+		).
+		Joins(`LEFT JOIN farm ON farm.farm_id = (
+			SELECT farm_id from node WHERE node.node_id = contracts.node_id
+		)`)
 }
 
 // GetContracts returns contracts filtered and paginated
@@ -790,7 +795,7 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 		q = q.Where("state ILIKE ?", *filter.State)
 	}
 	if filter.TwinID != nil {
-		q = q.Where("twin_id = ?", *filter.TwinID)
+		q = q.Where("contracts.twin_id = ?", *filter.TwinID)
 	}
 	if filter.ContractID != nil {
 		q = q.Where("contracts.contract_id = ?", *filter.ContractID)
@@ -802,7 +807,7 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 		q = q.Where("number_of_public_i_ps >= ?", *filter.NumberOfPublicIps)
 	}
 	if filter.Name != nil {
-		q = q.Where("name = ?", *filter.Name)
+		q = q.Where("contracts.name = ?", *filter.Name)
 	}
 	if filter.DeploymentData != nil {
 		q = q.Where("deployment_data = ?", *filter.DeploymentData)
@@ -810,11 +815,11 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 	if filter.DeploymentHash != nil {
 		q = q.Where("deployment_hash = ?", *filter.DeploymentHash)
 	}
-	var count int64
-	if limit.Randomize || limit.RetCount {
-		if res := q.Count(&count); res.Error != nil {
-			return nil, 0, errors.Wrap(res.Error, "couldn't get contract count")
-		}
+	if filter.FarmName != nil {
+		q = q.Where("farm.name ILIKE ?", *filter.FarmName)
+	}
+	if filter.FarmId != nil {
+		q = q.Where("farm.farm_id = ?", *filter.FarmId)
 	}
 
 	// Sorting
@@ -828,6 +833,14 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 	} else {
 		q = q.Order("contracts.contract_id")
+	}
+
+	var count int64
+	if limit.Randomize || limit.RetCount {
+		countQuery := q.Session(&gorm.Session{})
+		if res := countQuery.Count(&count); res.Error != nil {
+			return nil, 0, errors.Wrap(res.Error, "couldn't get contract count")
+		}
 	}
 
 	// Pagination
@@ -871,7 +884,8 @@ func (d *PostgresDatabase) GetContractBills(ctx context.Context, contractID uint
 
 	var count int64
 	if limit.RetCount {
-		if res := q.Count(&count); res.Error != nil {
+		countQuery := q.Session(&gorm.Session{})
+		if res := countQuery.Count(&count); res.Error != nil {
 			return nil, 0, errors.Wrap(res.Error, "couldn't get contract bills count")
 		}
 	}

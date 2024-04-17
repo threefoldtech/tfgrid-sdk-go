@@ -49,6 +49,8 @@ type DBContract struct {
 	DeploymentHash    string
 	NumberOfPublicIps uint
 	Type              string
+	FarmName          string
+	FarmId            uint64
 }
 
 // Node data about a node which is calculated from the chain
@@ -82,6 +84,8 @@ type Node struct {
 	FarmDedicated      bool `gorm:"farm_dedicated"`
 	RentContractID     int64
 	Renter             int64
+	Rented             bool
+	Rentable           bool
 	SerialNumber       string
 	Longitude          *float64
 	Latitude           *float64

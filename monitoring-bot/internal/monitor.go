@@ -195,7 +195,10 @@ func (m *Monitor) sendBotMessage(msg string) error {
 		"text":    msg,
 	})
 
-	res, err := http.Post(
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	res, err := cl.Post(
 		url,
 		"application/json",
 		bytes.NewBuffer(body),

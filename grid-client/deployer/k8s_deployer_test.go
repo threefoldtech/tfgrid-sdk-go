@@ -55,10 +55,11 @@ func constructTestK8s(t *testing.T, mock bool) (
 		tfPluginClient.K8sDeployer.tfPluginClient = &tfPluginClient
 	}
 	net := constructTestNetwork()
-	tfPluginClient.State.Networks = state.NetworkState{net.Name: state.Network{
-		Subnets:               map[uint32]string{nodeID: net.IPRange.String()},
-		NodeDeploymentHostIDs: map[uint32]state.DeploymentHostIDs{nodeID: map[uint64][]byte{contractID: {}}},
-	}}
+	tfPluginClient.State.Networks = state.NetworkState{
+		State: map[string]state.Network{net.Name: {
+			Subnets: map[uint32]string{nodeID: net.IPRange.String()},
+		}},
+	}
 
 	return tfPluginClient.K8sDeployer, cl, sub, ncPool, deployer, gridProxyCl
 }
@@ -172,7 +173,7 @@ func TestK8sDeployer(t *testing.T) {
 
 		wl := nodeWorkloads[nodeID]
 		testDl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, wl)
-		testDl.Metadata = "{\"type\":\"kubernetes\",\"name\":\"K8sForTesting\",\"projectName\":\"Kubernetes\"}"
+		testDl.Metadata = "{\"version\":3,\"type\":\"kubernetes\",\"name\":\"K8sForTesting\",\"projectName\":\"kubernetes/K8sForTesting\"}"
 
 		assert.Equal(t, dls, map[uint32]gridtypes.Deployment{
 			nodeID: testDl,
@@ -324,7 +325,7 @@ func ExampleK8sDeployer_Deploy() {
 		return
 	}
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -397,7 +398,7 @@ func ExampleK8sDeployer_BatchDeploy() {
 		return
 	}
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -474,7 +475,7 @@ func ExampleK8sDeployer_Cancel() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return

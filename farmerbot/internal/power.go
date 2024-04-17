@@ -67,6 +67,10 @@ func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 		return fmt.Errorf("cannot power off node '%d', node has a rent contract", nodeID)
 	}
 
+	if node.hasActiveContracts {
+		return fmt.Errorf("cannot power off node '%d', node has active contracts", nodeID)
+	}
+
 	if !node.isUnused() {
 		return fmt.Errorf("cannot power off node '%d', node is used", nodeID)
 	}
@@ -114,13 +118,13 @@ func (f *FarmerBot) manageNodesPower(sub Substrate) error {
 		return nil
 	}
 
-	resourceUsage := uint8(100 * usedResources / totalResources)
-	if resourceUsage >= f.config.Power.WakeUpThreshold {
-		log.Info().Uint8("resources usage", resourceUsage).Msg("Too high resource usage")
+	resourceUsage := 100 * float32(usedResources) / float32(totalResources)
+	if resourceUsage >= float32(f.config.Power.WakeUpThreshold) {
+		log.Info().Msgf("Too high resource usage = %.1f%%, threshold = %d%%", resourceUsage, f.config.Power.WakeUpThreshold)
 		return f.resourceUsageTooHigh(sub)
 	}
 
-	log.Info().Uint8("resources usage", resourceUsage).Msg("Too low resource usage")
+	log.Info().Msgf("Too low resource usage = %.1f%%, threshold = %d%%", resourceUsage, f.config.Power.WakeUpThreshold)
 	return f.resourceUsageTooLow(sub, usedResources, totalResources)
 }
 
@@ -146,7 +150,6 @@ func calculateResourceUsage(nodes map[uint32]node) (uint64, uint64) {
 func (f *FarmerBot) resourceUsageTooHigh(sub Substrate) error {
 	for nodeID, node := range f.nodes {
 		if node.powerState == off {
-			log.Info().Uint32("nodeID", nodeID).Msg("Too much resource usage. Turning on node")
 			return f.powerOn(sub, nodeID)
 		}
 	}
@@ -192,10 +195,10 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 			break
 		}
 
-		newResourceUsage := uint8(100 * newUsedResources / newTotalResources)
-		if newResourceUsage < f.config.Power.WakeUpThreshold {
+		newResourceUsage := 100 * float32(newUsedResources) / float32(newTotalResources)
+		if newResourceUsage < float32(f.config.Power.WakeUpThreshold) {
 			// we need to keep the resource percentage lower then the threshold
-			log.Info().Uint32("nodeID", uint32(node.ID)).Uint8("resources usage", newResourceUsage).Msg("Resource usage too low. Turning off unused node")
+			log.Info().Uint32("nodeID", uint32(node.ID)).Msgf("Too low resource usage = %.1f%%. Turning off unused node", newResourceUsage)
 			err := f.powerOff(sub, uint32(node.ID))
 			if err != nil {
 				log.Error().Err(err).Uint32("nodeID", uint32(node.ID)).Msg("Failed to power off node")

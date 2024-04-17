@@ -142,7 +142,7 @@ func TestFQDNDeployer(t *testing.T) {
 				}),
 			},
 		})
-		testDl.Metadata = "{\"type\":\"Gateway Fqdn\",\"name\":\"name\",\"projectName\":\"Gateway\"}"
+		testDl.Metadata = "{\"version\":3,\"type\":\"Gateway Fqdn\",\"name\":\"name\",\"projectName\":\"name\"}"
 
 		assert.Equal(t, dls, map[uint32]gridtypes.Deployment{
 			nodeID: testDl,
@@ -378,7 +378,7 @@ func ExampleGatewayFQDNDeployer_Deploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -404,7 +404,7 @@ func ExampleGatewayFQDNDeployer_BatchDeploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -437,7 +437,7 @@ func ExampleGatewayFQDNDeployer_Cancel() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	tfPluginClient, err := NewTFPluginClient(mnemonic, "sr25519", network, "", "", "", 0, false, true)
+	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -21,44 +21,55 @@ tfrobot is tool designed to automate mass deployment of groups of VMs on ThreeFo
 mv tfrobot /usr/local/bin
 ```
 
-4.  Create a new configuration file, for example config.yaml:
+4.  Create a new configuration file, for example `config.yaml`:
 
 ```yaml
 node_groups:
-  - name: group_a
-    nodes_count: 3
-    free_cpu: 2
-    free_mru: 16
-    free_ssd: 100
-    free_hdd: 50
+
+  - name: battag1
+    nodes_count: 2 # amount of nodes to be found
+    free_cpu: 2 # number of logical cores
+    free_mru: 70 # amount of memory in GB
+    free_ssd: 100 # amount of ssd storage in GB
+    free_hdd: 50 # amount of hdd storage in GB
+    dedicated: false # are nodes dedicated
+    public_ip4: false # should the nodes have free ip v4
+    public_ip6: false # should the nodes have free ip v6
+    certified: false # should the nodes be certified(if false the nodes could be certified of diy) 
+    region: europe # region could be the name of the continents the nodes are located in (africa, americas, antarctic, antarctic ocean, asia, europe, oceania, polar)
 vms:
-  - name: examplevm
-    vms_count: 5
-    node_group: group_a
-    cpu: 1
-    mem: 0.25
-    flist: example-flist
-    entry_point: example-entrypoint
-    root_size: 0
-    ssh_key: example1
+  - name: batta_vmg1
+    vms_count: 1 # amount of vms with the same configurations
+    node_group: battag1 # the name of the predefined group of nodes
+    cpu: 2 # number of logical cores
+    mem: 2 # amount of  memory in GB
+    public_ip4: false
+    public_ip6: false
+    flist: https://hub.grid.tf/mariobassem1.3bot/threefolddev-holochain-latest.flist
+    entry_point: /usr/local/bin/entrypoint.sh
+    root_size: 0 # root size in GB, 0 is the default
+    ssh_key: my_key # the name of the predefined ssh key, will be defined below
     env_vars:
-      user: user1
-      pwd: 1234
-ssh_keys:
-  example1: ssh_key1
-mnemonic: example-mnemonic
-network: dev
-max_retries: 5
+      key1: val1
+
+
+ssh_keys: # map of ssh keys with key=name and value=the actual ssh key
+  my_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCeq1MFCQOv3OCLO1HxdQl8V0CxAwt5AzdsNOL91wmHiG9ocgnq2yipv7qz+uCS0AdyOSzB9umyLcOZl2apnuyzSOd+2k6Cj9ipkgVx4nx4q5W1xt4MWIwKPfbfBA9gDMVpaGYpT6ZEv2ykFPnjG0obXzIjAaOsRthawuEF8bPZku1yi83SDtpU7I0pLOl3oifuwPpXTAVkK6GabSfbCJQWBDSYXXM20eRcAhIMmt79zo78FNItHmWpfPxPTWlYW02f7vVxTN/LUeRFoaNXXY+cuPxmcmXp912kW0vhK9IvWXqGAEuSycUOwync/yj+8f7dRU7upFGqd6bXUh67iMl7 ahmed@ahmedheaven"
+
+mnemonic: REPLACE WITH YOUR MNEMONIC # mnemonic of the user
+network: main # eg: main, test, qa, dev
+
 ```
 
-You can use this [example](./example/conf.yaml) for further guidance,
+You can use this [example](./example/conf.yaml) for further guidance
+
 >**Please** make sure to replace placeholders and adapt the groups based on your actual project details.
 
->**Note:** All storage resources are expected to be in GB.
-
->**Note:** The VMs may utilize a different number of nodes than requested due
+>**Notes:**
+>> The VMs may utilize a different number of nodes than requested due
 to the retries filtering out additional nodes in case of failure.
 Consequently, it's possible to utilize more nodes than initially requested.
+>> Duplicate field values are ignored; only last occurrence will be considered.
 
 5.  Run the deployer with path to the config file
 
@@ -118,13 +129,16 @@ tfrobot deploy -c path/to/your/config.yaml
 
 | Field | Description| Supported Values|
 | :---:   | :---: | :---: |
-| Size | disk size in GB| positive integer min = 15 |
-| Mount | disk mount point | path to mountpoint |
+| size | disk size in GB| positive integer min = 15 |
+| mount_point | disk mount point | path to mountpoint |
 
 > **Notes:**
-> Ensure that memory precision does not exceed 0.001,
+>> All storage resources are expected to be in GB.
+
+>> In case of YAML input, floating point portion of int values will be ignored.
+
+>> Ensure that memory precision does not exceed 0.001,
 any value greater than this threshold will be disregarded.
-> In case of YAML input, floating point portion of int values will be ignored.
 
 ## Usage
 
@@ -156,9 +170,13 @@ tfrobot load -c path/to/your/config.yaml
 | -o | used to specify path to output file to store the output info in |
 | -d | allow debug logs to appear in the output logs |
 | -h | help |
-> **Note:** Parsing is based on file extension, json format if the file had json extension, yaml format otherwise
 
-> **Note:** Make sure to use every flag once. If the flag is repeated, it will ignore all values and take the last value of the flag.
+> **Notes:**
+>> Parsing is based on file extension, json format if the file had json
+extension, yaml format otherwise
+
+>> Make sure to use every flag once. If the flag is repeated,
+it will ignore all values and take the last value of the flag.
 
 ## Using Docker
 
