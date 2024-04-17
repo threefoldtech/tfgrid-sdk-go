@@ -75,7 +75,7 @@ func TestLoadDiskFromGrid(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		state := SetupLoaderTests(t, []gridtypes.Workload{diskWl})
 
-		got, err := state.LoadDiskFromGrid(1, "test", deploymentName)
+		got, err := state.LoadDiskFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
 		assert.Equal(t, disk, got)
 	})
@@ -86,7 +86,7 @@ func TestLoadDiskFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{diskWlCp})
 
-		_, err := state.LoadDiskFromGrid(1, "test", deploymentName)
+		_, err := state.LoadDiskFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -99,7 +99,7 @@ func TestLoadDiskFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{diskWlCp})
 
-		_, err := state.LoadDiskFromGrid(1, "test", deploymentName)
+		_, err := state.LoadDiskFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 }
@@ -130,7 +130,7 @@ func TestLoadGatewayFQDNFromGrid(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWl})
 
-		got, err := state.LoadGatewayFQDNFromGrid(1, "test", deploymentName)
+		got, err := state.LoadGatewayFQDNFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
 		assert.Equal(t, gateway, got)
 	})
@@ -141,7 +141,7 @@ func TestLoadGatewayFQDNFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWlCp})
 
-		_, err := state.LoadGatewayFQDNFromGrid(1, "test", deploymentName)
+		_, err := state.LoadGatewayFQDNFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -154,7 +154,7 @@ func TestLoadGatewayFQDNFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWlCp})
 
-		_, err := state.LoadGatewayFQDNFromGrid(1, "test", deploymentName)
+		_, err := state.LoadGatewayFQDNFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 }
@@ -195,7 +195,7 @@ func TestLoadGatewayNameFromGrid(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWl})
 
-		got, err := state.LoadGatewayNameFromGrid(1, "test", deploymentName)
+		got, err := state.LoadGatewayNameFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
 		assert.Equal(t, gateway, got)
 	})
@@ -205,7 +205,7 @@ func TestLoadGatewayNameFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWlCp})
 
-		_, err := state.LoadGatewayNameFromGrid(1, "test", deploymentName)
+		_, err := state.LoadGatewayNameFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -218,7 +218,7 @@ func TestLoadGatewayNameFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWlCp})
 
-		_, err := state.LoadGatewayNameFromGrid(1, "test", deploymentName)
+		_, err := state.LoadGatewayNameFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 }
@@ -229,8 +229,8 @@ func TestLoadK8sFromGrid(t *testing.T) {
 	assert.NoError(t, err)
 
 	res, _ := json.Marshal(zos.ZMachineResult{
-		IP:    "1.1.1.1",
-		YggIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		IP:          "1.1.1.1",
+		PlanetaryIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 	})
 
 	master := workloads.K8sNode{
@@ -243,7 +243,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		Planetary:     true,
 		CPU:           1,
 		Memory:        8,
-		YggIP:         "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 		IP:            "1.1.1.1",
 		NetworkName:   "test",
 	}
@@ -298,9 +298,14 @@ func TestLoadK8sFromGrid(t *testing.T) {
 	}
 
 	metadata, err := json.Marshal(workloads.NetworkMetaData{
-		UserAccessIP: "",
-		PrivateKey:   "",
-		PublicNodeID: 0,
+		Version: workloads.Version,
+		UserAccesses: []workloads.UserAccess{
+			{
+				Subnet:     "",
+				PrivateKey: "",
+				NodeID:     0,
+			},
+		},
 	})
 	assert.NoError(t, err)
 
@@ -323,7 +328,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		state := SetupLoaderTests(t, []gridtypes.Workload{networkWl, k8sWorkload})
 
-		got, err := state.LoadK8sFromGrid([]uint32{1}, deploymentName)
+		got, err := state.LoadK8sFromGrid(context.Background(), []uint32{1}, deploymentName)
 		assert.NoError(t, err)
 		assert.Equal(t, cluster, got)
 	})
@@ -334,7 +339,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{k8sWorkloadCp})
 
-		_, err := state.LoadK8sFromGrid([]uint32{1}, deploymentName)
+		_, err := state.LoadK8sFromGrid(context.Background(), []uint32{1}, deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -347,7 +352,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{k8sWorkloadCp})
 
-		_, err := state.LoadK8sFromGrid([]uint32{1}, deploymentName)
+		_, err := state.LoadK8sFromGrid(context.Background(), []uint32{1}, deploymentName)
 		assert.Error(t, err)
 	})
 }
@@ -366,12 +371,18 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 		WGPort:           map[uint32]int{},
 		Keys:             map[uint32]wgtypes.Key{},
 		NodesIPRange:     map[uint32]gridtypes.IPNet{1: ipRange},
+		MyceliumKeys:     make(map[uint32][]byte),
 	}
 
 	metadata, err := json.Marshal(workloads.NetworkMetaData{
-		UserAccessIP: "",
-		PrivateKey:   "",
-		PublicNodeID: 0,
+		Version: workloads.Version,
+		UserAccesses: []workloads.UserAccess{
+			{
+				Subnet:     "",
+				PrivateKey: "",
+				NodeID:     0,
+			},
+		},
 	})
 	assert.NoError(t, err)
 
@@ -394,7 +405,7 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		state := SetupLoaderTests(t, []gridtypes.Workload{networkWl})
 
-		got, err := state.LoadNetworkFromGrid("test")
+		got, err := state.LoadNetworkFromGrid(context.Background(), "test")
 		assert.NoError(t, err)
 		assert.Equal(t, znet, got)
 	})
@@ -405,7 +416,7 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{networkWlCp})
 
-		_, err := state.LoadNetworkFromGrid("test")
+		_, err := state.LoadNetworkFromGrid(context.Background(), "test")
 		assert.Error(t, err)
 	})
 
@@ -418,7 +429,7 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{networkWlCp})
 
-		_, err := state.LoadNetworkFromGrid("test")
+		_, err := state.LoadNetworkFromGrid(context.Background(), "test")
 		assert.Error(t, err)
 	})
 }
@@ -508,7 +519,7 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		state := SetupLoaderTests(t, []gridtypes.Workload{qsfsWl})
 
-		got, err := state.LoadQSFSFromGrid(1, "test", deploymentName)
+		got, err := state.LoadQSFSFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
 		assert.Equal(t, qsfs, got)
 	})
@@ -518,7 +529,7 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{qsfsWlCp})
 
-		_, err := state.LoadQSFSFromGrid(1, "test", deploymentName)
+		_, err := state.LoadQSFSFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -531,7 +542,7 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{qsfsWlCp})
 
-		_, err := state.LoadQSFSFromGrid(1, "test", deploymentName)
+		_, err := state.LoadQSFSFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -541,16 +552,16 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{qsfsWlCp})
 
-		_, err := state.LoadQSFSFromGrid(1, "test", deploymentName)
+		_, err := state.LoadQSFSFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 }
 
 func TestLoadVMFromGrid(t *testing.T) {
 	vmRes, err := json.Marshal(zos.ZMachineResult{
-		ID:    "5",
-		IP:    "5.5.5.5",
-		YggIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		ID:          "5",
+		IP:          "5.5.5.5",
+		PlanetaryIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 	})
 	assert.NoError(t, err)
 
@@ -565,7 +576,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 		PublicIP6:     false,
 		Planetary:     true,
 		Corex:         false,
-		YggIP:         "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 		IP:            "1.1.1.1",
 		Description:   "test des",
 		CPU:           2,
@@ -628,7 +639,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		state := SetupLoaderTests(t, []gridtypes.Workload{vmWl, pubWl})
 
-		got, err := state.LoadVMFromGrid(1, "test", deploymentName)
+		got, err := state.LoadVMFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
 		assert.Equal(t, vm, got)
 	})
@@ -639,7 +650,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{vmWlCp})
 
-		_, err := state.LoadVMFromGrid(1, "test", deploymentName)
+		_, err := state.LoadVMFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -652,7 +663,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{vmWlCp})
 
-		_, err := state.LoadVMFromGrid(1, "test", deploymentName)
+		_, err := state.LoadVMFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -662,7 +673,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{vmWlCp})
 
-		_, err := state.LoadVMFromGrid(1, "test", deploymentName)
+		_, err := state.LoadVMFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 }
@@ -713,7 +724,7 @@ func TestLoadZdbFromGrid(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		state := SetupLoaderTests(t, []gridtypes.Workload{zdbWl})
 
-		got, err := state.LoadZdbFromGrid(1, "test", deploymentName)
+		got, err := state.LoadZdbFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
 		assert.Equal(t, zdb, got)
 	})
@@ -724,7 +735,7 @@ func TestLoadZdbFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{zdbWlCp})
 
-		_, err := state.LoadZdbFromGrid(1, "test", deploymentName)
+		_, err := state.LoadZdbFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -737,7 +748,7 @@ func TestLoadZdbFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{zdbWlCp})
 
-		_, err := state.LoadZdbFromGrid(1, "test", deploymentName)
+		_, err := state.LoadZdbFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -747,7 +758,7 @@ func TestLoadZdbFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{zdbWlCp})
 
-		_, err := state.LoadZdbFromGrid(1, "test", deploymentName)
+		_, err := state.LoadZdbFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
 	})
 }

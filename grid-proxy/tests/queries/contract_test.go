@@ -25,6 +25,8 @@ type ContractsAggregate struct {
 	Names            []string
 	DeploymentsData  []string
 	DeploymentHashes []string
+	farmNames        []string
+	farmIds          []uint64
 
 	maxNumberOfPublicIPs uint64
 }
@@ -54,28 +56,55 @@ var contractFilterRandomValueGenerator = map[string]func(agg ContractsAggregate)
 		return &agg.States[rand.Intn(len(agg.States))]
 	},
 	"Name": func(agg ContractsAggregate) interface{} {
-		return &agg.Names[rand.Intn(len(agg.Names))]
+		c := agg.Names[rand.Intn(len(agg.Names))]
+		if len(c) == 0 {
+			return nil
+		}
+		return &c
 	},
 	"NumberOfPublicIps": func(agg ContractsAggregate) interface{} {
 		return rndref(0, agg.maxNumberOfPublicIPs)
 	},
 	"DeploymentData": func(agg ContractsAggregate) interface{} {
-		return &agg.DeploymentsData[rand.Intn(len(agg.DeploymentsData))]
+		c := agg.DeploymentsData[rand.Intn(len(agg.DeploymentsData))]
+		if len(c) == 0 {
+			return nil
+		}
+		return &c
 	},
 	"DeploymentHash": func(agg ContractsAggregate) interface{} {
-		return &agg.DeploymentHashes[rand.Intn(len(agg.DeploymentHashes))]
+		c := agg.DeploymentHashes[rand.Intn(len(agg.DeploymentHashes))]
+		if len(c) == 0 {
+			return nil
+		}
+		return &c
+	},
+	"FarmName": func(agg ContractsAggregate) interface{} {
+		name := changeCase(agg.farmNames[rand.Intn(len(agg.farmNames))])
+		if len(name) == 0 {
+			return nil
+		}
+
+		return &name
+	},
+	"FarmId": func(agg ContractsAggregate) interface{} {
+		farmID := agg.farmIds[rand.Intn(len(agg.farmIds))]
+		return &farmID
 	},
 }
 
 func TestContracts(t *testing.T) {
+	t.Parallel()
 	t.Run("contracts pagination test", func(t *testing.T) {
+		t.Parallel()
+
 		node := "node"
 		f := proxytypes.ContractFilter{
 			Type: &node,
 		}
 
 		l := proxytypes.Limit{
-			Size:     5,
+			Size:     100,
 			Page:     1,
 			RetCount: true,
 		}
@@ -99,12 +128,14 @@ func TestContracts(t *testing.T) {
 	})
 
 	t.Run("contracts stress test", func(t *testing.T) {
+		t.Parallel()
+
 		agg := calcContractsAggregates(&data)
 		for i := 0; i < CONTRACTS_TESTS; i++ {
 			l := proxytypes.Limit{
 				Size:     9999999,
 				Page:     1,
-				RetCount: false,
+				RetCount: true,
 			}
 
 			f, err := randomContractsFilter(&agg)
@@ -124,19 +155,28 @@ func TestContracts(t *testing.T) {
 }
 
 func TestContract(t *testing.T) {
+	t.Parallel()
 	t.Run("single contract test", func(t *testing.T) {
+		t.Parallel()
+
 		contractID := rand.Intn(CONTRACTS_TESTS)
 
-		want, err := mockClient.Contract(context.Background(), uint32(contractID))
-		require.NoError(t, err)
+		want, errGot := mockClient.Contract(context.Background(), uint32(contractID))
 
-		got, err := gridProxyClient.Contract(context.Background(), uint32(contractID))
-		require.NoError(t, err)
+		got, errWant := gridProxyClient.Contract(context.Background(), uint32(contractID))
+
+		if errGot != nil && errWant != nil {
+			require.True(t, errors.As(errWant, &errGot))
+		} else {
+			require.True(t, errWant == errGot)
+		}
 
 		require.True(t, reflect.DeepEqual(want, got), fmt.Sprintf("wanted: %+v\n got: %+v", want, got))
 	})
 
 	t.Run("contract not found test", func(t *testing.T) {
+		t.Parallel()
+
 		contractID := 1000000000000
 		_, err := gridProxyClient.Contract(context.Background(), uint32(contractID))
 		assert.Equal(t, err.Error(), ErrContractNotFound.Error())
@@ -145,6 +185,8 @@ func TestContract(t *testing.T) {
 
 func TestBills(t *testing.T) {
 	t.Run("contract bills test", func(t *testing.T) {
+		t.Parallel()
+
 		contractID := rand.Intn(CONTRACTS_TESTS)
 
 		l := proxytypes.Limit{
@@ -174,6 +216,8 @@ func TestBills(t *testing.T) {
 
 // TestContractsFilter iterates over all ContractFilter fields, and for each one generates a random value, then runs a test between the mock client and the gridproxy client
 func TestContractsFilter(t *testing.T) {
+	t.Parallel()
+
 	f := proxytypes.ContractFilter{}
 	fp := &f
 	v := reflect.ValueOf(fp).Elem()
@@ -190,6 +234,10 @@ func TestContractsFilter(t *testing.T) {
 		require.True(t, ok, "Filter field %s has no random value generator", v.Type().Field(i).Name)
 
 		randomFieldValue := generator(agg)
+		if randomFieldValue == nil {
+			continue
+		}
+
 		if v.Field(i).Type().Kind() != reflect.Slice {
 			v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 		}
@@ -265,6 +313,11 @@ func calcContractsAggregates(data *mock.DBData) (res ContractsAggregate) {
 	sort.Slice(res.DeploymentHashes, func(i, j int) bool {
 		return res.DeploymentHashes[i] < res.DeploymentHashes[j]
 	})
+
+	for _, farm := range data.Farms {
+		res.farmIds = append(res.farmIds, farm.FarmID)
+		res.farmNames = append(res.farmNames, farm.Name)
+	}
 	return
 }
 
@@ -281,6 +334,10 @@ func randomContractsFilter(agg *ContractsAggregate) (proxytypes.ContractFilter, 
 			}
 
 			randomFieldValue := contractFilterRandomValueGenerator[v.Type().Field(i).Name](*agg)
+			if randomFieldValue == nil {
+				continue
+			}
+
 			if v.Field(i).Type().Kind() != reflect.Slice {
 				v.Field(i).Set(reflect.New(v.Field(i).Type().Elem()))
 			}

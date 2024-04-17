@@ -2,11 +2,14 @@ go 1.21
 
 use (
 	./activation-service
+	./farmerbot
 	./grid-cli
 	./grid-client
 	./grid-proxy
 	./gridify
 	./monitoring-bot
 	./rmb-sdk-go
+	./tfrobot
+	./tools/relay-cache-warmer
 	./user-contracts-mon
 )

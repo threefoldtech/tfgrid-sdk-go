@@ -2,6 +2,7 @@
 package workloads
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,28 +18,31 @@ var ErrInvalidInput = errors.New("invalid input")
 
 // VM is a virtual machine struct
 type VM struct {
-	Name          string            `json:"name"`
-	Flist         string            `json:"flist"`
-	FlistChecksum string            `json:"flist_checksum"`
-	PublicIP      bool              `json:"publicip"`
-	PublicIP6     bool              `json:"publicip6"`
-	Planetary     bool              `json:"planetary"`
-	Corex         bool              `json:"corex"` //TODO: Is it works ??
-	ComputedIP    string            `json:"computedip"`
-	ComputedIP6   string            `json:"computedip6"`
-	YggIP         string            `json:"ygg_ip"`
-	IP            string            `json:"ip"`
-	Description   string            `json:"description"`
-	GPUs          []zos.GPU         `json:"gpus"`
-	CPU           int               `json:"cpu"`
-	Memory        int               `json:"memory"`
-	RootfsSize    int               `json:"rootfs_size"`
-	Entrypoint    string            `json:"entrypoint"`
-	Mounts        []Mount           `json:"mounts"`
-	Zlogs         []Zlog            `json:"zlogs"`
-	EnvVars       map[string]string `json:"env_vars"`
-	NetworkName   string            `json:"network_name"`
-	ConsoleURL    string            `json:"console_url"`
+	Name          string `json:"name"`
+	Flist         string `json:"flist"`
+	FlistChecksum string `json:"flist_checksum"`
+	PublicIP      bool   `json:"publicip"`
+	PublicIP6     bool   `json:"publicip6"`
+	Planetary     bool   `json:"planetary"`
+	Corex         bool   `json:"corex"` //TODO: Is it works ??
+	ComputedIP    string `json:"computedip"`
+	ComputedIP6   string `json:"computedip6"`
+	PlanetaryIP   string `json:"planetary_ip"`
+	MyceliumIP    string `json:"mycelium_ip"`
+	IP            string `json:"ip"`
+	// used to get the same mycelium ip for the vm.
+	MyceliumIPSeed []byte            `json:"mycelium_ip_seed"`
+	Description    string            `json:"description"`
+	GPUs           []zos.GPU         `json:"gpus"`
+	CPU            int               `json:"cpu"`
+	Memory         int               `json:"memory"`
+	RootfsSize     int               `json:"rootfs_size"`
+	Entrypoint     string            `json:"entrypoint"`
+	Mounts         []Mount           `json:"mounts"`
+	Zlogs          []Zlog            `json:"zlogs"`
+	EnvVars        map[string]string `json:"env_vars"`
+	NetworkName    string            `json:"network_name"`
+	ConsoleURL     string            `json:"console_url"`
 }
 
 // Mount disks struct
@@ -82,29 +86,36 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, er
 		pubIP6 = pubIPRes.IPv6.String()
 	}
 
+	var myceliumIPSeed []byte
+	if data.Network.Mycelium != nil {
+		myceliumIPSeed = data.Network.Mycelium.Seed
+	}
+
 	return VM{
-		Name:          wl.Name.String(),
-		Description:   wl.Description,
-		Flist:         data.FList,
-		FlistChecksum: "",
-		PublicIP:      !pubIPRes.IP.Nil(),
-		ComputedIP:    pubIP4,
-		PublicIP6:     !pubIPRes.IPv6.Nil(),
-		ComputedIP6:   pubIP6,
-		Planetary:     result.YggIP != "",
-		Corex:         data.Corex,
-		YggIP:         result.YggIP,
-		IP:            data.Network.Interfaces[0].IP.String(),
-		CPU:           int(data.ComputeCapacity.CPU),
-		GPUs:          data.GPU,
-		Memory:        int(data.ComputeCapacity.Memory / gridtypes.Megabyte),
-		RootfsSize:    int(data.Size / gridtypes.Megabyte),
-		Entrypoint:    data.Entrypoint,
-		Mounts:        mounts(data.Mounts),
-		Zlogs:         zlogs(dl, wl.Name.String()),
-		EnvVars:       data.Env,
-		NetworkName:   string(data.Network.Interfaces[0].Network),
-		ConsoleURL:    result.ConsoleURL,
+		Name:           wl.Name.String(),
+		Description:    wl.Description,
+		Flist:          data.FList,
+		FlistChecksum:  "",
+		PublicIP:       !pubIPRes.IP.Nil(),
+		ComputedIP:     pubIP4,
+		PublicIP6:      !pubIPRes.IPv6.Nil(),
+		ComputedIP6:    pubIP6,
+		Planetary:      result.PlanetaryIP != "",
+		Corex:          data.Corex,
+		PlanetaryIP:    result.PlanetaryIP,
+		MyceliumIP:     result.MyceliumIP,
+		MyceliumIPSeed: myceliumIPSeed,
+		IP:             data.Network.Interfaces[0].IP.String(),
+		CPU:            int(data.ComputeCapacity.CPU),
+		GPUs:           data.GPU,
+		Memory:         int(data.ComputeCapacity.Memory / gridtypes.Megabyte),
+		RootfsSize:     int(data.Size / gridtypes.Megabyte),
+		Entrypoint:     data.Entrypoint,
+		Mounts:         mounts(data.Mounts),
+		Zlogs:          zlogs(dl, wl.Name.String()),
+		EnvVars:        data.Env,
+		NetworkName:    string(data.Network.Interfaces[0].Network),
+		ConsoleURL:     result.ConsoleURL,
 	}, nil
 }
 
@@ -158,6 +169,13 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 		zlogWorkload := zlog.ZosWorkload()
 		workloads = append(workloads, zlogWorkload)
 	}
+	var myceliumIP *zos.MyceliumIP
+	if len(vm.MyceliumIPSeed) != 0 {
+		myceliumIP = &zos.MyceliumIP{
+			Network: gridtypes.Name(vm.NetworkName),
+			Seed:    vm.MyceliumIPSeed,
+		}
+	}
 	workload := gridtypes.Workload{
 		Version: 0,
 		Name:    gridtypes.Name(vm.Name),
@@ -173,6 +191,7 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 				},
 				PublicIP:  gridtypes.Name(publicIPName),
 				Planetary: vm.Planetary,
+				Mycelium:  myceliumIP,
 			},
 			ComputeCapacity: zos.MachineCapacity{
 				CPU:    uint8(vm.CPU),
@@ -222,6 +241,9 @@ func (vm *VM) Validate() error {
 			)
 		}
 	}
+	if len(vm.MyceliumIPSeed) != zos.MyceliumIPSeedLen && len(vm.MyceliumIPSeed) != 0 {
+		return fmt.Errorf("invalid mycelium ip seed length %d must be %d or empty", len(vm.MyceliumIPSeed), zos.MyceliumIPSeedLen)
+	}
 	return nil
 }
 
@@ -242,4 +264,10 @@ func (vm *VM) LoadFromVM(vm2 *VM) {
 		return names[vm.Mounts[i].DiskName] < names[vm.Mounts[j].DiskName]
 	})
 	vm.FlistChecksum = vm2.FlistChecksum
+}
+
+func RandomMyceliumIPSeed() ([]byte, error) {
+	key := make([]byte, zos.MyceliumIPSeedLen)
+	_, err := rand.Read(key)
+	return key, err
 }

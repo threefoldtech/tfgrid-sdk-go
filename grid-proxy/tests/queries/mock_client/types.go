@@ -1,11 +1,6 @@
 // nolint
 package mock
 
-import (
-	"encoding/json"
-	"fmt"
-)
-
 // TODO: the one in tools/db/types.go is unexported but it's the same file
 
 type ContractResources struct {
@@ -46,25 +41,15 @@ type Node struct {
 	CreatedAt       uint64
 	UpdatedAt       uint64
 	LocationID      string
-	Power           NodePower `gorm:"type:jsonb"`
+	Power           NodePower `gorm:"type:jsonb;serializer:json"`
 	HasGPU          bool
 	ExtraFee        uint64
+	Dedicated       bool
 }
 
 type NodePower struct {
 	State  string `json:"state"`
 	Target string `json:"target"`
-}
-
-// Scan is a custom decoder for jsonb filed. executed while scanning the node.
-func (np *NodePower) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	if data, ok := value.([]byte); ok {
-		return json.Unmarshal(data, np)
-	}
-	return fmt.Errorf("failed to unmarshal NodePower")
 }
 
 type Twin struct {
@@ -140,10 +125,43 @@ type NameContract struct {
 	CreatedAt   uint64
 }
 
-type NodeGPU struct {
-	NodeTwinID uint64
-	ID         string
-	Vendor     string
-	Device     string
-	Contract   int
+type HealthReport struct {
+	NodeTwinId uint64
+	Healthy    bool
+}
+
+type Country struct {
+	ID        string
+	CountryID uint64
+	Code      string
+	Name      string
+	Region    string
+	Subregion string
+	Lat       string
+	Long      string
+}
+
+type Location struct {
+	ID        string
+	Longitude *float64
+	Latitude  *float64
+}
+
+type Unit struct {
+	Value int
+	Unit  string
+}
+
+type PricingPolicy struct {
+	ID                    uint
+	GridVersion           int
+	PricingPolicyID       int
+	Name                  string
+	SU                    Unit
+	CU                    Unit
+	NU                    Unit
+	IPU                   Unit
+	FoundationAccount     string
+	CertifiedSalesAccount string
+	DedicatedNodeDiscount int
 }

@@ -1,0 +1,86 @@
+name: create and publish Docker images
+
+# on:
+#   workflow_dispatch:
+#   release:
+#     types: [published]
+
+# NOTE: workflows using GITHUB_TOKEN doesn't get triggered after publishing release
+# https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
+# Thats why we will trigger this workflow after the main release workflow is completed
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  push-docker-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: "activation-service"
+            image: "tfactivation"
+          - dir: "farmerbot"
+            image: "tffarmerbot"
+          - dir: "grid-proxy"
+            image: "tfgridproxy"
+          - dir: "tools/relay-cache-warmer"
+            image: "relay-cache-warmer"
+
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+
+      - run: git fetch --prune --unshallow
+
+      - name: Get latest version
+        run: |
+          TAG=$(git describe --tags --abbrev=0)
+          echo "TAG_VERSION=${TAG#v}" >> $GITHUB_OUTPUT
+        id: version
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/threefoldtech/${{ matrix.image }}
+          tags: |
+            type=semver,pattern={{version}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./${{ matrix.dir }}/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/threefoldtech/${{ matrix.image }}:${{ steps.version.outputs.TAG_VERSION }}
+            ghcr.io/threefoldtech/${{ matrix.image }}:latest
+          labels: ${{ steps.meta.outputs.labels }}
+          #  For workflows triggered by release, `github.ref_name` is the short name for the release tag created.
+          build-args: |
+            version=${{ steps.version.outputs.TAG_VERSION }}
+
+      # - name: Push flist to grid hub
+      #   uses: fjogeleit/http-request-action@v1
+      #   with:
+      #     url: https://hub.grid.tf/api/flist/me/docker
+      #     method: "POST"
+      #     bearerToken: ${{ secrets.HUB_TOKEN }}
+      #     customHeaders: '{"Content-Type": "application/json"}'
+      #     data: '{"image": "ghcr.io/threefoldtech/${{ matrix.image }}"}'

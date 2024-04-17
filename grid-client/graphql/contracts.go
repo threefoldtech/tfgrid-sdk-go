@@ -43,6 +43,8 @@ type Contract struct {
 	Name string `json:"name"`
 }
 
+var ErrorContractsNotFound = fmt.Errorf("could not find any contracts")
+
 // NewContractsGetter return a new Getter for contracts
 func NewContractsGetter(twinID uint32, graphql GraphQl, substrateConn subi.SubstrateExt, ncPool client.NodeClientGetter) ContractsGetter {
 	return ContractsGetter{
@@ -96,7 +98,6 @@ func (c *ContractsGetter) ListContractsByTwinID(states []string) (Contracts, err
 			"nameContractsCount": nameContractsCount,
 			"rentContractsCount": rentContractsCount,
 		})
-
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -116,7 +117,7 @@ func (c *ContractsGetter) ListContractsByTwinID(states []string) (Contracts, err
 }
 
 // ListContractsOfProjectName returns contracts for a project name
-func (c *ContractsGetter) ListContractsOfProjectName(projectName string) (Contracts, error) {
+func (c *ContractsGetter) ListContractsOfProjectName(projectName string, noGateways ...bool) (Contracts, error) {
 	contracts := Contracts{
 		NodeContracts: make([]Contract, 0),
 		NameContracts: make([]Contract, 0),
@@ -137,16 +138,16 @@ func (c *ContractsGetter) ListContractsOfProjectName(projectName string) (Contra
 		}
 	}
 
+	if len(noGateways) > 0 && noGateways[0] {
+		return contracts, nil
+	}
+
 	nameGatewaysWorkloads, err := c.filterNameGatewaysWithinNodeContracts(contracts.NodeContracts)
 	if err != nil {
 		return Contracts{}, err
 	}
 
-	contracts.NameContracts, err = c.filterNameContracts(contractsList.NameContracts, nameGatewaysWorkloads)
-	if err != nil {
-		return Contracts{}, err
-	}
-
+	contracts.NameContracts = c.filterNameContracts(contractsList.NameContracts, nameGatewaysWorkloads)
 	return contracts, nil
 }
 
@@ -179,13 +180,13 @@ func (c *ContractsGetter) GetNodeContractsByTypeAndName(projectName, deploymentT
 		}
 	}
 	if len(nodeContractIDs) == 0 {
-		return map[uint32]uint64{}, fmt.Errorf("no %s with name %s found", deploymentType, deploymentName)
+		return map[uint32]uint64{}, errors.Wrapf(ErrorContractsNotFound, "no %s with name %s found", deploymentType, deploymentName)
 	}
 	return nodeContractIDs, nil
 }
 
 // filterNameContracts returns the name contracts of the given name gateways
-func (c *ContractsGetter) filterNameContracts(nameContracts []Contract, nameGatewayWorkloads []gridtypes.Workload) ([]Contract, error) {
+func (c *ContractsGetter) filterNameContracts(nameContracts []Contract, nameGatewayWorkloads []gridtypes.Workload) []Contract {
 	filteredNameContracts := make([]Contract, 0)
 	for _, contract := range nameContracts {
 		for _, w := range nameGatewayWorkloads {
@@ -195,7 +196,7 @@ func (c *ContractsGetter) filterNameContracts(nameContracts []Contract, nameGate
 		}
 	}
 
-	return filteredNameContracts, nil
+	return filteredNameContracts
 }
 
 func (c *ContractsGetter) filterNameGatewaysWithinNodeContracts(nodeContracts []Contract) ([]gridtypes.Workload, error) {

@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"encoding/json"
+	"math"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
@@ -16,6 +17,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 		ID:              info.ID,
 		NodeID:          int(info.NodeID),
 		FarmID:          int(info.FarmID),
+		FarmName:        info.FarmName,
 		TwinID:          int(info.TwinID),
 		Country:         info.Country,
 		GridVersion:     int(info.GridVersion),
@@ -49,16 +51,31 @@ func nodeFromDBNode(info db.Node) types.Node {
 			Ipv4:   info.Ipv4,
 			Ipv6:   info.Ipv6,
 		},
+		InDedicatedFarm:   info.FarmDedicated,
 		CertificationType: info.Certification,
 		RentContractID:    uint(info.RentContractID),
-		RentedByTwinID:    uint(info.RentedByTwinID),
+		RentedByTwinID:    uint(info.Renter),
+		Rented:            info.Rented,
+		Rentable:          info.Rentable,
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
+		Healthy:           info.Healthy,
+		Dmi: types.Dmi{
+			Processor: info.Processor,
+			Memory:    info.Memory,
+			BIOS:      info.Bios,
+			Baseboard: info.Baseboard,
+		},
+		Speed: types.Speed{
+			Upload:   info.UploadSpeed,
+			Download: info.DownloadSpeed,
+		},
+		PriceUsd: math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
-	node.Dedicated = info.FarmDedicated || !info.HasNodeContract || info.RentContractID != 0
+	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
 	return node
 }
 
@@ -79,11 +96,11 @@ func farmFromDBFarm(info db.Farm) (types.Farm, error) {
 }
 
 func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity {
-
 	node := types.NodeWithNestedCapacity{
 		ID:              info.ID,
 		NodeID:          int(info.NodeID),
 		FarmID:          int(info.FarmID),
+		FarmName:        info.FarmName,
 		TwinID:          int(info.TwinID),
 		Country:         info.Country,
 		GridVersion:     int(info.GridVersion),
@@ -120,16 +137,31 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 			Ipv4:   info.Ipv4,
 			Ipv6:   info.Ipv6,
 		},
+		InDedicatedFarm:   info.FarmDedicated,
 		CertificationType: info.Certification,
 		RentContractID:    uint(info.RentContractID),
-		RentedByTwinID:    uint(info.RentedByTwinID),
+		RentedByTwinID:    uint(info.Renter),
+		Rented:            info.Rented,
+		Rentable:          info.Rentable,
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
+		Healthy:           info.Healthy,
+		Dmi: types.Dmi{
+			Processor: info.Processor,
+			Memory:    info.Memory,
+			BIOS:      info.Bios,
+			Baseboard: info.Baseboard,
+		},
+		Speed: types.Speed{
+			Upload:   info.UploadSpeed,
+			Download: info.DownloadSpeed,
+		},
+		PriceUsd: math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
-	node.Dedicated = info.FarmDedicated || !info.HasNodeContract || info.RentContractID != 0
+	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
 	return node
 }
 
@@ -142,6 +174,8 @@ func contractFromDBContract(info db.DBContract) (types.Contract, error) {
 			DeploymentData:    info.DeploymentData,
 			DeploymentHash:    info.DeploymentHash,
 			NumberOfPublicIps: info.NumberOfPublicIps,
+			FarmName:          info.FarmName,
+			FarmId:            info.FarmId,
 		}
 	case "name":
 		details = types.NameContractDetails{
@@ -149,7 +183,9 @@ func contractFromDBContract(info db.DBContract) (types.Contract, error) {
 		}
 	case "rent":
 		details = types.RentContractDetails{
-			NodeID: info.NodeID,
+			NodeID:   info.NodeID,
+			FarmName: info.FarmName,
+			FarmId:   info.FarmId,
 		}
 	}
 	contract := types.Contract{

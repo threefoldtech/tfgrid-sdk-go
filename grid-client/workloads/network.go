@@ -3,6 +3,7 @@ package workloads
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -20,27 +21,51 @@ var ExternalSKZeroValue = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 // UserAccess struct
 type UserAccess struct {
-	UserAddress        string
-	UserSecretKey      string
-	PublicNodePK       string
-	AllowedIPs         []string
-	PublicNodeEndpoint string
+	Subnet     string `json:"subnet"`
+	PrivateKey string `json:"private_key"`
+	NodeID     uint32 `json:"node_id"`
 }
 
 // NetworkMetaData is added to network workloads to help rebuilding networks when retrieved from the grid
 type NetworkMetaData struct {
-	UserAccessIP string `json:"ip"`
-	PrivateKey   string `json:"priv_key"`
-	PublicNodeID uint32 `json:"node_id"`
+	Version      int          `json:"version"`
+	UserAccesses []UserAccess `json:"user_accesses"`
+}
+
+func (m *NetworkMetaData) UnmarshalJSON(data []byte) error {
+	var deprecated struct {
+		Version      int          `json:"version"`
+		UserAccesses []UserAccess `json:"user_accesses"`
+		// deprecated fields
+
+		UserAccessIP string `json:"ip"`
+		PrivateKey   string `json:"priv_key"`
+		PublicNodeID uint32 `json:"node_id"`
+	}
+	if err := json.Unmarshal(data, &deprecated); err != nil {
+		return err
+	}
+	m.Version = deprecated.Version
+	m.UserAccesses = deprecated.UserAccesses
+	if deprecated.UserAccessIP != "" || deprecated.PrivateKey != "" || deprecated.PublicNodeID != 0 {
+		// it must be deprecated format
+		m.UserAccesses = []UserAccess{{
+			Subnet:     deprecated.UserAccessIP,
+			PrivateKey: deprecated.PrivateKey,
+			NodeID:     deprecated.PublicNodeID,
+		}}
+	}
+	return nil
 }
 
 // ZNet is zos network workload
 type ZNet struct {
-	Name        string
-	Description string
-	Nodes       []uint32
-	IPRange     gridtypes.IPNet
-	AddWGAccess bool
+	Name         string
+	Description  string
+	Nodes        []uint32
+	IPRange      gridtypes.IPNet
+	AddWGAccess  bool
+	MyceliumKeys map[uint32][]byte
 
 	// computed
 	SolutionType     string
@@ -87,9 +112,9 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 	}
 
 	var externalIP *gridtypes.IPNet
-	if metadata.UserAccessIP != "" {
+	if len(metadata.UserAccesses) > 0 && metadata.UserAccesses[0].Subnet != "" {
 
-		ipNet, err := gridtypes.ParseIPNet(metadata.UserAccessIP)
+		ipNet, err := gridtypes.ParseIPNet(metadata.UserAccesses[0].Subnet)
 		if err != nil {
 			return ZNet{}, err
 		}
@@ -98,12 +123,20 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 	}
 
 	var externalSK wgtypes.Key
-	if metadata.PrivateKey != "" {
-		key, err := wgtypes.ParseKey(metadata.PrivateKey)
+	if len(metadata.UserAccesses) > 0 && metadata.UserAccesses[0].PrivateKey != "" {
+		key, err := wgtypes.ParseKey(metadata.UserAccesses[0].PrivateKey)
 		if err != nil {
 			return ZNet{}, errors.Wrap(err, "failed to parse user access private key")
 		}
 		externalSK = key
+	}
+	var publicNodeID uint32
+	if len(metadata.UserAccesses) > 0 {
+		publicNodeID = metadata.UserAccesses[0].NodeID
+	}
+	myceliumKeys := make(map[uint32][]byte)
+	if data.Mycelium != nil {
+		myceliumKeys[nodeID] = data.Mycelium.Key
 	}
 
 	return ZNet{
@@ -115,9 +148,10 @@ func NewNetworkFromWorkload(wl gridtypes.Workload, nodeID uint32) (ZNet, error) 
 		WGPort:       wgPort,
 		Keys:         keys,
 		AddWGAccess:  externalIP != nil,
-		PublicNodeID: metadata.PublicNodeID,
+		PublicNodeID: publicNodeID,
 		ExternalIP:   externalIP,
 		ExternalSK:   externalSK,
+		MyceliumKeys: myceliumKeys,
 	}, nil
 }
 
@@ -132,12 +166,21 @@ func (znet *ZNet) Validate() error {
 	if ones, _ := mask.Size(); ones != 16 {
 		return errors.Errorf("subnet in ip range %s should be 16", znet.IPRange.String())
 	}
+	for _, key := range znet.MyceliumKeys {
+		if len(key) != zos.MyceliumKeyLen && len(key) != 0 {
+			return fmt.Errorf("invalid mycelium key length %d must be %d or empty", len(key), zos.MyceliumKeyLen)
+		}
+	}
 
 	return nil
 }
 
 // ZosWorkload generates a zos workload from a network
-func (znet *ZNet) ZosWorkload(subnet gridtypes.IPNet, wgPrivateKey string, wgListenPort uint16, peers []zos.Peer, metadata string) gridtypes.Workload {
+func (znet *ZNet) ZosWorkload(subnet gridtypes.IPNet, wgPrivateKey string, wgListenPort uint16, peers []zos.Peer, metadata string, myceliumKey []byte) gridtypes.Workload {
+	var mycelium *zos.Mycelium
+	if len(myceliumKey) != 0 {
+		mycelium = &zos.Mycelium{Key: myceliumKey}
+	}
 	return gridtypes.Workload{
 		Version:     0,
 		Type:        zos.NetworkType,
@@ -149,6 +192,7 @@ func (znet *ZNet) ZosWorkload(subnet gridtypes.IPNet, wgPrivateKey string, wgLis
 			WGPrivateKey:   wgPrivateKey,
 			WGListenPort:   wgListenPort,
 			Peers:          peers,
+			Mycelium:       mycelium,
 		}),
 		Metadata: metadata,
 	}
@@ -161,6 +205,7 @@ func (znet *ZNet) GenerateMetadata() (string, error) {
 	}
 
 	deploymentData := DeploymentData{
+		Version:     Version,
 		Name:        znet.Name,
 		Type:        "network",
 		ProjectName: znet.SolutionType,
@@ -214,24 +259,29 @@ func (znet *ZNet) AssignNodesIPs(nodes []uint32) error {
 }
 
 // AssignNodesWGPort assign network nodes wireguard port
-func (znet *ZNet) AssignNodesWGPort(ctx context.Context, sub subi.SubstrateExt, ncPool client.NodeClientGetter, nodes []uint32) error {
+func (znet *ZNet) AssignNodesWGPort(ctx context.Context, sub subi.SubstrateExt, ncPool client.NodeClientGetter, nodes []uint32, usedPorts map[uint32][]uint16) error {
+	if usedPorts == nil {
+		usedPorts = make(map[uint32][]uint16)
+	}
 	for _, nodeID := range nodes {
-		if _, ok := znet.WGPort[nodeID]; !ok {
-			cl, err := ncPool.GetNodeClient(sub, nodeID)
-			if err != nil {
-				return errors.Wrap(err, "could not get node client")
-			}
-			port, err := cl.GetNodeFreeWGPort(ctx, nodeID)
-			if err != nil {
-				return errors.Wrap(err, "failed to get node free wg ports")
-			}
-
-			if len(znet.WGPort) == 0 {
-				znet.WGPort = map[uint32]int{nodeID: port}
-				continue
-			}
-			znet.WGPort[nodeID] = port
+		if _, ok := znet.WGPort[nodeID]; ok {
+			continue
 		}
+		cl, err := ncPool.GetNodeClient(sub, nodeID)
+		if err != nil {
+			return errors.Wrap(err, "could not get node client")
+		}
+		port, err := cl.GetNodeFreeWGPort(ctx, nodeID, usedPorts[nodeID])
+		if err != nil {
+			return errors.Wrapf(err, "failed to get node %d free wg ports", nodeID)
+		}
+		usedPorts[nodeID] = append(usedPorts[nodeID], uint16(port))
+
+		if len(znet.WGPort) == 0 {
+			znet.WGPort = map[uint32]int{nodeID: port}
+			continue
+		}
+		znet.WGPort[nodeID] = port
 	}
 
 	return nil
@@ -275,12 +325,10 @@ func WgIP(ip gridtypes.IPNet) gridtypes.IPNet {
 		IP:   net.IPv4(100, 64, a, b),
 		Mask: net.CIDRMask(32, 32),
 	})
-
 }
 
 // GenerateWGConfig generates wireguard configs
 func GenerateWGConfig(Address string, AccessPrivatekey string, NodePublicKey string, NodeEndpoint string, NetworkIPRange string) string {
-
 	return fmt.Sprintf(`
 [Interface]
 Address = %s
@@ -302,4 +350,10 @@ func nextFreeIP(used []byte, start *byte) error {
 		return errors.New("could not find a free ip to add node")
 	}
 	return nil
+}
+
+func RandomMyceliumKey() ([]byte, error) {
+	key := make([]byte, zos.MyceliumKeyLen)
+	_, err := rand.Read(key)
+	return key, err
 }

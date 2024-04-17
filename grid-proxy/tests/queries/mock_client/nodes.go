@@ -2,6 +2,8 @@ package mock
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -17,6 +19,79 @@ func isDedicatedNode(db DBData, node Node) bool {
 		db.NodeRentedBy[node.NodeID] != 0
 }
 
+func isRentable(db DBData, node Node) bool {
+	return db.NodeRentedBy[node.NodeID] == 0 &&
+		(db.Farms[node.FarmID].DedicatedFarm ||
+			len(db.NonDeletedContracts[node.NodeID]) == 0)
+}
+func isRented(db DBData, node Node) bool {
+	_, ok := db.NodeRentedBy[node.NodeID]
+	return ok
+}
+
+func calculateCU(cru, mru float64) float64 {
+	MruUsed1 := mru / 4
+	CruUsed1 := cru / 2
+	cu1 := math.Max(MruUsed1, CruUsed1)
+
+	MruUsed2 := mru / 8
+	CruUsed2 := cru
+	cu2 := math.Max(MruUsed2, CruUsed2)
+
+	MruUsed3 := mru / 2
+	CruUsed3 := cru / 4
+	cu3 := math.Max(MruUsed3, CruUsed3)
+
+	cu := math.Min(cu1, cu2)
+	cu = math.Min(cu, cu3)
+
+	return cu
+}
+
+func calculateSU(hru, sru float64) float64 {
+	return hru/1200 + sru/200
+}
+
+func calcNodePrice(db DBData, node Node) float64 {
+	cu := calculateCU(float64(db.NodeTotalResources[node.NodeID].CRU),
+		float64(db.NodeTotalResources[node.NodeID].MRU)/(1024*1024*1024))
+	su := calculateSU(float64(db.NodeTotalResources[node.NodeID].HRU)/(1024*1024*1024),
+		float64(db.NodeTotalResources[node.NodeID].SRU)/(1024*1024*1024))
+
+	pricingPolicy := db.PricingPolicies[uint(db.Farms[node.FarmID].PricingPolicyID)]
+	certifiedFactor := float64(1)
+	if node.Certification == "Certified" {
+		certifiedFactor = 1.25
+	}
+
+	costPerMonth := (cu*float64(pricingPolicy.CU.Value) +
+		su*float64(pricingPolicy.SU.Value) +
+		float64(node.ExtraFee)) *
+		certifiedFactor * 24 * 30
+
+	costInUsd := costPerMonth / 1e7
+	return math.Round(costInUsd*1000) / 1000
+}
+
+func calcDiscount(cost, balance float64) float64 {
+	var discount float64
+	switch {
+	case balance > cost*18:
+		discount = 0.6
+	case balance > cost*6:
+		discount = 0.4
+	case balance > cost*3:
+		discount = 0.3
+	case balance > cost*1.5:
+		discount = 0.2
+	default:
+		discount = 0
+	}
+
+	cost = cost - cost*discount
+	return math.Round(cost*1000) / 1000
+}
+
 // Nodes returns nodes with the given filters and pagination parameters
 func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) (res []types.Node, totalCount int, err error) {
 	res = []types.Node{}
@@ -28,7 +103,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 	}
 	for _, node := range g.data.Nodes {
 		if node.satisfies(filter, &g.data) {
-			numGPU := len(g.data.GPUs[node.TwinID])
+			numGPU := len(g.data.GPUs[uint32(node.TwinID)])
 
 			nodePower := types.NodePower{
 				State:  node.Power.State,
@@ -39,6 +114,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				ID:              node.ID,
 				NodeID:          int(node.NodeID),
 				FarmID:          int(node.FarmID),
+				FarmName:        g.data.Farms[node.FarmID].Name,
 				TwinID:          int(node.TwinID),
 				Country:         node.Country,
 				City:            node.City,
@@ -59,8 +135,10 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 					SRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].SRU),
 				},
 				Location: types.Location{
-					Country: node.Country,
-					City:    node.City,
+					Country:   node.Country,
+					City:      node.City,
+					Longitude: g.data.Locations[node.LocationID].Longitude,
+					Latitude:  g.data.Locations[node.LocationID].Latitude,
 				},
 				PublicConfig: types.PublicConfig{
 					Domain: g.data.PublicConfigs[node.NodeID].Domain,
@@ -72,15 +150,26 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				Status:            status,
 				CertificationType: node.Certification,
 				UpdatedAt:         int64(node.UpdatedAt),
+				InDedicatedFarm:   g.data.Farms[node.FarmID].DedicatedFarm,
 				Dedicated:         isDedicatedNode(g.data, node),
 				RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 				RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
+				Rented:            isRented(g.data, node),
+				Rentable:          isRentable(g.data, node),
 				SerialNumber:      node.SerialNumber,
 				Power: types.NodePower{
 					State:  node.Power.State,
 					Target: node.Power.Target,
 				},
-				NumGPU: numGPU,
+				NumGPU:   numGPU,
+				ExtraFee: node.ExtraFee,
+				Healthy:  g.data.HealthReports[uint32(node.TwinID)],
+				Dmi:      g.data.DMIs[uint32(node.TwinID)],
+				Speed: types.Speed{
+					Upload:   g.data.Speeds[uint32(node.TwinID)].Upload,
+					Download: g.data.Speeds[uint32(node.TwinID)].Download,
+				},
+				PriceUsd: calcDiscount(calcNodePrice(g.data, node), limit.Balance),
 			})
 		}
 	}
@@ -102,8 +191,12 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 }
 
 func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error) {
-	node := g.data.Nodes[uint64(nodeID)]
-	numGPU := len(g.data.GPUs[node.TwinID])
+	node, ok := g.data.Nodes[uint64(nodeID)]
+	if !ok {
+		return res, fmt.Errorf("node not found")
+	}
+
+	numGPU := len(g.data.GPUs[uint32(node.TwinID)])
 
 	nodePower := types.NodePower{
 		State:  node.Power.State,
@@ -114,6 +207,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		ID:              node.ID,
 		NodeID:          int(node.NodeID),
 		FarmID:          int(node.FarmID),
+		FarmName:        g.data.Farms[node.FarmID].Name,
 		TwinID:          int(node.TwinID),
 		Country:         node.Country,
 		City:            node.City,
@@ -136,8 +230,10 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 			},
 		},
 		Location: types.Location{
-			Country: node.Country,
-			City:    node.City,
+			Country:   node.Country,
+			City:      node.City,
+			Longitude: g.data.Locations[node.LocationID].Longitude,
+			Latitude:  g.data.Locations[node.LocationID].Latitude,
 		},
 		PublicConfig: types.PublicConfig{
 			Domain: g.data.PublicConfigs[node.NodeID].Domain,
@@ -149,9 +245,12 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		Status:            status,
 		CertificationType: node.Certification,
 		UpdatedAt:         int64(node.UpdatedAt),
+		InDedicatedFarm:   g.data.Farms[node.FarmID].DedicatedFarm,
 		Dedicated:         isDedicatedNode(g.data, node),
 		RentedByTwinID:    uint(g.data.NodeRentedBy[node.NodeID]),
 		RentContractID:    uint(g.data.NodeRentContractID[node.NodeID]),
+		Rented:            isRented(g.data, node),
+		Rentable:          isRentable(g.data, node),
 		SerialNumber:      node.SerialNumber,
 		Power: types.NodePower{
 			State:  node.Power.State,
@@ -159,12 +258,23 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		},
 		NumGPU:   numGPU,
 		ExtraFee: node.ExtraFee,
+		Healthy:  g.data.HealthReports[uint32(node.TwinID)],
+		Dmi:      g.data.DMIs[uint32(node.TwinID)],
+		Speed: types.Speed{
+			Upload:   g.data.Speeds[uint32(node.TwinID)].Upload,
+			Download: g.data.Speeds[uint32(node.TwinID)].Download,
+		},
+		PriceUsd: calcNodePrice(g.data, node),
 	}
 	return
 }
 
 func (g *GridProxyMockClient) NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error) {
-	node := g.data.Nodes[uint64(nodeID)]
+	node, ok := g.data.Nodes[uint64(nodeID)]
+	if !ok {
+		return res, fmt.Errorf("node not found")
+	}
+
 	nodePower := types.NodePower{
 		State:  node.Power.State,
 		Target: node.Power.Target,
@@ -181,21 +291,25 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 
 	total := data.NodeTotalResources[n.NodeID]
 	used := data.NodeUsedResources[n.NodeID]
-	free := calcFreeResources(total, used)
+	free := CalcFreeResources(total, used)
 
 	if f.Status != nil && *f.Status != nodestatus.DecideNodeStatus(nodePower, int64(n.UpdatedAt)) {
 		return false
 	}
 
-	if f.FreeMRU != nil && *f.FreeMRU > free.MRU {
+	if f.FreeMRU != nil && int64(*f.FreeMRU) > int64(free.MRU) {
 		return false
 	}
 
-	if f.FreeHRU != nil && *f.FreeHRU > free.HRU {
+	if f.FreeHRU != nil && int64(*f.FreeHRU) > int64(free.HRU) {
 		return false
 	}
 
-	if f.FreeSRU != nil && *f.FreeSRU > free.SRU {
+	if f.Healthy != nil && *f.Healthy != data.HealthReports[uint32(n.TwinID)] {
+		return false
+	}
+
+	if f.FreeSRU != nil && int64(*f.FreeSRU) > int64(free.SRU) {
 		return false
 	}
 
@@ -216,6 +330,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if f.Country != nil && !strings.EqualFold(*f.Country, n.Country) {
+		return false
+	}
+
+	if f.Region != nil && !strings.EqualFold(*f.Region, data.Regions[strings.ToLower(n.Country)]) {
 		return false
 	}
 
@@ -259,18 +377,23 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.InDedicatedFarm != nil && *f.InDedicatedFarm != data.Farms[n.FarmID].DedicatedFarm {
+		return false
+	}
+
 	if f.Dedicated != nil && *f.Dedicated != isDedicatedNode(*data, *n) {
 		return false
 	}
 
-	rentable := data.NodeRentedBy[n.NodeID] == 0 &&
-		(data.Farms[n.FarmID].DedicatedFarm || len(data.NonDeletedContracts[n.NodeID]) == 0)
-	if f.Rentable != nil && *f.Rentable != rentable {
+	if f.Excluded != nil && len(f.Excluded) != 0 && slices.Contains(f.Excluded, n.NodeID) {
 		return false
 	}
 
-	_, ok := data.NodeRentedBy[n.NodeID]
-	if f.Rented != nil && *f.Rented != ok {
+	if f.Rentable != nil && *f.Rentable != isRentable(*data, *n) {
+		return false
+	}
+
+	if f.Rented != nil && *f.Rented != isRented(*data, *n) {
 		return false
 	}
 
@@ -301,14 +424,26 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.PriceMin != nil && *f.PriceMin >= calcNodePrice(*data, *n) {
+		return false
+	}
+
+	if f.PriceMax != nil && *f.PriceMax <= calcNodePrice(*data, *n) {
+		return false
+	}
+
 	foundGpuFilter := f.HasGPU != nil || f.GpuDeviceName != nil || f.GpuVendorName != nil || f.GpuVendorID != nil || f.GpuDeviceID != nil || f.GpuAvailable != nil
-	gpus, foundGpuCards := data.GPUs[n.TwinID]
+	gpus, foundGpuCards := data.GPUs[uint32(n.TwinID)]
 
 	if !foundGpuCards && foundGpuFilter {
 		return false
 	}
 
 	if f.HasGPU != nil && *f.HasGPU != foundGpuCards {
+		return false
+	}
+
+	if f.NumGPU != nil && *f.NumGPU != 0 && *f.NumGPU < uint64(len(data.GPUs[uint32(n.TwinID)])) {
 		return false
 	}
 
@@ -326,7 +461,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	return true
 }
 
-func gpuSatisfied(gpu NodeGPU, f types.NodeFilter) bool {
+func gpuSatisfied(gpu types.NodeGPU, f types.NodeFilter) bool {
 	if f.GpuDeviceName != nil && !contains(gpu.Device, *f.GpuDeviceName) {
 		return false
 	}

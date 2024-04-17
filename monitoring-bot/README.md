@@ -1,11 +1,10 @@
 # tfgrid monitoring bot
 
 <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-39%25-brightgreen.svg?longCache=true&style=flat)</a>
-[![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/monbot-test.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/monbot-test.yml)
 
 This is a bot to monitor some TFGrid functionalities here is a list:
 
-- liveness of gridproxy on different networks and rmb call behavior to some farmer nodes. If all selected farmer nodes failed for a specific network the bot will send an alert message otherwise It won't send any messages.
+- liveness of grid proxy on different networks and rmb call behavior to some farmer nodes. If all selected farmer nodes failed for a specific network the bot will send an alert message otherwise It won't send any messages.
 - the balance in accounts and send warnings if it is under some threshold.
 - transactions to/from stellar bridge.
 
@@ -31,6 +30,7 @@ This is a bot to monitor some TFGrid functionalities here is a list:
     TEST_STELLAR_SECRET=<stellar account secret on stellar test network>
     TEST_STELLAR_ADDRESS=<stellar account address on stellar test network>
     ```
+
 | Note: wallets on Stellar should have some lumens for the fees, stellar charges about 0.00001 xlm per txn.
 
 - Create a new json file `wallets.json` and add the list of addresses you want to monitor, for example:
@@ -44,8 +44,21 @@ This is a bot to monitor some TFGrid functionalities here is a list:
         "threshold": 700
         }
     ],
-
     "mainnet": [
+        {
+        "name": "<your wallet name>",
+        "address": "<your tfchain address>",
+        "threshold": 700
+        }
+    ],
+    "devnet": [
+        {
+        "name": "<your wallet name>",
+        "address": "<your tfchain address>",
+        "threshold": 700
+        }
+    ],
+    "qanet": [
         {
         "name": "<your wallet name>",
         "address": "<your tfchain address>",
@@ -60,7 +73,7 @@ This is a bot to monitor some TFGrid functionalities here is a list:
   - From the src:
   
     ```bash
-    go run main.go -e .env -w wallets.json
+    go run main.go -e .env -w wallets.json -d
     ```
 
   - From the release binary:
@@ -68,13 +81,28 @@ This is a bot to monitor some TFGrid functionalities here is a list:
 
     ```bash
     sudo cp monitoring-bot /usr/local/bin
-    monitoring-bot -e .env -w wallets.json
+    monitoring-bot -e .env -w wallets.json -d
     ```
 
     Where
 
-    - `.env` is the environment file
-    - `wallets.json` is the json file of wallets to be monitored
+    - `-e .env` is the environment file (default is `.env`)
+    - `-w wallets.json` is the json file of wallets to be monitored (default is `wallets.json`)
+    - `-d` is set to allow debug level while monitoring (default is `false`)
+
+- Run using docker:
+
+  - build
+
+  ```bash
+  docker build -t monitoring-bot -f Dockerfile ../
+  ```
+
+  - run (mount `.env` and `wallets.json` from your current directory to the container using `-v`)
+
+  ```bash
+  docker run -v $(pwd)/wallets.json:/wallets.json -v $(pwd)/.env:/.env monitoring-bot run -e /.env -w /wallets.json -d
+  ```
 
 ## Create a bot if you don't have
 

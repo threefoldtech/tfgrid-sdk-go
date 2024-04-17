@@ -1,4 +1,3 @@
-// Package deployer for grid deployer
 package deployer
 
 import (
@@ -11,6 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/mocks"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
@@ -19,19 +19,39 @@ import (
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/vedhavyas/go-subkey"
 )
 
-var backendURLWithTLSPassthrough = "1.1.1.1:10"
-var backendURLWithoutTLSPassthrough = "http://1.1.1.1:10"
+var (
+	backendURLWithTLSPassthrough    = "1.1.1.1:10"
+	backendURLWithoutTLSPassthrough = "http://1.1.1.1:10"
+)
 
 func setup() (TFPluginClient, error) {
-	mnemonics := os.Getenv("MNEMONICS")
-	log.Debug().Msgf("mnemonics: %s", mnemonics)
-
 	network := os.Getenv("NETWORK")
+	if len(network) == 0 {
+		network = "dev"
+	}
 	log.Debug().Msgf("network: %s", network)
 
-	return NewTFPluginClient(mnemonics, "sr25519", network, "", "", "", 0, true)
+	// Alice identity
+	aliceIdentity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+	if err != nil {
+		return TFPluginClient{}, err
+	}
+
+	keyPair, err := aliceIdentity.KeyPair()
+	if err != nil {
+		return TFPluginClient{}, err
+	}
+	seed := subkey.EncodeHex(keyPair.Seed())
+
+	plugin, err := NewTFPluginClient(seed, WithNetwork(network), WithLogs())
+	if err != nil {
+		return TFPluginClient{}, err
+	}
+
+	return plugin, nil
 }
 
 type gatewayWorkloadGenerator interface {
@@ -103,7 +123,9 @@ func mockDeployerValidator(d *Deployer, ctrl *gomock.Controller, nodes []uint32)
 
 func TestDeployer(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if err != nil {
+		t.Skipf("failed to create plugin client: %v", err)
+	}
 
 	identity := tfPluginClient.Identity
 	twinID := tfPluginClient.TwinID
@@ -126,9 +148,9 @@ func TestDeployer(t *testing.T) {
 
 	t.Run("test create", func(t *testing.T) {
 		dl1, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		dl2, err := deploymentWithFQDN(identity, twinID, 0)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		newDls := map[uint32]gridtypes.Deployment{
 			10: dl1,

@@ -107,12 +107,18 @@ definitions:
         type: integer
       farmId:
         type: integer
+      farmName:
+        type: string
       farmingPolicyId:
         type: integer
       gridVersion:
         type: integer
+      healthy:
+        type: boolean
       id:
         type: string
+      inDedicatedFarm:
+        type: boolean
       location:
         $ref: '#/definitions/types.Location'
       nodeId:
@@ -121,6 +127,8 @@ definitions:
         type: integer
       power:
         $ref: '#/definitions/types.NodePower'
+      price_usd:
+        type: number
       publicConfig:
         $ref: '#/definitions/types.PublicConfig'
       rentContractId:
@@ -130,7 +138,6 @@ definitions:
       serialNumber:
         type: string
       status:
-        description: added node status field for up or down
         type: string
       total_resources:
         $ref: '#/definitions/types.Capacity'
@@ -151,6 +158,8 @@ definitions:
         type: string
       id:
         type: string
+      node_twin_id:
+        type: integer
       vendor:
         type: string
     type: object
@@ -210,12 +219,18 @@ definitions:
         type: integer
       farmId:
         type: integer
+      farmName:
+        type: string
       farmingPolicyId:
         type: integer
       gridVersion:
         type: integer
+      healthy:
+        type: boolean
       id:
         type: string
+      inDedicatedFarm:
+        type: boolean
       location:
         $ref: '#/definitions/types.Location'
       nodeId:
@@ -224,6 +239,8 @@ definitions:
         type: integer
       power:
         $ref: '#/definitions/types.NodePower'
+      price_usd:
+        type: number
       publicConfig:
         $ref: '#/definitions/types.PublicConfig'
       rentContractId:
@@ -342,6 +359,27 @@ paths:
         in: query
         name: ret_count
         type: boolean
+      - description: Get random patch of contracts
+        in: query
+        name: randomize
+        type: boolean
+      - description: Sort by specific contract filed
+        enum:
+        - twin_id
+        - contract_id
+        - type
+        - state
+        - created_at
+        in: query
+        name: sort_by
+        type: string
+      - description: The sorting order, default is 'asc'
+        enum:
+        - desc
+        - asc
+        in: query
+        name: sort_order
+        type: string
       - description: contract id
         in: query
         name: contract_id
@@ -476,7 +514,7 @@ paths:
             type: string
       summary: Show single contract bills
       tags:
-      - ContractDills
+      - ContractBills
   /farms:
     get:
       consumes:
@@ -495,6 +533,27 @@ paths:
         in: query
         name: ret_count
         type: boolean
+      - description: Get random patch of farms
+        in: query
+        name: randomize
+        type: boolean
+      - description: Sort by specific farm filed
+        enum:
+        - name
+        - farm_id
+        - twin_id
+        - public_ips
+        - dedicated
+        in: query
+        name: sort_by
+        type: string
+      - description: The sorting order, default is 'asc'
+        enum:
+        - desc
+        - asc
+        in: query
+        name: sort_order
+        type: string
       - description: Min number of free ips in the farm
         in: query
         name: free_ips
@@ -558,6 +617,11 @@ paths:
         in: query
         name: node_free_sru
         type: integer
+      - description: Min total cpu cores for at least a single node that belongs to
+          the farm
+        in: query
+        name: node_total_cru
+        type: integer
       - description: Node status for at least a single node that belongs to the farm
         in: query
         name: node_status
@@ -582,6 +646,10 @@ paths:
       - description: farm country
         in: query
         name: country
+        type: string
+      - description: farm region
+        in: query
+        name: region
         type: string
       produces:
       - application/json
@@ -621,6 +689,42 @@ paths:
         in: query
         name: ret_count
         type: boolean
+      - description: Get random patch of gateways
+        in: query
+        name: randomize
+        type: boolean
+      - description: Sort by specific gateway filed
+        enum:
+        - node_id
+        - farm_id
+        - twin_id
+        - uptime
+        - created
+        - updated_at
+        - country
+        - city
+        - dedicated_farm
+        - rent_contract_id
+        - total_cru
+        - total_mru
+        - total_hru
+        - total_sru
+        - used_cru
+        - used_mru
+        - used_hru
+        - used_sru
+        - num_gpu
+        - extra_fee
+        in: query
+        name: sort_by
+        type: string
+      - description: The sorting order, default is 'asc'
+        enum:
+        - desc
+        - asc
+        in: query
+        name: sort_order
+        type: string
       - description: Min free reservable mru in bytes
         in: query
         name: free_mru
@@ -650,6 +754,10 @@ paths:
         in: query
         name: country
         type: string
+      - description: node region
+        in: query
+        name: region
+        type: string
       - description: Get nodes for specific farm
         in: query
         name: farm_name
@@ -669,6 +777,10 @@ paths:
       - description: Set to true to get the dedicated nodes only
         in: query
         name: dedicated
+        type: boolean
+      - description: Set to true to get the nodes belongs to dedicated farms
+        in: query
+        name: in_dedicated_farm
         type: boolean
       - description: Set to true to filter the available nodes for renting
         in: query
@@ -771,6 +883,47 @@ paths:
         in: query
         name: ret_count
         type: boolean
+      - description: Get random patch of nodes
+        in: query
+        name: randomize
+        type: boolean
+      - description: Sort by specific node filed
+        enum:
+        - status
+        - node_id
+        - farm_id
+        - twin_id
+        - uptime
+        - created
+        - updated_at
+        - country
+        - city
+        - dedicated_farm
+        - rent_contract_id
+        - total_cru
+        - total_mru
+        - total_hru
+        - total_sru
+        - used_cru
+        - used_mru
+        - used_hru
+        - used_sru
+        - num_gpu
+        - extra_fee
+        in: query
+        name: sort_by
+        type: string
+      - description: The sorting order, default is 'asc'
+        enum:
+        - desc
+        - asc
+        in: query
+        name: sort_order
+        type: string
+      - description: a balance in usd, used to apply staking discount on nodes price
+        in: query
+        name: balance
+        type: string
       - description: Min free reservable mru in bytes
         in: query
         name: free_mru
@@ -808,6 +961,11 @@ paths:
         in: query
         name: status
         type: string
+      - description: Healthy nodes filter, 'true' for nodes that responded to rmb
+          call in the last 5 mins
+        in: query
+        name: healthy
+        type: boolean
       - description: Node city filter
         in: query
         name: city
@@ -815,6 +973,10 @@ paths:
       - description: Node country filter
         in: query
         name: country
+        type: string
+      - description: Node region
+        in: query
+        name: region
         type: string
       - description: Get nodes for specific farm
         in: query
@@ -835,6 +997,10 @@ paths:
       - description: Set to true to get the dedicated nodes only
         in: query
         name: dedicated
+        type: boolean
+      - description: Set to true to get the nodes belongs to dedicated farms
+        in: query
+        name: in_dedicated_farm
         type: boolean
       - description: Set to true to filter the available nodes for renting
         in: query
@@ -891,6 +1057,14 @@ paths:
         in: query
         name: owned_by
         type: integer
+      - description: get nodes with price greater than this
+        in: query
+        name: price_min
+        type: string
+      - description: get nodes with price smaller than this
+        in: query
+        name: price_max
+        type: string
       produces:
       - application/json
       responses:
@@ -1074,6 +1248,26 @@ paths:
         in: query
         name: ret_count
         type: boolean
+      - description: Get random patch of twins
+        in: query
+        name: randomize
+        type: boolean
+      - description: Sort by specific twin filed
+        enum:
+        - relay
+        - public_key
+        - account_id
+        - twin_id
+        in: query
+        name: sort_by
+        type: string
+      - description: The sorting order, default is 'asc'
+        enum:
+        - desc
+        - asc
+        in: query
+        name: sort_order
+        type: string
       - description: twin id
         in: query
         name: twin_id

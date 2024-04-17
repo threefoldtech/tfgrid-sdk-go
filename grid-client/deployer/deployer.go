@@ -24,7 +24,7 @@ import (
 )
 
 // MockDeployer to be used for any deployer in mock testing
-type MockDeployer interface { //TODO: Change Name && separate them
+type MockDeployer interface { // TODO: Change Name && separate them
 	Deploy(ctx context.Context,
 		oldDeploymentIDs map[uint32]uint64,
 		newDeployments map[uint32]gridtypes.Deployment,
@@ -57,7 +57,6 @@ func NewDeployer(
 	tfPluginClient TFPluginClient,
 	revertOnFailure bool,
 ) Deployer {
-
 	return Deployer{
 		tfPluginClient.Identity,
 		tfPluginClient.TwinID,
@@ -158,12 +157,10 @@ func (d *Deployer) deploy(
 			contractID, err := d.substrateConn.CreateNodeContract(d.identity, node, dl.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[node])
 			log.Debug().Uint64("CreateNodeContract returned id", contractID)
 			if err != nil {
-				return currentDeployments, errors.Wrap(err, "failed to create contract")
+				return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d", node)
 			}
 
 			dl.ContractID = contractID
-			ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
-			defer cancel()
 			err = client.DeploymentDeploy(ctx, dl)
 
 			if err != nil {
@@ -171,7 +168,7 @@ func (d *Deployer) deploy(
 				if rerr != nil {
 					return currentDeployments, errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, contractID)
 				}
-				return currentDeployments, errors.Wrap(err, "error sending deployment to the node")
+				return currentDeployments, errors.Wrapf(err, "error sending deployment to node %d", node)
 
 			}
 			currentDeployments[node] = dl.ContractID
@@ -246,9 +243,7 @@ func (d *Deployer) deploy(
 				return currentDeployments, errors.Wrap(err, "failed to update deployment")
 			}
 			dl.ContractID = contractID
-			sub, cancel := context.WithTimeout(ctx, 4*time.Minute)
-			defer cancel()
-			err = client.DeploymentUpdate(sub, dl)
+			err = client.DeploymentUpdate(ctx, dl)
 			if err != nil {
 				// cancel previous contract
 				return currentDeployments, errors.Wrapf(err, "failed to send deployment update request to node %d", node)
@@ -269,7 +264,6 @@ func (d *Deployer) deploy(
 func (d *Deployer) Cancel(ctx context.Context,
 	contractID uint64,
 ) error {
-
 	err := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to delete deployment: %d", contractID)
@@ -288,12 +282,8 @@ func (d *Deployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (m
 			return nil, errors.Wrapf(err, "failed to get a client for node %d", nodeID)
 		}
 
-		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
-		dl, err := nc.DeploymentGet(sub, dlID)
+		dl, err := nc.DeploymentGet(ctx, dlID)
 		if err != nil {
-
 			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
 		}
 		res[nodeID] = dl
@@ -329,10 +319,8 @@ func (d *Deployer) Wait(
 
 	deploymentError := backoff.Retry(func() error {
 		stateOk := 0
-		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
 
-		deploymentChanges, err := nodeClient.DeploymentChanges(sub, deploymentID)
+		deploymentChanges, err := nodeClient.DeploymentChanges(ctx, deploymentID)
 		if err != nil {
 			return backoff.Permanent(err)
 		}
@@ -455,6 +443,10 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 	}
 
 	var multiErr error
+	if err != nil {
+		multiErr = multierror.Append(multiErr, err)
+	}
+
 	failedContracts := make([]uint64, 0)
 	var wg sync.WaitGroup
 	for i, dl := range deploymentsSlice {
@@ -494,7 +486,7 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
-				multiErr = multierror.Append(multiErr, errors.Wrap(err, "error waiting deployment"))
+				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error waiting deployment on node %d", node))
 				failedContracts = append(failedContracts, dl.ContractID)
 				return
 			}

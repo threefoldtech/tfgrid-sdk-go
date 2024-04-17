@@ -1,0 +1,48 @@
+{
+  "node_groups": [
+    {
+      "name": "group_a",
+      "nodes_count": 3,
+      "free_cpu": 2,
+      "free_mru": 16,
+      "free_ssd": 100,
+      "free_hdd": 50,
+      "dedicated": false,
+      "public_ip4": false,
+      "public_ip6": false,
+      "certified": false,
+      "region": "europe"
+    }
+  ],
+  "vms": [
+    {
+      "name": "examplevm123",
+      "vms_count": 1,
+      "node_group": "group_a",
+      "cpu": 1,
+      "mem": 2,
+      "ssd": [
+        {
+          "size": 15,
+          "mount_point": "/mnt/ssd"
+        }
+      ],
+      "public_ip4": false,
+      "public_ip6": false,
+      "flist": "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+      "entry_point": "/sbin/zinit init",
+      "root_size": 0,
+      "ssh_key": "example1",
+      "env_vars": {
+        "user": "user1",
+        "pwd": "1234"
+      }
+    }
+  ],
+  "ssh_keys": {
+    "example1": "ssh_key1"
+  },
+  "mnemonic": "example-mnemonic",
+  "network": "dev",
+  "max_retries": 5
+}

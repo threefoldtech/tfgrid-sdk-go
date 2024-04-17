@@ -4,31 +4,13 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
-	"strings"
+	"unicode"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
 
 type Filter interface {
 	types.ContractFilter | types.NodeFilter | types.FarmFilter | types.TwinFilter | types.StatsFilter
-}
-
-func calcFreeResources(total mock.NodeResourcesTotal, used mock.NodeResourcesTotal) mock.NodeResourcesTotal {
-	if total.MRU < used.MRU {
-		panic("total mru is less than mru")
-	}
-	if total.HRU < used.HRU {
-		panic("total hru is less than hru")
-	}
-	if total.SRU < used.SRU {
-		panic("total sru is less than sru")
-	}
-	return mock.NodeResourcesTotal{
-		HRU: total.HRU - used.HRU,
-		SRU: total.SRU - used.SRU,
-		MRU: total.MRU - used.MRU,
-	}
 }
 
 func flip(success float32) bool {
@@ -55,8 +37,14 @@ func min(a, b uint64) uint64 {
 }
 
 func changeCase(s string) string {
-	idx := rand.Intn(len(s))
-	return strings.Replace(s, string(s[idx]), strings.ToUpper(string(s[idx])), 1)
+	if len(s) == 0 {
+		return s
+	}
+
+	runesList := []rune(s)
+	idx := rand.Intn(len(runesList))
+	runesList[idx] = unicode.ToUpper(runesList[idx])
+	return string(runesList)
 }
 
 func SerializeFilter[F Filter](f F) string {

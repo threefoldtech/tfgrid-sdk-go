@@ -2,131 +2,89 @@ package integration
 
 import (
 	"context"
-
-	"net"
+	"slices"
 	"testing"
-	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func TestBatchK8sDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	nodes, err := deployer.FilterNodes(
-		ctx,
+		context.Background(),
 		tfPluginClient,
-		nodeFilter,
-		[]uint64{*convertGBToBytes(1), *convertGBToBytes(1)},
+		generateNodeFilter(),
 		nil,
-		[]uint64{minRootfs, minRootfs},
+		nil,
+		nil,
+		2,
 	)
-	if err != nil || len(nodes) < 2 {
-		t.Skip("no available nodes found")
+	if err != nil {
+		t.Skipf("no available nodes found: %v", err)
 	}
 
 	nodeID1 := uint32(nodes[0].NodeID)
 	nodeID2 := uint32(nodes[1].NodeID)
 
-	network := workloads.ZNet{
-		Name:        "k8sTestingNetwork",
-		Description: "network for testing",
-		Nodes:       []uint32{nodeID1, nodeID2},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
-			IP:   net.IPv4(10, 20, 0, 0),
-			Mask: net.CIDRMask(16, 32),
-		}),
-		AddWGAccess: true,
-	}
+	network := generateBasicNetwork([]uint32{nodeID1, nodeID2})
 
-	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
+	require.NoError(t, err)
 
-	defer func() {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-		assert.NoError(t, err)
-	}()
+	t.Cleanup(func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
+		require.NoError(t, err)
+	})
 
 	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
-	flistCheckSum, err := workloads.GetFlistChecksum(flist)
-	assert.NoError(t, err)
 
 	master1 := workloads.K8sNode{
-		Name:          "K8sForTesting",
-		Node:          nodeID1,
-		DiskSize:      1,
-		PublicIP:      false,
-		PublicIP6:     false,
-		Planetary:     true,
-		Flist:         "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "",
-		ComputedIP6:   "",
-		YggIP:         "",
-		IP:            "",
-		CPU:           2,
-		Memory:        1024,
+		Name:      generateRandString(10),
+		Node:      nodeID1,
+		DiskSize:  1,
+		Planetary: true,
+		Flist:     flist,
+		CPU:       minCPU,
+		Memory:    int(minMemory) * 1024,
 	}
 
 	master2 := workloads.K8sNode{
-		Name:          "K8sForTesting2",
-		Node:          nodeID2,
-		DiskSize:      1,
-		PublicIP:      false,
-		PublicIP6:     false,
-		Planetary:     true,
-		Flist:         "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "",
-		ComputedIP6:   "",
-		YggIP:         "",
-		IP:            "",
-		CPU:           2,
-		Memory:        1024,
+		Name:      generateRandString(10),
+		Node:      nodeID2,
+		DiskSize:  1,
+		Planetary: true,
+		Flist:     flist,
+		CPU:       minCPU,
+		Memory:    int(minMemory) * 1024,
 	}
 
 	workerNodeData1 := workloads.K8sNode{
-		Name:          "worker1",
-		Node:          nodeID1,
-		DiskSize:      1,
-		PublicIP:      false,
-		PublicIP6:     false,
-		Planetary:     false,
-		Flist:         "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "",
-		ComputedIP6:   "",
-		YggIP:         "",
-		IP:            "",
-		CPU:           2,
-		Memory:        1024,
+		Name:      generateRandString(10),
+		Node:      nodeID1,
+		DiskSize:  1,
+		Planetary: true,
+		Flist:     flist,
+		CPU:       minCPU,
+		Memory:    int(minMemory) * 1024,
 	}
 
 	workerNodeData2 := workloads.K8sNode{
-		Name:          "worker2",
-		Node:          nodeID2,
-		DiskSize:      1,
-		PublicIP:      false,
-		PublicIP6:     false,
-		Planetary:     false,
-		Flist:         "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist",
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "",
-		ComputedIP6:   "",
-		YggIP:         "",
-		IP:            "",
-		CPU:           2,
-		Memory:        1024,
+		Name:      generateRandString(10),
+		Node:      nodeID2,
+		DiskSize:  1,
+		Planetary: true,
+		Flist:     flist,
+		CPU:       minCPU,
+		Memory:    int(minMemory) * 1024,
 	}
 
 	k8sCluster1 := workloads.K8sCluster{
@@ -145,50 +103,52 @@ func TestBatchK8sDeployment(t *testing.T) {
 		NetworkName: network.Name,
 	}
 
-	err = tfPluginClient.K8sDeployer.BatchDeploy(ctx, []*workloads.K8sCluster{&k8sCluster1, &k8sCluster2})
-	assert.NoError(t, err)
+	err = tfPluginClient.K8sDeployer.BatchDeploy(context.Background(), []*workloads.K8sCluster{&k8sCluster1, &k8sCluster2})
+	require.NoError(t, err)
 
-	defer func() {
-		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster1)
-		assert.NoError(t, err)
+	t.Cleanup(func() {
+		err = tfPluginClient.K8sDeployer.Cancel(context.Background(), &k8sCluster1)
+		require.NoError(t, err)
 
-		err = tfPluginClient.K8sDeployer.Cancel(ctx, &k8sCluster2)
-		assert.NoError(t, err)
-	}()
+		err = tfPluginClient.K8sDeployer.Cancel(context.Background(), &k8sCluster2)
+		require.NoError(t, err)
+	})
 
 	// cluster 1
-	result, err := tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID1}, k8sCluster1.Master.Name)
-	assert.NoError(t, err)
+	k1, err := tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{nodeID1}, k8sCluster1.Master.Name)
+	require.NoError(t, err)
 
 	// check workers count
-	assert.Equal(t, len(result.Workers), 1)
+	require.Equal(t, len(k1.Workers), 1)
 
 	// Check that master is reachable
-	masterIP := result.Master.YggIP
-	assert.NotEmpty(t, masterIP)
+	require.NotEmpty(t, k1.Master.PlanetaryIP)
+	require.NotEmpty(t, k1.Master.IP)
+	require.NotEqual(t, k1.Master.IP, k1.Workers[0].IP)
 
-	// Check wireguard config in output
-	wgConfig := network.AccessWGConfig
-	assert.NotEmpty(t, wgConfig)
+	require.True(t, CheckConnection(k1.Workers[0].PlanetaryIP, "22"))
 
 	// ssh to master node
-	AssertNodesAreReady(t, &result, privateKey)
+	require.NoError(t, requireNodesAreReady(len(k1.Workers)+1, k1.Master.PlanetaryIP, privateKey))
 
 	// cluster 2
-	result, err = tfPluginClient.State.LoadK8sFromGrid([]uint32{nodeID2}, k8sCluster2.Master.Name)
-	assert.NoError(t, err)
+	k2, err := tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{nodeID2}, k8sCluster2.Master.Name)
+	require.NoError(t, err)
 
 	// check workers count
-	assert.Equal(t, len(result.Workers), 1)
+	require.Equal(t, len(k2.Workers), 1)
 
 	// Check that master is reachable
-	masterIP = result.Master.YggIP
-	assert.NotEmpty(t, masterIP)
+	require.NotEmpty(t, k1.Master.PlanetaryIP)
+	require.NotEmpty(t, k1.Master.IP)
+	require.NotEqual(t, k1.Master.IP, k2.Workers[0].IP)
 
-	// Check wireguard config in output
-	wgConfig = network.AccessWGConfig
-	assert.NotEmpty(t, wgConfig)
+	require.True(t, CheckConnection(k2.Workers[0].PlanetaryIP, "22"))
 
 	// ssh to master node
-	AssertNodesAreReady(t, &result, privateKey)
+	require.NoError(t, requireNodesAreReady(len(k2.Workers)+1, k2.Master.PlanetaryIP, privateKey))
+
+	// different ips generated
+	require.Equal(t, len(slices.Compact[[]string, string]([]string{k1.Master.IP, k2.Master.IP, k1.Workers[0].IP, k2.Workers[0].IP})), 4)
+
 }

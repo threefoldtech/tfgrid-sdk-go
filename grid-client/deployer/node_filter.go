@@ -1,37 +1,136 @@
-// Package deployer is grid deployer
 package deployer
 
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"sort"
 	"strings"
+	"sync"
 
+	"github.com/gorilla/schema"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+const requestedPagesPerIteration = 5
+
 // FilterNodes filters nodes using proxy
-func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks []uint64, rootfs []uint64) ([]types.Node, error) {
-	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, types.Limit{})
+func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, optionalLimit ...uint64) ([]types.Node, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if options.AvailableFor == nil {
+		twinID := uint64(tfPlugin.TwinID)
+		options.AvailableFor = &twinID
+	}
+	options.Healthy = &trueVal
+
+	var nodes []types.Node
+	var errs error
+	var lock sync.Mutex
+
+	// default values for no limit
+	requestedPages := 1
+	totalPagesCount := 1
+	limit := types.Limit{}
+	nodesCount := types.DefaultLimit().Size
+
+	if len(optionalLimit) > 0 {
+		var err error
+		nodesCount = optionalLimit[0]
+		limit = types.Limit{Size: nodesCount, RetCount: true}
+		requestedPages = requestedPagesPerIteration
+		totalPagesCount, err = getPagesCount(ctx, tfPlugin, options, limit)
+		if err != nil {
+			return []types.Node{}, err
+		}
+	}
+
+	for i := 1; i <= totalPagesCount; i += requestedPages {
+		nodesOutput := make(chan types.Node)
+
+		var wg sync.WaitGroup
+		for j := 0; j < requestedPages; j++ {
+			limit.Page = uint64(i + j)
+			if limit.Page > uint64(totalPagesCount) {
+				break
+			}
+
+			wg.Add(1)
+			go func(limit types.Limit) {
+				defer wg.Done()
+				err := getNodes(ctx, tfPlugin, options, ssdDisks, hddDisks, rootfs, limit, nodesOutput)
+				if err != nil {
+					lock.Lock()
+					errs = multierror.Append(err)
+					lock.Unlock()
+				}
+			}(limit)
+		}
+
+		go func() {
+			wg.Wait()
+			close(nodesOutput)
+		}()
+
+		for node := range nodesOutput {
+			nodes = append(nodes, node)
+			if uint64(len(nodes)) == nodesCount {
+				return nodes, nil
+			}
+		}
+
+		if len(optionalLimit) == 0 { // no limit and didn't reach default limit
+			if len(nodes) == 0 {
+				opts, err := serializeOptions(options)
+				if err != nil {
+					log.Debug().Err(err).Send()
+				}
+				return []types.Node{}, fmt.Errorf("could not find enough nodes with options: %s", opts)
+			}
+			return nodes, nil
+		}
+	}
+
+	if errs != nil {
+		return []types.Node{}, errors.Errorf("could not find enough nodes, found errors: %v", errs)
+	}
+
+	opts, err := serializeOptions(options)
 	if err != nil {
-		return []types.Node{}, errors.Wrap(err, "could not fetch nodes from the rmb proxy")
+		log.Debug().Err(err).Send()
+	}
+	return []types.Node{}, errors.Errorf("could not find enough nodes with options: %s", opts)
+}
+
+func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, limit types.Limit, output chan<- types.Node) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	nodes, _, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
+	if err != nil {
+		return errors.Wrap(err, "could not fetch nodes from the rmb proxy")
 	}
 
 	if len(nodes) == 0 {
-		return []types.Node{}, errors.Errorf("could not find any node with options: %+v", serializeOptions(options))
+		return nil
 	}
 
 	// if no storage needed
 	if options.FreeSRU == nil && options.FreeHRU == nil {
-		return nodes, nil
+		for _, node := range nodes {
+			output <- node
+		}
+		return nil
 	}
+
 	sort.Slice(ssdDisks, func(i, j int) bool {
 		return ssdDisks[i] > ssdDisks[j]
 	})
@@ -42,32 +141,38 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 	sort.Slice(hddDisks, func(i, j int) bool {
 		return hddDisks[i] > hddDisks[j]
 	})
-	// check pools
-	var nodePools []types.Node
+
 	for _, node := range nodes {
 		client, err := tfPlugin.NcPool.GetNodeClient(tfPlugin.SubstrateConn, uint32(node.NodeID))
 		if err != nil {
-			log.Error().Err(err).Msgf("failed to get node '%d' client", node.NodeID)
-			workloads.Delete(nodePools, node)
+			log.Debug().Err(err).Int("node ID", node.NodeID).Msgf("failed to get node client")
 			continue
 		}
 
 		pools, err := client.Pools(ctx)
 		if err != nil {
-			log.Error().Err(err).Msgf("failed to get node '%d' pools", node.NodeID)
-			workloads.Delete(nodePools, node)
+			log.Debug().Err(err).Int("node ID", node.NodeID).Msg("failed to get node pools")
 			continue
 		}
-		if hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) && hasEnoughStorage(pools, ssdDisks, zos.HDDDevice) {
-			nodePools = append(nodePools, node)
+
+		if !hasEnoughStorage(pools, hddDisks, zos.HDDDevice) {
+			log.Debug().Err(err).Int("node ID", node.NodeID).Msg("no enough HDDs in node")
+			continue
+		}
+
+		if !hasEnoughStorage(pools, ssdDisks, zos.SSDDevice) {
+			log.Debug().Err(err).Int("node ID", node.NodeID).Msg("no enough SSDs in node")
+			continue
+		}
+
+		select {
+		case output <- node:
+		case <-ctx.Done():
+			return nil
 		}
 	}
 
-	if len(nodePools) == 0 {
-		return []types.Node{}, errors.Errorf("could not find any node with free ssd pools: %d GB", convertBytesToGB(*options.FreeSRU))
-	}
-
-	return nodePools, nil
+	return nil
 }
 
 var (
@@ -131,7 +236,7 @@ func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes 
 	}
 
 	for _, node := range nodes {
-		log.Printf("found a node with ipv4 public config: %d %s\n", node.NodeID, node.PublicConfig.Ipv4)
+		log.Printf("found a node with ipv4 public config: %d %s", node.NodeID, node.PublicConfig.Ipv4)
 		ip, _, err := net.ParseCIDR(node.PublicConfig.Ipv4)
 		if err != nil {
 			log.Printf("could not parse public ip %s of node %d: %s", node.PublicConfig.Ipv4, node.NodeID, err.Error())
@@ -149,6 +254,10 @@ func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes 
 
 // hasEnoughStorage checks if all deployment storage requirements can be satisfied with node's pools based on given disks order.
 func hasEnoughStorage(pools []client.PoolMetrics, storages []uint64, poolType zos.DeviceType) bool {
+	if len(storages) == 0 {
+		return true
+	}
+
 	filteredPools := make([]client.PoolMetrics, 0)
 	for _, pool := range pools {
 		if pool.Type == poolType {
@@ -171,37 +280,36 @@ func hasEnoughStorage(pools []client.PoolMetrics, storages []uint64, poolType zo
 	return true
 }
 
-func serializeOptions(options types.NodeFilter) string {
-	var filterStringBuilder strings.Builder
-	if options.FarmIDs != nil {
-		fmt.Fprintf(&filterStringBuilder, "farm ids: %v, ", options.FarmIDs)
+// serializeOptions used to encode a struct of NodeFilter type and convert it to string
+// with only non-zero values and drop any field with zero-value
+func serializeOptions(options types.NodeFilter) (string, error) {
+	params := make(map[string][]string)
+	err := schema.NewEncoder().Encode(options, params)
+	if err != nil {
+		return "", nil
 	}
-	if options.FarmName != nil {
-		fmt.Fprintf(&filterStringBuilder, "farm name: %v, ", options.FarmName)
+
+	// convert the map to string with `key: value` format
+	//
+	// example:
+	//
+	// map[string][]string{Status: [up]} -> "Status: [up]"
+	var sb strings.Builder
+	for key, val := range params {
+		fmt.Fprintf(&sb, "%s: %v, ", key, val[0])
 	}
-	if options.FreeMRU != nil {
-		fmt.Fprintf(&filterStringBuilder, "mru: %d GB, ", convertBytesToGB(*options.FreeMRU))
+
+	filter := sb.String()
+	if len(filter) > 2 {
+		filter = filter[:len(filter)-2]
 	}
-	if options.FreeSRU != nil {
-		fmt.Fprintf(&filterStringBuilder, "sru: %d GB, ", convertBytesToGB(*options.FreeSRU))
-	}
-	if options.FreeHRU != nil {
-		fmt.Fprintf(&filterStringBuilder, "hru: %d GB, ", convertBytesToGB(*options.FreeHRU))
-	}
-	if options.FreeIPs != nil {
-		fmt.Fprintf(&filterStringBuilder, "free ips: %d, ", *options.FreeIPs)
-	}
-	if options.Domain != nil {
-		fmt.Fprintf(&filterStringBuilder, "domain: %t, ", *options.Domain)
-	}
-	if options.IPv4 != nil {
-		fmt.Fprintf(&filterStringBuilder, "ipv4: %t, ", *options.IPv4)
-	}
-	filterString := filterStringBuilder.String()
-	return filterString[:len(filterString)-2]
+	return filter, nil
 }
 
-func convertBytesToGB(bytes uint64) uint64 {
-	gb := bytes / (1024 * 1024 * 1024)
-	return gb
+func getPagesCount(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, limit types.Limit) (int, error) {
+	_, totalNodesCount, err := tfPlugin.GridProxyClient.Nodes(ctx, options, limit)
+	if err != nil {
+		return 0, err
+	}
+	return int(math.Ceil(float64(totalNodesCount) / float64(limit.Size))), nil
 }

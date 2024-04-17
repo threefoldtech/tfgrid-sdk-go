@@ -21,12 +21,13 @@ var getKubernetesCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false)
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network), deployer.WithRMBTimeout(100))
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
 
-		cluster, err := command.GetK8sCluster(t, args[0])
+		cluster, err := command.GetK8sCluster(cmd.Context(), t, args[0])
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -35,7 +36,6 @@ var getKubernetesCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 		log.Info().Msg("k8s cluster:\n" + string(s))
-
 	},
 }
 

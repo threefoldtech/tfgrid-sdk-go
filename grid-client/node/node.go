@@ -75,6 +75,7 @@ import (
 	"context"
 	"math/rand"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/pkg/errors"
@@ -209,6 +210,17 @@ func (n *NodeClient) DeploymentDelete(ctx context.Context, contractID uint64) er
 	return n.bus.Call(ctx, n.nodeTwin, cmd, in, nil)
 }
 
+// DeploymentList gets all deployments for a twin
+func (n *NodeClient) DeploymentList(ctx context.Context) (dls []gridtypes.Deployment, err error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
+	const cmd = "zos.deployment.list"
+
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &dls)
+	return
+}
+
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
 func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
@@ -236,6 +248,24 @@ func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, 
 	}
 
 	return result.Total, result.Used, nil
+}
+
+// NetworkListPrivateIPs list private ips reserved for a network
+func (n *NodeClient) NetworkListPrivateIPs(ctx context.Context, networkName string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
+	const cmd = "zos.network.list_private_ips"
+	var result []string
+	in := rmbCmdArgs{
+		"network_name": networkName,
+	}
+
+	if err := n.bus.Call(ctx, n.nodeTwin, cmd, in, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // NetworkListWGPorts return a list of all "taken" ports on the node. A new deployment
@@ -431,16 +461,17 @@ func AreNodesUp(ctx context.Context, sub subi.SubstrateExt, nodes []uint32, nc N
 }
 
 // GetNodeFreeWGPort returns node free wireguard port
-func (n *NodeClient) GetNodeFreeWGPort(ctx context.Context, nodeID uint32) (int, error) {
-	freePorts, err := n.NetworkListWGPorts(ctx)
+func (n *NodeClient) GetNodeFreeWGPort(ctx context.Context, nodeID uint32, usedPorts []uint16) (int, error) {
+	nodeUsedPorts, err := n.NetworkListWGPorts(ctx)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to list wg ports")
 	}
-	log.Debug().Msgf("reserved ports for node %d: %v", nodeID, freePorts)
-	p := uint(rand.Intn(6000) + 2000)
+	log.Debug().Msgf("reserved ports for node %d: %v", nodeID, nodeUsedPorts)
+	// from 1024 to 32767 (the lower limit for ephemeral ports)
+	p := uint(rand.Intn(32768-1024) + 1024)
 
-	for contains(freePorts, uint16(p)) {
-		p = uint(rand.Intn(6000) + 2000)
+	for contains(nodeUsedPorts, uint16(p)) || slices.Contains(usedPorts, uint16(p)) {
+		p = uint(rand.Intn(32768-1024) + 1024)
 	}
 	log.Debug().Msgf("Selected port for node %d is %d", nodeID, p)
 	return int(p), nil

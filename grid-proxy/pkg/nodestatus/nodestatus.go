@@ -14,17 +14,17 @@ const (
 	nodeStandbyReportInterval = time.Hour * 24   // the interval to report for the standby node
 )
 
+var (
+	nilPower = "node.power IS NULL"
+
+	poweredOn   = "node.power->> 'state' = 'Up' AND node.power->> 'target' = 'Up'"
+	poweredOff  = "node.power->> 'state' = 'Down' AND node.power->> 'target' = 'Down'"
+	poweringOff = "node.power->> 'state' = 'Up' AND node.power->> 'target' = 'Down'"
+	poweringOn  = "node.power->> 'state' = 'Down' AND node.power->> 'target' = 'Up'"
+)
+
 // return the condition to be used in the SQL query to get the nodes with the given status.
 func DecideNodeStatusCondition(status string) string {
-	condition := "TRUE"
-
-	nilPower := "node.power IS NULL"
-
-	poweredOn := "node.power->> 'state' = 'Up' AND node.power->> 'target' = 'Up'"
-	poweredOff := "node.power->> 'state' = 'Down' AND node.power->> 'target' = 'Down'"
-	poweringOff := "node.power->> 'state' = 'Up' AND node.power->> 'target' = 'Down'"
-	poweringOn := "node.power->> 'state' = 'Down' AND node.power->> 'target' = 'Up'"
-
 	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
 	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
 
@@ -32,6 +32,8 @@ func DecideNodeStatusCondition(status string) string {
 	outUpInterval := fmt.Sprintf("node.updated_at < %d", nodeUpInterval)
 	inStandbyInterval := fmt.Sprintf("node.updated_at >= %d", nodeStandbyInterval)
 	outStandbyInterval := fmt.Sprintf("node.updated_at < %d", nodeStandbyInterval)
+
+	condition := "TRUE"
 
 	if status == "up" {
 		condition = fmt.Sprintf(`%s AND (%s OR (%s))`, inUpInterval, nilPower, poweredOn)
@@ -42,6 +44,35 @@ func DecideNodeStatusCondition(status string) string {
 	}
 
 	return condition
+}
+
+// DecideNodeStatusOrdering returns an sql ordering condition
+func DecideNodeStatusOrdering(order types.SortOrder) string {
+	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
+	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
+
+	inUpInterval := fmt.Sprintf("node.updated_at >= %d", nodeUpInterval)
+	outUpInterval := fmt.Sprintf("node.updated_at < %d", nodeUpInterval)
+	inStandbyInterval := fmt.Sprintf("node.updated_at >= %d", nodeStandbyInterval)
+	outStandbyInterval := fmt.Sprintf("node.updated_at < %d", nodeStandbyInterval)
+
+	upNodesOrder := 1
+	standbyNodesOrder := 2
+	downNodesOrder := 3
+
+	if order == types.SortOrderDesc {
+		upNodesOrder = 3
+		downNodesOrder = 1
+	}
+
+	orderBy := "CASE "
+	orderBy += fmt.Sprintf(`WHEN %s AND (%s OR (%s)) THEN %d `, inUpInterval, nilPower, poweredOn, upNodesOrder)
+	orderBy += fmt.Sprintf(`WHEN ((%s) OR (%s) OR (%s)) AND %s THEN %d `, poweredOff, poweringOff, poweringOn, inStandbyInterval, standbyNodesOrder)
+	orderBy += fmt.Sprintf(`WHEN (%s AND (%s OR (%s))) OR %s THEN %d `, outUpInterval, nilPower, poweredOn, outStandbyInterval, downNodesOrder)
+	orderBy += "ELSE 4 END "
+	orderBy += ", node.node_id "
+
+	return orderBy
 }
 
 // return the status of the node based on the power status and the last update time.

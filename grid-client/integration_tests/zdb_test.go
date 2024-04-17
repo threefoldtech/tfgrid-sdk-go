@@ -3,10 +3,11 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"testing"
-	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/go-redis/redis"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -14,44 +15,63 @@ import (
 
 func TestZDBDeployment(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
-	defer cancel()
-
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, []uint64{*convertGBToBytes(10)}, nil)
 	if err != nil {
-		t.Skip("no available nodes found")
+		t.Skipf("plugin creation failed: %v", err)
+	}
+
+	zdbSize := 10
+
+	nodes, err := deployer.FilterNodes(
+		context.Background(),
+		tfPluginClient,
+		generateNodeFilter(WithFreeHRU(uint64(zdbSize))),
+		nil,
+		[]uint64{*convertGBToBytes(uint64(zdbSize))},
+		nil,
+		1,
+	)
+	if err != nil {
+		t.Skipf("no available nodes found: %v", err)
 	}
 
 	nodeID := uint32(nodes[0].NodeID)
 
 	zdb := workloads.ZDB{
-		Name:        "testName",
+		Name:        fmt.Sprintf("zdb_%s", generateRandString(10)),
 		Password:    "password",
 		Public:      true,
-		Size:        10,
-		Description: "test des",
+		Size:        zdbSize,
+		Description: "test zdb",
 		Mode:        zos.ZDBModeUser,
 	}
 
-	dl := workloads.NewDeployment("zdb", nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
-	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	assert.NoError(t, err)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
+	require.NoError(t, err)
 
-	defer func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-		assert.NoError(t, err)
-	}()
+	t.Cleanup(func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl)
+		require.NoError(t, err)
+	})
 
-	z, err := tfPluginClient.State.LoadZdbFromGrid(nodeID, zdb.Name, dl.Name)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, z.IPs)
-	assert.NotEmpty(t, z.Namespace)
-	assert.NotEmpty(t, z.Port)
+	z, err := tfPluginClient.State.LoadZdbFromGrid(context.Background(), nodeID, zdb.Name, dl.Name)
+	require.NoError(t, err)
+	require.NotEmpty(t, z.IPs)
+	require.NotEmpty(t, z.Namespace)
+	require.NotEmpty(t, z.Port)
 
-	z.IPs = nil
-	z.Port = 0
-	z.Namespace = ""
-	assert.Equal(t, zdb, z)
+	zdbEndpoint := fmt.Sprintf("[%s]:%v", z.IPs[1], z.Port)
+
+	redisDB := redis.NewClient(&redis.Options{
+		Addr: zdbEndpoint,
+	})
+	_, err = redisDB.Do("SELECT", z.Namespace, z.Password).Result()
+	require.NoError(t, err)
+
+	_, err = redisDB.Set("key1", "val1", 0).Result()
+	require.NoError(t, err)
+
+	res, err := redisDB.Get("key1").Result()
+	require.NoError(t, err)
+	require.Equal(t, res, "val1")
 }

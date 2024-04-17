@@ -2,13 +2,28 @@ package app
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"os"
 
 	tgapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	monitor "github.com/threefoldtech/tfgrid-sdk-go/user-contracts-mon/internal"
 )
 
+// set at build time
+var commit string
+var version string
+
 func Start() error {
+	flag.NewFlagSet("version", flag.ExitOnError)
+	if len(os.Args) > 1 {
+		if os.Args[1] == "version" {
+			fmt.Println(version)
+			fmt.Println(commit)
+			return nil
+		}
+	}
+
 	env := ""
 	flag.StringVar(&env, "e", "", "Path to env file")
 	flag.Parse()

@@ -1,4 +1,3 @@
-// Package deployer is grid deployer
 package deployer
 
 import (
@@ -149,10 +148,6 @@ func (d *GatewayNameDeployer) BatchDeploy(ctx context.Context, gws []*workloads.
 
 // Cancel cancels the gatewayName deployment
 func (d *GatewayNameDeployer) Cancel(ctx context.Context, gw *workloads.GatewayNameProxy) (err error) {
-	if err := d.Validate(ctx, gw); err != nil {
-		return err
-	}
-
 	contractID := gw.NodeDeploymentID[gw.NodeID]
 	err = d.deployer.Cancel(ctx, contractID)
 	if err != nil {

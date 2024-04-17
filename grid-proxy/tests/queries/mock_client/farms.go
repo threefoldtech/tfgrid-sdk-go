@@ -32,13 +32,17 @@ func (g *GridProxyMockClient) Farms(ctx context.Context, filter types.FarmFilter
 
 	for _, farm := range g.data.Farms {
 		if farm.satisfies(filter, &g.data) {
+			ips := []types.PublicIP{}
+			if pubIPs, ok := publicIPs[farm.FarmID]; ok {
+				ips = pubIPs
+			}
 			res = append(res, types.Farm{
 				Name:              farm.Name,
 				FarmID:            int(farm.FarmID),
 				TwinID:            int(farm.TwinID),
 				PricingPolicyID:   int(farm.PricingPolicyID),
 				StellarAddress:    farm.StellarAddress,
-				PublicIps:         publicIPs[farm.FarmID],
+				PublicIps:         ips,
 				Dedicated:         farm.DedicatedFarm,
 				CertificationType: farm.Certification,
 			})
@@ -47,8 +51,8 @@ func (g *GridProxyMockClient) Farms(ctx context.Context, filter types.FarmFilter
 
 	if filter.NodeAvailableFor != nil {
 		sort.Slice(res, func(i, j int) bool {
-			f1 := g.data.FarmHasRentedNode[uint64(res[i].FarmID)]
-			f2 := g.data.FarmHasRentedNode[uint64(res[j].FarmID)]
+			f1 := g.data.FarmHasRentedNode[uint64(res[i].FarmID)][*filter.NodeAvailableFor]
+			f2 := g.data.FarmHasRentedNode[uint64(res[j].FarmID)][*filter.NodeAvailableFor]
 			lessFarmID := res[i].FarmID < res[j].FarmID
 
 			return f1 && !f2 || f1 && f2 && lessFarmID || !f1 && !f2 && lessFarmID
@@ -105,8 +109,15 @@ func (f *Farm) satisfies(filter types.FarmFilter, data *DBData) bool {
 		return false
 	}
 
-	if !f.satisfyFarmNodesFilter(data, filter) {
-		return false
+	if filter.NodeAvailableFor != nil || filter.NodeCertified != nil ||
+		filter.NodeFreeHRU != nil || filter.NodeFreeMRU != nil ||
+		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
+		filter.NodeRentedBy != nil || filter.NodeStatus != nil ||
+		filter.Country != nil || filter.Region != nil ||
+		filter.NodeTotalCRU != nil {
+		if !f.satisfyFarmNodesFilter(data, filter) {
+			return false
+		}
 	}
 
 	return true
@@ -120,16 +131,20 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 
 		total := data.NodeTotalResources[node.NodeID]
 		used := data.NodeUsedResources[node.NodeID]
-		free := calcFreeResources(total, used)
-		if filter.NodeFreeHRU != nil && free.HRU < *filter.NodeFreeHRU {
+		free := CalcFreeResources(total, used)
+		if filter.NodeFreeHRU != nil && int64(free.HRU) < int64(*filter.NodeFreeHRU) {
 			continue
 		}
 
-		if filter.NodeFreeMRU != nil && free.MRU < *filter.NodeFreeMRU {
+		if filter.NodeFreeMRU != nil && int64(free.MRU) < int64(*filter.NodeFreeMRU) {
 			continue
 		}
 
-		if filter.NodeFreeSRU != nil && free.SRU < *filter.NodeFreeSRU {
+		if filter.NodeFreeSRU != nil && int64(free.SRU) < int64(*filter.NodeFreeSRU) {
+			continue
+		}
+
+		if filter.NodeTotalCRU != nil && total.CRU < *filter.NodeTotalCRU {
 			continue
 		}
 
@@ -138,7 +153,7 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			continue
 		}
 
-		_, ok := data.GPUs[node.TwinID]
+		_, ok := data.GPUs[uint32(node.TwinID)]
 		if filter.NodeHasGPU != nil && ok != *filter.NodeHasGPU {
 			continue
 		}
@@ -160,6 +175,10 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 		}
 
 		if filter.Country != nil && !strings.EqualFold(*filter.Country, node.Country) {
+			continue
+		}
+
+		if filter.Region != nil && !strings.EqualFold(*filter.Region, data.Regions[strings.ToLower(node.Country)]) {
 			continue
 		}
 

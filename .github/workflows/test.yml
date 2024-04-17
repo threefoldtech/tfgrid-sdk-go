@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: "1.21"
 
@@ -33,9 +33,11 @@ jobs:
       matrix:
         dir:
           - activation-service
+          - farmerbot 
           - grid-cli
           - grid-client
           - gridify
           - monitoring-bot
           - rmb-sdk-go
           - user-contracts-mon 
+          - tfrobot

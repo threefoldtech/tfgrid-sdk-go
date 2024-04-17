@@ -31,6 +31,9 @@ const (
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set farms' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of farms"
+// @Param sort_by query string false "Sort by specific farm filed" Enums(name, farm_id, twin_id, public_ips, dedicated)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_ips query int false "Min number of free ips in the farm"
 // @Param total_ips query int false "Min number of total ips in the farm"
 // @Param pricing_policy_id query int false "Pricing policy id"
@@ -45,19 +48,25 @@ const (
 // @Param node_free_mru query int false "Min free reservable mru for at least a single node that belongs to the farm, in bytes"
 // @Param node_free_hru query int false "Min free reservable hru for at least a single node that belongs to the farm, in bytes"
 // @Param node_free_sru query int false "Min free reservable sru for at least a single node that belongs to the farm, in bytes"
+// @Param node_total_cru query int false "Min total cpu cores for at least a single node that belongs to the farm"
 // @Param node_status query string false "Node status for at least a single node that belongs to the farm"
 // @Param node_rented_by query int false "Twin ID of user who has at least one rented node in the farm"
 // @Param node_available_for query int false "Twin ID of user for whom there is at least one node that is available to be deployed to in the farm"
 // @Param node_has_gpu query bool false "True for farms who have at least one node with a GPU"
 // @Param node_certified query bool false "True for farms who have at least one certified node"
 // @Param country query string false "farm country"
+// @Param region query string false "farm region"
 // @Success 200 {object} []types.Farm
 // @Failure 400 {object} string
 // @Failure 500 {object} string
 // @Router /farms [get]
 func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
-	filter, limit, err := a.handleFarmRequestsQueryParams(r)
-	if err != nil {
+	filter := types.FarmFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := limit.Valid(types.Farm{}); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -85,8 +94,9 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 // @Failure 500 {object} string
 // @Router /stats [get]
 func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
-	filter, err := a.handleStatsRequestsQueryParams(r)
-	if err != nil {
+	filter := types.StatsFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -107,6 +117,10 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of nodes"
+// @Param sort_by query string false "Sort by specific node filed" Enums(status, node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
+// @Param balance query string false "a balance in usd, used to apply staking discount on nodes price"
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"
 // @Param free_sru query int false "Min free reservable sru in bytes"
@@ -116,13 +130,16 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param total_hru query int false "Total hru in bytes"
 // @Param free_ips query int false "Min number of free ips in the farm of the node"
 // @Param status query string false "Node status filter, 'up': for only up nodes, 'down': for only down nodes & 'standby' for powered-off nodes by farmerbot."
+// @Param healthy query bool false "Healthy nodes filter, 'true' for nodes that responded to rmb call in the last 5 mins"
 // @Param city query string false "Node city filter"
 // @Param country query string false "Node country filter"
+// @Param region query string false "Node region"
 // @Param farm_name query string false "Get nodes for specific farm"
 // @Param ipv4 query bool false "Set to true to filter nodes with ipv4"
 // @Param ipv6 query bool false "Set to true to filter nodes with ipv6"
 // @Param domain query bool false "Set to true to filter nodes with domain"
 // @Param dedicated query bool false "Set to true to get the dedicated nodes only"
+// @Param in_dedicated_farm query bool false "Set to true to get the nodes belongs to dedicated farms"
 // @Param rentable query bool false "Set to true to filter the available nodes for renting"
 // @Param rented query bool false "Set to true to filter rented nodes"
 // @Param rented_by query int false "rented by twin id"
@@ -136,6 +153,8 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param gpu_vendor_name query string false "filter nodes based on GPU vendor partial name"
 // @Param gpu_available query bool false "filter nodes that have available GPU"
 // @Param owned_by query int false "get nodes owned by twin id"
+// @Param price_min query string false "get nodes with price greater than this"
+// @Param price_max query string false "get nodes with price smaller than this"
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -153,6 +172,9 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of gateways"
+// @Param sort_by query string false "Sort by specific gateway filed" Enums(node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"
 // @Param free_sru query int false "Min free reservable sru in bytes"
@@ -160,11 +182,13 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param status query string false "Node status filter, 'up': for only up nodes, 'down': for only down nodes & 'standby' for powered-off nodes by farmerbot."
 // @Param city query string false "Node city filter"
 // @Param country query string false "Node country filter"
+// @Param region query string false "node region"
 // @Param farm_name query string false "Get nodes for specific farm"
 // @Param ipv4 query bool false "Set to true to filter nodes with ipv4"
 // @Param ipv6 query bool false "Set to true to filter nodes with ipv6"
 // @Param domain query bool false "Set to true to filter nodes with domain"
 // @Param dedicated query bool false "Set to true to get the dedicated nodes only"
+// @Param in_dedicated_farm query bool false "Set to true to get the nodes belongs to dedicated farms"
 // @Param rentable query bool false "Set to true to filter the available nodes for renting"
 // @Param rented query bool false "Set to true to filter rented nodes"
 // @Param rented_by query int false "rented by twin id"
@@ -181,8 +205,12 @@ func (a *App) getGateways(r *http.Request) (interface{}, mw.Response) {
 }
 
 func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
-	filter, limit, err := a.handleNodeRequestsQueryParams(r)
-	if err != nil {
+	filter := types.NodeFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := limit.Valid(types.Node{}); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -269,6 +297,9 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set twins' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of twins"
+// @Param sort_by query string false "Sort by specific twin filed" Enums(relay, public_key, account_id, twin_id)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param twin_id query int false "twin id"
 // @Param account_id query string false "Account address"
 // @Param relay query string false "Relay address"
@@ -278,8 +309,12 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 // @Failure 500 {object} string
 // @Router /twins [get]
 func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
-	filter, limit, err := a.handleTwinRequestsQueryParams(r)
-	if err != nil {
+	filter := types.TwinFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := limit.Valid(types.Twin{}); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -302,6 +337,9 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set contracts' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of contracts"
+// @Param sort_by query string false "Sort by specific contract filed" Enums(twin_id, contract_id, type, state, created_at)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param contract_id query int false "contract id"
 // @Param twin_id query int false "twin id"
 // @Param node_id query int false "node id which contract is deployed on in case of ('rent' or 'node' contracts)"
@@ -316,8 +354,12 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 // @Failure 500 {object} string
 // @Router /contracts [get]
 func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
-	filter, limit, err := a.handleContractRequestsQueryParams(r)
-	if err != nil {
+	filter := types.ContractFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := limit.Valid(types.Contract{}); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -428,6 +470,12 @@ func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 	if err != nil {
 		return nil, mw.Error(fmt.Errorf("failed to get get node GPU information from relay: %w", err))
 	}
+
+	// assign the called twin id for clearer response
+	for i := 0; i < len(res); i++ {
+		res[i].NodeTwinID = uint32(node.TwinID)
+	}
+
 	return res, mw.Ok()
 }
 
@@ -457,7 +505,7 @@ func (a *App) getContract(r *http.Request) (interface{}, mw.Response) {
 // getContractBills godoc
 // @Summary Show single contract bills
 // @Description Get all bills reports for a single contract with its id
-// @Tags ContractDills
+// @Tags ContractBills
 // @Param contract_id path int yes "Contract ID"
 // @Param page query int false "Page number"
 // @Param size query int false "Max result per page"
@@ -472,9 +520,9 @@ func (a *App) getContract(r *http.Request) (interface{}, mw.Response) {
 func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
 	contractID := mux.Vars(r)["contract_id"]
 
-	limit, err := getLimit(r)
-	if err != nil {
-		return []types.ContractBilling{}, nil
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &limit); err != nil {
+		return nil, mw.BadRequest(err)
 	}
 
 	contractBillsData, totalCount, err := a.getContractBillsData(r.Context(), contractID, limit)

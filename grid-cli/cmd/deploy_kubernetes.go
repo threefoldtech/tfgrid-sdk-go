@@ -65,15 +65,28 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		mycelium, err := cmd.Flags().GetBool("mycelium")
+		if err != nil {
+			return err
+		}
+		var seed []byte
+		if mycelium {
+			seed, err = workloads.RandomMyceliumIPSeed()
+			if err != nil {
+				log.Fatal().Err(err).Send()
+			}
+		}
 		master := workloads.K8sNode{
-			Name:      name,
-			CPU:       masterCPU,
-			Memory:    masterMemory * 1024,
-			DiskSize:  masterDisk,
-			Flist:     k8sFlist,
-			PublicIP:  ipv4,
-			PublicIP6: ipv6,
-			Planetary: ygg,
+			Name:           name,
+			CPU:            masterCPU,
+			Memory:         masterMemory * 1024,
+			DiskSize:       masterDisk,
+			Flist:          k8sFlist,
+			PublicIP:       ipv4,
+			PublicIP6:      ipv6,
+			Planetary:      ygg,
+			MyceliumIPSeed: seed,
 		}
 
 		workerNumber, err := cmd.Flags().GetInt("workers-number")
@@ -113,18 +126,30 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		workersMycelium, err := cmd.Flags().GetBool("workers-mycelium")
+		if err != nil {
+			return err
+		}
 		var workers []workloads.K8sNode
 		for i := 0; i < workerNumber; i++ {
+			var seed []byte
+			if workersMycelium {
+				seed, err = workloads.RandomMyceliumIPSeed()
+				if err != nil {
+					log.Fatal().Err(err).Send()
+				}
+			}
 			workerName := fmt.Sprintf("worker%d", i)
 			worker := workloads.K8sNode{
-				Name:      workerName,
-				Flist:     k8sFlist,
-				CPU:       workersCPU,
-				Memory:    workersMemory * 1024,
-				DiskSize:  workersDisk,
-				PublicIP:  workersIPV4,
-				PublicIP6: workersIPV6,
-				Planetary: workersYgg,
+				Name:           workerName,
+				Flist:          k8sFlist,
+				CPU:            workersCPU,
+				Memory:         workersMemory * 1024,
+				DiskSize:       workersDisk,
+				PublicIP:       workersIPV4,
+				PublicIP6:      workersIPV6,
+				Planetary:      workersYgg,
+				MyceliumIPSeed: seed,
 			}
 			workers = append(workers, worker)
 		}
@@ -133,7 +158,8 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false)
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network), deployer.WithRMBTimeout(100))
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -196,7 +222,10 @@ var deployKubernetesCmd = &cobra.Command{
 			log.Info().Msgf("master ipv6: %s", cluster.Master.ComputedIP6)
 		}
 		if ygg {
-			log.Info().Msgf("master yggdrasil ip: %s", cluster.Master.YggIP)
+			log.Info().Msgf("master planetary ip: %s", cluster.Master.PlanetaryIP)
+		}
+		if mycelium {
+			log.Info().Msgf("master mycelium ip: %s", cluster.Master.MyceliumIP)
 		}
 
 		for _, worker := range cluster.Workers {
@@ -214,7 +243,12 @@ var deployKubernetesCmd = &cobra.Command{
 		}
 		if workersYgg {
 			for _, worker := range cluster.Workers {
-				log.Info().Msgf("%s yggdrasil ip: %s", worker.Name, worker.YggIP)
+				log.Info().Msgf("%s planetary ip: %s", worker.Name, worker.PlanetaryIP)
+			}
+		}
+		if workersMycelium {
+			for _, worker := range cluster.Workers {
+				log.Info().Msgf("%s mycelium ip: %s", worker.Name, worker.MyceliumIP)
 			}
 		}
 		return nil
@@ -251,8 +285,11 @@ func init() {
 	deployKubernetesCmd.Flags().Bool("workers-ipv4", false, "assign public ipv4 for workers")
 	deployKubernetesCmd.Flags().Bool("workers-ipv6", false, "assign public ipv6 for workers")
 	deployKubernetesCmd.Flags().Bool("workers-ygg", true, "assign yggdrasil ip for workers")
+	deployKubernetesCmd.Flags().Bool("workers-mycelium", true, "assign mycelium ip for workers")
 
 	deployKubernetesCmd.Flags().Bool("ipv4", false, "assign public ipv4 for master")
 	deployKubernetesCmd.Flags().Bool("ipv6", false, "assign public ipv6 for master")
 	deployKubernetesCmd.Flags().Bool("ygg", true, "assign yggdrasil ip for master")
+	deployKubernetesCmd.Flags().Bool("mycelium", true, "assign mycelium ip for master")
+
 }

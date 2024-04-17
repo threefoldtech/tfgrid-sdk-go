@@ -1,16 +1,17 @@
-FROM golang:1.19-alpine
+FROM golang:1.21-alpine as builder
 
-# Create app directory
-WORKDIR /usr/src/app
+WORKDIR /src/activation-service
 
-# Install app packages
-COPY . .
-RUN apk add --update gcc musl-dev
-RUN go mod download
+COPY /activation-service .
 
-# Build app
-RUN go build -o /activation-service
+RUN go build -o bin/activation-service main.go
+
+FROM alpine:3.19
+
+WORKDIR /app
+
+COPY --from=builder /src/activation-service/bin/activation-service .
+
+ENTRYPOINT [ "./activation-service" ]
 
 EXPOSE 3000
-
-CMD [ "/activation-service" ]

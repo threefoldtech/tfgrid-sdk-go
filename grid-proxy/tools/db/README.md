@@ -1,30 +1,24 @@
-# DB for testing
-## Run postgresql container
-    
-  ```bash
-  docker run --rm --name postgres \
-    -e POSTGRES_USER=postgres \
-    -e POSTGRES_PASSWORD=postgres \
-    -e POSTGRES_DB=tfgrid-graphql \
-    -p 5432:5432 -d postgres
-  ```
+# Data Preparation for Testing
 
-## Create the DB
-you can either Generate a db with relevant schema to test things locally quickly, or load a previously taken DB dump file:
+Starting the postgres container
 
-### Method 1: Generate a db with relevant schema using the db helper tool:
+```bash
+make db-start
+```
 
-    ```bash
-    cd tools/db/ && go run . \
-      --postgres-host 127.0.0.1 \
-      --postgres-db tfgrid-graphql \
-      --postgres-password postgres \
-      --postgres-user postgres \
-      --reset \
-    ```
+Populate the database using one of the two available methods:
+Generate a mock database:
 
-### Method 2: Fill the DB from a Production db dump file, for example if you have `dump.sql` file, you can run: 
+`./schema.sql` is a database schema taken from graphql processor on dev net, it creates all the needed tables for the database.
 
-    ```bash
-    psql -h 127.0.0.1 -U postgres -d tfgrid-graphql  < dump.sql
-    ```
+the `data-crafter` have a various of methods to create/update/delete the main tables on the database. it can be customized by the params passed to the `NewCrafter`.
+
+```bash
+make db-fill
+```
+
+Or use a data dump file (contains both schema and data)
+
+```bash
+make db-dump p=<path-to-dump.sql-file>
+```

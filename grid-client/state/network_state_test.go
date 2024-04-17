@@ -10,7 +10,6 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
-var contractID uint64 = 100
 var nodeID uint32 = 10
 
 func constructTestNetwork() workloads.ZNet {
@@ -30,24 +29,19 @@ func TestNetworkState(t *testing.T) {
 	net := constructTestNetwork()
 	nodeID = net.Nodes[0]
 
-	networkState := NetworkState{net.Name: Network{
-		Subnets:               map[uint32]string{nodeID: net.IPRange.String()},
-		NodeDeploymentHostIDs: map[uint32]DeploymentHostIDs{nodeID: map[uint64][]byte{contractID: {}}},
-	}}
+	networkState := NetworkState{
+		State: map[string]Network{
+			net.Name: {Subnets: map[uint32]string{nodeID: net.IPRange.String()}},
+		},
+	}
+
 	network := networkState.GetNetwork(net.Name)
 
 	assert.Equal(t, network.GetNodeSubnet(nodeID), net.IPRange.String())
-	assert.Empty(t, network.GetDeploymentHostIDs(nodeID, contractID))
 
 	network.SetNodeSubnet(nodeID, "10.1.1.0/24")
 	assert.Equal(t, network.GetNodeSubnet(nodeID), "10.1.1.0/24")
 
-	network.SetDeploymentHostIDs(nodeID, contractID, []byte{1, 2, 3})
-	assert.Equal(t, network.GetDeploymentHostIDs(nodeID, contractID), []byte{1, 2, 3})
-
 	network.deleteNodeSubnet(nodeID)
 	assert.Empty(t, network.GetNodeSubnet(nodeID))
-
-	network.DeleteDeploymentHostIDs(nodeID, contractID)
-	assert.Empty(t, network.GetDeploymentHostIDs(nodeID, contractID))
 }

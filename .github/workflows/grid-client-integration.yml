@@ -1,33 +1,31 @@
-name: Grid3 Go Integration tests
+name: Grid client integration tests
 
 defaults:
   run:
     working-directory: grid-client
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: 0 3 * * *
   workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        network: ["dev", "qa", "test", "main"]
+        network: [dev, qa, test, main]
 
     steps:
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: "1.21"
         id: go
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
-        with:
-          submodules: "true"
 
       - name: Get dependencies
         run: |
@@ -43,15 +41,20 @@ jobs:
           gpg --export 569130E8CA20FBC4CB3FDE555898470A764B32C9 | sudo apt-key add -
           echo 'deb http://neilalexander.s3.dualstack.eu-west-2.amazonaws.com/deb/ debian yggdrasil' | sudo tee /etc/apt/sources.list.d/yggdrasil.list
           sudo apt-get update
-          wget https://github.com/yggdrasil-network/yggdrasil-go/releases/download/v0.4.7/yggdrasil-0.4.7-amd64.deb
-          sudo dpkg -i yggdrasil-0.4.7-amd64.deb
+          sudo apt-get install yggdrasil
           sudo systemctl enable yggdrasil
-          PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
-          sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil.conf
+          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
+          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
+          sudo systemctl stop yggdrasil
           sudo systemctl start yggdrasil
 
       - name: Test
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
-        run: go test -v ./integration_tests
+        # run: make integration
+        run: |
+          for test in $(go run scripts/scrap_tests.go)
+          do
+            go test -v ./integration_tests -run $test
+          done

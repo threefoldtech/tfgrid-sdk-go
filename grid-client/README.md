@@ -1,6 +1,6 @@
 # Grid3_client_go
 
-<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-64.8%25-brightgreen.svg?longCache=true&style=flat)</a> [![Testing](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid-client-test.yml/badge.svg?branch=development_mono)](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/grid-client-test.yml)
+<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-64.8%25-brightgreen.svg?longCache=true&style=flat)</a>
 
 Grid3_client_go is a go client created to interact with threefold grid. It should manage CRUD operations for deployments on the grid.
 
@@ -18,8 +18,15 @@ import (
     "github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
+
+// define customized plugin opts
+opts := []deloyer.PluginOpt{
+  deployer.WithProxyURL("https://gridproxy.bknd1.ninja.tf"),
+  deployer.WithNetwork("dev"),
+}
+
 // Create Threefold plugin client
-tfPluginClient, err := deployer.NewTFPluginClient(mnemonics, "sr25519", network, "", "", true, true)
+tfPlugin, err := deployer.NewTFPluginClient(mnemonics, opts...)
 
 // Get a free node to deploy
 nodeID := 14

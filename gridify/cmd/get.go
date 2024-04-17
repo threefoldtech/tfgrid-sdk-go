@@ -17,7 +17,7 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		err = command.Get(debug)
+		err = command.Get(cmd.Context(), debug)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

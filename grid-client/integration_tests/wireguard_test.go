@@ -3,102 +3,98 @@ package integration
 
 import (
 	"context"
-	"net"
+	"fmt"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"golang.org/x/sync/errgroup"
 )
 
 func TestWG(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+	if err != nil {
+		t.Skipf("plugin creation failed: %v", err)
+	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	nodes, err := deployer.FilterNodes(ctx, tfPluginClient, nodeFilter, nil, nil, []uint64{minRootfs})
+	nodes, err := deployer.FilterNodes(
+		context.Background(),
+		tfPluginClient,
+		generateNodeFilter(),
+		nil,
+		nil,
+		[]uint64{*convertGBToBytes(minRootfs)},
+		1,
+	)
 	if err != nil {
-		t.Skip("no available nodes found")
+		t.Skipf("no available nodes found: %v", err)
 	}
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := workloads.ZNet{
-		Name:        "WGNetwork",
-		Description: "network for testing",
-		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
-			IP:   net.IPv4(10, 20, 0, 0),
-			Mask: net.CIDRMask(16, 32),
-		}),
-		AddWGAccess: true,
-	}
+	network := generateBasicNetwork([]uint32{nodeID})
+	network.AddWGAccess = true
 
 	vm := workloads.VM{
-		Name:       "vm",
-		Flist:      "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		CPU:        2,
-		Memory:     1024,
-		Entrypoint: "/sbin/zinit init",
+		Name:        "vm",
+		NetworkName: network.Name,
+		CPU:         minCPU,
+		Memory:      int(minMemory) * 1024,
+		RootfsSize:  int(minRootfs) * 1024,
+		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		Entrypoint:  "/sbin/zinit init",
 		EnvVars: map[string]string{
 			"SSH_KEY": publicKey,
 		},
-		NetworkName: network.Name,
 	}
 
-	err = tfPluginClient.NetworkDeployer.Deploy(ctx, &network)
-	assert.NoError(t, err)
+	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
+	require.NoError(t, err)
 
-	defer func() {
-		err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
-		assert.NoError(t, err)
-	}()
+	t.Cleanup(func() {
+		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
+		require.NoError(t, err)
+	})
 
-	dl := workloads.NewDeployment("vm", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
-	err = tfPluginClient.DeploymentDeployer.Deploy(ctx, &dl)
-	assert.NoError(t, err)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
+	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
+	require.NoError(t, err)
 
-	defer func() {
-		err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
-		assert.NoError(t, err)
-	}()
+	t.Cleanup(func() {
+		err = tfPluginClient.DeploymentDeployer.Cancel(context.Background(), &dl)
+		require.NoError(t, err)
+	})
 
-	v, err := tfPluginClient.State.LoadVMFromGrid(nodeID, vm.Name, dl.Name)
-	assert.NoError(t, err)
+	v, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm.Name, dl.Name)
+	require.NoError(t, err)
 
 	// wireguard
-	n, err := tfPluginClient.State.LoadNetworkFromGrid(dl.NetworkName)
-	assert.NoError(t, err)
+	n, err := tfPluginClient.State.LoadNetworkFromGrid(context.Background(), dl.NetworkName)
+	require.NoError(t, err)
 
 	wgConfig := n.AccessWGConfig
-	assert.NotEmpty(t, wgConfig)
+	require.NotEmpty(t, wgConfig)
 
 	tempDir := t.TempDir()
 	conf, err := UpWg(wgConfig, tempDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	defer func() {
+	t.Cleanup(func() {
 		_, err := DownWG(conf)
-		assert.NoError(t, err)
-	}()
+		require.NoError(t, err)
+	})
 
-	assert.True(t, TestConnection(v.IP, "22"))
-
-	err = AreWgIPsReachable(wgConfig, []string{v.IP}, privateKey)
-	assert.NoError(t, err)
+	require.True(t, CheckConnection(v.IP, "22"))
+	require.NoError(t, AreWgIPsReachable(wgConfig, []string{v.IP}, privateKey))
 }
 
 // UpWg used for setting up the wireguard interface

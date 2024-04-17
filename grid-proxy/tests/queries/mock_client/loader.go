@@ -2,9 +2,13 @@ package mock
 
 import (
 	"database/sql"
+	"encoding/json"
 	"math"
+	"strings"
 
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"gorm.io/gorm"
 )
 
 const deleted = "Deleted"
@@ -17,7 +21,7 @@ type DBData struct {
 	NodeUsedResources  map[uint64]NodeResourcesTotal
 	NodeRentedBy       map[uint64]uint64
 	NodeRentContractID map[uint64]uint64
-	FarmHasRentedNode  map[uint64]bool
+	FarmHasRentedNode  map[uint64]map[uint64]bool
 
 	Nodes               map[uint64]Node
 	NodeTotalResources  map[uint64]NodeResourcesTotal
@@ -29,64 +33,27 @@ type DBData struct {
 	RentContracts       map[uint64]RentContract
 	NameContracts       map[uint64]NameContract
 	Billings            map[uint64][]ContractBillReport
+	BillReports         uint32
 	ContractResources   map[string]ContractResources
 	NonDeletedContracts map[uint64][]uint64
-	GPUs                map[uint64][]NodeGPU
-	DB                  *sql.DB
+	GPUs                map[uint32][]types.NodeGPU
+	Regions             map[string]string
+	Locations           map[string]Location
+	HealthReports       map[uint32]bool
+	DMIs                map[uint32]types.Dmi
+	Speeds              map[uint32]types.Speed
+	PricingPolicies     map[uint]PricingPolicy
+
+	DB *sql.DB
 }
 
-func loadNodes(db *sql.DB, data *DBData) error {
-	rows, err := db.Query(`
-	SELECT
-		COALESCE(id, ''),
-		COALESCE(grid_version, 0),
-		COALESCE(node_id, 0),
-		COALESCE(farm_id, 0),
-		COALESCE(twin_id, 0),
-		COALESCE(country, ''),
-		COALESCE(city, ''),
-		COALESCE(uptime, 0),
-		COALESCE(created, 0),
-		COALESCE(farming_policy_id, 0),
-		COALESCE(certification, ''),
-		COALESCE(secure, false),
-		COALESCE(virtualized, false),
-		COALESCE(serial_number, ''),
-		COALESCE(created_at, 0),
-		COALESCE(updated_at, 0),
-		COALESCE(location_id, ''),
-		COALESCE(extra_fee, 0),
-		power
-	FROM
-		node;`)
+func loadNodes(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
+	var nodes []Node
+	err := gormDB.Table("node").Scan(&nodes).Error
 	if err != nil {
 		return err
 	}
-	for rows.Next() {
-		var node Node
-		if err := rows.Scan(
-			&node.ID,
-			&node.GridVersion,
-			&node.NodeID,
-			&node.FarmID,
-			&node.TwinID,
-			&node.Country,
-			&node.City,
-			&node.Uptime,
-			&node.Created,
-			&node.FarmingPolicyID,
-			&node.Certification,
-			&node.Secure,
-			&node.Virtualized,
-			&node.SerialNumber,
-			&node.CreatedAt,
-			&node.UpdatedAt,
-			&node.LocationID,
-			&node.ExtraFee,
-			&node.Power,
-		); err != nil {
-			return err
-		}
+	for _, node := range nodes {
 		data.Nodes[node.NodeID] = node
 		data.NodeIDMap[node.ID] = node.NodeID
 	}
@@ -98,7 +65,7 @@ func calcNodesUsedResources(data *DBData) error {
 	for _, node := range data.Nodes {
 		used := NodeResourcesTotal{
 			MRU: uint64(2 * gridtypes.Gigabyte),
-			SRU: uint64(100 * gridtypes.Gigabyte),
+			SRU: uint64(20 * gridtypes.Gigabyte),
 		}
 		tenpercent := uint64(math.Round(float64(data.NodeTotalResources[node.NodeID].MRU) / 10))
 		if used.MRU < tenpercent {
@@ -131,7 +98,7 @@ func calcRentInfo(data *DBData) error {
 		data.NodeRentedBy[contract.NodeID] = contract.TwinID
 		data.NodeRentContractID[contract.NodeID] = contract.ContractID
 		farmID := data.Nodes[contract.NodeID].FarmID
-		data.FarmHasRentedNode[farmID] = true
+		data.FarmHasRentedNode[farmID][contract.TwinID] = true
 	}
 	return nil
 }
@@ -211,6 +178,7 @@ func loadFarms(db *sql.DB, data *DBData) error {
 		}
 		data.Farms[farm.FarmID] = farm
 		data.FarmIDMap[farm.ID] = farm.FarmID
+		data.FarmHasRentedNode[farm.FarmID] = map[uint64]bool{}
 	}
 	return nil
 }
@@ -474,7 +442,76 @@ func loadContractBillingReports(db *sql.DB, data *DBData) error {
 			return err
 		}
 		data.Billings[contractBillReport.ContractID] = append(data.Billings[contractBillReport.ContractID], contractBillReport)
+		data.BillReports++
 	}
+	return nil
+}
+
+func loadCountries(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT
+		COALESCE(id, ''),
+		COALESCE(country_id, 0),
+		COALESCE(code, ''),
+		COALESCE(name, ''),
+		COALESCE(region, ''),
+		COALESCE(subregion, ''),
+		COALESCE(lat, ''),
+		COALESCE(long, '')
+	FROM
+		country;
+	`)
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		var country Country
+		if err := rows.Scan(
+			&country.ID,
+			&country.CountryID,
+			&country.Code,
+			&country.Name,
+			&country.Region,
+			&country.Subregion,
+			&country.Lat,
+			&country.Long,
+		); err != nil {
+			return err
+		}
+		data.Regions[strings.ToLower(country.Name)] = country.Region
+	}
+
+	return nil
+}
+
+func loadLocations(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT 
+		COALESCE(id, ''),
+		CASE WHEN longitude = '' THEN NULL ELSE longitude END,
+		CASE WHEN latitude = '' THEN NULL ELSE latitude END
+	FROM
+		location;
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		var location Location
+		if err := rows.Scan(
+			&location.ID,
+			&location.Longitude,
+			&location.Latitude,
+		); err != nil {
+			return err
+		}
+
+		data.Locations[location.ID] = location
+	}
+
 	return nil
 }
 
@@ -492,7 +529,7 @@ func loadNodeGPUs(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var gpu NodeGPU
+		var gpu types.NodeGPU
 		if err := rows.Scan(
 			&gpu.ID,
 			&gpu.Contract,
@@ -507,7 +544,126 @@ func loadNodeGPUs(db *sql.DB, data *DBData) error {
 	return nil
 }
 
-func Load(db *sql.DB) (DBData, error) {
+func loadHealthReports(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT
+		COALESCE(node_twin_id, 0),
+		COALESCE(healthy, false)
+	FROM
+		health_report;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var health types.HealthReport
+		if err := rows.Scan(
+			&health.NodeTwinId,
+			&health.Healthy,
+		); err != nil {
+			return err
+		}
+		data.HealthReports[health.NodeTwinId] = health.Healthy
+	}
+
+	return nil
+}
+
+func loadDMIs(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
+	var dmis []types.Dmi
+	err := gormDB.Table("dmi").Scan(&dmis).Error
+	if err != nil {
+		return err
+	}
+	for _, dmi := range dmis {
+		twinId := dmi.NodeTwinId
+		dmi.NodeTwinId = 0 // to omit it as empty, cleaner response
+		data.DMIs[twinId] = dmi
+	}
+
+	return nil
+}
+
+func loadSpeeds(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT 
+		node_twin_id,
+		upload,
+		download
+	FROM 
+		speed;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var speed types.Speed
+		if err := rows.Scan(
+			&speed.NodeTwinId,
+			&speed.Upload,
+			&speed.Download,
+		); err != nil {
+			return err
+		}
+		data.Speeds[speed.NodeTwinId] = speed
+	}
+	return nil
+}
+
+func loadPricingPolicies(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+		SELECT
+			id,
+			grid_version,
+			pricing_policy_id,
+			name,
+			su,
+			cu,
+			nu,
+			ipu,
+			foundation_account,
+			certified_sales_account,
+			dedicated_node_discount
+		FROM
+			pricing_policy;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var policy PricingPolicy
+		var su, cu, nu, ipu string
+		if err := rows.Scan(
+			&policy.ID,
+			&policy.GridVersion,
+			&policy.PricingPolicyID,
+			&policy.Name,
+			&su,
+			&cu,
+			&nu,
+			&ipu,
+			&policy.FoundationAccount,
+			&policy.CertifiedSalesAccount,
+			&policy.DedicatedNodeDiscount,
+		); err != nil {
+			return err
+		}
+
+		policy.SU = parseUnit(su)
+		policy.CU = parseUnit(cu)
+		policy.NU = parseUnit(nu)
+		policy.IPU = parseUnit(ipu)
+
+		data.PricingPolicies[policy.ID] = policy
+	}
+
+	return nil
+}
+
+func parseUnit(unitString string) Unit {
+	var unit Unit
+	_ = json.Unmarshal([]byte(unitString), &unit)
+	return unit
+}
+
+func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 	data := DBData{
 		NodeIDMap:           make(map[string]uint64),
 		FarmIDMap:           make(map[string]uint64),
@@ -524,15 +680,22 @@ func Load(db *sql.DB) (DBData, error) {
 		NodeRentedBy:        make(map[uint64]uint64),
 		NodeRentContractID:  make(map[uint64]uint64),
 		Billings:            make(map[uint64][]ContractBillReport),
+		BillReports:         0,
 		ContractResources:   make(map[string]ContractResources),
 		NodeTotalResources:  make(map[uint64]NodeResourcesTotal),
 		NodeUsedResources:   make(map[uint64]NodeResourcesTotal),
 		NonDeletedContracts: make(map[uint64][]uint64),
-		GPUs:                make(map[uint64][]NodeGPU),
-		FarmHasRentedNode:   make(map[uint64]bool),
+		GPUs:                make(map[uint32][]types.NodeGPU),
+		FarmHasRentedNode:   make(map[uint64]map[uint64]bool),
+		Regions:             make(map[string]string),
+		Locations:           make(map[string]Location),
+		HealthReports:       make(map[uint32]bool),
+		DMIs:                make(map[uint32]types.Dmi),
+		Speeds:              make(map[uint32]types.Speed),
+		PricingPolicies:     make(map[uint]PricingPolicy),
 		DB:                  db,
 	}
-	if err := loadNodes(db, &data); err != nil {
+	if err := loadNodes(db, gormDB, &data); err != nil {
 		return data, err
 	}
 	if err := loadFarms(db, &data); err != nil {
@@ -566,6 +729,24 @@ func Load(db *sql.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadNodeGPUs(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadCountries(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadLocations(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadHealthReports(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadDMIs(db, gormDB, &data); err != nil {
+		return data, err
+	}
+	if err := loadSpeeds(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadPricingPolicies(db, &data); err != nil {
 		return data, err
 	}
 	if err := calcNodesUsedResources(&data); err != nil {

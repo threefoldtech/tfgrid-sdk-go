@@ -1,5 +1,7 @@
 # TFGrid Contract Monitor Bot
 
+<a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-11%25-brightgreen.svg?longCache=true&style=flat)</a>
+
 ## Overview
 
 The Contract Monitor Bot is a tool designed to monitor user contracts within ThreeFold Grid.
@@ -49,7 +51,7 @@ Ensure that you have installed:
 
      ```bash
         docker build -t contract-mon -f Dockerfile ../
-        docker run -it contract-mon
+        docker run -v $(pwd)/.env:/.env -it contract-mon -e /.env
         ```
 
 ## Create a bot
