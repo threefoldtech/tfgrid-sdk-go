@@ -50,6 +50,7 @@ type Node struct {
 	Dmi               Dmi          `json:"dmi"`
 	Speed             Speed        `json:"speed"`
 	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
+	_                 string       `sort:"free_cru"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
