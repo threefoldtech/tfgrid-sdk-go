@@ -717,6 +717,7 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		HealthReports:       make(map[uint32]bool),
 		DMIs:                make(map[uint32]types.Dmi),
 		Speeds:              make(map[uint32]types.Speed),
+		NodeIpv6:            make(map[uint32]bool),
 		PricingPolicies:     make(map[uint]PricingPolicy),
 		DB:                  db,
 	}
