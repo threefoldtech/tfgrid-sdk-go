@@ -24,8 +24,8 @@ func init() {
 	encoder = schema.NewEncoder()
 
 	encoder.RegisterEncoder([]string{}, func(value reflect.Value) string {
-		if value.Kind() == reflect.Slice && value.Type().Elem().Kind() == reflect.String {
-			slice := value.Interface().([]string)
+		slice, ok := value.Interface().([]string)
+		if ok {
 			return strings.Join(slice, ",")
 		}
 		return ""
