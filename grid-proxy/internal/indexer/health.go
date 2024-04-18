@@ -33,11 +33,7 @@ func (w *HealthWork) Finders() map[string]time.Duration {
 
 func (w *HealthWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.HealthReport, error) {
 	var diagnostics diagnostics.Diagnostics
-	err := callNode(ctx, rmb, healthCallCmd, nil, twinId, &diagnostics)
-	if err != nil {
-		return []types.HealthReport{}, err
-	}
-
+	_ = callNode(ctx, rmb, healthCallCmd, nil, twinId, &diagnostics)
 	res := getHealthReport(diagnostics, twinId)
 	return []types.HealthReport{res}, nil
 }
