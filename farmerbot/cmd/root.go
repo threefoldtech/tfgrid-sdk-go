@@ -38,6 +38,7 @@ func Execute() {
 	farmerBotCmd.AddCommand(startCmd)
 	startCmd.AddCommand(startAllCmd)
 
+	log.Info().Msgf("Welcome to farmerbot (%v), Farmerbot is starting up...", version.Version)
 	err := farmerBotCmd.Execute()
 	if err != nil {
 		log.Fatal().Err(err).Send()

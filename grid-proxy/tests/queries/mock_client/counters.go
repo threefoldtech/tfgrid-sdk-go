@@ -35,7 +35,7 @@ func (g *GridProxyMockClient) Stats(ctx context.Context, filter types.StatsFilte
 					res.Gateways++
 				}
 			}
-			if _, ok := g.data.GPUs[node.TwinID]; ok {
+			if _, ok := g.data.GPUs[uint32(node.TwinID)]; ok {
 				gpus++
 			}
 			if isDedicatedNode(g.data, node) {

@@ -6,7 +6,9 @@ import (
 	"math"
 	"strings"
 
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"gorm.io/gorm"
 )
 
 const deleted = "Deleted"
@@ -34,66 +36,24 @@ type DBData struct {
 	BillReports         uint32
 	ContractResources   map[string]ContractResources
 	NonDeletedContracts map[uint64][]uint64
-	GPUs                map[uint64][]NodeGPU
+	GPUs                map[uint32][]types.NodeGPU
 	Regions             map[string]string
 	Locations           map[string]Location
-	HealthReports       map[uint64]bool
+	HealthReports       map[uint32]bool
+	DMIs                map[uint32]types.Dmi
+	Speeds              map[uint32]types.Speed
 	PricingPolicies     map[uint]PricingPolicy
-	DB                  *sql.DB
+
+	DB *sql.DB
 }
 
-func loadNodes(db *sql.DB, data *DBData) error {
-	rows, err := db.Query(`
-	SELECT
-		COALESCE(id, ''),
-		COALESCE(grid_version, 0),
-		COALESCE(node_id, 0),
-		COALESCE(farm_id, 0),
-		COALESCE(twin_id, 0),
-		COALESCE(country, ''),
-		COALESCE(city, ''),
-		COALESCE(uptime, 0),
-		COALESCE(created, 0),
-		COALESCE(farming_policy_id, 0),
-		COALESCE(certification, ''),
-		COALESCE(secure, false),
-		COALESCE(virtualized, false),
-		COALESCE(serial_number, ''),
-		COALESCE(created_at, 0),
-		COALESCE(updated_at, 0),
-		COALESCE(location_id, ''),
-		COALESCE(extra_fee, 0),
-		power
-	FROM
-		node;`)
+func loadNodes(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
+	var nodes []Node
+	err := gormDB.Table("node").Scan(&nodes).Error
 	if err != nil {
 		return err
 	}
-	for rows.Next() {
-		var node Node
-		if err := rows.Scan(
-			&node.ID,
-			&node.GridVersion,
-			&node.NodeID,
-			&node.FarmID,
-			&node.TwinID,
-			&node.Country,
-			&node.City,
-			&node.Uptime,
-			&node.Created,
-			&node.FarmingPolicyID,
-			&node.Certification,
-			&node.Secure,
-			&node.Virtualized,
-			&node.SerialNumber,
-			&node.CreatedAt,
-			&node.UpdatedAt,
-			&node.LocationID,
-			&node.ExtraFee,
-			&node.Power,
-		); err != nil {
-			return err
-		}
+	for _, node := range nodes {
 		data.Nodes[node.NodeID] = node
 		data.NodeIDMap[node.ID] = node.NodeID
 	}
@@ -569,7 +529,7 @@ func loadNodeGPUs(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var gpu NodeGPU
+		var gpu types.NodeGPU
 		if err := rows.Scan(
 			&gpu.ID,
 			&gpu.Contract,
@@ -595,7 +555,7 @@ func loadHealthReports(db *sql.DB, data *DBData) error {
 		return err
 	}
 	for rows.Next() {
-		var health HealthReport
+		var health types.HealthReport
 		if err := rows.Scan(
 			&health.NodeTwinId,
 			&health.Healthy,
@@ -605,6 +565,46 @@ func loadHealthReports(db *sql.DB, data *DBData) error {
 		data.HealthReports[health.NodeTwinId] = health.Healthy
 	}
 
+	return nil
+}
+
+func loadDMIs(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
+	var dmis []types.Dmi
+	err := gormDB.Table("dmi").Scan(&dmis).Error
+	if err != nil {
+		return err
+	}
+	for _, dmi := range dmis {
+		twinId := dmi.NodeTwinId
+		dmi.NodeTwinId = 0 // to omit it as empty, cleaner response
+		data.DMIs[twinId] = dmi
+	}
+
+	return nil
+}
+
+func loadSpeeds(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT 
+		node_twin_id,
+		upload,
+		download
+	FROM 
+		speed;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var speed types.Speed
+		if err := rows.Scan(
+			&speed.NodeTwinId,
+			&speed.Upload,
+			&speed.Download,
+		); err != nil {
+			return err
+		}
+		data.Speeds[speed.NodeTwinId] = speed
+	}
 	return nil
 }
 
@@ -663,7 +663,7 @@ func parseUnit(unitString string) Unit {
 	return unit
 }
 
-func Load(db *sql.DB) (DBData, error) {
+func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 	data := DBData{
 		NodeIDMap:           make(map[string]uint64),
 		FarmIDMap:           make(map[string]uint64),
@@ -685,15 +685,17 @@ func Load(db *sql.DB) (DBData, error) {
 		NodeTotalResources:  make(map[uint64]NodeResourcesTotal),
 		NodeUsedResources:   make(map[uint64]NodeResourcesTotal),
 		NonDeletedContracts: make(map[uint64][]uint64),
-		GPUs:                make(map[uint64][]NodeGPU),
+		GPUs:                make(map[uint32][]types.NodeGPU),
 		FarmHasRentedNode:   make(map[uint64]map[uint64]bool),
 		Regions:             make(map[string]string),
 		Locations:           make(map[string]Location),
-		HealthReports:       make(map[uint64]bool),
+		HealthReports:       make(map[uint32]bool),
+		DMIs:                make(map[uint32]types.Dmi),
+		Speeds:              make(map[uint32]types.Speed),
 		PricingPolicies:     make(map[uint]PricingPolicy),
 		DB:                  db,
 	}
-	if err := loadNodes(db, &data); err != nil {
+	if err := loadNodes(db, gormDB, &data); err != nil {
 		return data, err
 	}
 	if err := loadFarms(db, &data); err != nil {
@@ -736,6 +738,12 @@ func Load(db *sql.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadHealthReports(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadDMIs(db, gormDB, &data); err != nil {
+		return data, err
+	}
+	if err := loadSpeeds(db, &data); err != nil {
 		return data, err
 	}
 	if err := loadPricingPolicies(db, &data); err != nil {

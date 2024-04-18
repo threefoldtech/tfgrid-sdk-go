@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 
 	_ "embed"
@@ -62,14 +60,6 @@ func NewPostgresDatabase(host string, port int, user, password, dbname string, m
 		return PostgresDatabase{}, errors.Wrap(err, "failed to configure DB connection")
 	}
 
-	err = gormDB.AutoMigrate(&NodeGPU{})
-	if err != nil {
-		return PostgresDatabase{}, errors.Wrap(err, "failed to migrate node_gpu table")
-	}
-	err = gormDB.AutoMigrate(&HealthReport{})
-	if err != nil {
-		return PostgresDatabase{}, errors.Wrap(err, "failed to migrate health_report table")
-	}
 	sql.SetMaxIdleConns(3)
 	sql.SetMaxOpenConns(maxConns)
 
@@ -87,7 +77,22 @@ func (d *PostgresDatabase) Close() error {
 }
 
 func (d *PostgresDatabase) Initialize() error {
-	return d.gormDB.Exec(setupFile).Error
+	err := d.gormDB.AutoMigrate(
+		&types.NodeGPU{},
+		&types.HealthReport{},
+		&types.Dmi{},
+		&types.Speed{},
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to migrate indexer tables")
+	}
+
+	err = d.gormDB.Exec(setupFile).Error
+	if err != nil {
+		return errors.Wrap(err, "failed to setup cache tables")
+	}
+
+	return nil
 }
 
 // GetStats returns aggregate info about the grid
@@ -134,54 +139,46 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 		Scan(&stats); res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get nodes total resources")
 	}
-	if res := d.gormDB.WithContext(ctx).Table("node").
-		Where(condition).Count(&stats.Nodes); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get node count")
-	}
-	if res := d.gormDB.WithContext(ctx).Table("node").
-		Where(condition).Distinct("country").Count(&stats.Countries); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get country count")
-	}
-	query := d.gormDB.WithContext(ctx).
-		Table("node").
-		Joins("RIGHT JOIN public_config ON node.id = public_config.node_id")
 
-	if res := query.Where(condition).Where("COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != ''").Count(&stats.AccessNodes); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get access node count")
+	if res := d.gormDB.WithContext(ctx).
+		Table("node").
+		Select(
+			"count(COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '') as access_nodes",
+			"count((COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '') AND COALESCE(public_config.domain, '') != '') as gateways",
+		).
+		Joins("RIGHT JOIN public_config ON node.id = public_config.node_id").
+		Where(condition).
+		Scan(&stats); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get public config")
 	}
-	if res := query.Where(condition).Where("COALESCE(public_config.domain, '') != '' AND (COALESCE(public_config.ipv4, '') != '' OR COALESCE(public_config.ipv6, '') != '')").Count(&stats.Gateways); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get gateway count")
-	}
+
 	var distribution []NodesDistribution
 	if res := d.gormDB.WithContext(ctx).Table("node").
 		Select("country, count(node_id) as nodes").Where(condition).Group("country").Scan(&distribution); res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get nodes distribution")
 	}
-	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).Where("EXISTS( select node_gpu.id FROM node_gpu WHERE node_gpu.node_twin_id = node.twin_id)").Count(&stats.GPUs); res.Error != nil {
-		return stats, errors.Wrap(res.Error, "couldn't get node with GPU count")
-	}
 	nodesDistribution := map[string]int64{}
 	for _, d := range distribution {
 		nodesDistribution[d.Country] = d.Nodes
+		stats.Nodes += d.Nodes
+		stats.Countries++
 	}
 	stats.NodesDistribution = nodesDistribution
 
-	nonDeletedNodeContracts := d.gormDB.Table("node_contract").
-		Select("DISTINCT ON (node_id) node_id, contract_id").
-		Where("state IN ('Created', 'GracePeriod')")
+	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
+		Joins("LEFT JOIN resources_cache ON resources_cache.node_id = node.node_id").
+		Where("node_gpu_count != 0").
+		Count(&stats.GPUs); res.Error != nil {
+		return stats, errors.Wrap(res.Error, "couldn't get node with GPU count")
+	}
 
 	res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
-		Joins(
-			"LEFT JOIN rent_contract ON rent_contract.state IN ('Created', 'GracePeriod') AND rent_contract.node_id = node.node_id",
-		).
-		Joins(
-			"LEFT JOIN (?) AS node_contract ON node_contract.node_id = node.node_id", nonDeletedNodeContracts,
-		).
-		Joins(
-			"LEFT JOIN farm ON node.farm_id = farm.farm_id",
-		).
+		Joins(`
+			LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id
+			LEFT JOIN farm ON node.farm_id = farm.farm_id
+		`).
 		Where(
-			"farm.dedicated_farm = true OR COALESCE(node_contract.contract_id, 0) = 0 OR COALESCE(rent_contract.contract_id, 0) != 0",
+			"farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0 OR resources_cache.renter is not null",
 		).
 		Count(&stats.DedicatedNodes)
 	if res.Error != nil {
@@ -189,17 +186,6 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 	}
 
 	return stats, nil
-}
-
-// Scan is a custom decoder for jsonb filed. executed while scanning the node.
-func (np *NodePower) Scan(value interface{}) error {
-	if value == nil {
-		return nil
-	}
-	if data, ok := value.([]byte); ok {
-		return json.Unmarshal(data, np)
-	}
-	return fmt.Errorf("failed to unmarshal NodePower")
 }
 
 // GetNode returns node info
@@ -304,6 +290,12 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.node_contracts_count",
 			"resources_cache.node_gpu_count AS num_gpu",
 			"health_report.healthy",
+			"resources_cache.bios",
+			"resources_cache.baseboard",
+			"resources_cache.memory",
+			"resources_cache.processor",
+			"resources_cache.upload_speed",
+			"resources_cache.download_speed",
 			calculatedDiscountColumn,
 		).
 		Joins(`
@@ -533,6 +525,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 
 	q = q.Where(condition)
 
+	if filter.NumGPU != nil {
+		q = q.Where("COALESCE(resources_cache.node_gpu_count, 0) >= ?", *filter.NumGPU)
+	}
 	if filter.Healthy != nil {
 		q = q.Where("health_report.healthy = ? ", *filter.Healthy)
 	}
@@ -650,7 +645,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 			}
 
 			if limit.SortBy == "status" {
-				q.Order(nodestatus.DecideNodeStatusOrdering(order))
+				q = q.Order(nodestatus.DecideNodeStatusOrdering(order))
+			} else if limit.SortBy == "free_cru" {
+				q = q.Order(fmt.Sprintf("total_cru-used_cru %s", order))
 			} else {
 				q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 			}
@@ -763,16 +760,21 @@ func (d *PostgresDatabase) contractTableQuery() *gorm.DB {
 	return d.gormDB.Table(contractTablesQuery).
 		Select(
 			"contracts.contract_id",
-			"twin_id",
+			"contracts.twin_id",
 			"state",
 			"created_at",
-			"name",
+			"contracts.name",
 			"node_id",
 			"deployment_data",
 			"deployment_hash",
 			"number_of_public_i_ps as number_of_public_ips",
 			"type",
-		)
+			"farm.name as farm_name",
+			"farm.farm_id",
+		).
+		Joins(`LEFT JOIN farm ON farm.farm_id = (
+			SELECT farm_id from node WHERE node.node_id = contracts.node_id
+		)`)
 }
 
 // GetContracts returns contracts filtered and paginated
@@ -792,7 +794,7 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 		q = q.Where("LOWER(state) IN ?", states)
 	}
 	if filter.TwinID != nil {
-		q = q.Where("twin_id = ?", *filter.TwinID)
+		q = q.Where("contracts.twin_id = ?", *filter.TwinID)
 	}
 	if filter.ContractID != nil {
 		q = q.Where("contracts.contract_id = ?", *filter.ContractID)
@@ -804,13 +806,19 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 		q = q.Where("number_of_public_i_ps >= ?", *filter.NumberOfPublicIps)
 	}
 	if filter.Name != nil {
-		q = q.Where("name = ?", *filter.Name)
+		q = q.Where("contracts.name = ?", *filter.Name)
 	}
 	if filter.DeploymentData != nil {
 		q = q.Where("deployment_data = ?", *filter.DeploymentData)
 	}
 	if filter.DeploymentHash != nil {
 		q = q.Where("deployment_hash = ?", *filter.DeploymentHash)
+	}
+	if filter.FarmName != nil {
+		q = q.Where("farm.name ILIKE ?", *filter.FarmName)
+	}
+	if filter.FarmId != nil {
+		q = q.Where("farm.farm_id = ?", *filter.FarmId)
 	}
 
 	// Sorting
@@ -887,51 +895,4 @@ func (d *PostgresDatabase) GetContractBills(ctx context.Context, contractID uint
 	}
 
 	return bills, uint(count), nil
-}
-
-func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, nodesGPU []types.NodeGPU) error {
-	// For upsert operation
-	conflictClause := clause.OnConflict{
-		Columns:   []clause.Column{{Name: "id"}, {Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"vendor", "device", "contract"}),
-	}
-	err := p.gormDB.WithContext(ctx).Table("node_gpu").Clauses(conflictClause).Create(&nodesGPU).Error
-	if err != nil {
-		return fmt.Errorf("failed to upsert nodes GPU details: %w", err)
-	}
-	return nil
-}
-
-func (p *PostgresDatabase) DeleteOldGpus(ctx context.Context, nodeTwinIds []uint32) error {
-	err := p.gormDB.WithContext(ctx).Table("node_gpu").Where("node_twin_id IN (?)", nodeTwinIds).Delete(types.NodeGPU{}).Error
-	if err != nil {
-		return fmt.Errorf("failed to delete old gpus: %w", err)
-	}
-	return nil
-}
-
-func (p *PostgresDatabase) GetLastNodeTwinID(ctx context.Context) (int64, error) {
-	var node Node
-	err := p.gormDB.Table("node").Order("twin_id DESC").Limit(1).Scan(&node).Error
-	return node.TwinID, err
-}
-
-func (p *PostgresDatabase) GetNodeTwinIDsAfter(ctx context.Context, twinID int64) ([]int64, error) {
-	nodeTwinIDs := make([]int64, 0)
-	err := p.gormDB.Table("node").Select("twin_id").Where("twin_id > ?", twinID).Order("twin_id DESC").Scan(&nodeTwinIDs).Error
-	return nodeTwinIDs, err
-}
-
-func (p *PostgresDatabase) UpsertNodeHealth(ctx context.Context, healthReport types.HealthReport) error {
-	conflictClause := clause.OnConflict{
-		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"healthy"}),
-	}
-	return p.gormDB.WithContext(ctx).Table("health_report").Clauses(conflictClause).Create(&healthReport).Error
-}
-
-func (p *PostgresDatabase) GetHealthyNodeTwinIds(ctx context.Context) ([]int64, error) {
-	nodeTwinIDs := make([]int64, 0)
-	err := p.gormDB.Table("health_report").Select("node_twin_id").Where("healthy = true").Scan(&nodeTwinIDs).Error
-	return nodeTwinIDs, err
 }

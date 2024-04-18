@@ -13,6 +13,8 @@ type NodeContractDetails struct {
 	DeploymentData    string `json:"deployment_data"`
 	DeploymentHash    string `json:"deployment_hash"`
 	NumberOfPublicIps uint   `json:"number_of_public_ips"`
+	FarmName          string `json:"farm_name"`
+	FarmId            uint64 `json:"farm_id"`
 }
 
 // NameContractDetails name contract details
@@ -22,7 +24,9 @@ type NameContractDetails struct {
 
 // RentContractDetails rent contract details
 type RentContractDetails struct {
-	NodeID uint `json:"nodeId"`
+	NodeID   uint   `json:"nodeId"`
+	FarmName string `json:"farm_name"`
+	FarmId   uint64 `json:"farm_id"`
 }
 
 // Contract represents a contract and its details after decoding to one of Details structs.
@@ -63,4 +67,6 @@ type ContractFilter struct {
 	NumberOfPublicIps *uint64  `schema:"number_of_public_ips,omitempty"`
 	DeploymentData    *string  `schema:"deployment_data,omitempty"`
 	DeploymentHash    *string  `schema:"deployment_hash,omitempty"`
+	FarmName          *string  `schema:"farm_name,omitempty"`
+	FarmId            *uint64  `schema:"farm_id,omitempty"`
 }

@@ -83,7 +83,6 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		for node := range nodesOutput {
 			nodes = append(nodes, node)
 			if uint64(len(nodes)) == nodesCount {
-				log.Debug().Uint64("reached nodes page", limit.Page).Int("total pages", totalPagesCount).Send()
 				return nodes, nil
 			}
 		}
@@ -237,7 +236,7 @@ func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes 
 	}
 
 	for _, node := range nodes {
-		log.Printf("found a node with ipv4 public config: %d %s\n", node.NodeID, node.PublicConfig.Ipv4)
+		log.Printf("found a node with ipv4 public config: %d %s", node.NodeID, node.PublicConfig.Ipv4)
 		ip, _, err := net.ParseCIDR(node.PublicConfig.Ipv4)
 		if err != nil {
 			log.Printf("could not parse public ip %s of node %d: %s", node.PublicConfig.Ipv4, node.NodeID, err.Error())

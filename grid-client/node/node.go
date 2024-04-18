@@ -210,6 +210,17 @@ func (n *NodeClient) DeploymentDelete(ctx context.Context, contractID uint64) er
 	return n.bus.Call(ctx, n.nodeTwin, cmd, in, nil)
 }
 
+// DeploymentList gets all deployments for a twin
+func (n *NodeClient) DeploymentList(ctx context.Context) (dls []gridtypes.Deployment, err error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
+	const cmd = "zos.deployment.list"
+
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &dls)
+	return
+}
+
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
 func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, used gridtypes.Capacity, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
@@ -237,6 +248,24 @@ func (n *NodeClient) Statistics(ctx context.Context) (total gridtypes.Capacity, 
 	}
 
 	return result.Total, result.Used, nil
+}
+
+// NetworkListPrivateIPs list private ips reserved for a network
+func (n *NodeClient) NetworkListPrivateIPs(ctx context.Context, networkName string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
+	const cmd = "zos.network.list_private_ips"
+	var result []string
+	in := rmbCmdArgs{
+		"network_name": networkName,
+	}
+
+	if err := n.bus.Call(ctx, n.nodeTwin, cmd, in, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // NetworkListWGPorts return a list of all "taken" ports on the node. A new deployment
@@ -375,8 +404,16 @@ func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error)
 	return
 }
 
+// TaskResult holds the perf test result
+type TaskResult struct {
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Timestamp   uint64      `json:"timestamp"`
+	Result      interface{} `json:"result"`
+}
+
 // GetPerfTestsResults get all perf tests results
-func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result string, err error) {
+func (n *NodeClient) GetPerfTestResults(ctx context.Context) (result []TaskResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
@@ -387,12 +424,18 @@ func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result string, er
 }
 
 // GetPerfTestResult get a single perf test result
-func (n *NodeClient) GetPerfTestResult(ctx context.Context, testName string) (result string, err error) {
+func (n *NodeClient) GetPerfTestResult(ctx context.Context, testName string) (result TaskResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
+	payload := struct {
+		Name string
+	}{
+		Name: testName,
+	}
+
 	const cmd = "zos.perf.get"
-	err = n.bus.Call(ctx, n.nodeTwin, cmd, testName, &result)
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, payload, &result)
 
 	return
 }

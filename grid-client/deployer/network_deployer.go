@@ -432,16 +432,27 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet *workloads.ZNet) erro
 		newDeploymentsSolutionProvider[nodeID] = nil
 	}
 
+	oldDeployments := znet.NodeDeploymentID
 	znet.NodeDeploymentID, err = d.deployer.Deploy(ctx, znet.NodeDeploymentID, newDeployments, newDeploymentsSolutionProvider)
 
 	// update deployment and plugin state
 	// error is not returned immediately before updating state because of untracked failed deployments
-	for _, nodeID := range znet.Nodes {
+	nodesUsed := znet.Nodes
+	if znet.PublicNodeID != 0 && !slices.Contains(znet.Nodes, znet.PublicNodeID) {
+		nodesUsed = append(znet.Nodes, znet.PublicNodeID)
+	}
+
+	for _, nodeID := range nodesUsed {
 		if contractID, ok := znet.NodeDeploymentID[nodeID]; ok && contractID != 0 {
 			d.tfPluginClient.State.Networks.UpdateNetworkSubnets(znet.Name, znet.NodesIPRange)
-			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID]) {
-				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID])
-			}
+			d.tfPluginClient.State.StoreContractIDs(nodeID, contractID)
+		}
+	}
+
+	for nodeID, contract := range oldDeployments {
+		// public node is removed
+		if _, ok := znet.NodeDeploymentID[nodeID]; !ok {
+			d.tfPluginClient.State.RemoveContractIDs(nodeID, contract)
 		}
 	}
 
@@ -555,7 +566,12 @@ func (d *NetworkDeployer) BatchCancel(ctx context.Context, znets []*workloads.ZN
 func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *workloads.ZNet, dls map[uint32][]gridtypes.Deployment, updateMetadata bool) error {
 	znet.NodeDeploymentID = map[uint32]uint64{}
 
-	for _, nodeID := range znet.Nodes {
+	nodesUsed := znet.Nodes
+	if znet.PublicNodeID != 0 && !slices.Contains(znet.Nodes, znet.PublicNodeID) {
+		nodesUsed = append(znet.Nodes, znet.PublicNodeID)
+	}
+
+	for _, nodeID := range nodesUsed {
 		// assign NodeDeploymentIDs
 		for _, dl := range dls[nodeID] {
 			dlData, err := workloads.ParseDeploymentData(dl.Metadata)
@@ -569,9 +585,7 @@ func (d *NetworkDeployer) updateStateFromDeployments(ctx context.Context, znet *
 
 		if contractID, ok := znet.NodeDeploymentID[nodeID]; ok && contractID != 0 {
 			d.tfPluginClient.State.Networks.UpdateNetworkSubnets(znet.Name, znet.NodesIPRange)
-			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID]) {
-				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], znet.NodeDeploymentID[nodeID])
-			}
+			d.tfPluginClient.State.StoreContractIDs(nodeID, contractID)
 		}
 	}
 

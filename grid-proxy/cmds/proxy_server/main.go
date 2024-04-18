@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -16,9 +18,9 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/certmanager"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/gpuindexer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/healthindexer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/indexer"
 	logging "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"gorm.io/gorm/logger"
@@ -35,31 +37,35 @@ const (
 var GitCommit string
 
 type flags struct {
-	debug                       string
-	postgresHost                string
-	postgresPort                int
-	postgresDB                  string
-	postgresUser                string
-	postgresPassword            string
-	sqlLogLevel                 int
-	address                     string
-	version                     bool
-	nocert                      bool
-	domain                      string
-	TLSEmail                    string
-	CA                          string
-	certCacheDir                string
-	tfChainURL                  string
-	relayURL                    string
-	mnemonics                   string
-	gpuIndexerCheckIntervalMins uint
-	gpuIndexerBatchSize         uint
-	gpuIndexerResultWorkers     uint
-	gpuIndexerBatchWorkers      uint
-	maxPoolOpenConnections      int
-	// being 0 is helpful of making the data persistent while testing
-	healthIndexerWorkers  uint
-	healthIndexerInterval uint
+	debug                  string
+	postgresHost           string
+	postgresPort           int
+	postgresDB             string
+	postgresUser           string
+	postgresPassword       string
+	sqlLogLevel            int
+	address                string
+	version                bool
+	nocert                 bool
+	domain                 string
+	TLSEmail               string
+	CA                     string
+	certCacheDir           string
+	tfChainURL             string
+	relayURL               string
+	mnemonics              string
+	maxPoolOpenConnections int
+
+	noIndexer                 bool // true to stop the indexer, useful on running for testing
+	indexerUpserterBatchSize  uint
+	gpuIndexerIntervalMins    uint
+	gpuIndexerNumWorkers      uint
+	healthIndexerNumWorkers   uint
+	healthIndexerIntervalMins uint
+	dmiIndexerNumWorkers      uint
+	dmiIndexerIntervalMins    uint
+	speedIndexerNumWorkers    uint
+	speedIndexerIntervalMins  uint
 }
 
 func main() {
@@ -81,13 +87,18 @@ func main() {
 	flag.StringVar(&f.tfChainURL, "tfchain-url", DefaultTFChainURL, "TF chain url")
 	flag.StringVar(&f.relayURL, "relay-url", DefaultRelayURL, "RMB relay url")
 	flag.StringVar(&f.mnemonics, "mnemonics", "", "Dummy user mnemonics for relay calls")
-	flag.UintVar(&f.gpuIndexerCheckIntervalMins, "indexer-interval-min", 60, "the interval that the GPU indexer will run")
-	flag.UintVar(&f.gpuIndexerBatchSize, "indexer-batch-size", 20, "batch size for the GPU indexer worker batch")
-	flag.UintVar(&f.gpuIndexerResultWorkers, "indexer-results-workers", 2, "number of workers to process indexer GPU info")
-	flag.UintVar(&f.gpuIndexerBatchWorkers, "indexer-batch-workers", 2, "number of workers to process batch GPU info")
 	flag.IntVar(&f.maxPoolOpenConnections, "max-open-conns", 80, "max number of db connection pool open connections")
-	flag.UintVar(&f.healthIndexerWorkers, "health-indexer-workers", 100, "number of workers checking on node health")
-	flag.UintVar(&f.healthIndexerInterval, "health-indexer-interval", 5, "node health check interval in min")
+
+	flag.BoolVar(&f.noIndexer, "no-indexer", false, "do not start the indexer")
+	flag.UintVar(&f.indexerUpserterBatchSize, "indexer-upserter-batch-size", 20, "results batch size which collected before upserting")
+	flag.UintVar(&f.gpuIndexerIntervalMins, "gpu-indexer-interval", 60, "the interval that the GPU indexer will run")
+	flag.UintVar(&f.gpuIndexerNumWorkers, "gpu-indexer-workers", 100, "number of workers to process indexer GPU info")
+	flag.UintVar(&f.healthIndexerIntervalMins, "health-indexer-interval", 5, "node health check interval in min")
+	flag.UintVar(&f.healthIndexerNumWorkers, "health-indexer-workers", 100, "number of workers checking on node health")
+	flag.UintVar(&f.dmiIndexerIntervalMins, "dmi-indexer-interval", 60*24, "node dmi check interval in min")
+	flag.UintVar(&f.dmiIndexerNumWorkers, "dmi-indexer-workers", 1, "number of workers checking on node dmi")
+	flag.UintVar(&f.speedIndexerIntervalMins, "speed-indexer-interval", 5, "node speed check interval in min")
+	flag.UintVar(&f.speedIndexerNumWorkers, "speed-indexer-workers", 100, "number of workers checking on node speed")
 	flag.Parse()
 
 	// shows version and exit
@@ -112,11 +123,6 @@ func main() {
 
 	subManager := substrate.NewManager(f.tfChainURL)
 
-	relayRPCClient, err := createRPCRMBClient(ctx, f.relayURL, f.mnemonics, subManager)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create relay client")
-	}
-
 	db, err := db.NewPostgresDatabase(f.postgresHost, f.postgresPort, f.postgresUser, f.postgresPassword, f.postgresDB, f.maxPoolOpenConnections, logger.LogLevel(f.sqlLogLevel))
 	if err != nil {
 		log.Fatal().Err(err).Msg("couldn't get postgres client")
@@ -126,33 +132,19 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to initialize database")
 	}
 
-	dbClient := explorer.DBClient{
-		DB: &db,
-	}
-
-	indexer, err := gpuindexer.NewNodeGPUIndexer(
-		ctx,
-		f.relayURL,
-		f.mnemonics,
-		subManager, &db,
-		f.gpuIndexerCheckIntervalMins,
-		f.gpuIndexerBatchSize,
-		f.gpuIndexerResultWorkers,
-		f.gpuIndexerBatchWorkers,
-	)
+	dbClient := explorer.DBClient{DB: &db}
+	rpcRmbClient, err := createRPCRMBClient(ctx, f.relayURL, f.mnemonics, subManager)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create GPU indexer")
+		log.Fatal().Err(err).Msg("failed to create relay client")
 	}
 
-	indexer.Start(ctx)
-
-	healthIndexer, err := healthindexer.NewNodeHealthIndexer(ctx, &db, subManager, f.mnemonics, f.relayURL, f.healthIndexerWorkers, f.healthIndexerInterval)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create health indexer")
+	if !f.noIndexer {
+		startIndexers(ctx, f, &db, rpcRmbClient)
+	} else {
+		log.Info().Msg("Indexers did not start")
 	}
-	healthIndexer.Start(ctx)
 
-	s, err := createServer(f, dbClient, GitCommit, relayRPCClient)
+	s, err := createServer(f, dbClient, GitCommit, rpcRmbClient)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create mux server")
 	}
@@ -161,6 +153,44 @@ func main() {
 		log.Fatal().Msg(err.Error())
 	}
 
+}
+
+func startIndexers(ctx context.Context, f flags, db db.Database, rpcRmbClient *peer.RpcClient) {
+	gpuIdx := indexer.NewIndexer[types.NodeGPU](
+		indexer.NewGPUWork(f.gpuIndexerIntervalMins),
+		"GPU",
+		db,
+		rpcRmbClient,
+		f.gpuIndexerNumWorkers,
+	)
+	gpuIdx.Start(ctx)
+
+	healthIdx := indexer.NewIndexer[types.HealthReport](
+		indexer.NewHealthWork(f.healthIndexerIntervalMins),
+		"Health",
+		db,
+		rpcRmbClient,
+		f.healthIndexerNumWorkers,
+	)
+	healthIdx.Start(ctx)
+
+	dmiIdx := indexer.NewIndexer[types.Dmi](
+		indexer.NewDMIWork(f.dmiIndexerIntervalMins),
+		"DMI",
+		db,
+		rpcRmbClient,
+		f.dmiIndexerNumWorkers,
+	)
+	dmiIdx.Start(ctx)
+
+	speedIdx := indexer.NewIndexer[types.Speed](
+		indexer.NewSpeedWork(f.speedIndexerIntervalMins),
+		"Speed",
+		db,
+		rpcRmbClient,
+		f.speedIndexerNumWorkers,
+	)
+	speedIdx.Start(ctx)
 }
 
 func app(s *http.Server, f flags) error {
@@ -208,8 +238,8 @@ func app(s *http.Server, f flags) error {
 	return nil
 }
 
-func createRPCRMBClient(ctx context.Context, relayURL, mnemonics string, subManager substrate.Manager) (rmb.Client, error) {
-	sessionId := fmt.Sprintf("tfgrid_proxy-%d", os.Getpid())
+func createRPCRMBClient(ctx context.Context, relayURL, mnemonics string, subManager substrate.Manager) (*peer.RpcClient, error) {
+	sessionId := fmt.Sprintf("tfgrid-proxy-%s", strings.Split(uuid.NewString(), "-")[0])
 	client, err := peer.NewRpcClient(ctx, mnemonics, subManager, peer.WithRelay(relayURL), peer.WithSession(sessionId))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create direct RPC RMB client: %w", err)

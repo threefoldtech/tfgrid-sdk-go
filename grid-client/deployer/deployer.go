@@ -161,8 +161,6 @@ func (d *Deployer) deploy(
 			}
 
 			dl.ContractID = contractID
-			ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
-			defer cancel()
 			err = client.DeploymentDeploy(ctx, dl)
 
 			if err != nil {
@@ -245,9 +243,7 @@ func (d *Deployer) deploy(
 				return currentDeployments, errors.Wrap(err, "failed to update deployment")
 			}
 			dl.ContractID = contractID
-			sub, cancel := context.WithTimeout(ctx, 4*time.Minute)
-			defer cancel()
-			err = client.DeploymentUpdate(sub, dl)
+			err = client.DeploymentUpdate(ctx, dl)
 			if err != nil {
 				// cancel previous contract
 				return currentDeployments, errors.Wrapf(err, "failed to send deployment update request to node %d", node)
@@ -286,10 +282,7 @@ func (d *Deployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (m
 			return nil, errors.Wrapf(err, "failed to get a client for node %d", nodeID)
 		}
 
-		sub, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
-		dl, err := nc.DeploymentGet(sub, dlID)
+		dl, err := nc.DeploymentGet(ctx, dlID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
 		}
