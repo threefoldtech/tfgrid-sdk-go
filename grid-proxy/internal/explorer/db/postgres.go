@@ -785,8 +785,13 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 	if filter.Type != nil {
 		q = q.Where("type = ?", *filter.Type)
 	}
-	if filter.State != nil {
-		q = q.Where("state ILIKE ?", *filter.State)
+	if len(filter.State) != 0 {
+		states := []string{}
+		for _, s := range filter.State {
+			states = append(states, strings.ToLower(s))
+		}
+
+		q = q.Where("LOWER(state) IN ?", states)
 	}
 	if filter.TwinID != nil {
 		q = q.Where("contracts.twin_id = ?", *filter.TwinID)
