@@ -148,7 +148,15 @@ func calculateResourceUsage(nodes map[uint32]node) (uint64, uint64) {
 }
 
 func (f *FarmerBot) resourceUsageTooHigh(sub Substrate) error {
-	for nodeID, node := range f.nodes {
+	nodesKeys := make([]uint32, 0, len(f.nodes))
+	for k := range f.nodes {
+		nodesKeys = append(nodesKeys, k)
+	}
+
+	for i := 0; i < len(f.nodes); i++ {
+		nodeID := nodesKeys[i]
+		node := f.nodes[nodeID]
+
 		if node.powerState == off {
 			return f.powerOn(sub, nodeID)
 		}
@@ -180,8 +188,16 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 	newTotalResources := totalResources
 	nodesLeftOnline := len(onNodes)
 
+	// use keys to keep nodes order
+	nodesAllowedToShutdownKeys := make([]uint32, 0, len(nodesAllowedToShutdown))
+	for k := range nodesAllowedToShutdown {
+		nodesAllowedToShutdownKeys = append(nodesAllowedToShutdownKeys, k)
+	}
+
 	// shutdown a node if there is more than an unused node (aka keep at least one node online)
-	for _, node := range nodesAllowedToShutdown {
+	for i := 0; i < len(nodesAllowedToShutdown); i++ {
+		node := nodesAllowedToShutdown[nodesAllowedToShutdownKeys[i]]
+
 		if nodesLeftOnline == 1 {
 			break
 		}

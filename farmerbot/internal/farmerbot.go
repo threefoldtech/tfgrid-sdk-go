@@ -265,6 +265,8 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 		}
 	}
 
+	farmNodes = addPriorityToNodes(f.state.config.PriorityNodes, farmNodes)
+
 	for _, nodeID := range farmNodes {
 		if slices.Contains(f.state.config.ExcludedNodes, nodeID) {
 			continue
@@ -326,6 +328,31 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 	log.Debug().Msgf("Nodes report\n%v", f.report())
 
 	return nil
+}
+
+func addPriorityToNodes(priorityNodes, farmNodes []uint32) []uint32 {
+	updatedPriorityNodes := make([]uint32, len(priorityNodes))
+	copy(updatedPriorityNodes, priorityNodes)
+
+	// remove nodes that don't exist in farm from priority nodes
+	for i := 0; i < len(updatedPriorityNodes); i++ {
+		nodeID := updatedPriorityNodes[i]
+		if !slices.Contains(farmNodes, nodeID) {
+			updatedPriorityNodes = slices.Delete(updatedPriorityNodes, i, i+1)
+			i--
+		}
+	}
+
+	// remove priority nodes from farm nodes
+	for i := 0; i < len(farmNodes); i++ {
+		if slices.Contains(updatedPriorityNodes, farmNodes[i]) {
+			farmNodes = slices.Delete(farmNodes, i, i+1)
+			i--
+		}
+	}
+
+	// append priority and the rest of farm nodes
+	return append(updatedPriorityNodes, farmNodes...)
 }
 
 func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, nodeID uint32) error {

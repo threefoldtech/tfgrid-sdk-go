@@ -32,6 +32,7 @@ func TestFarmerbot(t *testing.T) {
 	inputs := Config{
 		FarmID:        1,
 		IncludedNodes: []uint32{1, 2},
+		PriorityNodes: []uint32{2},
 		Power:         power{WakeUpThreshold: 50},
 	}
 
@@ -66,10 +67,10 @@ func TestFarmerbot(t *testing.T) {
 		assert.True(t, errors.Is(err, substrate.ErrNotFound))
 	})
 
-	t.Run("test iterateOnNodes: update nodes and power off extra node (periodic wake up: already on)", func(t *testing.T) {
+	t.Run("test iterateOnNodes: update nodes and power off extra node (respect priority - periodic wake up: already on)", func(t *testing.T) {
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, true, resources, []string{}, false, false)
 
-		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), false).Return(types.Hash{}, nil)
+		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(2), false).Return(types.Hash{}, nil)
 
 		err = farmerbot.iterateOnNodes(ctx, sub)
 		assert.NoError(t, err)

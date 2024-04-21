@@ -99,6 +99,8 @@ included_nodes: [optional, if no nodes are added then the farmerbot will include
   - "<your node ID to be included, required at least 2>"
 excluded_nodes:
   - "<your node ID to be excluded, optional>"
+priority:
+  - "<your node ID to have a priority in nodes management, optional>"
 never_shutdown_nodes:
   - "<your node ID to be never shutdown, optional>"
 power:

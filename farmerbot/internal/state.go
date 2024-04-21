@@ -66,6 +66,8 @@ func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Co
 		return nil, err
 	}
 
+	farmNodes = addPriorityToNodes(config.PriorityNodes, farmNodes)
+
 	for _, nodeID := range farmNodes {
 		if slices.Contains(config.ExcludedNodes, nodeID) {
 			continue
