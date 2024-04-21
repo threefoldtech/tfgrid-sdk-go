@@ -68,6 +68,10 @@ func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 		return fmt.Errorf("cannot power off node '%d', node has a rent contract", nodeID)
 	}
 
+	if node.hasActiveContracts {
+		return fmt.Errorf("cannot power off node '%d', node has active contracts", nodeID)
+	}
+
 	if !node.isUnused() {
 		return fmt.Errorf("cannot power off node '%d', node is used", nodeID)
 	}

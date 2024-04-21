@@ -31,11 +31,14 @@ var farmerBotCmd = &cobra.Command{
 func Execute() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
+	farmerBotCmd.Root().CompletionOptions.DisableDefaultCmd = true
+
 	farmerBotCmd.AddCommand(versionCmd)
 	farmerBotCmd.AddCommand(runCmd)
 	farmerBotCmd.AddCommand(startCmd)
 	startCmd.AddCommand(startAllCmd)
 
+	log.Info().Msgf("Welcome to farmerbot (%v), Farmerbot is starting up...", version.Version)
 	err := farmerBotCmd.Execute()
 	if err != nil {
 		log.Fatal().Err(err).Send()

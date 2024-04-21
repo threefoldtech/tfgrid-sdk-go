@@ -17,7 +17,10 @@ import (
 func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, mount workloads.Disk, node uint32) (workloads.VM, error) {
 	networkName := fmt.Sprintf("%snetwork", vm.Name)
 	projectName := fmt.Sprintf("vm/%s", vm.Name)
-	network := buildNetwork(networkName, projectName, []uint32{node})
+	network, err := buildNetwork(networkName, projectName, []uint32{node}, len(vm.MyceliumIPSeed) != 0)
+	if err != nil {
+		return workloads.VM{}, err
+	}
 
 	mounts := []workloads.Disk{}
 	if mount.SizeGB != 0 {
@@ -27,7 +30,7 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, mounts, nil, []workloads.VM{vm}, nil)
 
 	log.Info().Msg("deploying network")
-	err := t.NetworkDeployer.Deploy(ctx, &network)
+	err = t.NetworkDeployer.Deploy(ctx, &network)
 	if err != nil {
 		return workloads.VM{}, errors.Wrapf(err, "failed to deploy network on node %d", node)
 	}
@@ -52,23 +55,27 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 // DeployKubernetesCluster deploys a kubernetes cluster
 func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, master workloads.K8sNode, workers []workloads.K8sNode, sshKey string) (workloads.K8sCluster, error) {
 	networkName := fmt.Sprintf("%snetwork", master.Name)
+	projectName := fmt.Sprintf("kubernetes/%s", master.Name)
 	networkNodes := []uint32{master.Node}
 	if len(workers) > 0 && workers[0].Node != master.Node {
 		networkNodes = append(networkNodes, workers[0].Node)
 	}
-	network := buildNetwork(networkName, master.Name, networkNodes)
+	network, err := buildNetwork(networkName, projectName, networkNodes, len(master.MyceliumIPSeed) != 0)
+	if err != nil {
+		return workloads.K8sCluster{}, err
+	}
 
 	cluster := workloads.K8sCluster{
 		Master:  &master,
 		Workers: workers,
 		// TODO: should be randomized
 		Token:        "securetoken",
-		SolutionType: master.Name,
+		SolutionType: projectName,
 		SSHKey:       sshKey,
 		NetworkName:  networkName,
 	}
 	log.Info().Msg("deploying network")
-	err := t.NetworkDeployer.Deploy(ctx, &network)
+	err = t.NetworkDeployer.Deploy(ctx, &network)
 	if err != nil {
 		return workloads.K8sCluster{}, errors.Wrapf(err, "failed to deploy network on nodes %v", network.Nodes)
 	}
@@ -136,7 +143,17 @@ func DeployZDBs(ctx context.Context, t deployer.TFPluginClient, projectName stri
 	return resZDBs, nil
 }
 
-func buildNetwork(name, projectName string, nodes []uint32) workloads.ZNet {
+func buildNetwork(name, projectName string, nodes []uint32, addMycelium bool) (workloads.ZNet, error) {
+	keys := make(map[uint32][]byte)
+	if addMycelium {
+		for _, node := range nodes {
+			key, err := workloads.RandomMyceliumKey()
+			if err != nil {
+				return workloads.ZNet{}, err
+			}
+			keys[node] = key
+		}
+	}
 	return workloads.ZNet{
 		Name:  name,
 		Nodes: nodes,
@@ -144,6 +161,7 @@ func buildNetwork(name, projectName string, nodes []uint32) workloads.ZNet {
 			IP:   net.IPv4(10, 20, 0, 0),
 			Mask: net.CIDRMask(16, 32),
 		}),
+		MyceliumKeys: keys,
 		SolutionType: projectName,
-	}
+	}, nil
 }

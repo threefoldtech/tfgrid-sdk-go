@@ -20,13 +20,18 @@ var cancelCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, "sr25519", cfg.Network, "", "", "", 100, false, true)
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network), deployer.WithRMBTimeout(100))
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
 
-		projectName := fmt.Sprintf("vm/%s", args[0])
-		err = t.CancelByProjectName(projectName)
+		err = t.CancelByProjectName(fmt.Sprintf("vm/%s", args[0]))
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		err = t.CancelByProjectName(fmt.Sprintf("kubernetes/%s", args[0]))
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

@@ -299,7 +299,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 
 	metadata, err := json.Marshal(workloads.NetworkMetaData{
 		Version: workloads.Version,
-		UserAccess: []workloads.UserAccess{
+		UserAccesses: []workloads.UserAccess{
 			{
 				Subnet:     "",
 				PrivateKey: "",
@@ -371,11 +371,12 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 		WGPort:           map[uint32]int{},
 		Keys:             map[uint32]wgtypes.Key{},
 		NodesIPRange:     map[uint32]gridtypes.IPNet{1: ipRange},
+		MyceliumKeys:     make(map[uint32][]byte),
 	}
 
 	metadata, err := json.Marshal(workloads.NetworkMetaData{
 		Version: workloads.Version,
-		UserAccess: []workloads.UserAccess{
+		UserAccesses: []workloads.UserAccess{
 			{
 				Subnet:     "",
 				PrivateKey: "",

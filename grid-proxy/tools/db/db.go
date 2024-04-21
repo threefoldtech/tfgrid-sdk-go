@@ -9,6 +9,9 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type flags struct {
@@ -43,7 +46,20 @@ func main() {
 	if err != nil {
 		panic(errors.Wrap(err, "failed to open db"))
 	}
-	defer db.Close()
+	gormDB, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{
+		Logger: logger.Default.LogMode(1),
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to generate gorm db: %w", err))
+	}
+	defer func() {
+		db.Close()
+		db_gorm, err := gormDB.DB()
+		if err != nil {
+			panic(fmt.Errorf("failed to get gorm db: %w", err))
+		}
+		db_gorm.Close()
+	}()
 
 	if f.reset {
 		if err := reset(db); err != nil {
@@ -62,7 +78,7 @@ func main() {
 	}
 	// ----
 
-	if err := generateData(db, f.seed); err != nil {
+	if err := generateData(db, gormDB, f.seed); err != nil {
 		panic(err)
 	}
 }

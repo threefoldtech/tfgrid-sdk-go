@@ -42,6 +42,7 @@ type node struct {
 	pools                 []pkg.PoolMetrics
 	gpus                  []zos.GPU
 	hasActiveRentContract bool
+	hasActiveContracts    bool
 	dedicated             bool
 	neverShutDown         bool
 
@@ -114,6 +115,13 @@ func (n *node) update(
 	}
 
 	n.hasActiveRentContract = rentContract != 0
+
+	activeContracts, err := sub.GetNodeContracts(nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to get node %d active contracts from substrate with error: %w", nodeID, err)
+	}
+
+	n.hasActiveContracts = len(activeContracts) > 0
 
 	powerTarget, err := sub.GetPowerTarget(nodeID)
 	if err != nil {
@@ -219,6 +227,7 @@ func (n *node) canShutDown() bool {
 		n.PublicConfig.HasValue ||
 		n.neverShutDown ||
 		n.hasActiveRentContract ||
+		n.hasActiveContracts ||
 		n.timeoutClaimedResources.After(time.Now()) ||
 		time.Since(n.lastTimePowerStateChanged) < periodicWakeUpDuration {
 		return false

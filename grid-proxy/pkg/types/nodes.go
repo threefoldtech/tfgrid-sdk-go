@@ -39,13 +39,18 @@ type Node struct {
 	Dedicated         bool         `json:"dedicated"`
 	InDedicatedFarm   bool         `json:"inDedicatedFarm" sort:"dedicated_farm"`
 	RentContractID    uint         `json:"rentContractId" sort:"rent_contract_id"`
+	Rented            bool         `json:"rented" sort:"rented"`
+	Rentable          bool         `json:"rentable" sort:"rentable"`
 	RentedByTwinID    uint         `json:"rentedByTwinId"`
 	SerialNumber      string       `json:"serialNumber"`
 	Power             NodePower    `json:"power"`
 	NumGPU            int          `json:"num_gpu" sort:"num_gpu"`
 	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
 	Healthy           bool         `json:"healthy"`
+	Dmi               Dmi          `json:"dmi"`
+	Speed             Speed        `json:"speed"`
 	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
+	_                 string       `sort:"free_cru"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -77,11 +82,15 @@ type NodeWithNestedCapacity struct {
 	InDedicatedFarm   bool           `json:"inDedicatedFarm"`
 	RentContractID    uint           `json:"rentContractId"`
 	RentedByTwinID    uint           `json:"rentedByTwinId"`
+	Rented            bool           `json:"rented"`
+	Rentable          bool           `json:"rentable"`
 	SerialNumber      string         `json:"serialNumber"`
 	Power             NodePower      `json:"power"`
 	NumGPU            int            `json:"num_gpu"`
 	ExtraFee          uint64         `json:"extraFee"`
 	Healthy           bool           `json:"healthy"`
+	Dmi               Dmi            `json:"dmi"`
+	Speed             Speed          `json:"speed"`
 	PriceUsd          float64        `json:"price_usd"`
 }
 
@@ -135,6 +144,7 @@ type NodeFilter struct {
 	TwinID            *uint64  `schema:"twin_id,omitempty"`
 	CertificationType *string  `schema:"certification_type,omitempty"`
 	HasGPU            *bool    `schema:"has_gpu,omitempty"`
+	NumGPU            *uint64  `schema:"num_gpu,omitempty"`
 	GpuDeviceID       *string  `schema:"gpu_device_id,omitempty"`
 	GpuDeviceName     *string  `schema:"gpu_device_name,omitempty"`
 	GpuVendorID       *string  `schema:"gpu_vendor_id,omitempty"`
@@ -144,19 +154,4 @@ type NodeFilter struct {
 	PriceMin          *float64 `schema:"price_min,omitempty"`
 	PriceMax          *float64 `schema:"price_max,omitempty"`
 	Excluded          []uint64 `schema:"excluded,omitempty"`
-}
-
-// NodeGPU holds the info about gpu card
-type NodeGPU struct {
-	NodeTwinID uint32 `json:"node_twin_id"`
-	ID         string `json:"id"`
-	Vendor     string `json:"vendor"`
-	Device     string `json:"device"`
-	Contract   int    `json:"contract"`
-}
-
-// HeathReport holds the info of node health
-type HealthReport struct {
-	NodeTwinId uint32
-	Healthy    bool
 }

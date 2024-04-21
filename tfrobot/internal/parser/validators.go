@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/cosmos/go-bip39"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -139,7 +140,12 @@ func validateFlist(flist, name string) error {
 	if flistExt != ".fl" && flistExt != ".flist" {
 		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, should have a valid flist extension", name, flist)
 	}
-	response, err := http.Head(flist)
+
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	response, err := cl.Head(flist)
 	if err != nil || response.StatusCode != http.StatusOK {
 		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, failed to download flist", name, flist)
 	}

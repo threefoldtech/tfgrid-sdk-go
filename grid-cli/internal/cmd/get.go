@@ -3,11 +3,10 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
@@ -23,41 +22,38 @@ func checkIfExistAndAppend(t deployer.TFPluginClient, node uint32, contractID ui
 
 // GetVM gets a vm with its project name
 func GetVM(ctx context.Context, t deployer.TFPluginClient, name string) (workloads.Deployment, error) {
-	// try to get contracts with the new project name format "vm/<name>"
-	projectName := fmt.Sprintf("vm/%s", name)
+	projectName := name
 
-	var networkContractIDs map[uint32]uint64
-
-	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.VMType, name)
-	if err == nil {
-		networkContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(projectName, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
-		if err != nil {
-			return workloads.Deployment{}, err
-		}
-
-	} else if errors.Is(err, graphql.ErrorContractsNotFound) {
-		// if could not find any contracts try to get contracts with the old project name format "<name>"
-		nodeContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.VMType, name)
-		if err != nil {
-			return workloads.Deployment{}, err
-		}
-
-		networkContractIDs, err = t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
-		if err != nil {
-			return workloads.Deployment{}, err
-		}
-	} else {
+	// try to get contracts with the old project name format "<name>"
+	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName, true)
+	if err != nil {
 		return workloads.Deployment{}, err
 	}
 
-	for node, contractID := range networkContractIDs {
-		checkIfExistAndAppend(t, node, contractID)
+	if len(contracts.NodeContracts) == 0 {
+		// if could not find any contracts try to get contracts with the new project name format "vm/<name>"
+		projectName = fmt.Sprintf("vm/%s", name)
+		contracts, err = t.ContractsGetter.ListContractsOfProjectName(projectName, true)
+		if err != nil {
+			return workloads.Deployment{}, err
+		}
+
+		if len(contracts.NodeContracts) == 0 {
+			return workloads.Deployment{}, fmt.Errorf("couldn't find any contracts with name %s", name)
+		}
 	}
 
 	var nodeID uint32
-	for node, contractID := range nodeContractIDs {
-		checkIfExistAndAppend(t, node, contractID)
-		nodeID = node
+
+	for _, contract := range contracts.NodeContracts {
+		contractID, err := strconv.ParseUint(contract.ContractID, 10, 64)
+		if err != nil {
+			return workloads.Deployment{}, err
+		}
+
+		nodeID = contract.NodeID
+		checkIfExistAndAppend(t, nodeID, contractID)
+
 	}
 
 	return t.State.LoadDeploymentFromGrid(ctx, nodeID, name)
@@ -65,25 +61,36 @@ func GetVM(ctx context.Context, t deployer.TFPluginClient, name string) (workloa
 
 // GetK8sCluster gets a kubernetes cluster with its project name
 func GetK8sCluster(ctx context.Context, t deployer.TFPluginClient, name string) (workloads.K8sCluster, error) {
-	nodeContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.K8sType, name)
+	projectName := name
+
+	// try to get contracts with the old project name format "<name>"
+	contracts, err := t.ContractsGetter.ListContractsOfProjectName(projectName, true)
 	if err != nil {
 		return workloads.K8sCluster{}, err
 	}
 
-	networkContractIDs, err := t.ContractsGetter.GetNodeContractsByTypeAndName(name, workloads.NetworkType, fmt.Sprintf("%snetwork", name))
-	if err != nil {
-		return workloads.K8sCluster{}, err
+	if len(contracts.NodeContracts) == 0 {
+		// if could not find any contracts try to get contracts with the new project name format "kubernetes/<name>"
+		projectName = fmt.Sprintf("kubernetes/%s", name)
+		contracts, err = t.ContractsGetter.ListContractsOfProjectName(projectName, true)
+		if err != nil {
+			return workloads.K8sCluster{}, err
+		}
+
+		if len(contracts.NodeContracts) == 0 {
+			return workloads.K8sCluster{}, fmt.Errorf("couldn't find any contracts with name %s", name)
+		}
 	}
 
 	var nodeIDs []uint32
-	for node, contractID := range nodeContractIDs {
-		t.State.CurrentNodeDeployments[node] = []uint64{contractID}
-		nodeIDs = append(nodeIDs, node)
-	}
+	for _, contract := range contracts.NodeContracts {
+		contractID, err := strconv.ParseUint(contract.ContractID, 10, 64)
+		if err != nil {
+			return workloads.K8sCluster{}, err
+		}
 
-	for node, contractID := range networkContractIDs {
-		t.State.CurrentNodeDeployments[node] = append(t.State.CurrentNodeDeployments[node], contractID)
-		nodeIDs = append(nodeIDs, node)
+		checkIfExistAndAppend(t, contract.NodeID, contractID)
+		nodeIDs = append(nodeIDs, contract.NodeID)
 	}
 
 	return t.State.LoadK8sFromGrid(ctx, nodeIDs, name)

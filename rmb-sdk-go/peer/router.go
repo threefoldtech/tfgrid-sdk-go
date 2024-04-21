@@ -29,19 +29,19 @@ type Middleware func(ctx context.Context, payload []byte) (context.Context, erro
 
 type Router struct {
 	handlers map[string]HandlerFunc
-	routes   map[string]Router
+	routes   map[string]*Router
 	mw       []Middleware
 }
 
-func NewRouter() Router {
-	return Router{
+func NewRouter() *Router {
+	return &Router{
 		handlers: make(map[string]HandlerFunc),
-		routes:   make(map[string]Router),
+		routes:   make(map[string]*Router),
 	}
 }
 
 // SubRoute add a route prefix to include more sub routes with handler from it
-func (r *Router) SubRoute(prefix string) Router {
+func (r *Router) SubRoute(prefix string) *Router {
 	if strings.Contains(prefix, ".") {
 		panic("invalid subrouter prefix should not have '.'")
 	}

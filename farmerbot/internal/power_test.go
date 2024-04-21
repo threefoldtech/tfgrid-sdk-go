@@ -234,6 +234,17 @@ func TestPower(t *testing.T) {
 		state.addNode(oldNode1)
 	})
 
+	t.Run("test invalid power off: node has active contracts", func(t *testing.T) {
+		testNode := state.nodes[1]
+		testNode.hasActiveContracts = true
+		state.addNode(testNode)
+
+		err = farmerbot.powerOff(sub, uint32(state.nodes[1].ID))
+		assert.Error(t, err)
+
+		state.addNode(oldNode1)
+	})
+
 	t.Run("test invalid power off: node power changed", func(t *testing.T) {
 		testNode := state.nodes[1]
 		testNode.lastTimePowerStateChanged = time.Now()

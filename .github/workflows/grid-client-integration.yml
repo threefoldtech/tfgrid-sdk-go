@@ -5,17 +5,17 @@ defaults:
     working-directory: grid-client
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: 0 3 * * *
   workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        network: ["dev", "qa", "test", "main"]
+        network: [dev, qa, test, main]
 
     steps:
       - name: Set up Go
@@ -43,12 +43,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install yggdrasil
           sudo systemctl enable yggdrasil
-          PEERS=$(curl https://raw.githubusercontent.com/threefoldtech/zos-config/main/development.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
-          sudo  sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
+          PEERS=$(curl https://raw.githubusercontent.com/AhmedHanafy725/yggdrasil-config/main/config.json | jq '.yggdrasil.peers[]' -r | sed 's/\//\\\//g' | sed -z 's/\n/\\n/g')
+          sudo sed -i -- 's/Peers\: \[\]/Peers: [\n'"$PEERS"']/g' /etc/yggdrasil/yggdrasil.conf
+          sudo systemctl stop yggdrasil
           sudo systemctl start yggdrasil
 
       - name: Test
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
-        run: go test -v ./integration_tests
+        # run: make integration
+        run: |
+          for test in $(go run scripts/scrap_tests.go)
+          do
+            go test -v ./integration_tests -run $test
+          done
