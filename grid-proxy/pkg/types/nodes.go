@@ -154,4 +154,5 @@ type NodeFilter struct {
 	PriceMin          *float64 `schema:"price_min,omitempty"`
 	PriceMax          *float64 `schema:"price_max,omitempty"`
 	Excluded          []uint64 `schema:"excluded,omitempty"`
+	HasIpv6           *bool    `schema:"has_ipv6,omitempty"`
 }
