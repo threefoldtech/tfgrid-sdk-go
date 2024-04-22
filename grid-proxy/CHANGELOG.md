@@ -12,6 +12,15 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.1
+
+---
+
+- `feat` add has_ipv6 indexer
+- `feat` allow filtering with array of contract states
+- `feat` filter nodes with num_gpu
+- `feat` sorting nodes with free_cru
+
 ### v0.15.0
 
 ---
