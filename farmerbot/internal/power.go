@@ -223,16 +223,10 @@ func (f *FarmerBot) resourceUsageTooHigh(sub Substrate, demand capacity) error {
 		return err
 	}
 
-	if len(nodes) == 0 {
-		return fmt.Errorf("no available nodes to wake up, resources usage is high")
-	}
-
 	for _, node := range nodes {
-		if node.powerState == off {
-			log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Too much resource usage. Turning on node")
-			if err := f.powerOn(sub, uint32(node.ID)); err != nil {
-				log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("couldn't power on node")
-			}
+		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Too much resource usage. Turning on node")
+		if err := f.powerOn(sub, uint32(node.ID)); err != nil {
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("couldn't power on node")
 		}
 	}
 
