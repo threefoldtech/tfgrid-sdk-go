@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -28,7 +29,11 @@ func NewGridProxyClient(endpoint string) (*GridProxyClient, error) {
 func (r GridProxyClient) Ping() error {
 	pingURL := fmt.Sprintf("%s/ping", r.endpoint)
 
-	resp, err := http.Get(pingURL)
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := cl.Get(pingURL)
 	if err != nil {
 		return errors.Wrapf(err, "failed to send GET request to %s", pingURL)
 	}

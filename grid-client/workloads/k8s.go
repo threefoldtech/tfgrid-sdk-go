@@ -17,24 +17,26 @@ import (
 
 // K8sNode kubernetes data
 type K8sNode struct {
-	Name          string `json:"name"`
-	Node          uint32 `json:"node"`
-	DiskSize      int    `json:"disk_size"`
-	PublicIP      bool   `json:"publicip"`
-	PublicIP6     bool   `json:"publicip6"`
-	Planetary     bool   `json:"planetary"`
-	Flist         string `json:"flist"`
-	FlistChecksum string `json:"flist_checksum"`
-	ComputedIP    string `json:"computedip"`
-	ComputedIP6   string `json:"computedip6"`
-	PlanetaryIP   string `json:"planetary_ip"`
-	IP            string `json:"ip"`
-	CPU           int    `json:"cpu"`
-	Memory        int    `json:"memory"`
-	NetworkName   string `json:"network_name"`
-	Token         string `json:"token"`
-	SSHKey        string `json:"ssh_key"`
-	ConsoleURL    string `json:"console_url"`
+	Name           string `json:"name"`
+	Node           uint32 `json:"node"`
+	DiskSize       int    `json:"disk_size"`
+	PublicIP       bool   `json:"publicip"`
+	PublicIP6      bool   `json:"publicip6"`
+	Planetary      bool   `json:"planetary"`
+	Flist          string `json:"flist"`
+	FlistChecksum  string `json:"flist_checksum"`
+	ComputedIP     string `json:"computedip"`
+	ComputedIP6    string `json:"computedip6"`
+	PlanetaryIP    string `json:"planetary_ip"`
+	MyceliumIP     string `json:"mycelium_ip"`
+	MyceliumIPSeed []byte `json:"mycelium_ip_seed"`
+	IP             string `json:"ip"`
+	CPU            int    `json:"cpu"`
+	Memory         int    `json:"memory"`
+	NetworkName    string `json:"network_name"`
+	Token          string `json:"token"`
+	SSHKey         string `json:"ssh_key"`
+	ConsoleURL     string `json:"console_url"`
 }
 
 // K8sCluster struct for k8s cluster
@@ -75,25 +77,32 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, 
 		return k, err
 	}
 
+	var myceliumIPSeed []byte
+	if d.Network.Mycelium != nil {
+		myceliumIPSeed = d.Network.Mycelium.Seed
+	}
+
 	return K8sNode{
-		Name:          string(wl.Name),
-		Node:          nodeID,
-		DiskSize:      diskSize,
-		PublicIP:      computedIP != "",
-		PublicIP6:     computedIP6 != "",
-		Planetary:     result.PlanetaryIP != "",
-		Flist:         d.FList,
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    computedIP,
-		ComputedIP6:   computedIP6,
-		PlanetaryIP:   result.PlanetaryIP,
-		IP:            d.Network.Interfaces[0].IP.String(),
-		CPU:           int(d.ComputeCapacity.CPU),
-		Memory:        int(d.ComputeCapacity.Memory / gridtypes.Megabyte),
-		NetworkName:   string(d.Network.Interfaces[0].Network),
-		Token:         d.Env["K3S_TOKEN"],
-		SSHKey:        d.Env["SSH_KEY"],
-		ConsoleURL:    result.ConsoleURL,
+		Name:           string(wl.Name),
+		Node:           nodeID,
+		DiskSize:       diskSize,
+		PublicIP:       computedIP != "",
+		PublicIP6:      computedIP6 != "",
+		Planetary:      result.PlanetaryIP != "",
+		Flist:          d.FList,
+		FlistChecksum:  flistCheckSum,
+		ComputedIP:     computedIP,
+		ComputedIP6:    computedIP6,
+		PlanetaryIP:    result.PlanetaryIP,
+		MyceliumIP:     result.MyceliumIP,
+		MyceliumIPSeed: myceliumIPSeed,
+		IP:             d.Network.Interfaces[0].IP.String(),
+		CPU:            int(d.ComputeCapacity.CPU),
+		Memory:         int(d.ComputeCapacity.Memory / gridtypes.Megabyte),
+		NetworkName:    string(d.Network.Interfaces[0].Network),
+		Token:          d.Env["K3S_TOKEN"],
+		SSHKey:         d.Env["SSH_KEY"],
+		ConsoleURL:     result.ConsoleURL,
 	}, nil
 }
 
@@ -122,7 +131,7 @@ func (k *K8sCluster) ZosWorkloads() ([]gridtypes.Workload, error) {
 // GenerateMetadata generates deployment metadata
 func (k *K8sCluster) GenerateMetadata() (string, error) {
 	if len(k.SolutionType) == 0 {
-		k.SolutionType = k.Master.Name
+		k.SolutionType = fmt.Sprintf("kubernetes/%s", k.Master.Name)
 	}
 
 	deploymentData := DeploymentData{
@@ -207,6 +216,16 @@ func (k *K8sCluster) ValidateChecksums() error {
 	return nil
 }
 
+func (k *K8sCluster) ValidateMyceliumSeed() error {
+	nodes := append(k.Workers, *k.Master)
+	for _, node := range nodes {
+		if len(node.MyceliumIPSeed) != zos.MyceliumIPSeedLen && len(node.MyceliumIPSeed) != 0 {
+			return fmt.Errorf("invalid mycelium ip seed length %d must be %d or empty", len(node.MyceliumIPSeed), zos.MyceliumIPSeedLen)
+		}
+	}
+	return nil
+}
+
 // InvalidateBrokenAttributes removes outdated attrs and deleted contracts
 func (k *K8sCluster) InvalidateBrokenAttributes(sub subi.SubstrateExt) error {
 	if len(k.NodeDeploymentID) == 0 {
@@ -261,6 +280,13 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 		// K3S_URL marks where to find the master node
 		envVars["K3S_URL"] = fmt.Sprintf("https://%s:6443", cluster.Master.IP)
 	}
+	var myceliumIP *zos.MyceliumIP
+	if len(k.MyceliumIPSeed) != 0 {
+		myceliumIP = &zos.MyceliumIP{
+			Network: gridtypes.Name(cluster.NetworkName),
+			Seed:    k.MyceliumIPSeed,
+		}
+	}
 	workload := gridtypes.Workload{
 		Version: 0,
 		Name:    gridtypes.Name(k.Name),
@@ -276,6 +302,7 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 				},
 				PublicIP:  gridtypes.Name(publicIPName),
 				Planetary: k.Planetary,
+				Mycelium:  myceliumIP,
 			},
 			ComputeCapacity: zos.MachineCapacity{
 				CPU:    uint8(k.CPU),

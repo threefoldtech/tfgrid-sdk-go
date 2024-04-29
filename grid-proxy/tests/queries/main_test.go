@@ -17,6 +17,8 @@ import (
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tools/db/crafter"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
@@ -30,6 +32,7 @@ var (
 	SEED               int
 	STATUS_DOWN        = "down"
 	STATUS_UP          = "up"
+	NO_MODIFY          = false
 
 	mockClient      proxyclient.Client
 	data            mock.DBData
@@ -45,6 +48,7 @@ func parseCmdline() {
 	flag.StringVar(&POSTGRES_PASSSWORD, "postgres-password", "", "postgres password")
 	flag.StringVar(&ENDPOINT, "endpoint", "", "the grid proxy endpoint to test against")
 	flag.IntVar(&SEED, "seed", 0, "seed used for the random generation of tests")
+	flag.BoolVar(&NO_MODIFY, "no-modify", false, "stop modify the dump data")
 	flag.Parse()
 }
 
@@ -63,7 +67,20 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(errors.Wrap(err, "failed to open db"))
 	}
-	defer db.Close()
+	gormDB, err := gorm.Open(postgres.Open(psqlInfo), &gorm.Config{
+		Logger: logger.Default.LogMode(0),
+	})
+	if err != nil {
+		panic(fmt.Errorf("failed to generate gorm db: %w", err))
+	}
+	defer func() {
+		db.Close()
+		db_gorm, err := gormDB.DB()
+		if err != nil {
+			panic(fmt.Errorf("failed to get gorm db: %w", err))
+		}
+		db_gorm.Close()
+	}()
 
 	// proxy client
 	gridProxyClient = proxyclient.NewClient(ENDPOINT)
@@ -76,26 +93,28 @@ func TestMain(m *testing.M) {
 	DBClient = &dbClient
 
 	// load mock client
-	data, err = mock.Load(db)
+	data, err = mock.Load(db, gormDB)
 	if err != nil {
 		panic(err)
 	}
 
-	err = modifyDataToFireTriggers(db, data)
-	if err != nil {
-		panic(err)
+	if !NO_MODIFY {
+		err = modifyDataToFireTriggers(db, gormDB, data)
+		if err != nil {
+			panic(err)
+		}
+		data, err = mock.Load(db, gormDB)
+		if err != nil {
+			panic(err)
+		}
 	}
-	data, err = mock.Load(db)
-	if err != nil {
-		panic(err)
-	}
+
 	mockClient = mock.NewGridProxyMockClient(data)
-
 	exitCode = m.Run()
 	os.Exit(exitCode)
 }
 
-func modifyDataToFireTriggers(db *sql.DB, data mock.DBData) error {
+func modifyDataToFireTriggers(db *sql.DB, gormDB *gorm.DB, data mock.DBData) error {
 	twinStart := len(data.Twins) + 1
 	farmStart := len(data.Farms) + 1
 	nodeStart := len(data.Nodes) + 1
@@ -113,7 +132,7 @@ func modifyDataToFireTriggers(db *sql.DB, data mock.DBData) error {
 		RentContractCount = 1
 	)
 
-	generator := crafter.NewCrafter(db,
+	generator := crafter.NewCrafter(db, gormDB,
 		SEED,
 		NodeCount,
 		FarmCount,

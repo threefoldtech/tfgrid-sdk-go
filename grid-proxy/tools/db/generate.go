@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tools/db/crafter"
+	"gorm.io/gorm"
 )
 
 const (
@@ -71,8 +72,8 @@ func initSchema(db *sql.DB) error {
 	return nil
 }
 
-func generateData(db *sql.DB, seed int) error {
-	generator := crafter.NewCrafter(db,
+func generateData(db *sql.DB, gormDB *gorm.DB, seed int) error {
+	generator := crafter.NewCrafter(db, gormDB,
 		seed,
 		NodeCount,
 		FarmCount,
@@ -114,6 +115,22 @@ func generateData(db *sql.DB, seed int) error {
 
 	if err := generator.GenerateCountries(); err != nil {
 		return fmt.Errorf("failed to generate countries: %w", err)
+	}
+
+	if err := generator.GenerateSpeedReports(); err != nil {
+		return fmt.Errorf("failed to generate speed reports: %w", err)
+	}
+
+	if err := generator.GenerateDmi(); err != nil {
+		return fmt.Errorf("failed to generate dmi reports: %w", err)
+	}
+
+	if err := generator.GenerateHealthReports(); err != nil {
+		return fmt.Errorf("failed to generate health reports: %w", err)
+	}
+
+	if err := generator.GenerateNodeIpv6(); err != nil {
+		return fmt.Errorf("failed to generate node ipv6 reports: %w", err)
 	}
 
 	if err := generator.GeneratePricingPolicies(); err != nil {

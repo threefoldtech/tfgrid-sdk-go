@@ -10,6 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/mocks"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
@@ -45,7 +46,7 @@ func setup() (TFPluginClient, error) {
 	}
 	seed := subkey.EncodeHex(keyPair.Seed())
 
-	plugin, err := NewTFPluginClient(seed, "sr25519", network, "", "", "", 0, true, true)
+	plugin, err := NewTFPluginClient(seed, WithNetwork(network), WithLogs())
 	if err != nil {
 		return TFPluginClient{}, err
 	}
@@ -122,7 +123,9 @@ func mockDeployerValidator(d *Deployer, ctrl *gomock.Controller, nodes []uint32)
 
 func TestDeployer(t *testing.T) {
 	tfPluginClient, err := setup()
-	assert.NoError(t, err)
+	if err != nil {
+		t.Skipf("failed to create plugin client: %v", err)
+	}
 
 	identity := tfPluginClient.Identity
 	twinID := tfPluginClient.TwinID
@@ -145,9 +148,9 @@ func TestDeployer(t *testing.T) {
 
 	t.Run("test create", func(t *testing.T) {
 		dl1, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		dl2, err := deploymentWithFQDN(identity, twinID, 0)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		newDls := map[uint32]gridtypes.Deployment{
 			10: dl1,

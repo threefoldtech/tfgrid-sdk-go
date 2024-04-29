@@ -1,5 +1,6 @@
 PWD := $(shell pwd)
 GOPATH := $(shell go env GOPATH)
+integration_tests := $(shell go run scripts/scrap_tests.go)
 
 all: verifiers test
 
@@ -9,7 +10,9 @@ test:
 
 integration:
 	@echo "Running integration tests"
-	go test -v ./integration_tests
+	@for test in ${integration_tests} ; do \
+		go test -v ./integration_tests -run $$test ; \
+	done
 
 coverage: clean 
 	@echo "Installing gopherbadger" && go get -u github.com/jpoles1/gopherbadger && go install github.com/jpoles1/gopherbadger

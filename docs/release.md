@@ -7,6 +7,7 @@
 - Update [zos](https://github.com/threefoldtech/zos) with the latest version of the rmb.
 - Create a pr against development branch to update zos with the latest commit (make sure it's merged).
 - Update the helm app version for the grid proxy as described [here](../grid-proxy/docs/release.md)
+- Update the helm app version for the relay cache warmer [here](../tools/relay-cache-warmer/chart/relay-cache-warmer/Chart.yaml)
 - Run `make release`
 
 After all the release workflows are finished you should create an issue on <https://github.com/threefoldtech/tf_operations> with type of `Update Request` to use the new images/binaries.

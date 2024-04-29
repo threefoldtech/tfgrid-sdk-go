@@ -55,12 +55,24 @@ func nodeFromDBNode(info db.Node) types.Node {
 		CertificationType: info.Certification,
 		RentContractID:    uint(info.RentContractID),
 		RentedByTwinID:    uint(info.Renter),
+		Rented:            info.Rented,
+		Rentable:          info.Rentable,
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 		Healthy:           info.Healthy,
-		PriceUsd:          math.Round(info.PriceUsd*1000) / 1000,
+		Dmi: types.Dmi{
+			Processor: info.Processor,
+			Memory:    info.Memory,
+			BIOS:      info.Bios,
+			Baseboard: info.Baseboard,
+		},
+		Speed: types.Speed{
+			Upload:   info.UploadSpeed,
+			Download: info.DownloadSpeed,
+		},
+		PriceUsd: math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
@@ -129,12 +141,24 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		CertificationType: info.Certification,
 		RentContractID:    uint(info.RentContractID),
 		RentedByTwinID:    uint(info.Renter),
+		Rented:            info.Rented,
+		Rentable:          info.Rentable,
 		SerialNumber:      info.SerialNumber,
 		Power:             types.NodePower(info.Power),
 		NumGPU:            info.NumGPU,
 		ExtraFee:          info.ExtraFee,
 		Healthy:           info.Healthy,
-		PriceUsd:          math.Round(info.PriceUsd*1000) / 1000,
+		Dmi: types.Dmi{
+			Processor: info.Processor,
+			Memory:    info.Memory,
+			BIOS:      info.Bios,
+			Baseboard: info.Baseboard,
+		},
+		Speed: types.Speed{
+			Upload:   info.UploadSpeed,
+			Download: info.DownloadSpeed,
+		},
+		PriceUsd: math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0
@@ -150,6 +174,8 @@ func contractFromDBContract(info db.DBContract) (types.Contract, error) {
 			DeploymentData:    info.DeploymentData,
 			DeploymentHash:    info.DeploymentHash,
 			NumberOfPublicIps: info.NumberOfPublicIps,
+			FarmName:          info.FarmName,
+			FarmId:            info.FarmId,
 		}
 	case "name":
 		details = types.NameContractDetails{
@@ -157,7 +183,9 @@ func contractFromDBContract(info db.DBContract) (types.Contract, error) {
 		}
 	case "rent":
 		details = types.RentContractDetails{
-			NodeID: info.NodeID,
+			NodeID:   info.NodeID,
+			FarmName: info.FarmName,
+			FarmId:   info.FarmId,
 		}
 	}
 	contract := types.Contract{
