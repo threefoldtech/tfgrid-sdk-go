@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -20,7 +21,7 @@ func (g *GridProxyMockClient) Contracts(ctx context.Context, filter types.Contra
 	}
 
 	for _, contract := range g.data.NodeContracts {
-		if contract.satisfies(filter) {
+		if contract.satisfies(filter, g.data.Nodes, g.data.Farms) {
 			contract := types.Contract{
 				ContractID: uint(contract.ContractID),
 				TwinID:     uint(contract.TwinID),
@@ -32,6 +33,8 @@ func (g *GridProxyMockClient) Contracts(ctx context.Context, filter types.Contra
 					DeploymentData:    contract.DeploymentData,
 					DeploymentHash:    contract.DeploymentHash,
 					NumberOfPublicIps: uint(contract.NumberOfPublicIPs),
+					FarmName:          g.data.Farms[g.data.Nodes[contract.NodeID].FarmID].Name,
+					FarmId:            g.data.Nodes[contract.NodeID].FarmID,
 				},
 			}
 			res = append(res, contract)
@@ -39,7 +42,7 @@ func (g *GridProxyMockClient) Contracts(ctx context.Context, filter types.Contra
 	}
 
 	for _, contract := range g.data.RentContracts {
-		if contract.satisfies(filter) {
+		if contract.satisfies(filter, g.data.Nodes, g.data.Farms) {
 			contract := types.Contract{
 				ContractID: uint(contract.ContractID),
 				TwinID:     uint(contract.TwinID),
@@ -47,7 +50,9 @@ func (g *GridProxyMockClient) Contracts(ctx context.Context, filter types.Contra
 				CreatedAt:  uint(contract.CreatedAt),
 				Type:       "rent",
 				Details: types.RentContractDetails{
-					NodeID: uint(contract.NodeID),
+					NodeID:   uint(contract.NodeID),
+					FarmId:   g.data.Nodes[contract.NodeID].FarmID,
+					FarmName: g.data.Farms[g.data.Nodes[contract.NodeID].FarmID].Name,
 				},
 			}
 			res = append(res, contract)
@@ -79,7 +84,7 @@ func (g *GridProxyMockClient) Contracts(ctx context.Context, filter types.Contra
 	return
 }
 
-func (c *RentContract) satisfies(f types.ContractFilter) bool {
+func (c *RentContract) satisfies(f types.ContractFilter, nodes map[uint64]Node, farms map[uint64]Farm) bool {
 	if f.ContractID != nil && *f.ContractID != c.ContractID {
 		return false
 	}
@@ -96,7 +101,7 @@ func (c *RentContract) satisfies(f types.ContractFilter) bool {
 		return false
 	}
 
-	if f.State != nil && *f.State != c.State {
+	if len(f.State) != 0 && !containsState(f.State, c.State) {
 		return false
 	}
 
@@ -116,10 +121,18 @@ func (c *RentContract) satisfies(f types.ContractFilter) bool {
 		return false
 	}
 
+	if f.FarmId != nil && *f.FarmId != nodes[c.NodeID].FarmID {
+		return false
+	}
+
+	if f.FarmName != nil && !strings.EqualFold(*f.FarmName, farms[nodes[c.NodeID].FarmID].Name) {
+		return false
+	}
+
 	return true
 }
 
-func (c *NodeContract) satisfies(f types.ContractFilter) bool {
+func (c *NodeContract) satisfies(f types.ContractFilter, nodes map[uint64]Node, farms map[uint64]Farm) bool {
 	if f.ContractID != nil && *f.ContractID != c.ContractID {
 		return false
 	}
@@ -136,7 +149,7 @@ func (c *NodeContract) satisfies(f types.ContractFilter) bool {
 		return false
 	}
 
-	if f.State != nil && *f.State != c.State {
+	if f.State != nil && len(f.State) != 0 && !containsState(f.State, c.State) {
 		return false
 	}
 
@@ -153,6 +166,14 @@ func (c *NodeContract) satisfies(f types.ContractFilter) bool {
 	}
 
 	if f.DeploymentHash != nil && *f.DeploymentHash != c.DeploymentHash {
+		return false
+	}
+
+	if f.FarmId != nil && *f.FarmId != nodes[c.NodeID].FarmID {
+		return false
+	}
+
+	if f.FarmName != nil && !strings.EqualFold(*f.FarmName, farms[nodes[c.NodeID].FarmID].Name) {
 		return false
 	}
 
@@ -176,7 +197,7 @@ func (c *NameContract) satisfies(f types.ContractFilter) bool {
 		return false
 	}
 
-	if f.State != nil && *f.State != c.State {
+	if f.State != nil && len(f.State) != 0 && !containsState(f.State, c.State) {
 		return false
 	}
 
@@ -193,6 +214,14 @@ func (c *NameContract) satisfies(f types.ContractFilter) bool {
 	}
 
 	if f.DeploymentHash != nil && *f.DeploymentHash != "" {
+		return false
+	}
+
+	if f.FarmId != nil && *f.FarmId != 0 {
+		return false
+	}
+
+	if f.FarmName != nil && *f.FarmName != "" {
 		return false
 	}
 
@@ -214,6 +243,8 @@ func (g *GridProxyMockClient) Contract(ctx context.Context, contractID uint32) (
 				DeploymentData:    nodeContract.DeploymentData,
 				DeploymentHash:    nodeContract.DeploymentHash,
 				NumberOfPublicIps: uint(nodeContract.NumberOfPublicIPs),
+				FarmId:            g.data.Nodes[nodeContract.NodeID].FarmID,
+				FarmName:          g.data.Farms[g.data.Nodes[nodeContract.NodeID].FarmID].Name,
 			},
 		}, err
 	}
@@ -241,7 +272,9 @@ func (g *GridProxyMockClient) Contract(ctx context.Context, contractID uint32) (
 			CreatedAt:  uint(rentContract.CreatedAt),
 			Type:       "rent",
 			Details: types.RentContractDetails{
-				NodeID: uint(rentContract.NodeID),
+				NodeID:   uint(rentContract.NodeID),
+				FarmId:   g.data.Nodes[nodeContract.NodeID].FarmID,
+				FarmName: g.data.Farms[g.data.Nodes[nodeContract.NodeID].FarmID].Name,
 			},
 		}, err
 	}
@@ -268,4 +301,14 @@ func (g *GridProxyMockClient) ContractBills(ctx context.Context, contractID uint
 
 	totalCount = uint(len(bills))
 	return res, totalCount, err
+}
+
+func containsState(states []string, state string) bool {
+	for _, _state := range states {
+		if strings.EqualFold(_state, state) {
+			return true
+		}
+	}
+
+	return false
 }

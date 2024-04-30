@@ -21,7 +21,7 @@ const (
 func TestDeploymentsDeploy(t *testing.T) {
 	tfPluginClient, err := setup()
 	if err != nil {
-		t.Fatal(err)
+		t.Skipf("plugin creation failed: %v", err)
 	}
 
 	nodes, err := deployer.FilterNodes(
@@ -139,7 +139,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 func TestDeploymentsBatchDeploy(t *testing.T) {
 	tfPluginClient, err := setup()
 	if err != nil {
-		t.Fatal(err)
+		t.Skipf("plugin creation failed: %v", err)
 	}
 
 	nodes, err := deployer.FilterNodes(

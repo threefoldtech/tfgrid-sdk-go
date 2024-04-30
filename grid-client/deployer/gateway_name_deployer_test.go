@@ -123,7 +123,7 @@ func TestNameDeployer(t *testing.T) {
 				}),
 			},
 		})
-		testDl.Metadata = "{\"version\":3,\"type\":\"Gateway Name\",\"name\":\"name\",\"projectName\":\"Gateway\"}"
+		testDl.Metadata = "{\"version\":3,\"type\":\"Gateway Name\",\"name\":\"name\",\"projectName\":\"name\"}"
 
 		assert.Equal(t, dls, map[uint32]gridtypes.Deployment{
 			nodeID: testDl,

@@ -12,6 +12,30 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.1
+
+---
+
+- `feat` add has_ipv6 indexer
+- `feat` allow filtering with array of contract states
+- `feat` filter nodes with num_gpu
+- `feat` sorting nodes with free_cru
+
+### v0.15.0
+
+---
+
+- `feat` refactor the indexer code using generics
+- `feat` add network speed and dmi indexers
+- `feat` add last-deployment-timestamp on nodes statistics call response
+
+### v0.14.13
+
+---
+
+- `feat` add farm name/id to contract response
+- `feat` optimize queries on stats endpoint
+
 ### v0.14.11
 
 ---
