@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -114,21 +115,47 @@ func (f *FarmerBot) manageNodesPower(sub Substrate) error {
 	nodes := f.filterNodesPower([]powerState{on, wakingUp})
 
 	usedResources, totalResources := calculateResourceUsage(nodes)
-	if totalResources == 0 {
-		return nil
+
+	demand := calculateDemandBasedOnThresholds(totalResources, usedResources, f.config.Power.WakeUpThresholdPercentages)
+	if demand.cru > 0 || demand.mru > 0 || demand.sru > 0 || demand.hru > 0 {
+		log.Info().Msgf("Too high resource usage, resources usage for online nodes: CRU:%v%%, SRU:%v%%, MRU:%v%%, HRU:%v%%",
+			math.Ceil(float64(usedResources.cru)/float64(totalResources.cru)*100),
+			math.Ceil(float64(usedResources.sru)/float64(totalResources.sru)*100),
+			math.Ceil(float64(usedResources.mru)/float64(totalResources.mru)*100),
+			math.Ceil(float64(usedResources.hru)/float64(totalResources.hru)*100),
+		)
+		return f.resourceUsageTooHigh(sub, demand)
 	}
 
-	resourceUsage := 100 * float32(usedResources) / float32(totalResources)
-	if resourceUsage >= float32(f.config.Power.WakeUpThreshold) {
-		log.Info().Msgf("Too high resource usage = %.1f%%, threshold = %d%%", resourceUsage, f.config.Power.WakeUpThreshold)
-		return f.resourceUsageTooHigh(sub)
-	}
-
-	log.Info().Msgf("Too low resource usage = %.1f%%, threshold = %d%%", resourceUsage, f.config.Power.WakeUpThreshold)
+	log.Info().Msgf("Too low resource usage, resources usage for online nodes: CRU:%v%%, SRU:%v%%, MRU:%v%%, HRU:%v%%",
+		math.Ceil(float64(usedResources.cru)/float64(totalResources.cru)*100),
+		math.Ceil(float64(usedResources.sru)/float64(totalResources.sru)*100),
+		math.Ceil(float64(usedResources.mru)/float64(totalResources.mru)*100),
+		math.Ceil(float64(usedResources.hru)/float64(totalResources.hru)*100),
+	)
 	return f.resourceUsageTooLow(sub, usedResources, totalResources)
 }
 
-func calculateResourceUsage(nodes map[uint32]node) (uint64, uint64) {
+func calculateDemandBasedOnThresholds(total, used capacity, thresholdPercentages ThresholdPercentages) capacity {
+	var demand capacity
+
+	if float64(used.cru)/float64(total.cru)*100 > thresholdPercentages.CRU {
+		demand.cru = uint64(math.Ceil((float64(used.cru)/float64(total.cru)*100 - thresholdPercentages.CRU) / 100 * float64(total.cru)))
+	}
+	if float64(used.mru)/float64(total.mru)*100 > thresholdPercentages.MRU {
+		demand.mru = uint64(math.Ceil((float64(used.mru)/float64(total.mru)*100 - thresholdPercentages.MRU) / 100 * float64(total.mru)))
+	}
+	if float64(used.sru)/float64(total.sru)*100 > thresholdPercentages.SRU {
+		demand.sru = uint64(math.Ceil((float64(used.sru)/float64(total.sru)*100 - thresholdPercentages.SRU) / 100 * float64(total.sru)))
+	}
+	if total.hru > 0 && float64(used.hru)/float64(total.hru)*100 > thresholdPercentages.HRU {
+		demand.hru = uint64(math.Ceil((float64(used.hru)/float64(total.hru)*100 - thresholdPercentages.HRU) / 100 * float64(total.hru)))
+	}
+
+	return demand
+}
+
+func calculateResourceUsage(nodes map[uint32]node) (capacity, capacity) {
 	usedResources := capacity{}
 	totalResources := capacity{}
 
@@ -141,23 +168,72 @@ func calculateResourceUsage(nodes map[uint32]node) (uint64, uint64) {
 		totalResources.add(node.resources.total)
 	}
 
-	used := usedResources.cru + usedResources.hru + usedResources.mru + usedResources.sru
-	total := totalResources.cru + totalResources.hru + totalResources.mru + totalResources.sru
-
-	return used, total
+	return usedResources, totalResources
 }
 
-func (f *FarmerBot) resourceUsageTooHigh(sub Substrate) error {
-	for nodeID, node := range f.nodes {
-		if node.powerState == off {
-			return f.powerOn(sub, nodeID)
+func (f *FarmerBot) selectNodesToPowerOn(demand capacity) ([]node, error) {
+	var selectedNodes []node
+	remainingDemand := demand
+
+	for _, node := range f.nodes {
+		if node.powerState != off {
+			continue // Skip nodes that are already on or waking up
+		}
+
+		// Check if this node can contribute to the remaining demand
+		contribute := false
+		if remainingDemand.cru > 0 && uint64(node.Resources.CRU) >= remainingDemand.cru {
+			contribute = true
+			remainingDemand.cru -= uint64(node.Resources.CRU)
+		}
+		if remainingDemand.sru > 0 && uint64(node.Resources.SRU) >= remainingDemand.sru {
+			contribute = true
+			remainingDemand.sru -= uint64(node.Resources.SRU)
+		}
+		if remainingDemand.mru > 0 && uint64(node.Resources.MRU) >= remainingDemand.mru {
+			contribute = true
+			remainingDemand.mru -= uint64(node.Resources.MRU)
+		}
+		if remainingDemand.hru > 0 && uint64(node.Resources.HRU) >= remainingDemand.hru {
+			contribute = true
+			remainingDemand.hru -= uint64(node.Resources.HRU)
+		}
+
+		if contribute {
+			selectedNodes = append(selectedNodes, node)
+		}
+
+		// Check if all demands have been met
+		if remainingDemand.cru <= 0 && remainingDemand.sru <= 0 && remainingDemand.mru <= 0 && remainingDemand.hru <= 0 {
+			break // All demands have been met, no need to check more nodes
 		}
 	}
 
-	return fmt.Errorf("no available node to wake up, resources usage is high")
+	if remainingDemand.cru > 0 || remainingDemand.sru > 0 || remainingDemand.mru > 0 || remainingDemand.hru > 0 {
+		return nil, fmt.Errorf("unable to meet resources demand with available nodes")
+	}
+
+	return selectedNodes, nil
 }
 
-func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResources uint64) error {
+func (f *FarmerBot) resourceUsageTooHigh(sub Substrate, demand capacity) error {
+	log.Info().Msg("Too high resource usage. Powering on some nodes")
+	nodes, err := f.selectNodesToPowerOn(demand)
+	if err != nil {
+		return err
+	}
+
+	for _, node := range nodes {
+		log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Too much resource usage. Turning on node")
+		if err := f.powerOn(sub, uint32(node.ID)); err != nil {
+			log.Error().Err(err).Uint32("node ID", uint32(node.ID)).Msg("couldn't power on node")
+		}
+	}
+
+	return nil
+}
+
+func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResources capacity) error {
 	onNodes := f.filterNodesPower([]powerState{on})
 
 	// nodes with public config can't be shutdown
@@ -186,35 +262,57 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 			break
 		}
 		nodesLeftOnline -= 1
-		newUsedResources -= node.resources.used.hru + node.resources.used.sru +
-			node.resources.used.mru + node.resources.used.cru
-		newTotalResources -= node.resources.total.hru + node.resources.total.sru +
-			node.resources.total.mru + node.resources.total.cru
 
-		if newTotalResources == 0 {
+		cpNewUsedResources := newUsedResources
+		cpNewTotalResources := newTotalResources
+
+		newUsedResources.cru -= node.resources.used.cru
+		newUsedResources.sru -= node.resources.used.sru
+		newUsedResources.mru -= node.resources.used.mru
+		newUsedResources.hru -= node.resources.used.hru
+
+		newTotalResources.cru -= node.resources.total.cru
+		newTotalResources.sru -= node.resources.total.sru
+		newTotalResources.mru -= node.resources.total.mru
+		newTotalResources.hru -= node.resources.total.hru
+
+		if newTotalResources.isEmpty() {
 			break
 		}
 
-		newResourceUsage := 100 * float32(newUsedResources) / float32(newTotalResources)
-		if newResourceUsage < float32(f.config.Power.WakeUpThreshold) {
-			// we need to keep the resource percentage lower then the threshold
-			log.Info().Uint32("nodeID", uint32(node.ID)).Msgf("Too low resource usage = %.1f%%. Turning off unused node", newResourceUsage)
+		currentDemand := calculateDemandBasedOnThresholds(newTotalResources, newUsedResources, f.config.Power.WakeUpThresholdPercentages)
+
+		if checkResourcesMeetDemand(newTotalResources, newUsedResources, currentDemand) {
+			log.Info().Uint32("nodeID", uint32(node.ID)).Msg("Resource usage too low. Turning off unused node")
 			err := f.powerOff(sub, uint32(node.ID))
 			if err != nil {
 				log.Error().Err(err).Uint32("nodeID", uint32(node.ID)).Msg("Failed to power off node")
-
 				if node.powerState == shuttingDown {
 					continue
 				}
-
+				// restore the newUsedResources and newTotalResources
+				newUsedResources = cpNewUsedResources
+				newTotalResources = cpNewTotalResources
 				nodesLeftOnline += 1
-				newUsedResources += node.resources.used.hru + node.resources.used.sru +
-					node.resources.used.mru + node.resources.used.cru
-				newTotalResources += node.resources.total.hru + node.resources.total.sru +
-					node.resources.total.mru + node.resources.total.cru
 			}
 		}
 	}
-
 	return nil
+}
+
+func checkResourcesMeetDemand(total, used, demand capacity) bool {
+	remaining := capacity{
+		cru: total.cru - used.cru,
+		sru: total.sru - used.sru,
+		mru: total.mru - used.mru,
+		hru: total.hru - used.hru,
+	}
+
+	// Check if remaining resources meet or exceed demand for each resource type
+	meetsCRUDemand := remaining.cru >= demand.cru
+	meetsSRUDemand := remaining.sru >= demand.sru
+	meetsMRUDemand := remaining.mru >= demand.mru
+	meetsHRUDemand := remaining.hru >= demand.hru
+
+	return meetsCRUDemand && meetsSRUDemand && meetsMRUDemand && meetsHRUDemand
 }
