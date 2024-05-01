@@ -3,6 +3,7 @@ package peer
 
 import (
 	"bytes"
+	"container/ring"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -13,6 +14,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -33,7 +35,7 @@ const (
 
 // Handler is a call back that is called with verified and decrypted incoming
 // messages. An error can be non-nil error if verification or decryption failed
-type Handler func(ctx context.Context, peer Peer, env *types.Envelope, err error)
+type Handler func(ctx context.Context, peer *Peer, env *types.Envelope, err error)
 
 type cacheFactory = func(inner TwinDB, chainURL string) (TwinDB, error)
 
@@ -104,7 +106,8 @@ type Peer struct {
 	twinDB  TwinDB
 	privKey *secp256k1.PrivateKey
 	reader  Reader
-	cons    []InnerConnection
+	cons    *ring.Ring
+	mu      sync.Mutex
 	handler Handler
 	encoder encoder.Encoder
 }
@@ -241,11 +244,12 @@ func NewPeer(
 
 	reader := make(chan []byte)
 
-	var cons []InnerConnection
+	cons := ring.New(len(cfg.relayURLs))
 	for _, url := range cfg.relayURLs {
 		conn := NewConnection(identity, url, cfg.session, twin.ID)
 		conn.Start(ctx, reader)
-		cons = append(cons, conn)
+		cons.Value = conn
+		cons = cons.Next()
 	}
 
 	var sessionP *string
@@ -278,7 +282,7 @@ func (p *Peer) Encoder() encoder.Encoder {
 	return p.encoder
 }
 
-func (d Peer) handleIncoming(incoming *types.Envelope) error {
+func (d *Peer) handleIncoming(incoming *types.Envelope) error {
 	errResp := incoming.GetError()
 	if incoming.Source == nil {
 		// an envelope received that has NO source twin
@@ -338,7 +342,7 @@ func (d *Peer) process(ctx context.Context) {
 			}
 			// verify and decoding!
 			err := d.handleIncoming(&env)
-			d.handler(ctx, *d, &env, err)
+			d.handler(ctx, d, &env, err)
 		case <-ctx.Done():
 			return
 		}
@@ -489,20 +493,23 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 	}
 
 	var errs error
-	for _, con := range d.cons {
+
+	for i := 0; i < d.cons.Len(); i++ {
+		con := d.cons.Value.(InnerConnection)
 		err := con.send(ctx, bytes)
 		if err != nil {
 			errs = multierror.Append(errs, err)
 			continue
 		}
 
-		// move successful connection to first pos
-		// d.cons = append([]InnerConnection{con}, append(d.cons[:i], d.cons[i+1:]...)...)
+		d.mu.Lock()
+		d.cons = d.cons.Next()
+		d.mu.Unlock()
+
 		return nil
 	}
 
 	return errs
-
 }
 
 // SendRequest sends an rmb message to the relay

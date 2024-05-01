@@ -46,12 +46,22 @@ var (
 		"qa":   "https://graphql.qa.grid.tf/graphql",
 		"main": "https://graphql.grid.tf/graphql",
 	}
-	// RelayURLS relay urls
-	RelayURLS = map[string][]string{
-		"dev":  {"wss://relay.dev.grid.tf", "wss://relay.02.dev.grid.tf"},
-		"test": {"wss://relay.test.grid.tf", "wss://relay.02.test.grid.tf"},
-		"qa":   {"wss://relay.qa.grid.tf"},
-		"main": {"wss://relay.grid.tf"},
+	// RelayURLs relay urls
+	RelayURLs = map[string][]string{
+		"dev": {
+			"wss://relay.dev.grid.tf",
+			"wss://relay.02.dev.grid.tf",
+		},
+		"test": {
+			"wss://relay.test.grid.tf",
+			"wss://relay.02.test.grid.tf",
+		},
+		"qa": {
+			"wss://relay.qa.grid.tf",
+		},
+		"main": {
+			"wss://relay.grid.tf",
+		},
 	}
 )
 
@@ -180,7 +190,7 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 	}
 
 	if len(cfg.relayURLs) == 0 {
-		cfg.relayURLs = RelayURLS[cfg.network]
+		cfg.relayURLs = RelayURLs[cfg.network]
 	}
 	for _, url := range cfg.relayURLs {
 		if err := validateWssURL(url); err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -24,7 +25,7 @@ type InnerConnection struct {
 	session  string
 	identity substrate.Identity
 	url      string
-	busy     bool
+	busy     *atomic.Bool
 	writer   chan send
 }
 
@@ -55,6 +56,7 @@ func NewConnection(identity substrate.Identity, url string, session string, twin
 		url:      url,
 		session:  session,
 		writer:   make(chan send),
+		busy:     &atomic.Bool{},
 	}
 }
 
@@ -82,7 +84,7 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 }
 
 func (c *InnerConnection) send(ctx context.Context, data []byte) error {
-	if c.busy {
+	if c.busy.Load() {
 		return fmt.Errorf("connection is busy")
 	}
 
@@ -133,12 +135,6 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 			output <- data
 			lastPong = time.Now()
 		case sent := <-c.writer:
-			// should we remove this flag?
-			c.busy = true
-			defer func() {
-				c.busy = false
-			}()
-
 			if err := con.WriteMessage(websocket.BinaryMessage, sent.data); err != nil {
 				select {
 				case sent.err <- err:
@@ -147,9 +143,9 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 					return ctx.Err()
 				}
 			}
+
 			select {
 			case sent.err <- nil:
-				c.busy = false
 			case <-ctx.Done():
 				return ctx.Err()
 			}
@@ -187,10 +183,12 @@ func (c *InnerConnection) Start(ctx context.Context, output chan []byte) {
 
 // listenAndServe creates the websocket connection, and if successful, listens for and serves incoming and outgoing messages.
 func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte) error {
+	c.busy.Store(true)
 	con, err := c.connect()
 	if err != nil {
 		return errors.Wrap(err, "failed to reconnect")
 	}
+	c.busy.Store(false)
 
 	return c.loop(ctx, con, output)
 }

@@ -70,7 +70,7 @@ func (r *Router) Use(mw Middleware) {
 	r.mw = append(r.mw, mw)
 }
 
-func (r *Router) Serve(ctx context.Context, peer Peer, env *types.Envelope, err error) {
+func (r *Router) Serve(ctx context.Context, peer *Peer, env *types.Envelope, err error) {
 	if err != nil {
 		log.Error().Err(err).Msg("bad request")
 		return
