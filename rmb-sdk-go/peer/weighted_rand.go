@@ -43,8 +43,8 @@ func NewWeightSlice[T any](items []WeightItem[T]) (*WeightSlice[T], error) {
 }
 
 // Choose returns a single weighted random item from the slice.
-func (c WeightSlice[T]) Choose() T {
+func (c WeightSlice[T]) Choose() (int, T) {
 	r := rand.Intn(int(c.totals[len(c.totals)-1]))
 	i := sort.Search(len(c.totals), func(i int) bool { return c.totals[i] > float64(r) })
-	return c.data[i].Item
+	return i, c.data[i].Item
 }

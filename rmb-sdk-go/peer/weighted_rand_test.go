@@ -34,9 +34,9 @@ func Example() {
 		log.Fatal(err)
 	}
 
-	fruit := randomizer.Choose()
-	fmt.Print(fruit)
-	// Output: Pineapple
+	i, fruit := randomizer.Choose()
+	fmt.Printf("%v: %s", i, fruit)
+	// Output: 3: Pineapple
 }
 
 func TestWeightedRandom(t *testing.T) {
@@ -49,7 +49,8 @@ func TestWeightedRandom(t *testing.T) {
 
 	counts := make(map[int]int)
 	for i := 0; i < testIterations; i++ {
-		counts[weightSlice.Choose()]++
+		_, item := weightSlice.Choose()
+		counts[item]++
 	}
 
 	require.Equal(t, counts[0], 0) // first weight should have count = 0 because the weight is 0
@@ -57,7 +58,7 @@ func TestWeightedRandom(t *testing.T) {
 	for i, item := range items[0 : len(items)-1] { // ignore last item because we always calculate nextItem item
 		nextItem := items[i+1]
 		current, next := item.Item, nextItem.Item
-		require.Less(t, counts[int(current)], counts[int(next)])
+		require.Less(t, counts[current], counts[next])
 	}
 }
 

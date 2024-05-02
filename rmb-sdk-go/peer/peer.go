@@ -3,7 +3,6 @@ package peer
 
 import (
 	"bytes"
-	"container/ring"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -14,7 +13,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -106,8 +104,7 @@ type Peer struct {
 	twinDB  TwinDB
 	privKey *secp256k1.PrivateKey
 	reader  Reader
-	cons    *ring.Ring
-	mu      sync.Mutex
+	cons    *WeightSlice[InnerConnection]
 	handler Handler
 	encoder encoder.Encoder
 }
@@ -244,12 +241,16 @@ func NewPeer(
 
 	reader := make(chan []byte)
 
-	cons := ring.New(len(cfg.relayURLs))
+	weightCons := make([]WeightItem[InnerConnection], len(cfg.relayURLs))
 	for _, url := range cfg.relayURLs {
 		conn := NewConnection(identity, url, cfg.session, twin.ID)
 		conn.Start(ctx, reader)
-		cons.Value = conn
-		cons = cons.Next()
+		weightCons = append(weightCons, WeightItem[InnerConnection]{Item: conn, Weight: 1})
+	}
+
+	cons, err := NewWeightSlice(weightCons)
+	if err != nil {
+		return nil, err
 	}
 
 	var sessionP *string
@@ -494,18 +495,20 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 
 	var errs error
 
-	for i := 0; i < d.cons.Len(); i++ {
-		con := d.cons.Value.(InnerConnection)
+	for i := 0; i < len(d.cons.data); i++ {
+		index, con := d.cons.Choose()
 		err := con.send(ctx, bytes)
 		if err != nil {
 			errs = multierror.Append(errs, err)
+			if errors.Is(err, errTimeout) && d.cons.data[index].Weight > 0 {
+				d.cons.data[index].Weight--
+			}
 			continue
 		}
 
-		d.mu.Lock()
-		d.cons = d.cons.Next()
-		d.mu.Unlock()
-
+		if d.cons.data[index].Weight < 100 {
+			d.cons.data[index].Weight++
+		}
 		return nil
 	}
 

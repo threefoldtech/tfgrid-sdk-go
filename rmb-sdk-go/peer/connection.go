@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -19,13 +18,14 @@ const (
 	pingInterval = 20 * time.Second
 )
 
+var errTimeout = fmt.Errorf("connection timeout")
+
 // InnerConnection holds the required state to create a self healing websocket connection to the rmb relay.
 type InnerConnection struct {
 	twinID   uint32
 	session  string
 	identity substrate.Identity
 	url      string
-	busy     *atomic.Bool
 	writer   chan send
 }
 
@@ -56,7 +56,6 @@ func NewConnection(identity substrate.Identity, url string, session string, twin
 		url:      url,
 		session:  session,
 		writer:   make(chan send),
-		busy:     &atomic.Bool{},
 	}
 }
 
@@ -84,10 +83,6 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 }
 
 func (c *InnerConnection) send(ctx context.Context, data []byte) error {
-	if c.busy.Load() {
-		return fmt.Errorf("connection is busy")
-	}
-
 	resp := make(chan error)
 	defer close(resp)
 
@@ -97,6 +92,8 @@ func (c *InnerConnection) send(ctx context.Context, data []byte) error {
 	}
 
 	select {
+	case <-time.After(2 * time.Second):
+		return errTimeout
 	case err := <-resp:
 		return err
 	case <-ctx.Done():
@@ -183,12 +180,10 @@ func (c *InnerConnection) Start(ctx context.Context, output chan []byte) {
 
 // listenAndServe creates the websocket connection, and if successful, listens for and serves incoming and outgoing messages.
 func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte) error {
-	c.busy.Store(true)
 	con, err := c.connect()
 	if err != nil {
 		return errors.Wrap(err, "failed to reconnect")
 	}
-	c.busy.Store(false)
 
 	return c.loop(ctx, con, output)
 }
