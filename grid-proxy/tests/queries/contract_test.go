@@ -53,7 +53,16 @@ var contractFilterRandomValueGenerator = map[string]func(agg ContractsAggregate)
 		return &agg.Types[rand.Intn(len(agg.Types))]
 	},
 	"State": func(agg ContractsAggregate) interface{} {
-		return &agg.States[rand.Intn(len(agg.States))]
+		states := []string{"Created", "Deleted", "GracePeriod"}
+
+		randomLen := rand.Intn(len(states))
+
+		rand.Shuffle(len(states), func(i, j int) {
+			states[i], states[j] = states[j], states[i]
+		})
+
+		randomSlice := states[:randomLen]
+		return randomSlice
 	},
 	"Name": func(agg ContractsAggregate) interface{} {
 		c := agg.Names[rand.Intn(len(agg.Names))]

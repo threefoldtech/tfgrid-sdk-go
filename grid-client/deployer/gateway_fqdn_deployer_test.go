@@ -142,7 +142,7 @@ func TestFQDNDeployer(t *testing.T) {
 				}),
 			},
 		})
-		testDl.Metadata = "{\"version\":3,\"type\":\"Gateway Fqdn\",\"name\":\"name\",\"projectName\":\"Gateway\"}"
+		testDl.Metadata = "{\"version\":3,\"type\":\"Gateway Fqdn\",\"name\":\"name\",\"projectName\":\"name\"}"
 
 		assert.Equal(t, dls, map[uint32]gridtypes.Deployment{
 			nodeID: testDl,

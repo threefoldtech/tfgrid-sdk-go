@@ -36,7 +36,14 @@ body:
       label: Twin ID/s
     validations:
       required: false
-
+      
+  - type: input
+    id: version
+    attributes:
+      label: Version
+    validations:
+      required: false
+      
   - type: input
     id: node_id
     attributes:
