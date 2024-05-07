@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -130,7 +131,8 @@ func (c *ContractsGetter) ListContractsOfProjectName(projectName string, noGatew
 	for _, contract := range contractsList.NodeContracts {
 		deploymentData, err := workloads.ParseDeploymentData(contract.DeploymentData)
 		if err != nil {
-			return Contracts{}, err
+			log.Warn().Err(err).Str("metadata", contract.DeploymentData).Str("id", contract.ContractID).Msg("got contract with invalid metadata")
+			continue
 		}
 
 		if deploymentData.ProjectName == projectName {
@@ -159,10 +161,10 @@ func (c *ContractsGetter) GetNodeContractsByTypeAndName(projectName, deploymentT
 	}
 	nodeContractIDs := make(map[uint32]uint64)
 	for _, contract := range contracts.NodeContracts {
-		var deploymentData workloads.DeploymentData
-		err := json.Unmarshal([]byte(contract.DeploymentData), &deploymentData)
+		deploymentData, err := workloads.ParseDeploymentData(contract.DeploymentData)
 		if err != nil {
-			return map[uint32]uint64{}, err
+			log.Warn().Err(err).Str("metadata", contract.DeploymentData).Str("id", contract.ContractID).Msg("got contract with invalid metadata")
+			continue
 		}
 		if deploymentData.Type != deploymentType || deploymentData.Name != deploymentName {
 			continue
