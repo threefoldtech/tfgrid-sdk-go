@@ -52,7 +52,7 @@ func app() error {
 	return nil
 }
 
-func relayCallback(ctx context.Context, p peer.Peer, response *types.Envelope, callBackErr error) {
+func relayCallback(ctx context.Context, p *peer.Peer, response *types.Envelope, callBackErr error) {
 	output, err := peer.Json(response, callBackErr)
 	if err != nil {
 		log.Error().Err(err).Send()

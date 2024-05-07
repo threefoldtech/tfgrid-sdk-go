@@ -4,13 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -21,19 +18,20 @@ const (
 	pingInterval = 20 * time.Second
 )
 
+var errTimeout = fmt.Errorf("connection timeout")
+
 // InnerConnection holds the required state to create a self healing websocket connection to the rmb relay.
 type InnerConnection struct {
 	twinID   uint32
 	session  string
 	identity substrate.Identity
-	urls     []string
+	url      string
+	writer   chan send
 }
 
-// Writer is a channel that sends outgoing messages
-type Writer chan<- []byte
-
-func (w Writer) Write(data []byte) {
-	w <- data
+type send struct {
+	data []byte
+	err  chan error
 }
 
 // Reader is a channel that receives incoming messages
@@ -44,12 +42,13 @@ func (r Reader) Read() []byte {
 }
 
 // NewConnection creates a new InnerConnection instance
-func NewConnection(identity substrate.Identity, urls []string, session string, twinID uint32) InnerConnection {
+func NewConnection(identity substrate.Identity, url string, session string, twinID uint32) InnerConnection {
 	return InnerConnection{
 		twinID:   twinID,
 		identity: identity,
-		urls:     urls,
+		url:      url,
 		session:  session,
+		writer:   make(chan send),
 	}
 }
 
@@ -76,32 +75,28 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 	}
 }
 
-func (c *InnerConnection) writer(ctx context.Context, cons []*websocket.Conn, input chan []byte) error {
-	var errs error
-	local, cancel := context.WithCancel(ctx)
-	defer cancel()
+func (c *InnerConnection) send(ctx context.Context, data []byte) error {
+	resp := make(chan error)
+	defer close(resp)
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-local.Done():
-			return nil // error happened with the connection, return nil to try again
-		case data := <-input:
-			for _, con := range cons {
-				if err := con.WriteMessage(websocket.BinaryMessage, data); err != nil {
-					errs = multierror.Append(errs, err)
-					con.Close()
-					continue
-				}
-				errs = nil
-				break
-			}
+	s := send{
+		data: data,
+		err:  resp,
+	}
 
-			if errs != nil {
-				return errs
-			}
-		}
+	select {
+	case c.writer <- s:
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(2 * time.Second):
+		return errTimeout
+	}
+
+	select {
+	case err := <-resp:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
@@ -135,6 +130,18 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 		case data := <-outputCh:
 			output <- data
 			lastPong = time.Now()
+		case sent := <-c.writer:
+			err := con.WriteMessage(websocket.BinaryMessage, sent.data)
+
+			select {
+			case sent.err <- err:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+			if err != nil {
+				return err
+			}
 		case <-pong:
 			lastPong = time.Now()
 		case <-time.After(pingInterval):
@@ -150,15 +157,12 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 }
 
 // Start initiates the websocket connection
-func (c *InnerConnection) Start(ctx context.Context) (Reader, Writer) {
-	output := make(chan []byte)
-	input := make(chan []byte)
-
+func (c *InnerConnection) Start(ctx context.Context, output chan []byte) {
 	go func() {
 		defer close(output)
-		defer close(input)
+		defer close(c.writer)
 		for {
-			err := c.listenAndServe(ctx, output, input)
+			err := c.listenAndServe(ctx, output)
 			if err == context.Canceled {
 				break
 			} else if err != nil {
@@ -168,74 +172,42 @@ func (c *InnerConnection) Start(ctx context.Context) (Reader, Writer) {
 			<-time.After(2 * time.Second)
 		}
 	}()
-
-	return output, input
 }
 
 // listenAndServe creates the websocket connection, and if successful, listens for and serves incoming and outgoing messages.
-func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte, input chan []byte) error {
-	connections, err := c.connect()
+func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte) error {
+	con, err := c.connect()
 	if err != nil {
 		return errors.Wrap(err, "failed to reconnect")
 	}
 
-	var m sync.Mutex
-	var wg sync.WaitGroup
-
-	for _, con := range connections {
-		wg.Add(1)
-		go func(con *websocket.Conn) {
-			defer wg.Done()
-			if loopErr := c.loop(ctx, con, output); loopErr != nil {
-				m.Lock()
-				defer m.Unlock()
-				err = multierror.Append(err, loopErr)
-			}
-		}(con)
-	}
-
-	go func() {
-		if writerErr := c.writer(ctx, connections, input); writerErr != nil {
-			err = multierror.Append(err, writerErr)
-			return
-		}
-	}()
-
-	wg.Wait()
-	return err
+	return c.loop(ctx, con, output)
 }
 
-func (c *InnerConnection) connect() ([]*websocket.Conn, error) {
+func (c *InnerConnection) connect() (*websocket.Conn, error) {
 	token, err := NewJWT(c.identity, c.twinID, c.session, 60)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create new jwt")
 	}
 
-	var connections []*websocket.Conn
-	rand.Shuffle(len(c.urls), func(i, j int) { c.urls[i], c.urls[j] = c.urls[j], c.urls[i] })
+	relayURL := fmt.Sprintf("%s?%s", c.url, token)
+	log.Debug().Str("url", c.url).Msg("connecting")
 
-	for _, url := range c.urls {
-		relayURL := fmt.Sprintf("%s?%s", url, token)
-		log.Debug().Str("url", url).Msg("connecting")
-
-		con, resp, err := websocket.DefaultDialer.Dial(relayURL, nil)
-		if err != nil {
-			var body []byte
-			var status string
-			if resp != nil {
-				status = resp.Status
-				body, _ = io.ReadAll(resp.Body)
-			}
-
-			return nil, errors.Wrapf(err, "failed to connect (%s): %s", status, string(body))
+	con, resp, err := websocket.DefaultDialer.Dial(relayURL, nil)
+	if err != nil {
+		var body []byte
+		var status string
+		if resp != nil {
+			status = resp.Status
+			body, _ = io.ReadAll(resp.Body)
 		}
 
-		if resp.StatusCode != http.StatusSwitchingProtocols {
-			return nil, fmt.Errorf("invalid response %s", resp.Status)
-		}
-
-		connections = append(connections, con)
+		return nil, errors.Wrapf(err, "failed to connect (%s): %s", status, string(body))
 	}
 
-	return connections, err
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		return nil, fmt.Errorf("invalid response %s", resp.Status)
+	}
+
+	return con, nil
 }

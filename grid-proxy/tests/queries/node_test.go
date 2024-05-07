@@ -63,6 +63,13 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &v
 	},
+	"HasIpv6": func(_ NodesAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
 	"FreeMRU": func(agg NodesAggregate) interface{} {
 		if flip(.1) {
 			return &agg.freeMRUs[rand.Intn(len(agg.freeMRUs))]
@@ -284,6 +291,10 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		if flip(.5) {
 			v = false
 		}
+		return &v
+	},
+	"NumGPU": func(agg NodesAggregate) interface{} {
+		v := uint64(rand.Intn(3))
 		return &v
 	},
 	"OwnedBy": func(_ NodesAggregate) interface{} {

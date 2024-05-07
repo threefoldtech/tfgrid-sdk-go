@@ -103,9 +103,13 @@ never_shutdown_nodes:
   - "<your node ID to be never shutdown, optional>"
 power:
   periodic_wake_up_start: "<daily time to wake up nodes for your farm, default is the time your run the command, format is 00:00AM or 00:00PM, optional>"
-  wake_up_threshold: "<the threshold number for resources usage that will need another node to be on, default is 80, optional>"
   periodic_wake_up_limit: "<the number (limit) of nodes to be waken up everyday, default is 1, optional>"
   overprovision_cpu: "<how much node allows over provisioning the CPU , default is 1, range: [1;4], optional>"
+  wake_up_threshold:
+    cru: "<the threshold number for cru usage that will need another node to be on, default is 80, optional>"
+    mru: "<the threshold number for mru usage that will need another node to be on, default is 80, optional>"
+    sru: "<the threshold number for sru usage that will need another node to be on, default is 80, optional>"
+    hru: "<the threshold number for hru usage that will need another node to be on, default is 80, optional>"
 ```
 
 ## Supported commands

@@ -404,8 +404,16 @@ func (n *NodeClient) SystemVersion(ctx context.Context) (ver Version, err error)
 	return
 }
 
+// TaskResult holds the perf test result
+type TaskResult struct {
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Timestamp   uint64      `json:"timestamp"`
+	Result      interface{} `json:"result"`
+}
+
 // GetPerfTestsResults get all perf tests results
-func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result string, err error) {
+func (n *NodeClient) GetPerfTestResults(ctx context.Context) (result []TaskResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
@@ -416,12 +424,18 @@ func (n *NodeClient) GetPerfTestsResults(ctx context.Context) (result string, er
 }
 
 // GetPerfTestResult get a single perf test result
-func (n *NodeClient) GetPerfTestResult(ctx context.Context, testName string) (result string, err error) {
+func (n *NodeClient) GetPerfTestResult(ctx context.Context, testName string) (result TaskResult, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
+	payload := struct {
+		Name string
+	}{
+		Name: testName,
+	}
+
 	const cmd = "zos.perf.get"
-	err = n.bus.Call(ctx, n.nodeTwin, cmd, testName, &result)
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, payload, &result)
 
 	return
 }

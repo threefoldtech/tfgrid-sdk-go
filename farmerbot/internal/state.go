@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 // state is the state data for farmerbot
@@ -173,6 +174,13 @@ func getNode(
 	// don't call rmb over off nodes (state and target are off/wakingUp) allow adding them in farmerbot
 	if (configNode.powerState == off || configNode.powerState == wakingUp) &&
 		continueOnPoweringOnErr {
+		// update the total node resources from substrate
+		configNode.resources.total.update(gridtypes.Capacity{
+			CRU: uint64(configNode.Resources.CRU),
+			SRU: gridtypes.Unit(configNode.Resources.SRU),
+			HRU: gridtypes.Unit(configNode.Resources.HRU),
+			MRU: gridtypes.Unit(configNode.Resources.MRU),
+		})
 		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node state is off, will skip rmb calls")
 		return configNode, nil
 	}
@@ -275,13 +283,13 @@ func (s *state) validate() error {
 			return fmt.Errorf("node %d: twin_id is required", n.ID)
 		}
 
-		if n.resources.total.sru == 0 && n.Resources.SRU == 0 {
+		if n.resources.total.sru == 0 {
 			return fmt.Errorf("node %d: total SRU is required", n.ID)
 		}
-		if n.resources.total.cru == 0 && n.Resources.CRU == 0 {
+		if n.resources.total.cru == 0 {
 			return fmt.Errorf("node %d: total CRU is required", n.ID)
 		}
-		if n.resources.total.mru == 0 && n.Resources.MRU == 0 {
+		if n.resources.total.mru == 0 {
 			return fmt.Errorf("node %d: total MRU is required", n.ID)
 		}
 
@@ -292,23 +300,62 @@ func (s *state) validate() error {
 	}
 
 	// required values for power
-	if s.config.Power.WakeUpThreshold == 0 {
-		s.config.Power.WakeUpThreshold = defaultWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold has not been set. setting it to %d", defaultWakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.CRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for cru has not been set. setting it to %v", defaultWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.MRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.MRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for mru has not been set. setting it to %v", defaultWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.HRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.HRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for hru has not been set. setting it to %v", defaultWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.SRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.SRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for sru has not been set. setting it to %v", defaultWakeUpThreshold)
 	}
 
-	if s.config.Power.WakeUpThreshold < 1 || s.config.Power.WakeUpThreshold > 100 {
-		return fmt.Errorf("invalid wake-up threshold %d, should be between [1-100]", s.config.Power.WakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU < 1 || s.config.Power.WakeUpThresholdPercentages.CRU > 100 ||
+		s.config.Power.WakeUpThresholdPercentages.HRU < 1 || s.config.Power.WakeUpThresholdPercentages.HRU > 100 ||
+		s.config.Power.WakeUpThresholdPercentages.SRU < 1 || s.config.Power.WakeUpThresholdPercentages.SRU > 100 ||
+		s.config.Power.WakeUpThresholdPercentages.MRU < 1 || s.config.Power.WakeUpThresholdPercentages.MRU > 100 {
+		return fmt.Errorf("invalid wake-up threshold %v, should be between [1-100]", s.config.Power.WakeUpThresholdPercentages)
 	}
 
-	if s.config.Power.WakeUpThreshold < minWakeUpThreshold {
-		s.config.Power.WakeUpThreshold = minWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]. Setting it to minimum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.CRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for cru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.MRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.MRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for mru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.HRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.HRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for hru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.SRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.SRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for sru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
 	}
 
-	if s.config.Power.WakeUpThreshold > maxWakeUpThreshold {
-		s.config.Power.WakeUpThreshold = maxWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]. Setting it to maximum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.CRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for cru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.MRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.MRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for mru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.HRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.HRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for hru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.SRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.SRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for sru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
 	}
 
 	if s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {
