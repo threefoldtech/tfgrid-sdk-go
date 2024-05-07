@@ -34,13 +34,6 @@ type send struct {
 	err  chan error
 }
 
-// Writer is a channel that sends outgoing messages
-type Writer chan<- send
-
-func (w Writer) Write(data send) {
-	w <- data
-}
-
 // Reader is a channel that receives incoming messages
 type Reader <-chan []byte
 
@@ -86,14 +79,20 @@ func (c *InnerConnection) send(ctx context.Context, data []byte) error {
 	resp := make(chan error)
 	defer close(resp)
 
-	c.writer <- send{
+	s := send{
 		data: data,
 		err:  resp,
 	}
 
 	select {
+	case c.writer <- s:
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-time.After(2 * time.Second):
 		return errTimeout
+	}
+
+	select {
 	case err := <-resp:
 		return err
 	case <-ctx.Done():
@@ -132,19 +131,16 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 			output <- data
 			lastPong = time.Now()
 		case sent := <-c.writer:
-			if err := con.WriteMessage(websocket.BinaryMessage, sent.data); err != nil {
-				select {
-				case sent.err <- err:
-					return err
-				case <-ctx.Done():
-					return ctx.Err()
-				}
-			}
+			err := con.WriteMessage(websocket.BinaryMessage, sent.data)
 
 			select {
-			case sent.err <- nil:
+			case sent.err <- err:
 			case <-ctx.Done():
 				return ctx.Err()
+			}
+
+			if err != nil {
+				return err
 			}
 		case <-pong:
 			lastPong = time.Now()
