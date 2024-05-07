@@ -10,9 +10,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net/url"
+	"slices"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -29,12 +33,12 @@ const (
 
 // Handler is a call back that is called with verified and decrypted incoming
 // messages. An error can be non-nil error if verification or decryption failed
-type Handler func(ctx context.Context, peer Peer, env *types.Envelope, err error)
+type Handler func(ctx context.Context, peer *Peer, env *types.Envelope, err error)
 
 type cacheFactory = func(inner TwinDB, chainURL string) (TwinDB, error)
 
 type peerCfg struct {
-	relayURL         string
+	relayURLs        []string
 	keyType          string
 	session          string
 	enableEncryption bool
@@ -59,13 +63,13 @@ func WithEncryption(enable bool) PeerOpt {
 }
 
 // WithRelay set up the relay url, default is mainnet relay
-func WithRelay(url string) PeerOpt {
+func WithRelay(urls ...string) PeerOpt {
 	return func(p *peerCfg) {
-		p.relayURL = url
+		p.relayURLs = urls
 	}
 }
 
-// WithKeyType set up the menmonic key type, default is Sr25519
+// WithKeyType set up the mnemonic key type, default is Sr25519
 func WithKeyType(keyType string) PeerOpt {
 	return func(p *peerCfg) {
 		// to ensure only ed25519 and sr25519 are used
@@ -100,9 +104,10 @@ type Peer struct {
 	twinDB  TwinDB
 	privKey *secp256k1.PrivateKey
 	reader  Reader
-	writer  Writer
+	cons    *WeightSlice[InnerConnection]
 	handler Handler
 	encoder encoder.Encoder
+	relays  []string
 }
 
 func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, error) {
@@ -148,7 +153,7 @@ func NewPeer(
 	opts ...PeerOpt) (*Peer, error) {
 
 	cfg := &peerCfg{
-		relayURL:         "wss://relay.grid.tf",
+		relayURLs:        []string{"wss://relay.grid.tf"},
 		session:          "",
 		enableEncryption: true,
 		keyType:          KeyTypeSr25519,
@@ -196,11 +201,6 @@ func NewPeer(
 		return nil, errors.Wrapf(err, "failed to get twin id: %d", id)
 	}
 
-	url, err := url.Parse(cfg.relayURL)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse url: %s", cfg.relayURL)
-	}
-
 	var publicKey []byte
 	var privKey *secp256k1.PrivateKey
 	if cfg.enableEncryption {
@@ -212,21 +212,48 @@ func NewPeer(
 		publicKey = privKey.PubKey().SerializeCompressed()
 	}
 
-	if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || url.Hostname() != *twin.Relay {
-		log.Info().Msg("twin relay/public key didn't match, updating on chain ...")
+	var relayURLs []string
+	for _, relayURL := range cfg.relayURLs {
+		url, err := url.Parse(relayURL)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse url: %s", relayURL)
+		}
+		relayURLs = append(relayURLs, url.Host)
+	}
+
+	// sort and remove duplicates
+	sort.Slice(relayURLs, func(i, j int) bool { return strings.ToLower(relayURLs[i]) < strings.ToLower(relayURLs[j]) })
+	relayURLs = slices.Compact(relayURLs)
+
+	joinURLs := strings.Join(relayURLs, "_")
+
+	if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || joinURLs != *twin.Relay {
+		log.Info().Str("Relay url/s", joinURLs).Msg("twin relay/public key didn't match, updating on chain ...")
 		subConn, err := subManager.Substrate()
 		if err != nil {
 			return nil, errors.Wrap(err, "could not start substrate connection")
 		}
 		defer subConn.Close()
 
-		if _, err = subConn.UpdateTwin(identity, url.Hostname(), publicKey); err != nil {
+		if _, err = subConn.UpdateTwin(identity, joinURLs, publicKey); err != nil {
 			return nil, errors.Wrap(err, "could not update twin relay information")
 		}
 	}
-	conn := NewConnection(identity, cfg.relayURL, cfg.session, twin.ID)
 
-	reader, writer := conn.Start(ctx)
+	reader := make(chan []byte)
+
+	weightCons := make([]WeightItem[InnerConnection], len(cfg.relayURLs))
+	for _, url := range cfg.relayURLs {
+		conn := NewConnection(identity, url, cfg.session, twin.ID)
+		conn.Start(ctx, reader)
+		weightCons = append(weightCons, WeightItem[InnerConnection]{Item: conn, Weight: 1})
+	}
+
+	cons, err := NewWeightSlice(weightCons)
+	if err != nil {
+		return nil, err
+	}
+
 	var sessionP *string
 	if cfg.session != "" {
 		sessionP = &cfg.session
@@ -242,9 +269,10 @@ func NewPeer(
 		twinDB:  twinDB,
 		privKey: privKey,
 		reader:  reader,
-		writer:  writer,
+		cons:    cons,
 		handler: handler,
 		encoder: cfg.encoder,
+		relays:  relayURLs,
 	}
 
 	go cl.process(ctx)
@@ -257,7 +285,7 @@ func (p *Peer) Encoder() encoder.Encoder {
 	return p.encoder
 }
 
-func (d Peer) handleIncoming(incoming *types.Envelope) error {
+func (d *Peer) handleIncoming(incoming *types.Envelope) error {
 	errResp := incoming.GetError()
 	if incoming.Source == nil {
 		// an envelope received that has NO source twin
@@ -317,7 +345,7 @@ func (d *Peer) process(ctx context.Context) {
 			}
 			// verify and decoding!
 			err := d.handleIncoming(&env)
-			d.handler(ctx, *d, &env, err)
+			d.handler(ctx, d, &env, err)
 		case <-ctx.Done():
 			return
 		}
@@ -404,6 +432,7 @@ func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string
 			Connection: session,
 		},
 		Schema: &schema,
+		Relays: d.relays,
 	}
 
 	if err != nil {
@@ -462,20 +491,31 @@ func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string
 }
 
 func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
-
 	bytes, err := proto.Marshal(request)
 	if err != nil {
 		return err
 	}
 
-	select {
-	case d.writer <- bytes:
-	case <-ctx.Done():
-		return ctx.Err()
+	var errs error
+
+	for i := 0; i < len(d.cons.data); i++ {
+		index, con := d.cons.Choose()
+		err := con.send(ctx, bytes)
+		if err != nil {
+			errs = multierror.Append(errs, err)
+			if errors.Is(err, errTimeout) && d.cons.data[index].Weight > 0 {
+				d.cons.data[index].Weight--
+			}
+			continue
+		}
+
+		if d.cons.data[index].Weight < 100 {
+			d.cons.data[index].Weight++
+		}
+		return nil
 	}
 
-	return nil
-
+	return errs
 }
 
 // SendRequest sends an rmb message to the relay
@@ -503,7 +543,7 @@ func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session 
 	return nil
 }
 
-// SendRequest sends an rmb message to the relay
+// SendResponse sends an rmb message to the relay
 func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session *string, responseError error, data interface{}) error {
 	payload, err := d.encoder.Encode(data)
 	if err != nil {

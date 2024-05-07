@@ -18,19 +18,20 @@ const (
 	pingInterval = 20 * time.Second
 )
 
+var errTimeout = fmt.Errorf("connection timeout")
+
 // InnerConnection holds the required state to create a self healing websocket connection to the rmb relay.
 type InnerConnection struct {
 	twinID   uint32
 	session  string
 	identity substrate.Identity
 	url      string
+	writer   chan send
 }
 
-// Writer is a channel that sends outgoing messages
-type Writer chan<- []byte
-
-func (w Writer) Write(data []byte) {
-	w <- data
+type send struct {
+	data []byte
+	err  chan error
 }
 
 // Reader is a channel that receives incoming messages
@@ -47,6 +48,7 @@ func NewConnection(identity substrate.Identity, url string, session string, twin
 		identity: identity,
 		url:      url,
 		session:  session,
+		writer:   make(chan send),
 	}
 }
 
@@ -73,7 +75,32 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 	}
 }
 
-func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output, input chan []byte) error {
+func (c *InnerConnection) send(ctx context.Context, data []byte) error {
+	resp := make(chan error)
+	defer close(resp)
+
+	s := send{
+		data: data,
+		err:  resp,
+	}
+
+	select {
+	case c.writer <- s:
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(2 * time.Second):
+		return errTimeout
+	}
+
+	select {
+	case err := <-resp:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output chan []byte) error {
 	defer con.Close()
 
 	local, cancel := context.WithCancel(ctx)
@@ -103,8 +130,16 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output,
 		case data := <-outputCh:
 			output <- data
 			lastPong = time.Now()
-		case data := <-input:
-			if err := con.WriteMessage(websocket.BinaryMessage, data); err != nil {
+		case sent := <-c.writer:
+			err := con.WriteMessage(websocket.BinaryMessage, sent.data)
+
+			select {
+			case sent.err <- err:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+			if err != nil {
 				return err
 			}
 		case <-pong:
@@ -122,15 +157,12 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output,
 }
 
 // Start initiates the websocket connection
-func (c *InnerConnection) Start(ctx context.Context) (Reader, Writer) {
-	output := make(chan []byte)
-	input := make(chan []byte)
-
+func (c *InnerConnection) Start(ctx context.Context, output chan []byte) {
 	go func() {
 		defer close(output)
-		defer close(input)
+		defer close(c.writer)
 		for {
-			err := c.listenAndServe(ctx, output, input)
+			err := c.listenAndServe(ctx, output)
 			if err == context.Canceled {
 				break
 			} else if err != nil {
@@ -140,18 +172,16 @@ func (c *InnerConnection) Start(ctx context.Context) (Reader, Writer) {
 			<-time.After(2 * time.Second)
 		}
 	}()
-
-	return output, input
 }
 
 // listenAndServe creates the websocket connection, and if successful, listens for and serves incoming and outgoing messages.
-func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte, input chan []byte) error {
+func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte) error {
 	con, err := c.connect()
 	if err != nil {
 		return errors.Wrap(err, "failed to reconnect")
 	}
 
-	return c.loop(ctx, con, output, input)
+	return c.loop(ctx, con, output)
 }
 
 func (c *InnerConnection) connect() (*websocket.Conn, error) {
@@ -161,6 +191,7 @@ func (c *InnerConnection) connect() (*websocket.Conn, error) {
 	}
 
 	relayURL := fmt.Sprintf("%s?%s", c.url, token)
+	log.Debug().Str("url", c.url).Msg("connecting")
 
 	con, resp, err := websocket.DefaultDialer.Dial(relayURL, nil)
 	if err != nil {

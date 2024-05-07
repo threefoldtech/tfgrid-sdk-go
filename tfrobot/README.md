@@ -26,27 +26,27 @@ mv tfrobot /usr/local/bin
 ```yaml
 node_groups:
 
-  - name: battag1
+  - name: group_a
     nodes_count: 2 # amount of nodes to be found
     free_cpu: 2 # number of logical cores
-    free_mru: 70 # amount of memory in GB
-    free_ssd: 100 # amount of ssd storage in GB
-    free_hdd: 50 # amount of hdd storage in GB
+    free_mru: 32 # amount of memory in GB
+    free_ssd: 20 # amount of ssd storage in GB
+    free_hdd: 5 # amount of hdd storage in GB
     dedicated: false # are nodes dedicated
     public_ip4: false # should the nodes have free ip v4
     public_ip6: false # should the nodes have free ip v6
     certified: false # should the nodes be certified(if false the nodes could be certified of diy) 
     region: europe # region could be the name of the continents the nodes are located in (africa, americas, antarctic, antarctic ocean, asia, europe, oceania, polar)
 vms:
-  - name: batta_vmg1
+  - name: example1
     vms_count: 1 # amount of vms with the same configurations
-    node_group: battag1 # the name of the predefined group of nodes
+    node_group: group_a # the name of the predefined group of nodes
     cpu: 2 # number of logical cores
     mem: 2 # amount of  memory in GB
     public_ip4: false
     public_ip6: false
-    flist: https://hub.grid.tf/mariobassem1.3bot/threefolddev-holochain-latest.flist
-    entry_point: /usr/local/bin/entrypoint.sh
+    flist: "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"
+    entry_point: '/sbin/zinit init'
     root_size: 0 # root size in GB, 0 is the default
     ssh_key: my_key # the name of the predefined ssh key, will be defined below
     env_vars:
@@ -54,7 +54,7 @@ vms:
 
 
 ssh_keys: # map of ssh keys with key=name and value=the actual ssh key
-  my_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCeq1MFCQOv3OCLO1HxdQl8V0CxAwt5AzdsNOL91wmHiG9ocgnq2yipv7qz+uCS0AdyOSzB9umyLcOZl2apnuyzSOd+2k6Cj9ipkgVx4nx4q5W1xt4MWIwKPfbfBA9gDMVpaGYpT6ZEv2ykFPnjG0obXzIjAaOsRthawuEF8bPZku1yi83SDtpU7I0pLOl3oifuwPpXTAVkK6GabSfbCJQWBDSYXXM20eRcAhIMmt79zo78FNItHmWpfPxPTWlYW02f7vVxTN/LUeRFoaNXXY+cuPxmcmXp912kW0vhK9IvWXqGAEuSycUOwync/yj+8f7dRU7upFGqd6bXUh67iMl7 ahmed@ahmedheaven"
+  my_key: "example-key"
 
 mnemonic: REPLACE WITH YOUR MNEMONIC # mnemonic of the user
 network: main # eg: main, test, qa, dev

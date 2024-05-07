@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/threefoldtech/zos/pkg/rmb/client/peer/types";
+option go_package = "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types";
 
 // A Request annotate this message as a request message
 // with proper command
@@ -76,4 +76,6 @@ message Envelope {
     bytes plain = 13;
     bytes cipher = 14;
   }
+
+	repeated string relays = 17;
 }
