@@ -18,7 +18,7 @@ require (
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240227171040-f2a20ee3e965
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4
 	github.com/threefoldtech/zos v0.5.6-0.20240226114056-364e04acbed3
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
+	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.10
 
@@ -54,6 +54,8 @@ require (
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hasura/go-graphql-client v0.10.0 // indirect
 	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -90,6 +92,7 @@ require (
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.17.0 // indirect
+	gonum.org/v1/gonum v0.15.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect

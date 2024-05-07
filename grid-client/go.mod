@@ -19,11 +19,9 @@ require (
 	github.com/threefoldtech/zos v0.5.6-0.20240226114056-364e04acbed3
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.20.0
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
+	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b
 )
-
-require github.com/nxadm/tail v1.4.11 // indirect
 
 require (
 	github.com/ChainSafe/go-schnorrkel v1.1.0 // indirect
@@ -48,12 +46,14 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b // indirect
+	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/cors v1.10.1 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.17.0 // indirect
+	gonum.org/v1/gonum v0.15.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

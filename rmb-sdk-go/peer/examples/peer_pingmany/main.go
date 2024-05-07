@@ -39,7 +39,7 @@ func main() {
 	wg.Add(count)
 
 	received := 0
-	handler := func(ctx context.Context, peer peer.Peer, env *types.Envelope, err error) {
+	handler := func(ctx context.Context, peer *peer.Peer, env *types.Envelope, err error) {
 		received += 1
 		log.Info().Int("received", received).Msg("received responses so far")
 		defer wg.Done()
