@@ -84,6 +84,12 @@ func challenge(w io.Writer, env *types.Envelope) error {
 		}
 	}
 
+	for _, relay := range env.Relays {
+		if _, err := fmt.Fprintf(w, "%s", relay); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
