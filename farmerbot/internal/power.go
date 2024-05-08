@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"golang.org/x/exp/maps"
 )
 
 // powerOn sets the node power state ON
@@ -15,16 +14,16 @@ func (f *FarmerBot) powerOn(sub Substrate, nodeID uint32) error {
 	f.m.Lock()
 	defer f.m.Unlock()
 
-	node, ok := f.nodes[nodeID]
-	if !ok {
-		return fmt.Errorf("node %d is not found", nodeID)
+	_, node, err := f.getNode(nodeID)
+	if err != nil {
+		return err
 	}
 
 	if node.powerState == on || node.powerState == wakingUp {
 		return nil
 	}
 
-	_, err := sub.SetNodePowerTarget(f.identity, nodeID, true)
+	_, err = sub.SetNodePowerTarget(f.identity, nodeID, true)
 	if err != nil {
 		return fmt.Errorf("failed to set node %d power target to up with error: %w", nodeID, err)
 	}
@@ -33,8 +32,7 @@ func (f *FarmerBot) powerOn(sub Substrate, nodeID uint32) error {
 	node.lastTimeAwake = time.Now()
 	node.lastTimePowerStateChanged = time.Now()
 
-	f.nodes[nodeID] = node
-	return nil
+	return f.updateNode(node)
 }
 
 // powerOff sets the node power state OFF
@@ -43,9 +41,9 @@ func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 	f.m.Lock()
 	defer f.m.Unlock()
 
-	node, ok := f.nodes[nodeID]
-	if !ok {
-		return fmt.Errorf("node '%d' is not found", nodeID)
+	_, node, err := f.getNode(nodeID)
+	if err != nil {
+		return err
 	}
 
 	if node.powerState == off || node.powerState == shuttingDown {
@@ -86,7 +84,7 @@ func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 		return fmt.Errorf("cannot power off node '%d', at least one node should be on in the farm", nodeID)
 	}
 
-	_, err := sub.SetNodePowerTarget(f.identity, nodeID, false)
+	_, err = sub.SetNodePowerTarget(f.identity, nodeID, false)
 	if err != nil {
 		powerTarget, getErr := sub.GetPowerTarget(nodeID)
 		if getErr != nil {
@@ -97,7 +95,10 @@ func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 			log.Warn().Uint32("nodeID", nodeID).Msg("Node is shutting down although it failed to set power target in tfchain")
 			node.powerState = shuttingDown
 			node.lastTimePowerStateChanged = time.Now()
-			f.nodes[nodeID] = node
+			updateErr := f.updateNode(node)
+			if updateErr != nil {
+				return updateErr
+			}
 		}
 
 		return fmt.Errorf("failed to set node '%d' power target to down with error: %w", nodeID, err)
@@ -106,8 +107,7 @@ func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 	node.powerState = shuttingDown
 	node.lastTimePowerStateChanged = time.Now()
 
-	f.nodes[nodeID] = node
-	return nil
+	return f.updateNode(node)
 }
 
 // manageNodesPower for power management nodes
@@ -155,7 +155,7 @@ func calculateDemandBasedOnThresholds(total, used capacity, thresholdPercentages
 	return demand
 }
 
-func calculateResourceUsage(nodes map[uint32]node) (capacity, capacity) {
+func calculateResourceUsage(nodes []node) (capacity, capacity) {
 	usedResources := capacity{}
 	totalResources := capacity{}
 
@@ -171,7 +171,6 @@ func calculateResourceUsage(nodes map[uint32]node) (capacity, capacity) {
 	return usedResources, totalResources
 }
 
-// TODO: add prio
 func (f *FarmerBot) selectNodesToPowerOn(demand capacity) ([]node, error) {
 	var selectedNodes []node
 	remainingDemand := demand
@@ -251,22 +250,14 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 		return nil
 	}
 
-	log.Debug().Uints32("nodes IDs", maps.Keys(nodesAllowedToShutdown)).Msg("Nodes allowed to shutdown")
+	log.Debug().Int("nodes number", len(nodesAllowedToShutdown)).Msg("Nodes allowed to shutdown")
 
 	newUsedResources := usedResources
 	newTotalResources := totalResources
 	nodesLeftOnline := len(onNodes)
 
-	// use keys to keep nodes order
-	nodesAllowedToShutdownKeys := make([]uint32, 0, len(nodesAllowedToShutdown))
-	for k := range nodesAllowedToShutdown {
-		nodesAllowedToShutdownKeys = append(nodesAllowedToShutdownKeys, k)
-	}
-
 	// shutdown a node if there is more than an unused node (aka keep at least one node online)
-	for i := 0; i < len(nodesAllowedToShutdown); i++ {
-		node := nodesAllowedToShutdown[nodesAllowedToShutdownKeys[i]]
-
+	for _, node := range nodesAllowedToShutdown {
 		if nodesLeftOnline == 1 {
 			break
 		}
