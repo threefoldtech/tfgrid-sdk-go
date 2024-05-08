@@ -54,8 +54,8 @@ func TestFarmerbot(t *testing.T) {
 	assert.NoError(t, err)
 	farmerbot.state = state
 
-	oldNode1 := farmerbot.nodes[1]
-	oldNode2 := farmerbot.nodes[2]
+	oldNode1 := farmerbot.nodes[0]
+	oldNode2 := farmerbot.nodes[1]
 
 	t.Run("invalid identity", func(t *testing.T) {
 		_, err := NewFarmerBot(ctx, Config{}, "dev", "invalid", peer.KeyTypeSr25519)
@@ -86,8 +86,8 @@ func TestFarmerbot(t *testing.T) {
 
 		oldNode1.powerState = off
 		oldNode2.powerState = off
-		state.addNode(oldNode1)
-		state.addNode(oldNode2)
+		assert.NoError(t, farmerbot.updateNode(oldNode1))
+		assert.NoError(t, farmerbot.updateNode(oldNode2))
 		farmerbot.state = state
 
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, false, true, resources, []string{}, false, false)
@@ -101,8 +101,8 @@ func TestFarmerbot(t *testing.T) {
 	t.Run("test iterateOnNodes: update nodes (periodic wake up: failed to set off node)", func(t *testing.T) {
 		oldNode1.powerState = off
 		oldNode2.powerState = off
-		state.addNode(oldNode1)
-		state.addNode(oldNode2)
+		assert.NoError(t, farmerbot.updateNode(oldNode1))
+		assert.NoError(t, farmerbot.updateNode(oldNode2))
 		farmerbot.state = state
 
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, false, true, resources, []string{}, false, false)
