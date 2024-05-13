@@ -12,6 +12,12 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.2
+
+---
+
+- `fix` ipv6 indexer (default interval, rmb call result)
+
 ### v0.15.1
 
 ---
