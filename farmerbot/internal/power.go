@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -11,8 +12,9 @@ import (
 // powerOn sets the node power state ON
 func (f *FarmerBot) powerOn(sub Substrate, nodeID uint32) error {
 	log.Info().Uint32("nodeID", nodeID).Msg("POWER ON")
+	var unlockOnce sync.Once
 	f.m.Lock()
-	defer f.m.Unlock()
+	defer unlockOnce.Do(func() { f.m.Unlock() })
 
 	_, node, err := f.getNode(nodeID)
 	if err != nil {
@@ -32,14 +34,17 @@ func (f *FarmerBot) powerOn(sub Substrate, nodeID uint32) error {
 	node.lastTimeAwake = time.Now()
 	node.lastTimePowerStateChanged = time.Now()
 
+	// cancel defer unlock because update needs lock
+	unlockOnce.Do(func() { f.m.Unlock() })
 	return f.updateNode(node)
 }
 
 // powerOff sets the node power state OFF
 func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 	log.Info().Uint32("nodeID", nodeID).Msg("POWER OFF")
+	var unlockOnce sync.Once
 	f.m.Lock()
-	defer f.m.Unlock()
+	defer unlockOnce.Do(func() { f.m.Unlock() })
 
 	_, node, err := f.getNode(nodeID)
 	if err != nil {
@@ -95,6 +100,8 @@ func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 			log.Warn().Uint32("nodeID", nodeID).Msg("Node is shutting down although it failed to set power target in tfchain")
 			node.powerState = shuttingDown
 			node.lastTimePowerStateChanged = time.Now()
+			// cancel defer unlock because update needs lock
+			unlockOnce.Do(func() { f.m.Unlock() })
 			updateErr := f.updateNode(node)
 			if updateErr != nil {
 				return updateErr
@@ -107,6 +114,8 @@ func (f *FarmerBot) powerOff(sub Substrate, nodeID uint32) error {
 	node.powerState = shuttingDown
 	node.lastTimePowerStateChanged = time.Now()
 
+	// cancel defer unlock because update needs lock
+	unlockOnce.Do(func() { f.m.Unlock() })
 	return f.updateNode(node)
 }
 

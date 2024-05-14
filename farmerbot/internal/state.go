@@ -244,8 +244,8 @@ func (s *state) deleteNode(nodeID uint32) {
 
 // UpdateNode updates a node in the config
 func (s *state) updateNode(node node) error {
-	// s.m.Lock()
-	// defer s.m.Unlock()
+	s.m.Lock()
+	defer s.m.Unlock()
 
 	for i, n := range s.nodes {
 		if n.ID == node.ID {

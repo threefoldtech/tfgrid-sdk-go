@@ -15,6 +15,14 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+func reset(t *testing.T, farmerbot FarmerBot, oldNode1, oldNode2 node, oldFarm substrate.Farm) {
+	t.Helper()
+
+	assert.NoError(t, farmerbot.updateNode(oldNode1))
+	assert.NoError(t, farmerbot.updateNode(oldNode2))
+	farmerbot.farm = oldFarm
+}
+
 func TestFindNode(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -72,9 +80,7 @@ func TestFindNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, farmerbot.nodes, node)
 
-		assert.NoError(t, farmerbot.updateNode(oldNode1))
-		assert.NoError(t, farmerbot.updateNode(oldNode2))
-		farmerbot.farm = oldFarm
+		reset(t, farmerbot, oldNode1, oldNode2, oldFarm)
 	})
 
 	t.Run("test valid find node: found an ON node, trying to power off fails because resources is claimed", func(t *testing.T) {
@@ -88,9 +94,7 @@ func TestFindNode(t *testing.T) {
 		err = farmerbot.powerOff(sub, nodeID)
 		assert.Error(t, err)
 
-		assert.NoError(t, farmerbot.updateNode(oldNode1))
-		assert.NoError(t, farmerbot.updateNode(oldNode2))
-		farmerbot.farm = oldFarm
+		reset(t, farmerbot, oldNode1, oldNode2, oldFarm)
 	})
 
 	t.Run("test valid find node: found an ON node (first is OFF)", func(t *testing.T) {
@@ -102,9 +106,7 @@ func TestFindNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, nodeID, uint32(farmerbot.nodes[1].ID))
 
-		assert.NoError(t, farmerbot.updateNode(oldNode1))
-		assert.NoError(t, farmerbot.updateNode(oldNode2))
-		farmerbot.farm = oldFarm
+		reset(t, farmerbot, oldNode1, oldNode2, oldFarm)
 	})
 
 	t.Run("test valid find node: node is rented (second node is found)", func(t *testing.T) {
@@ -116,9 +118,7 @@ func TestFindNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, farmerbot.config.IncludedNodes, nodeID)
 
-		assert.NoError(t, farmerbot.updateNode(oldNode1))
-		assert.NoError(t, farmerbot.updateNode(oldNode2))
-		farmerbot.farm = oldFarm
+		reset(t, farmerbot, oldNode1, oldNode2, oldFarm)
 	})
 
 	t.Run("test valid find node: node is dedicated so node is found", func(t *testing.T) {
@@ -130,9 +130,7 @@ func TestFindNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, farmerbot.config.IncludedNodes, nodeID)
 
-		assert.NoError(t, farmerbot.updateNode(oldNode1))
-		assert.NoError(t, farmerbot.updateNode(oldNode2))
-		farmerbot.farm = oldFarm
+		reset(t, farmerbot, oldNode1, oldNode2, oldFarm)
 	})
 
 	t.Run("test valid find node: options and nodes are dedicated and nodes are unused", func(t *testing.T) {
@@ -140,9 +138,7 @@ func TestFindNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, farmerbot.config.IncludedNodes, nodeID)
 
-		assert.NoError(t, farmerbot.updateNode(oldNode1))
-		assert.NoError(t, farmerbot.updateNode(oldNode2))
-		farmerbot.farm = oldFarm
+		reset(t, farmerbot, oldNode1, oldNode2, oldFarm)
 	})
 
 	t.Run("test valid find node: no gpus with specified device/vendor in first node (second is found)", func(t *testing.T) {
@@ -159,7 +155,7 @@ func TestFindNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, nodeID, uint32(farmerbot.nodes[1].ID))
 
-		assert.NoError(t, farmerbot.updateNode(oldNode2))
+		reset(t, farmerbot, oldNode1, oldNode2, oldFarm)
 	})
 
 	t.Run("test invalid find node: no gpus in nodes", func(t *testing.T) {
@@ -180,8 +176,7 @@ func TestFindNode(t *testing.T) {
 		_, err := farmerbot.findNode(sub, nodeOptions)
 		assert.Error(t, err)
 
-		assert.NoError(t, farmerbot.updateNode(oldNode1))
-		assert.NoError(t, farmerbot.updateNode(oldNode2))
+		reset(t, farmerbot, oldNode1, oldNode2, oldFarm)
 	})
 
 	t.Run("test invalid find node: no enough public ips", func(t *testing.T) {
@@ -219,9 +214,7 @@ func TestFindNode(t *testing.T) {
 		_, err := farmerbot.findNode(sub, NodeFilterOption{})
 		assert.Error(t, err)
 
-		assert.NoError(t, farmerbot.updateNode(oldNode1))
-		assert.NoError(t, farmerbot.updateNode(oldNode2))
-		farmerbot.farm = oldFarm
+		reset(t, farmerbot, oldNode1, oldNode2, oldFarm)
 	})
 
 	t.Run("test invalid find node: node is excluded", func(t *testing.T) {
@@ -239,8 +232,5 @@ func TestFindNode(t *testing.T) {
 
 		_, err := farmerbot.findNode(sub, nodeOptions)
 		assert.Error(t, err)
-
-		assert.NoError(t, farmerbot.updateNode(oldNode1))
-		assert.NoError(t, farmerbot.updateNode(oldNode2))
 	})
 }
