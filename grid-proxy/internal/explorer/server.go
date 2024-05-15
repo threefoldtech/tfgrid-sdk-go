@@ -37,7 +37,6 @@ const (
 // @Param free_ips query int false "Min number of free ips in the farm"
 // @Param total_ips query int false "Min number of total ips in the farm"
 // @Param pricing_policy_id query int false "Pricing policy id"
-// @Param version query int false "farm version"
 // @Param farm_id query int false "farm id"
 // @Param twin_id query int false "twin id associated with the farm"
 // @Param name query string false "farm name"
