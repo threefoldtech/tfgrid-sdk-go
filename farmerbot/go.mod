@@ -17,7 +17,6 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.0
 	github.com/threefoldtech/zos v0.5.6-0.20240226114056-364e04acbed3
 	github.com/vedhavyas/go-subkey v1.0.3
-	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	gopkg.in/yaml.v3 v3.0.1
 )
 

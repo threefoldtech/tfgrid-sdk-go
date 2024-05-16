@@ -157,8 +157,9 @@ func getNode(
 	if powerTarget.State.IsUp && powerTarget.Target.IsUp && configNode.powerState != on {
 		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is on")
 		configNode.powerState = on
-		configNode.lastTimeAwake = time.Now()
-		configNode.lastTimePowerStateChanged = time.Now()
+		timeNow := time.Now()
+		configNode.lastTimeAwake = timeNow
+		configNode.lastTimePowerStateChanged = timeNow
 	}
 
 	if powerTarget.State.IsUp && powerTarget.Target.IsDown && configNode.powerState != shuttingDown {
