@@ -58,7 +58,7 @@ func createNodeReport(n node) NodeReport {
 		sinceLastTimeAwake = time.Since(n.lastTimeAwake)
 	}
 
-	used, total := calculateResourceUsage(map[uint32]node{nodeID: n})
+	used, total := calculateResourceUsage([]node{n})
 
 	var hruUsage uint8
 	if total.hru != 0 {

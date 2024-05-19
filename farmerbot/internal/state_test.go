@@ -136,10 +136,10 @@ func TestSetConfig(t *testing.T) {
 		state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(state.farm.ID), uint32(1))
+		assert.True(t, state.nodes[0].dedicated)
 		assert.True(t, state.nodes[1].dedicated)
-		assert.True(t, state.nodes[2].dedicated)
-		assert.Equal(t, uint32(state.nodes[1].ID), uint32(1))
-		assert.Equal(t, uint32(state.nodes[2].ID), uint32(2))
+		assert.Equal(t, uint32(state.nodes[0].ID), uint32(1))
+		assert.Equal(t, uint32(state.nodes[1].ID), uint32(2))
 
 		now := time.Now()
 		assert.Equal(t, state.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour(), now.Hour())
@@ -241,7 +241,7 @@ func TestSetConfig(t *testing.T) {
 
 		state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 		assert.NoError(t, err)
-		assert.False(t, state.nodes[1].hasActiveRentContract)
+		assert.False(t, state.nodes[0].hasActiveRentContract)
 	})
 
 	t.Run("test valid excluded node", func(t *testing.T) {
@@ -317,9 +317,9 @@ func TestSetConfig(t *testing.T) {
 
 func TestStateModel(t *testing.T) {
 	state := state{
-		nodes: map[uint32]node{1: {
+		nodes: []node{{
 			Node: substrate.Node{ID: 1},
-		}, 2: {
+		}, {
 			Node: substrate.Node{ID: 2},
 		}},
 	}
@@ -327,7 +327,7 @@ func TestStateModel(t *testing.T) {
 	t.Run("test update node", func(t *testing.T) {
 		err := state.updateNode(node{Node: substrate.Node{ID: 1, TwinID: 1}})
 		assert.NoError(t, err)
-		assert.Equal(t, uint32(state.nodes[1].TwinID), uint32(1))
+		assert.Equal(t, uint32(state.nodes[0].TwinID), uint32(1))
 	})
 
 	t.Run("test update node (not found)", func(t *testing.T) {
@@ -351,11 +351,12 @@ func TestStateModel(t *testing.T) {
 	})
 
 	t.Run("test update node", func(t *testing.T) {
-		state.addNode(node{Node: substrate.Node{ID: 1, TwinID: 1}})
-		assert.Equal(t, uint32(state.nodes[1].TwinID), uint32(1))
+		assert.NoError(t, state.updateNode(node{Node: substrate.Node{ID: 1, TwinID: 1}}))
+		assert.Equal(t, uint32(state.nodes[0].TwinID), uint32(1))
 
 		state.deleteNode(1)
-		assert.Empty(t, state.nodes[1])
+		_, _, err := state.getNode(1)
+		assert.Error(t, err)
 	})
 }
 

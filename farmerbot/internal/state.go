@@ -16,7 +16,7 @@ import (
 // state is the state data for farmerbot
 type state struct {
 	farm   substrate.Farm
-	nodes  map[uint32]node
+	nodes  []node
 	config Config
 	m      sync.Mutex
 }
@@ -59,13 +59,15 @@ func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config,
 	return &s, nil
 }
 
-func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Config, dedicatedFarm bool) (map[uint32]node, error) {
-	nodes := make(map[uint32]node)
+func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Config, dedicatedFarm bool) ([]node, error) {
+	var nodes []node
 
 	farmNodes, err := sub.GetNodes(config.FarmID)
 	if err != nil {
 		return nil, err
 	}
+
+	farmNodes = addPriorityToNodes(config.PriorityNodes, farmNodes)
 
 	for _, nodeID := range farmNodes {
 		if slices.Contains(config.ExcludedNodes, nodeID) {
@@ -86,7 +88,7 @@ func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Co
 
 				return nil, fmt.Errorf("failed to add node with id %d with error: %w", nodeID, err)
 			}
-			nodes[nodeID] = configNode
+			nodes = append(nodes, configNode)
 		}
 	}
 
@@ -155,8 +157,9 @@ func getNode(
 	if powerTarget.State.IsUp && powerTarget.Target.IsUp && configNode.powerState != on {
 		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is on")
 		configNode.powerState = on
-		configNode.lastTimeAwake = time.Now()
-		configNode.lastTimePowerStateChanged = time.Now()
+		timeNow := time.Now()
+		configNode.lastTimeAwake = timeNow
+		configNode.lastTimePowerStateChanged = timeNow
 	}
 
 	if powerTarget.State.IsUp && powerTarget.Target.IsDown && configNode.powerState != shuttingDown {
@@ -210,19 +213,34 @@ func getNode(
 	return configNode, nil
 }
 
+func (s *state) getNode(nodeID uint32) (int, node, error) {
+	for i, node := range s.nodes {
+		if uint32(node.ID) == nodeID {
+			return i, node, nil
+		}
+	}
+
+	return 0, node{}, fmt.Errorf("node '%d' is not found", nodeID)
+}
+
 // addNode adds a node in the config
 func (s *state) addNode(node node) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	s.nodes[uint32(node.ID)] = node
+	s.nodes = append(s.nodes, node)
 }
 
 func (s *state) deleteNode(nodeID uint32) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	delete(s.nodes, nodeID)
+	for i, node := range s.nodes {
+		if uint32(node.ID) == nodeID {
+			s.nodes = slices.Delete(s.nodes, i, i+1)
+			return
+		}
+	}
 }
 
 // UpdateNode updates a node in the config
@@ -230,35 +248,33 @@ func (s *state) updateNode(node node) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	nodeID := uint32(node.ID)
-
-	_, ok := s.nodes[nodeID]
-	if !ok {
-		return fmt.Errorf("node %d is not found", nodeID)
+	for i, n := range s.nodes {
+		if n.ID == node.ID {
+			s.nodes[i] = node
+			return nil
+		}
 	}
 
-	s.nodes[nodeID] = node
-
-	return nil
+	return fmt.Errorf("node '%d' is not found", node.ID)
 }
 
 // FilterNodesPower filters ON, waking up, shutting down, or OFF nodes
-func (s *state) filterNodesPower(states []powerState) map[uint32]node {
-	filtered := make(map[uint32]node)
-	for nodeID, node := range s.nodes {
+func (s *state) filterNodesPower(states []powerState) []node {
+	var filtered []node
+	for _, node := range s.nodes {
 		if slices.Contains(states, node.powerState) {
-			filtered[nodeID] = node
+			filtered = append(filtered, node)
 		}
 	}
 	return filtered
 }
 
 // FilterAllowedNodesToShutDown filters nodes that are allowed to shut down
-func (s *state) filterAllowedNodesToShutDown() map[uint32]node {
-	filtered := make(map[uint32]node)
-	for nodeID, node := range s.nodes {
+func (s *state) filterAllowedNodesToShutDown() []node {
+	var filtered []node
+	for _, node := range s.nodes {
 		if node.canShutDown() {
-			filtered[nodeID] = node
+			filtered = append(filtered, node)
 		}
 	}
 	return filtered

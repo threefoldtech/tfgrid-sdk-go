@@ -20,6 +20,7 @@ type Config struct {
 	FarmID                  uint32   `yaml:"farm_id"`
 	IncludedNodes           []uint32 `yaml:"included_nodes"`
 	ExcludedNodes           []uint32 `yaml:"excluded_nodes"`
+	PriorityNodes           []uint32 `yaml:"priority_nodes"`
 	NeverShutDownNodes      []uint32 `yaml:"never_shutdown_nodes"`
 	Power                   power    `yaml:"power"`
 	ContinueOnPoweringOnErr bool
