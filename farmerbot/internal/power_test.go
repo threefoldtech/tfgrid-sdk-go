@@ -26,7 +26,7 @@ func TestPowerLargeScale(t *testing.T) {
 	inputs := Config{
 		FarmID:        1,
 		IncludedNodes: []uint32{1, 2, 3, 4, 5, 6, 7},
-		PriorityNodes: []uint32{5, 2, 10},
+		PriorityNodes: []uint32{7, 2, 2, 10},
 	}
 
 	// mock state
@@ -50,7 +50,7 @@ func TestPowerLargeScale(t *testing.T) {
 
 	t.Run("test valid power off: all nodes will be off except one node", func(t *testing.T) {
 		for _, node := range farmerbot.nodes {
-			if node.ID == 7 {
+			if node.ID == 6 {
 				continue
 			}
 			sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(node.ID), false).Return(types.Hash{}, nil)
