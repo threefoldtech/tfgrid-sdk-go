@@ -49,6 +49,16 @@ func (Speed) TableName() string {
 	return "speed"
 }
 
+// NodesWorkloads holds the number of workloads on a node
+type NodesWorkloads struct {
+	NodeTwinId      uint32 `json:"node_twin_id,omitempty" gorm:"unique;not null"`
+	WorkloadsNumber uint32 `json:"workloads_number"`
+}
+
+func (NodesWorkloads) TableName() string {
+	return "node_workloads"
+}
+
 // Dmi holds hardware dmi info for a node
 // used as both gorm model and server json response
 type Dmi struct {

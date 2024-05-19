@@ -17,6 +17,7 @@ type Stats struct {
 	NodesDistribution map[string]int64 `json:"nodesDistribution" gorm:"-:all"`
 	GPUs              int64            `json:"gpus"`
 	DedicatedNodes    int64            `json:"dedicatedNodes"`
+	WorkloadsNumber   uint32           `json:"workloads_number"`
 }
 
 // StatsFilter statistics filters

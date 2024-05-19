@@ -83,6 +83,7 @@ func (d *PostgresDatabase) Initialize() error {
 		&types.Dmi{},
 		&types.Speed{},
 		&types.HasIpv6{},
+		&types.NodesWorkloads{},
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to migrate indexer tables")
@@ -184,6 +185,14 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 		Count(&stats.DedicatedNodes)
 	if res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get dedicated nodes count")
+	}
+
+	if err := d.gormDB.WithContext(ctx).Table("node").
+		Select("SUM(workloads_number) as workloads_number").
+		Where(condition).
+		Joins("LEFT JOIN node_workloads ON node.twin_id = node_workloads.node_twin_id").
+		Scan(&stats.WorkloadsNumber).Error; err != nil {
+		return stats, errors.Wrap(res.Error, "couldn't sum workloads number")
 	}
 
 	return stats, nil

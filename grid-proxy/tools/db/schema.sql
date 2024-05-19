@@ -1093,3 +1093,16 @@ CREATE TABLE IF NOT EXISTS public.node_ipv6 (
 ALTER TABLE public.node_ipv6 
     OWNER TO postgres;
 
+
+--
+-- Name: node_workloads; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS public.node_workloads (
+    node_twin_id bigint NOT NULL,
+    workloads_number numeric
+);
+
+ALTER TABLE public.node_workloads 
+    OWNER TO postgres;
+

@@ -33,6 +33,7 @@ type Database interface {
 	UpsertNodeDmi(ctx context.Context, dmis []types.Dmi) error
 	UpsertNetworkSpeed(ctx context.Context, speeds []types.Speed) error
 	UpsertNodeIpv6Report(ctx context.Context, ips []types.HasIpv6) error
+	UpsertNodeWorkloads(ctx context.Context, workloads []types.NodesWorkloads) error
 }
 
 type ContractBilling types.ContractBilling

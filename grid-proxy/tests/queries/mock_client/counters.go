@@ -16,6 +16,7 @@ func (g *GridProxyMockClient) Stats(ctx context.Context, filter types.StatsFilte
 	res.Contracts += int64(len(g.data.NameContracts))
 	distribution := map[string]int64{}
 	dedicatedNodesCount := int64(0)
+	workloadsNumber := uint32(0)
 	var gpus int64
 	for _, node := range g.data.Nodes {
 		nodePower := types.NodePower{
@@ -41,12 +42,13 @@ func (g *GridProxyMockClient) Stats(ctx context.Context, filter types.StatsFilte
 			if isDedicatedNode(g.data, node) {
 				dedicatedNodesCount++
 			}
+			workloadsNumber += g.data.WorkloadsNumbers[uint32(node.TwinID)]
 		}
 	}
 	res.Countries = int64(len(distribution))
 	res.NodesDistribution = distribution
 	res.GPUs = gpus
 	res.DedicatedNodes = dedicatedNodesCount
-
+	res.WorkloadsNumber = workloadsNumber
 	return
 }
