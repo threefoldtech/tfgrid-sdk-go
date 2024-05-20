@@ -35,7 +35,6 @@ var (
 )
 
 func buildNodeFilter(vmSpec VMSpec) types.NodeFilter {
-	nodeStatus := "up"
 	freeMRU := uint64(vmSpec.Memory * 1024 * 1024 * 1024)
 	freeSRU := uint64(vmSpec.Storage * 1024 * 1024 * 1024)
 	freeIPs := uint64(0)
@@ -46,7 +45,7 @@ func buildNodeFilter(vmSpec VMSpec) types.NodeFilter {
 
 	filter := types.NodeFilter{
 		FarmIDs: []uint64{1},
-		Status:  &nodeStatus,
+		Status:  []string{"up"},
 		FreeMRU: &freeMRU,
 		FreeSRU: &freeSRU,
 		FreeIPs: &freeIPs,

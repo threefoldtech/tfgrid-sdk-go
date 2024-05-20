@@ -83,12 +83,11 @@ func ExampleFilterNodes() {
 	}
 
 	trueVal := true
-	statusUp := "up"
 	freeMRU := uint64(2048)
 	freeSRU := uint64(2048)
 
 	filter := types.NodeFilter{
-		Status:  &statusUp,
+		Status:  []string{"up"},
 		IPv4:    &trueVal,
 		FreeMRU: &freeMRU,
 		FreeSRU: &freeSRU,

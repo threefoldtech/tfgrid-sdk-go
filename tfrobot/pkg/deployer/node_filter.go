@@ -11,10 +11,9 @@ func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, gr
 	filter := types.NodeFilter{}
 	filter.Excluded = excludedNodes
 
-	statusUp := "up"
 	freeMRU := convertMBToBytes(uint64(group.FreeMRU * 1024))
 
-	filter.Status = &statusUp
+	filter.Status = []string{"up"}
 	filter.TotalCRU = &group.FreeCPU
 	filter.FreeMRU = &freeMRU
 

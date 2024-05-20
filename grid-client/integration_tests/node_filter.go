@@ -6,7 +6,6 @@ import (
 )
 
 var (
-	statusUp         = "up"
 	minRootfs uint64 = 2
 	minMemory uint64 = 2
 	minCPU           = 2
@@ -91,7 +90,7 @@ func generateNodeFilter(opts ...nodeFilterOpts) types.NodeFilter {
 
 	nodeFilter := types.NodeFilter{
 		FarmIDs: []uint64{1}, // freefarm is used in tests
-		Status:  &statusUp,
+		Status:  []string{"up"},
 		FreeSRU: convertGBToBytes(cfg.freeSRU + minRootfs),
 	}
 
