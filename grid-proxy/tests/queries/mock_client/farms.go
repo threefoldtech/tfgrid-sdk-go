@@ -7,6 +7,7 @@ import (
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"golang.org/x/exp/slices"
 )
 
 // Farms returns farms with the given filters and pagination parameters
@@ -166,7 +167,8 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			State:  node.Power.State,
 			Target: node.Power.Target,
 		}
-		if filter.NodeStatus != nil && *filter.NodeStatus != nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt)) {
+		nodeStatus := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
+		if filter.NodeStatus != nil && len(filter.NodeStatus) != 0 && !slices.Contains(filter.NodeStatus, nodeStatus) {
 			continue
 		}
 

@@ -3,7 +3,6 @@ package test
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"reflect"
 	"testing"
 
@@ -16,7 +15,7 @@ var statuses = []string{"up", "standby", "down"}
 
 var statsFilterRandomValues = map[string]func() interface{}{
 	"Status": func() interface{} {
-		return &statuses[rand.Intn(3)]
+		return getRandomSlice(statuses)
 	},
 }
 
@@ -24,7 +23,7 @@ func TestStats(t *testing.T) {
 	t.Parallel()
 	t.Run("stats up test", func(t *testing.T) {
 		f := proxytypes.StatsFilter{
-			Status: &STATUS_UP,
+			Status: []string{STATUS_UP},
 		}
 
 		want, err := mockClient.Stats(context.Background(), f)

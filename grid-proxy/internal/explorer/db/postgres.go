@@ -125,7 +125,7 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(filter.Status)
 	}
 
 	if res := d.gormDB.WithContext(ctx).
@@ -408,7 +408,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	}
 
 	if filter.NodeStatus != nil {
-		condition := nodestatus.DecideNodeStatusCondition(*filter.NodeStatus)
+		condition := nodestatus.DecideNodeStatusCondition(filter.NodeStatus)
 		nodeQuery = nodeQuery.Where(condition)
 	}
 
@@ -532,7 +532,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(filter.Status)
 	}
 
 	q = q.Where(condition)

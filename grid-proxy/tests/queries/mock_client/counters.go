@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"slices"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -23,7 +24,8 @@ func (g *GridProxyMockClient) Stats(ctx context.Context, filter types.StatsFilte
 			State:  node.Power.State,
 			Target: node.Power.Target,
 		}
-		if filter.Status == nil || *filter.Status == nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt)) {
+		st := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
+		if filter.Status == nil || len(filter.Status) == 0 || slices.Contains(filter.Status, st) {
 			res.Nodes++
 			distribution[node.Country] += 1
 			res.TotalCRU += int64(g.data.NodeTotalResources[node.NodeID].CRU)
