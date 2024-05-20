@@ -12,6 +12,12 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.3
+
+---
+
+- `feat` add workloads number to `/stats` endpoint
+
 ### v0.15.2
 
 ---
