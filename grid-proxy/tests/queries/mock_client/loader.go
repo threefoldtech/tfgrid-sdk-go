@@ -44,6 +44,7 @@ type DBData struct {
 	DMIs                map[uint32]types.Dmi
 	Speeds              map[uint32]types.Speed
 	PricingPolicies     map[uint]PricingPolicy
+	WorkloadsNumbers    map[uint32]uint32
 
 	DB *sql.DB
 }
@@ -633,6 +634,33 @@ func loadSpeeds(db *sql.DB, data *DBData) error {
 	return nil
 }
 
+func loadWorkloadsNumber(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+		SELECT
+			node_twin_id,
+			workloads_number
+		FROM
+			node_workloads;
+	`)
+
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		var wl types.NodesWorkloads
+		if err := rows.Scan(
+			&wl.NodeTwinId,
+			&wl.WorkloadsNumber,
+		); err != nil {
+			return err
+		}
+		data.WorkloadsNumbers[wl.NodeTwinId] = wl.WorkloadsNumber
+	}
+
+	return nil
+}
+
 func loadPricingPolicies(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 		SELECT
@@ -719,6 +747,7 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		Speeds:              make(map[uint32]types.Speed),
 		NodeIpv6:            make(map[uint32]bool),
 		PricingPolicies:     make(map[uint]PricingPolicy),
+		WorkloadsNumbers:    make(map[uint32]uint32),
 		DB:                  db,
 	}
 	if err := loadNodes(db, gormDB, &data); err != nil {
@@ -776,6 +805,9 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadPricingPolicies(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadWorkloadsNumber(db, &data); err != nil {
 		return data, err
 	}
 	if err := calcNodesUsedResources(&data); err != nil {
