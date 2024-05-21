@@ -16,7 +16,8 @@ import (
 func isDedicatedNode(db DBData, node Node) bool {
 	return db.Farms[node.FarmID].DedicatedFarm ||
 		len(db.NonDeletedContracts[node.NodeID]) == 0 ||
-		db.NodeRentedBy[node.NodeID] != 0
+		db.NodeRentedBy[node.NodeID] != 0 ||
+		db.Nodes[node.NodeID].ExtraFee > 0
 }
 
 func isRentable(db DBData, node Node) bool {
