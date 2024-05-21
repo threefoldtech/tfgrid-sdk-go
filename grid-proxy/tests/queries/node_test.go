@@ -54,7 +54,8 @@ var (
 
 var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interface{}{
 	"Status": func(agg NodesAggregate) interface{} {
-		return getRandomSlice(statuses)
+		randomLen := rand.Intn(len(statuses))
+		return getRandomSliceFrom(statuses, randomLen)
 	},
 	"Healthy": func(_ NodesAggregate) interface{} {
 		v := true

@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"testing"
 
@@ -15,7 +16,8 @@ var statuses = []string{"up", "standby", "down"}
 
 var statsFilterRandomValues = map[string]func() interface{}{
 	"Status": func() interface{} {
-		return getRandomSlice(statuses)
+		randomLen := rand.Intn(len(statuses))
+		return getRandomSliceFrom(statuses, randomLen)
 	},
 }
 

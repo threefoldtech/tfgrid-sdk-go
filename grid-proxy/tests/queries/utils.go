@@ -60,11 +60,10 @@ func SerializeFilter[F Filter](f F) string {
 	return res
 }
 
-func getRandomSlice[T any](slice []T) []T {
-	randomLen := rand.Intn(len(slice))
+func getRandomSliceFrom[T any](slice []T, length int) []T {
 	rand.Shuffle(len(slice), func(i, j int) {
 		slice[i], slice[j] = slice[j], slice[i]
 	})
-	randomSlice := slice[:randomLen]
+	randomSlice := slice[:length]
 	return randomSlice
 }
