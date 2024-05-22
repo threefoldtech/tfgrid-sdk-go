@@ -26,12 +26,17 @@ type Deployment struct {
 	Zdbs             []ZDB
 	Vms              []VM
 	QSFS             []QSFS
+	Volumes          []Volume
 
 	// computed
 	NodeDeploymentID map[uint32]uint64
 	ContractID       uint64
 	IPrange          string
 }
+
+// TODO: NewDeployment should take a list of Workload interface instead of defining
+// each type as an argument. That way it is cleaner and also allow for networks to
+// be created with VMs in the same deployment.
 
 // NewDeployment generates a new deployment
 func NewDeployment(name string, nodeID uint32,
@@ -41,6 +46,7 @@ func NewDeployment(name string, nodeID uint32,
 	zdbs []ZDB,
 	vms []VM,
 	QSFS []QSFS,
+	volumes []Volume,
 ) Deployment {
 	return Deployment{
 		Name:             name,
@@ -52,6 +58,7 @@ func NewDeployment(name string, nodeID uint32,
 		Zdbs:             zdbs,
 		Vms:              vms,
 		QSFS:             QSFS,
+		Volumes:          volumes,
 	}
 }
 
@@ -96,15 +103,19 @@ func (d *Deployment) Nullify() {
 	d.QSFS = nil
 	d.Disks = nil
 	d.Zdbs = nil
+	d.Volumes = nil
 	d.ContractID = 0
 }
 
 // Match objects to match the input
-func (d *Deployment) Match(disks []Disk, QSFS []QSFS, zdbs []ZDB, vms []VM) {
+func (d *Deployment) Match(disks []Disk, QSFS []QSFS, zdbs []ZDB, vms []VM, volumes []Volume) {
 	vmMap := make(map[string]*VM)
-	l := len(d.Disks) + len(d.QSFS) + len(d.Zdbs) + len(d.Vms)
+	l := len(d.Disks) + len(d.QSFS) + len(d.Zdbs) + len(d.Vms) + len(d.Volumes)
 	names := make(map[string]int)
 	for idx, o := range d.Disks {
+		names[o.Name] = idx - l
+	}
+	for idx, o := range d.Volumes {
 		names[o.Name] = idx - l
 	}
 	for idx, o := range d.QSFS {
@@ -119,6 +130,9 @@ func (d *Deployment) Match(disks []Disk, QSFS []QSFS, zdbs []ZDB, vms []VM) {
 	}
 	sort.Slice(disks, func(i, j int) bool {
 		return names[disks[i].Name] < names[disks[j].Name]
+	})
+	sort.Slice(volumes, func(i, j int) bool {
+		return names[volumes[i].Name] < names[volumes[j].Name]
 	})
 	sort.Slice(QSFS, func(i, j int) bool {
 		return names[QSFS[i].Name] < names[QSFS[j].Name]
@@ -160,6 +174,10 @@ func (d *Deployment) ZosDeployment(twin uint32) (gridtypes.Deployment, error) {
 			return gridtypes.Deployment{}, err
 		}
 		wls = append(wls, qWls)
+	}
+	for _, v := range d.Volumes {
+		volumeWl := v.ZosWorkload()
+		wls = append(wls, volumeWl)
 	}
 
 	return gridtypes.Deployment{
@@ -240,6 +258,7 @@ func NewDeploymentFromZosDeployment(d gridtypes.Deployment, nodeID uint32) (Depl
 	disks := make([]Disk, 0)
 	qs := make([]QSFS, 0)
 	zdbs := make([]ZDB, 0)
+	volumes := make([]Volume, 0)
 	var networkName string
 	for _, workload := range d.Workloads {
 		switch workload.Type {
@@ -253,21 +272,28 @@ func NewDeploymentFromZosDeployment(d gridtypes.Deployment, nodeID uint32) (Depl
 		case zos.ZDBType:
 			zdb, err := NewZDBFromWorkload(&workload)
 			if err != nil {
-				return Deployment{}, errors.Wrap(err, "failed to get vm workload")
+				return Deployment{}, errors.Wrap(err, "failed to get zdb workload")
 			}
 			zdbs = append(zdbs, zdb)
 		case zos.QuantumSafeFSType:
 			q, err := NewQSFSFromWorkload(&workload)
 			if err != nil {
-				return Deployment{}, errors.Wrap(err, "failed to get vm workload")
+				return Deployment{}, errors.Wrap(err, "failed to get qsfs workload")
 			}
 			qs = append(qs, q)
 		case zos.ZMountType:
 			disk, err := NewDiskFromWorkload(&workload)
 			if err != nil {
-				return Deployment{}, errors.Wrap(err, "failed to get vm workload")
+				return Deployment{}, errors.Wrap(err, "failed to get disk workload")
 			}
 			disks = append(disks, disk)
+		case zos.VolumeType:
+
+			volume, err := NewVolumeFromWorkload(&workload)
+			if err != nil {
+				return Deployment{}, errors.Wrap(err, "failed to get volume workload")
+			}
+			volumes = append(volumes, volume)
 		}
 	}
 
@@ -279,6 +305,7 @@ func NewDeploymentFromZosDeployment(d gridtypes.Deployment, nodeID uint32) (Depl
 		Disks:            disks,
 		QSFS:             qs,
 		Zdbs:             zdbs,
+		Volumes:          volumes,
 		NodeID:           nodeID,
 		NodeDeploymentID: map[uint32]uint64{nodeID: d.ContractID},
 		ContractID:       d.ContractID,

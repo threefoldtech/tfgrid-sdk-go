@@ -242,7 +242,7 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 			network := buildNetworkDeployment(vmGroup, nodeID, vmName, solutionType)
 			vm := buildVMDeployment(vmGroup, vmName, network.Name, sshKeys[vmGroup.SSHKey], mounts)
 
-			deployment := workloads.NewDeployment(vm.Name, nodeID, solutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil)
+			deployment := workloads.NewDeployment(vm.Name, nodeID, solutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil, nil)
 
 			vmDeployments = append(vmDeployments, &deployment)
 			networkDeployments = append(networkDeployments, &network)

@@ -76,7 +76,7 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm2}, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm2}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
