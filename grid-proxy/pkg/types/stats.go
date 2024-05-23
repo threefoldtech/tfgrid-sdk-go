@@ -22,7 +22,7 @@ type Stats struct {
 
 // StatsFilter statistics filters
 type StatsFilter struct {
-	Status *string `schema:"status,omitempty"`
+	Status []string `schema:"status,omitempty"`
 }
 
 // NodeStatisticsResources resources returned on node statistics

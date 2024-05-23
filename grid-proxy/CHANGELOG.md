@@ -12,6 +12,13 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.4
+
+---
+
+- `feat` consider nodes with extra_fee as dedicated
+- `feat` allow filtering nodes by list of statuses
+
 ### v0.15.3
 
 ---

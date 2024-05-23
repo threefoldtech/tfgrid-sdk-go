@@ -54,7 +54,8 @@ var (
 
 var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interface{}{
 	"Status": func(agg NodesAggregate) interface{} {
-		return &statuses[rand.Intn(3)]
+		randomLen := rand.Intn(len(statuses))
+		return getRandomSliceFrom(statuses, randomLen)
 	},
 	"Healthy": func(_ NodesAggregate) interface{} {
 		v := true
@@ -359,7 +360,7 @@ func TestNode(t *testing.T) {
 		t.Parallel()
 
 		f := types.NodeFilter{
-			Status: &STATUS_UP,
+			Status: []string{STATUS_UP},
 		}
 
 		l := types.Limit{
@@ -585,7 +586,7 @@ func singleNodeCheck(t *testing.T, localClient proxyclient.Client, proxyClient p
 
 func nodePaginationCheck(t *testing.T, localClient proxyclient.Client, proxyClient proxyclient.Client) {
 	f := types.NodeFilter{
-		Status: &STATUS_DOWN,
+		Status: []string{STATUS_DOWN},
 	}
 	l := types.Limit{
 		Size:     100,

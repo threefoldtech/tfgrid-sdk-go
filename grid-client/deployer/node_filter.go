@@ -176,8 +176,7 @@ func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFi
 }
 
 var (
-	trueVal  = true
-	statusUp = "up"
+	trueVal = true
 )
 
 // GetPublicNode return public node ID
@@ -192,7 +191,7 @@ func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes 
 		tfPlugin,
 		types.NodeFilter{
 			IPv4:   &trueVal,
-			Status: &statusUp,
+			Status: []string{"up"},
 		},
 		nil,
 		nil,

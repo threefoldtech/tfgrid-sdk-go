@@ -12,14 +12,12 @@ import (
 func TestDecodesNodeFilterAndLimitParams(t *testing.T) {
 	r := &http.Request{
 		URL: &url.URL{
-			RawQuery: "farm_ids=1,2&status=up&size=10",
+			RawQuery: "farm_ids=1,2&status=up,standby&size=10",
 		},
 	}
-	ids := []uint64{1, 2}
-	status := "up"
 	expectedFilter := types.NodeFilter{
-		FarmIDs: ids,
-		Status:  &status,
+		FarmIDs: []uint64{1, 2},
+		Status:  []string{"up", "standby"},
 	}
 	expectedLimit := types.Limit{
 		Size: 10,
@@ -40,9 +38,8 @@ func TestEmptyParam(t *testing.T) {
 			RawQuery: "free_mru=&status=up&size=10",
 		},
 	}
-	status := "up"
 	expectedFilter := types.NodeFilter{
-		Status: &status,
+		Status: []string{"up"},
 	}
 	expectedLimit := types.Limit{
 		Size: 10,

@@ -113,7 +113,7 @@ type Capacity struct {
 
 // NodeFilter node filters
 type NodeFilter struct {
-	Status            *string  `schema:"status,omitempty"`
+	Status            []string `schema:"status,omitempty"`
 	FreeMRU           *uint64  `schema:"free_mru,omitempty"`
 	FreeHRU           *uint64  `schema:"free_hru,omitempty"`
 	FreeSRU           *uint64  `schema:"free_sru,omitempty"`

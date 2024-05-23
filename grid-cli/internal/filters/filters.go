@@ -69,10 +69,9 @@ func buildGenericFilter(mrus, srus, hrus, ips *uint64, farmIDs []uint64, domain 
 	if hrus != nil {
 		freeHRUs = convertGBToBytes(*hrus)
 	}
-	status := "up"
 	rented := false
 	return types.NodeFilter{
-		Status:  &status,
+		Status:  []string{"up"},
 		FreeMRU: freeMRUs,
 		FreeSRU: freeSRUs,
 		FreeHRU: freeHRUs,

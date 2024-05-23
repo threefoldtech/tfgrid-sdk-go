@@ -125,7 +125,7 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(filter.Status)
 	}
 
 	if res := d.gormDB.WithContext(ctx).
@@ -351,7 +351,7 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 	if filter.NodeAvailableFor != nil || filter.NodeFreeHRU != nil ||
 		filter.NodeCertified != nil || filter.NodeFreeMRU != nil ||
 		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
-		filter.NodeRentedBy != nil || filter.NodeStatus != nil ||
+		filter.NodeRentedBy != nil || (filter.NodeStatus != nil && len(filter.NodeStatus) != 0) ||
 		filter.NodeTotalCRU != nil || filter.Country != nil ||
 		filter.Region != nil {
 		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
@@ -407,8 +407,8 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		nodeQuery = nodeQuery.Where("LOWER(resources_cache.region) = LOWER(?)", *filter.Region)
 	}
 
-	if filter.NodeStatus != nil {
-		condition := nodestatus.DecideNodeStatusCondition(*filter.NodeStatus)
+	if filter.NodeStatus != nil && len(filter.NodeStatus) != 0 {
+		condition := nodestatus.DecideNodeStatusCondition(filter.NodeStatus)
 		nodeQuery = nodeQuery.Where(condition)
 	}
 
@@ -532,7 +532,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(filter.Status)
 	}
 
 	q = q.Where(condition)

@@ -114,8 +114,8 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		return &cru
 	},
 	"NodeStatus": func(agg FarmsAggregate) interface{} {
-		nodeStatuses := []string{"up", "down", "standby"}
-		return &nodeStatuses[rand.Intn(len(nodeStatuses))]
+		randomLen := rand.Intn(len(statuses))
+		return getRandomSliceFrom(statuses, randomLen)
 	},
 	"NodeAvailableFor": func(agg FarmsAggregate) interface{} {
 		return &agg.rentersTwinIDs[rand.Intn(len(agg.rentersTwinIDs))]
