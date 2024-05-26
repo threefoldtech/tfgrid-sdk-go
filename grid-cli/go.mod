@@ -10,7 +10,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.10.2
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.2
-	github.com/threefoldtech/zos v0.5.6-0.20240226114056-364e04acbed3
+	github.com/threefoldtech/zos v0.5.6-0.20240314134720-6d680d5deaa9
 )
 
 require (
