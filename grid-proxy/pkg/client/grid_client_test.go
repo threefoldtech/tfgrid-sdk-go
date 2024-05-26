@@ -32,7 +32,6 @@ var (
 )
 
 func nodesFilterValues() (types.NodeFilter, types.Limit, string) {
-	Up := "up"
 	Egypt := "Egypt"
 	Mansoura := "Mansoura"
 	Freefarm := "Freefarm"
@@ -40,7 +39,7 @@ func nodesFilterValues() (types.NodeFilter, types.Limit, string) {
 	falseVal := false
 	ints := []uint64{0, 1, 2, 3, 4, 5, 6}
 	f := types.NodeFilter{
-		Status:       &Up,
+		Status:       []string{"up"},
 		FreeMRU:      &ints[1],
 		FreeHRU:      &ints[2],
 		FreeSRU:      &ints[3],
@@ -344,12 +343,11 @@ func testSuccess(t *testing.T, f ProxyFunc) {
 }
 
 func TestPrepareURL(t *testing.T) {
-	status := "st"
 	freeMRU := uint64(10)
 	farmIDs := []uint64{1, 2, 3}
 	dedicated := true
 	filter := types.NodeFilter{
-		Status:    &status,
+		Status:    []string{"st"},
 		FreeMRU:   &freeMRU,
 		FarmIDs:   farmIDs,
 		Dedicated: &dedicated,

@@ -169,8 +169,8 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
 		}
 
-		_, ok := f.nodes[nodeID]
-		if ok {
+		_, _, err := f.getNode(nodeID)
+		if err == nil {
 			return nil, fmt.Errorf("node %d already exists", nodeID)
 		}
 
@@ -259,11 +259,13 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 	}
 
 	// remove nodes that don't exist anymore in the farm
-	for nodeID := range f.state.nodes {
-		if !slices.Contains(farmNodes, nodeID) {
-			f.state.deleteNode(nodeID)
+	for _, node := range f.state.nodes {
+		if !slices.Contains(farmNodes, uint32(node.ID)) {
+			f.state.deleteNode(uint32(node.ID))
 		}
 	}
+
+	farmNodes = addPriorityToNodes(f.state.config.PriorityNodes, farmNodes)
 
 	for _, nodeID := range farmNodes {
 		if slices.Contains(f.state.config.ExcludedNodes, nodeID) {
@@ -282,7 +284,10 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 			log.Error().Err(err).Send()
 		}
 
-		node := f.state.nodes[nodeID]
+		_, node, err := f.state.getNode(nodeID)
+		if err != nil {
+			log.Error().Err(err).Send()
+		}
 
 		if node.powerState == off && (node.neverShutDown || node.hasActiveRentContract) {
 			log.Debug().Uint32("nodeID", nodeID).Msg("Power on node because it is set to never shutdown or has a rent contract")
@@ -328,11 +333,32 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 	return nil
 }
 
+func addPriorityToNodes(priorityNodes, farmNodes []uint32) []uint32 {
+	updatedFarmNodes := make([]uint32, len(farmNodes))
+
+	// add valid priority nodes (exist in farm) without duplicates
+	for i := 0; i < len(priorityNodes); i++ {
+		nodeID := priorityNodes[i]
+		if slices.Contains(farmNodes, nodeID) && !slices.Contains(updatedFarmNodes, nodeID) {
+			updatedFarmNodes = append(updatedFarmNodes, nodeID)
+		}
+	}
+
+	// add the rest of farm nodes
+	for i := 0; i < len(farmNodes); i++ {
+		if !slices.Contains(updatedFarmNodes, farmNodes[i]) {
+			updatedFarmNodes = append(updatedFarmNodes, farmNodes[i])
+		}
+	}
+
+	return updatedFarmNodes
+}
+
 func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, nodeID uint32) error {
 	neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
 
-	oldNode, nodeExists := f.state.nodes[nodeID]
-	if nodeExists {
+	_, oldNode, err := f.state.getNode(nodeID)
+	if err == nil { // node exists
 		updateErr := oldNode.update(ctx, subConn, f.rmbNodeClient, neverShutDown, f.state.farm.DedicatedFarm, f.config.ContinueOnPoweringOnErr)
 
 		// update old node state even if it failed

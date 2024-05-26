@@ -18,6 +18,20 @@ definitions:
     - Megabyte
     - Gigabyte
     - Terabyte
+  types.BIOS:
+    properties:
+      vendor:
+        type: string
+      version:
+        type: string
+    type: object
+  types.Baseboard:
+    properties:
+      manufacturer:
+        type: string
+      product_name:
+        type: string
+    type: object
   types.Capacity:
     properties:
       cru:
@@ -59,6 +73,23 @@ definitions:
       timestamp:
         type: integer
     type: object
+  types.Dmi:
+    properties:
+      baseboard:
+        $ref: '#/definitions/types.Baseboard'
+      bios:
+        $ref: '#/definitions/types.BIOS'
+      memory:
+        items:
+          $ref: '#/definitions/types.Memory'
+        type: array
+      node_twin_id:
+        type: integer
+      processor:
+        items:
+          $ref: '#/definitions/types.Processor'
+        type: array
+    type: object
   types.Farm:
     properties:
       certificationType:
@@ -91,6 +122,13 @@ definitions:
       longitude:
         type: number
     type: object
+  types.Memory:
+    properties:
+      manufacturer:
+        type: string
+      type:
+        type: string
+    type: object
   types.Node:
     properties:
       certificationType:
@@ -103,6 +141,8 @@ definitions:
         type: integer
       dedicated:
         type: boolean
+      dmi:
+        $ref: '#/definitions/types.Dmi'
       extraFee:
         type: integer
       farmId:
@@ -133,10 +173,16 @@ definitions:
         $ref: '#/definitions/types.PublicConfig'
       rentContractId:
         type: integer
+      rentable:
+        type: boolean
+      rented:
+        type: boolean
       rentedByTwinId:
         type: integer
       serialNumber:
         type: string
+      speed:
+        $ref: '#/definitions/types.Speed'
       status:
         type: string
       total_resources:
@@ -159,6 +205,8 @@ definitions:
       id:
         type: string
       node_twin_id:
+        type: integer
+      updated_at:
         type: integer
       vendor:
         type: string
@@ -198,6 +246,8 @@ definitions:
     properties:
       deployments:
         type: integer
+      last_deployment_timestamp:
+        type: integer
       workloads:
         type: integer
     type: object
@@ -215,6 +265,8 @@ definitions:
         type: integer
       dedicated:
         type: boolean
+      dmi:
+        $ref: '#/definitions/types.Dmi'
       extraFee:
         type: integer
       farmId:
@@ -245,10 +297,16 @@ definitions:
         $ref: '#/definitions/types.PublicConfig'
       rentContractId:
         type: integer
+      rentable:
+        type: boolean
+      rented:
+        type: boolean
       rentedByTwinId:
         type: integer
       serialNumber:
         type: string
+      speed:
+        $ref: '#/definitions/types.Speed'
       status:
         description: added node status field for up or down
         type: string
@@ -258,6 +316,13 @@ definitions:
         type: integer
       uptime:
         type: integer
+    type: object
+  types.Processor:
+    properties:
+      thread_count:
+        type: string
+      version:
+        type: string
     type: object
   types.PublicConfig:
     properties:
@@ -284,6 +349,17 @@ definitions:
         type: string
       ip:
         type: string
+    type: object
+  types.Speed:
+    properties:
+      download:
+        description: in bit/sec
+        type: number
+      node_twin_id:
+        type: integer
+      upload:
+        description: in bit/sec
+        type: number
     type: object
   types.Stats:
     properties:
@@ -318,6 +394,8 @@ definitions:
       totalSru:
         type: integer
       twins:
+        type: integer
+      workloads_number:
         type: integer
     type: object
   types.Twin:
@@ -363,7 +441,7 @@ paths:
         in: query
         name: randomize
         type: boolean
-      - description: Sort by specific contract filed
+      - description: Sort by specific contract field
         enum:
         - twin_id
         - contract_id
@@ -537,7 +615,7 @@ paths:
         in: query
         name: randomize
         type: boolean
-      - description: Sort by specific farm filed
+      - description: Sort by specific farm field
         enum:
         - name
         - farm_id
@@ -565,10 +643,6 @@ paths:
       - description: Pricing policy id
         in: query
         name: pricing_policy_id
-        type: integer
-      - description: farm version
-        in: query
-        name: version
         type: integer
       - description: farm id
         in: query
@@ -693,7 +767,7 @@ paths:
         in: query
         name: randomize
         type: boolean
-      - description: Sort by specific gateway filed
+      - description: Sort by specific gateway field
         enum:
         - node_id
         - farm_id
@@ -887,7 +961,7 @@ paths:
         in: query
         name: randomize
         type: boolean
-      - description: Sort by specific node filed
+      - description: Sort by specific node field
         enum:
         - status
         - node_id
@@ -1252,7 +1326,7 @@ paths:
         in: query
         name: randomize
         type: boolean
-      - description: Sort by specific twin filed
+      - description: Sort by specific twin field
         enum:
         - relay
         - public_key

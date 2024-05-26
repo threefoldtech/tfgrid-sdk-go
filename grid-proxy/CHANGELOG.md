@@ -12,6 +12,34 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.4
+
+---
+
+- `feat` consider nodes with extra_fee as dedicated
+- `feat` allow filtering nodes by list of statuses
+
+### v0.15.3
+
+---
+
+- `feat` add workloads number to `/stats` endpoint
+
+### v0.15.2
+
+---
+
+- `fix` ipv6 indexer (default interval, rmb call result)
+
+### v0.15.1
+
+---
+
+- `feat` add has_ipv6 indexer
+- `feat` allow filtering with array of contract states
+- `feat` filter nodes with num_gpu
+- `feat` sorting nodes with free_cru
+
 ### v0.15.0
 
 ---

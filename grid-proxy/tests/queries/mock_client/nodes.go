@@ -16,7 +16,8 @@ import (
 func isDedicatedNode(db DBData, node Node) bool {
 	return db.Farms[node.FarmID].DedicatedFarm ||
 		len(db.NonDeletedContracts[node.NodeID]) == 0 ||
-		db.NodeRentedBy[node.NodeID] != 0
+		db.NodeRentedBy[node.NodeID] != 0 ||
+		db.Nodes[node.NodeID].ExtraFee > 0
 }
 
 func isRentable(db DBData, node Node) bool {
@@ -293,7 +294,8 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	used := data.NodeUsedResources[n.NodeID]
 	free := CalcFreeResources(total, used)
 
-	if f.Status != nil && *f.Status != nodestatus.DecideNodeStatus(nodePower, int64(n.UpdatedAt)) {
+	nodeStatus := nodestatus.DecideNodeStatus(nodePower, int64(n.UpdatedAt))
+	if f.Status != nil && len(f.Status) != 0 && !slices.Contains(f.Status, nodeStatus) {
 		return false
 	}
 
@@ -306,6 +308,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if f.Healthy != nil && *f.Healthy != data.HealthReports[uint32(n.TwinID)] {
+		return false
+	}
+
+	if f.HasIpv6 != nil && *f.HasIpv6 != data.NodeIpv6[uint32(n.TwinID)] {
 		return false
 	}
 
@@ -440,6 +446,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if f.HasGPU != nil && *f.HasGPU != foundGpuCards {
+		return false
+	}
+
+	if f.NumGPU != nil && *f.NumGPU > uint64(len(data.GPUs[uint32(n.TwinID)])) {
 		return false
 	}
 

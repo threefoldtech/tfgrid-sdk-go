@@ -24,7 +24,7 @@ var (
 )
 
 // return the condition to be used in the SQL query to get the nodes with the given status.
-func DecideNodeStatusCondition(status string) string {
+func DecideNodeStatusCondition(statuses []string) string {
 	nodeUpInterval := time.Now().Unix() - int64(nodeUpStateFactor)*int64(nodeUpReportInterval.Seconds())
 	nodeStandbyInterval := time.Now().Unix() - int64(nodeStandbyStateFactor)*int64(nodeStandbyReportInterval.Seconds())
 
@@ -33,14 +33,18 @@ func DecideNodeStatusCondition(status string) string {
 	inStandbyInterval := fmt.Sprintf("node.updated_at >= %d", nodeStandbyInterval)
 	outStandbyInterval := fmt.Sprintf("node.updated_at < %d", nodeStandbyInterval)
 
-	condition := "TRUE"
+	condition := ""
+	conditions := map[string]string{
+		"up":      fmt.Sprintf(`%s AND (%s OR (%s))`, inUpInterval, nilPower, poweredOn),
+		"down":    fmt.Sprintf(`(%s AND (%s OR (%s))) OR %s`, outUpInterval, nilPower, poweredOn, outStandbyInterval),
+		"standby": fmt.Sprintf(`((%s) OR (%s) OR (%s)) AND %s`, poweredOff, poweringOff, poweringOn, inStandbyInterval),
+	}
 
-	if status == "up" {
-		condition = fmt.Sprintf(`%s AND (%s OR (%s))`, inUpInterval, nilPower, poweredOn)
-	} else if status == "down" {
-		condition = fmt.Sprintf(`(%s AND (%s OR (%s))) OR %s`, outUpInterval, nilPower, poweredOn, outStandbyInterval)
-	} else if status == "standby" {
-		condition = fmt.Sprintf(`((%s) OR (%s) OR (%s)) AND %s`, poweredOff, poweringOff, poweringOn, inStandbyInterval)
+	for idx, status := range statuses {
+		if idx != 0 && idx < len(statuses) {
+			condition += " OR "
+		}
+		condition += "(" + conditions[status] + ")"
 	}
 
 	return condition

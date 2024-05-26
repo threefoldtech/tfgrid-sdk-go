@@ -20,6 +20,7 @@ type Config struct {
 	FarmID                  uint32   `yaml:"farm_id"`
 	IncludedNodes           []uint32 `yaml:"included_nodes"`
 	ExcludedNodes           []uint32 `yaml:"excluded_nodes"`
+	PriorityNodes           []uint32 `yaml:"priority_nodes"`
 	NeverShutDownNodes      []uint32 `yaml:"never_shutdown_nodes"`
 	Power                   power    `yaml:"power"`
 	ContinueOnPoweringOnErr bool
@@ -286,12 +287,20 @@ func subtractOrZero(a uint64, b uint64) uint64 {
 	return 0
 }
 
+// ThresholdPercentages are the wakeUp threshold for each resource type
+type ThresholdPercentages struct {
+	CRU float64 `yaml:"cru"`
+	SRU float64 `yaml:"sru"`
+	MRU float64 `yaml:"mru"`
+	HRU float64 `yaml:"hru"`
+}
+
 // Power represents power configuration
 type power struct {
-	WakeUpThreshold     uint8      `yaml:"wake_up_threshold"`
-	PeriodicWakeUpStart wakeUpDate `yaml:"periodic_wake_up_start"`
-	PeriodicWakeUpLimit uint8      `yaml:"periodic_wake_up_limit"`
-	OverProvisionCPU    int8       `yaml:"overprovision_cpu,omitempty"`
+	WakeUpThresholdPercentages ThresholdPercentages `yaml:"wake_up_threshold"`
+	PeriodicWakeUpStart        wakeUpDate           `yaml:"periodic_wake_up_start"`
+	PeriodicWakeUpLimit        uint8                `yaml:"periodic_wake_up_limit"`
+	OverProvisionCPU           int8                 `yaml:"overprovision_cpu,omitempty"`
 }
 
 // wakeUpDate is the date to wake up all nodes

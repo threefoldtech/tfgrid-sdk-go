@@ -58,15 +58,15 @@ type ContractBilling struct {
 
 // ContractFilter contract filters
 type ContractFilter struct {
-	ContractID        *uint64 `schema:"contract_id,omitempty"`
-	TwinID            *uint64 `schema:"twin_id,omitempty"`
-	NodeID            *uint64 `schema:"node_id,omitempty"`
-	Type              *string `schema:"type,omitempty"`
-	State             *string `schema:"state,omitempty"`
-	Name              *string `schema:"name,omitempty"`
-	NumberOfPublicIps *uint64 `schema:"number_of_public_ips,omitempty"`
-	DeploymentData    *string `schema:"deployment_data,omitempty"`
-	DeploymentHash    *string `schema:"deployment_hash,omitempty"`
-	FarmName          *string `schema:"farm_name,omitempty"`
-	FarmId            *uint64 `schema:"farm_id,omitempty"`
+	ContractID        *uint64  `schema:"contract_id,omitempty"`
+	TwinID            *uint64  `schema:"twin_id,omitempty"`
+	NodeID            *uint64  `schema:"node_id,omitempty"`
+	Type              *string  `schema:"type,omitempty"`
+	State             []string `schema:"state,omitempty"`
+	Name              *string  `schema:"name,omitempty"`
+	NumberOfPublicIps *uint64  `schema:"number_of_public_ips,omitempty"`
+	DeploymentData    *string  `schema:"deployment_data,omitempty"`
+	DeploymentHash    *string  `schema:"deployment_hash,omitempty"`
+	FarmName          *string  `schema:"farm_name,omitempty"`
+	FarmId            *uint64  `schema:"farm_id,omitempty"`
 }

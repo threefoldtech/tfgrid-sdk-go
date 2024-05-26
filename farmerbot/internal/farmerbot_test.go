@@ -32,7 +32,13 @@ func TestFarmerbot(t *testing.T) {
 	inputs := Config{
 		FarmID:        1,
 		IncludedNodes: []uint32{1, 2},
-		Power:         power{WakeUpThreshold: 50},
+		PriorityNodes: []uint32{2},
+		Power: power{WakeUpThresholdPercentages: ThresholdPercentages{
+			CRU: 50,
+			SRU: 50,
+			MRU: 50,
+			HRU: 50,
+		}},
 	}
 
 	farmerbot, err := NewFarmerBot(ctx, inputs, "dev", aliceSeed, peer.KeyTypeSr25519)
@@ -48,8 +54,8 @@ func TestFarmerbot(t *testing.T) {
 	assert.NoError(t, err)
 	farmerbot.state = state
 
-	oldNode1 := farmerbot.nodes[1]
-	oldNode2 := farmerbot.nodes[2]
+	oldNode1 := farmerbot.nodes[0]
+	oldNode2 := farmerbot.nodes[1]
 
 	t.Run("invalid identity", func(t *testing.T) {
 		_, err := NewFarmerBot(ctx, Config{}, "dev", "invalid", peer.KeyTypeSr25519)
@@ -66,10 +72,10 @@ func TestFarmerbot(t *testing.T) {
 		assert.True(t, errors.Is(err, substrate.ErrNotFound))
 	})
 
-	t.Run("test iterateOnNodes: update nodes and power off extra node (periodic wake up: already on)", func(t *testing.T) {
+	t.Run("test iterateOnNodes: update nodes and power off extra node (respect priority - periodic wake up: already on)", func(t *testing.T) {
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, true, resources, []string{}, false, false)
 
-		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, gomock.Any(), false).Return(types.Hash{}, nil)
+		sub.EXPECT().SetNodePowerTarget(farmerbot.identity, uint32(2), false).Return(types.Hash{}, nil)
 
 		err = farmerbot.iterateOnNodes(ctx, sub)
 		assert.NoError(t, err)
@@ -80,8 +86,8 @@ func TestFarmerbot(t *testing.T) {
 
 		oldNode1.powerState = off
 		oldNode2.powerState = off
-		state.addNode(oldNode1)
-		state.addNode(oldNode2)
+		assert.NoError(t, farmerbot.updateNode(oldNode1))
+		assert.NoError(t, farmerbot.updateNode(oldNode2))
 		farmerbot.state = state
 
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, false, true, resources, []string{}, false, false)
@@ -95,8 +101,8 @@ func TestFarmerbot(t *testing.T) {
 	t.Run("test iterateOnNodes: update nodes (periodic wake up: failed to set off node)", func(t *testing.T) {
 		oldNode1.powerState = off
 		oldNode2.powerState = off
-		state.addNode(oldNode1)
-		state.addNode(oldNode2)
+		assert.NoError(t, farmerbot.updateNode(oldNode1))
+		assert.NoError(t, farmerbot.updateNode(oldNode2))
 		farmerbot.state = state
 
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, false, true, resources, []string{}, false, false)

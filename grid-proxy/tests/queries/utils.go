@@ -59,3 +59,12 @@ func SerializeFilter[F Filter](f F) string {
 
 	return res
 }
+
+func getRandomSliceFrom[T any](original []T, length int) []T {
+	copied := append([]T(nil), original...)
+	rand.Shuffle(len(copied), func(i, j int) {
+		copied[i], copied[j] = copied[j], copied[i]
+	})
+	randomSlice := copied[:length]
+	return randomSlice
+}

@@ -126,7 +126,15 @@ func generateData(db *sql.DB, gormDB *gorm.DB, seed int) error {
 	}
 
 	if err := generator.GenerateHealthReports(); err != nil {
-		return fmt.Errorf("failed to generate dmi reports: %w", err)
+		return fmt.Errorf("failed to generate health reports: %w", err)
+	}
+
+	if err := generator.GenerateNodeIpv6(); err != nil {
+		return fmt.Errorf("failed to generate node ipv6 reports: %w", err)
+	}
+
+	if err := generator.GenerateNodeWorkloads(); err != nil {
+		return fmt.Errorf("failed to generate node workloads reports: %w", err)
 	}
 
 	if err := generator.GeneratePricingPolicies(); err != nil {

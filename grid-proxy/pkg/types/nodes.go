@@ -50,6 +50,7 @@ type Node struct {
 	Dmi               Dmi          `json:"dmi"`
 	Speed             Speed        `json:"speed"`
 	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
+	_                 string       `sort:"free_cru"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -112,7 +113,7 @@ type Capacity struct {
 
 // NodeFilter node filters
 type NodeFilter struct {
-	Status            *string  `schema:"status,omitempty"`
+	Status            []string `schema:"status,omitempty"`
 	FreeMRU           *uint64  `schema:"free_mru,omitempty"`
 	FreeHRU           *uint64  `schema:"free_hru,omitempty"`
 	FreeSRU           *uint64  `schema:"free_sru,omitempty"`
@@ -143,6 +144,7 @@ type NodeFilter struct {
 	TwinID            *uint64  `schema:"twin_id,omitempty"`
 	CertificationType *string  `schema:"certification_type,omitempty"`
 	HasGPU            *bool    `schema:"has_gpu,omitempty"`
+	NumGPU            *uint64  `schema:"num_gpu,omitempty"`
 	GpuDeviceID       *string  `schema:"gpu_device_id,omitempty"`
 	GpuDeviceName     *string  `schema:"gpu_device_name,omitempty"`
 	GpuVendorID       *string  `schema:"gpu_vendor_id,omitempty"`
@@ -152,4 +154,5 @@ type NodeFilter struct {
 	PriceMin          *float64 `schema:"price_min,omitempty"`
 	PriceMax          *float64 `schema:"price_max,omitempty"`
 	Excluded          []uint64 `schema:"excluded,omitempty"`
+	HasIpv6           *bool    `schema:"has_ipv6,omitempty"`
 }

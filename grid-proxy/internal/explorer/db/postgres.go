@@ -82,6 +82,8 @@ func (d *PostgresDatabase) Initialize() error {
 		&types.HealthReport{},
 		&types.Dmi{},
 		&types.Speed{},
+		&types.HasIpv6{},
+		&types.NodesWorkloads{},
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to migrate indexer tables")
@@ -123,7 +125,7 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(filter.Status)
 	}
 
 	if res := d.gormDB.WithContext(ctx).
@@ -183,6 +185,14 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 		Count(&stats.DedicatedNodes)
 	if res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get dedicated nodes count")
+	}
+
+	if err := d.gormDB.WithContext(ctx).Table("node").
+		Select("SUM(workloads_number) as workloads_number").
+		Where(condition).
+		Joins("LEFT JOIN node_workloads ON node.twin_id = node_workloads.node_twin_id").
+		Scan(&stats.WorkloadsNumber).Error; err != nil {
+		return stats, errors.Wrap(res.Error, "couldn't sum workloads number")
 	}
 
 	return stats, nil
@@ -290,6 +300,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.node_contracts_count",
 			"resources_cache.node_gpu_count AS num_gpu",
 			"health_report.healthy",
+			"node_ipv6.has_ipv6",
 			"resources_cache.bios",
 			"resources_cache.baseboard",
 			"resources_cache.memory",
@@ -305,6 +316,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			LEFT JOIN farm ON node.farm_id = farm.farm_id
 			LEFT JOIN location ON node.location_id = location.id
 			LEFT JOIN health_report ON node.twin_id = health_report.node_twin_id
+			LEFT JOIN node_ipv6 ON node.twin_id = node_ipv6.node_twin_id
 		`)
 
 	if filter.HasGPU != nil || filter.GpuDeviceName != nil ||
@@ -339,7 +351,7 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 	if filter.NodeAvailableFor != nil || filter.NodeFreeHRU != nil ||
 		filter.NodeCertified != nil || filter.NodeFreeMRU != nil ||
 		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
-		filter.NodeRentedBy != nil || filter.NodeStatus != nil ||
+		filter.NodeRentedBy != nil || (filter.NodeStatus != nil && len(filter.NodeStatus) != 0) ||
 		filter.NodeTotalCRU != nil || filter.Country != nil ||
 		filter.Region != nil {
 		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
@@ -395,8 +407,8 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		nodeQuery = nodeQuery.Where("LOWER(resources_cache.region) = LOWER(?)", *filter.Region)
 	}
 
-	if filter.NodeStatus != nil {
-		condition := nodestatus.DecideNodeStatusCondition(*filter.NodeStatus)
+	if filter.NodeStatus != nil && len(filter.NodeStatus) != 0 {
+		condition := nodestatus.DecideNodeStatusCondition(filter.NodeStatus)
 		nodeQuery = nodeQuery.Where(condition)
 	}
 
@@ -520,13 +532,19 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 
 	condition := "TRUE"
 	if filter.Status != nil {
-		condition = nodestatus.DecideNodeStatusCondition(*filter.Status)
+		condition = nodestatus.DecideNodeStatusCondition(filter.Status)
 	}
 
 	q = q.Where(condition)
 
+	if filter.NumGPU != nil {
+		q = q.Where("COALESCE(resources_cache.node_gpu_count, 0) >= ?", *filter.NumGPU)
+	}
 	if filter.Healthy != nil {
 		q = q.Where("health_report.healthy = ? ", *filter.Healthy)
+	}
+	if filter.HasIpv6 != nil {
+		q = q.Where("COALESCE(node_ipv6.has_ipv6, false) = ? ", *filter.HasIpv6)
 	}
 	if filter.FreeMRU != nil {
 		q = q.Where("resources_cache.free_mru >= ?", *filter.FreeMRU)
@@ -642,7 +660,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 			}
 
 			if limit.SortBy == "status" {
-				q.Order(nodestatus.DecideNodeStatusOrdering(order))
+				q = q.Order(nodestatus.DecideNodeStatusOrdering(order))
+			} else if limit.SortBy == "free_cru" {
+				q = q.Order(fmt.Sprintf("total_cru-used_cru %s", order))
 			} else {
 				q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 			}
@@ -780,8 +800,13 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 	if filter.Type != nil {
 		q = q.Where("type = ?", *filter.Type)
 	}
-	if filter.State != nil {
-		q = q.Where("state ILIKE ?", *filter.State)
+	if len(filter.State) != 0 {
+		states := []string{}
+		for _, s := range filter.State {
+			states = append(states, strings.ToLower(s))
+		}
+
+		q = q.Where("LOWER(state) IN ?", states)
 	}
 	if filter.TwinID != nil {
 		q = q.Where("contracts.twin_id = ?", *filter.TwinID)

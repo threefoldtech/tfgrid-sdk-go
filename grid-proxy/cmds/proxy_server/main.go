@@ -56,16 +56,20 @@ type flags struct {
 	mnemonics              string
 	maxPoolOpenConnections int
 
-	noIndexer                 bool // true to stop the indexer, useful on running for testing
-	indexerUpserterBatchSize  uint
-	gpuIndexerIntervalMins    uint
-	gpuIndexerNumWorkers      uint
-	healthIndexerNumWorkers   uint
-	healthIndexerIntervalMins uint
-	dmiIndexerNumWorkers      uint
-	dmiIndexerIntervalMins    uint
-	speedIndexerNumWorkers    uint
-	speedIndexerIntervalMins  uint
+	noIndexer                    bool // true to stop the indexer, useful on running for testing
+	indexerUpserterBatchSize     uint
+	gpuIndexerIntervalMins       uint
+	gpuIndexerNumWorkers         uint
+	healthIndexerNumWorkers      uint
+	healthIndexerIntervalMins    uint
+	dmiIndexerNumWorkers         uint
+	dmiIndexerIntervalMins       uint
+	speedIndexerNumWorkers       uint
+	speedIndexerIntervalMins     uint
+	ipv6IndexerNumWorkers        uint
+	ipv6IndexerIntervalMins      uint
+	workloadsIndexerNumWorkers   uint
+	workloadsIndexerIntervalMins uint
 }
 
 func main() {
@@ -99,6 +103,10 @@ func main() {
 	flag.UintVar(&f.dmiIndexerNumWorkers, "dmi-indexer-workers", 1, "number of workers checking on node dmi")
 	flag.UintVar(&f.speedIndexerIntervalMins, "speed-indexer-interval", 5, "node speed check interval in min")
 	flag.UintVar(&f.speedIndexerNumWorkers, "speed-indexer-workers", 100, "number of workers checking on node speed")
+	flag.UintVar(&f.ipv6IndexerIntervalMins, "ipv6-indexer-interval", 60*24, "node ipv6 check interval in min")
+	flag.UintVar(&f.ipv6IndexerNumWorkers, "ipv6-indexer-workers", 10, "number of workers checking on node having ipv6")
+	flag.UintVar(&f.workloadsIndexerIntervalMins, "workloads-indexer-interval", 60, "node workloads check interval in min")
+	flag.UintVar(&f.workloadsIndexerNumWorkers, "workloads-indexer-workers", 10, "number of workers checking on node workloads number")
 	flag.Parse()
 
 	// shows version and exit
@@ -191,6 +199,24 @@ func startIndexers(ctx context.Context, f flags, db db.Database, rpcRmbClient *p
 		f.speedIndexerNumWorkers,
 	)
 	speedIdx.Start(ctx)
+
+	ipv6Idx := indexer.NewIndexer[types.HasIpv6](
+		indexer.NewIpv6Work(f.ipv6IndexerIntervalMins),
+		"IPV6",
+		db,
+		rpcRmbClient,
+		f.ipv6IndexerNumWorkers,
+	)
+	ipv6Idx.Start(ctx)
+
+	wlNumIdx := indexer.NewIndexer[types.NodesWorkloads](
+		indexer.NewWorkloadWork(f.ipv6IndexerIntervalMins),
+		"workloads",
+		db,
+		rpcRmbClient,
+		f.ipv6IndexerNumWorkers,
+	)
+	wlNumIdx.Start(ctx)
 }
 
 func app(s *http.Server, f flags) error {

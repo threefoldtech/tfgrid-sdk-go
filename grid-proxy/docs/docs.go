@@ -67,7 +67,7 @@ const docTemplate = `{
                             "created_at"
                         ],
                         "type": "string",
-                        "description": "Sort by specific contract filed",
+                        "description": "Sort by specific contract field",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -327,7 +327,7 @@ const docTemplate = `{
                             "dedicated"
                         ],
                         "type": "string",
-                        "description": "Sort by specific farm filed",
+                        "description": "Sort by specific farm field",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -357,12 +357,6 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Pricing policy id",
                         "name": "pricing_policy_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "farm version",
-                        "name": "version",
                         "in": "query"
                     },
                     {
@@ -566,7 +560,7 @@ const docTemplate = `{
                             "extra_fee"
                         ],
                         "type": "string",
-                        "description": "Sort by specific gateway filed",
+                        "description": "Sort by specific gateway field",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -848,7 +842,7 @@ const docTemplate = `{
                             "extra_fee"
                         ],
                         "type": "string",
-                        "description": "Sort by specific node filed",
+                        "description": "Sort by specific node field",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -1367,7 +1361,7 @@ const docTemplate = `{
                             "twin_id"
                         ],
                         "type": "string",
-                        "description": "Sort by specific twin filed",
+                        "description": "Sort by specific twin field",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -1457,6 +1451,28 @@ const docTemplate = `{
                 "Terabyte"
             ]
         },
+        "types.BIOS": {
+            "type": "object",
+            "properties": {
+                "vendor": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.Baseboard": {
+            "type": "object",
+            "properties": {
+                "manufacturer": {
+                    "type": "string"
+                },
+                "product_name": {
+                    "type": "string"
+                }
+            }
+        },
         "types.Capacity": {
             "type": "object",
             "properties": {
@@ -1520,6 +1536,32 @@ const docTemplate = `{
                 }
             }
         },
+        "types.Dmi": {
+            "type": "object",
+            "properties": {
+                "baseboard": {
+                    "$ref": "#/definitions/types.Baseboard"
+                },
+                "bios": {
+                    "$ref": "#/definitions/types.BIOS"
+                },
+                "memory": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.Memory"
+                    }
+                },
+                "node_twin_id": {
+                    "type": "integer"
+                },
+                "processor": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.Processor"
+                    }
+                }
+            }
+        },
         "types.Farm": {
             "type": "object",
             "properties": {
@@ -1569,6 +1611,17 @@ const docTemplate = `{
                 }
             }
         },
+        "types.Memory": {
+            "type": "object",
+            "properties": {
+                "manufacturer": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "types.Node": {
             "type": "object",
             "properties": {
@@ -1586,6 +1639,9 @@ const docTemplate = `{
                 },
                 "dedicated": {
                     "type": "boolean"
+                },
+                "dmi": {
+                    "$ref": "#/definitions/types.Dmi"
                 },
                 "extraFee": {
                     "type": "integer"
@@ -1632,11 +1688,20 @@ const docTemplate = `{
                 "rentContractId": {
                     "type": "integer"
                 },
+                "rentable": {
+                    "type": "boolean"
+                },
+                "rented": {
+                    "type": "boolean"
+                },
                 "rentedByTwinId": {
                     "type": "integer"
                 },
                 "serialNumber": {
                     "type": "string"
+                },
+                "speed": {
+                    "$ref": "#/definitions/types.Speed"
                 },
                 "status": {
                     "type": "string"
@@ -1671,6 +1736,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "node_twin_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
                     "type": "integer"
                 },
                 "vendor": {
@@ -1732,6 +1800,9 @@ const docTemplate = `{
                 "deployments": {
                     "type": "integer"
                 },
+                "last_deployment_timestamp": {
+                    "type": "integer"
+                },
                 "workloads": {
                     "type": "integer"
                 }
@@ -1757,6 +1828,9 @@ const docTemplate = `{
                 },
                 "dedicated": {
                     "type": "boolean"
+                },
+                "dmi": {
+                    "$ref": "#/definitions/types.Dmi"
                 },
                 "extraFee": {
                     "type": "integer"
@@ -1803,11 +1877,20 @@ const docTemplate = `{
                 "rentContractId": {
                     "type": "integer"
                 },
+                "rentable": {
+                    "type": "boolean"
+                },
+                "rented": {
+                    "type": "boolean"
+                },
                 "rentedByTwinId": {
                     "type": "integer"
                 },
                 "serialNumber": {
                     "type": "string"
+                },
+                "speed": {
+                    "$ref": "#/definitions/types.Speed"
                 },
                 "status": {
                     "description": "added node status field for up or down",
@@ -1821,6 +1904,17 @@ const docTemplate = `{
                 },
                 "uptime": {
                     "type": "integer"
+                }
+            }
+        },
+        "types.Processor": {
+            "type": "object",
+            "properties": {
+                "thread_count": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
@@ -1861,6 +1955,22 @@ const docTemplate = `{
                 },
                 "ip": {
                     "type": "string"
+                }
+            }
+        },
+        "types.Speed": {
+            "type": "object",
+            "properties": {
+                "download": {
+                    "description": "in bit/sec",
+                    "type": "number"
+                },
+                "node_twin_id": {
+                    "type": "integer"
+                },
+                "upload": {
+                    "description": "in bit/sec",
+                    "type": "number"
                 }
             }
         },
@@ -1913,6 +2023,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "twins": {
+                    "type": "integer"
+                },
+                "workloads_number": {
                     "type": "integer"
                 }
             }

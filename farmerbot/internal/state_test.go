@@ -120,7 +120,12 @@ func TestSetConfig(t *testing.T) {
 	inputs := Config{
 		FarmID:        1,
 		IncludedNodes: []uint32{1, 2},
-		Power:         power{WakeUpThreshold: 30},
+		Power: power{WakeUpThresholdPercentages: ThresholdPercentages{
+			CRU: 30,
+			SRU: 30,
+			MRU: 30,
+			HRU: 30,
+		}},
 	}
 
 	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
@@ -131,47 +136,77 @@ func TestSetConfig(t *testing.T) {
 		state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 		assert.NoError(t, err)
 		assert.Equal(t, uint32(state.farm.ID), uint32(1))
+		assert.True(t, state.nodes[0].dedicated)
 		assert.True(t, state.nodes[1].dedicated)
-		assert.True(t, state.nodes[2].dedicated)
-		assert.Equal(t, uint32(state.nodes[1].ID), uint32(1))
-		assert.Equal(t, uint32(state.nodes[2].ID), uint32(2))
+		assert.Equal(t, uint32(state.nodes[0].ID), uint32(1))
+		assert.Equal(t, uint32(state.nodes[1].ID), uint32(2))
 
 		now := time.Now()
 		assert.Equal(t, state.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour(), now.Hour())
 		assert.Equal(t, state.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute(), now.Minute())
 		assert.Equal(t, state.config.Power.PeriodicWakeUpLimit, defaultPeriodicWakeUPLimit)
 		assert.Equal(t, state.config.Power.OverProvisionCPU, defaultCPUProvision)
-		assert.Equal(t, state.config.Power.WakeUpThreshold, minWakeUpThreshold)
+		assert.Equal(t, state.config.Power.WakeUpThresholdPercentages, ThresholdPercentages{
+			CRU: minWakeUpThreshold,
+			SRU: minWakeUpThreshold,
+			MRU: minWakeUpThreshold,
+			HRU: minWakeUpThreshold,
+		})
 	})
 
 	t.Run("test valid state: wake up threshold (> max => max)", func(t *testing.T) {
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
-		inputs.Power.WakeUpThreshold = 100
+		inputs.Power.WakeUpThresholdPercentages = ThresholdPercentages{
+			CRU: 100,
+			SRU: 100,
+			MRU: 100,
+			HRU: 100,
+		}
 
 		state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 		assert.NoError(t, err)
-		assert.Equal(t, state.config.Power.WakeUpThreshold, maxWakeUpThreshold)
+		assert.Equal(t, state.config.Power.WakeUpThresholdPercentages, ThresholdPercentages{
+			CRU: maxWakeUpThreshold,
+			SRU: maxWakeUpThreshold,
+			MRU: maxWakeUpThreshold,
+			HRU: maxWakeUpThreshold,
+		})
 	})
 
 	t.Run("test valid state: wake up threshold (is 0 => default)", func(t *testing.T) {
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
-		inputs.Power.WakeUpThreshold = 0
+		inputs.Power.WakeUpThresholdPercentages = ThresholdPercentages{}
 
 		state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 		assert.NoError(t, err)
-		assert.Equal(t, state.config.Power.WakeUpThreshold, defaultWakeUpThreshold)
+		assert.Equal(t, state.config.Power.WakeUpThresholdPercentages, ThresholdPercentages{
+			CRU: defaultWakeUpThreshold,
+			SRU: defaultWakeUpThreshold,
+			MRU: defaultWakeUpThreshold,
+			HRU: defaultWakeUpThreshold,
+		})
 	})
 
 	t.Run("test valid state: invalid wake up threshold", func(t *testing.T) {
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
-		inputs.Power.WakeUpThreshold = 110
+		inputs.Power.WakeUpThresholdPercentages = ThresholdPercentages{
+			CRU: 110,
+			SRU: 110,
+			MRU: 110,
+			HRU: 110,
+		}
 
 		_, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 		assert.Error(t, err)
 
-		inputs.Power.WakeUpThreshold = defaultWakeUpThreshold
+		inputs.Power.WakeUpThresholdPercentages = ThresholdPercentages{
+			CRU: defaultWakeUpThreshold,
+			SRU: defaultWakeUpThreshold,
+			MRU: defaultWakeUpThreshold,
+			HRU: defaultWakeUpThreshold,
+		}
 	})
 
 	t.Run("test valid state: nodes are off in substrate", func(t *testing.T) {
@@ -206,7 +241,7 @@ func TestSetConfig(t *testing.T) {
 
 		state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
 		assert.NoError(t, err)
-		assert.False(t, state.nodes[1].hasActiveRentContract)
+		assert.False(t, state.nodes[0].hasActiveRentContract)
 	})
 
 	t.Run("test valid excluded node", func(t *testing.T) {
@@ -282,9 +317,9 @@ func TestSetConfig(t *testing.T) {
 
 func TestStateModel(t *testing.T) {
 	state := state{
-		nodes: map[uint32]node{1: {
+		nodes: []node{{
 			Node: substrate.Node{ID: 1},
-		}, 2: {
+		}, {
 			Node: substrate.Node{ID: 2},
 		}},
 	}
@@ -292,7 +327,7 @@ func TestStateModel(t *testing.T) {
 	t.Run("test update node", func(t *testing.T) {
 		err := state.updateNode(node{Node: substrate.Node{ID: 1, TwinID: 1}})
 		assert.NoError(t, err)
-		assert.Equal(t, uint32(state.nodes[1].TwinID), uint32(1))
+		assert.Equal(t, uint32(state.nodes[0].TwinID), uint32(1))
 	})
 
 	t.Run("test update node (not found)", func(t *testing.T) {
@@ -316,11 +351,12 @@ func TestStateModel(t *testing.T) {
 	})
 
 	t.Run("test update node", func(t *testing.T) {
-		state.addNode(node{Node: substrate.Node{ID: 1, TwinID: 1}})
-		assert.Equal(t, uint32(state.nodes[1].TwinID), uint32(1))
+		assert.NoError(t, state.updateNode(node{Node: substrate.Node{ID: 1, TwinID: 1}}))
+		assert.Equal(t, uint32(state.nodes[0].TwinID), uint32(1))
 
 		state.deleteNode(1)
-		assert.Empty(t, state.nodes[1])
+		_, _, err := state.getNode(1)
+		assert.Error(t, err)
 	})
 }
 

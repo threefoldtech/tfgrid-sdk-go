@@ -10,12 +10,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 // state is the state data for farmerbot
 type state struct {
 	farm   substrate.Farm
-	nodes  map[uint32]node
+	nodes  []node
 	config Config
 	m      sync.Mutex
 }
@@ -58,13 +59,15 @@ func newState(ctx context.Context, sub Substrate, rmbNodeClient RMB, cfg Config,
 	return &s, nil
 }
 
-func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Config, dedicatedFarm bool) (map[uint32]node, error) {
-	nodes := make(map[uint32]node)
+func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Config, dedicatedFarm bool) ([]node, error) {
+	var nodes []node
 
 	farmNodes, err := sub.GetNodes(config.FarmID)
 	if err != nil {
 		return nil, err
 	}
+
+	farmNodes = addPriorityToNodes(config.PriorityNodes, farmNodes)
 
 	for _, nodeID := range farmNodes {
 		if slices.Contains(config.ExcludedNodes, nodeID) {
@@ -85,7 +88,7 @@ func fetchNodes(ctx context.Context, sub Substrate, rmbNodeClient RMB, config Co
 
 				return nil, fmt.Errorf("failed to add node with id %d with error: %w", nodeID, err)
 			}
-			nodes[nodeID] = configNode
+			nodes = append(nodes, configNode)
 		}
 	}
 
@@ -154,8 +157,9 @@ func getNode(
 	if powerTarget.State.IsUp && powerTarget.Target.IsUp && configNode.powerState != on {
 		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Updating power, Power target is on")
 		configNode.powerState = on
-		configNode.lastTimeAwake = time.Now()
-		configNode.lastTimePowerStateChanged = time.Now()
+		timeNow := time.Now()
+		configNode.lastTimeAwake = timeNow
+		configNode.lastTimePowerStateChanged = timeNow
 	}
 
 	if powerTarget.State.IsUp && powerTarget.Target.IsDown && configNode.powerState != shuttingDown {
@@ -173,6 +177,13 @@ func getNode(
 	// don't call rmb over off nodes (state and target are off/wakingUp) allow adding them in farmerbot
 	if (configNode.powerState == off || configNode.powerState == wakingUp) &&
 		continueOnPoweringOnErr {
+		// update the total node resources from substrate
+		configNode.resources.total.update(gridtypes.Capacity{
+			CRU: uint64(configNode.Resources.CRU),
+			SRU: gridtypes.Unit(configNode.Resources.SRU),
+			HRU: gridtypes.Unit(configNode.Resources.HRU),
+			MRU: gridtypes.Unit(configNode.Resources.MRU),
+		})
 		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node state is off, will skip rmb calls")
 		return configNode, nil
 	}
@@ -202,19 +213,34 @@ func getNode(
 	return configNode, nil
 }
 
+func (s *state) getNode(nodeID uint32) (int, node, error) {
+	for i, node := range s.nodes {
+		if uint32(node.ID) == nodeID {
+			return i, node, nil
+		}
+	}
+
+	return 0, node{}, fmt.Errorf("node '%d' is not found", nodeID)
+}
+
 // addNode adds a node in the config
 func (s *state) addNode(node node) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	s.nodes[uint32(node.ID)] = node
+	s.nodes = append(s.nodes, node)
 }
 
 func (s *state) deleteNode(nodeID uint32) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	delete(s.nodes, nodeID)
+	for i, node := range s.nodes {
+		if uint32(node.ID) == nodeID {
+			s.nodes = slices.Delete(s.nodes, i, i+1)
+			return
+		}
+	}
 }
 
 // UpdateNode updates a node in the config
@@ -222,35 +248,33 @@ func (s *state) updateNode(node node) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	nodeID := uint32(node.ID)
-
-	_, ok := s.nodes[nodeID]
-	if !ok {
-		return fmt.Errorf("node %d is not found", nodeID)
+	for i, n := range s.nodes {
+		if n.ID == node.ID {
+			s.nodes[i] = node
+			return nil
+		}
 	}
 
-	s.nodes[nodeID] = node
-
-	return nil
+	return fmt.Errorf("node '%d' is not found", node.ID)
 }
 
 // FilterNodesPower filters ON, waking up, shutting down, or OFF nodes
-func (s *state) filterNodesPower(states []powerState) map[uint32]node {
-	filtered := make(map[uint32]node)
-	for nodeID, node := range s.nodes {
+func (s *state) filterNodesPower(states []powerState) []node {
+	var filtered []node
+	for _, node := range s.nodes {
 		if slices.Contains(states, node.powerState) {
-			filtered[nodeID] = node
+			filtered = append(filtered, node)
 		}
 	}
 	return filtered
 }
 
 // FilterAllowedNodesToShutDown filters nodes that are allowed to shut down
-func (s *state) filterAllowedNodesToShutDown() map[uint32]node {
-	filtered := make(map[uint32]node)
-	for nodeID, node := range s.nodes {
+func (s *state) filterAllowedNodesToShutDown() []node {
+	var filtered []node
+	for _, node := range s.nodes {
 		if node.canShutDown() {
-			filtered[nodeID] = node
+			filtered = append(filtered, node)
 		}
 	}
 	return filtered
@@ -275,13 +299,13 @@ func (s *state) validate() error {
 			return fmt.Errorf("node %d: twin_id is required", n.ID)
 		}
 
-		if n.resources.total.sru == 0 && n.Resources.SRU == 0 {
+		if n.resources.total.sru == 0 {
 			return fmt.Errorf("node %d: total SRU is required", n.ID)
 		}
-		if n.resources.total.cru == 0 && n.Resources.CRU == 0 {
+		if n.resources.total.cru == 0 {
 			return fmt.Errorf("node %d: total CRU is required", n.ID)
 		}
-		if n.resources.total.mru == 0 && n.Resources.MRU == 0 {
+		if n.resources.total.mru == 0 {
 			return fmt.Errorf("node %d: total MRU is required", n.ID)
 		}
 
@@ -292,23 +316,62 @@ func (s *state) validate() error {
 	}
 
 	// required values for power
-	if s.config.Power.WakeUpThreshold == 0 {
-		s.config.Power.WakeUpThreshold = defaultWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold has not been set. setting it to %d", defaultWakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.CRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for cru has not been set. setting it to %v", defaultWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.MRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.MRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for mru has not been set. setting it to %v", defaultWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.HRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.HRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for hru has not been set. setting it to %v", defaultWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.SRU == 0 {
+		s.config.Power.WakeUpThresholdPercentages.SRU = defaultWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for sru has not been set. setting it to %v", defaultWakeUpThreshold)
 	}
 
-	if s.config.Power.WakeUpThreshold < 1 || s.config.Power.WakeUpThreshold > 100 {
-		return fmt.Errorf("invalid wake-up threshold %d, should be between [1-100]", s.config.Power.WakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU < 1 || s.config.Power.WakeUpThresholdPercentages.CRU > 100 ||
+		s.config.Power.WakeUpThresholdPercentages.HRU < 1 || s.config.Power.WakeUpThresholdPercentages.HRU > 100 ||
+		s.config.Power.WakeUpThresholdPercentages.SRU < 1 || s.config.Power.WakeUpThresholdPercentages.SRU > 100 ||
+		s.config.Power.WakeUpThresholdPercentages.MRU < 1 || s.config.Power.WakeUpThresholdPercentages.MRU > 100 {
+		return fmt.Errorf("invalid wake-up threshold %v, should be between [1-100]", s.config.Power.WakeUpThresholdPercentages)
 	}
 
-	if s.config.Power.WakeUpThreshold < minWakeUpThreshold {
-		s.config.Power.WakeUpThreshold = minWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]. Setting it to minimum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.CRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for cru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.MRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.MRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for mru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.HRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.HRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for hru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.SRU < minWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.SRU = minWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for sru should be in the range [%v, %v]. Setting it to minimum value %v", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
 	}
 
-	if s.config.Power.WakeUpThreshold > maxWakeUpThreshold {
-		s.config.Power.WakeUpThreshold = maxWakeUpThreshold
-		log.Warn().Msgf("The setting wake_up_threshold should be in the range [%d, %d]. Setting it to maximum value %d", minWakeUpThreshold, maxWakeUpThreshold, minWakeUpThreshold)
+	if s.config.Power.WakeUpThresholdPercentages.CRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.CRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for cru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.MRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.MRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for mru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.HRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.HRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for hru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
+	}
+	if s.config.Power.WakeUpThresholdPercentages.SRU > maxWakeUpThreshold {
+		s.config.Power.WakeUpThresholdPercentages.SRU = maxWakeUpThreshold
+		log.Warn().Msgf("The setting wake_up_threshold for sru should be in the range [%v, %v]. Setting it to maximum value %v", minWakeUpThreshold, maxWakeUpThreshold, maxWakeUpThreshold)
 	}
 
 	if s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Hour() == 0 && s.config.Power.PeriodicWakeUpStart.PeriodicWakeUpTime().Minute() == 0 {

@@ -10,9 +10,8 @@ import (
 )
 
 func queryUpNodes(ctx context.Context, database db.Database, nodeTwinIdChan chan uint32) {
-	status := "up"
 	filter := types.NodeFilter{
-		Status: &status,
+		Status: []string{"up"},
 	}
 	limit := types.Limit{Size: 100, Page: 1}
 	hasNext := true

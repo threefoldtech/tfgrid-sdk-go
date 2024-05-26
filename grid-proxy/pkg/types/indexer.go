@@ -26,6 +26,17 @@ func (HealthReport) TableName() string {
 	return "health_report"
 }
 
+// HasIpv6 holds the state of node having ipv6
+// used as gorm model
+type HasIpv6 struct {
+	NodeTwinId uint32 `gorm:"unique;not null"`
+	HasIpv6    bool
+}
+
+func (HasIpv6) TableName() string {
+	return "node_ipv6"
+}
+
 // Speed holds upload/download speeds in `bit/sec` for a node
 // used as both gorm model and server json response
 type Speed struct {
@@ -36,6 +47,16 @@ type Speed struct {
 
 func (Speed) TableName() string {
 	return "speed"
+}
+
+// NodesWorkloads holds the number of workloads on a node
+type NodesWorkloads struct {
+	NodeTwinId      uint32 `json:"node_twin_id,omitempty" gorm:"unique;not null"`
+	WorkloadsNumber uint32 `json:"workloads_number"`
+}
+
+func (NodesWorkloads) TableName() string {
+	return "node_workloads"
 }
 
 // Dmi holds hardware dmi info for a node
