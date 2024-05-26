@@ -67,7 +67,7 @@ const docTemplate = `{
                             "created_at"
                         ],
                         "type": "string",
-                        "description": "Sort by specific contract filed",
+                        "description": "Sort by specific contract field",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -327,7 +327,7 @@ const docTemplate = `{
                             "dedicated"
                         ],
                         "type": "string",
-                        "description": "Sort by specific farm filed",
+                        "description": "Sort by specific farm field",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -560,7 +560,7 @@ const docTemplate = `{
                             "extra_fee"
                         ],
                         "type": "string",
-                        "description": "Sort by specific gateway filed",
+                        "description": "Sort by specific gateway field",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -842,7 +842,7 @@ const docTemplate = `{
                             "extra_fee"
                         ],
                         "type": "string",
-                        "description": "Sort by specific node filed",
+                        "description": "Sort by specific node field",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -1361,7 +1361,7 @@ const docTemplate = `{
                             "twin_id"
                         ],
                         "type": "string",
-                        "description": "Sort by specific twin filed",
+                        "description": "Sort by specific twin field",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -2023,6 +2023,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "twins": {
+                    "type": "integer"
+                },
+                "workloads_number": {
                     "type": "integer"
                 }
             }

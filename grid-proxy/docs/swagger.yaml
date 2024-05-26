@@ -395,6 +395,8 @@ definitions:
         type: integer
       twins:
         type: integer
+      workloads_number:
+        type: integer
     type: object
   types.Twin:
     properties:
@@ -439,7 +441,7 @@ paths:
         in: query
         name: randomize
         type: boolean
-      - description: Sort by specific contract filed
+      - description: Sort by specific contract field
         enum:
         - twin_id
         - contract_id
@@ -613,7 +615,7 @@ paths:
         in: query
         name: randomize
         type: boolean
-      - description: Sort by specific farm filed
+      - description: Sort by specific farm field
         enum:
         - name
         - farm_id
@@ -765,7 +767,7 @@ paths:
         in: query
         name: randomize
         type: boolean
-      - description: Sort by specific gateway filed
+      - description: Sort by specific gateway field
         enum:
         - node_id
         - farm_id
@@ -959,7 +961,7 @@ paths:
         in: query
         name: randomize
         type: boolean
-      - description: Sort by specific node filed
+      - description: Sort by specific node field
         enum:
         - status
         - node_id
@@ -1324,7 +1326,7 @@ paths:
         in: query
         name: randomize
         type: boolean
-      - description: Sort by specific twin filed
+      - description: Sort by specific twin field
         enum:
         - relay
         - public_key
