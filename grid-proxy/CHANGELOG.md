@@ -12,6 +12,14 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.5
+
+---
+
+- `feat` change the call for health indexer to use diagnostics instead
+
+> Note: this is blocked on `zos:v3.11.0`
+
 ### v0.15.4
 
 ---
