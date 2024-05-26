@@ -32,7 +32,7 @@ const (
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set farms' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of farms"
-// @Param sort_by query string false "Sort by specific farm filed" Enums(name, farm_id, twin_id, public_ips, dedicated)
+// @Param sort_by query string false "Sort by specific farm field" Enums(name, farm_id, twin_id, public_ips, dedicated)
 // @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_ips query int false "Min number of free ips in the farm"
 // @Param total_ips query int false "Min number of total ips in the farm"
@@ -117,7 +117,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of nodes"
-// @Param sort_by query string false "Sort by specific node filed" Enums(status, node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
+// @Param sort_by query string false "Sort by specific node field" Enums(status, node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
 // @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param balance query string false "a balance in usd, used to apply staking discount on nodes price"
 // @Param free_mru query int false "Min free reservable mru in bytes"
@@ -172,7 +172,7 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of gateways"
-// @Param sort_by query string false "Sort by specific gateway filed" Enums(node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
+// @Param sort_by query string false "Sort by specific gateway field" Enums(node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
 // @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_mru query int false "Min free reservable mru in bytes"
 // @Param free_hru query int false "Min free reservable hru in bytes"
@@ -297,7 +297,7 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set twins' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of twins"
-// @Param sort_by query string false "Sort by specific twin filed" Enums(relay, public_key, account_id, twin_id)
+// @Param sort_by query string false "Sort by specific twin field" Enums(relay, public_key, account_id, twin_id)
 // @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param twin_id query int false "twin id"
 // @Param account_id query string false "Account address"
@@ -337,7 +337,7 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set contracts' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of contracts"
-// @Param sort_by query string false "Sort by specific contract filed" Enums(twin_id, contract_id, type, state, created_at)
+// @Param sort_by query string false "Sort by specific contract field" Enums(twin_id, contract_id, type, state, created_at)
 // @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param contract_id query int false "contract id"
 // @Param twin_id query int false "twin id"

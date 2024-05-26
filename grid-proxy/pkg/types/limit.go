@@ -9,7 +9,7 @@ import (
 // SortOrder is the direction of sorting
 type SortOrder string
 
-// SortBy is the sorted by filed
+// SortBy is the sorted by field
 type SortBy string
 
 const (
@@ -55,7 +55,7 @@ func (sb SortBy) valid(typ interface{}) error {
 		}
 	}
 
-	return fmt.Errorf("%q is not a sort filed for %v type", sb, objType.Name())
+	return fmt.Errorf("%q is not a sort field for %v type", sb, objType.Name())
 }
 
 // Limit used for pagination
