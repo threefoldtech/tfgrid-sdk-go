@@ -76,6 +76,35 @@ func (d *PostgresDatabase) Close() error {
 	return db.Close()
 }
 
+func (d *PostgresDatabase) Ping() error {
+	db, err := d.gormDB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get db connection")
+	}
+
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping db")
+	}
+
+	return nil
+}
+
+func (d *PostgresDatabase) Initialized() error {
+	db, err := d.gormDB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get db connection")
+	}
+
+	initTables := []string{"node_gpu", "resources_cache"}
+	for _, tableName := range initTables {
+		if _, err := db.Query("select * from " + tableName + ";"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (d *PostgresDatabase) Initialize() error {
 	err := d.gormDB.AutoMigrate(
 		&types.NodeGPU{},
@@ -910,4 +939,12 @@ func (d *PostgresDatabase) GetContractBills(ctx context.Context, contractID uint
 	}
 
 	return bills, uint(count), nil
+}
+
+func (d *PostgresDatabase) GetRandomHealthyTwinIds(length int) ([]uint32, error) {
+	var ids []uint32
+	if err := d.gormDB.Table("health_report").Select("node_twin_id").Where("healthy = true").Order("random()").Limit(int(length)).Scan(&ids).Error; err != nil {
+		return []uint32{}, err
+	}
+	return ids, nil
 }

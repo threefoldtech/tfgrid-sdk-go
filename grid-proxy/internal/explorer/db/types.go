@@ -9,6 +9,9 @@ import (
 // Database interface for storing and fetching grid info
 type Database interface {
 	GetConnectionString() string
+	Ping() error
+	Initialized() error
+	GetRandomHealthyTwinIds(length int) ([]uint32, error)
 
 	// server getters
 	GetStats(ctx context.Context, filter types.StatsFilter) (types.Stats, error)
