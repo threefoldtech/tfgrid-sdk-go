@@ -58,6 +58,7 @@ var (
 		},
 		"qa": {
 			"wss://relay.qa.grid.tf",
+			"wss://relay.02.qa.grid.tf",
 		},
 		"main": {
 			"wss://relay.grid.tf",
@@ -182,6 +183,10 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 		o(&cfg)
 	}
 
+	if cfg.network != "dev" && cfg.network != "qa" && cfg.network != "test" && cfg.network != "main" {
+		return cfg, errors.Errorf("network must be one of dev, qa, test, and main not %s", cfg.network)
+	}
+
 	if strings.TrimSpace(cfg.proxyURL) == "" {
 		cfg.proxyURL = ProxyURLs[cfg.network]
 	}
@@ -258,11 +263,7 @@ func NewTFPluginClient(
 		return TFPluginClient{}, errors.Wrap(err, "error getting user's identity key pair")
 	}
 
-	if cfg.network != "dev" && cfg.network != "qa" && cfg.network != "test" && cfg.network != "main" {
-		return TFPluginClient{}, errors.Errorf("network must be one of dev, qa, test, and main not %s", cfg.network)
-	}
 	tfPluginClient.Network = cfg.network
-
 	tfPluginClient.substrateURL = cfg.substrateURL
 	tfPluginClient.proxyURL = cfg.proxyURL
 	tfPluginClient.relayURLs = cfg.relayURLs
