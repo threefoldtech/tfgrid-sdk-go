@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -30,8 +31,9 @@ type InnerConnection struct {
 }
 
 type send struct {
-	data []byte
-	err  chan error
+	data   []byte
+	err    chan error
+	closed *atomic.Bool
 }
 
 // Reader is a channel that receives incoming messages
@@ -77,12 +79,17 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 
 func (c *InnerConnection) send(ctx context.Context, data []byte) error {
 	resp := make(chan error)
-	defer close(resp)
 
 	s := send{
-		data: data,
-		err:  resp,
+		data:   data,
+		err:    resp,
+		closed: &atomic.Bool{},
 	}
+
+	defer func() {
+		s.closed.Store(true)
+		close(resp)
+	}()
 
 	select {
 	case c.writer <- s:
@@ -133,10 +140,12 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 		case sent := <-c.writer:
 			err := con.WriteMessage(websocket.BinaryMessage, sent.data)
 
-			select {
-			case sent.err <- err:
-			case <-ctx.Done():
-				return ctx.Err()
+			if !sent.closed.Load() {
+				select {
+				case sent.err <- err:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
 			}
 
 			if err != nil {
