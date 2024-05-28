@@ -22,7 +22,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		context.Background(),
 		tfPluginClient,
-		generateNodeFilter(WithFreeMRU(4)),
+		generateNodeFilter(WithFreeMRU(2*minMemory)),
 		nil,
 		nil,
 		nil,

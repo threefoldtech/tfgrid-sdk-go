@@ -54,7 +54,7 @@ func TestK8sDeployment(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		context.Background(),
 		tfPluginClient,
-		generateNodeFilter(WithFreeSRU(3), WithFreeMRU(*convertGBToBytes(3 * minMemory))),
+		generateNodeFilter(WithFreeSRU(3), WithFreeMRU(3*minMemory)),
 		[]uint64{*convertGBToBytes(1), *convertGBToBytes(1), *convertGBToBytes(1)},
 		nil,
 		nil,

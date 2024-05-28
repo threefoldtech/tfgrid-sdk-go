@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
@@ -27,7 +27,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		context.Background(),
 		tfPluginClient,
-		generateNodeFilter(WithFreeMRU(*convertGBToBytes(4 * minMemory))),
+		generateNodeFilter(WithFreeMRU(2*minMemory)),
 		nil,
 		nil,
 		nil,
@@ -102,15 +102,15 @@ func TestDeploymentsDeploy(t *testing.T) {
 	}
 
 	nodeClient, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	privateIPs, err := nodeClient.NetworkListPrivateIPs(context.Background(), network.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	if len(slices.Compact[[]string, string](privateIPs)) != 2 {
+	if len(slices.Compact(privateIPs)) != 2 {
 		t.Fatalf("expected 2 used private IPs but got %d", len(privateIPs))
 	}
-	assert.Equal(t, privateIPs, []string{dl1.Vms[0].IP, dl2.Vms[0].IP})
+	require.Equal(t, privateIPs, []string{dl1.Vms[0].IP, dl2.Vms[0].IP})
 
 	// replace first vm and add another one (vm2 and vm3)
 	d1.Vms = append(d1.Vms, vm1)
@@ -129,7 +129,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 	}
 
 	privateIPs, err = nodeClient.NetworkListPrivateIPs(context.Background(), network.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	if len(slices.Compact(privateIPs)) != 4 {
 		t.Fatalf("expected 4 unique used private IPs but got %d", len(privateIPs))
@@ -145,7 +145,7 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	nodes, err := deployer.FilterNodes(
 		context.Background(),
 		tfPluginClient,
-		generateNodeFilter(WithFreeMRU(*convertGBToBytes(6 * minMemory))),
+		generateNodeFilter(WithFreeMRU(6*minMemory)),
 		nil,
 		nil,
 		nil,
@@ -206,24 +206,27 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	})
 
 	nodeClient, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	privateIPs, err := nodeClient.NetworkListPrivateIPs(context.Background(), network.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	if len(slices.Compact(privateIPs)) != 6 {
 		t.Fatalf("expected 6 unique used private IPs but got %d -> %v", len(slices.Compact(privateIPs)), privateIPs)
 	}
 
 	nodeClient2, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	privateIPs2, err := nodeClient2.NetworkListPrivateIPs(context.Background(), network.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	if len(slices.Compact[[]string, string](privateIPs2)) != 3 {
+	if len(slices.Compact(privateIPs2)) != 3 {
 		t.Fatalf("expected 3 unique used private IPs but got %d -> %v", len(slices.Compact(privateIPs)), privateIPs)
 	}
+
+	// make sure we got different 9 ips
+	require.Equal(t, len(slices.Compact(append(privateIPs, privateIPs2...))), 9)
 
 	dl1, err := tfPluginClient.State.LoadDeploymentFromGrid(context.Background(), nodeID1, d1.Name)
 	if err != nil {
@@ -249,7 +252,7 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	ips = append(ips, ips3...)
 
 	// make sure we have different 9 ips
-	assert.Equal(t, len(slices.Compact(ips)), 9)
+	require.Equal(t, len(slices.Compact(ips)), 9)
 }
 
 func calcDeploymentHostIDs(dl workloads.Deployment) ([]byte, error) {
