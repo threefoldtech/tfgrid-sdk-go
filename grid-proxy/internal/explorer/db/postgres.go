@@ -112,6 +112,29 @@ func (d *PostgresDatabase) Initialized() error {
 	return nil
 }
 
+func (d *PostgresDatabase) GetLastUpsertsTimestamp() (types.IndexersState, error) {
+	var report types.IndexersState
+	if res := d.gormDB.Table("node_gpu").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Gpu.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get node_gpu last updated_at")
+	}
+	if res := d.gormDB.Table("health_report").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Health.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get health_report last updated_at")
+	}
+	if res := d.gormDB.Table("node_ipv6").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Ipv6.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get node_ipv6 last updated_at")
+	}
+	if res := d.gormDB.Table("speed").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Speed.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get speed last updated_at")
+	}
+	if res := d.gormDB.Table("dmi").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Dmi.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get dmi last updated_at")
+	}
+	if res := d.gormDB.Table("node_workloads").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Workloads.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get workloads last updated_at")
+	}
+	return report, nil
+}
+
 func (d *PostgresDatabase) Initialize() error {
 	err := d.gormDB.AutoMigrate(
 		&types.NodeGPU{},

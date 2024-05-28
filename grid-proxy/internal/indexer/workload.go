@@ -44,6 +44,7 @@ func (w *WorkloadWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint
 		{
 			NodeTwinId:      twinId,
 			WorkloadsNumber: response.Users.Workloads,
+			UpdatedAt:       time.Now().Unix(),
 		},
 	}, nil
 }

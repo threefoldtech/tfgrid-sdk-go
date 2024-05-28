@@ -92,5 +92,6 @@ func parseDmiResponse(dmiResponse zosDmiTypes.DMI, twinId uint32) types.Dmi {
 	}
 
 	info.NodeTwinId = twinId
+	info.UpdatedAt = time.Now().Unix()
 	return info
 }

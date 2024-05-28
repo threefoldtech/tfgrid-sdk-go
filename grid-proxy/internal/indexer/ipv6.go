@@ -39,6 +39,7 @@ func (w *Ipv6Work) Get(ctx context.Context, rmb *peer.RpcClient, id uint32) ([]t
 		{
 			NodeTwinId: id,
 			HasIpv6:    has_ipv6,
+			UpdatedAt:  time.Now().Unix(),
 		},
 	}, nil
 }

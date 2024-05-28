@@ -415,6 +415,7 @@ func (a *App) healthiness(r *http.Request) (interface{}, mw.Response) {
 	return createReport(
 		a.cl,
 		a.relayClient,
+		a.idxIntervals,
 	), response
 }
 
@@ -548,12 +549,13 @@ func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 // @BasePath /
-func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Client) error {
+func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Client, idxIntervals map[string]uint) error {
 
 	a := App{
 		cl:             cl,
 		releaseVersion: gitCommit,
 		relayClient:    relayClient,
+		idxIntervals:   idxIntervals,
 	}
 
 	router.HandleFunc("/farms", mw.AsHandlerFunc(a.listFarms))
