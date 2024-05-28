@@ -34,6 +34,21 @@ type send struct {
 	err  chan error
 }
 
+func (s *send) reply(ctx context.Context, err error) error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Debug().Msgf("recovered from panic: %v", r)
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case s.err <- err:
+		return err
+	}
+}
+
 // Reader is a channel that receives incoming messages
 type Reader <-chan []byte
 
@@ -132,14 +147,7 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 			lastPong = time.Now()
 		case sent := <-c.writer:
 			err := con.WriteMessage(websocket.BinaryMessage, sent.data)
-
-			select {
-			case sent.err <- err:
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-
-			if err != nil {
+			if replyErr := sent.reply(ctx, err); replyErr != nil {
 				return err
 			}
 		case <-pong:
