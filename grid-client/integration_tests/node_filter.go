@@ -81,7 +81,7 @@ func WithRentedBy(rentedBy uint64) nodeFilterOpts {
 
 func generateNodeFilter(opts ...nodeFilterOpts) types.NodeFilter {
 	cfg := nodeFilterCfg{
-		freeMRU: *convertGBToBytes(minMemory),
+		freeMRU: minMemory,
 	}
 
 	for _, o := range opts {
