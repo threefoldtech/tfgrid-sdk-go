@@ -303,7 +303,7 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 }
 
 func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*workloads.Deployment) ([]*workloads.Deployment, error) {
-	var newdls []*workloads.Deployment
+	var newDls []*workloads.Deployment
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var errs error
@@ -315,7 +315,7 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 
 	for _, dl := range dls {
 		if len(dl.Vms) == 0 {
-			newdls = append(newdls, dl)
+			newDls = append(newDls, dl)
 			continue
 		}
 
@@ -369,20 +369,16 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 
 				mu.Lock()
 				nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
-				mu.Unlock()
 
 				// try to find available host ID in the deployment ip range
 				for slices.Contains(nodeUsedHostIDs, curHostID) {
 					if curHostID == 254 {
-						mu.Lock()
-						defer mu.Unlock()
 						errs = multierror.Append(errs, errors.New("all 253 ips of the network are exhausted"))
 						return
 					}
 					curHostID++
 				}
 
-				mu.Lock()
 				usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], curHostID)
 				mu.Unlock()
 
@@ -394,13 +390,13 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 			dl.IPrange = ipRange
 
 			mu.Lock()
-			newdls = append(newdls, dl)
+			newDls = append(newDls, dl)
 			mu.Unlock()
 		}(dl)
 	}
 
 	wg.Wait()
-	return newdls, errs
+	return newDls, errs
 }
 
 func (d *DeploymentDeployer) syncContract(ctx context.Context, dl *workloads.Deployment) error {
