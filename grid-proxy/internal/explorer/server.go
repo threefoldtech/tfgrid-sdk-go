@@ -52,6 +52,7 @@ const (
 // @Param node_rented_by query int false "Twin ID of user who has at least one rented node in the farm"
 // @Param node_available_for query int false "Twin ID of user for whom there is at least one node that is available to be deployed to in the farm"
 // @Param node_has_gpu query bool false "True for farms who have at least one node with a GPU"
+// @Param node_has_ipv6 query bool false "True for farms who have at least one node with an ipv6"
 // @Param node_certified query bool false "True for farms who have at least one certified node"
 // @Param country query string false "farm country"
 // @Param region query string false "farm region"

@@ -713,6 +713,10 @@ paths:
         in: query
         name: node_has_gpu
         type: boolean
+      - description: True for farms who have at least one node with an ipv6
+        in: query
+        name: node_has_ipv6
+        type: boolean
       - description: True for farms who have at least one certified node
         in: query
         name: node_certified

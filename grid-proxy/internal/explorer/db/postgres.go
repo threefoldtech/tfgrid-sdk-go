@@ -353,7 +353,7 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
 		filter.NodeRentedBy != nil || (filter.NodeStatus != nil && len(filter.NodeStatus) != 0) ||
 		filter.NodeTotalCRU != nil || filter.Country != nil ||
-		filter.Region != nil {
+		filter.Region != nil || filter.NodeHasIpv6 != nil {
 		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
 			Group(`
 				farm.id,
@@ -414,6 +414,12 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 
 	if filter.NodeCertified != nil {
 		nodeQuery = nodeQuery.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
+	}
+
+	if filter.NodeHasIpv6 != nil {
+		nodeQuery = nodeQuery.
+			Joins("LEFT JOIN node_ipv6 ON node_ipv6.node_twin_id = node.twin_id").
+			Where("COALESCE(has_ipv6, false) = ?", *filter.NodeHasIpv6)
 	}
 
 	q := d.farmTableQuery(ctx, filter, nodeQuery)

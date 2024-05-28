@@ -137,6 +137,13 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		}
 		return &v
 	},
+	"NodeHasIpv6": func(_ FarmsAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
 }
 
 type FarmsAggregate struct {

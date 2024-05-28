@@ -456,6 +456,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "True for farms who have at least one node with an ipv6",
+                        "name": "node_has_ipv6",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
                         "description": "True for farms who have at least one certified node",
                         "name": "node_certified",
                         "in": "query"
