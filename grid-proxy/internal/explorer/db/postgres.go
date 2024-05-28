@@ -943,7 +943,7 @@ func (d *PostgresDatabase) GetContractBills(ctx context.Context, contractID uint
 
 func (d *PostgresDatabase) GetRandomHealthyTwinIds(length int) ([]uint32, error) {
 	var ids []uint32
-	if err := d.gormDB.Table("health_report").Select("node_twin_id").Where("healthy = true").Order("random()").Limit(int(length)).Scan(&ids).Error; err != nil {
+	if err := d.gormDB.Table("health_report").Select("node_twin_id").Where("healthy = true").Order("random()").Limit(length).Scan(&ids).Error; err != nil {
 		return []uint32{}, err
 	}
 	return ids, nil
