@@ -19,12 +19,10 @@ func createReport(db DBClient, peer rmb.Client) types.Healthiness {
 
 	// db connection
 	report.DBConn = OkState
-	err := db.DB.Ping()
-	if err != nil {
+	if err := db.DB.Ping(); err != nil {
 		report.DBConn = err.Error()
 	}
-	err = db.DB.Initialized()
-	if err != nil {
+	if err := db.DB.Initialized(); err != nil {
 		report.DBConn = err.Error()
 	}
 

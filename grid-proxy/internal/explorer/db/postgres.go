@@ -97,8 +97,15 @@ func (d *PostgresDatabase) Initialized() error {
 
 	initTables := []string{"node_gpu", "resources_cache"}
 	for _, tableName := range initTables {
-		if _, err := db.Query("select * from " + tableName + ";"); err != nil {
+		query := "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = $1);"
+		var exists bool
+
+		if err := db.QueryRow(query, tableName).Scan(&exists); err != nil {
 			return err
+		}
+
+		if !exists {
+			return fmt.Errorf("table %s does not exist", tableName)
 		}
 	}
 
