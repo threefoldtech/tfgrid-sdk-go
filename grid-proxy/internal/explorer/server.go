@@ -410,7 +410,7 @@ func (a *App) version(r *http.Request) (interface{}, mw.Response) {
 	}, response
 }
 
-func (a *App) healthiness(r *http.Request) (interface{}, mw.Response) {
+func (a *App) health(r *http.Request) (interface{}, mw.Response) {
 	response := mw.Ok()
 	return createReport(
 		a.cl,
@@ -579,7 +579,7 @@ func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Cl
 	router.HandleFunc("/", mw.AsHandlerFunc(a.indexPage(router)))
 	router.HandleFunc("/ping", mw.AsHandlerFunc(a.ping))
 	router.HandleFunc("/version", mw.AsHandlerFunc(a.version))
-	router.HandleFunc("/healthiness", mw.AsHandlerFunc(a.healthiness))
+	router.HandleFunc("/health", mw.AsHandlerFunc(a.health))
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	return nil

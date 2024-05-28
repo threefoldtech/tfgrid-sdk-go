@@ -15,8 +15,8 @@ const (
 	OkState = "ok"
 )
 
-func createReport(db DBClient, peer rmb.Client, idxIntervals map[string]uint) types.Healthiness {
-	var report types.Healthiness
+func createReport(db DBClient, peer rmb.Client, idxIntervals map[string]uint) types.Health {
+	var report types.Health
 
 	// db connection
 	report.DBConn = OkState
