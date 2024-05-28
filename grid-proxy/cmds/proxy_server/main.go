@@ -217,11 +217,11 @@ func startIndexers(ctx context.Context, f flags, db db.Database, rpcRmbClient *p
 	ipv6Idx.Start(ctx)
 
 	wlNumIdx := indexer.NewIndexer[types.NodesWorkloads](
-		indexer.NewWorkloadWork(f.ipv6IndexerIntervalMins),
+		indexer.NewWorkloadWork(f.workloadsIndexerIntervalMins),
 		"workloads",
 		db,
 		rpcRmbClient,
-		f.ipv6IndexerNumWorkers,
+		f.workloadsIndexerNumWorkers,
 	)
 	wlNumIdx.Start(ctx)
 }
