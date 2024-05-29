@@ -61,7 +61,7 @@ func createReport(db DBClient, peer rmb.Client, idxIntervals map[string]uint) ty
 
 func isIndexerStale(updatedAt int64, interval uint) bool {
 	updatedAtInTime := time.Unix(updatedAt, 0)
-	return time.Now().Sub(updatedAtInTime) > time.Duration(interval)*time.Minute
+	return time.Since(updatedAtInTime) > time.Duration(interval)*time.Minute
 }
 
 func pingRandomTwins(db DBClient, peer rmb.Client) error {
