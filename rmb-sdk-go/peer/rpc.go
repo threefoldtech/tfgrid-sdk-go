@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -137,29 +138,61 @@ func (d *RpcClient) CallWithSession(ctx context.Context, twin uint32, session *s
 	return json.Unmarshal(output, &result)
 }
 
-// // Ping sends an application level ping. You normally do not ever need to call this
-// // yourself because this rmb client takes care of automatic pinging of the server
-// // and reconnecting if needed. But in case you want to test if a connection is active
-// // and established you can call this Ping method yourself.
-// // If no error is returned then ping has succeeded.
-// // Make sure to always provide a ctx with a timeout or a deadline otherwise the call
-// // will block forever waiting for a response.
-// func (d *RpcCLient) Ping(ctx context.Context) error {
-// 	uid := uuid.NewString()
-// 	request := types.Envelope{
-// 		Uid:     uid,
-// 		Source:  d.source,
-// 		Message: &types.Envelope_Ping{},
-// 	}
+// Ping sends an application level ping. You normally do not ever need to call this
+// yourself because this rmb client takes care of automatic pinging of the server
+// and reconnecting if needed. But in case you want to test if a connection is active
+// and established you can call this Ping method yourself.
+// If no error is returned then ping has succeeded.
+// Make sure to always provide a ctx with a timeout or a deadline otherwise the call
+// will block forever waiting for a response.
+func (d *RpcClient) Ping(ctx context.Context) error {
+	id := uuid.NewString()
+	ch := make(chan incomingEnv, 1)
 
-// 	response, err := d.request(ctx, &request)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	_, ok := response.Message.(*types.Envelope_Pong)
-// 	if !ok {
-// 		return fmt.Errorf("expected a pong response got %T", response.Message)
-// 	}
+	defer func() {
+		close(ch)
 
-// 	return nil
-// }
+		d.m.Lock()
+		delete(d.responses, id)
+		d.m.Unlock()
+	}()
+
+	// add new channel response with a uuid as key
+	// the router will send back to this channel
+	d.m.Lock()
+	d.responses[id] = ch
+	d.m.Unlock()
+
+	// create the request envelope
+	request := types.Envelope{
+		Uid:         id,
+		Source:      d.base.source,
+		Destination: d.base.source,
+		Timestamp:   uint64(time.Now().Unix()),
+		Expiration:  60,
+		Message:     &types.Envelope_Ping{},
+	}
+
+	err := d.base.Send(ctx, &request)
+	if err != nil {
+		return err
+	}
+
+	var incoming incomingEnv
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case incoming = <-ch:
+	}
+
+	if incoming.err != nil {
+		return incoming.err
+	}
+
+	_, ok := incoming.env.Message.(*types.Envelope_Pong)
+	if !ok {
+		return fmt.Errorf("expected a pong response got %T", incoming.env.Message)
+	}
+
+	return nil
+}

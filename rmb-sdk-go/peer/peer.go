@@ -490,7 +490,7 @@ func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string
 
 }
 
-func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
+func (d *Peer) Send(ctx context.Context, request *types.Envelope) error {
 	bytes, err := proto.Marshal(request)
 	if err != nil {
 		return err
@@ -536,7 +536,7 @@ func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session 
 		return errors.Wrap(err, "failed to build request")
 	}
 
-	if err := d.send(ctx, request); err != nil {
+	if err := d.Send(ctx, request); err != nil {
 		return err
 	}
 
@@ -561,7 +561,7 @@ func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session
 		return errors.Wrap(err, "failed to build request")
 	}
 
-	if err := d.send(ctx, request); err != nil {
+	if err := d.Send(ctx, request); err != nil {
 		return err
 	}
 
