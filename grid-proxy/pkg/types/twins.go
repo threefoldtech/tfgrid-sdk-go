@@ -15,3 +15,8 @@ type TwinFilter struct {
 	Relay     *string `schema:"relay,omitempty"`
 	PublicKey *string `schema:"public_key,omitempty"`
 }
+
+type TwinFee struct {
+	LastHourSpent uint64
+	TotalSpend    uint64
+}

@@ -129,3 +129,55 @@ func (c *DBClient) NodeStatus(ctx context.Context, nodeID uint32) (types.NodeSta
 func (c *DBClient) Stats(ctx context.Context, filter types.StatsFilter) (types.Stats, error) {
 	return c.DB.GetStats(ctx, filter)
 }
+
+func (c *DBClient) GetTwinFees(ctx context.Context, twinId uint64) (types.TwinFee, error) {
+	// get all contracts for a twin id
+	filter := types.ContractFilter{
+		TwinID: &twinId,
+		State:  []string{"Created", "GracePeriod", "Deleted"},
+	}
+	limit := types.Limit{
+		Size: 99999,
+	}
+	twinContracts, _, err := c.DB.GetContracts(ctx, filter, limit)
+	if err != nil {
+		return types.TwinFee{}, err
+	}
+
+	contractsIds := []uint32{}
+	contracts := make(map[uint32]db.DBContract)
+	for _, contract := range twinContracts {
+		contractsIds = append(contractsIds, uint32(contract.ContractID))
+		contracts[uint32(contract.ContractID)] = contract
+	}
+
+	// get the latest two reports for each contract
+	reports, err := c.DB.GetContractReports(ctx, contractsIds, 2)
+	if err != nil {
+		return types.TwinFee{}, err
+	}
+
+	contractReports := make(map[uint32][]db.ContractBilling)
+	for _, report := range reports {
+		contractReports[uint32(report.ContractId)] = append(contractReports[uint32(report.ContractId)], report)
+	}
+
+	// calc bills
+	var fee types.TwinFee
+	for _, id := range contractsIds {
+		duration := 1 * 60 * 60 // one hour
+		if len(contractReports[id]) == 2 {
+			duration = int(contractReports[id][0].Timestamp) - int(contractReports[id][1].Timestamp)
+		} else if len(contractReports[id]) == 1 {
+			duration = int(contractReports[id][0].Timestamp) - int(contracts[id].CreatedAt)
+		} else {
+			continue
+		}
+
+		contractFee := contractReports[id][0].AmountBilled / uint64(duration) / (10 ^ 7)
+
+		fee.LastHourSpent += contractFee
+	}
+
+	return fee, err
+}

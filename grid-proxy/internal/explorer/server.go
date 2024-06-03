@@ -327,6 +327,21 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 	return twins, resp
 }
 
+func (a *App) getTwinFees(r *http.Request) (interface{}, mw.Response) {
+	twinIdStr := mux.Vars(r)["twin_id"]
+	twinId, err := strconv.Atoi(twinIdStr)
+	if err != nil {
+		return types.TwinFee{}, mw.BadRequest(err)
+	}
+
+	fees, err := a.cl.GetTwinFees(r.Context(), uint64(twinId))
+	if err != nil {
+		return types.TwinFee{}, errorReply(err)
+	}
+
+	return fees, nil
+}
+
 // listContracts godoc
 // @Summary Show contracts on the grid
 // @Description Get all contracts on the grid, It has pagination
@@ -550,7 +565,9 @@ func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Cl
 
 	router.HandleFunc("/farms", mw.AsHandlerFunc(a.listFarms))
 	router.HandleFunc("/stats", mw.AsHandlerFunc(a.getStats))
+
 	router.HandleFunc("/twins", mw.AsHandlerFunc(a.listTwins))
+	router.HandleFunc("/twins/{twin_id:[0-9]+}/fees", mw.AsHandlerFunc(a.getTwinFees))
 
 	router.HandleFunc("/nodes", mw.AsHandlerFunc(a.getNodes))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getNode))

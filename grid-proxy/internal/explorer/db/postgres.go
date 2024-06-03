@@ -911,3 +911,29 @@ func (d *PostgresDatabase) GetContractBills(ctx context.Context, contractID uint
 
 	return bills, uint(count), nil
 }
+
+func (d *PostgresDatabase) GetContractReports(ctx context.Context, contractsIds []uint32, limit uint) ([]ContractBilling, error) {
+
+	q := d.gormDB.Raw(`
+        WITH ranked_bill_reports AS (
+            SELECT
+				timestamp, amount_billed, contract_id,
+				ROW_NUMBER() OVER (PARTITION BY contract_id ORDER BY timestamp DESC) as rn
+            FROM
+				contract_bill_report
+            WHERE
+                contract_id IN (?)
+        )
+		
+        SELECT timestamp, amount_billed, contract_id
+        FROM ranked_bill_reports
+        WHERE rn <= ?;
+		`, contractsIds, limit)
+
+	var reports []ContractBilling
+	if res := q.Scan(&reports); res.Error != nil {
+		return reports, res.Error
+	}
+
+	return reports, nil
+}
