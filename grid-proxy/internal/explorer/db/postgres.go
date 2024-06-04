@@ -374,9 +374,9 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 // GetFarms return farms filtered and paginated
 func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
 	nodeQuery := d.gormDB.Table("resources_cache").
-		Select("resources_cache.farm_id", "renter").
+		Select("resources_cache.farm_id", "renter", "resources_cache.extra_fee").
 		Joins("LEFT JOIN node ON node.node_id = resources_cache.node_id").
-		Group(`resources_cache.farm_id, renter`)
+		Group(`resources_cache.farm_id, renter, resources_cache.extra_fee`)
 
 	if filter.NodeFreeMRU != nil {
 		nodeQuery = nodeQuery.Where("resources_cache.free_mru >= ?", *filter.NodeFreeMRU)
@@ -419,7 +419,8 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	q := d.farmTableQuery(ctx, filter, nodeQuery)
 
 	if filter.NodeAvailableFor != nil {
-		q = q.Where("COALESCE(resources_cache.renter, 0) = ? OR (resources_cache.renter IS NULL AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
+		q = q.Where(`COALESCE(resources_cache.renter, 0) = ? OR 
+			(resources_cache.renter IS NULL AND farm.dedicated_farm = false AND resources_cache.extra_fee = 0)`, *filter.NodeAvailableFor)
 	}
 
 	if filter.FreeIPs != nil {
@@ -627,7 +628,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where(`? = ((farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0) AND resources_cache.renter is null)`, *filter.Rentable)
 	}
 	if filter.AvailableFor != nil {
-		q = q.Where(`COALESCE(resources_cache.renter, 0) = ? OR (resources_cache.renter is null AND farm.dedicated_farm = false)`, *filter.AvailableFor)
+		q = q.Where(`
+			COALESCE(resources_cache.renter, 0) = ? OR 
+			(resources_cache.renter is null AND farm.dedicated_farm = false AND resources_cache.extra_fee = 0)`, *filter.AvailableFor)
 	}
 	if filter.RentedBy != nil {
 		q = q.Where(`COALESCE(resources_cache.renter, 0) = ?`, *filter.RentedBy)

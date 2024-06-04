@@ -410,7 +410,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	renter, ok := data.NodeRentedBy[n.NodeID]
 	if f.AvailableFor != nil &&
 		((ok && renter != *f.AvailableFor) ||
-			(!ok && data.Farms[n.FarmID].DedicatedFarm)) {
+			(!ok && (data.Farms[n.FarmID].DedicatedFarm || n.ExtraFee != 0))) {
 		return false
 	}
 

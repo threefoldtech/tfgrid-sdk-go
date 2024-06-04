@@ -150,7 +150,7 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 		}
 
 		if filter.NodeAvailableFor != nil && ((data.NodeRentedBy[node.NodeID] != 0 && data.NodeRentedBy[node.NodeID] != *filter.NodeAvailableFor) ||
-			(data.NodeRentedBy[node.NodeID] != *filter.NodeAvailableFor && data.Farms[node.FarmID].DedicatedFarm)) {
+			(data.NodeRentedBy[node.NodeID] != *filter.NodeAvailableFor && (data.Farms[node.FarmID].DedicatedFarm || node.ExtraFee != 0))) {
 			continue
 		}
 
