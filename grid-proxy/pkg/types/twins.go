@@ -17,6 +17,6 @@ type TwinFilter struct {
 }
 
 type TwinFee struct {
-	LastHourSpent uint64
-	TotalSpend    uint64
+	LastHourSpent float64
+	TotalSpend    float64
 }

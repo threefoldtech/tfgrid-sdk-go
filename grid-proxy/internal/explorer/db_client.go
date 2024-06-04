@@ -3,6 +3,7 @@ package explorer
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
@@ -134,7 +135,7 @@ func (c *DBClient) GetTwinFees(ctx context.Context, twinId uint64) (types.TwinFe
 	// get all contracts for a twin id
 	filter := types.ContractFilter{
 		TwinID: &twinId,
-		State:  []string{"Created", "GracePeriod", "Deleted"},
+		State:  []string{"Created", "GracePeriod"},
 	}
 	limit := types.Limit{
 		Size: 99999,
@@ -165,19 +166,25 @@ func (c *DBClient) GetTwinFees(ctx context.Context, twinId uint64) (types.TwinFe
 	// calc bills
 	var fee types.TwinFee
 	for _, id := range contractsIds {
-		duration := 1 * 60 * 60 // one hour
-		if len(contractReports[id]) == 2 {
-			duration = int(contractReports[id][0].Timestamp) - int(contractReports[id][1].Timestamp)
-		} else if len(contractReports[id]) == 1 {
-			duration = int(contractReports[id][0].Timestamp) - int(contracts[id].CreatedAt)
-		} else {
-			continue
-		}
-
-		contractFee := contractReports[id][0].AmountBilled / uint64(duration) / (10 ^ 7)
-
+		contractFee := calcContractFee(contracts[id], contractReports[id])
 		fee.LastHourSpent += contractFee
 	}
 
 	return fee, err
+}
+
+func calcContractFee(c db.DBContract, latestBills []db.ContractBilling) float64 {
+	var duration float64
+	switch len(latestBills) {
+	case 0:
+		return 0
+	case 1:
+		duration = float64(latestBills[0].Timestamp-uint64(c.CreatedAt)) / float64(3600)
+	case 2:
+		duration = float64(latestBills[0].Timestamp-latestBills[1].Timestamp) / float64(3600)
+	default:
+		duration = 1
+	}
+
+	return float64(latestBills[0].AmountBilled) / duration / math.Pow(10, 7)
 }
