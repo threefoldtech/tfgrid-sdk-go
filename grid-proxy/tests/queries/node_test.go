@@ -273,8 +273,8 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		return &c
 	},
 	"NodeID": func(agg NodesAggregate) interface{} {
-		v := uint64(rand.Intn(1100)) // 1000 is the total nodes + 100 for non-existed cases
-		return &v
+		randomLen := rand.Intn(5)
+		return getRandomSliceFrom(agg.nodeIDs, randomLen)
 	},
 	"TwinID": func(agg NodesAggregate) interface{} {
 		v := uint64(rand.Intn(3500))
