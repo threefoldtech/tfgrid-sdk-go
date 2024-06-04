@@ -21,6 +21,7 @@ type Database interface {
 	GetContract(ctx context.Context, contractID uint32) (DBContract, error)
 	GetContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]ContractBilling, uint, error)
 	GetContractReports(ctx context.Context, contractsIds []uint32, limit uint) ([]ContractBilling, error)
+	GetContractsTotalBilledAmount(ctx context.Context, contractIds []uint32) (uint64, error)
 
 	// indexer utils
 	DeleteOldGpus(ctx context.Context, nodeTwinIds []uint32, expiration int64) error

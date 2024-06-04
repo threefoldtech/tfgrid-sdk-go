@@ -937,3 +937,14 @@ func (d *PostgresDatabase) GetContractReports(ctx context.Context, contractsIds 
 
 	return reports, nil
 }
+
+func (d *PostgresDatabase) GetContractsTotalBilledAmount(ctx context.Context, contractIds []uint32) (uint64, error) {
+	q := d.gormDB.Raw(`SELECT sum(amount_billed) FROM contract_bill_report WHERE contract_id IN (?);`, contractIds)
+
+	var total uint64
+	if res := q.Scan(&total); res.Error != nil {
+		return 0, res.Error
+	}
+
+	return total, nil
+}

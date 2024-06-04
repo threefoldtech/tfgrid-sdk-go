@@ -135,7 +135,7 @@ func (c *DBClient) GetTwinFees(ctx context.Context, twinId uint64) (types.TwinFe
 	// get all contracts for a twin id
 	filter := types.ContractFilter{
 		TwinID: &twinId,
-		State:  []string{"Created", "GracePeriod"},
+		State:  []string{"Created", "GracePeriod", "Deleted"},
 	}
 	limit := types.Limit{
 		Size: 99999,
@@ -145,15 +145,19 @@ func (c *DBClient) GetTwinFees(ctx context.Context, twinId uint64) (types.TwinFe
 		return types.TwinFee{}, err
 	}
 
-	contractsIds := []uint32{}
+	nonDeletedCIds := []uint32{}
+	allCIds := []uint32{}
 	contracts := make(map[uint32]db.DBContract)
 	for _, contract := range twinContracts {
-		contractsIds = append(contractsIds, uint32(contract.ContractID))
+		if contract.State != "Deleted" {
+			nonDeletedCIds = append(nonDeletedCIds, uint32(contract.ContractID))
+		}
+		allCIds = append(allCIds, uint32(contract.ContractID))
 		contracts[uint32(contract.ContractID)] = contract
 	}
 
 	// get the latest two reports for each contract
-	reports, err := c.DB.GetContractReports(ctx, contractsIds, 2)
+	reports, err := c.DB.GetContractReports(ctx, nonDeletedCIds, 2)
 	if err != nil {
 		return types.TwinFee{}, err
 	}
@@ -165,10 +169,18 @@ func (c *DBClient) GetTwinFees(ctx context.Context, twinId uint64) (types.TwinFe
 
 	// calc bills
 	var fee types.TwinFee
-	for _, id := range contractsIds {
+	for _, id := range nonDeletedCIds {
 		contractFee := calcContractFee(contracts[id], contractReports[id])
 		fee.LastHourSpent += contractFee
 	}
+
+	// calc all spent
+	spent, err := c.DB.GetContractsTotalBilledAmount(ctx, allCIds)
+	if err != nil {
+		return types.TwinFee{}, err
+	}
+
+	fee.TotalSpend = float64(spent) / math.Pow(10, 7)
 
 	return fee, err
 }
