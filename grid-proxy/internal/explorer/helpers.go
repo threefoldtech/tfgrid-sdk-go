@@ -88,3 +88,20 @@ func (a *App) getContractBillsData(ctx context.Context, contractIDStr string, li
 
 	return bills, billsCount, nil
 }
+
+// calcContractConsumption for the last hour
+func calcContractConsumption(c db.DBContract, latestBills []db.ContractBilling) float64 {
+	var duration float64
+	switch len(latestBills) {
+	case 0:
+		return 0
+	case 1:
+		duration = float64(latestBills[0].Timestamp-uint64(c.CreatedAt)) / float64(3600)
+	case 2:
+		duration = float64(latestBills[0].Timestamp-latestBills[1].Timestamp) / float64(3600)
+	default:
+		duration = 1
+	}
+
+	return float64(latestBills[0].AmountBilled) / duration / math.Pow(10, 7)
+}

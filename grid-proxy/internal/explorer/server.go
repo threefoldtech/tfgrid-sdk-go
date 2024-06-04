@@ -327,19 +327,30 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 	return twins, resp
 }
 
-func (a *App) getTwinFees(r *http.Request) (interface{}, mw.Response) {
+// getTwinConsumption godoc
+// @Summary Show a report for user consumption
+// @Description Get a report of user spent for last hour and for lifetime
+// @Tags TwinConsumption
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} []types.TwinConsumption
+// @Failure 400 {object} string
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /twins/{twin_id}/consumption [get]
+func (a *App) getTwinConsumption(r *http.Request) (interface{}, mw.Response) {
 	twinIdStr := mux.Vars(r)["twin_id"]
 	twinId, err := strconv.Atoi(twinIdStr)
 	if err != nil {
-		return types.TwinFee{}, mw.BadRequest(err)
+		return types.TwinConsumption{}, mw.BadRequest(err)
 	}
 
-	fees, err := a.cl.GetTwinFees(r.Context(), uint64(twinId))
+	consumptions, err := a.cl.GetTwinConsumption(r.Context(), uint64(twinId))
 	if err != nil {
-		return types.TwinFee{}, errorReply(err)
+		return types.TwinConsumption{}, errorReply(err)
 	}
 
-	return fees, nil
+	return consumptions, nil
 }
 
 // listContracts godoc
@@ -567,7 +578,7 @@ func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Cl
 	router.HandleFunc("/stats", mw.AsHandlerFunc(a.getStats))
 
 	router.HandleFunc("/twins", mw.AsHandlerFunc(a.listTwins))
-	router.HandleFunc("/twins/{twin_id:[0-9]+}/fees", mw.AsHandlerFunc(a.getTwinFees))
+	router.HandleFunc("/twins/{twin_id:[0-9]+}/consumption", mw.AsHandlerFunc(a.getTwinConsumption))
 
 	router.HandleFunc("/nodes", mw.AsHandlerFunc(a.getNodes))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getNode))

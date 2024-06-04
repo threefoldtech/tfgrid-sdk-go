@@ -16,7 +16,8 @@ type TwinFilter struct {
 	PublicKey *string `schema:"public_key,omitempty"`
 }
 
-type TwinFee struct {
-	LastHourSpent float64
-	TotalSpend    float64
+// TwinConsumption show a report of user spent in TFT
+type TwinConsumption struct {
+	LastHourConsumption float64 `json:"last_hour_consumption"`
+	OverallConsumption  float64 `json:"overall_consumption"`
 }
