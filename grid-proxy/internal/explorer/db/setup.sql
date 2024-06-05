@@ -409,25 +409,29 @@ BEGIN
     IF (TG_OP = 'UPDATE' AND NEW.state = 'Deleted') THEN
         BEGIN
             UPDATE resources_cache
-            SET (used_cru, used_mru, used_sru, used_hru, free_mru, free_sru, free_hru, node_contracts_count) = 
-            (
-                SELECT
-                    resources_cache.used_cru - cru,
-                    resources_cache.used_mru - mru,
-                    resources_cache.used_sru - sru,
-                    resources_cache.used_hru - hru,
-                    resources_cache.free_mru + mru,
-                    resources_cache.free_sru + sru,
-                    resources_cache.free_hru + hru,
-                    resources_cache.node_contracts_count - 1
-                FROM resources_cache
-                LEFT JOIN contract_resources ON contract_resources.contract_id = NEW.id 
-                WHERE resources_cache.node_id = NEW.node_id
-            ) WHERE resources_cache.node_id = NEW.node_id;
+            SET 
+                used_cru = resources_cache.used_cru - contract_resources.cru,
+                used_mru = resources_cache.used_mru - contract_resources.mru,
+                used_sru = resources_cache.used_sru - contract_resources.sru,
+                used_hru = resources_cache.used_hru - contract_resources.hru,
+                free_mru = resources_cache.free_mru + contract_resources.mru,
+                free_sru = resources_cache.free_sru + contract_resources.sru,
+                free_hru = resources_cache.free_hru + contract_resources.hru,
+                node_contracts_count = COALESCE(ncc.count, 0)
+            FROM contract_resources
+            LEFT JOIN
+                (SELECT node_id, COUNT(contract_id) as count
+                FROM node_contract
+                WHERE state IN ('Created', 'GracePeriod')
+                GROUP BY node_id) AS ncc
+                ON ncc.node_id = NEW.node_id
+            WHERE 
+                contract_resources.contract_id = NEW.id 
+                AND resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
-            RAISE NOTICE 'Error reflecting node_contract updates %', SQLERRM;
-        END;    
+                RAISE EXCEPTION 'failed reflecting node_contract updates %', SQLERRM;
+        END;
 
     ELSIF (TG_OP = 'INSERT') THEN
         BEGIN
