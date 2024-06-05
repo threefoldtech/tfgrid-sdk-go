@@ -436,11 +436,16 @@ BEGIN
     ELSIF (TG_OP = 'INSERT') THEN
         BEGIN
             UPDATE resources_cache 
-            SET node_contracts_count = node_contracts_count + 1 
+            SET node_contracts_count = (
+                SELECT COALESCE(COUNT(contract_id), 0)
+                FROM node_contract
+                WHERE node_id = NEW.node_id
+                    AND state IN ('Created', 'GracePeriod')
+            )
             WHERE resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
-            RAISE NOTICE 'Error incrementing node_contracts_count %', SQLERRM;
+                RAISE EXCEPTION 'failed calc node_contracts_count %', SQLERRM;
         END; 
     END IF;
 RETURN NULL;
