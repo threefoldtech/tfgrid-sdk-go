@@ -840,11 +840,11 @@ paths:
         in: query
         name: farm_name
         type: string
-      - description: Set to true to filter nodes with ipv4
+      - description: Set to true to filter access nodes with ipv4
         in: query
         name: ipv4
         type: boolean
-      - description: Set to true to filter nodes with ipv6
+      - description: Set to true to filter access nodes with ipv6
         in: query
         name: ipv6
         type: boolean

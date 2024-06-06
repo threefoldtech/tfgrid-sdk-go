@@ -636,13 +636,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Set to true to filter nodes with ipv4",
+                        "description": "Set to true to filter access nodes with ipv4",
                         "name": "ipv4",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Set to true to filter nodes with ipv6",
+                        "description": "Set to true to filter access nodes with ipv6",
                         "name": "ipv6",
                         "in": "query"
                     },
