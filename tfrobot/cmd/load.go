@@ -83,7 +83,7 @@ var loadCmd = &cobra.Command{
 
 		if err := deployer.RunLoader(ctx, cfg, tfPluginClient, debug, outputPath); err != nil {
 			log.Error().Msg("failed to load configured deployments")
-      fmt.Println(err)
+			fmt.Println(err)
 			os.Exit(1)
 		}
 

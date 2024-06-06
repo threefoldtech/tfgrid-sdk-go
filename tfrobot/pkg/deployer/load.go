@@ -24,7 +24,7 @@ import (
 
 type NodeContracts map[uint32][]uint64
 
-func RunLoader(ctx context.Context, cfg Config, tfPluginClient deployer.TFPluginClient, debug bool, output string) error {
+func RunLoader(ctx context.Context, cfg Config, tfPluginClient deployer.TFPluginClient, debug bool, output string) *multierror.Error {
 	log.Info().Msg("Loading deployments")
 
 	asJson := filepath.Ext(output) == ".json"
