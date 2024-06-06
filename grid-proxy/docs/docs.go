@@ -1436,6 +1436,50 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/twins/{twin_id}/consumption": {
+            "get": {
+                "description": "Get a report of user spent for last hour and for lifetime",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TwinConsumption"
+                ],
+                "summary": "Show a report for user consumption",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.TwinConsumption"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1538,6 +1582,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "amountBilled": {
+                    "type": "integer"
+                },
+                "contract_id": {
                     "type": "integer"
                 },
                 "discountReceived": {
@@ -2056,6 +2103,17 @@ const docTemplate = `{
                 },
                 "twinId": {
                     "type": "integer"
+                }
+            }
+        },
+        "types.TwinConsumption": {
+            "type": "object",
+            "properties": {
+                "last_hour_consumption": {
+                    "type": "number"
+                },
+                "overall_consumption": {
+                    "type": "number"
                 }
             }
         }

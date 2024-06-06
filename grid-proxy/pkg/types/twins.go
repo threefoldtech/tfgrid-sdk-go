@@ -15,3 +15,9 @@ type TwinFilter struct {
 	Relay     *string `schema:"relay,omitempty"`
 	PublicKey *string `schema:"public_key,omitempty"`
 }
+
+// TwinConsumption show a report of user spent in TFT
+type TwinConsumption struct {
+	LastHourConsumption float64 `json:"last_hour_consumption"`
+	OverallConsumption  float64 `json:"overall_consumption"`
+}
