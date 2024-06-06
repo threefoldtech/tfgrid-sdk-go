@@ -13,6 +13,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 	"github.com/sethvargo/go-retry"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -28,26 +29,32 @@ func RunLoader(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlugin
 
 	asJson := filepath.Ext(output) == ".json"
 
-	groupsContracts, failed := getGroupsContracts(ctx, tfPluginClient, cfg.NodeGroups)
-	passedGroups, failedGroups := batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContracts, cfg.MaxRetries)
+	groupsContracts, failedGroupsErr := getGroupsContracts(tfPluginClient, cfg.NodeGroups)
+	passedGroups, errs := batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContracts, cfg.MaxRetries)
 
 	// add projects failed to be loaded
-	for group, err := range failed {
-		failedGroups[group] = err
+	if errs != nil {
+		failedGroupsErr = multierror.Append(failedGroupsErr, errs.Errors...)
 	}
 
-	outputBytes, err := parseDeploymentOutput(passedGroups, failedGroups, asJson)
+	outputBytes, err := parseDeploymentOutput(passedGroups, asJson)
 	if err != nil {
-		return err
+		failedGroupsErr = multierror.Append(failedGroupsErr, err)
 	}
 
 	fmt.Println(string(outputBytes))
-	return os.WriteFile(output, outputBytes, 0644)
+
+	err = os.WriteFile(output, outputBytes, 0644)
+	if err != nil {
+		log.Info().Err(err).Send()
+	}
+
+	return failedGroupsErr
 }
 
-func getGroupsContracts(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeGroups []NodesGroup) (map[string]NodeContracts, map[string]string) {
+func getGroupsContracts(tfPluginClient deployer.TFPluginClient, nodeGroups []NodesGroup) (map[string]NodeContracts, *multierror.Error) {
 	loadedContracts := make(map[string]NodeContracts)
-	failedGroups := make(map[string]string)
+	var failedGroupsErr *multierror.Error
 
 	var lock sync.Mutex
 	var wg sync.WaitGroup
@@ -65,7 +72,7 @@ func getGroupsContracts(ctx context.Context, tfPluginClient deployer.TFPluginCli
 			defer lock.Unlock()
 
 			if err != nil {
-				failedGroups[nodeGroup] = err.Error()
+				failedGroupsErr = multierror.Append(failedGroupsErr, fmt.Errorf("%s: %s", nodeGroup, err.Error()))
 				return
 			}
 
@@ -74,7 +81,7 @@ func getGroupsContracts(ctx context.Context, tfPluginClient deployer.TFPluginCli
 	}
 
 	wg.Wait()
-	return loadedContracts, failedGroups
+	return loadedContracts, failedGroupsErr
 }
 
 func batchLoadNodeGroupsInfo(
@@ -82,10 +89,10 @@ func batchLoadNodeGroupsInfo(
 	tfPluginClient deployer.TFPluginClient,
 	groupsContracts map[string]NodeContracts,
 	retries uint64,
-) (map[string][]vmOutput, map[string]string) {
+) (map[string][]vmOutput, *multierror.Error) {
 	trial := 1
-	failedGroups := map[string]string{}
 	nodeGroupsInfo := map[string][]vmOutput{}
+	var failedGroupsErr *multierror.Error
 
 	var lock sync.Mutex
 	var wg sync.WaitGroup
@@ -115,25 +122,23 @@ func batchLoadNodeGroupsInfo(
 				return nil
 			}); err != nil {
 				lock.Lock()
-				failedGroups[nodeGroup] = err.Error()
+				failedGroupsErr = multierror.Append(failedGroupsErr, fmt.Errorf("%s: %s", nodeGroup, err.Error()))
 				lock.Unlock()
 			}
 		}(nodeGroup, contracts)
 	}
 
 	wg.Wait()
-	return nodeGroupsInfo, failedGroups
+	return nodeGroupsInfo, failedGroupsErr
 }
 
-func parseDeploymentOutput(passedGroups map[string][]vmOutput, failedGroups map[string]string, asJson bool) ([]byte, error) {
+func parseDeploymentOutput(passedGroups map[string][]vmOutput, asJson bool) ([]byte, error) {
 	var err error
 	var outputBytes []byte
 	outData := struct {
-		OK    map[string][]vmOutput `json:"ok"`
-		Error map[string]string     `json:"error"`
+		OK map[string][]vmOutput `json:"ok"`
 	}{
-		OK:    passedGroups,
-		Error: failedGroups,
+		OK: passedGroups,
 	}
 
 	if asJson {

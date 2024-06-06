@@ -4,6 +4,7 @@ defaults:
   run:
     working-directory: tfrobot
 on:
+  push:
   schedule:
     - cron: 0 4 * * *
   workflow_dispatch:
