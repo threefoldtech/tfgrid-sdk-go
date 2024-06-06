@@ -592,6 +592,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.NodeID != nil {
 		q = q.Where("node.node_id = ?", *filter.NodeID)
 	}
+	if filter.NodeIDs != nil && len(filter.NodeIDs) != 0 {
+		q = q.Where("node.node_id In ?", filter.NodeIDs)
+	}
 	if filter.TwinID != nil {
 		q = q.Where("node.twin_id = ?", *filter.TwinID)
 	}

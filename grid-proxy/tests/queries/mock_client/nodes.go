@@ -418,6 +418,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
+	if f.NodeIDs != nil && len(f.NodeIDs) != 0 && !slices.Contains(f.NodeIDs, n.NodeID) {
+		return false
+	}
+
 	if f.TwinID != nil && *f.TwinID != n.TwinID {
 		return false
 	}
