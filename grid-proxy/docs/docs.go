@@ -456,6 +456,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "True for farms who have at least one node with an ipv6",
+                        "name": "node_has_ipv6",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
                         "description": "True for farms who have at least one certified node",
                         "name": "node_certified",
                         "in": "query"
@@ -630,13 +636,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Set to true to filter nodes with ipv4",
+                        "description": "Set to true to filter access nodes with ipv4",
                         "name": "ipv4",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Set to true to filter nodes with ipv6",
+                        "description": "Set to true to filter access nodes with ipv6",
                         "name": "ipv6",
                         "in": "query"
                     },
@@ -923,6 +929,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Set to true to filter nodes with ipv6 available",
+                        "name": "has_ipv6",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Node city filter",
                         "name": "city",
@@ -948,13 +960,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Set to true to filter nodes with ipv4",
+                        "description": "Set to true to filter access nodes with ipv4",
                         "name": "ipv4",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Set to true to filter nodes with ipv6",
+                        "description": "Set to true to filter access nodes with ipv6",
                         "name": "ipv6",
                         "in": "query"
                     },

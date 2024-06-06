@@ -41,6 +41,7 @@ type FarmFilter struct {
 	NodeRentedBy      *uint64  `schema:"node_rented_by,omitempty"`
 	NodeAvailableFor  *uint64  `schema:"node_available_for,omitempty"`
 	NodeHasGPU        *bool    `schema:"node_has_gpu,omitempty"`
+	NodeHasIpv6       *bool    `schema:"node_has_ipv6,omitempty"`
 	NodeCertified     *bool    `schema:"node_certified,omitempty"`
 	Country           *string  `schema:"country,omitempty"`
 	Region            *string  `schema:"region,omitempty"`

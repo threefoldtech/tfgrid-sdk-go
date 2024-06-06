@@ -713,6 +713,10 @@ paths:
         in: query
         name: node_has_gpu
         type: boolean
+      - description: True for farms who have at least one node with an ipv6
+        in: query
+        name: node_has_ipv6
+        type: boolean
       - description: True for farms who have at least one certified node
         in: query
         name: node_certified
@@ -836,11 +840,11 @@ paths:
         in: query
         name: farm_name
         type: string
-      - description: Set to true to filter nodes with ipv4
+      - description: Set to true to filter access nodes with ipv4
         in: query
         name: ipv4
         type: boolean
-      - description: Set to true to filter nodes with ipv6
+      - description: Set to true to filter access nodes with ipv6
         in: query
         name: ipv6
         type: boolean
@@ -1040,6 +1044,10 @@ paths:
         in: query
         name: healthy
         type: boolean
+      - description: Set to true to filter nodes with ipv6 available
+        in: query
+        name: has_ipv6
+        type: boolean
       - description: Node city filter
         in: query
         name: city
@@ -1056,11 +1064,11 @@ paths:
         in: query
         name: farm_name
         type: string
-      - description: Set to true to filter nodes with ipv4
+      - description: Set to true to filter access nodes with ipv4
         in: query
         name: ipv4
         type: boolean
-      - description: Set to true to filter nodes with ipv6
+      - description: Set to true to filter access nodes with ipv6
         in: query
         name: ipv6
         type: boolean
