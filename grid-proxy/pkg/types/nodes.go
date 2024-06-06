@@ -140,7 +140,8 @@ type NodeFilter struct {
 	Rented            *bool    `schema:"rented,omitempty"`
 	RentedBy          *uint64  `schema:"rented_by,omitempty"`
 	AvailableFor      *uint64  `schema:"available_for,omitempty"`
-	NodeID            []uint64 `schema:"node_id,omitempty"`
+	NodeID            *uint64  `schema:"node_id,omitempty"`
+	NodeIDs           []uint64 `schema:"node_ids,omitempty"`
 	TwinID            *uint64  `schema:"twin_id,omitempty"`
 	CertificationType *string  `schema:"certification_type,omitempty"`
 	HasGPU            *bool    `schema:"has_gpu,omitempty"`
