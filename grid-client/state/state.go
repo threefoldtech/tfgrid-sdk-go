@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
@@ -297,6 +298,17 @@ func (st *State) LoadNetworkFromGrid(ctx context.Context, name string) (znet wor
 				return znet, errors.Wrapf(err, "could not get network deployment %d from node %d", contractID, nodeID)
 			}
 
+			if len(strings.TrimSpace(dl.Metadata)) == 0 {
+				contract, err := sub.GetContract(contractID)
+				if err != nil {
+					return znet, errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
+				}
+				dl.Metadata = contract.ContractType.NodeContract.DeploymentData
+				if len(strings.TrimSpace(dl.Metadata)) == 0 {
+					return znet, errors.Wrapf(err, "contract %d doesn't have metadata", contractID)
+				}
+			}
+
 			deploymentData, err := workloads.ParseDeploymentData(dl.Metadata)
 			if err != nil {
 				return znet, errors.Wrapf(err, "could not generate deployment metadata for %s", name)
@@ -401,6 +413,17 @@ func (st *State) GetWorkloadInDeployment(ctx context.Context, nodeID uint32, nam
 			dl, err := nodeClient.DeploymentGet(ctx, contractID)
 			if err != nil {
 				return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get deployment %d from node %d", contractID, nodeID)
+			}
+
+			if len(strings.TrimSpace(dl.Metadata)) == 0 {
+				contract, err := sub.GetContract(contractID)
+				if err != nil {
+					return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
+				}
+				dl.Metadata = contract.ContractType.NodeContract.DeploymentData
+				if len(strings.TrimSpace(dl.Metadata)) == 0 {
+					return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "contract %d doesn't have metadata", contractID)
+				}
 			}
 
 			dlData, err := workloads.ParseDeploymentData(dl.Metadata)

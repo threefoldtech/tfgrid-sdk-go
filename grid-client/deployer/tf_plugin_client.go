@@ -333,8 +333,6 @@ func NewTFPluginClient(
 	tfPluginClient.K8sDeployer = NewK8sDeployer(&tfPluginClient)
 	tfPluginClient.GatewayNameDeployer = NewGatewayNameDeployer(&tfPluginClient)
 
-	tfPluginClient.State = state.NewState(tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
-
 	graphqlURL := GraphQlURLs[cfg.network]
 	tfPluginClient.graphQl, err = graphql.NewGraphQl(graphqlURL)
 	if err != nil {
@@ -342,6 +340,8 @@ func NewTFPluginClient(
 	}
 
 	tfPluginClient.ContractsGetter = graphql.NewContractsGetter(tfPluginClient.TwinID, tfPluginClient.graphQl, tfPluginClient.SubstrateConn, tfPluginClient.NcPool)
+
+	tfPluginClient.State = state.NewState(tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 
 	tfPluginClient.Calculator = calculator.NewCalculator(tfPluginClient.SubstrateConn, tfPluginClient.Identity)
 
