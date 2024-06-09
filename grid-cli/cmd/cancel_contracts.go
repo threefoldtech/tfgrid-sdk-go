@@ -59,7 +59,7 @@ func init() {
 	cancelContracts.Flags().BoolP("all", "a", false, "delete all contracts")
 }
 
-func getAllContracts(getter graphql.ContractsGetter) ([]uint64, error) {
+func getAllContracts(getter graphql.ContractsGetterI) ([]uint64, error) {
 	var contractIDs []uint64
 	cs, err := getter.ListContractsByTwinID([]string{"Created"})
 	if err != nil {

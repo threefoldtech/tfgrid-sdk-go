@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -27,20 +29,22 @@ type State struct {
 
 	Networks NetworkState
 
-	NcPool    client.NodeClientGetter
-	Substrate subi.SubstrateExt
+	NcPool          client.NodeClientGetter
+	Substrate       subi.SubstrateExt
+	ContractsGetter graphql.ContractsGetterI
 }
 
 // ErrNotFound for state not found instances
 var ErrNotFound = errors.New("not found")
 
 // NewState generates a new state
-func NewState(ncPool client.NodeClientGetter, substrate subi.SubstrateExt) *State {
+func NewState(ncPool client.NodeClientGetter, substrate subi.SubstrateExt, contractsGetter graphql.ContractsGetterI) *State {
 	return &State{
 		CurrentNodeDeployments: make(map[uint32]ContractIDs),
 		Networks:               NetworkState{State: make(map[string]Network)},
 		NcPool:                 ncPool,
 		Substrate:              substrate,
+		ContractsGetter:        contractsGetter,
 	}
 }
 
@@ -297,6 +301,14 @@ func (st *State) LoadNetworkFromGrid(ctx context.Context, name string) (znet wor
 				return znet, errors.Wrapf(err, "could not get network deployment %d from node %d", contractID, nodeID)
 			}
 
+			if len(strings.TrimSpace(dl.Metadata)) == 0 {
+				contracts, err := st.ContractsGetter.GetContractByID(fmt.Sprint(contractID))
+				if err != nil {
+					return znet, errors.Wrapf(err, "could not get network contract %d from node %d", contractID, nodeID)
+				}
+				dl.Metadata = contracts.NodeContracts[0].DeploymentData
+			}
+
 			deploymentData, err := workloads.ParseDeploymentData(dl.Metadata)
 			if err != nil {
 				return znet, errors.Wrapf(err, "could not generate deployment metadata for %s", name)
@@ -401,6 +413,14 @@ func (st *State) GetWorkloadInDeployment(ctx context.Context, nodeID uint32, nam
 			dl, err := nodeClient.DeploymentGet(ctx, contractID)
 			if err != nil {
 				return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get deployment %d from node %d", contractID, nodeID)
+			}
+
+			if len(strings.TrimSpace(dl.Metadata)) == 0 {
+				contracts, err := st.ContractsGetter.GetContractByID(fmt.Sprint(contractID))
+				if err != nil {
+					return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
+				}
+				dl.Metadata = contracts.NodeContracts[0].DeploymentData
 			}
 
 			dlData, err := workloads.ParseDeploymentData(dl.Metadata)

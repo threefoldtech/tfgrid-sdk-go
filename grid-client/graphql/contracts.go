@@ -17,6 +17,13 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+type ContractsGetterI interface {
+	ListContractsByTwinID(states []string) (Contracts, error)
+	ListContractsOfProjectName(projectName string, noGateways ...bool) (Contracts, error)
+	GetContractByID(contractID string, noGateways ...bool) (Contracts, error)
+	GetNodeContractsByTypeAndName(projectName, deploymentType, deploymentName string) (map[uint32]uint64, error)
+}
+
 // ContractsGetter for contracts getter from graphql
 type ContractsGetter struct {
 	twinID        uint32
@@ -115,6 +122,36 @@ func (c *ContractsGetter) ListContractsByTwinID(states []string) (Contracts, err
 	}
 
 	return listContracts, nil
+}
+
+// GetContractByID returns contract for an ID
+func (c *ContractsGetter) GetContractByID(contractID string, noGateways ...bool) (Contracts, error) {
+	contracts := Contracts{
+		NodeContracts: make([]Contract, 0),
+		NameContracts: make([]Contract, 0),
+	}
+	contractsList, err := c.ListContractsByTwinID([]string{"Created, GracePeriod"})
+	if err != nil {
+		return Contracts{}, err
+	}
+
+	for _, contract := range contractsList.NodeContracts {
+		if contractID == contract.ContractID {
+			contracts.NodeContracts = append(contracts.NodeContracts, contract)
+		}
+	}
+
+	if len(noGateways) > 0 && noGateways[0] {
+		return contracts, nil
+	}
+
+	nameGatewaysWorkloads, err := c.filterNameGatewaysWithinNodeContracts(contracts.NodeContracts)
+	if err != nil {
+		return Contracts{}, err
+	}
+
+	contracts.NameContracts = c.filterNameContracts(contractsList.NameContracts, nameGatewaysWorkloads)
+	return contracts, nil
 }
 
 // ListContractsOfProjectName returns contracts for a project name

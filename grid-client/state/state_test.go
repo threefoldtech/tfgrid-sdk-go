@@ -28,8 +28,9 @@ func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
 	cl := mocks.NewRMBMockClient(ctrl)
 	sub := mocks.NewMockSubstrateExt(ctrl)
 	ncPool := mocks.NewMockNodeClientGetter(ctrl)
+	contractsGetter := mocks.NewMockContractsGetterI(ctrl)
 
-	state := NewState(ncPool, sub)
+	state := NewState(ncPool, sub, contractsGetter)
 	state.CurrentNodeDeployments = map[uint32]ContractIDs{1: []uint64{10}}
 
 	dl1 := workloads.NewGridDeployment(13, wls)
