@@ -12,6 +12,12 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.8
+
+---
+
+- `feat` add `/health` endpoint
+
 ### v0.15.7
 
 ---
