@@ -136,21 +136,23 @@ func (d *PostgresDatabase) GetLastUpsertsTimestamp() (types.IndexersState, error
 }
 
 func (d *PostgresDatabase) Initialize() error {
-	err := d.gormDB.AutoMigrate(
+	if err := d.gormDB.AutoMigrate(
 		&types.NodeGPU{},
 		&types.HealthReport{},
 		&types.Dmi{},
 		&types.Speed{},
 		&types.HasIpv6{},
 		&types.NodesWorkloads{},
-	)
-	if err != nil {
+	); err != nil {
 		return errors.Wrap(err, "failed to migrate indexer tables")
 	}
 
-	err = d.gormDB.Exec(setupFile).Error
-	if err != nil {
+	if err := d.gormDB.Exec(setupFile).Error; err != nil {
 		return errors.Wrap(err, "failed to setup cache tables")
+	}
+
+	if err := d.gormDB.Exec(`ALTER TABLE node_gpu DROP CONSTRAINT IF EXISTS node_gpu_pkey;`).Error; err != nil {
+		return errors.Wrap(err, "failed to drop the node_gpu_pkey constraint")
 	}
 
 	return nil
