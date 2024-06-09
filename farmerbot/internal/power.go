@@ -193,19 +193,19 @@ func (f *FarmerBot) selectNodesToPowerOn(demand capacity) ([]node, error) {
 		contribute := false
 		if remainingDemand.cru > 0 && uint64(node.Resources.CRU) >= remainingDemand.cru {
 			contribute = true
-			remainingDemand.cru -= uint64(node.Resources.CRU)
+			remainingDemand.cru = subtractOrZero(remainingDemand.cru, uint64(node.Resources.CRU))
 		}
 		if remainingDemand.sru > 0 && uint64(node.Resources.SRU) >= remainingDemand.sru {
 			contribute = true
-			remainingDemand.sru -= uint64(node.Resources.SRU)
+			remainingDemand.sru = subtractOrZero(remainingDemand.sru, uint64(node.Resources.SRU))
 		}
 		if remainingDemand.mru > 0 && uint64(node.Resources.MRU) >= remainingDemand.mru {
 			contribute = true
-			remainingDemand.mru -= uint64(node.Resources.MRU)
+			remainingDemand.mru = subtractOrZero(remainingDemand.mru, uint64(node.Resources.MRU))
 		}
 		if remainingDemand.hru > 0 && uint64(node.Resources.HRU) >= remainingDemand.hru {
 			contribute = true
-			remainingDemand.hru -= uint64(node.Resources.HRU)
+			remainingDemand.hru = subtractOrZero(remainingDemand.hru, uint64(node.Resources.HRU))
 		}
 
 		if contribute {
@@ -275,15 +275,15 @@ func (f *FarmerBot) resourceUsageTooLow(sub Substrate, usedResources, totalResou
 		cpNewUsedResources := newUsedResources
 		cpNewTotalResources := newTotalResources
 
-		newUsedResources.cru -= node.resources.used.cru
-		newUsedResources.sru -= node.resources.used.sru
-		newUsedResources.mru -= node.resources.used.mru
-		newUsedResources.hru -= node.resources.used.hru
+		newUsedResources.cru = subtractOrZero(newUsedResources.cru, node.resources.used.cru)
+		newUsedResources.sru = subtractOrZero(newUsedResources.sru, node.resources.used.sru)
+		newUsedResources.mru = subtractOrZero(newUsedResources.mru, node.resources.used.mru)
+		newUsedResources.hru = subtractOrZero(newUsedResources.hru, node.resources.used.hru)
 
-		newTotalResources.cru -= node.resources.total.cru
-		newTotalResources.sru -= node.resources.total.sru
-		newTotalResources.mru -= node.resources.total.mru
-		newTotalResources.hru -= node.resources.total.hru
+		newTotalResources.cru = subtractOrZero(newTotalResources.cru, node.resources.total.cru)
+		newTotalResources.sru = subtractOrZero(newTotalResources.sru, node.resources.total.sru)
+		newTotalResources.mru = subtractOrZero(newTotalResources.mru, node.resources.total.mru)
+		newTotalResources.hru = subtractOrZero(newTotalResources.hru, node.resources.total.hru)
 
 		if newTotalResources.isEmpty() {
 			break
