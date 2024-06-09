@@ -52,6 +52,7 @@ const (
 // @Param node_rented_by query int false "Twin ID of user who has at least one rented node in the farm"
 // @Param node_available_for query int false "Twin ID of user for whom there is at least one node that is available to be deployed to in the farm"
 // @Param node_has_gpu query bool false "True for farms who have at least one node with a GPU"
+// @Param node_has_ipv6 query bool false "True for farms who have at least one node with an ipv6"
 // @Param node_certified query bool false "True for farms who have at least one certified node"
 // @Param country query string false "farm country"
 // @Param region query string false "farm region"
@@ -130,12 +131,13 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param free_ips query int false "Min number of free ips in the farm of the node"
 // @Param status query string false "Node status filter, 'up': for only up nodes, 'down': for only down nodes & 'standby' for powered-off nodes by farmerbot."
 // @Param healthy query bool false "Healthy nodes filter, 'true' for nodes that responded to rmb call in the last 5 mins"
+// @Param has_ipv6 query bool false "Set to true to filter nodes with ipv6 available"
 // @Param city query string false "Node city filter"
 // @Param country query string false "Node country filter"
 // @Param region query string false "Node region"
 // @Param farm_name query string false "Get nodes for specific farm"
-// @Param ipv4 query bool false "Set to true to filter nodes with ipv4"
-// @Param ipv6 query bool false "Set to true to filter nodes with ipv6"
+// @Param ipv4 query bool false "Set to true to filter access nodes with ipv4"
+// @Param ipv6 query bool false "Set to true to filter access nodes with ipv6"
 // @Param domain query bool false "Set to true to filter nodes with domain"
 // @Param dedicated query bool false "Set to true to get the dedicated nodes only"
 // @Param in_dedicated_farm query bool false "Set to true to get the nodes belongs to dedicated farms"
@@ -183,8 +185,8 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param country query string false "Node country filter"
 // @Param region query string false "node region"
 // @Param farm_name query string false "Get nodes for specific farm"
-// @Param ipv4 query bool false "Set to true to filter nodes with ipv4"
-// @Param ipv6 query bool false "Set to true to filter nodes with ipv6"
+// @Param ipv4 query bool false "Set to true to filter access nodes with ipv4"
+// @Param ipv6 query bool false "Set to true to filter access nodes with ipv6"
 // @Param domain query bool false "Set to true to filter nodes with domain"
 // @Param dedicated query bool false "Set to true to get the dedicated nodes only"
 // @Param in_dedicated_farm query bool false "Set to true to get the nodes belongs to dedicated farms"
@@ -325,6 +327,32 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 
 	resp := createResponse(uint(twinsCount), limit)
 	return twins, resp
+}
+
+// getTwinConsumption godoc
+// @Summary Show a report for user consumption
+// @Description Get a report of user spent for last hour and for lifetime
+// @Tags TwinConsumption
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} []types.TwinConsumption
+// @Failure 400 {object} string
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /twins/{twin_id}/consumption [get]
+func (a *App) getTwinConsumption(r *http.Request) (interface{}, mw.Response) {
+	twinIdStr := mux.Vars(r)["twin_id"]
+	twinId, err := strconv.Atoi(twinIdStr)
+	if err != nil {
+		return types.TwinConsumption{}, mw.BadRequest(err)
+	}
+
+	consumptions, err := a.cl.GetTwinConsumption(r.Context(), uint64(twinId))
+	if err != nil {
+		return types.TwinConsumption{}, errorReply(err)
+	}
+
+	return consumptions, nil
 }
 
 // listContracts godoc
@@ -560,7 +588,9 @@ func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Cl
 
 	router.HandleFunc("/farms", mw.AsHandlerFunc(a.listFarms))
 	router.HandleFunc("/stats", mw.AsHandlerFunc(a.getStats))
+
 	router.HandleFunc("/twins", mw.AsHandlerFunc(a.listTwins))
+	router.HandleFunc("/twins/{twin_id:[0-9]+}/consumption", mw.AsHandlerFunc(a.getTwinConsumption))
 
 	router.HandleFunc("/nodes", mw.AsHandlerFunc(a.getNodes))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getNode))

@@ -410,11 +410,15 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	renter, ok := data.NodeRentedBy[n.NodeID]
 	if f.AvailableFor != nil &&
 		((ok && renter != *f.AvailableFor) ||
-			(!ok && data.Farms[n.FarmID].DedicatedFarm)) {
+			(!ok && (data.Farms[n.FarmID].DedicatedFarm || n.ExtraFee != 0))) {
 		return false
 	}
 
 	if f.NodeID != nil && *f.NodeID != n.NodeID {
+		return false
+	}
+
+	if f.NodeIDs != nil && len(f.NodeIDs) != 0 && !slices.Contains(f.NodeIDs, n.NodeID) {
 		return false
 	}
 

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/internal/parser"
 	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
@@ -93,8 +94,10 @@ var deployCmd = &cobra.Command{
 		}
 
 		ctx := context.Background()
-		if err = deployer.RunDeployer(ctx, cfg, tfPluginClient, outputPath, debug); err != nil {
-			return fmt.Errorf("failed to run the deployer with error: %w", err)
+		if errs := deployer.RunDeployer(ctx, cfg, tfPluginClient, outputPath, debug); errs != nil {
+			log.Error().Msg("deployments failed with errors: ")
+			fmt.Println(errs)
+			os.Exit(1)
 		}
 
 		return nil

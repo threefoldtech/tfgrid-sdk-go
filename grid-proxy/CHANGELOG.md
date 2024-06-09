@@ -12,6 +12,16 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.7
+
+---
+
+- `fix` re calc node_contracts_count on the trigger instead of inc/dec
+- `feat` add node_has_ipv6 filter to farms endpoint
+- `feat` add twin consumption endpoint
+- `feat` add `node_ids` filter to filter by list of node ids
+- `feat` exclude extra-feed nodes from `available_for`
+
 ### v0.15.4
 
 ---

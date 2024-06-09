@@ -412,7 +412,7 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
 		filter.NodeRentedBy != nil || (filter.NodeStatus != nil && len(filter.NodeStatus) != 0) ||
 		filter.NodeTotalCRU != nil || filter.Country != nil ||
-		filter.Region != nil {
+		filter.Region != nil || filter.NodeHasIpv6 != nil {
 		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
 			Group(`
 				farm.id,
@@ -433,9 +433,9 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 // GetFarms return farms filtered and paginated
 func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
 	nodeQuery := d.gormDB.Table("resources_cache").
-		Select("resources_cache.farm_id", "renter").
+		Select("resources_cache.farm_id", "renter", "resources_cache.extra_fee").
 		Joins("LEFT JOIN node ON node.node_id = resources_cache.node_id").
-		Group(`resources_cache.farm_id, renter`)
+		Group(`resources_cache.farm_id, renter, resources_cache.extra_fee`)
 
 	if filter.NodeFreeMRU != nil {
 		nodeQuery = nodeQuery.Where("resources_cache.free_mru >= ?", *filter.NodeFreeMRU)
@@ -475,10 +475,17 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		nodeQuery = nodeQuery.Where("(node.certification = 'Certified') = ?", *filter.NodeCertified)
 	}
 
+	if filter.NodeHasIpv6 != nil {
+		nodeQuery = nodeQuery.
+			Joins("LEFT JOIN node_ipv6 ON node_ipv6.node_twin_id = node.twin_id").
+			Where("COALESCE(has_ipv6, false) = ?", *filter.NodeHasIpv6)
+	}
+
 	q := d.farmTableQuery(ctx, filter, nodeQuery)
 
 	if filter.NodeAvailableFor != nil {
-		q = q.Where("COALESCE(resources_cache.renter, 0) = ? OR (resources_cache.renter IS NULL AND farm.dedicated_farm = false)", *filter.NodeAvailableFor)
+		q = q.Where(`COALESCE(resources_cache.renter, 0) = ? OR 
+			(resources_cache.renter IS NULL AND farm.dedicated_farm = false AND resources_cache.extra_fee = 0)`, *filter.NodeAvailableFor)
 	}
 
 	if filter.FreeIPs != nil {
@@ -644,6 +651,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.NodeID != nil {
 		q = q.Where("node.node_id = ?", *filter.NodeID)
 	}
+	if filter.NodeIDs != nil && len(filter.NodeIDs) != 0 {
+		q = q.Where("node.node_id In ?", filter.NodeIDs)
+	}
 	if filter.TwinID != nil {
 		q = q.Where("node.twin_id = ?", *filter.TwinID)
 	}
@@ -686,7 +696,9 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where(`? = ((farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0) AND resources_cache.renter is null)`, *filter.Rentable)
 	}
 	if filter.AvailableFor != nil {
-		q = q.Where(`COALESCE(resources_cache.renter, 0) = ? OR (resources_cache.renter is null AND farm.dedicated_farm = false)`, *filter.AvailableFor)
+		q = q.Where(`
+			COALESCE(resources_cache.renter, 0) = ? OR 
+			(resources_cache.renter is null AND farm.dedicated_farm = false AND resources_cache.extra_fee = 0)`, *filter.AvailableFor)
 	}
 	if filter.RentedBy != nil {
 		q = q.Where(`COALESCE(resources_cache.renter, 0) = ?`, *filter.RentedBy)
@@ -945,7 +957,7 @@ func (d *PostgresDatabase) GetContract(ctx context.Context, contractID uint32) (
 	return contract, nil
 }
 
-// GetContract return a single contract info
+// GetContract return a single contract all billing reports
 func (d *PostgresDatabase) GetContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]ContractBilling, uint, error) {
 	q := d.gormDB.WithContext(ctx).Table("contract_bill_report").
 		Select("amount_billed, discount_received, timestamp").
@@ -977,4 +989,46 @@ func (d *PostgresDatabase) GetRandomHealthyTwinIds(length int) ([]uint32, error)
 		return []uint32{}, err
 	}
 	return ids, nil
+}
+
+// GetContractsLatestBillReports return latest reports for some contracts
+func (d *PostgresDatabase) GetContractsLatestBillReports(ctx context.Context, contractsIds []uint32, limit uint) ([]ContractBilling, error) {
+	// WITH: a CTE to create a tmp table
+	// ROW_NUMBER(): function is a window function that assigns a sequential integer (rn) to each row
+	// PARTITION BY: ranking is for each contract_id separately
+	// ranking is done in desc order on timestamp
+	q := d.gormDB.Raw(`
+        WITH ranked_bill_reports AS (
+            SELECT
+				timestamp, amount_billed, contract_id,
+				ROW_NUMBER() OVER (PARTITION BY contract_id ORDER BY timestamp DESC) as rn
+            FROM
+				contract_bill_report
+            WHERE
+                contract_id IN (?)
+        )
+		
+        SELECT timestamp, amount_billed, contract_id
+        FROM ranked_bill_reports
+        WHERE rn <= ?;
+		`, contractsIds, limit)
+
+	var reports []ContractBilling
+	if res := q.Scan(&reports); res.Error != nil {
+		return reports, res.Error
+	}
+
+	return reports, nil
+}
+
+// GetContractsTotalBilledAmount return a sum of all billed amount
+func (d *PostgresDatabase) GetContractsTotalBilledAmount(ctx context.Context, contractIds []uint32) (uint64, error) {
+	q := d.gormDB.Raw(`SELECT sum(amount_billed) FROM contract_bill_report WHERE contract_id IN (?);`, contractIds)
+
+	var total uint64
+	if res := q.Scan(&total); res.Error != nil {
+		return 0, res.Error
+	}
+
+	return total, nil
 }

@@ -3,6 +3,7 @@ package explorer
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
@@ -128,4 +129,54 @@ func (c *DBClient) NodeStatus(ctx context.Context, nodeID uint32) (types.NodeSta
 
 func (c *DBClient) Stats(ctx context.Context, filter types.StatsFilter) (types.Stats, error) {
 	return c.DB.GetStats(ctx, filter)
+}
+
+func (c *DBClient) GetTwinConsumption(ctx context.Context, twinId uint64) (types.TwinConsumption, error) {
+	// get all twin contracts
+	maxContractSize := uint64(999999999)
+	filter := types.ContractFilter{TwinID: &twinId}
+	limit := types.Limit{Size: maxContractSize}
+	twinContracts, _, err := c.DB.GetContracts(ctx, filter, limit)
+	if err != nil {
+		return types.TwinConsumption{}, err
+	}
+
+	contracts := make(map[uint32]db.DBContract)
+	allCIds := []uint32{}
+	nonDeletedCIds := []uint32{}
+	for _, contract := range twinContracts {
+		contracts[uint32(contract.ContractID)] = contract
+		allCIds = append(allCIds, uint32(contract.ContractID))
+		if contract.State != "Deleted" {
+			nonDeletedCIds = append(nonDeletedCIds, uint32(contract.ContractID))
+		}
+	}
+
+	// get the latest two reports for each active contract
+	reports, err := c.DB.GetContractsLatestBillReports(ctx, nonDeletedCIds, 2)
+	if err != nil {
+		return types.TwinConsumption{}, err
+	}
+
+	contractReports := make(map[uint32][]db.ContractBilling)
+	for _, report := range reports {
+		contractReports[uint32(report.ContractId)] = append(contractReports[uint32(report.ContractId)], report)
+	}
+
+	// calc contract billed amount and sum
+	var consumption types.TwinConsumption
+	for _, id := range nonDeletedCIds {
+		contractConsumption := calcContractConsumption(contracts[id], contractReports[id])
+		consumption.LastHourConsumption += contractConsumption
+	}
+
+	// calc all spent amounts
+	totalAmount, err := c.DB.GetContractsTotalBilledAmount(ctx, allCIds)
+	if err != nil {
+		return types.TwinConsumption{}, err
+	}
+
+	consumption.OverallConsumption = float64(totalAmount) / math.Pow(10, 7)
+
+	return consumption, err
 }

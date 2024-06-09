@@ -68,6 +68,8 @@ definitions:
     properties:
       amountBilled:
         type: integer
+      contract_id:
+        type: integer
       discountReceived:
         type: string
       timestamp:
@@ -409,6 +411,13 @@ definitions:
       twinId:
         type: integer
     type: object
+  types.TwinConsumption:
+    properties:
+      last_hour_consumption:
+        type: number
+      overall_consumption:
+        type: number
+    type: object
 info:
   contact: {}
   description: grid proxy server has the main methods to list farms, nodes, node details
@@ -713,6 +722,10 @@ paths:
         in: query
         name: node_has_gpu
         type: boolean
+      - description: True for farms who have at least one node with an ipv6
+        in: query
+        name: node_has_ipv6
+        type: boolean
       - description: True for farms who have at least one certified node
         in: query
         name: node_certified
@@ -836,11 +849,11 @@ paths:
         in: query
         name: farm_name
         type: string
-      - description: Set to true to filter nodes with ipv4
+      - description: Set to true to filter access nodes with ipv4
         in: query
         name: ipv4
         type: boolean
-      - description: Set to true to filter nodes with ipv6
+      - description: Set to true to filter access nodes with ipv6
         in: query
         name: ipv6
         type: boolean
@@ -1040,6 +1053,10 @@ paths:
         in: query
         name: healthy
         type: boolean
+      - description: Set to true to filter nodes with ipv6 available
+        in: query
+        name: has_ipv6
+        type: boolean
       - description: Node city filter
         in: query
         name: city
@@ -1056,11 +1073,11 @@ paths:
         in: query
         name: farm_name
         type: string
-      - description: Set to true to filter nodes with ipv4
+      - description: Set to true to filter access nodes with ipv4
         in: query
         name: ipv4
         type: boolean
-      - description: Set to true to filter nodes with ipv6
+      - description: Set to true to filter access nodes with ipv6
         in: query
         name: ipv6
         type: boolean
@@ -1378,4 +1395,33 @@ paths:
       summary: Show twins on the grid
       tags:
       - GridProxy
+  /twins/{twin_id}/consumption:
+    get:
+      consumes:
+      - application/json
+      description: Get a report of user spent for last hour and for lifetime
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.TwinConsumption'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Show a report for user consumption
+      tags:
+      - TwinConsumption
 swagger: "2.0"

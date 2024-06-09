@@ -303,9 +303,7 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 }
 
 func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*workloads.Deployment) ([]*workloads.Deployment, error) {
-	var newdls []*workloads.Deployment
-	var wg sync.WaitGroup
-	var mu sync.Mutex
+	var newDls []*workloads.Deployment
 	var errs error
 
 	usedHosts, err := d.calculateNetworksUsedIPs(ctx, dls)
@@ -315,92 +313,68 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 
 	for _, dl := range dls {
 		if len(dl.Vms) == 0 {
-			newdls = append(newdls, dl)
+			newDls = append(newDls, dl)
 			continue
 		}
 
-		wg.Add(1)
-		go func(dl *workloads.Deployment) {
-			defer wg.Done()
+		network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
+		ipRange := network.GetNodeSubnet(dl.NodeID)
 
-			network := d.tfPluginClient.State.Networks.GetNetwork(dl.NetworkName)
-			ipRange := network.GetNodeSubnet(dl.NodeID)
+		ip, ipRangeCIDR, err := net.ParseCIDR(ipRange)
+		if err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "invalid ip range %s", ipRange))
+			continue
+		}
 
-			ip, ipRangeCIDR, err := net.ParseCIDR(ipRange)
-			if err != nil {
-				mu.Lock()
-				defer mu.Unlock()
-				errs = multierror.Append(errs, errors.Wrapf(err, "invalid ip range %s", ipRange))
-				return
-			}
+		curHostID := byte(2)
 
-			curHostID := byte(2)
+		for idx, vm := range dl.Vms {
+			vmIP := net.ParseIP(vm.IP).To4()
 
-			for idx, vm := range dl.Vms {
-				vmIP := net.ParseIP(vm.IP).To4()
+			// if vm private ip is given
+			if vmIP != nil {
+				vmHostID := vmIP[3] // host ID of the private ip
 
-				// if vm private ip is given
-				if vmIP != nil {
-					vmHostID := vmIP[3] // host ID of the private ip
+				nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
 
-					mu.Lock()
-					nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
-					mu.Unlock()
+				// TODO: use of a duplicate IP vs an updated vm with a new/old IP
+				if slices.Contains(nodeUsedHostIDs, vmHostID) {
+					continue
+					// return fmt.Errorf("duplicate private ip '%v' in vm '%s' is used", vmIP, vm.Name)
+				}
 
-					// TODO: use of a duplicate IP vs an updated vm with a new/old IP
-					if slices.Contains(nodeUsedHostIDs, vmHostID) {
-						continue
-						// return fmt.Errorf("duplicate private ip '%v' in vm '%s' is used", vmIP, vm.Name)
-					}
-
-					if !ipRangeCIDR.Contains(vmIP) {
-						mu.Lock()
-						defer mu.Unlock()
-						errs = multierror.Append(errs, fmt.Errorf("deployment ip range '%v' doesn't contain ip '%v' for vm '%s'", ipRange, vmIP, vm.Name))
-						return
-					}
-
-					mu.Lock()
-					usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], vmHostID)
-					mu.Unlock()
-
+				if !ipRangeCIDR.Contains(vmIP) {
+					errs = multierror.Append(errs, fmt.Errorf("deployment ip range '%v' doesn't contain ip '%v' for vm '%s'", ipRange, vmIP, vm.Name))
 					continue
 				}
 
-				mu.Lock()
-				nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
-				mu.Unlock()
-
-				// try to find available host ID in the deployment ip range
-				for slices.Contains(nodeUsedHostIDs, curHostID) {
-					if curHostID == 254 {
-						mu.Lock()
-						defer mu.Unlock()
-						errs = multierror.Append(errs, errors.New("all 253 ips of the network are exhausted"))
-						return
-					}
-					curHostID++
-				}
-
-				mu.Lock()
-				usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], curHostID)
-				mu.Unlock()
-
-				vmIP = ip.To4()
-				vmIP[3] = curHostID
-				dl.Vms[idx].IP = vmIP.String()
+				usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], vmHostID)
+				continue
 			}
 
-			dl.IPrange = ipRange
+			nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
 
-			mu.Lock()
-			newdls = append(newdls, dl)
-			mu.Unlock()
-		}(dl)
+			// try to find available host ID in the deployment ip range
+			for slices.Contains(nodeUsedHostIDs, curHostID) {
+				if curHostID == 254 {
+					errs = multierror.Append(errs, errors.New("all 253 ips of the network are exhausted"))
+					continue
+				}
+				curHostID++
+			}
+
+			usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], curHostID)
+
+			vmIP = ip.To4()
+			vmIP[3] = curHostID
+			dl.Vms[idx].IP = vmIP.String()
+		}
+
+		dl.IPrange = ipRange
+		newDls = append(newDls, dl)
 	}
 
-	wg.Wait()
-	return newdls, errs
+	return newDls, errs
 }
 
 func (d *DeploymentDeployer) syncContract(ctx context.Context, dl *workloads.Deployment) error {

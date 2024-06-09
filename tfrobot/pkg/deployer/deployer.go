@@ -25,9 +25,10 @@ const (
 	maxGoroutinesCount = 100
 )
 
-func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPluginClient, output string, debug bool) error {
+func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPluginClient, output string, debug bool) *multierror.Error {
 	passedGroups := map[string][]*workloads.Deployment{}
-	failedGroups := map[string]string{}
+	var failedGroupsErr *multierror.Error
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -74,8 +75,8 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 
 			return nil
 		}); err != nil {
+			failedGroupsErr = multierror.Append(failedGroupsErr, fmt.Errorf("%s: %s", nodeGroup.Name, err.Error()))
 
-			failedGroups[nodeGroup.Name] = err.Error()
 			err := tfPluginClient.CancelByProjectName(fmt.Sprintf("vm/%s", nodeGroup.Name))
 			if err != nil {
 				log.Debug().Err(err).Send()
@@ -97,15 +98,20 @@ func RunDeployer(ctx context.Context, cfg Config, tfPluginClient deployer.TFPlug
 	endTime := time.Since(deploymentStart)
 
 	// load deployed deployments
-	outputBytes, err := loadAfterDeployment(ctx, tfPluginClient, passedGroups, failedGroups, cfg.MaxRetries, filepath.Ext(output) == ".json")
-	if err != nil {
-		return err
+	outputBytes, errs := loadAfterDeployment(ctx, tfPluginClient, passedGroups, cfg.MaxRetries, filepath.Ext(output) == ".json")
+	if errs != nil {
+		failedGroupsErr = multierror.Append(failedGroupsErr, errs.Errors...)
 	}
 
 	fmt.Println(string(outputBytes))
 	log.Info().Msgf("Deployment took %s", endTime)
 
-	return os.WriteFile(output, outputBytes, 0644)
+	err := os.WriteFile(output, outputBytes, 0644)
+	if err != nil {
+		log.Error().Err(err).Send()
+	}
+
+	return failedGroupsErr
 }
 
 func deployNodeGroup(
@@ -140,25 +146,25 @@ func loadAfterDeployment(
 	ctx context.Context,
 	tfPluginClient deployer.TFPluginClient,
 	deployedGroups map[string][]*workloads.Deployment,
-	failedGroups map[string]string,
 	retries uint64,
 	asJson bool,
-) ([]byte, error) {
+) ([]byte, *multierror.Error) {
 	var loadedgroups map[string][]vmOutput
+	var failedGroupsErr *multierror.Error
 
 	if len(deployedGroups) > 0 {
 		log.Info().Msg("Loading deployments")
 		groupsContracts := getDeploymentsContracts(deployedGroups)
 
-		var failed map[string]string
-		loadedgroups, failed = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContracts, retries)
-
-		for nodeGroup, err := range failed {
-			failedGroups[nodeGroup] = err
-		}
+		loadedgroups, failedGroupsErr = batchLoadNodeGroupsInfo(ctx, tfPluginClient, groupsContracts, retries)
 	}
 
-	return parseDeploymentOutput(loadedgroups, failedGroups, asJson)
+	output, err := parseDeploymentOutput(loadedgroups, asJson)
+	if err != nil {
+		log.Error().Err(err).Send()
+	}
+
+	return output, failedGroupsErr
 }
 
 func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {

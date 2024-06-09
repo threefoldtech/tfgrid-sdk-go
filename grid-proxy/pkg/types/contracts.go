@@ -54,6 +54,7 @@ type ContractBilling struct {
 	AmountBilled     uint64 `json:"amountBilled"`
 	DiscountReceived string `json:"discountReceived"`
 	Timestamp        uint64 `json:"timestamp"`
+	ContractId       uint64 `json:"contract_id,omitempty"`
 }
 
 // ContractFilter contract filters
