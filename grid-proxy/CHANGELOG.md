@@ -12,7 +12,7 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
-### v0.15.8
+### v0.15.9
 
 ---
 
