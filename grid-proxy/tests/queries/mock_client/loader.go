@@ -550,7 +550,8 @@ func loadHealthReports(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 	SELECT
 		COALESCE(node_twin_id, 0),
-		COALESCE(healthy, false)
+		COALESCE(healthy, false),
+		COALESCE(updated_at, 0)
 	FROM
 		health_report;`)
 	if err != nil {
@@ -561,6 +562,7 @@ func loadHealthReports(db *sql.DB, data *DBData) error {
 		if err := rows.Scan(
 			&health.NodeTwinId,
 			&health.Healthy,
+			&health.UpdatedAt,
 		); err != nil {
 			return err
 		}
@@ -574,7 +576,8 @@ func loadNodeIpv6(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 	SELECT
 		COALESCE(node_twin_id, 0),
-		COALESCE(has_ipv6, false)
+		COALESCE(has_ipv6, false),
+		COALESCE(updated_at, 0)
 	FROM
 		node_ipv6;`)
 	if err != nil {
@@ -585,6 +588,7 @@ func loadNodeIpv6(db *sql.DB, data *DBData) error {
 		if err := rows.Scan(
 			&node.NodeTwinId,
 			&node.HasIpv6,
+			&node.UpdatedAt,
 		); err != nil {
 			return err
 		}
@@ -603,6 +607,7 @@ func loadDMIs(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
 	for _, dmi := range dmis {
 		twinId := dmi.NodeTwinId
 		dmi.NodeTwinId = 0 // to omit it as empty, cleaner response
+		dmi.UpdatedAt = 0
 		data.DMIs[twinId] = dmi
 	}
 
@@ -614,7 +619,8 @@ func loadSpeeds(db *sql.DB, data *DBData) error {
 	SELECT 
 		node_twin_id,
 		upload,
-		download
+		download,
+		updated_at
 	FROM 
 		speed;`)
 	if err != nil {
@@ -626,6 +632,7 @@ func loadSpeeds(db *sql.DB, data *DBData) error {
 			&speed.NodeTwinId,
 			&speed.Upload,
 			&speed.Download,
+			&speed.UpdatedAt,
 		); err != nil {
 			return err
 		}
@@ -638,7 +645,8 @@ func loadWorkloadsNumber(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 		SELECT
 			node_twin_id,
-			workloads_number
+			workloads_number,
+			updated_at
 		FROM
 			node_workloads;
 	`)
@@ -652,6 +660,7 @@ func loadWorkloadsNumber(db *sql.DB, data *DBData) error {
 		if err := rows.Scan(
 			&wl.NodeTwinId,
 			&wl.WorkloadsNumber,
+			&wl.UpdatedAt,
 		); err != nil {
 			return err
 		}

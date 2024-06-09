@@ -438,6 +438,15 @@ func (a *App) version(r *http.Request) (interface{}, mw.Response) {
 	}, response
 }
 
+func (a *App) health(r *http.Request) (interface{}, mw.Response) {
+	response := mw.Ok()
+	return createReport(
+		a.cl,
+		a.relayClient,
+		a.idxIntervals,
+	), response
+}
+
 // getNodeStatistics godoc
 // @Summary Show node statistics
 // @Description Get node statistics for more information about each node through the RMB relay
@@ -568,12 +577,13 @@ func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 // @BasePath /
-func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Client) error {
+func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Client, idxIntervals map[string]uint) error {
 
 	a := App{
 		cl:             cl,
 		releaseVersion: gitCommit,
 		relayClient:    relayClient,
+		idxIntervals:   idxIntervals,
 	}
 
 	router.HandleFunc("/farms", mw.AsHandlerFunc(a.listFarms))
@@ -599,6 +609,7 @@ func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Cl
 	router.HandleFunc("/", mw.AsHandlerFunc(a.indexPage(router)))
 	router.HandleFunc("/ping", mw.AsHandlerFunc(a.ping))
 	router.HandleFunc("/version", mw.AsHandlerFunc(a.version))
+	router.HandleFunc("/health", mw.AsHandlerFunc(a.health))
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	return nil

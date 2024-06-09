@@ -83,5 +83,7 @@ func parseSpeed(res zosPerfPkg.TaskResult, twinId uint32) (types.Speed, error) {
 		}
 	}
 
+	speed.UpdatedAt = time.Now().Unix()
+
 	return speed, nil
 }

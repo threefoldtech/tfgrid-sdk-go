@@ -47,6 +47,7 @@ func getHealthReport(response interface{}, err error, twinId uint32) types.Healt
 	report := types.HealthReport{
 		NodeTwinId: twinId,
 		Healthy:    false,
+		UpdatedAt:  time.Now().Unix(),
 	}
 
 	if err != nil {

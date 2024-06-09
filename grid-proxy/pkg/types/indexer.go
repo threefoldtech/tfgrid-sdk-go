@@ -20,6 +20,7 @@ func (NodeGPU) TableName() string {
 type HealthReport struct {
 	NodeTwinId uint32 `gorm:"unique;not null"`
 	Healthy    bool
+	UpdatedAt  int64
 }
 
 func (HealthReport) TableName() string {
@@ -31,6 +32,7 @@ func (HealthReport) TableName() string {
 type HasIpv6 struct {
 	NodeTwinId uint32 `gorm:"unique;not null"`
 	HasIpv6    bool
+	UpdatedAt  int64
 }
 
 func (HasIpv6) TableName() string {
@@ -43,6 +45,7 @@ type Speed struct {
 	NodeTwinId uint32  `json:"node_twin_id,omitempty" gorm:"unique;not null"`
 	Upload     float64 `json:"upload"`   // in bit/sec
 	Download   float64 `json:"download"` // in bit/sec
+	UpdatedAt  int64
 }
 
 func (Speed) TableName() string {
@@ -53,6 +56,7 @@ func (Speed) TableName() string {
 type NodesWorkloads struct {
 	NodeTwinId      uint32 `json:"node_twin_id,omitempty" gorm:"unique;not null"`
 	WorkloadsNumber uint32 `json:"workloads_number"`
+	UpdatedAt       int64
 }
 
 func (NodesWorkloads) TableName() string {
@@ -67,6 +71,7 @@ type Dmi struct {
 	Baseboard  Baseboard   `json:"baseboard" gorm:"type:jsonb;serializer:json"`
 	Processor  []Processor `json:"processor" gorm:"type:jsonb;serializer:json"`
 	Memory     []Memory    `json:"memory" gorm:"type:jsonb;serializer:json"`
+	UpdatedAt  int64
 }
 
 func (Dmi) TableName() string {

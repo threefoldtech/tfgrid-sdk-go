@@ -146,13 +146,20 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to create relay client")
 	}
 
+	indexerIntervals := make(map[string]uint)
 	if !f.noIndexer {
 		startIndexers(ctx, f, &db, rpcRmbClient)
+		indexerIntervals["gpu"] = f.gpuIndexerIntervalMins
+		indexerIntervals["health"] = f.healthIndexerIntervalMins
+		indexerIntervals["dmi"] = f.dmiIndexerIntervalMins
+		indexerIntervals["workloads"] = f.workloadsIndexerIntervalMins
+		indexerIntervals["ipv6"] = f.ipv6IndexerIntervalMins
+		indexerIntervals["speed"] = f.speedIndexerIntervalMins
 	} else {
 		log.Info().Msg("Indexers did not start")
 	}
 
-	s, err := createServer(f, dbClient, GitCommit, rpcRmbClient)
+	s, err := createServer(f, dbClient, GitCommit, rpcRmbClient, indexerIntervals)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create mux server")
 	}
@@ -210,11 +217,11 @@ func startIndexers(ctx context.Context, f flags, db db.Database, rpcRmbClient *p
 	ipv6Idx.Start(ctx)
 
 	wlNumIdx := indexer.NewIndexer[types.NodesWorkloads](
-		indexer.NewWorkloadWork(f.ipv6IndexerIntervalMins),
+		indexer.NewWorkloadWork(f.workloadsIndexerIntervalMins),
 		"workloads",
 		db,
 		rpcRmbClient,
-		f.ipv6IndexerNumWorkers,
+		f.workloadsIndexerNumWorkers,
 	)
 	wlNumIdx.Start(ctx)
 }
@@ -273,13 +280,13 @@ func createRPCRMBClient(ctx context.Context, relayURL, mnemonics string, subMana
 	return client, nil
 }
 
-func createServer(f flags, dbClient explorer.DBClient, gitCommit string, relayClient rmb.Client) (*http.Server, error) {
+func createServer(f flags, dbClient explorer.DBClient, gitCommit string, relayClient rmb.Client, idxIntervals map[string]uint) (*http.Server, error) {
 	log.Info().Msg("Creating server")
 
 	router := mux.NewRouter().StrictSlash(true)
 
 	// setup explorer
-	if err := explorer.Setup(router, gitCommit, dbClient, relayClient); err != nil {
+	if err := explorer.Setup(router, gitCommit, dbClient, relayClient, idxIntervals); err != nil {
 		return nil, err
 	}
 

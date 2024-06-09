@@ -76,6 +76,65 @@ func (d *PostgresDatabase) Close() error {
 	return db.Close()
 }
 
+func (d *PostgresDatabase) Ping() error {
+	db, err := d.gormDB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get db connection")
+	}
+
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping db")
+	}
+
+	return nil
+}
+
+func (d *PostgresDatabase) Initialized() error {
+	db, err := d.gormDB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get db connection")
+	}
+
+	initTables := []string{"node_gpu", "resources_cache"}
+	for _, tableName := range initTables {
+		query := "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = $1);"
+		var exists bool
+
+		if err := db.QueryRow(query, tableName).Scan(&exists); err != nil {
+			return err
+		}
+
+		if !exists {
+			return fmt.Errorf("table %s does not exist", tableName)
+		}
+	}
+
+	return nil
+}
+
+func (d *PostgresDatabase) GetLastUpsertsTimestamp() (types.IndexersState, error) {
+	var report types.IndexersState
+	if res := d.gormDB.Table("node_gpu").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Gpu.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get node_gpu last updated_at")
+	}
+	if res := d.gormDB.Table("health_report").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Health.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get health_report last updated_at")
+	}
+	if res := d.gormDB.Table("node_ipv6").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Ipv6.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get node_ipv6 last updated_at")
+	}
+	if res := d.gormDB.Table("speed").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Speed.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get speed last updated_at")
+	}
+	if res := d.gormDB.Table("dmi").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Dmi.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get dmi last updated_at")
+	}
+	if res := d.gormDB.Table("node_workloads").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Workloads.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get workloads last updated_at")
+	}
+	return report, nil
+}
+
 func (d *PostgresDatabase) Initialize() error {
 	err := d.gormDB.AutoMigrate(
 		&types.NodeGPU{},
@@ -922,6 +981,14 @@ func (d *PostgresDatabase) GetContractBills(ctx context.Context, contractID uint
 	}
 
 	return bills, uint(count), nil
+}
+
+func (d *PostgresDatabase) GetRandomHealthyTwinIds(length int) ([]uint32, error) {
+	var ids []uint32
+	if err := d.gormDB.Table("health_report").Select("node_twin_id").Where("healthy = true").Order("random()").Limit(length).Scan(&ids).Error; err != nil {
+		return []uint32{}, err
+	}
+	return ids, nil
 }
 
 // GetContractsLatestBillReports return latest reports for some contracts
