@@ -37,8 +37,10 @@ func mockRMBAndSubstrateCalls(
 		return
 	}
 
+	nodes := addPriorityToNodes(inputs.PriorityNodes, inputs.IncludedNodes)
+
 	// node calls
-	for _, nodeID := range inputs.IncludedNodes {
+	for _, nodeID := range nodes {
 		nodeIDVal := types.U32(nodeID)
 		if emptyNode {
 			nodeIDVal = 0
