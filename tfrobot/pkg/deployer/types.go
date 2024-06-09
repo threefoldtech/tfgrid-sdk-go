@@ -36,7 +36,8 @@ type Vms struct {
 	SSDDisks   []Disk            `yaml:"ssd" json:"ssd"`
 	PublicIP4  bool              `yaml:"public_ip4" json:"public_ip4"`
 	PublicIP6  bool              `yaml:"public_ip6" json:"public_ip6"`
-	Planetary  bool              `yaml:"planetary" json:"planetary"`
+	Ygg        bool              `yaml:"ygg" json:"ygg"`
+	Mycelium   bool              `yaml:"mycelium" json:"mycelium"`
 	Flist      string            `yaml:"flist" validate:"required" json:"flist"`
 	RootSize   uint64            `yaml:"root_size" validate:"max=10240" json:"root_size"` // max 10 TB
 	Entrypoint string            `yaml:"entry_point" validate:"required" json:"entry_point"`
@@ -59,7 +60,8 @@ type vmOutput struct {
 	NetworkName string
 	PublicIP4   string
 	PublicIP6   string
-	PlanetaryIP string
+	YggIP       string
+	MyceliumIP  string
 	IP          string
 	Mounts      []workloads.Mount
 	NodeID      uint32
