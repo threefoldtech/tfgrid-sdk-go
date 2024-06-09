@@ -98,7 +98,7 @@ type TFPluginClient struct {
 
 	// contracts
 	graphQl         graphql.GraphQl
-	ContractsGetter graphql.ContractsGetterI
+	ContractsGetter graphql.ContractsGetter
 
 	// calculator
 	Calculator calculator.Calculator
@@ -339,10 +339,9 @@ func NewTFPluginClient(
 		return TFPluginClient{}, errors.Wrapf(err, "could not create a new graphql with url: %s", graphqlURL)
 	}
 
-	contractsGetter := graphql.NewContractsGetter(tfPluginClient.TwinID, tfPluginClient.graphQl, tfPluginClient.SubstrateConn, tfPluginClient.NcPool)
-	tfPluginClient.ContractsGetter = &contractsGetter
+	tfPluginClient.ContractsGetter = graphql.NewContractsGetter(tfPluginClient.TwinID, tfPluginClient.graphQl, tfPluginClient.SubstrateConn, tfPluginClient.NcPool)
 
-	tfPluginClient.State = state.NewState(tfPluginClient.NcPool, tfPluginClient.SubstrateConn, tfPluginClient.ContractsGetter)
+	tfPluginClient.State = state.NewState(tfPluginClient.NcPool, tfPluginClient.SubstrateConn)
 
 	tfPluginClient.Calculator = calculator.NewCalculator(tfPluginClient.SubstrateConn, tfPluginClient.Identity)
 
