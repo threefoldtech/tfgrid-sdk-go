@@ -350,7 +350,7 @@ func buildVMDeployment(vm Vms, name, networkName, sshKey string, mounts []worklo
 	}
 
 	if !vm.PublicIP4 && !vm.Ygg && !vm.Mycelium {
-		log.Warn().Str("vms group", vm.Name).Msg("Planetary and public IP options are false. Setting planetary IP to true")
+		log.Warn().Str("vms group", vm.Name).Msg("ygg ip, mycelium ip and public IP options are false. Setting ygg IP to true")
 		vm.Ygg = true
 	}
 
@@ -364,7 +364,7 @@ func buildVMDeployment(vm Vms, name, networkName, sshKey string, mounts []worklo
 		PublicIP6:      vm.PublicIP6,
 		MyceliumIPSeed: myceliumSeed,
 		Planetary:      vm.Ygg,
-		RootfsSize:     int(vm.RootSize * 124), // RootSize is in MB
+		RootfsSize:     int(vm.RootSize * 1024), // RootSize is in MB
 		Entrypoint:     vm.Entrypoint,
 		EnvVars:        envVars,
 		Mounts:         mounts,
