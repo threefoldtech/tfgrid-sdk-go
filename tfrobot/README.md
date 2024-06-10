@@ -45,6 +45,8 @@ vms:
     mem: 2 # amount of  memory in GB
     public_ip4: false
     public_ip6: false
+    ygg_ip: false
+    mycelium_ip: true
     flist: "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"
     entry_point: '/sbin/zinit init'
     root_size: 0 # root size in GB, 0 is the default
@@ -115,7 +117,8 @@ tfrobot deploy -c path/to/your/config.yaml
 | node_group | name of node_group the vm belongs to | should be defined in node_groups |
 | cpu | number of cpu for vm | nonzero positive integer max = 32  |
 | mem | free memory in the vm in GB | min = 0.25, max 256 |
-| planetary | should the vm have yggdrasil ip | `true` or `false` |
+| ygg_ip | should the vm have yggdrasil ip | `true` or `false` |
+| mycelium_ip | should the vm have mycelium ip | `true` or `false` |
 | public_ip4 | should the vm have free ip v4 | `true` or `false` |
 | public_ip6 | should the vm have free ip v6 | `true` or `false` |
 | flist | should be a link to valid flist | valid flist url with `.flist` or `.fl` extension |

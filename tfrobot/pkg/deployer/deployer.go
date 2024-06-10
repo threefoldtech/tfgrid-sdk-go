@@ -121,7 +121,7 @@ func deployNodeGroup(
 	nodeGroup NodesGroup,
 	excludedNodes []uint64,
 	vms []Vms,
-	sshKey map[string]string,
+	sshKeys map[string]string,
 ) error {
 	log.Info().Str("Node group", nodeGroup.Name).Msg("Filter nodes")
 	nodesIDs, err := filterNodes(ctx, tfPluginClient, nodeGroup, excludedNodes)
@@ -132,7 +132,7 @@ func deployNodeGroup(
 
 	if groupDeployments.networkDeployments == nil {
 		log.Debug().Str("Node group", nodeGroup.Name).Msg("Parsing vms group")
-		*groupDeployments = parseVMsGroup(vms, nodeGroup.Name, nodesIDs, sshKey)
+		*groupDeployments = parseVMsGroup(vms, nodeGroup.Name, nodesIDs, sshKeys)
 	} else {
 		log.Debug().Str("Node group", nodeGroup.Name).Msg("Updating vms group")
 		updateFailedDeployments(ctx, tfPluginClient, nodesIDs, groupDeployments)
