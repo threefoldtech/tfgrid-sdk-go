@@ -230,11 +230,6 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 	// we loop over all it's vms and create network and vm deployment for it
 	// the nodesIDsIdx is a counter used to get nodeID to be able to distribute load over all nodes
 	for _, vmGroup := range vms {
-		envVars := vmGroup.EnvVars
-		if envVars == nil {
-			envVars = map[string]string{}
-		}
-		envVars["SSH_KEY"] = sshKeys[vmGroup.SSHKey]
 		solutionType := fmt.Sprintf("vm/%s", vmGroup.NodeGroup)
 
 		for i := 0; i < int(vmGroup.Count); i++ {
@@ -244,37 +239,9 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 			vmName := fmt.Sprintf("%s%d", vmGroup.Name, i)
 			disks, mounts := parseDisks(vmName, vmGroup.SSDDisks)
 
-			network := workloads.ZNet{
-				Name:        fmt.Sprintf("%s_network", vmName),
-				Description: "network for mass deployment",
-				Nodes:       []uint32{nodeID},
-				IPRange: gridtypes.NewIPNet(net.IPNet{
-					IP:   net.IPv4(10, 20, 0, 0),
-					Mask: net.CIDRMask(16, 32),
-				}),
-				AddWGAccess:  false,
-				SolutionType: solutionType,
-			}
+			network := buildNetworkDeployment(vmGroup, nodeID, vmName, solutionType)
+			vm := buildVMDeployment(vmGroup, vmName, network.Name, sshKeys[vmGroup.SSHKey], mounts)
 
-			if !vmGroup.PublicIP4 && !vmGroup.Planetary {
-				log.Warn().Str("vms group", vmGroup.Name).Msg("Planetary and public IP options are false. Setting planetary IP to true")
-				vmGroup.Planetary = true
-			}
-
-			vm := workloads.VM{
-				Name:        vmName,
-				NetworkName: network.Name,
-				Flist:       vmGroup.Flist,
-				CPU:         int(vmGroup.FreeCPU),
-				Memory:      int(vmGroup.FreeMRU * 1024), // Memory is in MB
-				PublicIP:    vmGroup.PublicIP4,
-				PublicIP6:   vmGroup.PublicIP6,
-				Planetary:   vmGroup.Planetary,
-				RootfsSize:  int(vmGroup.RootSize * 1024), // RootSize is in MB
-				Entrypoint:  vmGroup.Entrypoint,
-				EnvVars:     envVars,
-				Mounts:      mounts,
-			}
 			deployment := workloads.NewDeployment(vm.Name, nodeID, solutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil)
 
 			vmDeployments = append(vmDeployments, &deployment)
@@ -337,4 +304,69 @@ func getBlockedNodes(groupDeployments groupDeploymentsInfo) []uint64 {
 	}
 
 	return blockedNodes
+}
+
+func buildNetworkDeployment(vm Vms, nodeID uint32, name, solutionType string) workloads.ZNet {
+	// set up mycelium keys
+	myceliumKeys := make(map[uint32][]byte)
+	if vm.Mycelium {
+		key, err := workloads.RandomMyceliumKey()
+		if err != nil {
+			log.Debug().Err(err).Send()
+		}
+
+		myceliumKeys[nodeID] = key
+	}
+
+	return workloads.ZNet{
+		Name:        fmt.Sprintf("%s_network", name),
+		Description: "network for mass deployment",
+		Nodes:       []uint32{nodeID},
+		IPRange: gridtypes.NewIPNet(net.IPNet{
+			IP:   net.IPv4(10, 20, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}),
+		AddWGAccess:  false,
+		MyceliumKeys: myceliumKeys,
+		SolutionType: solutionType,
+	}
+}
+
+func buildVMDeployment(vm Vms, name, networkName, sshKey string, mounts []workloads.Mount) workloads.VM {
+	envVars := vm.EnvVars
+	if envVars == nil {
+		envVars = map[string]string{}
+	}
+	envVars["SSH_KEY"] = sshKey
+
+	// get random mycelium seeds
+	var myceliumSeed []byte
+	var err error
+	if vm.Mycelium {
+		myceliumSeed, err = workloads.RandomMyceliumIPSeed()
+		if err != nil {
+			log.Debug().Err(err).Send()
+		}
+	}
+
+	if !vm.PublicIP4 && !vm.Ygg && !vm.Mycelium {
+		log.Warn().Str("vms group", vm.Name).Msg("ygg ip, mycelium ip and public IP options are false. Setting ygg IP to true")
+		vm.Ygg = true
+	}
+
+	return workloads.VM{
+		Name:           name,
+		NetworkName:    networkName,
+		Flist:          vm.Flist,
+		CPU:            int(vm.FreeCPU),
+		Memory:         int(vm.FreeMRU * 1024), // Memory is in MB
+		PublicIP:       vm.PublicIP4,
+		PublicIP6:      vm.PublicIP6,
+		MyceliumIPSeed: myceliumSeed,
+		Planetary:      vm.Ygg,
+		RootfsSize:     int(vm.RootSize * 1024), // RootSize is in MB
+		Entrypoint:     vm.Entrypoint,
+		EnvVars:        envVars,
+		Mounts:         mounts,
+	}
 }

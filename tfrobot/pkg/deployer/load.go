@@ -179,7 +179,8 @@ func loadGroupDeployments(ctx context.Context, tfPluginClient deployer.TFPluginC
 						ContractID:  deployment.ContractID,
 						PublicIP4:   vm.ComputedIP,
 						PublicIP6:   vm.ComputedIP6,
-						PlanetaryIP: vm.PlanetaryIP,
+						YggIP:       vm.PlanetaryIP,
+						MyceliumIP:  vm.MyceliumIP,
 						IP:          vm.IP,
 						Mounts:      vm.Mounts,
 					}
