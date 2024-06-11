@@ -168,7 +168,7 @@ func TestLoadGatewayNameFromGrid(t *testing.T) {
 	gatewayWl := gridtypes.Workload{
 		Version: 0,
 		Type:    zos.GatewayNameProxyType,
-		Name:    gridtypes.Name("test"),
+		Name:    gridtypes.Name(deploymentName),
 		Data: gridtypes.MustMarshal(zos.GatewayNameProxy{
 			GatewayBase: zos.GatewayBase{
 				TLSPassthrough: true,
