@@ -13,10 +13,10 @@ require (
 	github.com/rs/zerolog v1.33.0
 	github.com/sethvargo/go-retry v0.2.4
 	github.com/stretchr/testify v1.9.0
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240227171040-f2a20ee3e965
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.10.2
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.11.4
-	github.com/threefoldtech/zos v0.5.6-0.20240226114056-364e04acbed3
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240416134707-eb36aa90df2d
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.10
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.10
+	github.com/threefoldtech/zos v0.5.6-0.20240611092312-66184cdeb953
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.23.0
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
@@ -36,7 +36,7 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
-	github.com/google/uuid v1.5.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
