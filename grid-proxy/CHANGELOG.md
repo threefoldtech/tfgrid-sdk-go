@@ -12,6 +12,12 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.11
+
+---
+
+- `fix` handle nullable workloads number
+
 ### v0.15.9
 
 ---
