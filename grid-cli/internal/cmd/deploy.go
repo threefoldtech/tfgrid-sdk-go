@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -108,7 +109,11 @@ func DeployGatewayName(ctx context.Context, t deployer.TFPluginClient, gateway w
 	if err != nil {
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "failed to deploy gateway on node %d", gateway.NodeID)
 	}
-	return t.State.LoadGatewayNameFromGrid(ctx, gateway.NodeID, gateway.Name, gateway.Name)
+
+	subdomains := strings.Split(gateway.Name, ".")
+	contractName := subdomains[len(subdomains)-1]
+
+	return t.State.LoadGatewayNameFromGrid(ctx, gateway.NodeID, contractName, strings.ReplaceAll(gateway.Name, ".", "_"))
 }
 
 // DeployGatewayFQDN deploys a gateway fqdn

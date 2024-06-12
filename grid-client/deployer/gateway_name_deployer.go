@@ -3,8 +3,10 @@ package deployer
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -69,10 +71,28 @@ func (d *GatewayNameDeployer) Deploy(ctx context.Context, gw *workloads.GatewayN
 	if err := d.InvalidateNameContract(ctx, gw); err != nil {
 		return err
 	}
+
 	if gw.NameContractID == 0 {
-		gw.NameContractID, err = d.tfPluginClient.SubstrateConn.CreateNameContract(d.tfPluginClient.Identity, gw.Name)
-		if err != nil {
-			return err
+		createNameContract := true
+
+		subdomains := strings.Split(gw.Name, ".")
+		contractName := subdomains[len(subdomains)-1]
+
+		if len(subdomains) >= 2 { // if we have a given subdomain of the name (subdomain.name) check if the name exists
+			contractID, err := d.tfPluginClient.SubstrateConn.GetContractIDByNameRegistration(contractName)
+			if err != nil && err != substrate.ErrNotFound {
+				return err
+			}
+			if contractID > 0 {
+				createNameContract = false
+			}
+		}
+
+		if createNameContract {
+			gw.NameContractID, err = d.tfPluginClient.SubstrateConn.CreateNameContract(d.tfPluginClient.Identity, contractName)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -82,7 +102,7 @@ func (d *GatewayNameDeployer) Deploy(ctx context.Context, gw *workloads.GatewayN
 		if cancelErr != nil {
 			return fmt.Errorf("failed to deploy gateway name %v, failed to cancel gateway name contract %v", err, cancelErr)
 		}
-		return errors.Wrapf(err, "failed to deploy gateway name Id: %d", gw.NodeDeploymentID)
+		return errors.Wrapf(err, "failed to deploy gateway name id: %v", gw.NodeDeploymentID)
 	}
 	// update state
 	// error is not returned immediately before updating state because of untracked failed deployments

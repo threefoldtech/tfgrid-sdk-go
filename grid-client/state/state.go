@@ -103,18 +103,18 @@ func (st *State) LoadQSFSFromGrid(ctx context.Context, nodeID uint32, name strin
 
 // LoadGatewayNameFromGrid loads a gateway name proxy from grid
 func (st *State) LoadGatewayNameFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.GatewayNameProxy, error) {
-	wl, dl, err := st.GetWorkloadInDeployment(ctx, nodeID, name, deploymentName)
+	wl, dl, err := st.GetWorkloadInDeployment(ctx, nodeID, deploymentName, deploymentName)
 	if err != nil {
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "could not get workload from node %d within deployment %v", nodeID, dl)
 	}
 
-	nameContractID, err := st.Substrate.GetContractIDByNameRegistration(wl.Name.String())
+	nameContractID, err := st.Substrate.GetContractIDByNameRegistration(name)
 	if err != nil {
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "failed to get gateway name contract %s", name)
 	}
 	deploymentData, err := workloads.ParseDeploymentData(dl.Metadata)
 	if err != nil {
-		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "could not generate deployment metadata for %s", name)
+		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "could not generate deployment metadata for %s", deploymentName)
 	}
 	gateway, err := workloads.NewGatewayNameProxyFromZosWorkload(wl)
 	if err != nil {

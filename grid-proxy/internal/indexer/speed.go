@@ -9,7 +9,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 
-	zosPerfPkg "github.com/threefoldtech/zos/pkg/perf"
+	"github.com/threefoldtech/zos/pkg"
 	zosIPerfPkg "github.com/threefoldtech/zos/pkg/perf/iperf"
 )
 
@@ -40,7 +40,7 @@ func (w *SpeedWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32)
 	}{
 		Name: testName,
 	}
-	var response zosPerfPkg.TaskResult
+	var response pkg.TaskResult
 	if err := callNode(ctx, rmb, perfTestCallCmd, payload, twinId, &response); err != nil {
 		return []types.Speed{}, err
 	}
@@ -57,7 +57,7 @@ func (w *SpeedWork) Upsert(ctx context.Context, db db.Database, batch []types.Sp
 	return db.UpsertNetworkSpeed(ctx, batch)
 }
 
-func parseSpeed(res zosPerfPkg.TaskResult, twinId uint32) (types.Speed, error) {
+func parseSpeed(res pkg.TaskResult, twinId uint32) (types.Speed, error) {
 	speed := types.Speed{
 		NodeTwinId: twinId,
 	}
