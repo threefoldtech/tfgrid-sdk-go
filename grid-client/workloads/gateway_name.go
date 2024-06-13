@@ -3,7 +3,6 @@ package workloads
 
 import (
 	"encoding/json"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -76,7 +75,7 @@ func (g *GatewayNameProxy) ZosWorkload() gridtypes.Workload {
 	return gridtypes.Workload{
 		Version: 0,
 		Type:    zos.GatewayNameProxyType,
-		Name:    gridtypes.Name(strings.ReplaceAll(g.Name, ".", "_")),
+		Name:    gridtypes.Name(g.Name),
 		// REVISE: whether description should be set here
 		Data: gridtypes.MustMarshal(zos.GatewayNameProxy{
 			GatewayBase: zos.GatewayBase{
@@ -92,12 +91,12 @@ func (g *GatewayNameProxy) ZosWorkload() gridtypes.Workload {
 // GenerateMetadata generates gateway deployment metadata
 func (g *GatewayNameProxy) GenerateMetadata() (string, error) {
 	if len(g.SolutionType) == 0 {
-		g.SolutionType = strings.ReplaceAll(g.Name, ".", "_")
+		g.SolutionType = g.Name
 	}
 
 	deploymentData := DeploymentData{
 		Version:     Version,
-		Name:        strings.ReplaceAll(g.Name, ".", "_"),
+		Name:        g.Name,
 		Type:        "Gateway Name",
 		ProjectName: g.SolutionType,
 	}
