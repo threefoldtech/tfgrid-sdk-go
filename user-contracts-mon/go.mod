@@ -42,7 +42,7 @@ require (
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240416134707-eb36aa90df2d // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.10 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.10 // indirect
-	github.com/threefoldtech/zos v0.5.6-0.20240611092312-66184cdeb953 // indirect
+	github.com/threefoldtech/zos v0.5.6-0.20240613101720-0a4726af4edd // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
