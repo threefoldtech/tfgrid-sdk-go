@@ -3,10 +3,8 @@ package deployer
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/pkg/errors"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -73,26 +71,9 @@ func (d *GatewayNameDeployer) Deploy(ctx context.Context, gw *workloads.GatewayN
 	}
 
 	if gw.NameContractID == 0 {
-		createNameContract := true
-
-		subdomains := strings.Split(gw.Name, ".")
-		contractName := subdomains[len(subdomains)-1]
-
-		if len(subdomains) >= 2 { // if we have a given subdomain of the name (subdomain.name) check if the name exists
-			contractID, err := d.tfPluginClient.SubstrateConn.GetContractIDByNameRegistration(contractName)
-			if err != nil && err != substrate.ErrNotFound {
-				return err
-			}
-			if contractID > 0 {
-				createNameContract = false
-			}
-		}
-
-		if createNameContract {
-			gw.NameContractID, err = d.tfPluginClient.SubstrateConn.CreateNameContract(d.tfPluginClient.Identity, contractName)
-			if err != nil {
-				return err
-			}
+		gw.NameContractID, err = d.tfPluginClient.SubstrateConn.CreateNameContract(d.tfPluginClient.Identity, gw.Name)
+		if err != nil {
+			return err
 		}
 	}
 
