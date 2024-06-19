@@ -23,6 +23,7 @@ vms:
     cpu: 1
     mem: 1
     public_ip4: true
+    mycelium_ip: true
     flist: https://hub.grid.tf/tf-official-apps/base:latest.flist
     entry_point: /sbin/zinit init
     ssh_key: key1
@@ -30,7 +31,6 @@ vms:
   - name: example_b #test deployment of vms with ssd storage
     vms_count: 20
     node_group: group_b
-    mycelium_ip: true
     cpu: 1
     mem: 4
     ssd:
