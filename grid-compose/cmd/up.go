@@ -50,9 +50,26 @@ func up(ctx context.Context) error {
 			EnvVars:     val.Environment,
 			CPU:         int(val.Resources.CPU),
 			Memory:      int(val.Resources.Memory),
-			Planetary:   true,
 			NetworkName: net.Name,
 		}
+
+		for _, net := range val.Networks {
+			switch net {
+			case "publicIp4":
+				vm.PublicIP = true
+			case "publicIp6":
+				vm.PublicIP6 = true
+			case "yggdrasil":
+				vm.Planetary = true
+			case "mycelium":
+				seed, err := internal.GetRandomMyceliumIPSeed()
+				if err != nil {
+					return fmt.Errorf("failed to get mycelium seed: %w", err)
+				}
+				vm.MyceliumIPSeed = seed
+			}
+		}
+
 		dl := workloads.NewDeployment(vm.Name, uint32(val.NodeID), projectName, nil, net.Name, nil, nil, []workloads.VM{vm}, nil)
 		if err := app.Client.DeploymentDeployer.Deploy(ctx, &dl); err != nil {
 			log.Error().Err(err).Msg("reverting deployed network")
@@ -72,7 +89,7 @@ func up(ctx context.Context) error {
 
 	for key, val := range results {
 		fmt.Printf("%s vm addresses:\n", key)
-		fmt.Println("\t", internal.GetVmAddresses(val))
+		fmt.Println(internal.GetVmAddresses(val))
 	}
 	return nil
 }

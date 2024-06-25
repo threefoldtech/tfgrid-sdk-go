@@ -10,3 +10,5 @@ services:
       cpu: 1
       memory: 512
     node_id: 14
+    networks:
+      - yggdrasil
