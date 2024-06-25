@@ -1,0 +1,54 @@
+# not all features here are implemented yet
+version: '1.0.0'
+
+networks:
+  net1:
+    type: 'wg'
+  net2:
+    type: 'myc'
+  net3:
+    type: 'ygg'
+  net4:
+    type: 'ip4'
+  net5:
+    type: 'ip6'
+
+services:
+  web:
+    flist: 'https://hub.grid.tf/tf-official-apps/nginx-latest.flist'
+    environment:
+      - ENV_VAR_NAME=value
+    volumes:
+      - web-data:/data
+    networks:
+      - net1
+    resources:
+      cpu: 2
+      memory: 2
+    depends_on:
+      - database
+  database:
+    flist: 'https://hub.grid.tf/tf-official-apps/postgresql-latest.flist'
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - net1
+      - net2
+      - net3
+    resources:
+      cpu: 4
+      memoryGB: 2
+    healthcheck:
+      test: ['CMD', 'curl' , 'http://{myceliumip}']
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+
+storage:
+  web-data:
+    type: 'zmount'
+    size: 10GB
