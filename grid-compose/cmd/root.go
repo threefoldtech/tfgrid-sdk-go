@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/pkg/types"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -41,6 +41,7 @@ func init() {
 
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(upCmd)
+	rootCmd.AddCommand(psCmd)
 	rootCmd.AddCommand(downCmd)
 }
 
@@ -50,20 +51,9 @@ type App struct {
 }
 
 func NewApp(net, mne, filePath string) (App, error) {
-	file, err := os.Open(filePath)
+	specs, err := LoadSpecsFromFile(filePath)
 	if err != nil {
-		return App{}, fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	content, err := io.ReadAll(file)
-	if err != nil {
-		return App{}, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	var specs types.Specs
-	if err := yaml.Unmarshal(content, &specs); err != nil {
-		return App{}, fmt.Errorf("failed to parse file: %w", err)
+		return App{}, fmt.Errorf("failed to load specs from file: %w", err)
 	}
 
 	client, err := deployer.NewTFPluginClient(mne, deployer.WithNetwork(net))
@@ -75,6 +65,26 @@ func NewApp(net, mne, filePath string) (App, error) {
 		Specs:  specs,
 		Client: client,
 	}, nil
+}
+
+func LoadSpecsFromFile(filePath string) (types.Specs, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return types.Specs{}, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return types.Specs{}, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	var specs types.Specs
+	if err := yaml.Unmarshal(content, &specs); err != nil {
+		return types.Specs{}, fmt.Errorf("failed to parse file: %w", err)
+	}
+
+	return specs, nil
 }
 
 func Execute() {
