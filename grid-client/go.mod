@@ -8,7 +8,7 @@ require (
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/golang/mock v1.6.0
-	github.com/gorilla/schema v1.3.0
+	github.com/gorilla/schema v1.4.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
 	github.com/sethvargo/go-retry v0.2.4
