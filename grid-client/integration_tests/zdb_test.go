@@ -19,6 +19,10 @@ func TestZDBDeployment(t *testing.T) {
 		t.Skipf("plugin creation failed: %v", err)
 	}
 
+	if tfPluginClient.Network == "test" {
+		t.Skipf("https://github.com/threefoldtech/tfgrid-sdk-go/issues/1111")
+	}
+
 	zdbSize := 10
 
 	nodes, err := deployer.FilterNodes(
