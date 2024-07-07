@@ -61,8 +61,8 @@ func (r *requestCounter) ContractBills(ctx context.Context, contractID uint32, l
 	return nil, 0, errors.New("error")
 }
 
-func retryingConstructor(u string) Client {
-	return NewRetryingClientWithTimeout(NewClient(u), 1*time.Millisecond)
+func retryingConstructor(u ...string) Client {
+	return NewRetryingClientWithTimeout(NewClient(u...), 1*time.Millisecond)
 }
 
 func TestRetryingConnectionFailures(t *testing.T) {

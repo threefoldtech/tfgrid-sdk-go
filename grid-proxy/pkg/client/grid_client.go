@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -13,12 +14,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/gorilla/schema"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-var encoder *schema.Encoder
+var (
+	encoder               *schema.Encoder
+	ErrProxyURLNotWorking = errors.New("failed to get a working proxy url")
+)
 
 func init() {
 	encoder = schema.NewEncoder()
@@ -52,15 +58,27 @@ type Client interface {
 
 // Clientimpl concrete implementation of the client to communicate with the grid proxy
 type Clientimpl struct {
-	endpoint string
+	endpoints []string
+	r         int
 }
 
 // NewClient grid proxy client constructor
-func NewClient(endpoint string) Client {
-	if endpoint[len(endpoint)-1] != '/' {
-		endpoint += "/"
+func NewClient(endpoints ...string) Client {
+	for i, endpoint := range endpoints {
+		if endpoint[len(endpoint)-1] != '/' {
+			endpoints[i] += "/"
+		}
 	}
-	proxy := Clientimpl{endpoint}
+
+	rand.Shuffle(len(endpoints), func(i, j int) {
+		endpoints[i], endpoints[j] = endpoints[j], endpoints[i]
+	})
+
+	proxy := Clientimpl{
+		endpoints: endpoints,
+		r:         rand.Intn(len(endpoints)),
+	}
+
 	return &proxy
 }
 
@@ -105,13 +123,18 @@ func RequestPages(r *http.Response) (uint64, error) {
 
 // Ping makes sure the server is up
 func (g *Clientimpl) Ping() error {
-	client := g.newHTTPClient()
 	url, err := g.prepareURL("ping")
 	if err != nil {
 		return errors.Wrap(err, "failed to prepare url")
 	}
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	return g.PingEndpoint(url)
+}
+
+func (g *Clientimpl) PingEndpoint(endpoint string) error {
+	client := g.newHTTPClient()
+
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
 		return err
 	}
@@ -125,7 +148,8 @@ func (g *Clientimpl) Ping() error {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("non ok return status code from the the grid proxy home page: %s", http.StatusText(res.StatusCode))
+		err = parseError(res.Body)
+		return errors.Wrapf(err, "non ok return status code from the the grid proxy home page: %s", http.StatusText(res.StatusCode))
 	}
 
 	return nil
@@ -465,6 +489,31 @@ func (g *Clientimpl) newHTTPClient() *http.Client {
 	}
 }
 
+func (g *Clientimpl) baseURL() (string, error) {
+	var baseURL string
+
+	boff := backoff.WithMaxRetries(
+		backoff.NewConstantBackOff(1*time.Nanosecond),
+		2,
+	)
+
+	err := backoff.RetryNotify(func() error {
+		baseURL = g.endpoints[g.r]
+		log.Debug().Str("url", baseURL).Msg("pinging")
+		g.r = (g.r + 1) % len(g.endpoints)
+
+		return g.PingEndpoint(fmt.Sprintf("%s/ping", baseURL))
+	}, boff, func(err error, _ time.Duration) {
+		log.Error().Err(err).Msg("failed to connect to endpoint, retrying")
+	})
+
+	if err != nil {
+		return "", errors.Wrap(ErrProxyURLNotWorking, err.Error())
+	}
+
+	return baseURL, nil
+}
+
 func (g *Clientimpl) prepareURL(path string, params ...interface{}) (string, error) {
 	values := url.Values{}
 
@@ -474,7 +523,10 @@ func (g *Clientimpl) prepareURL(path string, params ...interface{}) (string, err
 		}
 	}
 
-	baseURL := g.endpoint
+	baseURL, err := g.baseURL()
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to get proxy baseURL")
+	}
 
 	u, err := url.ParseRequestURI(baseURL)
 	if err != nil {
