@@ -9,17 +9,62 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/rand"
 )
 
 // GraphQl for tf graphql
 type GraphQl struct {
-	url string
+	urls []string
+	r    int
 }
 
 // NewGraphQl new tf graphql
-func NewGraphQl(url string) (GraphQl, error) {
-	return GraphQl{url}, nil
+func NewGraphQl(urls ...string) (GraphQl, error) {
+	if len(urls) == 0 {
+		return GraphQl{}, errors.Errorf("graphql url is required")
+	}
+
+	rand.Shuffle(len(urls), func(i, j int) {
+		urls[i], urls[j] = urls[j], urls[i]
+	})
+
+	return GraphQl{urls: urls, r: rand.Intn(len(urls))}, nil
+}
+
+func (g *GraphQl) baseURL() (string, error) {
+	var endpoint string
+
+	boff := backoff.WithMaxRetries(
+		backoff.NewConstantBackOff(1*time.Nanosecond),
+		2,
+	)
+
+	err := backoff.RetryNotify(func() error {
+		endpoint = g.urls[g.r]
+		log.Debug().Str("url", endpoint).Msg("checking")
+		g.r = (g.r + 1) % len(g.urls)
+
+		cl := &http.Client{
+			Timeout: 10 * time.Second,
+		}
+		_, err := cl.Get(endpoint)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}, boff, func(err error, _ time.Duration) {
+		log.Error().Err(err).Msg("failed to connect to endpoint, retrying")
+	})
+
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get a working graphql url")
+	}
+
+	return endpoint, nil
 }
 
 // GetItemTotalCount return count of items
@@ -37,7 +82,13 @@ func (g *GraphQl) GetItemTotalCount(itemName string, options string) (float64, e
 	cl := &http.Client{
 		Timeout: 10 * time.Second,
 	}
-	countResponse, err := cl.Post(g.url, "application/json", bodyReader)
+
+	baseURL, err := g.baseURL()
+	if err != nil {
+		return 0, err
+	}
+
+	countResponse, err := cl.Post(baseURL, "application/json", bodyReader)
 	if err != nil {
 		return 0, err
 	}
@@ -69,7 +120,13 @@ func (g *GraphQl) Query(body string, variables map[string]interface{}) (map[stri
 	cl := &http.Client{
 		Timeout: 10 * time.Second,
 	}
-	resp, err := cl.Post(g.url, "application/json", bodyReader)
+
+	baseURL, err := g.baseURL()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := cl.Post(baseURL, "application/json", bodyReader)
 	if err != nil {
 		return result, err
 	}
