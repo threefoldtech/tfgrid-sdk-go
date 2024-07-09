@@ -33,8 +33,14 @@ jobs:
         env:
           MNEMONIC: ${{ secrets.MNEMONICS }}
           NETWORK: main
-        # run: make integration
         run: |
             go run main.go deploy -c ./example/test.yaml
+
+      - name: Cleanup
+        if: always()
+        env:
+          MNEMONIC: ${{ secrets.MNEMONICS }}
+          NETWORK: main
+        run: |
             sleep 120 # sleep to make sure graphql is up to date
             go run main.go cancel -c ./example/test.yaml -d
