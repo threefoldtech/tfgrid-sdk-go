@@ -3,14 +3,12 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -215,7 +213,7 @@ func testStatusCodeFailures(t *testing.T, f ProxyFunc) {
 		if err == nil {
 			t.Fatalf("proxy endpoint %s didn't fail for a status code error", name)
 		}
-		if !strings.Contains(err.Error(), "some generic error") {
+		if err.Error() != "some generic error" {
 			t.Fatalf("error parsed incorrectly in %s: %s, should be: some generic error", name, err.Error())
 		}
 	}
@@ -253,7 +251,7 @@ func AssertHTTPRequest(
 	defer ts.Close()
 	proxy := f(ts.URL)
 	err := call(proxy)
-	if err != nil && !errors.Is(err, ErrProxyURLNotWorking) {
+	if err != nil {
 		log.Printf(
 			`
 			path: %s
@@ -356,12 +354,12 @@ func TestPrepareURL(t *testing.T) {
 	}
 	limit := types.DefaultLimit()
 
-	endpoint := "https://gridproxy.grid.tf"
+	endpoint := "http://www.gridproxy.com"
 	client := Clientimpl{
 		endpoints: []string{endpoint},
 	}
 
-	want := fmt.Sprintf("%s/nodes?status=st&free_mru=10&farm_ids=1&farm_ids=2&farm_ids=3&dedicated=true&size=50&page=1", endpoint)
+	want := "http://www.gridproxy.com/nodes?status=st&free_mru=10&farm_ids=1&farm_ids=2&farm_ids=3&dedicated=true&size=50&page=1"
 	wantURL, err := url.Parse(want)
 	assert.NoError(t, err)
 
