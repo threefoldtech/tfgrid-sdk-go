@@ -24,47 +24,10 @@ type GraphQl struct {
 // NewGraphQl new tf graphql
 func NewGraphQl(urls ...string) (GraphQl, error) {
 	if len(urls) == 0 {
-		return GraphQl{}, errors.Errorf("graphql url is required")
+		return GraphQl{}, errors.New("graphql url is required")
 	}
-
-	rand.Shuffle(len(urls), func(i, j int) {
-		urls[i], urls[j] = urls[j], urls[i]
-	})
 
 	return GraphQl{urls: urls, r: rand.Intn(len(urls))}, nil
-}
-
-func (g *GraphQl) baseURL() (string, error) {
-	var endpoint string
-
-	boff := backoff.WithMaxRetries(
-		backoff.NewConstantBackOff(1*time.Nanosecond),
-		2,
-	)
-
-	err := backoff.RetryNotify(func() error {
-		endpoint = g.urls[g.r]
-		log.Debug().Str("url", endpoint).Msg("checking")
-		g.r = (g.r + 1) % len(g.urls)
-
-		cl := &http.Client{
-			Timeout: 10 * time.Second,
-		}
-		_, err := cl.Get(endpoint)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}, boff, func(err error, _ time.Duration) {
-		log.Error().Err(err).Msg("failed to connect to endpoint, retrying")
-	})
-
-	if err != nil {
-		return "", errors.Wrap(err, "failed to get a working graphql url")
-	}
-
-	return endpoint, nil
 }
 
 // GetItemTotalCount return count of items
@@ -79,16 +42,7 @@ func (g *GraphQl) GetItemTotalCount(itemName string, options string) (float64, e
 
 	bodyReader := bytes.NewReader(jsonBody)
 
-	cl := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	baseURL, err := g.baseURL()
-	if err != nil {
-		return 0, err
-	}
-
-	countResponse, err := cl.Post(baseURL, "application/json", bodyReader)
+	countResponse, err := g.httpPost(bodyReader)
 	if err != nil {
 		return 0, err
 	}
@@ -117,16 +71,7 @@ func (g *GraphQl) Query(body string, variables map[string]interface{}) (map[stri
 
 	bodyReader := bytes.NewReader(jsonBody)
 
-	cl := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	baseURL, err := g.baseURL()
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := cl.Post(baseURL, "application/json", bodyReader)
+	resp, err := g.httpPost(bodyReader)
 	if err != nil {
 		return result, err
 	}
@@ -159,4 +104,45 @@ func parseHTTPResponse(resp *http.Response) (map[string]interface{}, error) {
 	}
 
 	return data, nil
+}
+
+func (g *GraphQl) httpPost(body io.Reader) (*http.Response, error) {
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	var (
+		endpoint string
+		reqErr   error
+		resp     *http.Response
+	)
+
+	backoffCfg := backoff.WithMaxRetries(
+		backoff.NewConstantBackOff(1*time.Millisecond),
+		2,
+	)
+
+	err := backoff.RetryNotify(func() error {
+		endpoint = g.urls[g.r]
+		log.Debug().Str("url", endpoint).Msg("checking")
+
+		resp, reqErr = cl.Post(endpoint, "application/json", body)
+		if reqErr != nil &&
+			(errors.Is(reqErr, http.ErrAbortHandler) ||
+				errors.Is(reqErr, http.ErrHandlerTimeout) ||
+				errors.Is(reqErr, http.ErrServerClosed)) {
+			g.r = (g.r + 1) % len(g.urls)
+			return reqErr
+		}
+
+		return nil
+	}, backoffCfg, func(err error, _ time.Duration) {
+		log.Error().Err(err).Msg("failed to connect to endpoint, retrying")
+	})
+
+	if err != nil {
+		log.Error().Err(err).Msg("failed to connect to endpoint")
+	}
+
+	return resp, reqErr
 }
