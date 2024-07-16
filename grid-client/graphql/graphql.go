@@ -9,17 +9,25 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/rand"
 )
 
 // GraphQl for tf graphql
 type GraphQl struct {
-	url string
+	urls []string
+	r    int
 }
 
 // NewGraphQl new tf graphql
-func NewGraphQl(url string) (GraphQl, error) {
-	return GraphQl{url}, nil
+func NewGraphQl(urls ...string) (GraphQl, error) {
+	if len(urls) == 0 {
+		return GraphQl{}, errors.New("graphql url is required")
+	}
+
+	return GraphQl{urls: urls, r: rand.Intn(len(urls))}, nil
 }
 
 // GetItemTotalCount return count of items
@@ -34,10 +42,7 @@ func (g *GraphQl) GetItemTotalCount(itemName string, options string) (float64, e
 
 	bodyReader := bytes.NewReader(jsonBody)
 
-	cl := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-	countResponse, err := cl.Post(g.url, "application/json", bodyReader)
+	countResponse, err := g.httpPost(bodyReader)
 	if err != nil {
 		return 0, err
 	}
@@ -66,10 +71,7 @@ func (g *GraphQl) Query(body string, variables map[string]interface{}) (map[stri
 
 	bodyReader := bytes.NewReader(jsonBody)
 
-	cl := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-	resp, err := cl.Post(g.url, "application/json", bodyReader)
+	resp, err := g.httpPost(bodyReader)
 	if err != nil {
 		return result, err
 	}
@@ -102,4 +104,45 @@ func parseHTTPResponse(resp *http.Response) (map[string]interface{}, error) {
 	}
 
 	return data, nil
+}
+
+func (g *GraphQl) httpPost(body io.Reader) (*http.Response, error) {
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	var (
+		endpoint string
+		reqErr   error
+		resp     *http.Response
+	)
+
+	backoffCfg := backoff.WithMaxRetries(
+		backoff.NewConstantBackOff(1*time.Millisecond),
+		2,
+	)
+
+	err := backoff.RetryNotify(func() error {
+		endpoint = g.urls[g.r]
+		log.Debug().Str("url", endpoint).Msg("checking")
+
+		resp, reqErr = cl.Post(endpoint, "application/json", body)
+		if reqErr != nil &&
+			(errors.Is(reqErr, http.ErrAbortHandler) ||
+				errors.Is(reqErr, http.ErrHandlerTimeout) ||
+				errors.Is(reqErr, http.ErrServerClosed)) {
+			g.r = (g.r + 1) % len(g.urls)
+			return reqErr
+		}
+
+		return nil
+	}, backoffCfg, func(err error, _ time.Duration) {
+		log.Error().Err(err).Msg("failed to connect to endpoint, retrying")
+	})
+
+	if err != nil {
+		log.Error().Err(err).Msg("failed to connect to endpoint")
+	}
+
+	return resp, reqErr
 }
