@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -56,7 +55,7 @@ type Client interface {
 // Clientimpl concrete implementation of the client to communicate with the grid proxy
 type Clientimpl struct {
 	endpoints []string
-	r         int
+	i         int
 }
 
 // NewClient grid proxy client constructor
@@ -69,7 +68,7 @@ func NewClient(endpoints ...string) Client {
 
 	proxy := Clientimpl{
 		endpoints: endpoints,
-		r:         rand.Intn(len(endpoints)),
+		i:         0,
 	}
 
 	return &proxy
@@ -374,7 +373,7 @@ func (g *Clientimpl) prepareURL(path string, params ...interface{}) (string, err
 		}
 	}
 
-	baseURL := g.endpoints[g.r]
+	baseURL := g.endpoints[g.i]
 
 	u, err := url.ParseRequestURI(baseURL)
 	if err != nil {
@@ -413,7 +412,7 @@ func (g *Clientimpl) httpGet(path string, params ...interface{}) (resp *http.Res
 			(errors.Is(reqErr, http.ErrAbortHandler) ||
 				errors.Is(reqErr, http.ErrHandlerTimeout) ||
 				errors.Is(reqErr, http.ErrServerClosed)) {
-			g.r = (g.r + 1) % len(g.endpoints)
+			g.i = (g.i + 1) % len(g.endpoints)
 			return reqErr
 		}
 

@@ -12,13 +12,12 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/exp/rand"
 )
 
 // GraphQl for tf graphql
 type GraphQl struct {
 	urls []string
-	r    int
+	i    int
 }
 
 // NewGraphQl new tf graphql
@@ -27,7 +26,7 @@ func NewGraphQl(urls ...string) (GraphQl, error) {
 		return GraphQl{}, errors.New("graphql url is required")
 	}
 
-	return GraphQl{urls: urls, r: rand.Intn(len(urls))}, nil
+	return GraphQl{urls: urls, i: 0}, nil
 }
 
 // GetItemTotalCount return count of items
@@ -123,7 +122,7 @@ func (g *GraphQl) httpPost(body io.Reader) (*http.Response, error) {
 	)
 
 	err := backoff.RetryNotify(func() error {
-		endpoint = g.urls[g.r]
+		endpoint = g.urls[g.i]
 		log.Debug().Str("url", endpoint).Msg("checking")
 
 		resp, reqErr = cl.Post(endpoint, "application/json", body)
@@ -131,7 +130,7 @@ func (g *GraphQl) httpPost(body io.Reader) (*http.Response, error) {
 			(errors.Is(reqErr, http.ErrAbortHandler) ||
 				errors.Is(reqErr, http.ErrHandlerTimeout) ||
 				errors.Is(reqErr, http.ErrServerClosed)) {
-			g.r = (g.r + 1) % len(g.urls)
+			g.i = (g.i + 1) % len(g.urls)
 			return reqErr
 		}
 
