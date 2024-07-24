@@ -43,7 +43,7 @@ services:
       cpu: 4
       memoryGB: 2
     healthcheck:
-      test: ['CMD', 'curl' , 'http://{myceliumip}']
+      test: ['CMD', 'curl', 'http://{myceliumip}']
       interval: 1m30s
       timeout: 10s
       retries: 3

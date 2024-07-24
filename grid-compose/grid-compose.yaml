@@ -1,0 +1,11 @@
+version: '1.0.0'
+services:
+  web:
+    flist: 'https://hub.grid.tf/tf-official-apps/base:latest.flist'
+    networks: ['publicip4']
+    node_id: 14
+    entrypoint: '/sbin/zinit init'
+    resources:
+      cpu: 2
+      memory: 1024
+      disk: 4096

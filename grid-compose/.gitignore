@@ -1,0 +1,2 @@
+bin/*
+.pre-commit-config.yaml
