@@ -57,8 +57,10 @@ func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, mas
 	networkName := fmt.Sprintf("%snetwork", master.Name)
 	projectName := fmt.Sprintf("kubernetes/%s", master.Name)
 	networkNodes := []uint32{master.Node}
-	if len(workers) > 0 && workers[0].Node != master.Node {
-		networkNodes = append(networkNodes, workers[0].Node)
+	for _, worker := range workers {
+		if worker.Node != master.Node {
+			networkNodes = append(networkNodes, worker.Node)
+		}
 	}
 	network, err := buildNetwork(networkName, projectName, networkNodes, len(master.MyceliumIPSeed) != 0)
 	if err != nil {
