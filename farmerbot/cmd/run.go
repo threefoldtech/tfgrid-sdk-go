@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/parser"
 )
@@ -37,6 +38,10 @@ var runCmd = &cobra.Command{
 		}
 
 		config, err := parser.ParseIntoConfig(fileContent)
+		if err != nil {
+			return err
+		}
+		err = parser.ValidateInput(&config, &substrate.Substrate{})
 		if err != nil {
 			return err
 		}

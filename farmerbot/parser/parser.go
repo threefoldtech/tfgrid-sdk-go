@@ -94,3 +94,40 @@ func ParseEnv(content string) (network string, mnemonicOrSeed string, keyType st
 
 	return
 }
+
+func ValidateInput(input *internal.Config, sub internal.Substrate) error {
+	nodes, err := sub.GetNodes(input.FarmID)
+	if err != nil {
+		return fmt.Errorf("couldn't retrieve node for %d : %v", input.FarmID, err)
+	}
+	nodesMap := make(map[uint32]bool)
+	for _, node := range nodes {
+		nodesMap[node] = true
+	}
+
+	//validate included nodes
+	for _, includedNode := range input.IncludedNodes {
+		if !nodesMap[includedNode] {
+			return fmt.Errorf("included node with id %d doesn't exist in the farm", includedNode)
+		}
+	}
+	//validate excluded nodes
+	for _, excludedNode := range input.ExcludedNodes {
+		if !nodesMap[excludedNode] {
+			return fmt.Errorf("excluded node with id %d doesn't exist in the farm", excludedNode)
+		}
+		index := slices.Index(input.IncludedNodes, excludedNode)
+		if index >= 0 {
+			return fmt.Errorf("cannot include and exclude the same node %d", excludedNode)
+		}
+	}
+
+	//validate priority nodes
+	for _, priorityNode := range input.PriorityNodes {
+		index := slices.Index(input.IncludedNodes, priorityNode)
+		if index < 0 {
+			return fmt.Errorf("priority node with id %d doesn't exist included nodes", priorityNode)
+		}
+	}
+	return nil
+}
