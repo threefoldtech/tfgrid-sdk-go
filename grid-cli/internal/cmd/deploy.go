@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -58,10 +59,11 @@ func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, mas
 	projectName := fmt.Sprintf("kubernetes/%s", master.Name)
 	networkNodes := []uint32{master.Node}
 	for _, worker := range workers {
-		if worker.Node != master.Node {
+		if !slices.Contains(networkNodes, worker.Node) {
 			networkNodes = append(networkNodes, worker.Node)
 		}
 	}
+
 	network, err := buildNetwork(networkName, projectName, networkNodes, len(master.MyceliumIPSeed) != 0)
 	if err != nil {
 		return workloads.K8sCluster{}, err
