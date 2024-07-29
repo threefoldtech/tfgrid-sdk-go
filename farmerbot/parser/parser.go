@@ -107,13 +107,13 @@ func ValidateInput(input *internal.Config, sub internal.Substrate) error {
 
 	//validate included nodes
 	for _, includedNode := range input.IncludedNodes {
-		if !nodesMap[includedNode] {
+		if _, ok := nodesMap[includedNode]; !ok {
 			return fmt.Errorf("included node with id %d doesn't exist in the farm", includedNode)
 		}
 	}
 	//validate excluded nodes
 	for _, excludedNode := range input.ExcludedNodes {
-		if !nodesMap[excludedNode] {
+		if _, ok := nodesMap[excludedNode]; !ok {
 			return fmt.Errorf("excluded node with id %d doesn't exist in the farm", excludedNode)
 		}
 		index := slices.Index(input.IncludedNodes, excludedNode)
