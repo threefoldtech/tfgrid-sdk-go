@@ -200,14 +200,18 @@ var deployKubernetesCmd = &cobra.Command{
 				disks,
 				nil,
 				rootfss,
+				uint64(len(workers)),
 			)
 			if err != nil {
 				log.Fatal().Err(err).Send()
 			}
-			workersNode = uint32(workersNodes[0].NodeID)
-		}
-		for i := 0; i < workerNumber; i++ {
-			workers[i].Node = workersNode
+			for i, node := range workersNodes {
+				workers[i].Node = uint32(node.NodeID)
+			}
+		} else {
+			for i := 0; i < workerNumber; i++ {
+				workers[i].Node = workersNode
+			}
 		}
 		cluster, err := command.DeployKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey))
 		if err != nil {
@@ -291,5 +295,4 @@ func init() {
 	deployKubernetesCmd.Flags().Bool("ipv6", false, "assign public ipv6 for master")
 	deployKubernetesCmd.Flags().Bool("ygg", true, "assign yggdrasil ip for master")
 	deployKubernetesCmd.Flags().Bool("mycelium", true, "assign mycelium ip for master")
-
 }
