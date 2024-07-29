@@ -18,26 +18,25 @@ import (
 
 var k8sFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 
-
-func stringToIntArray(s string)( []uint32, error){
+func stringToIntArray(s string) ([]uint32, error) {
 
 	s = strings.TrimSpace(s)
 	if len(s) <= 0 {
-		return make([]uint32,0),fmt.Errorf("error parsing the worker nodes  number")
+		return make([]uint32, 0), fmt.Errorf("error parsing the worker nodes  number")
 	}
-	nodesMapped := strings.Split(s," ")
+	nodesMapped := strings.Split(s, " ")
 	parsedNodes := []uint32{}
-	for _,num := range nodesMapped {
-		numParsed ,err := strconv.ParseUint(num, 10, 32)
+	for _, num := range nodesMapped {
+		numParsed, err := strconv.ParseUint(num, 10, 32)
 		if err != nil {
-			return make([]uint32,0),fmt.Errorf("error parsing the worker nodes  number")
+			return make([]uint32, 0), fmt.Errorf("error parsing the worker nodes  number")
 		}
 		parsedNodes = append(parsedNodes, uint32(numParsed))
 	}
 	if len(parsedNodes) <= 0 {
-		return make([]uint32,0),fmt.Errorf("error parsing the worker nodes  umber")
+		return make([]uint32, 0), fmt.Errorf("error parsing the worker nodes  umber")
 	}
-	return parsedNodes,nil
+	return parsedNodes, nil
 }
 
 // deployKubernetesCmd represents the deploy kubernetes command
@@ -122,7 +121,7 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		workersNode,err := stringToIntArray(workersNodeToParse)
+		workersNode, err := stringToIntArray(workersNodeToParse)
 		if err != nil {
 			return err
 		}
@@ -238,7 +237,7 @@ var deployKubernetesCmd = &cobra.Command{
 			}
 		} else {
 			for i := 0; i < workerNumber; i++ {
-				workers[i].Node =  workersNode[i%len(workersNode)]
+				workers[i].Node = workersNode[i%len(workersNode)]
 			}
 		}
 		cluster, err := command.DeployKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey))
