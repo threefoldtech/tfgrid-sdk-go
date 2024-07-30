@@ -54,8 +54,8 @@ type Client interface {
 
 // Clientimpl concrete implementation of the client to communicate with the grid proxy
 type Clientimpl struct {
-	endpoints []string
-	i         int
+	endpoints      []string
+	activeStackIdx int
 }
 
 // NewClient grid proxy client constructor
@@ -67,8 +67,8 @@ func NewClient(endpoints ...string) Client {
 	}
 
 	proxy := Clientimpl{
-		endpoints: endpoints,
-		i:         0,
+		endpoints:      endpoints,
+		activeStackIdx: 0,
 	}
 
 	return &proxy
@@ -373,7 +373,7 @@ func (g *Clientimpl) prepareURL(path string, params ...interface{}) (string, err
 		}
 	}
 
-	baseURL := g.endpoints[g.i]
+	baseURL := g.endpoints[g.activeStackIdx]
 
 	u, err := url.ParseRequestURI(baseURL)
 	if err != nil {
@@ -412,7 +412,7 @@ func (g *Clientimpl) httpGet(path string, params ...interface{}) (resp *http.Res
 			(errors.Is(reqErr, http.ErrAbortHandler) ||
 				errors.Is(reqErr, http.ErrHandlerTimeout) ||
 				errors.Is(reqErr, http.ErrServerClosed)) {
-			g.i = (g.i + 1) % len(g.endpoints)
+			g.activeStackIdx = (g.activeStackIdx + 1) % len(g.endpoints)
 			return reqErr
 		}
 

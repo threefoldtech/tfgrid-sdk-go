@@ -16,8 +16,8 @@ import (
 
 // GraphQl for tf graphql
 type GraphQl struct {
-	urls []string
-	i    int
+	urls           []string
+	activeStackIdx int
 }
 
 // NewGraphQl new tf graphql
@@ -26,7 +26,7 @@ func NewGraphQl(urls ...string) (GraphQl, error) {
 		return GraphQl{}, errors.New("graphql url is required")
 	}
 
-	return GraphQl{urls: urls, i: 0}, nil
+	return GraphQl{urls: urls, activeStackIdx: 0}, nil
 }
 
 // GetItemTotalCount return count of items
@@ -122,7 +122,7 @@ func (g *GraphQl) httpPost(body io.Reader) (*http.Response, error) {
 	)
 
 	err := backoff.RetryNotify(func() error {
-		endpoint = g.urls[g.i]
+		endpoint = g.urls[g.activeStackIdx]
 		log.Debug().Str("url", endpoint).Msg("checking")
 
 		resp, reqErr = cl.Post(endpoint, "application/json", body)
@@ -130,7 +130,7 @@ func (g *GraphQl) httpPost(body io.Reader) (*http.Response, error) {
 			(errors.Is(reqErr, http.ErrAbortHandler) ||
 				errors.Is(reqErr, http.ErrHandlerTimeout) ||
 				errors.Is(reqErr, http.ErrServerClosed)) {
-			g.i = (g.i + 1) % len(g.urls)
+			g.activeStackIdx = (g.activeStackIdx + 1) % len(g.urls)
 			return reqErr
 		}
 
