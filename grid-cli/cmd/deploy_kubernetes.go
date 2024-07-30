@@ -186,7 +186,7 @@ var deployKubernetesCmd = &cobra.Command{
 			masterNode = uint32(nodes[0].NodeID)
 		}
 		master.Node = masterNode
-		if len(workersNode)< len(workers) &&len(workers) > 0 {
+		if len(workersNode) < len(workers) && len(workers) > 0 {
 			filter, disks, rootfss := filters.BuildK8sFilter(
 				workers[0],
 				workersFarm,
@@ -204,7 +204,7 @@ var deployKubernetesCmd = &cobra.Command{
 				log.Fatal().Err(err).Send()
 			}
 			for i := 0; i < len(workersNodes); i++ {
-				workersNode = append(workersNode, uint(workersNodes[i].NodeID) )
+				workersNode = append(workersNode, uint(workersNodes[i].NodeID))
 			}
 		}
 		for i := 0; i < len(workers); i++ {
