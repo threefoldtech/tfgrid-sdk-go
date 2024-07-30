@@ -29,6 +29,7 @@ vms:
     env_vars: # env vars are passed to the newly created vms
       user: user1
       pwd: 1234
+    wireguard: false
 
 ssh_keys: # map of ssh keys with key=name and value=the actual ssh key
   example1: ssh_key1

@@ -317,7 +317,6 @@ func buildNetworkDeployment(vm Vms, nodeID uint32, name, solutionType string) wo
 
 		myceliumKeys[nodeID] = key
 	}
-
 	return workloads.ZNet{
 		Name:        fmt.Sprintf("%s_network", name),
 		Description: "network for mass deployment",
@@ -326,7 +325,7 @@ func buildNetworkDeployment(vm Vms, nodeID uint32, name, solutionType string) wo
 			IP:   net.IPv4(10, 20, 0, 0),
 			Mask: net.CIDRMask(16, 32),
 		}),
-		AddWGAccess:  false,
+		AddWGAccess:  vm.WireGuard,
 		MyceliumKeys: myceliumKeys,
 		SolutionType: solutionType,
 	}
