@@ -10,7 +10,7 @@ import (
 )
 
 func TestValidateInput(t *testing.T) {
-	config := &internal.Config{FarmID: uint32(25)}
+	config := internal.Config{FarmID: uint32(25)}
 	ctrl := gomock.NewController(t)
 	mockGetNodes := mocks.NewMockSubstrate(ctrl)
 	mockGetNodes.EXPECT().GetNodes(config.FarmID).Times(6).Return([]uint32{20, 21, 22, 23, 24, 30, 31, 32, 34, 40, 41}, nil)

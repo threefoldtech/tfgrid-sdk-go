@@ -8,7 +8,7 @@ import (
 )
 
 // ValidateInput validates that included, excluded and priority nodes are in the farm
-func ValidateInput(input *internal.Config, sub internal.Substrate) error {
+func ValidateInput(input internal.Config, sub internal.Substrate) error {
 	nodes, err := sub.GetNodes(input.FarmID)
 	if err != nil {
 		return fmt.Errorf("couldn't retrieve node for %d : %v", input.FarmID, err)
