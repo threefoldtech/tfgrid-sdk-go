@@ -141,7 +141,7 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 	}
 
 	if cfg.network != DevNetwork && cfg.network != QaNetwork && cfg.network != TestNetwork && cfg.network != MainNetwork {
-		return cfg, errors.Errorf("network must be one of dev, qa, test, and main not %s", cfg.network)
+		return cfg, errors.Errorf("network must be one of %s, %s, %s, and %s not %s", DevNetwork, QaNetwork, TestNetwork, MainNetwork, cfg.network)
 	}
 
 	if len(cfg.proxyURLs) == 0 {
@@ -204,12 +204,12 @@ func NewTFPluginClient(
 
 	var identity substrate.Identity
 	switch cfg.keyType {
-	case "ed25519":
+	case peer.KeyTypeEd25519:
 		identity, err = substrate.NewIdentityFromEd25519Phrase(tfPluginClient.mnemonicOrSeed)
-	case "sr25519":
+	case peer.KeyTypeSr25519:
 		identity, err = substrate.NewIdentityFromSr25519Phrase(tfPluginClient.mnemonicOrSeed)
 	default:
-		err = errors.Errorf("key type must be one of ed25519 and sr25519 not %s", cfg.keyType)
+		err = errors.Errorf("key type must be one of %s and %s not %s", peer.KeyTypeEd25519, peer.KeyTypeSr25519, cfg.keyType)
 	}
 
 	if err != nil {
