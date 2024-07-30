@@ -95,6 +95,7 @@ func ParseEnv(content string) (network string, mnemonicOrSeed string, keyType st
 	return
 }
 
+// ValidateInput validates that included, excluded and priority nodes are in the farm
 func ValidateInput(input *internal.Config, sub internal.Substrate) error {
 	nodes, err := sub.GetNodes(input.FarmID)
 	if err != nil {

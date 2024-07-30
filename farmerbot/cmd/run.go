@@ -41,7 +41,12 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		err = parser.ValidateInput(&config, &substrate.Substrate{})
+		sub, err := substrate.NewManager(internal.SubstrateURLs[network]...).Substrate()
+		if err != nil {
+			return err
+		}
+		defer sub.Close()
+		err = parser.ValidateInput(&config, sub)
 		if err != nil {
 			return err
 		}
