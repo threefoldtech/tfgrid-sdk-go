@@ -4,8 +4,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -18,26 +16,6 @@ import (
 
 var k8sFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 
-func stringToIntArray(s string) ([]uint32, error) {
-
-	s = strings.TrimSpace(s)
-	if len(s) <= 0 {
-		return make([]uint32, 0), fmt.Errorf("error parsing the worker nodes  number")
-	}
-	nodesMapped := strings.Split(s, " ")
-	parsedNodes := []uint32{}
-	for _, num := range nodesMapped {
-		numParsed, err := strconv.ParseUint(num, 10, 32)
-		if err != nil {
-			return make([]uint32, 0), fmt.Errorf("error parsing the worker nodes  number")
-		}
-		parsedNodes = append(parsedNodes, uint32(numParsed))
-	}
-	if len(parsedNodes) <= 0 {
-		return make([]uint32, 0), fmt.Errorf("error parsing the worker nodes  umber")
-	}
-	return parsedNodes, nil
-}
 
 // deployKubernetesCmd represents the deploy kubernetes command
 var deployKubernetesCmd = &cobra.Command{
@@ -117,11 +95,7 @@ var deployKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		workersNodeToParse, err := cmd.Flags().GetString("workers-node")
-		if err != nil {
-			return err
-		}
-		workersNode, err := stringToIntArray(workersNodeToParse)
+		workersNode, err := cmd.Flags().GetUintSlice("workers-node")
 		if err != nil {
 			return err
 		}
@@ -237,7 +211,7 @@ var deployKubernetesCmd = &cobra.Command{
 			}
 		} else {
 			for i := 0; i < workerNumber; i++ {
-				workers[i].Node = workersNode[i%len(workersNode)]
+				workers[i].Node = uint32(workersNode[i%len(workersNode)])
 			}
 		}
 		cluster, err := command.DeployKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey))
@@ -310,7 +284,7 @@ func init() {
 	deployKubernetesCmd.Flags().Int("workers-cpu", 1, "workers number of cpu units")
 	deployKubernetesCmd.Flags().Int("workers-memory", 1, "workers memory size in gb")
 	deployKubernetesCmd.Flags().Int("workers-disk", 2, "workers disk size in gb")
-	deployKubernetesCmd.Flags().String("workers-node", "0", "node id workers should be deployed on")
+	deployKubernetesCmd.Flags().UintSlice("workers-node", make([]uint, 0), "node id workers should be deployed on")
 	deployKubernetesCmd.Flags().Uint64("workers-farm", 1, "farm id workers should be deployed on")
 	deployKubernetesCmd.MarkFlagsMutuallyExclusive("workers-node", "workers-farm")
 	deployKubernetesCmd.Flags().Bool("workers-ipv4", false, "assign public ipv4 for workers")
