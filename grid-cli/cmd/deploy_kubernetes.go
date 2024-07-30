@@ -16,7 +16,6 @@ import (
 
 var k8sFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 
-
 // deployKubernetesCmd represents the deploy kubernetes command
 var deployKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
