@@ -200,7 +200,7 @@ var deployKubernetesCmd = &cobra.Command{
 				disks,
 				nil,
 				rootfss,
-				uint64(len(workers) - len(workersNode)),
+				uint64(len(workers)-len(workersNode)),
 			)
 			if err != nil {
 				log.Fatal().Err(err).Send()
@@ -208,7 +208,7 @@ var deployKubernetesCmd = &cobra.Command{
 			for i := 0; i < len(workersNode); i++ {
 				workers[i].Node = uint32(workersNode[i])
 			}
-			for i, j := len(workersNode),0; i < len(workers); i++ {
+			for i, j := len(workersNode), 0; i < len(workers); i++ {
 				workers[i].Node = uint32(workersNodes[j].NodeID)
 			}
 		} else {
