@@ -169,7 +169,6 @@ var deployKubernetesCmd = &cobra.Command{
 			filter, disks, rootfss := filters.BuildK8sFilter(
 				master,
 				masterFarm,
-				1,
 			)
 			nodes, err := deployer.FilterNodes(
 				cmd.Context(),
@@ -190,7 +189,6 @@ var deployKubernetesCmd = &cobra.Command{
 			filter, disks, rootfss := filters.BuildK8sFilter(
 				workers[0],
 				workersFarm,
-				1,
 			)
 			workersNodes, err := deployer.FilterNodes(
 				cmd.Context(),

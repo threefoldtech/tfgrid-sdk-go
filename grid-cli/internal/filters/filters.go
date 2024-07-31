@@ -7,21 +7,16 @@ import (
 )
 
 // BuildK8sFilter build a filter for a k8s node
-func BuildK8sFilter(k8sNode workloads.K8sNode, farmID uint64, k8sNodesNum uint) (types.NodeFilter, []uint64, []uint64) {
-	freeMRUs := uint64(k8sNode.Memory*int(k8sNodesNum)) / 1024
-	freeSRUs := uint64(k8sNode.DiskSize * int(k8sNodesNum))
+func BuildK8sFilter(k8sNode workloads.K8sNode, farmID uint64) (types.NodeFilter, []uint64, []uint64) {
+	freeMRUs := uint64(k8sNode.Memory) / 1024
+	freeSRUs := uint64(k8sNode.DiskSize )
 	freeIPs := uint64(0)
-	if k8sNode.PublicIP {
-		freeIPs = uint64(k8sNodesNum)
-	}
 
-	disks := make([]uint64, k8sNodesNum)
-	rootfss := make([]uint64, k8sNodesNum)
-	for i := 0; i < int(k8sNodesNum); i++ {
-		disks = append(disks, *convertGBToBytes(uint64(k8sNode.DiskSize)))
-		// k8s rootfs is either 2 or 0.5
-		rootfss = append(rootfss, *convertGBToBytes(uint64(2)))
-	}
+	disks := make([]uint64, 1)
+	rootfss := make([]uint64, 1)
+	disks = append(disks, *convertGBToBytes(uint64(k8sNode.DiskSize)))
+	// k8s rootfs is either 2 or 0.5
+	rootfss = append(rootfss, *convertGBToBytes(uint64(2)))
 
 	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, &freeIPs, []uint64{farmID}, nil), disks, rootfss
 }
