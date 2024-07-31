@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/schema v1.4.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
-	github.com/sethvargo/go-retry v0.2.4
+	github.com/sethvargo/go-retry v0.3.0
 	github.com/stretchr/testify v1.9.0
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240710094608-5a9ad375cb3c
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.10
