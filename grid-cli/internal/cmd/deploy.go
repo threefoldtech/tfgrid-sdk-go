@@ -28,7 +28,7 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 		mounts = append(mounts, mount)
 	}
 	vm.NetworkName = networkName
-	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, mounts, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, mounts, nil, []workloads.VM{vm}, nil, nil)
 
 	log.Info().Msg("deploying network")
 	err = t.NetworkDeployer.Deploy(ctx, &network)
@@ -128,7 +128,7 @@ func DeployGatewayFQDN(ctx context.Context, t deployer.TFPluginClient, gateway w
 
 // DeployZDBs deploys multiple zdbs
 func DeployZDBs(ctx context.Context, t deployer.TFPluginClient, projectName string, zdbs []workloads.ZDB, n int, node uint32) ([]workloads.ZDB, error) {
-	dl := workloads.NewDeployment(projectName, node, projectName, nil, "", nil, zdbs, nil, nil)
+	dl := workloads.NewDeployment(projectName, node, projectName, nil, "", nil, zdbs, nil, nil, nil)
 	log.Info().Msgf("deploying zdbs")
 	err := t.DeploymentDeployer.Deploy(ctx, &dl)
 	if err != nil {
