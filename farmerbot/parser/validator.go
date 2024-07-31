@@ -4,11 +4,23 @@ import (
 	"fmt"
 	"slices"
 
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
 )
 
-// ValidateInput validates that included, excluded and priority nodes are in the farm
-func ValidateInput(input internal.Config, sub internal.Substrate) error {
+// wrapper for validateInput
+func ValidateInput(input internal.Config, network string) error {
+	manager := substrate.NewManager(internal.SubstrateURLs[network]...)
+	subConn, err := manager.Substrate()
+	if err != nil {
+		return err
+	}
+	defer subConn.Close()
+	return validateInput(input, subConn)
+}
+
+// validateInput validates that included, excluded and priority nodes are in the farm
+func validateInput(input internal.Config, sub internal.Substrate) error {
 	nodes, err := sub.GetNodes(input.FarmID)
 	if err != nil {
 		return fmt.Errorf("couldn't retrieve node for %d : %v", input.FarmID, err)

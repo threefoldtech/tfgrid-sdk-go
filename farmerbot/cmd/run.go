@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/parser"
 )
@@ -41,13 +40,8 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		manager := substrate.NewManager(internal.SubstrateURLs[network]...)
-		subConn, err := manager.Substrate()
-		if err != nil {
-			return err
-		}
-		defer subConn.Close()
-		err = parser.ValidateInput(config, subConn)
+
+		err = parser.ValidateInput(config, network)
 		if err != nil {
 			return err
 		}
