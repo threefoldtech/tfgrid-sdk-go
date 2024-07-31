@@ -197,6 +197,7 @@ var deployKubernetesCmd = &cobra.Command{
 				disks,
 				nil,
 				rootfss,
+				uint64(len(workers)-len(workersNode)),
 			)
 			if err != nil {
 				log.Fatal().Err(err).Send()
