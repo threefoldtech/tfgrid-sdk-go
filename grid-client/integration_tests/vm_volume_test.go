@@ -24,7 +24,7 @@ func TestVMWithVolume(t *testing.T) {
 		context.Background(),
 		tfPluginClient,
 		generateNodeFilter(WithFreeSRU(3)),
-		[]uint64{*convertGBToBytes(2)},
+		[]uint64{*convertGBToBytes(1)},
 		nil,
 		[]uint64{*convertGBToBytes(minRootfs)},
 		1,

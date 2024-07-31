@@ -176,8 +176,7 @@ func (d *Deployment) ZosDeployment(twin uint32) (gridtypes.Deployment, error) {
 		wls = append(wls, qWls)
 	}
 	for _, v := range d.Volumes {
-		volumeWl := v.ZosWorkload()
-		wls = append(wls, volumeWl)
+		wls = append(wls, v.ZosWorkload())
 	}
 
 	return gridtypes.Deployment{
