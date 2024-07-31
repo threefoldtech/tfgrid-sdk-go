@@ -197,6 +197,15 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
 			groupDeployments.vmDeployments[idx].NodeID = nodeID
 			groupDeployments.networkDeployments[idx].Nodes = []uint32{nodeID}
+
+			myceliumKeys := groupDeployments.networkDeployments[idx].MyceliumKeys
+			if len(myceliumKeys) != 0 {
+				myceliumKey, err := workloads.RandomMyceliumKey()
+				if err != nil {
+					log.Debug().Err(err).Send()
+				}
+				groupDeployments.networkDeployments[idx].MyceliumKeys = map[uint32][]byte{nodeID: myceliumKey}
+			}
 		}
 	}
 }
