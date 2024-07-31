@@ -41,7 +41,8 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		subConn, err := substrate.NewManager(internal.SubstrateURLs[network]...).Substrate()
+		manager := substrate.NewManager(internal.SubstrateURLs[network]...)
+		subConn, err := manager.Substrate()
 		if err != nil {
 			return err
 		}
