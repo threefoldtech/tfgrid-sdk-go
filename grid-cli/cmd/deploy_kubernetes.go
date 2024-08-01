@@ -94,7 +94,7 @@ var deployKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		workersNodes, err := cmd.Flags().GetUintSlice("workers-node")
+		workersNodes, err := cmd.Flags().GetUintSlice("workers-nodes")
 		if err != nil {
 			return err
 		}
@@ -279,9 +279,9 @@ func init() {
 	deployKubernetesCmd.Flags().Int("workers-cpu", 1, "workers number of cpu units")
 	deployKubernetesCmd.Flags().Int("workers-memory", 1, "workers memory size in gb")
 	deployKubernetesCmd.Flags().Int("workers-disk", 2, "workers disk size in gb")
-	deployKubernetesCmd.Flags().UintSlice("workers-node", []uint{}, "node id workers should be deployed on")
+	deployKubernetesCmd.Flags().UintSlice("workers-nodes", []uint{}, "node id workers should be deployed on")
 	deployKubernetesCmd.Flags().Uint64("workers-farm", 1, "farm id workers should be deployed on")
-	deployKubernetesCmd.MarkFlagsMutuallyExclusive("workers-node", "workers-farm")
+	deployKubernetesCmd.MarkFlagsMutuallyExclusive("workers-nodes", "workers-farm")
 	deployKubernetesCmd.Flags().Bool("workers-ipv4", false, "assign public ipv4 for workers")
 	deployKubernetesCmd.Flags().Bool("workers-ipv6", false, "assign public ipv6 for workers")
 	deployKubernetesCmd.Flags().Bool("workers-ygg", true, "assign yggdrasil ip for workers")
