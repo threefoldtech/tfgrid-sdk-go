@@ -41,9 +41,8 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		err = parser.ValidateInput(config, network)
-		if err != nil {
-			return err
+		if err := parser.ValidateConfig(config, network); err != nil {
+			return fmt.Errorf("invalid configuration: %w", err)
 		}
 
 		config.ContinueOnPoweringOnErr = continueOnPoweringOnErr
