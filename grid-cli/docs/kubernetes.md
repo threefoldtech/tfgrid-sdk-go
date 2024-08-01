@@ -17,7 +17,7 @@ tfcmd deploy kubernetes [flags]
 
 - master-node: node id master should be deployed on.
 - master-farm: farm id master should be deployed on, if set choose available node from farm that fits master specs (default 1). note: master-node and master-farm flags cannot be set both.
-- workers-node: node id workers should be deployed on.
+- workers-nodes: array of nodes ids workers should be deployed on and the remaining unassigned workers will be randomly assigned to nodes that meet the specifications.
 - workers-farm: farm id workers should be deployed on, if set choose available node from farm that fits master specs (default 1). note: workers-node and workers-farm flags cannot be set both.
 - ipv4: assign public ipv4 for master node (default false).
 - ipv6: assign public ipv6 for master node (default false).
@@ -38,7 +38,7 @@ tfcmd deploy kubernetes [flags]
 Example:
 
 ```console
-$ tfcmd deploy kubernetes -n kube --ssh ~/.ssh/id_rsa.pub --master-node 14 --workers-number 2 --workers-node 14
+$ tfcmd deploy kubernetes -n kube --ssh ~/.ssh/id_rsa.pub --master-node 14 --workers-number 2 --workers-nodes 14,1
 11:43AM INF starting peer session=tf-1510734 twin=192
 11:43AM INF deploying network
 11:43AM INF deploying cluster
