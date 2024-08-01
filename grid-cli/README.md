@@ -14,7 +14,7 @@ Login using your mnemonics and specify which grid network (mainnet/testnet) to d
 tfcmd login
 ```
 
-Check [Wallet Connector](https://manual.grid.tf/dashboard/wallet_connector.html) for more details if you do not have mnemonics yet.
+Check [Wallet Connector](https://manual.grid.tf/documentation/dashboard/wallet_connector.html) for more details if you do not have mnemonics yet.
 
 For examples and description of tfcmd commands check out:
 
