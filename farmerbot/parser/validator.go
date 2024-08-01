@@ -29,11 +29,46 @@ func validateInput(input internal.Config, sub internal.Substrate) error {
 	for _, node := range nodes {
 		nodesMap[node] = true
 	}
-
-	//validate included nodes
-	for _, includedNode := range input.IncludedNodes {
-		if _, ok := nodesMap[includedNode]; !ok {
-			return fmt.Errorf("included node with id %d doesn't exist in the farm", includedNode)
+	if len(input.IncludedNodes) != 0 {
+		//validate included nodes
+		for _, includedNode := range input.IncludedNodes {
+			if _, ok := nodesMap[includedNode]; !ok {
+				return fmt.Errorf("included node with id %d doesn't exist in the farm", includedNode)
+			}
+			if slices.Contains(input.ExcludedNodes, includedNode) {
+				return fmt.Errorf("cannot include and exclude the same node %d", includedNode)
+			}
+		}
+		//validate priority nodes in case of included nodes
+		for _, priorityNode := range input.PriorityNodes {
+			if !slices.Contains(input.IncludedNodes, priorityNode) {
+				return fmt.Errorf("priority node with id %d doesn't exist included nodes", priorityNode)
+			}
+		}
+		//validate never shutdown nodes in case of included nodes
+		for _, neverShutdownNode := range input.NeverShutDownNodes {
+			if !slices.Contains(input.IncludedNodes, neverShutdownNode) {
+				return fmt.Errorf("never shutdown node with id %d doesn't exist included nodes", neverShutdownNode)
+			}
+		}
+	} else {
+		//validate priority nodes in case of all nodes are included
+		for _, priorityNode := range input.PriorityNodes {
+			if _, ok := nodesMap[priorityNode]; !ok {
+				return fmt.Errorf("priority node with id %d doesn't exist in the farm", priorityNode)
+			}
+			if slices.Contains(input.ExcludedNodes, priorityNode) {
+				return fmt.Errorf("cannot priortize and exclude the same node %d", priorityNode)
+			}
+		}
+		//validate never shutdown nodes in case of all nodes are included
+		for _, neverShutdownNode := range input.NeverShutDownNodes {
+			if _, ok := nodesMap[neverShutdownNode]; !ok {
+				return fmt.Errorf("never shutdown node with id %d doesn't exist in the farm", neverShutdownNode)
+			}
+			if slices.Contains(input.ExcludedNodes, neverShutdownNode) {
+				return fmt.Errorf("cannot never shutdown and exclude the same node %d", neverShutdownNode)
+			}
 		}
 	}
 	//validate excluded nodes
@@ -41,16 +76,7 @@ func validateInput(input internal.Config, sub internal.Substrate) error {
 		if _, ok := nodesMap[excludedNode]; !ok {
 			return fmt.Errorf("excluded node with id %d doesn't exist in the farm", excludedNode)
 		}
-		if slices.Contains(input.IncludedNodes, excludedNode) {
-			return fmt.Errorf("cannot include and exclude the same node %d", excludedNode)
-		}
 	}
 
-	//validate priority nodes
-	for _, priorityNode := range input.PriorityNodes {
-		if !slices.Contains(input.IncludedNodes, priorityNode) {
-			return fmt.Errorf("priority node with id %d doesn't exist included nodes", priorityNode)
-		}
-	}
 	return nil
 }
