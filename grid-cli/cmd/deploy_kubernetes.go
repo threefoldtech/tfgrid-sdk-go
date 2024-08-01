@@ -94,7 +94,7 @@ var deployKubernetesCmd = &cobra.Command{
 			return err
 		}
 
-		workersNode, err := cmd.Flags().GetUintSlice("workers-node")
+		workersNodes, err := cmd.Flags().GetUintSlice("workers-node")
 		if err != nil {
 			return err
 		}
@@ -185,29 +185,29 @@ var deployKubernetesCmd = &cobra.Command{
 			masterNode = uint32(nodes[0].NodeID)
 		}
 		master.Node = masterNode
-		if len(workersNode) < workerNumber && workerNumber > 0 {
+		if len(workersNodes) < workerNumber && workerNumber > 0 {
 			filter, disks, rootfss := filters.BuildK8sFilter(
 				workers[0],
 				workersFarm,
 			)
-			workersNodes, err := deployer.FilterNodes(
+			nodes, err := deployer.FilterNodes(
 				cmd.Context(),
 				t,
 				filter,
 				disks,
 				nil,
 				rootfss,
-				uint64(workerNumber-len(workersNode)),
+				uint64(workerNumber-len(workersNodes)),
 			)
 			if err != nil {
 				log.Fatal().Err(err).Send()
 			}
-			for i := 0; i < len(workersNodes); i++ {
-				workersNode = append(workersNode, uint(workersNodes[i].NodeID))
+			for i := 0; i < len(nodes); i++ {
+				workersNodes = append(workersNodes, uint(nodes[i].NodeID))
 			}
 		}
 		for i := 0; i < workerNumber; i++ {
-			workers[i].Node = uint32(workersNode[i])
+			workers[i].Node = uint32(workersNodes[i])
 		}
 		cluster, err := command.DeployKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey))
 		if err != nil {
@@ -279,7 +279,7 @@ func init() {
 	deployKubernetesCmd.Flags().Int("workers-cpu", 1, "workers number of cpu units")
 	deployKubernetesCmd.Flags().Int("workers-memory", 1, "workers memory size in gb")
 	deployKubernetesCmd.Flags().Int("workers-disk", 2, "workers disk size in gb")
-	deployKubernetesCmd.Flags().UintSlice("workers-node", []uint{0}, "node id workers should be deployed on")
+	deployKubernetesCmd.Flags().UintSlice("workers-node", []uint{}, "node id workers should be deployed on")
 	deployKubernetesCmd.Flags().Uint64("workers-farm", 1, "farm id workers should be deployed on")
 	deployKubernetesCmd.MarkFlagsMutuallyExclusive("workers-node", "workers-farm")
 	deployKubernetesCmd.Flags().Bool("workers-ipv4", false, "assign public ipv4 for workers")
