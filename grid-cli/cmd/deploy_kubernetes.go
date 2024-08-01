@@ -206,8 +206,8 @@ var deployKubernetesCmd = &cobra.Command{
 				workersNodes = append(workersNodes, uint(node.NodeID))
 			}
 		}
-		for i, node := range workersNodes {
-			workers[i].Node = uint32(node)
+		for i := range workers {
+			workers[i].Node = uint32(workersNodes[i])
 		}
 		cluster, err := command.DeployKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey))
 		if err != nil {
