@@ -92,6 +92,25 @@ var nodesMap = map[uint32]bool{
 	20: true, 21: true, 22: true, 23: true, 24: true, 30: true, 31: true, 32: true, 34: true, 40: true, 41: true,
 }
 
+var unitTests = []struct {
+	toBeValidated     []uint32
+	noOverlappingWith []uint32
+	shouldError       bool
+}{
+	{
+		toBeValidated:     []uint32{20, 21, 22, 30, 31, 32, 40, 41},
+		noOverlappingWith: []uint32{23, 24, 34},
+		shouldError:       false,
+	}, {
+		toBeValidated: []uint32{26, 27},
+		shouldError:   true,
+	}, {
+		toBeValidated:     []uint32{21},
+		noOverlappingWith: []uint32{20, 21},
+		shouldError:       true,
+	},
+}
+
 func TestValidateInput(t *testing.T) {
 	config := internal.Config{FarmID: uint32(25)}
 	ctrl := gomock.NewController(t)
@@ -114,17 +133,11 @@ func TestValidateInput(t *testing.T) {
 
 }
 
-func TestValidateWithIncludedNodes(t *testing.T) {
-	config := internal.Config{}
-	for i := 0; i < 7; i++ {
-		t.Run(testCases[i].name, func(t *testing.T) {
-			config.IncludedNodes = testCases[i].includedNodes
-			config.PriorityNodes = testCases[i].priorityNodes
-			config.NeverShutDownNodes = testCases[i].neverShutdownNodes
-			config.ExcludedNodes = testCases[i].excludedNodes
-
-			got := validateWithIncludedNodes(config, nodesMap)
-			if testCases[i].shouldError {
+func TestValidateIncludedNodes(t *testing.T) {
+	for _, tc := range unitTests {
+		t.Run("test validate included nodes", func(t *testing.T) {
+			got := validateIncludedNodes(tc.toBeValidated, tc.noOverlappingWith, nodesMap)
+			if tc.shouldError {
 				assert.Error(t, got)
 			} else {
 				assert.NoError(t, got)
@@ -132,16 +145,28 @@ func TestValidateWithIncludedNodes(t *testing.T) {
 		})
 	}
 }
-func TestValidateWithAllNodes(t *testing.T) {
-	config := internal.Config{}
-	for i := 8; i < 13; i++ {
-		t.Run(testCases[i].name, func(t *testing.T) {
-			config.IncludedNodes = testCases[i].includedNodes
-			config.PriorityNodes = testCases[i].priorityNodes
-			config.NeverShutDownNodes = testCases[i].neverShutdownNodes
-			config.ExcludedNodes = testCases[i].excludedNodes
-			got := validateWithAllNodes(config, nodesMap)
-			if testCases[i].shouldError {
+
+func TestValidatePriorityOrNeverShutdownNodes(t *testing.T) {
+	for _, tc := range unitTests {
+		t.Run("test validate priority and never shutdown nodes", func(t *testing.T) {
+			got := validatePriorityOrNeverShutdown("nodes", tc.toBeValidated, tc.noOverlappingWith, nodesMap)
+			if tc.shouldError {
+				assert.Error(t, got)
+			} else {
+				assert.NoError(t, got)
+			}
+		})
+	}
+}
+
+func TestValidateExcludedNodes(t *testing.T) {
+	for i, tc := range unitTests {
+		if i == 2 {
+			continue
+		}
+		t.Run("test validate excluded nodes", func(t *testing.T) {
+			got := validateExcludedNodes(tc.toBeValidated, nodesMap)
+			if tc.shouldError {
 				assert.Error(t, got)
 			} else {
 				assert.NoError(t, got)

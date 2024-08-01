@@ -29,68 +29,57 @@ func validateInput(input internal.Config, sub internal.Substrate) error {
 	for _, node := range nodes {
 		nodesMap[node] = true
 	}
+	includedNodes := make(map[uint32]bool)
 	if len(input.IncludedNodes) != 0 {
-		if err := validateWithIncludedNodes(input, nodesMap); err != nil {
+		if err := validateIncludedNodes(input.IncludedNodes, input.ExcludedNodes, nodesMap); err != nil {
 			return err
+		}
+		for _, includedNode := range input.IncludedNodes {
+			includedNodes[includedNode] = true
 		}
 	} else {
-		if err := validateWithAllNodes(input, nodesMap); err != nil {
-			return err
-		}
+		includedNodes = nodesMap
 	}
-	//validate excluded nodes
-	for _, excludedNode := range input.ExcludedNodes {
-		if _, ok := nodesMap[excludedNode]; !ok {
-			return fmt.Errorf("excluded node with id %d doesn't exist in the farm", excludedNode)
+	if err := validateExcludedNodes(input.ExcludedNodes, nodesMap); err != nil {
+		return err
+	}
+	if err := validatePriorityOrNeverShutdown("priority", input.PriorityNodes, input.ExcludedNodes, includedNodes); err != nil {
+		return err
+	}
+	if err := validatePriorityOrNeverShutdown("never shutdown", input.NeverShutDownNodes, input.ExcludedNodes, includedNodes); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateIncludedNodes(included, excluded []uint32, farmNodes map[uint32]bool) error {
+	for _, node := range included {
+		if _, ok := farmNodes[node]; !ok {
+			return fmt.Errorf("included node with id %d doesn't exist in the farm", node)
+		}
+		if slices.Contains(excluded, node) {
+			return fmt.Errorf("cannot include and exclude the same node %d", node)
 		}
 	}
 	return nil
 }
 
-// validates nodes in case of all nodes are included
-func validateWithAllNodes(input internal.Config, farmNodes map[uint32]bool) error {
-	//validate priority nodes
-	for _, priorityNode := range input.PriorityNodes {
-		if _, ok := farmNodes[priorityNode]; !ok {
-			return fmt.Errorf("priority node with id %d doesn't exist in the farm", priorityNode)
+func validatePriorityOrNeverShutdown(typeOfValidation string, toBeValidated, excluded []uint32, nodes map[uint32]bool) error {
+	for _, node := range toBeValidated {
+		if _, ok := nodes[node]; !ok {
+			return fmt.Errorf("%s node with id %d doesn't exist in the included nodes ", typeOfValidation, node)
 		}
-		if slices.Contains(input.ExcludedNodes, priorityNode) {
-			return fmt.Errorf("cannot priortize and exclude the same node %d", priorityNode)
-		}
-	}
-	//validate never shutdown nodes in case of all nodes are included
-	for _, neverShutdownNode := range input.NeverShutDownNodes {
-		if _, ok := farmNodes[neverShutdownNode]; !ok {
-			return fmt.Errorf("never shutdown node with id %d doesn't exist in the farm", neverShutdownNode)
-		}
-		if slices.Contains(input.ExcludedNodes, neverShutdownNode) {
-			return fmt.Errorf("cannot never shutdown and exclude the same node %d", neverShutdownNode)
+		if slices.Contains(excluded, node) {
+			return fmt.Errorf("cannot %s and exclude the same node %d", typeOfValidation, node)
 		}
 	}
 	return nil
 }
 
-// validate nodes in case of included nodes
-func validateWithIncludedNodes(input internal.Config, farmNodes map[uint32]bool) error {
-	//validate included nodes
-	for _, includedNode := range input.IncludedNodes {
-		if _, ok := farmNodes[includedNode]; !ok {
-			return fmt.Errorf("included node with id %d doesn't exist in the farm", includedNode)
-		}
-		if slices.Contains(input.ExcludedNodes, includedNode) {
-			return fmt.Errorf("cannot include and exclude the same node %d", includedNode)
-		}
-	}
-	//validate priority nodes in case of included nodes
-	for _, priorityNode := range input.PriorityNodes {
-		if !slices.Contains(input.IncludedNodes, priorityNode) {
-			return fmt.Errorf("priority node with id %d doesn't exist included nodes", priorityNode)
-		}
-	}
-	//validate never shutdown nodes in case of included nodes
-	for _, neverShutdownNode := range input.NeverShutDownNodes {
-		if !slices.Contains(input.IncludedNodes, neverShutdownNode) {
-			return fmt.Errorf("never shutdown node with id %d doesn't exist included nodes", neverShutdownNode)
+func validateExcludedNodes(excluded []uint32, farmNodes map[uint32]bool) error {
+	for _, node := range excluded {
+		if _, ok := farmNodes[node]; !ok {
+			return fmt.Errorf("excluded node with id %d doesn't exist in the farm", node)
 		}
 	}
 	return nil
