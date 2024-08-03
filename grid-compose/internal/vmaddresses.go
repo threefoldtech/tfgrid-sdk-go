@@ -1,16 +1,10 @@
 package internal
 
 import (
-	"crypto/rand"
 	"fmt"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
-
-func GetProjectName(key string, twinId uint32) string {
-	return fmt.Sprintf("compose/%v/%v", twinId, key)
-}
 
 func GetVmAddresses(vm workloads.VM) string {
 	var res string
@@ -32,10 +26,4 @@ func GetVmAddresses(vm workloads.VM) string {
 	}
 
 	return res
-}
-
-func GetRandomMyceliumIPSeed() ([]byte, error) {
-	key := make([]byte, zos.MyceliumIPSeedLen)
-	_, err := rand.Read(key)
-	return key, err
 }

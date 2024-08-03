@@ -1,6 +1,7 @@
 # not all features here are implemented yet
 version: '1.0.0'
 
+# cannot figure out how to run mycelium always error deployment not configured
 networks:
   net1:
     type: 'wg'
@@ -41,14 +42,17 @@ services:
       - net3
     resources:
       cpu: 4
-      memoryGB: 2
+      memory: 2
     healthcheck:
       test: ['CMD', 'curl', 'http://{myceliumip}']
       interval: 1m30s
       timeout: 10s
       retries: 3
-
+# ask omar about the types zmount and all that
 storage:
   web-data:
+    type: 'zmount'
+    size: 10GB
+  db-data:
     type: 'zmount'
     size: 10GB
