@@ -14,7 +14,6 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"gopkg.in/yaml.v2"
 )
@@ -154,49 +153,27 @@ func (a *App) Up(ctx context.Context) error {
 }
 
 func (a *App) Ps(ctx context.Context) error {
-	twindId := uint64(a.Client.TwinID)
-	filters := types.ContractFilter{
-		TwinID: &twindId,
-	}
-	limits := types.Limit{
-		Size: 100,
-	}
-	cache := make(map[string]bool, 0)
-
-	contracts, _, err := a.Client.GridProxyClient.Contracts(ctx, filters, limits)
-
-	if err != nil {
-		return err
-	}
-
-	for _, contract := range contracts {
-		if contract.Type != "node" || contract.State == "Deleted" {
-			continue
+	// need to add the option for verbose and format the output
+	for key, val := range a.Config.Services {
+		err := a.loadCurrentNodeDeplyments(a.getProjectName(key, a.Client.TwinID))
+		if err != nil {
+			return err
 		}
-
-		details, err := workloads.ParseDeploymentData(contract.Details.(types.NodeContractDetails).DeploymentData)
+		wl, dl, err := a.Client.State.GetWorkloadInDeployment(ctx, uint32(val.NodeID), key, key)
 		if err != nil {
 			return err
 		}
 
-		if strings.Split(details.ProjectName, "/")[0] != "compose" || cache[details.ProjectName] {
-			continue
-		}
+		log.Info().Str("deployment", string(wl.Name)).Msg("deployment")
 
-		res, err := GetVM(ctx, a.Client, details.Name)
-		if err != nil {
-			return err
-		}
-
-		s, err := json.MarshalIndent(res, "", "\t")
+		s, err := json.MarshalIndent(dl, "", "\t")
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
 
-		log.Info().Msg("vm:\n" + string(s))
-		cache[details.ProjectName] = true
-	}
+		log.Info().Msg(string(s))
 
+	}
 	return nil
 }
 
@@ -212,7 +189,39 @@ func (a *App) Down() error {
 }
 
 func (a *App) getProjectName(key string, twinId uint32) string {
+	key = strings.TrimSuffix(key, "net")
 	return fmt.Sprintf("compose/%v/%v", twinId, key)
+}
+
+func (a *App) loadCurrentNodeDeplyments(projectName string) error {
+	contracts, err := a.Client.ContractsGetter.ListContractsOfProjectName(projectName, true)
+	if err != nil {
+		return err
+	}
+
+	var nodeID uint32
+
+	for _, contract := range contracts.NodeContracts {
+		contractID, err := strconv.ParseUint(contract.ContractID, 10, 64)
+		if err != nil {
+			return err
+		}
+
+		nodeID = contract.NodeID
+		a.checkIfExistAndAppend(nodeID, contractID)
+	}
+
+	return nil
+}
+
+func (a *App) checkIfExistAndAppend(node uint32, contractID uint64) {
+	for _, n := range a.Client.State.CurrentNodeDeployments[node] {
+		if n == contractID {
+			return
+		}
+	}
+
+	a.Client.State.CurrentNodeDeployments[node] = append(a.Client.State.CurrentNodeDeployments[node], contractID)
 }
 
 func loadConfigFromReader(configFile io.Reader) (*config.Config, error) {
