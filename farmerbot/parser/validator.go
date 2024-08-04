@@ -25,25 +25,25 @@ func validateInput(input internal.Config, sub internal.Substrate) error {
 	if err != nil {
 		return fmt.Errorf("couldn't retrieve node for %d : %v", input.FarmID, err)
 	}
-	nodesMap := make(map[uint32]bool)
+	farmNodes := make(map[uint32]bool)
 	for _, node := range nodes {
-		nodesMap[node] = true
+		farmNodes[node] = true
 	}
 	includedNodes := make(map[uint32]bool)
 	for _, includedNode := range input.IncludedNodes {
 		includedNodes[includedNode] = true
 	}
 	if len(includedNodes) == 0 {
-		for key, value := range nodesMap {
+		for key, value := range farmNodes {
 			if !slices.Contains(input.ExcludedNodes, key) {
 				includedNodes[key] = value
 			}
 		}
 	}
-	if err := validateIncludedNodes(input.IncludedNodes, input.ExcludedNodes, nodesMap); err != nil {
+	if err := validateIncludedNodes(input.IncludedNodes, input.ExcludedNodes, farmNodes); err != nil {
 		return err
 	}
-	if err := validateExcludedNodes(input.ExcludedNodes, nodesMap); err != nil {
+	if err := validateExcludedNodes(input.ExcludedNodes, farmNodes); err != nil {
 		return err
 	}
 	if err := validatePriorityOrNeverShutdown("priority", input.PriorityNodes, includedNodes); err != nil {
