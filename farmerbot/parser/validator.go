@@ -39,10 +39,10 @@ func validateInput(input internal.Config, sub internal.Substrate) error {
 		}
 	} else {
 		for key, value := range nodesMap {
+			if slices.Contains(input.ExcludedNodes, key) {
+				continue
+			}
 			includedNodes[key] = value
-		}
-		for _, exclude := range input.ExcludedNodes {
-			delete(includedNodes, exclude)
 		}
 	}
 	if err := validateExcludedNodes(input.ExcludedNodes, nodesMap); err != nil {
