@@ -1,6 +1,6 @@
 BIN_PATH = bin/main
 
-.PHONY: build
+.PHONY: build run
 
 build:
 	@go build -o $(BIN_PATH) ./main.go

@@ -2,30 +2,24 @@ version: '1.0.0'
 
 networks:
   net1:
-    name: 'nettyy'
-    nodes:
-      - 11
-      - 14
-      - 144
-    range:
-      ip:
-        type: ip4
-        ip: 10.20.0.0
-      mask:
-        type: cidr
-        mask: 16/32
-      wg: true
+    type: 'wg'
+  net2:
+    type: 'myc'
+  net3:
+    type: 'ygg'
+  net4:
+    type: 'ip4'
+  net5:
+    type: 'ip6'
 
-project_name: 'example_project'
 services:
   web5:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
     networks:
-      - net1
-    network_types:
-      - ip4
-      - ygg
-    node_id: 11
+      - net3
+      - net4
+      - net5
+    node_id: 144
     entrypoint: '/sbin/zinit init'
     volumes:
       - webdata:/data
@@ -36,12 +30,11 @@ services:
   database:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
     networks:
+      - net3
       - net1
-    network_types:
-      - ygg
     volumes:
       - dbdata:/var/lib/postgresql/data
-    node_id: 11
+    node_id: 14
     entrypoint: '/sbin/zinit init'
     resources:
       cpu: 1

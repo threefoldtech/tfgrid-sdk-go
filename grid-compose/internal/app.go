@@ -13,8 +13,9 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/pkg"
+	types "github.com/threefoldtech/tfgrid-sdk-go/grid-compose/pkg"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -53,21 +54,35 @@ func NewApp(net, mnemonic, configPath string) (*App, error) {
 }
 
 func (a *App) Up(ctx context.Context) error {
-	deployments := make(map[string]*workloads.Deployment, 0)
+	// deployments := make(map[string]*workloads.Deployment, 0)
+	networks := generateNetworks(a.Config.Networks)
+	networkDeploymentsMap := make(map[string]types.DeploymentData, 0)
 
 	for key, val := range a.Config.Services {
-		projectName := a.getProjectName(key, a.Client.TwinID)
-		networkName := key + "net"
+		// network := workloads.ZNet{
+		// 	Name:  networkName,
+		// 	Nodes: []uint32{val.NodeID},
+		// 	IPRange: gridtypes.NewIPNet(net.IPNet{
+		// 		IP:   net.IPv4(10, 20, 0, 0),
+		// 		Mask: net.CIDRMask(16, 32),
+		// 	}),
+		// 	SolutionType: projectName,
+		// }
 
-		network := workloads.ZNet{
-			Name:  networkName,
-			Nodes: []uint32{uint32(val.NodeID)},
-			IPRange: gridtypes.NewIPNet(net.IPNet{
-				IP:   net.IPv4(10, 20, 0, 0),
-				Mask: net.CIDRMask(16, 32),
-			}),
-			SolutionType: projectName,
+		var network *workloads.ZNet
+		if val.Networks == nil || len(val.Networks) == 0 {
+			network = &workloads.ZNet{
+				Name:  key + "net",
+				Nodes: []uint32{val.NodeID},
+				IPRange: gridtypes.NewIPNet(net.IPNet{
+					IP:   net.IPv4(10, 20, 0, 0),
+					Mask: net.CIDRMask(16, 32),
+				}),
+			}
+		} else {
+			network = networks[val.Networks[0]]
 		}
+		network.SolutionType = a.Config.ProjectName
 
 		vm := workloads.VM{
 			Name:        key,
@@ -75,7 +90,7 @@ func (a *App) Up(ctx context.Context) error {
 			Entrypoint:  val.Entrypoint,
 			CPU:         int(val.Resources.CPU),
 			Memory:      int(val.Resources.Memory),
-			NetworkName: networkName,
+			NetworkName: network.Name,
 		}
 
 		assignEnvs(&vm, val.Environment)
@@ -85,35 +100,64 @@ func (a *App) Up(ctx context.Context) error {
 			return fmt.Errorf("failed to assign mounts %w", err)
 		}
 
-		if err := assignNetworks(&vm, val.Networks, a.Config.Networks, &network); err != nil {
+		if err := assignNetworksTypes(&vm, val.NetworkTypes); err != nil {
 			return fmt.Errorf("failed to assign networks %w", err)
 		}
 
-		if err := a.Client.NetworkDeployer.Deploy(context.Background(), &network); err != nil {
+		// if err := a.Client.NetworkDeployer.Deploy(context.Background(), &network); err != nil {
+		// 	return err
+		// }
+
+		// dl := workloads.NewDeployment(vm.Name, uint32(val.NodeID), projectName, nil, network.Name, disks, nil, nil, nil)
+		deploymentData := networkDeploymentsMap[network.Name]
+
+		deploymentData.Vms = append(deploymentData.Vms, vm)
+		deploymentData.Disks = append(deploymentData.Disks, disks...)
+		if !checkIfNodeIDExist(val.NodeID, deploymentData.NodeIDs) {
+			deploymentData.NodeIDs = append(deploymentData.NodeIDs, val.NodeID)
+		}
+		networkDeploymentsMap[network.Name] = deploymentData
+	}
+
+	log.Info().Str("status", "started").Msg("deploying networks...")
+	for _, val := range networks {
+		if err := a.Client.NetworkDeployer.Deploy(ctx, val); err != nil {
 			return err
 		}
+	}
+	log.Info().Str("status", "done").Msg("networks deployed successfully")
 
-		dl := workloads.NewDeployment(vm.Name, uint32(val.NodeID), projectName, nil, networkName, disks, nil, []workloads.VM{vm}, nil)
-		if err := a.Client.DeploymentDeployer.Deploy(context.Background(), &dl); err != nil {
-			if err := a.Client.NetworkDeployer.Cancel(context.Background(), &network); err != nil {
+	for key, val := range networkDeploymentsMap {
+		for _, nodeID := range val.NodeIDs {
+			dlName := a.getDeploymentName()
+			log.Info().Str("deployment", dlName).Str("services", fmt.Sprintf("%v", val.Vms)).Msg("deploying...")
+
+			dl := workloads.NewDeployment(dlName, nodeID, a.Config.ProjectName, nil, key, val.Disks, nil, val.Vms, nil)
+			if err := a.Client.DeploymentDeployer.Deploy(ctx, &dl); err != nil {
+				for _, val := range networks {
+					if err := a.Client.NetworkDeployer.Cancel(ctx, val); err != nil {
+						return err
+					}
+				}
 				return err
 			}
-			return err
-		}
 
-		deployments[dl.Name] = &dl
+			log.Info().Str("deployment", dlName).Msg("deployed successfully")
+		}
 	}
 
-	for name, dl := range deployments {
-		vmState, err := a.Client.State.LoadVMFromGrid(ctx, uint32(dl.NodeID), name, name)
-		if err != nil {
-			return fmt.Errorf("%w vm %s", err, name)
-		}
-
-		log.Info().Str("ip", vmState.IP).Str("vm name", name).Msg("vm deployed")
-	}
-
+	log.Info().Msg("all services deployed successfully")
 	return nil
+}
+
+func checkIfNodeIDExist(nodeID uint32, nodes []uint32) bool {
+	for _, node := range nodes {
+		if node == nodeID {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (a *App) Ps(ctx context.Context, flags *pflag.FlagSet) error {
@@ -128,7 +172,7 @@ func (a *App) Ps(ctx context.Context, flags *pflag.FlagSet) error {
 		output.WriteString(strings.Repeat("-", 79) + "\n")
 	}
 	for key, val := range a.Config.Services {
-		if err := a.loadCurrentNodeDeplyments(a.getProjectName(key, a.Client.TwinID)); err != nil {
+		if err := a.loadCurrentNodeDeplyments(a.Config.ProjectName); err != nil {
 			return err
 		}
 
@@ -165,7 +209,7 @@ func (a *App) Ps(ctx context.Context, flags *pflag.FlagSet) error {
 				}
 			}
 
-			var wlData pkg.WorkloadData
+			var wlData types.WorkloadData
 			err = json.Unmarshal(wl.Data, &wlData)
 			if err != nil {
 				return err
@@ -203,19 +247,23 @@ func parsePsFlags(flags *pflag.FlagSet) (bool, string, error) {
 }
 
 func (a *App) Down() error {
-	for key := range a.Config.Services {
-		projectName := a.getProjectName(key, a.Client.TwinID)
-		log.Info().Str("projectName", projectName).Msg("canceling deployments")
-		if err := a.Client.CancelByProjectName(projectName); err != nil {
-			return err
-		}
+
+	projectName := a.Config.ProjectName
+	log.Info().Str("projectName", projectName).Msg("canceling deployments")
+	if err := a.Client.CancelByProjectName(projectName); err != nil {
+		return err
 	}
+
 	return nil
 }
 
-func (a *App) getProjectName(key string, twinId uint32) string {
+func (a *App) getProjectName(key string) string {
 	key = strings.TrimSuffix(key, "net")
-	return fmt.Sprintf("compose/%v/%v", twinId, key)
+	return fmt.Sprintf("compose/%v/%v", a.Client.TwinID, key)
+}
+
+func (a *App) getDeploymentName() string {
+	return fmt.Sprintf("dl_%v_%v", a.Client.TwinID, generateRandString(5))
 }
 
 func (a *App) loadCurrentNodeDeplyments(projectName string) error {

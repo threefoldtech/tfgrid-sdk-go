@@ -4,34 +4,29 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/pkg"
-	"gopkg.in/yaml.v2"
+	types "github.com/threefoldtech/tfgrid-sdk-go/grid-compose/pkg"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Version  string                 `yaml:"version"`
-	Networks map[string]pkg.Network `yaml:"networks"`
-	Services map[string]pkg.Service `yaml:"services"`
-	Storage  map[string]pkg.Storage `yaml:"storage"`
+	Version     string                   `yaml:"version"`
+	Networks    map[string]types.Network `yaml:"networks"`
+	Services    map[string]types.Service `yaml:"services"`
+	Storage     map[string]types.Storage `yaml:"storage"`
+	ProjectName string                   `yaml:"project_name"`
 }
 
 func NewConfig() *Config {
 	return &Config{
-		Networks: make(map[string]pkg.Network),
-		Services: make(map[string]pkg.Service),
-		Storage:  make(map[string]pkg.Storage),
+		Networks: make(map[string]types.Network),
+		Services: make(map[string]types.Service),
+		Storage:  make(map[string]types.Storage),
 	}
 }
 
 func (c *Config) ValidateConfig() (err error) {
 	if c.Version == "" {
 		return ErrVersionNotSet
-	}
-
-	for name, network := range c.Networks {
-		if network.Type == "" {
-			return fmt.Errorf("%w for network %s", ErrNetworkTypeNotSet, name)
-		}
 	}
 
 	for name, service := range c.Services {
