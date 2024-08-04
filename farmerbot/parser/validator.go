@@ -64,9 +64,9 @@ func validateIncludedNodes(included, excluded []uint32, farmNodes map[uint32]boo
 	return nil
 }
 
-func validatePriorityOrNeverShutdown(typeOfValidation string, toBeValidated, excluded []uint32, nodes map[uint32]bool) error {
+func validatePriorityOrNeverShutdown(typeOfValidation string, toBeValidated, excluded []uint32, includedNodes map[uint32]bool) error {
 	for _, node := range toBeValidated {
-		if _, ok := nodes[node]; !ok {
+		if _, ok := includedNodes[node]; !ok {
 			return fmt.Errorf("%s node with id %d doesn't exist in the included nodes ", typeOfValidation, node)
 		}
 		if slices.Contains(excluded, node) {
