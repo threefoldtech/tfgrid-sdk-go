@@ -41,6 +41,10 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
+		if err := parser.ValidateConfig(config, network); err != nil {
+			return fmt.Errorf("invalid configuration: %w", err)
+		}
+
 		config.ContinueOnPoweringOnErr = continueOnPoweringOnErr
 
 		farmerBot, err := internal.NewFarmerBot(cmd.Context(), config, network, mnemonicOrSeed, keyType)
