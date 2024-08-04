@@ -1,2 +1,3 @@
 bin/*
 .pre-commit-config.yaml
+out

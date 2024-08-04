@@ -2,28 +2,29 @@ package internal
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
-func GetVmAddresses(vm workloads.VM) string {
-	var res string
+func getVmAddresses(vm workloads.VM) string {
+	var addresses strings.Builder
 
 	if vm.IP != "" {
-		res += fmt.Sprintf("\twireguard: %v\n", vm.IP)
+		addresses.WriteString(fmt.Sprintf("wireguard: %v, ", vm.IP))
 	}
 	if vm.Planetary {
-		res += fmt.Sprintf("\tyggdrasil: %v\n", vm.PlanetaryIP)
+		addresses.WriteString(fmt.Sprintf("yggdrasil: %v, ", vm.PlanetaryIP))
 	}
 	if vm.PublicIP {
-		res += fmt.Sprintf("\tpublicIp4: %v\n", vm.ComputedIP)
+		addresses.WriteString(fmt.Sprintf("publicIp4: %v, ", vm.ComputedIP))
 	}
 	if vm.PublicIP6 {
-		res += fmt.Sprintf("\tpublicIp6: %v\n", vm.ComputedIP6)
+		addresses.WriteString(fmt.Sprintf("publicIp6: %v, ", vm.ComputedIP6))
 	}
 	if len(vm.MyceliumIPSeed) != 0 {
-		res += fmt.Sprintf("\tmycelium: %v\n", vm.MyceliumIP)
+		addresses.WriteString(fmt.Sprintf("mycelium: %v, ", vm.MyceliumIP))
 	}
 
-	return res
+	return strings.TrimSuffix(addresses.String(), ", ")
 }

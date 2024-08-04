@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/pkg"
+	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
@@ -54,6 +56,19 @@ func (c *Config) ValidateConfig() (err error) {
 		if storage.Size == "" {
 			return fmt.Errorf("%w for storage %s", ErrStorageSizeNotSet, name)
 		}
+	}
+
+	return nil
+}
+
+func (c *Config) LoadConfigFromReader(configFile io.Reader) error {
+	content, err := io.ReadAll(configFile)
+	if err != nil {
+		return fmt.Errorf("failed to read file %w", err)
+	}
+
+	if err := yaml.Unmarshal(content, &c); err != nil {
+		return fmt.Errorf("failed to parse file %w", err)
 	}
 
 	return nil

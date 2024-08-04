@@ -17,6 +17,8 @@ services:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
     networks:
       - net3
+      - net4
+      - net5
     node_id: 144
     entrypoint: '/sbin/zinit init'
     volumes:

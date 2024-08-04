@@ -29,8 +29,31 @@ type HealthCheck struct {
 }
 
 type Resources struct {
-	CPU    uint `yaml:"cpu"`
-	Memory uint `yaml:"memory"`
-	SSD    uint `yaml:"ssd"`
-	HDD    uint `yaml:"hdd"`
+	CPU    uint `yaml:"cpu" json:"cpu"`
+	Memory uint `yaml:"memory" json:"memory"`
+	SSD    uint `yaml:"ssd" json:"ssd"`
+	HDD    uint `yaml:"hdd" json:"hdd"`
+}
+
+type WorkloadData struct {
+	Flist           string    `json:"flist"`
+	Network         Net       `json:"network"`
+	ComputeCapacity Resources `json:"compute_capacity"`
+	Size            int       `json:"size"`
+	Mounts          []struct {
+		Name       string `json:"name"`
+		MountPoint string `json:"mountpoint"`
+	} `json:"mounts"`
+	Entrypoint string            `json:"entrypoint"`
+	Env        map[string]string `json:"env"`
+	Corex      bool              `json:"corex"`
+}
+
+type Net struct {
+	PublicIP   string `json:"public_ip"`
+	Planetary  bool   `json:"planetary"`
+	Interfaces []struct {
+		Network string `json:"network"`
+		IP      string `json:"ip"`
+	}
 }

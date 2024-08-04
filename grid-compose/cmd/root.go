@@ -38,6 +38,8 @@ func init() {
 	network = os.Getenv("NETWORK")
 	mnemonic = os.Getenv("MNEMONIC")
 	rootCmd.PersistentFlags().StringVarP(&configPath, "file", "f", "./grid-compose.yaml", "the grid-compose configuration file")
+	psCmd.PersistentFlags().BoolP("verbose", "v", false, "all information about deployed services")
+	psCmd.PersistentFlags().StringP("output", "o", "", "output result to a file")
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
