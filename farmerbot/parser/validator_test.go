@@ -104,10 +104,6 @@ var unitTests = []struct {
 	}, {
 		toBeValidated: []uint32{26, 27},
 		shouldFail:    true,
-	}, {
-		toBeValidated:     []uint32{21},
-		noOverlappingWith: []uint32{20, 21},
-		shouldFail:        true,
 	},
 }
 
@@ -149,7 +145,7 @@ func TestValidateIncludedNodes(t *testing.T) {
 func TestValidatePriorityOrNeverShutdownNodes(t *testing.T) {
 	for _, tc := range unitTests {
 		t.Run("test validate priority and never shutdown nodes", func(t *testing.T) {
-			got := validatePriorityOrNeverShutdown("nodes", tc.toBeValidated, tc.noOverlappingWith, nodesMap)
+			got := validatePriorityOrNeverShutdown("nodes", tc.toBeValidated, nodesMap)
 			if tc.shouldFail {
 				assert.Error(t, got)
 			} else {

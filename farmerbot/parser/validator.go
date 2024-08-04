@@ -38,15 +38,20 @@ func validateInput(input internal.Config, sub internal.Substrate) error {
 			includedNodes[includedNode] = true
 		}
 	} else {
-		includedNodes = nodesMap
+		for key, value := range nodesMap {
+			includedNodes[key] = value
+		}
+		for _, exclude := range input.ExcludedNodes {
+			delete(includedNodes, exclude)
+		}
 	}
 	if err := validateExcludedNodes(input.ExcludedNodes, nodesMap); err != nil {
 		return err
 	}
-	if err := validatePriorityOrNeverShutdown("priority", input.PriorityNodes, input.ExcludedNodes, includedNodes); err != nil {
+	if err := validatePriorityOrNeverShutdown("priority", input.PriorityNodes, includedNodes); err != nil {
 		return err
 	}
-	if err := validatePriorityOrNeverShutdown("never shutdown", input.NeverShutDownNodes, input.ExcludedNodes, includedNodes); err != nil {
+	if err := validatePriorityOrNeverShutdown("never shutdown", input.NeverShutDownNodes, includedNodes); err != nil {
 		return err
 	}
 	return nil
@@ -64,13 +69,10 @@ func validateIncludedNodes(included, excluded []uint32, farmNodes map[uint32]boo
 	return nil
 }
 
-func validatePriorityOrNeverShutdown(typeOfValidation string, toBeValidated, excluded []uint32, includedNodes map[uint32]bool) error {
+func validatePriorityOrNeverShutdown(typeOfValidation string, toBeValidated []uint32, includedNodes map[uint32]bool) error {
 	for _, node := range toBeValidated {
 		if _, ok := includedNodes[node]; !ok {
 			return fmt.Errorf("%s node with id %d doesn't exist in the included nodes ", typeOfValidation, node)
-		}
-		if slices.Contains(excluded, node) {
-			return fmt.Errorf("node %d can not be both %s and excluded", node, typeOfValidation)
 		}
 	}
 	return nil
