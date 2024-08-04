@@ -30,20 +30,18 @@ func validateInput(input internal.Config, sub internal.Substrate) error {
 		nodesMap[node] = true
 	}
 	includedNodes := make(map[uint32]bool)
-	if len(input.IncludedNodes) != 0 {
-		if err := validateIncludedNodes(input.IncludedNodes, input.ExcludedNodes, nodesMap); err != nil {
-			return err
-		}
-		for _, includedNode := range input.IncludedNodes {
-			includedNodes[includedNode] = true
-		}
-	} else {
+	for _, includedNode := range input.IncludedNodes {
+		includedNodes[includedNode] = true
+	}
+	if len(includedNodes) == 0 {
 		for key, value := range nodesMap {
-			if slices.Contains(input.ExcludedNodes, key) {
-				continue
+			if !slices.Contains(input.ExcludedNodes, key) {
+				includedNodes[key] = value
 			}
-			includedNodes[key] = value
 		}
+	}
+	if err := validateIncludedNodes(input.IncludedNodes, input.ExcludedNodes, nodesMap); err != nil {
+		return err
 	}
 	if err := validateExcludedNodes(input.ExcludedNodes, nodesMap); err != nil {
 		return err
