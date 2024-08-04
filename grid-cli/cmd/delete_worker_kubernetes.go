@@ -2,7 +2,6 @@
 package cmd
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/rs/zerolog/log"
@@ -39,14 +38,12 @@ var deleteWorkerCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		fmt.Println(cluster.GenerateMetadata())
 
 		for i, worker := range cluster.Workers {
 			if worker.Name == workerName {
 				cluster.Workers = slices.Delete(cluster.Workers, i, i+1)
 			}
 		}
-		fmt.Println(cluster.Workers)
 
 		cluster, err = command.DeleteWorkerKubernetesCluster(cmd.Context(), t, cluster)
 		if err != nil {
