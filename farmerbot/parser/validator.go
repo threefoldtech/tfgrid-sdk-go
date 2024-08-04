@@ -70,7 +70,7 @@ func validatePriorityOrNeverShutdown(typeOfValidation string, toBeValidated, exc
 			return fmt.Errorf("%s node with id %d doesn't exist in the included nodes ", typeOfValidation, node)
 		}
 		if slices.Contains(excluded, node) {
-			return fmt.Errorf("cannot %s and exclude the same node %d", typeOfValidation, node)
+			return fmt.Errorf("node %d can not be both %s and excluded", node, typeOfValidation)
 		}
 	}
 	return nil

@@ -15,7 +15,7 @@ var testCases = []struct {
 	priorityNodes      []uint32
 	excludedNodes      []uint32
 	neverShutdownNodes []uint32
-	shouldError        bool
+	shouldFail         bool
 }{
 	{
 		name:               "test valid include, exclude, priority nodes and never shutdown nodes",
@@ -23,69 +23,69 @@ var testCases = []struct {
 		priorityNodes:      []uint32{20, 21},
 		excludedNodes:      []uint32{23, 24, 34},
 		neverShutdownNodes: []uint32{22, 30},
-		shouldError:        false,
+		shouldFail:         false,
 	},
 	{
 		name:          "test invalid include",
 		includedNodes: []uint32{26, 27},
-		shouldError:   true,
+		shouldFail:    true,
 	},
 	{
 		name:          "test invalid priority",
 		includedNodes: []uint32{21},
 		priorityNodes: []uint32{20, 21},
-		shouldError:   true,
+		shouldFail:    true,
 	},
 	{
 		name:               "test invalid never shutdown node",
 		includedNodes:      []uint32{21},
 		neverShutdownNodes: []uint32{20, 21},
-		shouldError:        true,
+		shouldFail:         true,
 	}, {
 		name:          "test overlapping nodes in include and exclude",
 		includedNodes: []uint32{21},
 		excludedNodes: []uint32{20, 21},
-		shouldError:   true,
+		shouldFail:    true,
 	}, {
 		name:          "test overlapping nodes in priority and exclude",
 		includedNodes: []uint32{21},
 		priorityNodes: []uint32{21},
 		excludedNodes: []uint32{20, 21},
-		shouldError:   true,
+		shouldFail:    true,
 	}, {
 		name:               "test overlapping nodes in never shutdown and exclude",
 		includedNodes:      []uint32{21},
 		excludedNodes:      []uint32{20, 21},
 		neverShutdownNodes: []uint32{21},
-		shouldError:        true,
+		shouldFail:         true,
 	}, {
 		name:          "test invalid exclude",
 		excludedNodes: []uint32{26, 27},
-		shouldError:   true,
+		shouldFail:    true,
 	}, {
 		name:               "test all nodes included and other nodes are valid",
 		priorityNodes:      []uint32{21},
 		excludedNodes:      []uint32{22},
 		neverShutdownNodes: []uint32{20},
-		shouldError:        false,
+		shouldFail:         false,
 	}, {
 		name:          "test all nodes included and invalid priority nodes",
 		priorityNodes: []uint32{27, 26},
-		shouldError:   true,
+		shouldFail:    true,
 	}, {
 		name:               "test all nodes included and invalid shutdown nodes",
 		neverShutdownNodes: []uint32{27, 26},
-		shouldError:        true,
+		shouldFail:         true,
 	}, {
 		name:               "test all nodes included and overlapping shutdown nodes and excluded",
 		neverShutdownNodes: []uint32{21, 20},
 		excludedNodes:      []uint32{21, 20},
-		shouldError:        true,
+		shouldFail:         true,
 	}, {
 		name:          "test all nodes included and overlapping priority and excluded nodes",
 		excludedNodes: []uint32{21, 20},
 		priorityNodes: []uint32{21, 20},
-		shouldError:   true,
+		shouldFail:    true,
 	},
 }
 var nodesMap = map[uint32]bool{
@@ -95,19 +95,19 @@ var nodesMap = map[uint32]bool{
 var unitTests = []struct {
 	toBeValidated     []uint32
 	noOverlappingWith []uint32
-	shouldError       bool
+	shouldFail        bool
 }{
 	{
 		toBeValidated:     []uint32{20, 21, 22, 30, 31, 32, 40, 41},
 		noOverlappingWith: []uint32{23, 24, 34},
-		shouldError:       false,
+		shouldFail:        false,
 	}, {
 		toBeValidated: []uint32{26, 27},
-		shouldError:   true,
+		shouldFail:    true,
 	}, {
 		toBeValidated:     []uint32{21},
 		noOverlappingWith: []uint32{20, 21},
-		shouldError:       true,
+		shouldFail:        true,
 	},
 }
 
@@ -123,7 +123,7 @@ func TestValidateInput(t *testing.T) {
 			config.PriorityNodes = test.priorityNodes
 			config.NeverShutDownNodes = test.neverShutdownNodes
 			got := validateInput(config, mockGetNodes)
-			if test.shouldError {
+			if test.shouldFail {
 				assert.Error(t, got)
 			} else {
 				assert.NoError(t, got)
@@ -137,7 +137,7 @@ func TestValidateIncludedNodes(t *testing.T) {
 	for _, tc := range unitTests {
 		t.Run("test validate included nodes", func(t *testing.T) {
 			got := validateIncludedNodes(tc.toBeValidated, tc.noOverlappingWith, nodesMap)
-			if tc.shouldError {
+			if tc.shouldFail {
 				assert.Error(t, got)
 			} else {
 				assert.NoError(t, got)
@@ -150,7 +150,7 @@ func TestValidatePriorityOrNeverShutdownNodes(t *testing.T) {
 	for _, tc := range unitTests {
 		t.Run("test validate priority and never shutdown nodes", func(t *testing.T) {
 			got := validatePriorityOrNeverShutdown("nodes", tc.toBeValidated, tc.noOverlappingWith, nodesMap)
-			if tc.shouldError {
+			if tc.shouldFail {
 				assert.Error(t, got)
 			} else {
 				assert.NoError(t, got)
@@ -166,7 +166,7 @@ func TestValidateExcludedNodes(t *testing.T) {
 		}
 		t.Run("test validate excluded nodes", func(t *testing.T) {
 			got := validateExcludedNodes(tc.toBeValidated, nodesMap)
-			if tc.shouldError {
+			if tc.shouldFail {
 				assert.Error(t, got)
 			} else {
 				assert.NoError(t, got)
