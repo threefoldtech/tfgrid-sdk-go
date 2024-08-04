@@ -10,8 +10,8 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
-// UpdateKubernetesCluster deploys a kubernetes cluster
-func UpdateKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, cluster workloads.K8sCluster, addMycelium bool) (workloads.K8sCluster, error) {
+// AddWorkersKubernetesCluster deploys a kubernetes cluster
+func AddWorkersKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, cluster workloads.K8sCluster, addMycelium bool) (workloads.K8sCluster, error) {
 	master := *cluster.Master
 	workers := cluster.Workers
 
@@ -53,5 +53,25 @@ func UpdateKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, clu
 		ctx,
 		network.Nodes,
 		master.Name,
+	)
+}
+
+func DeleteWorkerKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, cluster workloads.K8sCluster) (workloads.K8sCluster, error) {
+	log.Info().Msg("updating cluster")
+	err := t.K8sDeployer.Deploy(ctx, &cluster)
+	if err != nil {
+		log.Warn().Msg("error happened while update.")
+		return workloads.K8sCluster{}, errors.Wrap(err, "failed to deploy kubernetes cluster")
+	}
+
+	network, err := t.State.LoadNetworkFromGrid(ctx, cluster.Master.NetworkName)
+	if err != nil {
+		return workloads.K8sCluster{}, err
+	}
+
+	return t.State.LoadK8sFromGrid(
+		ctx,
+		network.Nodes,
+		cluster.Master.Name,
 	)
 }

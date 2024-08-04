@@ -2,7 +2,6 @@
 package cmd
 
 import (
-	"os"
 	"slices"
 
 	"github.com/rs/zerolog/log"
@@ -20,14 +19,6 @@ var deleteWorkerCmd = &cobra.Command{
 		name, err := cmd.Flags().GetString("name")
 		if err != nil {
 			return err
-		}
-		sshFile, err := cmd.Flags().GetString("ssh")
-		if err != nil {
-			return err
-		}
-		sshKey, err := os.ReadFile(sshFile)
-		if err != nil {
-			log.Fatal().Err(err).Send()
 		}
 		workerName, err := cmd.Flags().GetString("worker-name")
 		if err != nil {
@@ -56,7 +47,7 @@ var deleteWorkerCmd = &cobra.Command{
 			}
 		}
 
-		cluster, err = command.UpdateKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey))
+		cluster, err = command.DeleteWorkerKubernetesCluster(cmd.Context(), t, cluster)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -103,16 +94,10 @@ var deleteWorkerCmd = &cobra.Command{
 }
 
 func init() {
-	updateCmd.AddCommand(deleteWorkerCmd)
+	updatekubernetesCmd.AddCommand(deleteWorkerCmd)
 
 	deleteWorkerCmd.Flags().StringP("name", "n", "", "name of the kubernetes cluster")
 	err := deleteWorkerCmd.MarkFlagRequired("name")
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
-
-	deleteWorkerCmd.Flags().String("ssh", "", "path to public ssh key")
-	err = deleteWorkerCmd.MarkFlagRequired("ssh")
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
