@@ -18,7 +18,7 @@ var testCases = []struct {
 	shouldFail         bool
 }{
 	{
-		name:               "test valid include, exclude, priority nodes and never shutdown nodes",
+		name:               "test include, exclude, priority nodes and never shutdown nodes found in farm nodes",
 		includedNodes:      []uint32{20, 21, 22, 30, 31, 32, 40, 41},
 		priorityNodes:      []uint32{20, 21},
 		excludedNodes:      []uint32{23, 24, 34},
@@ -26,83 +26,65 @@ var testCases = []struct {
 		shouldFail:         false,
 	},
 	{
-		name:          "test invalid include",
+		name:          "test included node doesn't exist in farm nodes",
 		includedNodes: []uint32{26, 27},
 		shouldFail:    true,
 	},
 	{
-		name:          "test invalid priority",
+		name:          "test priority node doesn't exist in included nodes",
 		includedNodes: []uint32{21},
 		priorityNodes: []uint32{20, 21},
 		shouldFail:    true,
 	},
 	{
-		name:               "test invalid never shutdown node",
+		name:               "test never shutdown node doesn't exist in included nodes",
 		includedNodes:      []uint32{21},
 		neverShutdownNodes: []uint32{20, 21},
 		shouldFail:         true,
 	}, {
-		name:          "test overlapping nodes in include and exclude",
+		name:          "test overlapping nodes in included and excluded nodes",
 		includedNodes: []uint32{21},
 		excludedNodes: []uint32{20, 21},
 		shouldFail:    true,
 	}, {
-		name:          "test overlapping nodes in priority and exclude",
+		name:          "test overlapping nodes in priority and excluded nodes",
 		includedNodes: []uint32{21},
 		priorityNodes: []uint32{21},
 		excludedNodes: []uint32{20, 21},
 		shouldFail:    true,
 	}, {
-		name:               "test overlapping nodes in never shutdown and exclude",
+		name:               "test overlapping nodes in never shutdown and excluded nodes",
 		includedNodes:      []uint32{21},
 		excludedNodes:      []uint32{20, 21},
 		neverShutdownNodes: []uint32{21},
 		shouldFail:         true,
 	}, {
-		name:          "test invalid exclude",
+		name:          "test excluded node doesn't exist in farm nodes",
 		excludedNodes: []uint32{26, 27},
 		shouldFail:    true,
 	}, {
-		name:               "test all nodes included and other nodes are valid",
+		name:               "test all nodes included and other nodes exist in included nodes",
 		priorityNodes:      []uint32{21},
 		excludedNodes:      []uint32{22},
 		neverShutdownNodes: []uint32{20},
 		shouldFail:         false,
 	}, {
-		name:          "test all nodes included and invalid priority nodes",
+		name:          "test all nodes included and priority nodes doesn't exist in included nodes",
 		priorityNodes: []uint32{27, 26},
 		shouldFail:    true,
 	}, {
-		name:               "test all nodes included and invalid shutdown nodes",
+		name:               "test all nodes included and shutdown nodes doesn't exist in included nodes",
 		neverShutdownNodes: []uint32{27, 26},
 		shouldFail:         true,
 	}, {
-		name:               "test all nodes included and overlapping shutdown nodes and excluded",
+		name:               "test all nodes included and overlapping node between shutdown and excluded nodes",
 		neverShutdownNodes: []uint32{21, 20},
 		excludedNodes:      []uint32{21, 20},
 		shouldFail:         true,
 	}, {
-		name:          "test all nodes included and overlapping priority and excluded nodes",
+		name:          "test all nodes included and overlapping node between priority and excluded nodes",
 		excludedNodes: []uint32{21, 20},
 		priorityNodes: []uint32{21, 20},
-		shouldFail:    true,
-	},
-}
-var nodesMap = map[uint32]bool{
-	20: true, 21: true, 22: true, 23: true, 24: true, 30: true, 31: true, 32: true, 34: true, 40: true, 41: true,
-}
-
-var unitTests = []struct {
-	toBeValidated     []uint32
-	noOverlappingWith []uint32
-	shouldFail        bool
-}{
-	{
-		toBeValidated:     []uint32{20, 21, 22, 30, 31, 32, 40, 41},
-		noOverlappingWith: []uint32{23, 24, 34},
-		shouldFail:        false,
-	}, {
-		toBeValidated: []uint32{26, 27},
 		shouldFail:    true,
 	},
 }
@@ -127,46 +109,4 @@ func TestValidateInput(t *testing.T) {
 		})
 	}
 
-}
-
-func TestValidateIncludedNodes(t *testing.T) {
-	for _, tc := range unitTests {
-		t.Run("test validate included nodes", func(t *testing.T) {
-			got := validateIncludedNodes(tc.toBeValidated, tc.noOverlappingWith, nodesMap)
-			if tc.shouldFail {
-				assert.Error(t, got)
-			} else {
-				assert.NoError(t, got)
-			}
-		})
-	}
-}
-
-func TestValidatePriorityOrNeverShutdownNodes(t *testing.T) {
-	for _, tc := range unitTests {
-		t.Run("test validate priority and never shutdown nodes", func(t *testing.T) {
-			got := validatePriorityOrNeverShutdown("nodes", tc.toBeValidated, nodesMap)
-			if tc.shouldFail {
-				assert.Error(t, got)
-			} else {
-				assert.NoError(t, got)
-			}
-		})
-	}
-}
-
-func TestValidateExcludedNodes(t *testing.T) {
-	for i, tc := range unitTests {
-		if i == 2 {
-			continue
-		}
-		t.Run("test validate excluded nodes", func(t *testing.T) {
-			got := validateExcludedNodes(tc.toBeValidated, nodesMap)
-			if tc.shouldFail {
-				assert.Error(t, got)
-			} else {
-				assert.NoError(t, got)
-			}
-		})
-	}
 }
