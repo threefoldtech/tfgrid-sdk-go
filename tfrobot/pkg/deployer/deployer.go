@@ -197,6 +197,15 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
 			groupDeployments.vmDeployments[idx].NodeID = nodeID
 			groupDeployments.networkDeployments[idx].Nodes = []uint32{nodeID}
+
+			myceliumKeys := groupDeployments.networkDeployments[idx].MyceliumKeys
+			if len(myceliumKeys) != 0 {
+				myceliumKey, err := workloads.RandomMyceliumKey()
+				if err != nil {
+					log.Debug().Err(err).Send()
+				}
+				groupDeployments.networkDeployments[idx].MyceliumKeys = map[uint32][]byte{nodeID: myceliumKey}
+			}
 		}
 	}
 }
@@ -242,7 +251,7 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 			network := buildNetworkDeployment(vmGroup, nodeID, vmName, solutionType)
 			vm := buildVMDeployment(vmGroup, vmName, network.Name, sshKeys[vmGroup.SSHKey], mounts)
 
-			deployment := workloads.NewDeployment(vm.Name, nodeID, solutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil)
+			deployment := workloads.NewDeployment(vm.Name, nodeID, solutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil, nil)
 
 			vmDeployments = append(vmDeployments, &deployment)
 			networkDeployments = append(networkDeployments, &network)

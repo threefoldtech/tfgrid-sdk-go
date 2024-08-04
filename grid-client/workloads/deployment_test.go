@@ -18,6 +18,7 @@ func TestNewDeployment(t *testing.T) {
 		[]ZDB{ZDBWorkload},
 		[]VM{VMWorkload},
 		[]QSFS{QSFSWorkload},
+		[]Volume{volumeWorkload},
 	)
 
 	t.Run("test deployment validate", func(t *testing.T) {
@@ -33,7 +34,7 @@ func TestNewDeployment(t *testing.T) {
 		workloads = append(workloads, VMWorkload.ZosWorkload()...)
 		QSFS, err := QSFSWorkload.ZosWorkload()
 		assert.NoError(t, err)
-		workloads = append(workloads, QSFS)
+		workloads = append(workloads, QSFS, volumeWorkload.ZosWorkload())
 
 		newZosDeployment := NewGridDeployment(1, workloads)
 		assert.Equal(t, newZosDeployment, zosDeployment)
@@ -55,7 +56,7 @@ func TestNewDeployment(t *testing.T) {
 
 	t.Run("test deployment match", func(t *testing.T) {
 		dlCp := deployment
-		deployment.Match([]Disk{}, []QSFS{}, []ZDB{}, []VM{})
+		deployment.Match([]Disk{}, []QSFS{}, []ZDB{}, []VM{}, []Volume{})
 		assert.Equal(t, deployment, dlCp)
 	})
 
@@ -65,6 +66,7 @@ func TestNewDeployment(t *testing.T) {
 		assert.Equal(t, deployment.Disks, []Disk(nil))
 		assert.Equal(t, deployment.QSFS, []QSFS(nil))
 		assert.Equal(t, deployment.Zdbs, []ZDB(nil))
+		assert.Equal(t, deployment.Volumes, []Volume(nil))
 		assert.Equal(t, deployment.ContractID, uint64(0))
 	})
 }
