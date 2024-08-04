@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/rs/zerolog/log"
@@ -38,14 +39,14 @@ var deleteWorkerCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
-		master := *cluster.Master
-		workers := cluster.Workers
+		fmt.Println(cluster.GenerateMetadata())
 
-		for i, worker := range workers {
+		for i, worker := range cluster.Workers {
 			if worker.Name == workerName {
-				workers = slices.Delete(workers, i, i+1)
+				cluster.Workers = slices.Delete(cluster.Workers, i, i+1)
 			}
 		}
+		fmt.Println(cluster.Workers)
 
 		cluster, err = command.DeleteWorkerKubernetesCluster(cmd.Context(), t, cluster)
 		if err != nil {
@@ -53,16 +54,16 @@ var deleteWorkerCmd = &cobra.Command{
 		}
 
 		log.Info().Msgf("master wireguard ip: %s", cluster.Master.IP)
-		if master.PublicIP {
+		if cluster.Master.PublicIP {
 			log.Info().Msgf("master ipv4: %s", cluster.Master.ComputedIP)
 		}
-		if master.PublicIP6 {
+		if cluster.Master.PublicIP6 {
 			log.Info().Msgf("master ipv6: %s", cluster.Master.ComputedIP6)
 		}
-		if master.Planetary {
+		if cluster.Master.Planetary {
 			log.Info().Msgf("master planetary ip: %s", cluster.Master.PlanetaryIP)
 		}
-		if len(master.MyceliumIP) != 0 {
+		if len(cluster.Master.MyceliumIP) != 0 {
 			log.Info().Msgf("master mycelium ip: %s", cluster.Master.MyceliumIP)
 		}
 
