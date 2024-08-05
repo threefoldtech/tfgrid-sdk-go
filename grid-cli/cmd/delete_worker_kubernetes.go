@@ -101,4 +101,8 @@ func init() {
 	}
 
 	deleteWorkerCmd.Flags().String("worker-name", "", "worker to delete")
+	err = deleteWorkerCmd.MarkFlagRequired("worker-name")
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
 }
