@@ -14,7 +14,7 @@ import (
 // deleteWorkerCmd represents the update kubernetes command
 var deleteWorkerCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "remove workder from a kubernetes cluster",
+	Short: "remove worker from a kubernetes cluster",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := cmd.Flags().GetString("name")
 		if err != nil {
@@ -92,7 +92,7 @@ var deleteWorkerCmd = &cobra.Command{
 }
 
 func init() {
-	updatekubernetesCmd.AddCommand(deleteWorkerCmd)
+	updateKubernetesCmd.AddCommand(deleteWorkerCmd)
 
 	deleteWorkerCmd.Flags().StringP("name", "n", "", "name of the kubernetes cluster")
 	err := deleteWorkerCmd.MarkFlagRequired("name")

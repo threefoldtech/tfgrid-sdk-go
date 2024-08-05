@@ -18,7 +18,7 @@ tfcmd deploy kubernetes [flags]
 - master-node: node id master should be deployed on.
 - master-farm: farm id master should be deployed on, if set choose available node from farm that fits master specs (default 1). note: master-node and master-farm flags cannot be set both.
 - workers-nodes: array of nodes ids workers should be deployed on and the remaining unassigned workers will be randomly assigned to nodes that meet the specifications.
-- workers-farm: farm id workers should be deployed on, if set choose available node from farm that fits master specs (default 1). note: workers-node and workers-farm flags cannot be set both.
+- workers-farm: farm id workers should be deployed on, if set choose available node from farm that fits master specs (default 1). note: workers-nodes and workers-farm flags cannot be set both.
 - ipv4: assign public ipv4 for master node (default false).
 - ipv6: assign public ipv6 for master node (default false).
 - ygg: assign yggdrasil ip for master node (default true).
@@ -58,7 +58,7 @@ $ tfcmd deploy kubernetes -n kube --ssh ~/.ssh/id_rsa.pub --master-node 14 --wor
 ### Add workers
 
 ```bash
-tfcmd apdate kubernetes add [flags]
+tfcmd update kubernetes add [flags]
 ```
 
 ### Required Flags
@@ -70,7 +70,7 @@ tfcmd apdate kubernetes add [flags]
 
 - workers-number: number of workers to be added to the cluster (default = 1)
 - workers-nodes: array of nodes ids workers should be deployed on and the remaining unassigned workers will be randomly assigned to nodes that meet the specifications.
-- workers-farm: farm id workers should be deployed on, if set choose available node from farm that fits master specs (default 1). note: workers-node and workers-farm flags cannot be set both.
+- workers-farm: farm id workers should be deployed on, if set choose available node from farm that fits master specs (default 1). note: workers-nodes and workers-farm flags cannot be set both.
 - workers-ipv4: assign public ipv4 for each worker node (default false)
 - workers-ipv6: assign public ipv6 for each worker node (default false)
 - workers-ygg: assign yggdrasil ip for each worker node (default true)
@@ -82,7 +82,7 @@ tfcmd apdate kubernetes add [flags]
 Example:
 
 ```console
-➜  grid-cli git:(development-support-updating-k8s-cluster-grid-cli) ✗ go run main.go deploy kubernetes --name test --ssh ~/.ssh/id_rsa.pub --workers-number 1 --master-memory 2 --mycelium
+$ tfcmd deploy kubernetes --name test --ssh ~/.ssh/id_rsa.pub --workers-number 1 --master-memory 2 --mycelium
 11:57AM INF starting peer session=tf-21418 twin=4653
 11:57AM INF deploying network
 11:57AM INF deploying cluster
@@ -93,7 +93,7 @@ Example:
 11:58AM INF worker0 planetary ip: 301:1037:16ee:23fb:83f6:d82e:aad:cf06
 11:58AM INF worker0 mycelium ip: 59f:354e:418c:5027:ff0f:357a:f019:73d6
 
-➜  grid-cli git:(development-support-updating-k8s-cluster-grid-cli) ✗ go run main.go update kubernetes add --name test --ssh ~/.ssh/id_rsa.pub --workers-number 2
+$ tfcmd update kubernetes add --name test --ssh ~/.ssh/id_rsa.pub --workers-number 2
 12:00PM INF starting peer session=tf-21803 twin=4653
 12:00PM INF updating network
 12:00PM INF updating cluster
@@ -114,7 +114,7 @@ Example:
 ### Delete worker
 
 ```bash
-tfcmd apdate kubernetes delete [flags]
+tfcmd update kubernetes delete [flags]
 ```
 
 ### Required Flags
@@ -126,7 +126,7 @@ tfcmd apdate kubernetes delete [flags]
 Example:
 
 ```console
-➜  grid-cli git:(development-support-updating-k8s-cluster-grid-cli) ✗ go run main.go update kubernetes delete --name test --worker-name worker0
+$ tfcmd update kubernetes delete --name test --worker-name worker0
 12:34PM INF starting peer session=tf-25294 twin=4653
 12:34PM INF updating network
 12:35PM INF updating cluster

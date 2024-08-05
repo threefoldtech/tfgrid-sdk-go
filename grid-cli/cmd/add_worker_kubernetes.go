@@ -180,7 +180,7 @@ var addWorkerCmd = &cobra.Command{
 }
 
 func init() {
-	updatekubernetesCmd.AddCommand(addWorkerCmd)
+	updateKubernetesCmd.AddCommand(addWorkerCmd)
 
 	addWorkerCmd.Flags().StringP("name", "n", "", "name of the kubernetes cluster")
 	err := addWorkerCmd.MarkFlagRequired("name")

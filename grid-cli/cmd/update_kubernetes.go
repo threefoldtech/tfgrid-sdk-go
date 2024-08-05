@@ -5,12 +5,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// updatekubernetesCmd represents the deploy command
-var updatekubernetesCmd = &cobra.Command{
+// updateKubernetesCmd represents the update kubernetes command
+var updateKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
 	Short: "update kubernetes workers",
 }
 
 func init() {
-	updateCmd.AddCommand(updatekubernetesCmd)
+	updateCmd.AddCommand(updateKubernetesCmd)
 }
