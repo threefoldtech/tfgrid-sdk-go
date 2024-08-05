@@ -49,5 +49,17 @@ vms:
     entry_point: /sbin/zinit init
     ssh_key: key1
 
+  - name: example_d #test deployment with wireguard access
+    vms_count: 3
+    node_group: group_a
+    cpu: 1
+    mem: 1
+    public_ip4: true
+    mycelium_ip: true
+    flist: https://hub.grid.tf/tf-official-apps/base:latest.flist
+    entry_point: /sbin/zinit init
+    wireguard: true
+    ssh_key: key1
+
 ssh_keys:
   key1: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCsnouceyLPDj1OFjMO0amzznxbSurxLbZ21WEY5o6uaBuhAlDa2zMIvN8gmeZZeJcKHZfOZI0+atVo0FCjFc2VWZX7LwasW4Lbb2MV3xk4RTlkIRlKov/Iyj8lcAXEnFIV81fpLZtTmk6ERp5gYIBYP2n5CISK0lCiWeu/QFerYa9lb1cYpo/+epSREts4ka80XifA12kWMKfDNJKcWqv4EZZyRyPTVTTxKSJzHahu+J+Kpg+fs65toRaDAuXDzwBLJ/d2qCeR3dfbJl681jiFUlS46ap4njSrnGLssSSwpbhxPEWF3lJ+mQFn14aPLQikq4lOhGUhq7BCYQH9RNkZ 
