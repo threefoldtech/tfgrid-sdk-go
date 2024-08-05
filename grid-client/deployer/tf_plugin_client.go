@@ -75,6 +75,7 @@ type TFPluginClient struct {
 	relayURLs      []string
 	RMBTimeout     time.Duration
 	proxyURL       string
+	graphqlURL     string
 	useRmbProxy    bool
 
 	// network
@@ -112,6 +113,7 @@ type pluginCfg struct {
 	substrateURL  []string
 	relayURLs     []string
 	proxyURL      string
+	graphqlURL    string
 	rmbTimeout    int
 	showLogs      bool
 	rmbInMemCache bool
@@ -167,12 +169,19 @@ func WithTwinCache() PluginOpt {
 	}
 }
 
+func WithGraphQlURL(graphqlURL string) PluginOpt {
+	return func(p *pluginCfg) {
+		p.graphqlURL = graphqlURL
+	}
+}
+
 func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 	cfg := pluginCfg{
 		network:       "main",
 		keyType:       peer.KeyTypeSr25519,
 		substrateURL:  []string{},
 		proxyURL:      "",
+		graphqlURL:    "",
 		relayURLs:     []string{},
 		rmbTimeout:    60, // default rmbTimeout is 60
 		showLogs:      false,
@@ -192,6 +201,13 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 	}
 	if err := validateProxyURL(cfg.proxyURL); err != nil {
 		return cfg, errors.Wrapf(err, "could not validate proxy url %s", cfg.proxyURL)
+	}
+
+	if strings.TrimSpace(cfg.graphqlURL) == "" {
+		cfg.graphqlURL = GraphQlURLs[cfg.network]
+	}
+	if err := validateGraphQlURL(cfg.graphqlURL); err != nil {
+		return cfg, errors.Wrapf(err, "could not validate graphql url %s", cfg.graphqlURL)
 	}
 
 	if len(cfg.relayURLs) == 0 {
@@ -266,6 +282,7 @@ func NewTFPluginClient(
 	tfPluginClient.Network = cfg.network
 	tfPluginClient.substrateURL = cfg.substrateURL
 	tfPluginClient.proxyURL = cfg.proxyURL
+	tfPluginClient.graphqlURL = cfg.graphqlURL
 	tfPluginClient.relayURLs = cfg.relayURLs
 
 	manager := subi.NewManager(tfPluginClient.substrateURL...)
@@ -333,10 +350,9 @@ func NewTFPluginClient(
 	tfPluginClient.K8sDeployer = NewK8sDeployer(&tfPluginClient)
 	tfPluginClient.GatewayNameDeployer = NewGatewayNameDeployer(&tfPluginClient)
 
-	graphqlURL := GraphQlURLs[cfg.network]
-	tfPluginClient.graphQl, err = graphql.NewGraphQl(graphqlURL)
+	tfPluginClient.graphQl, err = graphql.NewGraphQl(tfPluginClient.graphqlURL)
 	if err != nil {
-		return TFPluginClient{}, errors.Wrapf(err, "could not create a new graphql with url: %s", graphqlURL)
+		return TFPluginClient{}, errors.Wrapf(err, "could not create a new graphql with url: %s", tfPluginClient.graphqlURL)
 	}
 
 	tfPluginClient.ContractsGetter = graphql.NewContractsGetter(tfPluginClient.TwinID, tfPluginClient.graphQl, tfPluginClient.SubstrateConn, tfPluginClient.NcPool)
