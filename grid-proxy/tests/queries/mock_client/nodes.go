@@ -93,6 +93,21 @@ func calcDiscount(cost, balance float64) float64 {
 	return math.Round(cost*1000) / 1000
 }
 
+func getGpus(data DBData, twinId uint32) []types.NodeGPU {
+	// ignore the twin id from the response
+	// if empty will return empty array instead of nil
+	res := []types.NodeGPU{}
+	for _, card := range data.GPUs[twinId] {
+		res = append(res, types.NodeGPU{
+			ID:       card.ID,
+			Device:   card.Device,
+			Vendor:   card.Vendor,
+			Contract: card.Contract,
+		})
+	}
+	return res
+}
+
 // Nodes returns nodes with the given filters and pagination parameters
 func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) (res []types.Node, totalCount int, err error) {
 	res = []types.Node{}
@@ -163,6 +178,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 					Target: node.Power.Target,
 				},
 				NumGPU:   numGPU,
+				GPUs:     getGpus(g.data, uint32(node.TwinID)),
 				ExtraFee: node.ExtraFee,
 				Healthy:  g.data.HealthReports[uint32(node.TwinID)],
 				Dmi:      g.data.DMIs[uint32(node.TwinID)],
@@ -258,6 +274,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 			Target: node.Power.Target,
 		},
 		NumGPU:   numGPU,
+		GPUs:     getGpus(g.data, uint32(node.TwinID)),
 		ExtraFee: node.ExtraFee,
 		Healthy:  g.data.HealthReports[uint32(node.TwinID)],
 		Dmi:      g.data.DMIs[uint32(node.TwinID)],

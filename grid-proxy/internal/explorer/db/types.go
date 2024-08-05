@@ -105,6 +105,7 @@ type Node struct {
 	Baseboard          types.Baseboard   `gorm:"type:jsonb;serializer:json"`
 	Memory             []types.Memory    `gorm:"type:jsonb;serializer:json"`
 	Processor          []types.Processor `gorm:"type:jsonb;serializer:json"`
+	Gpus               []types.NodeGPU   `gorm:"type:jsonb;serializer:json"`
 	UploadSpeed        float64
 	DownloadSpeed      float64
 	PriceUsd           float64
