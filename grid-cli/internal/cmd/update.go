@@ -94,6 +94,6 @@ func DeleteWorkerKubernetesCluster(ctx context.Context, t deployer.TFPluginClien
 		return workloads.K8sCluster{}, errors.Wrap(err, "failed to deploy kubernetes cluster")
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(10 * time.Second) // remove take some time to be reflected
 	return t.State.LoadK8sFromGrid(ctx, network.Nodes, cluster.Master.Name)
 }

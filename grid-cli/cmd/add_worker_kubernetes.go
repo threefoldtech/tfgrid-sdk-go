@@ -22,7 +22,7 @@ var addWorkerCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		workerNumber, err := cmd.Flags().GetInt("workers-number")
+		workersNumber, err := cmd.Flags().GetInt("workers-number")
 		if err != nil {
 			return err
 		}
@@ -77,7 +77,6 @@ var addWorkerCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		master := *cluster.Master
 		workers := cluster.Workers
 
 		worker := workloads.K8sNode{
@@ -90,11 +89,7 @@ var addWorkerCmd = &cobra.Command{
 			Planetary: workersYgg,
 		}
 
-		if len(workers) > 0 {
-			worker = workers[0]
-		}
-
-		if workerNumber > len(workersNodes) && workerNumber > 0 {
+		if workersNumber > len(workersNodes) && workersNumber > 0 {
 			filter, disks, rootfss := filters.BuildK8sFilter(worker, workersFarm)
 			nodes, err := deployer.FilterNodes(
 				cmd.Context(),
@@ -103,7 +98,7 @@ var addWorkerCmd = &cobra.Command{
 				disks,
 				nil,
 				rootfss,
-				uint64(workerNumber-len(workersNodes)))
+				uint64(workersNumber-len(workersNodes)))
 			if err != nil {
 				log.Fatal().Err(err).Send()
 			}
@@ -114,7 +109,7 @@ var addWorkerCmd = &cobra.Command{
 		}
 
 		var addMycelium bool
-		for i := 0; i < workerNumber; i++ {
+		for i := 0; i < workersNumber; i++ {
 			var seed []byte
 			if len(worker.MyceliumIP) != 0 || workersMycelium {
 				addMycelium = true
@@ -143,17 +138,17 @@ var addWorkerCmd = &cobra.Command{
 		}
 
 		log.Info().Msgf("master wireguard ip: %s", cluster.Master.IP)
-		if master.PublicIP {
+		if cluster.Master.PublicIP {
 			log.Info().Msgf("master ipv4: %s", cluster.Master.ComputedIP)
 		}
-		if master.PublicIP6 {
+		if cluster.Master.PublicIP6 {
 			log.Info().Msgf("master ipv6: %s", cluster.Master.ComputedIP6)
 		}
-		if master.Planetary {
+		if cluster.Master.Planetary {
 			log.Info().Msgf("master planetary ip: %s", cluster.Master.PlanetaryIP)
 		}
 
-		if len(master.MyceliumIP) != 0 {
+		if len(cluster.Master.MyceliumIP) != 0 {
 			log.Info().Msgf("master mycelium ip: %s", cluster.Master.MyceliumIP)
 		}
 

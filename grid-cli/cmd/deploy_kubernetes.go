@@ -89,7 +89,7 @@ var deployKubernetesCmd = &cobra.Command{
 			MyceliumIPSeed: seed,
 		}
 
-		workerNumber, err := cmd.Flags().GetInt("workers-number")
+		workersNumber, err := cmd.Flags().GetInt("workers-number")
 		if err != nil {
 			return err
 		}
@@ -131,7 +131,7 @@ var deployKubernetesCmd = &cobra.Command{
 			return err
 		}
 		var workers []workloads.K8sNode
-		for i := 0; i < workerNumber; i++ {
+		for i := 0; i < workersNumber; i++ {
 			var seed []byte
 			if workersMycelium {
 				seed, err = workloads.RandomMyceliumIPSeed()
@@ -185,7 +185,7 @@ var deployKubernetesCmd = &cobra.Command{
 			masterNode = uint32(nodes[0].NodeID)
 		}
 		master.Node = masterNode
-		if len(workersNodes) < workerNumber {
+		if len(workersNodes) < workersNumber {
 			filter, disks, rootfss := filters.BuildK8sFilter(
 				workers[0],
 				workersFarm,
@@ -197,7 +197,7 @@ var deployKubernetesCmd = &cobra.Command{
 				disks,
 				nil,
 				rootfss,
-				uint64(workerNumber-len(workersNodes)),
+				uint64(workersNumber-len(workersNodes)),
 			)
 			if err != nil {
 				log.Fatal().Err(err).Send()

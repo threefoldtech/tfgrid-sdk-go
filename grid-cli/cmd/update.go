@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// deployCmd represents the deploy command
+// updateCmd represents the update command
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "update resources in Threefold grid",

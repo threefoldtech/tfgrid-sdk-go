@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// deployCmd represents the deploy command
+// updatekubernetesCmd represents the deploy command
 var updatekubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
 	Short: "update kubernetes workers",

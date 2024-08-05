@@ -79,8 +79,6 @@ tfcmd apdate kubernetes add [flags]
 - workers-memory: memory size for each worker node in GB (default 1).
 - workers-disk: disk size in GB for each worker node (default 2).
 
-> **Note:** optional flags other than workers-number and workers-nodes will be applied only if the cluster has no worker, other wise they will be ignored and the options used on cluster creation will be applied.
-
 Example:
 
 ```console
