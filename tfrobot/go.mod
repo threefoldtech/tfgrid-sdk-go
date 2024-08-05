@@ -8,7 +8,7 @@ require (
 	github.com/go-playground/validator/v10 v10.17.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/rs/zerolog v1.33.0
-	github.com/sethvargo/go-retry v0.2.4
+	github.com/sethvargo/go-retry v0.3.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.10
