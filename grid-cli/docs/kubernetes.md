@@ -53,6 +53,96 @@ $ tfcmd deploy kubernetes -n kube --ssh ~/.ssh/id_rsa.pub --master-node 14 --wor
 11:43AM INF worker0 mycelium ip: 423:16f5:ca74:b600:ff0f:bb5a:6036:56f6
 ```
 
+## Update
+
+### Add workers
+
+```bash
+tfcmd apdate kubernetes add [flags]
+```
+
+### Required Flags
+
+- name: name for the master node deployment also used for canceling the cluster deployment. must be unique.
+- ssh: path to public ssh key to set in the master node.
+
+### Optional Flags
+
+- workers-number: number of workers to be added to the cluster (default = 1)
+- workers-nodes: array of nodes ids workers should be deployed on and the remaining unassigned workers will be randomly assigned to nodes that meet the specifications.
+- workers-farm: farm id workers should be deployed on, if set choose available node from farm that fits master specs (default 1). note: workers-node and workers-farm flags cannot be set both.
+- workers-ipv4: assign public ipv4 for each worker node (default false)
+- workers-ipv6: assign public ipv6 for each worker node (default false)
+- workers-ygg: assign yggdrasil ip for each worker node (default true)
+- workers-mycelium: assign mycelium ip for each worker node (default true)
+- workers-cpu: number of cpu units for each worker node (default 1).
+- workers-memory: memory size for each worker node in GB (default 1).
+- workers-disk: disk size in GB for each worker node (default 2).
+
+> **Note:** optional flags other than workers-number and workers-nodes will be applied only if the cluster has no worker, other wise they will be ignored and the options used on cluster creation will be applied.
+
+Example:
+
+```console
+➜  grid-cli git:(development-support-updating-k8s-cluster-grid-cli) ✗ go run main.go deploy kubernetes --name test --ssh ~/.ssh/id_rsa.pub --workers-number 1 --master-memory 2 --mycelium
+11:57AM INF starting peer session=tf-21418 twin=4653
+11:57AM INF deploying network
+11:57AM INF deploying cluster
+11:58AM INF master wireguard ip: 10.20.2.2
+11:58AM INF master planetary ip: 302:9e63:7d43:b742:8e80:99b8:a08f:98da
+11:58AM INF master mycelium ip: 58b:d053:77f9:37cd:ff0f:b0bf:828d:5c60
+11:58AM INF worker0 wireguard ip: 10.20.3.2
+11:58AM INF worker0 planetary ip: 301:1037:16ee:23fb:83f6:d82e:aad:cf06
+11:58AM INF worker0 mycelium ip: 59f:354e:418c:5027:ff0f:357a:f019:73d6
+
+➜  grid-cli git:(development-support-updating-k8s-cluster-grid-cli) ✗ go run main.go update kubernetes add --name test --ssh ~/.ssh/id_rsa.pub --workers-number 2
+12:00PM INF starting peer session=tf-21803 twin=4653
+12:00PM INF updating network
+12:00PM INF updating cluster
+12:00PM INF master wireguard ip: 10.20.2.2
+12:00PM INF master planetary ip: 302:9e63:7d43:b742:8e80:99b8:a08f:98da
+12:00PM INF master mycelium ip: 58b:d053:77f9:37cd:ff0f:b0bf:828d:5c60
+12:00PM INF worker2 wireguard ip: 10.20.2.3
+12:00PM INF worker1 wireguard ip: 10.20.3.2
+12:00PM INF worker0 wireguard ip: 10.20.3.2
+12:00PM INF worker2 planetary ip: 302:9e63:7d43:b742:871b:b2d2:cc74:ab12
+12:00PM INF worker1 planetary ip: 301:1037:16ee:23fb:b72d:497a:95d3:443f
+12:00PM INF worker0 planetary ip: 301:1037:16ee:23fb:83f6:d82e:aad:cf06
+12:00PM INF worker2 mycelium ip: 418:fdd0:8715:c1c2:ff0f:b43a:e4:a323
+12:00PM INF worker1 mycelium ip: 523:7612:fa7c:d8bf:ff0f:6c50:2200:7569
+12:00PM INF worker0 mycelium ip: 59f:354e:418c:5027:ff0f:357a:f019:73d6
+```
+
+### Delete worker
+
+```bash
+tfcmd apdate kubernetes delete [flags]
+```
+
+### Required Flags
+
+- name: name for the master node deployment also used for canceling the cluster deployment. must be unique.
+
+- worker-name: name of the worker to be deleted
+
+Example:
+
+```console
+➜  grid-cli git:(development-support-updating-k8s-cluster-grid-cli) ✗ go run main.go update kubernetes delete --name test --worker-name worker0
+12:34PM INF starting peer session=tf-25294 twin=4653
+12:34PM INF updating network
+12:35PM INF updating cluster
+12:35PM INF master wireguard ip: 10.20.2.2
+12:35PM INF master planetary ip: 302:9e63:7d43:b742:8e80:99b8:a08f:98da
+12:35PM INF master mycelium ip: 58b:d053:77f9:37cd:ff0f:b0bf:828d:5c60
+12:35PM INF worker2 wireguard ip: 10.20.2.3
+12:35PM INF worker1 wireguard ip: 10.20.3.2
+12:35PM INF worker2 planetary ip: 302:9e63:7d43:b742:871b:b2d2:cc74:ab12
+12:35PM INF worker1 planetary ip: 301:1037:16ee:23fb:b72d:497a:95d3:443f
+12:35PM INF worker2 mycelium ip: 418:fdd0:8715:c1c2:ff0f:b43a:e4:a323
+12:35PM INF worker1 mycelium ip: 523:7612:fa7c:d8bf:ff0f:6c50:2200:7569
+```
+
 ## Get
 
 ```bash
