@@ -2,56 +2,48 @@ version: '1.0.0'
 
 networks:
   net1:
-    name: 'nettyy'
-    nodes:
-      - 11
-      - 14
-      - 144
+    name: 'miaminet'
     range:
       ip:
-        type: ip4
+        type: ipv4
         ip: 10.20.0.0
       mask:
         type: cidr
         mask: 16/32
       wg: true
 
-project_name: 'example_project'
 services:
-  web5:
+  server:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
-    networks:
-      - net1
-    network_types:
-      - ip4
+    ip_types:
+      - ipv4
       - ygg
-    node_id: 11
     entrypoint: '/sbin/zinit init'
     volumes:
-      - webdata:/data
+      - webdata
+    node_id: 14
     resources:
       cpu: 1
       memory: 2048
-      disk: 25600
+      rootfs: 25600
+    network: net1
   database:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
-    networks:
-      - net1
-    network_types:
-      - ygg
-    volumes:
-      - dbdata:/var/lib/postgresql/data
-    node_id: 11
+    ip_types:
+      - ipv4
     entrypoint: '/sbin/zinit init'
+    volumes:
+      - dbdata
     resources:
       cpu: 1
       memory: 2048
-      disk: 25600
+      rootfs: 25600
+    network: net1
 
-storage:
+volumes:
   webdata:
-    type: 'zmount'
+    mountpoint: '/data'
     size: 10GB
   dbdata:
-    type: 'zmount'
+    mountpoint: '/var/lib/postgresql/data'
     size: 10GB

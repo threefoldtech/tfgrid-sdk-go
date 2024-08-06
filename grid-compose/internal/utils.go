@@ -2,14 +2,12 @@ package internal
 
 import (
 	"fmt"
-	mrand "math/rand"
 	"net"
 	"strconv"
 	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	types "github.com/threefoldtech/tfgrid-sdk-go/grid-compose/pkg"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func assignEnvs(vm *workloads.VM, envs []string) {
@@ -77,12 +75,12 @@ func generateIPNet(ip types.IP, mask types.IPMask) net.IPNet {
 	var ipNet net.IPNet
 
 	switch ip.Type {
-	case "ipv4":
+	case "ip4":
 		ipSplit := strings.Split(ip.IP, ".")
-		byte1, _ := strconv.Atoi(ipSplit[0])
-		byte2, _ := strconv.Atoi(ipSplit[1])
-		byte3, _ := strconv.Atoi(ipSplit[2])
-		byte4, _ := strconv.Atoi(ipSplit[3])
+		byte1, _ := strconv.ParseUint(ipSplit[0], 10, 8)
+		byte2, _ := strconv.ParseUint(ipSplit[1], 10, 8)
+		byte3, _ := strconv.ParseUint(ipSplit[2], 10, 8)
+		byte4, _ := strconv.ParseUint(ipSplit[3], 10, 8)
 
 		ipNet.IP = net.IPv4(byte(byte1), byte(byte2), byte(byte3), byte(byte4))
 	default:
@@ -94,45 +92,14 @@ func generateIPNet(ip types.IP, mask types.IPMask) net.IPNet {
 	switch mask.Type {
 	case "cidr":
 		maskSplit := strings.Split(mask.Mask, "/")
-		maskOnes, _ := strconv.Atoi(maskSplit[0])
-		maskBits, _ := strconv.Atoi(maskSplit[1])
-		maskIP = net.CIDRMask(maskOnes, maskBits)
+		maskOnes, _ := strconv.ParseInt(maskSplit[0], 10, 8)
+		maskBits, _ := strconv.ParseInt(maskSplit[1], 10, 8)
+
+		maskIP = net.CIDRMask(int(maskOnes), int(maskBits))
+		ipNet.Mask = maskIP
 	default:
 		return ipNet
 	}
 
-	ipNet.Mask = maskIP
-
 	return ipNet
-}
-
-func generateNetworks(networks map[string]types.Network) map[string]*workloads.ZNet {
-	zNets := make(map[string]*workloads.ZNet, 0)
-
-	for key, network := range networks {
-		zNet := workloads.ZNet{
-			Name:        network.Name,
-			Description: network.Description,
-			Nodes:       network.Nodes,
-			IPRange: gridtypes.NewIPNet(net.IPNet{
-				IP:   net.IPv4(10, 20, 0, 0),
-				Mask: net.CIDRMask(16, 32),
-			}),
-			AddWGAccess:  network.AddWGAccess,
-			MyceliumKeys: network.MyceliumKeys,
-		}
-
-		zNets[key] = &zNet
-	}
-
-	return zNets
-}
-
-func generateRandString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyz123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[mrand.Intn(len(letters))]
-	}
-	return string(b)
 }

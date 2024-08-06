@@ -54,35 +54,28 @@ func NewApp(net, mnemonic, configPath string) (*App, error) {
 }
 
 func (a *App) Up(ctx context.Context) error {
-	// deployments := make(map[string]*workloads.Deployment, 0)
-	networks := generateNetworks(a.Config.Networks)
-	networkDeploymentsMap := make(map[string]types.DeploymentData, 0)
+	networks := a.generateNetworks()
+	deployments := a.generateInitDeployments()
 
 	for key, val := range a.Config.Services {
-		// network := workloads.ZNet{
-		// 	Name:  networkName,
-		// 	Nodes: []uint32{val.NodeID},
-		// 	IPRange: gridtypes.NewIPNet(net.IPNet{
-		// 		IP:   net.IPv4(10, 20, 0, 0),
-		// 		Mask: net.CIDRMask(16, 32),
-		// 	}),
-		// 	SolutionType: projectName,
-		// }
+		deployment := deployments[val.DeployTo]
 
 		var network *workloads.ZNet
-		if val.Networks == nil || len(val.Networks) == 0 {
+		if deployment.Name == "" {
 			network = &workloads.ZNet{
-				Name:  key + "net",
-				Nodes: []uint32{val.NodeID},
+				Name:  deployment.Name + "net",
+				Nodes: []uint32{deployment.NodeID},
 				IPRange: gridtypes.NewIPNet(net.IPNet{
 					IP:   net.IPv4(10, 20, 0, 0),
 					Mask: net.CIDRMask(16, 32),
 				}),
 			}
+			deployment.NetworkName = network.Name
 		} else {
-			network = networks[val.Networks[0]]
+			network = networks[a.Config.Deployments[val.DeployTo].Network.Name]
 		}
-		network.SolutionType = a.Config.ProjectName
+
+		network.SolutionType = a.getProjectName(deployment.Name)
 
 		vm := workloads.VM{
 			Name:        key,
@@ -91,6 +84,7 @@ func (a *App) Up(ctx context.Context) error {
 			CPU:         int(val.Resources.CPU),
 			Memory:      int(val.Resources.Memory),
 			NetworkName: network.Name,
+			RootfsSize:  int(val.Resources.Rootfs),
 		}
 
 		assignEnvs(&vm, val.Environment)
@@ -104,19 +98,8 @@ func (a *App) Up(ctx context.Context) error {
 			return fmt.Errorf("failed to assign networks %w", err)
 		}
 
-		// if err := a.Client.NetworkDeployer.Deploy(context.Background(), &network); err != nil {
-		// 	return err
-		// }
-
-		// dl := workloads.NewDeployment(vm.Name, uint32(val.NodeID), projectName, nil, network.Name, disks, nil, nil, nil)
-		deploymentData := networkDeploymentsMap[network.Name]
-
-		deploymentData.Vms = append(deploymentData.Vms, vm)
-		deploymentData.Disks = append(deploymentData.Disks, disks...)
-		if !checkIfNodeIDExist(val.NodeID, deploymentData.NodeIDs) {
-			deploymentData.NodeIDs = append(deploymentData.NodeIDs, val.NodeID)
-		}
-		networkDeploymentsMap[network.Name] = deploymentData
+		deployment.Vms = append(deployment.Vms, vm)
+		deployment.Disks = append(deployment.Disks, disks...)
 	}
 
 	log.Info().Str("status", "started").Msg("deploying networks...")
@@ -127,37 +110,22 @@ func (a *App) Up(ctx context.Context) error {
 	}
 	log.Info().Str("status", "done").Msg("networks deployed successfully")
 
-	for key, val := range networkDeploymentsMap {
-		for _, nodeID := range val.NodeIDs {
-			dlName := a.getDeploymentName()
-			log.Info().Str("deployment", dlName).Str("services", fmt.Sprintf("%v", val.Vms)).Msg("deploying...")
+	for key, val := range deployments {
+		log.Info().Str("deployment", key).Msg("deploying...")
 
-			dl := workloads.NewDeployment(dlName, nodeID, a.Config.ProjectName, nil, key, val.Disks, nil, val.Vms, nil)
-			if err := a.Client.DeploymentDeployer.Deploy(ctx, &dl); err != nil {
-				for _, val := range networks {
-					if err := a.Client.NetworkDeployer.Cancel(ctx, val); err != nil {
-						return err
-					}
+		if err := a.Client.DeploymentDeployer.Deploy(ctx, val); err != nil {
+			for _, val := range networks {
+				if err := a.Client.NetworkDeployer.Cancel(ctx, val); err != nil {
+					return err
 				}
-				return err
 			}
-
-			log.Info().Str("deployment", dlName).Msg("deployed successfully")
+			return err
 		}
+		log.Info().Str("deployment", key).Msg("deployed successfully")
 	}
 
 	log.Info().Msg("all services deployed successfully")
 	return nil
-}
-
-func checkIfNodeIDExist(nodeID uint32, nodes []uint32) bool {
-	for _, node := range nodes {
-		if node == nodeID {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (a *App) Ps(ctx context.Context, flags *pflag.FlagSet) error {
@@ -168,44 +136,61 @@ func (a *App) Ps(ctx context.Context, flags *pflag.FlagSet) error {
 
 	var output strings.Builder
 	if !verbose {
-		output.WriteString(fmt.Sprintf("%-15s | %-15s | %-15s | %-10s | %s\n", "Name", "Network", "Storage", "State", "IP Address"))
+		output.WriteString(fmt.Sprintf("%-15s | %-15s | %-15s | %-15s | %-10s | %s\n", "Deployment Name", "Network", "Service Name", "Storage", "State", "IP Address"))
 		output.WriteString(strings.Repeat("-", 79) + "\n")
 	}
-	for key, val := range a.Config.Services {
-		if err := a.loadCurrentNodeDeplyments(a.Config.ProjectName); err != nil {
+
+	outputMap := make(map[string]struct {
+		Deployment types.Deployment
+		Workloads  []struct {
+			Workload     gridtypes.Workload
+			WorkloadData types.WorkloadData
+			Addresses    string
+		}
+	})
+
+	for _, deployment := range a.Config.Deployments {
+		if err := a.loadCurrentNodeDeployments(a.getProjectName(deployment.Name)); err != nil {
 			return err
 		}
 
-		wl, dl, err := a.Client.State.GetWorkloadInDeployment(ctx, uint32(val.NodeID), key, key)
-		if err != nil {
-			return err
-		}
-
-		vm, err := workloads.NewVMFromWorkload(&wl, &dl)
-		if err != nil {
-			return err
-		}
-
-		addresses := getVmAddresses(vm)
-
-		s, err := json.MarshalIndent(dl, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		if verbose {
-			if outputFile != "" {
-				output.WriteString(fmt.Sprintf("\"%s\": %s,\n", key, string(s)))
-			} else {
-				output.WriteString(fmt.Sprintf("deplyment: %s\n%s\n\n\n", key, string(s)))
+		outputMap[deployment.Name] = struct {
+			Deployment types.Deployment
+			Workloads  []struct {
+				Workload     gridtypes.Workload
+				WorkloadData types.WorkloadData
+				Addresses    string
 			}
-		} else {
-			var wl gridtypes.Workload
+		}{
+			Deployment: deployment,
+			Workloads: []struct {
+				Workload     gridtypes.Workload
+				WorkloadData types.WorkloadData
+				Addresses    string
+			}{},
+		}
 
-			for _, workload := range dl.Workloads {
-				if workload.Type == "zmachine" {
-					wl = workload
-					break
+		for _, workloadName := range deployment.Workloads {
+			wlStruct := struct {
+				Workload     gridtypes.Workload
+				WorkloadData types.WorkloadData
+				Addresses    string
+			}{
+				Workload:     gridtypes.Workload{},
+				WorkloadData: types.WorkloadData{},
+			}
+
+			wl, dl, err := a.Client.State.GetWorkloadInDeployment(ctx, deployment.NodeID, workloadName, deployment.Name)
+			if err != nil {
+				return err
+			}
+
+			wlStruct.Workload = wl
+
+			if wl.Type == "zmachine" {
+				err = json.Unmarshal(wl.Data, &wlStruct.WorkloadData)
+				if err != nil {
+					return err
 				}
 			}
 
@@ -215,7 +200,27 @@ func (a *App) Ps(ctx context.Context, flags *pflag.FlagSet) error {
 				return err
 			}
 
-			output.WriteString(fmt.Sprintf("%-15s | %-15s | %-15s | %-10s | %s \n", wl.Name, wlData.Network.Interfaces[0].Network, wlData.Mounts[0].Name, wl.Result.State, addresses))
+			vm, err := workloads.NewVMFromWorkload(&wl, &dl)
+			if err != nil {
+				return err
+			}
+
+			addresses := getVmAddresses(vm)
+
+			wlStruct.Addresses = addresses
+
+			deploymentEntry := outputMap[deployment.Name]
+			deploymentEntry.Workloads = append(deploymentEntry.Workloads, wlStruct)
+			outputMap[deployment.Name] = deploymentEntry
+		}
+	}
+
+	for key, val := range outputMap {
+		fmt.Printf("%+v\n", val)
+		output.WriteString(fmt.Sprintf("%-15s | %-15s | ", key, a.Config.Networks[val.Deployment.Network.Name].Name))
+
+		for _, wl := range val.Workloads {
+			output.WriteString(fmt.Sprintf("%-15s | %-15s | %-10s | %s \n", wl.Workload.Name, wl.WorkloadData.Mounts[0].Name, wl.Workload.Result.State, wl.Addresses))
 		}
 	}
 
@@ -247,26 +252,55 @@ func parsePsFlags(flags *pflag.FlagSet) (bool, string, error) {
 }
 
 func (a *App) Down() error {
-
-	projectName := a.Config.ProjectName
-	log.Info().Str("projectName", projectName).Msg("canceling deployments")
-	if err := a.Client.CancelByProjectName(projectName); err != nil {
-		return err
+	for _, val := range a.Config.Deployments {
+		projectName := a.getProjectName(val.Name)
+		log.Info().Str("projectName", projectName).Msg("canceling deployments")
+		if err := a.Client.CancelByProjectName(projectName); err != nil {
+			return err
+		}
 	}
-
 	return nil
 }
 
+func (a *App) generateNetworks() map[string]*workloads.ZNet {
+	zNets := make(map[string]*workloads.ZNet, 0)
+
+	for key, network := range a.Config.Networks {
+		zNet := workloads.ZNet{
+			Name:         network.Name,
+			Description:  network.Description,
+			Nodes:        network.Nodes,
+			IPRange:      gridtypes.NewIPNet(generateIPNet(network.IPRange.IP, network.IPRange.Mask)),
+			AddWGAccess:  network.AddWGAccess,
+			MyceliumKeys: network.MyceliumKeys,
+		}
+
+		zNets[key] = &zNet
+	}
+
+	return zNets
+}
+
+func (a *App) generateInitDeployments() map[string]*workloads.Deployment {
+	workloadsDeployments := make(map[string]*workloads.Deployment, 0)
+
+	for key, deployment := range a.Config.Deployments {
+		var networkName string
+		if deployment.Network != nil {
+			networkName = a.Config.Networks[deployment.Network.Name].Name
+		}
+		workloadsDeployment := workloads.NewDeployment(deployment.Name, deployment.NodeID, a.getProjectName(deployment.Name), nil, networkName, make([]workloads.Disk, 0), nil, make([]workloads.VM, 0), nil)
+		workloadsDeployments[key] = &workloadsDeployment
+	}
+
+	return workloadsDeployments
+}
+
 func (a *App) getProjectName(key string) string {
-	key = strings.TrimSuffix(key, "net")
 	return fmt.Sprintf("compose/%v/%v", a.Client.TwinID, key)
 }
 
-func (a *App) getDeploymentName() string {
-	return fmt.Sprintf("dl_%v_%v", a.Client.TwinID, generateRandString(5))
-}
-
-func (a *App) loadCurrentNodeDeplyments(projectName string) error {
+func (a *App) loadCurrentNodeDeployments(projectName string) error {
 	contracts, err := a.Client.ContractsGetter.ListContractsOfProjectName(projectName, true)
 	if err != nil {
 		return err

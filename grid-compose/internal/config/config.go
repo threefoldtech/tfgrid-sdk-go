@@ -9,11 +9,11 @@ import (
 )
 
 type Config struct {
-	Version     string                   `yaml:"version"`
-	Networks    map[string]types.Network `yaml:"networks"`
-	Services    map[string]types.Service `yaml:"services"`
-	Storage     map[string]types.Storage `yaml:"storage"`
-	ProjectName string                   `yaml:"project_name"`
+	Version     string                      `yaml:"version"`
+	Networks    map[string]types.Network    `yaml:"networks"`
+	Services    map[string]types.Service    `yaml:"services"`
+	Storage     map[string]types.Storage    `yaml:"storage"`
+	Deployments map[string]types.Deployment `yaml:"deployments"`
 }
 
 func NewConfig() *Config {
@@ -44,10 +44,6 @@ func (c *Config) ValidateConfig() (err error) {
 	}
 
 	for name, storage := range c.Storage {
-		if storage.Type == "" {
-			return fmt.Errorf("%w for storage %s", ErrStorageTypeNotSet, name)
-		}
-
 		if storage.Size == "" {
 			return fmt.Errorf("%w for storage %s", ErrStorageSizeNotSet, name)
 		}
@@ -62,8 +58,29 @@ func (c *Config) LoadConfigFromReader(configFile io.Reader) error {
 		return fmt.Errorf("failed to read file %w", err)
 	}
 
-	if err := yaml.Unmarshal(content, &c); err != nil {
+	if err := c.UnmarshalYAML(content); err != nil {
 		return fmt.Errorf("failed to parse file %w", err)
+	}
+
+	return nil
+}
+
+func (c *Config) UnmarshalYAML(content []byte) error {
+	if err := yaml.Unmarshal(content, c); err != nil {
+		return err
+	}
+
+	for serviceName, service := range c.Services {
+		deployTo := service.DeployTo
+
+		if deployment, exists := c.Deployments[deployTo]; exists {
+			if deployment.Workloads == nil {
+				deployment.Workloads = make([]string, 0)
+			}
+			deployment.Workloads = append(deployment.Workloads, serviceName)
+
+			c.Deployments[deployTo] = deployment
+		}
 	}
 
 	return nil

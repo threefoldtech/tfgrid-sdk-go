@@ -1,26 +1,5 @@
 version: '1.0.0'
 
-networks:
-  net1:
-    name: 'miaminet'
-    range:
-      ip:
-        type: ipv4
-        ip: 10.20.0.0
-      mask:
-        type: cidr
-        mask: 16/32
-      wg: true
-  net2:
-    name: 'cartoonnetwork'
-    range:
-      ip:
-        type: ipv4
-        ip: 10.20.0.0
-      mask:
-        type: cidr
-        mask: 16/32
-
 services:
   server:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
@@ -30,24 +9,12 @@ services:
     entrypoint: '/sbin/zinit init'
     volumes:
       - webdata
-    resources:
-      cpu: 1
-      memory: 2048
-      rootfs: 25600
-    network: net1
     node_id: 14
-  frontend:
-    flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
-    ip_types:
-      - ipv4
-    entrypoint: '/sbin/zinit init'
-    volumes:
-      - dbdata
     resources:
       cpu: 1
       memory: 2048
       rootfs: 25600
-    network: net1
+
   database:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
     ip_types:
@@ -59,7 +26,6 @@ services:
       cpu: 1
       memory: 2048
       rootfs: 25600
-    network: net2
 
 volumes:
   webdata:

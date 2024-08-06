@@ -1,4 +1,4 @@
-package types
+package internal
 
 import "github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 
@@ -7,7 +7,6 @@ type NetworkTypes struct {
 }
 
 type Storage struct {
-	Type string `yaml:"type"`
 	Size string `yaml:"size"`
 }
 
@@ -16,33 +15,41 @@ type Service struct {
 	Entrypoint   string       `yaml:"entrypoint,omitempty"`
 	Environment  []string     `yaml:"environment"`
 	Resources    Resources    `yaml:"resources"`
-	NodeID       uint32       `yaml:"node_id"`
 	Volumes      []string     `yaml:"volumes"`
 	NetworkTypes []string     `yaml:"network_types"`
 	Networks     []string     `yaml:"networks"`
 	HealthCheck  *HealthCheck `yaml:"healthcheck,omitempty"`
 	DependsOn    []string     `yaml:"depends_on,omitempty"`
+	DeployTo     string       `yaml:"deploy_to,omitempty"`
 }
 
+type Deployment struct {
+	Name    string `yaml:"name"`
+	NodeID  uint32 `yaml:"node_id"`
+	Network *struct {
+		Name string `yaml:"name"`
+	} `yaml:"network"`
+
+	Workloads []string
+}
 type HealthCheck struct {
 	Test     []string `yaml:"test"`
 	Interval string   `yaml:"interval"`
 	Timeout  string   `yaml:"timeout"`
-	Retries  int      `yaml:"retries"`
+	Retries  uint     `yaml:"retries"`
 }
 
 type Resources struct {
 	CPU    uint `yaml:"cpu" json:"cpu"`
 	Memory uint `yaml:"memory" json:"memory"`
-	SSD    uint `yaml:"ssd" json:"ssd"`
-	HDD    uint `yaml:"hdd" json:"hdd"`
+	Rootfs uint `yaml:"ssd" json:"ssd"`
 }
 
 type WorkloadData struct {
 	Flist           string              `json:"flist"`
 	Network         WorkloadDataNetwork `json:"network"`
 	ComputeCapacity Resources           `json:"compute_capacity"`
-	Size            int                 `json:"size"`
+	Size            uint                `json:"size"`
 	Mounts          []struct {
 		Name       string `json:"name"`
 		MountPoint string `json:"mountpoint"`
@@ -86,7 +93,6 @@ type IPMask struct {
 }
 
 type DeploymentData struct {
-	Vms     []workloads.VM
-	Disks   []workloads.Disk
-	NodeIDs []uint32
+	Vms   []workloads.VM
+	Disks []workloads.Disk
 }

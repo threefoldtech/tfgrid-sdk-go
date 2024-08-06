@@ -30,12 +30,26 @@ services:
     entrypoint: '/sbin/zinit init'
     volumes:
       - webdata
+    node_id: 144
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 25600
+    network: net2
+  server2:
+    node_id: 14
+    flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
+    ip_types:
+      - ipv4
+      - ygg
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - webdata
     resources:
       cpu: 1
       memory: 2048
       rootfs: 25600
     network: net1
-    node_id: 14
   frontend:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
     ip_types:

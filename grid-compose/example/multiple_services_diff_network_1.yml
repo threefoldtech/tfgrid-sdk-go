@@ -34,8 +34,7 @@ services:
       cpu: 1
       memory: 2048
       rootfs: 25600
-    network: net1
-    node_id: 14
+    network: net2
   frontend:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
     ip_types:
@@ -48,6 +47,7 @@ services:
       memory: 2048
       rootfs: 25600
     network: net1
+    node_id: 144
   database:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
     ip_types:
