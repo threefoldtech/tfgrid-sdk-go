@@ -166,7 +166,7 @@ var deployKubernetesCmd = &cobra.Command{
 
 		if masterNode == 0 {
 
-			filter, disks, rootfss := filters.BuildK8sFilter(
+			filter, disks, rootfss := filters.BuildK8sNodeFilter(
 				master,
 				masterFarm,
 			)
@@ -186,7 +186,7 @@ var deployKubernetesCmd = &cobra.Command{
 		}
 		master.Node = masterNode
 		if len(workersNodes) < workersNumber {
-			filter, disks, rootfss := filters.BuildK8sFilter(
+			filter, disks, rootfss := filters.BuildK8sNodeFilter(
 				workers[0],
 				workersFarm,
 			)

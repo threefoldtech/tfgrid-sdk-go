@@ -6,8 +6,8 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-// BuildK8sFilter build a filter for a k8s node
-func BuildK8sFilter(k8sNode workloads.K8sNode, farmID uint64) (types.NodeFilter, []uint64, []uint64) {
+// BuildK8sNodeFilter build a filter for a k8s node
+func BuildK8sNodeFilter(k8sNode workloads.K8sNode, farmID uint64) (types.NodeFilter, []uint64, []uint64) {
 	freeMRUs := uint64(k8sNode.Memory) / 1024
 	freeSRUs := uint64(k8sNode.DiskSize)
 	freeIPs := uint64(0)

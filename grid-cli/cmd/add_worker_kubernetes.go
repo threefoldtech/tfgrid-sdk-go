@@ -90,7 +90,7 @@ var addWorkerCmd = &cobra.Command{
 		}
 
 		if workersNumber > len(workersNodes) && workersNumber > 0 {
-			filter, disks, rootfss := filters.BuildK8sFilter(worker, workersFarm)
+			filter, disks, rootfss := filters.BuildK8sNodeFilter(worker, workersFarm)
 			nodes, err := deployer.FilterNodes(
 				cmd.Context(),
 				t,
