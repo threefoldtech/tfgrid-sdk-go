@@ -127,12 +127,7 @@ var addWorkerCmd = &cobra.Command{
 		}
 		cluster.Workers = workers
 
-		_, err = command.AddWorkersKubernetesCluster(cmd.Context(), t, cluster, addMycelium)
-		if err != nil {
-			log.Fatal().Err(err).Send()
-		}
-
-		cluster, err = command.GetK8sCluster(cmd.Context(), t, name)
+		cluster, err = command.AddWorkersKubernetesCluster(cmd.Context(), t, cluster, addMycelium)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

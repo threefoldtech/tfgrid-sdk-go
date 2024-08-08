@@ -45,48 +45,12 @@ var deleteWorkerCmd = &cobra.Command{
 			}
 		}
 
-		cluster, err = command.DeleteWorkerKubernetesCluster(cmd.Context(), t, cluster)
+		err = command.DeleteWorkerKubernetesCluster(cmd.Context(), t, cluster)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
 
-		log.Info().Msgf("master wireguard ip: %s", cluster.Master.IP)
-		if cluster.Master.PublicIP {
-			log.Info().Msgf("master ipv4: %s", cluster.Master.ComputedIP)
-		}
-		if cluster.Master.PublicIP6 {
-			log.Info().Msgf("master ipv6: %s", cluster.Master.ComputedIP6)
-		}
-		if cluster.Master.Planetary {
-			log.Info().Msgf("master planetary ip: %s", cluster.Master.PlanetaryIP)
-		}
-		if len(cluster.Master.MyceliumIP) != 0 {
-			log.Info().Msgf("master mycelium ip: %s", cluster.Master.MyceliumIP)
-		}
-
-		for _, worker := range cluster.Workers {
-			log.Info().Msgf("%s wireguard ip: %s", worker.Name, worker.IP)
-		}
-		if len(cluster.Workers) > 0 && cluster.Workers[0].PublicIP {
-			for _, worker := range cluster.Workers {
-				log.Info().Msgf("%s ipv4: %s", worker.Name, worker.ComputedIP)
-			}
-		}
-		if len(cluster.Workers) > 0 && cluster.Workers[0].PublicIP6 {
-			for _, worker := range cluster.Workers {
-				log.Info().Msgf("%s ipv6: %s", worker.Name, worker.ComputedIP6)
-			}
-		}
-		if len(cluster.Workers) > 0 && len(cluster.Workers[0].PlanetaryIP) > 0 {
-			for _, worker := range cluster.Workers {
-				log.Info().Msgf("%s planetary ip: %s", worker.Name, worker.PlanetaryIP)
-			}
-		}
-		if len(cluster.Workers) > 0 && len(cluster.Workers[0].MyceliumIP) > 0 {
-			for _, worker := range cluster.Workers {
-				log.Info().Msgf("%s mycelium ip: %s", worker.Name, worker.MyceliumIP)
-			}
-		}
+		log.Info().Msgf("Done deleting worker: %s", workerName)
 		return nil
 	},
 }

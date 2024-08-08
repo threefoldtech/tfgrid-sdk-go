@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"slices"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -57,7 +56,7 @@ func AddWorkersKubernetesCluster(ctx context.Context, t deployer.TFPluginClient,
 	)
 }
 
-func DeleteWorkerKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, cluster workloads.K8sCluster) (workloads.K8sCluster, error) {
+func DeleteWorkerKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, cluster workloads.K8sCluster) error {
 	usedNodes := []uint32{cluster.Master.Node}
 	for _, worker := range cluster.Workers {
 		usedNodes = append(usedNodes, worker.Node)
@@ -66,7 +65,7 @@ func DeleteWorkerKubernetesCluster(ctx context.Context, t deployer.TFPluginClien
 	log.Info().Msg("updating network")
 	network, err := t.State.LoadNetworkFromGrid(ctx, cluster.Master.NetworkName)
 	if err != nil {
-		return workloads.K8sCluster{}, err
+		return err
 	}
 
 	var removedNodes []uint32
@@ -80,7 +79,7 @@ func DeleteWorkerKubernetesCluster(ctx context.Context, t deployer.TFPluginClien
 
 	err = t.NetworkDeployer.Deploy(ctx, &network)
 	if err != nil {
-		return workloads.K8sCluster{}, errors.Wrapf(err, "failed to update network on nodes %v", network.Nodes)
+		return errors.Wrapf(err, "failed to update network on nodes %v", network.Nodes)
 	}
 
 	for _, node := range removedNodes {
@@ -91,9 +90,8 @@ func DeleteWorkerKubernetesCluster(ctx context.Context, t deployer.TFPluginClien
 	err = t.K8sDeployer.Deploy(ctx, &cluster)
 	if err != nil {
 		log.Warn().Msg("error happened while update.")
-		return workloads.K8sCluster{}, errors.Wrap(err, "failed to deploy kubernetes cluster")
+		return errors.Wrap(err, "failed to update kubernetes cluster")
 	}
 
-	time.Sleep(10 * time.Second) // remove take some time to be reflected
-	return t.State.LoadK8sFromGrid(ctx, network.Nodes, cluster.Master.Name)
+	return nil
 }
