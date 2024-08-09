@@ -18,8 +18,8 @@ node_groups:
 
   - name: group_d
     nodes_count: 2
-    free_cpu: 2
-    free_mru: 16
+    free_cpu: 1
+    free_mru: 4
 
 vms:
   - name: example_a #test deployment of vms with public ip
