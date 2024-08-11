@@ -43,6 +43,7 @@ type Vms struct {
 	Entrypoint string            `yaml:"entry_point" validate:"required" json:"entry_point"`
 	SSHKey     string            `yaml:"ssh_key" validate:"required" json:"ssh_key"`
 	EnvVars    map[string]string `yaml:"env_vars" json:"env_vars"`
+	WireGuard  bool              `yaml:"wireguard" json:"wireguard"`
 }
 
 type Disk struct {

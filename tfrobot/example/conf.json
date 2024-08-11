@@ -36,7 +36,8 @@
       "env_vars": {
         "user": "user1",
         "pwd": "1234"
-      }
+      },
+      "wireguard": false
     }
   ],
   "ssh_keys": {
