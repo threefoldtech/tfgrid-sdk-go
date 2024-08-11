@@ -40,7 +40,7 @@ func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, gpus []types.Node
 func (p *PostgresDatabase) UpsertNodeHealth(ctx context.Context, healthReports []types.HealthReport) error {
 	conflictClause := clause.OnConflict{
 		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"healthy"}),
+		DoUpdates: clause.AssignmentColumns([]string{"healthy", "updated_at"}),
 	}
 	return p.gormDB.WithContext(ctx).Table("health_report").Clauses(conflictClause).Create(&healthReports).Error
 }
@@ -48,7 +48,7 @@ func (p *PostgresDatabase) UpsertNodeHealth(ctx context.Context, healthReports [
 func (p *PostgresDatabase) UpsertNodeDmi(ctx context.Context, dmis []types.Dmi) error {
 	conflictClause := clause.OnConflict{
 		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"bios", "baseboard", "processor", "memory"}),
+		DoUpdates: clause.AssignmentColumns([]string{"bios", "baseboard", "processor", "memory", "updated_at"}),
 	}
 	return p.gormDB.WithContext(ctx).Table("dmi").Clauses(conflictClause).Create(&dmis).Error
 }
@@ -56,7 +56,7 @@ func (p *PostgresDatabase) UpsertNodeDmi(ctx context.Context, dmis []types.Dmi) 
 func (p *PostgresDatabase) UpsertNetworkSpeed(ctx context.Context, speeds []types.Speed) error {
 	conflictClause := clause.OnConflict{
 		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"download", "upload"}),
+		DoUpdates: clause.AssignmentColumns([]string{"download", "upload", "updated_at"}),
 	}
 	return p.gormDB.WithContext(ctx).Table("speed").Clauses(conflictClause).Create(&speeds).Error
 }
@@ -64,7 +64,7 @@ func (p *PostgresDatabase) UpsertNetworkSpeed(ctx context.Context, speeds []type
 func (p *PostgresDatabase) UpsertNodeIpv6Report(ctx context.Context, ips []types.HasIpv6) error {
 	onConflictClause := clause.OnConflict{
 		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"has_ipv6"}),
+		DoUpdates: clause.AssignmentColumns([]string{"has_ipv6", "updated_at"}),
 	}
 	return p.gormDB.WithContext(ctx).Table("node_ipv6").Clauses(onConflictClause).Create(&ips).Error
 }
@@ -72,7 +72,7 @@ func (p *PostgresDatabase) UpsertNodeIpv6Report(ctx context.Context, ips []types
 func (p *PostgresDatabase) UpsertNodeWorkloads(ctx context.Context, workloads []types.NodesWorkloads) error {
 	conflictClause := clause.OnConflict{
 		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"workloads_number"}),
+		DoUpdates: clause.AssignmentColumns([]string{"workloads_number", "updated_at"}),
 	}
 	return p.gormDB.WithContext(ctx).Table("node_workloads").Clauses(conflictClause).Create(&workloads).Error
 }

@@ -22,7 +22,7 @@ tfcmd deploy zdb [flags]
 - password: password for ZDBs deployed
 - description: description for your ZDBs, it's optional.
 - mode: the enumeration of the modes 0-db can operate in (default user).
-- public: if zdb gets a public ip6 (default false).
+- public: if zdb namespace is public - readable by anyone (default false).
 
 Example:
 

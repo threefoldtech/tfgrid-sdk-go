@@ -334,7 +334,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 }
 
 func addPriorityToNodes(priorityNodes, farmNodes []uint32) []uint32 {
-	updatedFarmNodes := make([]uint32, len(farmNodes))
+	updatedFarmNodes := make([]uint32, 0)
 
 	// add valid priority nodes (exist in farm) without duplicates
 	for i := 0; i < len(priorityNodes); i++ {

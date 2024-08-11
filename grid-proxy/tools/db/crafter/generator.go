@@ -852,6 +852,7 @@ func (c *Crafter) GenerateSpeedReports() error {
 			NodeTwinId: uint32(nodeTwinsStart + i),
 			Upload:     rand.Float64() * float64(rand.Intn(9999999)),
 			Download:   rand.Float64() * float64(rand.Intn(9999999)),
+			UpdatedAt:  time.Now().Unix(),
 		}
 		speedReports = append(speedReports, speedReport)
 	}
@@ -877,6 +878,7 @@ func (c *Crafter) GenerateDmi() error {
 			Baseboard:  baseboard[rand.Intn(len(baseboard))],
 			Processor:  processor[:rand.Intn(len(processor))],
 			Memory:     memory[:rand.Intn(len(memory))],
+			UpdatedAt:  time.Now().Unix(),
 		}
 		dmis = append(dmis, dmi)
 	}
@@ -904,6 +906,7 @@ func (c *Crafter) GenerateHealthReports() error {
 		healthReport := types.HealthReport{
 			NodeTwinId: uint32(nodeTwinsStart + i),
 			Healthy:    health,
+			UpdatedAt:  time.Now().Unix(),
 		}
 		healthReports = append(healthReports, healthReport)
 	}
@@ -953,6 +956,7 @@ func (c *Crafter) GenerateNodeIpv6() error {
 		report := types.HasIpv6{
 			NodeTwinId: uint32(nodeTwinsStart + i),
 			HasIpv6:    has_ipv6,
+			UpdatedAt:  time.Now().Unix(),
 		}
 		reports = append(reports, report)
 	}
@@ -975,6 +979,7 @@ func (c *Crafter) GenerateNodeWorkloads() error {
 		report := types.NodesWorkloads{
 			NodeTwinId:      uint32(nodeTwinsStart + i),
 			WorkloadsNumber: uint32(rand.Intn(120)),
+			UpdatedAt:       time.Now().Unix(),
 		}
 		reports = append(reports, report)
 	}

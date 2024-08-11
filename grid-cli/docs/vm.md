@@ -28,6 +28,7 @@ tfcmd deploy vm [flags]
 - ygg: assign yggdrasil ip for VM (default true).
 - mycelium: assign mycelium ip for VM (default true).
 - gpus: assign a list of gpus' ids to the VM. note: setting this without the node option will fail.
+- env: environment variables for the VM.
 
 Example:
 

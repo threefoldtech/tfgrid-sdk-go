@@ -26,6 +26,7 @@ type App struct {
 	cl             DBClient
 	releaseVersion string
 	relayClient    rmb.Client
+	idxIntervals   map[string]uint
 }
 
 type ErrorMessage struct {

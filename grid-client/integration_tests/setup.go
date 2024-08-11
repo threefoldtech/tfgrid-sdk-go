@@ -27,7 +27,7 @@ func setup() (deployer.TFPluginClient, error) {
 	network := os.Getenv("NETWORK")
 	log.Printf("network: %s", network)
 
-	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network))
+	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network), deployer.WithLogs())
 }
 
 func generateBasicNetwork(nodeIDs []uint32) workloads.ZNet {

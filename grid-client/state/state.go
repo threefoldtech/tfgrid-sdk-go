@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
@@ -68,6 +69,16 @@ func (st *State) LoadDiskFromGrid(ctx context.Context, nodeID uint32, name strin
 	return workloads.NewDiskFromWorkload(&wl)
 }
 
+// LoadVolumeFromGrid loads a volume from grid
+func (st *State) LoadVolumeFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.Volume, error) {
+	wl, dl, err := st.GetWorkloadInDeployment(ctx, nodeID, name, deploymentName)
+	if err != nil {
+		return workloads.Volume{}, errors.Wrapf(err, "could not get workload from node %d within deployment %v", nodeID, dl)
+	}
+
+	return workloads.NewVolumeFromWorkload(&wl)
+}
+
 // LoadGatewayFQDNFromGrid loads a gateway FQDN proxy from grid
 func (st *State) LoadGatewayFQDNFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.GatewayFQDNProxy, error) {
 	wl, dl, err := st.GetWorkloadInDeployment(ctx, nodeID, name, deploymentName)
@@ -102,18 +113,18 @@ func (st *State) LoadQSFSFromGrid(ctx context.Context, nodeID uint32, name strin
 
 // LoadGatewayNameFromGrid loads a gateway name proxy from grid
 func (st *State) LoadGatewayNameFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.GatewayNameProxy, error) {
-	wl, dl, err := st.GetWorkloadInDeployment(ctx, nodeID, name, deploymentName)
+	wl, dl, err := st.GetWorkloadInDeployment(ctx, nodeID, deploymentName, deploymentName)
 	if err != nil {
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "could not get workload from node %d within deployment %v", nodeID, dl)
 	}
 
-	nameContractID, err := st.Substrate.GetContractIDByNameRegistration(wl.Name.String())
+	nameContractID, err := st.Substrate.GetContractIDByNameRegistration(name)
 	if err != nil {
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "failed to get gateway name contract %s", name)
 	}
 	deploymentData, err := workloads.ParseDeploymentData(dl.Metadata)
 	if err != nil {
-		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "could not generate deployment metadata for %s", name)
+		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "could not generate deployment metadata for %s", deploymentName)
 	}
 	gateway, err := workloads.NewGatewayNameProxyFromZosWorkload(wl)
 	if err != nil {
@@ -297,6 +308,17 @@ func (st *State) LoadNetworkFromGrid(ctx context.Context, name string) (znet wor
 				return znet, errors.Wrapf(err, "could not get network deployment %d from node %d", contractID, nodeID)
 			}
 
+			if len(strings.TrimSpace(dl.Metadata)) == 0 {
+				contract, err := sub.GetContract(contractID)
+				if err != nil {
+					return znet, errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
+				}
+				dl.Metadata = contract.ContractType.NodeContract.DeploymentData
+				if len(strings.TrimSpace(dl.Metadata)) == 0 {
+					return znet, errors.Wrapf(err, "contract %d doesn't have metadata", contractID)
+				}
+			}
+
 			deploymentData, err := workloads.ParseDeploymentData(dl.Metadata)
 			if err != nil {
 				return znet, errors.Wrapf(err, "could not generate deployment metadata for %s", name)
@@ -401,6 +423,17 @@ func (st *State) GetWorkloadInDeployment(ctx context.Context, nodeID uint32, nam
 			dl, err := nodeClient.DeploymentGet(ctx, contractID)
 			if err != nil {
 				return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get deployment %d from node %d", contractID, nodeID)
+			}
+
+			if len(strings.TrimSpace(dl.Metadata)) == 0 {
+				contract, err := sub.GetContract(contractID)
+				if err != nil {
+					return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
+				}
+				dl.Metadata = contract.ContractType.NodeContract.DeploymentData
+				if len(strings.TrimSpace(dl.Metadata)) == 0 {
+					return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "contract %d doesn't have metadata", contractID)
+				}
 			}
 
 			dlData, err := workloads.ParseDeploymentData(dl.Metadata)

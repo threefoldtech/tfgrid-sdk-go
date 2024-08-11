@@ -456,6 +456,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
+                        "description": "True for farms who have at least one node with an ipv6",
+                        "name": "node_has_ipv6",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
                         "description": "True for farms who have at least one certified node",
                         "name": "node_certified",
                         "in": "query"
@@ -630,13 +636,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Set to true to filter nodes with ipv4",
+                        "description": "Set to true to filter access nodes with ipv4",
                         "name": "ipv4",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Set to true to filter nodes with ipv6",
+                        "description": "Set to true to filter access nodes with ipv6",
                         "name": "ipv6",
                         "in": "query"
                     },
@@ -923,6 +929,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Set to true to filter nodes with ipv6 available",
+                        "name": "has_ipv6",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Node city filter",
                         "name": "city",
@@ -948,13 +960,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Set to true to filter nodes with ipv4",
+                        "description": "Set to true to filter access nodes with ipv4",
                         "name": "ipv4",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Set to true to filter nodes with ipv6",
+                        "description": "Set to true to filter access nodes with ipv6",
                         "name": "ipv6",
                         "in": "query"
                     },
@@ -1424,6 +1436,50 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/twins/{twin_id}/consumption": {
+            "get": {
+                "description": "Get a report of user spent for last hour and for lifetime",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TwinConsumption"
+                ],
+                "summary": "Show a report for user consumption",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.TwinConsumption"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1526,6 +1582,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "amountBilled": {
+                    "type": "integer"
+                },
+                "contract_id": {
                     "type": "integer"
                 },
                 "discountReceived": {
@@ -2044,6 +2103,17 @@ const docTemplate = `{
                 },
                 "twinId": {
                     "type": "integer"
+                }
+            }
+        },
+        "types.TwinConsumption": {
+            "type": "object",
+            "properties": {
+                "last_hour_consumption": {
+                    "type": "number"
+                },
+                "overall_consumption": {
+                    "type": "number"
                 }
             }
         }

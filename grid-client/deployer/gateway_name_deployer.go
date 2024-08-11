@@ -69,6 +69,7 @@ func (d *GatewayNameDeployer) Deploy(ctx context.Context, gw *workloads.GatewayN
 	if err := d.InvalidateNameContract(ctx, gw); err != nil {
 		return err
 	}
+
 	if gw.NameContractID == 0 {
 		gw.NameContractID, err = d.tfPluginClient.SubstrateConn.CreateNameContract(d.tfPluginClient.Identity, gw.Name)
 		if err != nil {
@@ -82,7 +83,7 @@ func (d *GatewayNameDeployer) Deploy(ctx context.Context, gw *workloads.GatewayN
 		if cancelErr != nil {
 			return fmt.Errorf("failed to deploy gateway name %v, failed to cancel gateway name contract %v", err, cancelErr)
 		}
-		return errors.Wrapf(err, "failed to deploy gateway name Id: %d", gw.NodeDeploymentID)
+		return errors.Wrapf(err, "failed to deploy gateway name id: %v", gw.NodeDeploymentID)
 	}
 	// update state
 	// error is not returned immediately before updating state because of untracked failed deployments

@@ -117,7 +117,7 @@ func MarshalNodeStatus(data []byte) (info types.NodeStatus) {
 	return
 }
 
-type ProxyFunc func(url string) Client
+type ProxyFunc func(urls ...string) Client
 
 func TestConnectionFailures(t *testing.T) {
 	testConnectionFailures(t, NewClient)
@@ -356,7 +356,7 @@ func TestPrepareURL(t *testing.T) {
 
 	endpoint := "http://www.gridproxy.com"
 	client := Clientimpl{
-		endpoint: endpoint,
+		endpoints: []string{endpoint},
 	}
 
 	want := "http://www.gridproxy.com/nodes?status=st&free_mru=10&farm_ids=1&farm_ids=2&farm_ids=3&dedicated=true&size=50&page=1"

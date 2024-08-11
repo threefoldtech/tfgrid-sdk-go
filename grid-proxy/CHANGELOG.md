@@ -12,13 +12,27 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
-### v0.15.5
+### v0.15.11
 
 ---
 
-- `feat` change the call for health indexer to use diagnostics instead
+- `fix` handle nullable workloads number
 
-> Note: this is blocked on `zos:v3.11.0`
+### v0.15.9
+
+---
+
+- `feat` add `/health` endpoint
+
+### v0.15.7
+
+---
+
+- `fix` re calc node_contracts_count on the trigger instead of inc/dec
+- `feat` add node_has_ipv6 filter to farms endpoint
+- `feat` add twin consumption endpoint
+- `feat` add `node_ids` filter to filter by list of node ids
+- `feat` exclude extra-feed nodes from `available_for`
 
 ### v0.15.4
 

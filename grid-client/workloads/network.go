@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"slices"
 
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
@@ -166,9 +167,13 @@ func (znet *ZNet) Validate() error {
 	if ones, _ := mask.Size(); ones != 16 {
 		return errors.Errorf("subnet in ip range %s should be 16", znet.IPRange.String())
 	}
-	for _, key := range znet.MyceliumKeys {
+	for node, key := range znet.MyceliumKeys {
 		if len(key) != zos.MyceliumKeyLen && len(key) != 0 {
 			return fmt.Errorf("invalid mycelium key length %d must be %d or empty", len(key), zos.MyceliumKeyLen)
+		}
+
+		if !slices.Contains(znet.Nodes, node) {
+			return fmt.Errorf("invalid node %d for mycelium key, must be included in the network nodes %v", node, znet.Nodes)
 		}
 	}
 

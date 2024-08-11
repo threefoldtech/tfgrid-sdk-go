@@ -1046,7 +1046,8 @@ ALTER TABLE ONLY public.node_gpu
 
 CREATE TABLE IF NOT EXISTS public.health_report (
     node_twin_id bigint NOT NULL,
-    healthy boolean
+    healthy boolean,
+    updated_at bigint
 );
 
 ALTER TABLE public.health_report 
@@ -1062,7 +1063,8 @@ CREATE TABLE public.dmi(
     bios jsonb,
     baseboard jsonb,
     processor jsonb,
-    memory jsonb
+    memory jsonb,
+    updated_at bigint
 );
 
 ALTER TABLE public.dmi 
@@ -1075,7 +1077,8 @@ ALTER TABLE public.dmi
 CREATE TABLE public.speed(
     node_twin_id bigint NOT NULL,
     upload numeric,
-    download numeric
+    download numeric,
+    updated_at bigint
 );
 
 ALTER TABLE public.speed 
@@ -1087,7 +1090,8 @@ ALTER TABLE public.speed
 
 CREATE TABLE IF NOT EXISTS public.node_ipv6 (
     node_twin_id bigint NOT NULL,
-    has_ipv6 boolean
+    has_ipv6 boolean,
+    updated_at bigint
 );
 
 ALTER TABLE public.node_ipv6 
@@ -1100,7 +1104,8 @@ ALTER TABLE public.node_ipv6
 
 CREATE TABLE IF NOT EXISTS public.node_workloads (
     node_twin_id bigint NOT NULL,
-    workloads_number numeric
+    workloads_number numeric,
+    updated_at bigint
 );
 
 ALTER TABLE public.node_workloads 
