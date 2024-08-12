@@ -3,8 +3,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"slices"
+	"strings"
 
-	"github.com/manifoldco/promptui"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
@@ -73,14 +74,34 @@ var runCmd = &cobra.Command{
 	},
 }
 
+// disclaimerPrompt reads user input and return string, error
 func disclaimerPrompt() (string, error) {
-	prompt := promptui.Select{
-		Label: "\033[33mWarning: The Farmerbot is an optional feature developed by ThreeFold. Use at your own risk. While ThreeFold will do its best to fix any issues with the Farmerbot and minting, if minting is affected by the use of the Farmerbot, ThreeFold cannot be held responsible. Do you wish to proceed? (yes/no)\033[0m",
-		Items: []string{"yes", "no"},
-	}
-	_, result, err := prompt.Run()
+	var answer string
+	_, err := fmt.Print("\033[33mWarning: The Farmerbot is an optional feature developed by ThreeFold. Use at your own risk. While ThreeFold will do its best to fix any issues with the Farmerbot and minting, if minting is affected by the use of the Farmerbot, ThreeFold cannot be held responsible. Do you wish to proceed? (yes/no)\n\033[0m")
 	if err != nil {
 		return "", err
 	}
-	return result, nil
+	if _, err := fmt.Scanf("%s", &answer); err != nil {
+		return "", err
+	}
+
+	for i := 0; i < 3; i++ {
+		answer = strings.ToLower(answer)
+		if slices.Contains([]string{"yes", "no"}, answer) {
+			break
+		}
+		_, err := fmt.Print("\033[33mPlease enter yes or no only: \033[0m")
+		if err != nil {
+			return "", err
+		}
+		if _, err := fmt.Scanf("%s", &answer); err != nil {
+			return "", err
+		}
+	}
+	answer = strings.ToLower(answer)
+	if !slices.Contains([]string{"yes", "no"}, answer) {
+		return "", fmt.Errorf("disclaimer expects yes or no, found : %s", answer)
+	}
+	return answer, nil
+
 }
