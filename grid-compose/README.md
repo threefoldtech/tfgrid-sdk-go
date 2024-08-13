@@ -35,4 +35,7 @@ Then:
 ```
 
 For example:
+
+```bash
 ./bin/grid-compose ps -f example/multiple_services_diff_network_3.yml
+```
