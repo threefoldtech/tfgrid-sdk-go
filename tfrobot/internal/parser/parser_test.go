@@ -33,11 +33,17 @@ func TestParseConfig(t *testing.T) {
 		},
 		Vms: []tfrobot.Vms{
 			{
-				Name:       "examplevm",
-				Count:      4,
-				NodeGroup:  "group_a",
-				FreeCPU:    2,
-				FreeMRU:    1,
+				Name:      "examplevm",
+				Count:     4,
+				NodeGroup: "group_a",
+				FreeCPU:   2,
+				FreeMRU:   1,
+				SSDDisks: []tfrobot.Disk{
+					{Size: 15, Mount: "/mnt/disk"},
+				},
+				Volumes: []tfrobot.Volume{
+					{Size: 15, Mount: "/mnt/vol"},
+				},
 				PublicIP4:  true,
 				Flist:      validFlist,
 				Entrypoint: "/sbin/zinit init",
@@ -350,5 +356,41 @@ func TestParseConfig(t *testing.T) {
 
 		err = ValidateConfig(parsedConf, tfpluginClient)
 		assert.NoError(t, err)
+	})
+
+	t.Run("ssd size exceed limit in vm", func(t *testing.T) {
+		conf := confStruct
+		conf.Vms[0].SSDDisks[0].Size = 100
+
+		data, err := yaml.Marshal(conf)
+		assert.NoError(t, err)
+
+		conf.Vms[0].SSDDisks[0].Size = 0
+
+		configFile := strings.NewReader(string(data))
+
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg, tfpluginClient)
+		assert.Error(t, err)
+	})
+
+	t.Run("volume size exceed limit in vm", func(t *testing.T) {
+		conf := confStruct
+		conf.Vms[0].Volumes[0].Size = 100
+
+		data, err := yaml.Marshal(conf)
+		assert.NoError(t, err)
+
+		conf.Vms[0].Volumes[0].Size = 0
+
+		configFile := strings.NewReader(string(data))
+
+		cfg, err := ParseConfig(configFile, false)
+		assert.NoError(t, err)
+
+		err = ValidateConfig(cfg, tfpluginClient)
+		assert.Error(t, err)
 	})
 }
