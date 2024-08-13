@@ -358,7 +358,7 @@ func TestParseConfig(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("ssd size exceed limit in vm", func(t *testing.T) {
+	t.Run("ssd disk size exceed limit in vm", func(t *testing.T) {
 		conf := confStruct
 		conf.Vms[0].SSDDisks[0].Size = 100
 
