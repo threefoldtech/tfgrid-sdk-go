@@ -5,10 +5,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// load config from file + validate
-// parse environment variables
-// deploy networks + volumes
-// deploy services
 var upCmd = &cobra.Command{
 	Use:   "up",
 	Short: "deploy application on the grid",
@@ -17,4 +13,8 @@ var upCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 	},
+}
+
+func init() {
+	rootCmd.AddCommand(upCmd)
 }

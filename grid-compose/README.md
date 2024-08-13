@@ -19,4 +19,20 @@ COMMANDS:
     - version: shows the project version
     - up:      deploy the app
     - down:    cancel all deployments
+    - ps: list deployments on the grid
 ```
+
+Run:
+
+```bash
+make build
+```
+
+Then:
+
+```bash
+./bin/grid-compose [COMMAND]
+```
+
+For example:
+./bin/grid-compose ps -f example/multiple_services_diff_network_3.yml

@@ -14,3 +14,7 @@ var downCmd = &cobra.Command{
 		}
 	},
 }
+
+func init() {
+	rootCmd.AddCommand(downCmd)
+}

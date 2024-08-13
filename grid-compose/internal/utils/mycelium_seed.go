@@ -1,4 +1,4 @@
-package internal
+package utils
 
 import (
 	"crypto/rand"
@@ -6,7 +6,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func getRandomMyceliumIPSeed() ([]byte, error) {
+func GetRandomMyceliumIPSeed() ([]byte, error) {
 	key := make([]byte, zos.MyceliumIPSeedLen)
 	_, err := rand.Read(key)
 	return key, err

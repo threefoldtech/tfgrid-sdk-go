@@ -21,7 +21,7 @@ services:
     entrypoint: '/sbin/zinit init'
     volumes:
       - webdata
-    node_id: 14
+    node_id: 144
     resources:
       cpu: 1
       memory: 2048
