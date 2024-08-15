@@ -168,7 +168,7 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			Target: node.Power.Target,
 		}
 		nodeStatus := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
-		if filter.NodeStatus != nil && len(filter.NodeStatus) != 0 && !slices.Contains(filter.NodeStatus, nodeStatus) {
+		if len(filter.NodeStatus) != 0 && !slices.Contains(filter.NodeStatus, nodeStatus) {
 			continue
 		}
 
