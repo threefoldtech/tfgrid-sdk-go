@@ -29,7 +29,7 @@ var runCmd = &cobra.Command{
 				return err
 			}
 			if answer == "no" {
-				log.Info().Msg("Farmer bot is exiting ....")
+				log.Info().Msg("Farmerbot is exiting ....")
 				os.Exit(0)
 			}
 
@@ -90,8 +90,7 @@ func disclaimerPrompt() (string, error) {
 		if slices.Contains([]string{"yes", "no"}, answer) {
 			break
 		}
-		_, err := fmt.Print("\033[33mPlease enter yes or no only: \033[0m")
-		if err != nil {
+		if _, err := fmt.Print("\033[33mPlease enter yes or no only: \033[0m"); err != nil {
 			return "", err
 		}
 		if _, err := fmt.Scanf("%s", &answer); err != nil {
