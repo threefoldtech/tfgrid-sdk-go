@@ -113,7 +113,7 @@ func (d *RpcClient) CallWithSession(ctx context.Context, twin uint32, session *s
 
 	if errResp != nil {
 		// todo: include code also
-		return fmt.Errorf(errResp.Message)
+		return fmt.Errorf("%s", errResp.Message)
 	}
 
 	resp := response.GetResponse()
