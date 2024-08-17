@@ -24,9 +24,6 @@ networks:
 services:
   server:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
-    ip_types:
-      - ipv4
-      - ygg
     entrypoint: '/sbin/zinit init'
     volumes:
       - webdata
@@ -34,21 +31,18 @@ services:
     resources:
       cpu: 1
       memory: 2048
-      rootfs: 25600
+      rootfs: 2048
     network: net2
   server2:
-    node_id: 14
+    node_id: 11
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
-    ip_types:
-      - ipv4
-      - ygg
     entrypoint: '/sbin/zinit init'
     volumes:
       - webdata
     resources:
       cpu: 1
       memory: 2048
-      rootfs: 25600
+      rootfs: 2048
     network: net1
   frontend:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
@@ -60,7 +54,7 @@ services:
     resources:
       cpu: 1
       memory: 2048
-      rootfs: 25600
+      rootfs: 2048
     network: net1
   database:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
@@ -72,7 +66,7 @@ services:
     resources:
       cpu: 1
       memory: 2048
-      rootfs: 25600
+      rootfs: 2048
     network: net2
 
 volumes:

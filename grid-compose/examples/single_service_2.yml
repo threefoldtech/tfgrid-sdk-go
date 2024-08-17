@@ -7,5 +7,5 @@ services:
     resources:
       cpu: 1
       memory: 2048
-      rootfs: 25600
-    node_id: 14
+      rootfs: 2048
+    node_id: 144

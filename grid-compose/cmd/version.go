@@ -2,7 +2,7 @@
 package cmd
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/spf13/cobra"
 )
@@ -16,11 +16,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Get latest build tag",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(version)
-		fmt.Println(commit)
+		log.Println(version)
+		log.Println(commit)
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(versionCmd)
 }

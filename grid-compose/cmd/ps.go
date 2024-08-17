@@ -3,22 +3,21 @@ package cmd
 import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/app"
 )
 
 var psCmd = &cobra.Command{
 	Use:   "ps",
 	Short: "list deployments on the grid",
 	Run: func(cmd *cobra.Command, args []string) {
-		flags := cmd.Flags()
+		verbose, err := cmd.Flags().GetBool("verbose")
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
 
-		if err := app.Ps(cmd.Context(), flags); err != nil {
+		app := cmd.Context().Value("app").(*app.App)
+		if err := app.Ps(cmd.Context(), verbose); err != nil {
 			log.Fatal().Err(err).Send()
 		}
 	},
-}
-
-func init() {
-	psCmd.PersistentFlags().BoolP("verbose", "v", false, "all information about deployed services")
-	psCmd.PersistentFlags().StringP("output", "o", "", "output result to a file")
-	rootCmd.AddCommand(psCmd)
 }

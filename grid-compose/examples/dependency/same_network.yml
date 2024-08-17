@@ -3,6 +3,9 @@ version: '1.0.0'
 services:
   server:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
+    ip_types:
+      - ipv4
+      - ygg
     entrypoint: '/sbin/zinit init'
     volumes:
       - webdata
@@ -10,7 +13,22 @@ services:
       cpu: 1
       memory: 2048
       rootfs: 2048
-
+    depends_on:
+      - database
+  frontend:
+    flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
+    ip_types:
+      - ipv4
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - dbdata
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+    node_id: 144
+    depends_on:
+      - server
   database:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
     ip_types:

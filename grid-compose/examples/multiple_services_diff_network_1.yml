@@ -33,7 +33,7 @@ services:
     resources:
       cpu: 1
       memory: 2048
-      rootfs: 25600
+      rootfs: 2048
     network: net2
   frontend:
     flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
@@ -45,7 +45,7 @@ services:
     resources:
       cpu: 1
       memory: 2048
-      rootfs: 25600
+      rootfs: 2048
     network: net1
     node_id: 144
   database:
@@ -58,7 +58,7 @@ services:
     resources:
       cpu: 1
       memory: 2048
-      rootfs: 25600
+      rootfs: 2048
     network: net2
 
 volumes:

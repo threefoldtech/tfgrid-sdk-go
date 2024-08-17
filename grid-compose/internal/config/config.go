@@ -6,9 +6,7 @@ import (
 	"io"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/utils"
-
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -28,11 +26,12 @@ type Config struct {
 	Services map[string]types.Service `yaml:"services"`
 	Volumes  map[string]types.Volume  `yaml:"volumes"`
 
-	// Constructed map from config file content to be used to generate deployments
-	DeploymentData map[string]*struct {
-		Services []*types.Service
-		NodeID   uint32
-	}
+	// ServicesGraph *dependency.DRGraph
+	// // Constructed map from config file content to be used to generate deployments
+	// DeploymentData map[string]*struct {
+	// 	NodeID   uint32
+	// 	Services map[string]*Service
+	// }
 }
 
 // NewConfig creates a new instance of the configuration
@@ -42,6 +41,28 @@ func NewConfig() *Config {
 		Services: make(map[string]types.Service),
 		Volumes:  make(map[string]types.Volume),
 	}
+}
+
+// LoadConfigFromReader loads the configuration file content from a reader
+func (c *Config) LoadConfigFromReader(configFile io.Reader) error {
+	content, err := io.ReadAll(configFile)
+	if err != nil {
+		return fmt.Errorf("failed to read file %w", err)
+	}
+	err = c.UnmarshalYAML(content)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal yaml %w", err)
+	}
+	return nil
+}
+
+// UnmarshalYAML unmarshals the configuration file content and populates the DeploymentData map
+func (c *Config) UnmarshalYAML(content []byte) error {
+	if err := yaml.Unmarshal(content, c); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ValidateConfig validates the configuration file content
@@ -63,67 +84,6 @@ func (c *Config) ValidateConfig() (err error) {
 		if service.Resources.Memory == 0 {
 			return fmt.Errorf("%w for service %s", ErrServiceMemoryResourceNotSet, name)
 		}
-	}
-
-	return nil
-}
-
-// LoadConfigFromReader loads the configuration file content from a reader
-func (c *Config) LoadConfigFromReader(configFile io.Reader) error {
-	content, err := io.ReadAll(configFile)
-	if err != nil {
-		return fmt.Errorf("failed to read file %w", err)
-	}
-
-	if err := c.UnmarshalYAML(content); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// UnmarshalYAML unmarshals the configuration file content and populates the DeploymentData map
-func (c *Config) UnmarshalYAML(content []byte) error {
-	if err := yaml.Unmarshal(content, c); err != nil {
-		return err
-	}
-
-	defaultNetName := utils.GenerateDefaultNetworkName(c.Services)
-	c.DeploymentData = make(map[string]*struct {
-		Services []*types.Service
-		NodeID   uint32
-	})
-
-	for serviceName, service := range c.Services {
-		svc := service
-		var netName string
-		if svc.Network == "" {
-			netName = defaultNetName
-		} else {
-			netName = svc.Network
-		}
-
-		if _, ok := c.DeploymentData[netName]; !ok {
-			c.DeploymentData[netName] = &struct {
-				Services []*types.Service
-				NodeID   uint32
-			}{
-				Services: make([]*types.Service, 0),
-				NodeID:   svc.NodeID,
-			}
-		}
-
-		if c.DeploymentData[netName].NodeID == 0 && svc.NodeID != 0 {
-			c.DeploymentData[netName].NodeID = svc.NodeID
-		}
-
-		if svc.NodeID != 0 && svc.NodeID != c.DeploymentData[netName].NodeID {
-			return fmt.Errorf("service name %s node_id %d should be the same for all or some or left blank for services in the same network", serviceName, svc.NodeID)
-		}
-
-		svc.Name = serviceName
-
-		c.DeploymentData[netName].Services = append(c.DeploymentData[netName].Services, &svc)
 	}
 
 	return nil
