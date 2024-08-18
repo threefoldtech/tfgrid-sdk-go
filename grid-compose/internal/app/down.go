@@ -7,6 +7,7 @@ import (
 )
 
 // Down cancels all the deployments
+// TODO: remove known hosts
 func (a *App) Down() error {
 	if len(a.Config.Networks) == 0 {
 		a.Config.Networks[deploy.GenerateDefaultNetworkName(a.Config.Services)] = types.Network{}
