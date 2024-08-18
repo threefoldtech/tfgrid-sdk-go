@@ -111,7 +111,7 @@ func UpWg(wgConfig, wgConfDir string) (string, error) {
 
 	_, err = exec.Command("wg-quick", "up", f.Name()).Output()
 	if err != nil {
-		return "", errors.Wrapf(err, "could not execute wg-quick up with "+f.Name())
+		return "", errors.Wrapf(err, "could not execute wg-quick up with %s", f.Name())
 	}
 
 	return f.Name(), nil
