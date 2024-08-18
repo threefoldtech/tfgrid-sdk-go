@@ -162,7 +162,6 @@ func (d *Deployer) deploy(
 
 			dl.ContractID = contractID
 			err = client.DeploymentDeploy(ctx, dl)
-
 			if err != nil {
 				rerr := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
 				if rerr != nil {
@@ -177,7 +176,6 @@ func (d *Deployer) deploy(
 				newWorkloadVersions[w.Name.String()] = 0
 			}
 			err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
-
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
@@ -238,7 +236,7 @@ func (d *Deployer) deploy(
 
 			// TODO: Destroy and create if publicIPCount is changed
 			// publicIPCount, err := countDeploymentPublicIPs(dl)
-			contractID, err := d.substrateConn.UpdateNodeContract(d.identity, dl.ContractID, "", hashHex)
+			contractID, err := d.substrateConn.UpdateNodeContract(d.identity, dl.ContractID, dl.Metadata, hashHex)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to update deployment")
 			}
@@ -470,7 +468,6 @@ func (d *Deployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gri
 			dl.ContractID = contracts[i]
 
 			err = client.DeploymentDeploy(ctx, dl)
-
 			if err != nil {
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error sending deployment with contract id %d to node %d", dl.ContractID, node))

@@ -412,7 +412,7 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 	if filter.NodeAvailableFor != nil || filter.NodeFreeHRU != nil ||
 		filter.NodeCertified != nil || filter.NodeFreeMRU != nil ||
 		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
-		filter.NodeRentedBy != nil || (filter.NodeStatus != nil && len(filter.NodeStatus) != 0) ||
+		filter.NodeRentedBy != nil || len(filter.NodeStatus) != 0 ||
 		filter.NodeTotalCRU != nil || filter.Country != nil ||
 		filter.Region != nil || filter.NodeHasIpv6 != nil {
 		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
@@ -468,7 +468,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		nodeQuery = nodeQuery.Where("LOWER(resources_cache.region) = LOWER(?)", *filter.Region)
 	}
 
-	if filter.NodeStatus != nil && len(filter.NodeStatus) != 0 {
+	if len(filter.NodeStatus) != 0 {
 		condition := nodestatus.DecideNodeStatusCondition(filter.NodeStatus)
 		nodeQuery = nodeQuery.Where(condition)
 	}
@@ -653,7 +653,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.NodeID != nil {
 		q = q.Where("node.node_id = ?", *filter.NodeID)
 	}
-	if filter.NodeIDs != nil && len(filter.NodeIDs) != 0 {
+	if len(filter.NodeIDs) != 0 {
 		q = q.Where("node.node_id In ?", filter.NodeIDs)
 	}
 	if filter.TwinID != nil {
