@@ -151,6 +151,8 @@ tfrobot deploy -c path/to/your/config.yaml
 >> Ensure that memory precision does not exceed 0.001,
 any value greater than this threshold will be disregarded.
 
+>> Ensure that requested `free_ssd` memory would be sufficient to deploy vms with both disks and volumes requirements
+
 ## Usage
 
 ### Subcommands
