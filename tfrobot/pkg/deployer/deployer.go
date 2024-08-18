@@ -246,7 +246,12 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 			nodesIDsIdx = (nodesIDsIdx + 1) % len(nodesIDs)
 
 			vmName := fmt.Sprintf("%s%d", vmGroup.Name, i)
-			disks, volumes, mounts := parseDisksAndVolumes(vmName, vmGroup.SSDDisks, vmGroup.Volumes)
+			disks, diskMounts := parseDisks(vmName, vmGroup.SSDDisks)
+			volumes, volumeMounts := parseVolumes(vmName, vmGroup.Volumes)
+
+			var mounts []workloads.Mount
+			mounts = append(mounts, diskMounts...)
+			mounts = append(mounts, volumeMounts...)
 
 			network := buildNetworkDeployment(vmGroup, nodeID, vmName, solutionType)
 			vm := buildVMDeployment(vmGroup, vmName, network.Name, sshKeys[vmGroup.SSHKey], mounts)
@@ -260,7 +265,7 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 	return groupDeploymentsInfo{vmDeployments: vmDeployments, networkDeployments: networkDeployments}
 }
 
-func parseDisksAndVolumes(name string, disks []Disk, volumes []Volume) (disksWorkloads []workloads.Disk, volWorkloads []workloads.Volume, mountsWorkloads []workloads.Mount) {
+func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mountsWorkloads []workloads.Mount) {
 	for i, disk := range disks {
 		DiskWorkload := workloads.Disk{
 			Name:   fmt.Sprintf("%s_disk%d", name, i),
@@ -270,6 +275,10 @@ func parseDisksAndVolumes(name string, disks []Disk, volumes []Volume) (disksWor
 		disksWorkloads = append(disksWorkloads, DiskWorkload)
 		mountsWorkloads = append(mountsWorkloads, workloads.Mount{DiskName: DiskWorkload.Name, MountPoint: disk.Mount})
 	}
+	return
+}
+
+func parseVolumes(name string, volumes []Volume) (volWorkloads []workloads.Volume, mountsWorkloads []workloads.Mount) {
 	for i, volume := range volumes {
 		VolWorkload := workloads.Volume{
 			Name:   fmt.Sprintf("%s_volume%d", name, i),

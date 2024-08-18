@@ -126,7 +126,7 @@ tfrobot deploy -c path/to/your/config.yaml
 | ssh_key | key of ssh key defined in the ssh_keys map | should be valid ssh_key defined in the ssh_keys map |
 | env_vars | map of env vars | map of type string to string |
 | ssd | list of disks | should be of type disk|
-| vol | list of volumes | should be of type volume|
+| volume | list of volumes | should be of type volume|
 | root_size | root size in GB | 0 for default root size, max 10TB |
 
 ### Disk

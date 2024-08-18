@@ -19,7 +19,7 @@ vms:
     ssd: # list of ssd storage needed to be mounted to the vm
       - size: 15 # size in GB, min 15 GB
         mount_point: /mnt/ssd
-    vol: # list of volume storage needed to be mounted to the vm
+    volume: # list of volume storage needed to be mounted to the vm
       - size: 15 # size in GB, min 15 GB
         mount_point: /mnt/vol
     public_ip4: false

@@ -34,7 +34,7 @@ type Vms struct {
 	FreeCPU    uint64            `yaml:"cpu" validate:"required,max=32" json:"cpu"`
 	FreeMRU    float32           `yaml:"mem" validate:"required,min=0.25,max=256" json:"mem"` // min: 0.25 GB, max: 256 GB
 	SSDDisks   []Disk            `yaml:"ssd" json:"ssd"`
-	Volumes    []Volume          `yaml:"vol" json:"vol"`
+	Volumes    []Volume          `yaml:"volume" json:"volume"`
 	PublicIP4  bool              `yaml:"public_ip4" json:"public_ip4"`
 	PublicIP6  bool              `yaml:"public_ip6" json:"public_ip6"`
 	Ygg        bool              `yaml:"ygg_ip" json:"ygg_ip"`
