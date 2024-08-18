@@ -77,7 +77,8 @@ var runCmd = &cobra.Command{
 // disclaimerPrompt reads user input and return string, error
 func disclaimerPrompt() (string, error) {
 	var answer string
-	_, err := fmt.Print("\033[33mWarning: The Farmerbot is an optional feature developed by ThreeFold. Use at your own risk. While ThreeFold will do its best to fix any issues with the Farmerbot and minting, if minting is affected by the use of the Farmerbot, ThreeFold cannot be held responsible. Do you wish to proceed? (yes/no)\n\033[0m")
+	disclaimer := "\033[33mWarning: The Farmerbot is an optional feature developed by ThreeFold. Use at your own risk. While ThreeFold will do its best to fix any issues with the Farmerbot and minting, if minting is affected by the use of the Farmerbot, ThreeFold cannot be held responsible. Do you wish to proceed? (yes/no)\n\033[0m"
+	_, err := fmt.Print(disclaimer)
 	if err != nil {
 		return "", err
 	}
@@ -85,7 +86,7 @@ func disclaimerPrompt() (string, error) {
 		return "", err
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 2; i++ {
 		answer = strings.ToLower(answer)
 		if slices.Contains([]string{"yes", "no"}, answer) {
 			break
