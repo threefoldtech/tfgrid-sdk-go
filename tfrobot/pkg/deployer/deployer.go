@@ -249,12 +249,8 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 			disks, diskMounts := parseDisks(vmName, vmGroup.SSDDisks)
 			volumes, volumeMounts := parseVolumes(vmName, vmGroup.Volumes)
 
-			var mounts []workloads.Mount
-			mounts = append(mounts, diskMounts...)
-			mounts = append(mounts, volumeMounts...)
-
 			network := buildNetworkDeployment(vmGroup, nodeID, vmName, solutionType)
-			vm := buildVMDeployment(vmGroup, vmName, network.Name, sshKeys[vmGroup.SSHKey], mounts)
+			vm := buildVMDeployment(vmGroup, vmName, network.Name, sshKeys[vmGroup.SSHKey], append(diskMounts, volumeMounts...))
 
 			deployment := workloads.NewDeployment(vm.Name, nodeID, solutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil, volumes)
 
