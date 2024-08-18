@@ -25,13 +25,6 @@ type Config struct {
 	Networks map[string]types.Network `yaml:"networks"`
 	Services map[string]types.Service `yaml:"services"`
 	Volumes  map[string]types.Volume  `yaml:"volumes"`
-
-	// ServicesGraph *dependency.DRGraph
-	// // Constructed map from config file content to be used to generate deployments
-	// DeploymentData map[string]*struct {
-	// 	NodeID   uint32
-	// 	Services map[string]*Service
-	// }
 }
 
 // NewConfig creates a new instance of the configuration

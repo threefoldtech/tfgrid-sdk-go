@@ -1,20 +1,23 @@
 package convert
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/generator"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/deploy"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/types"
+	proxy_types "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-func ConvertToDeploymentData(config *config.Config) (*types.DeploymentData, error) {
+func ConvertConfigToDeploymentData(ctx context.Context, t *deployer.TFPluginClient, config *config.Config) (*types.DeploymentData, error) {
 	deploymentData := &types.DeploymentData{
 		NetworkNodeMap: make(map[string]*types.NetworkData, 0),
 		ServicesGraph:  types.NewDRGraph(types.NewDRNode("root", nil)),
 	}
 
-	defaultNetName := generator.GenerateDefaultNetworkName(config.Services)
+	defaultNetName := deploy.GenerateDefaultNetworkName(config.Services)
 
 	for serviceName, service := range config.Services {
 		svc := service
@@ -77,6 +80,10 @@ func ConvertToDeploymentData(config *config.Config) (*types.DeploymentData, erro
 		}
 	}
 
+	if err := getMissingNodes(ctx, deploymentData.NetworkNodeMap, t); err != nil {
+		return nil, err
+	}
+
 	// for netName, data := range deploymentData.NetworkNodeMap {
 	// 	log.Println(netName)
 	// 	log.Println(data.NodeID)
@@ -97,4 +104,46 @@ func ConvertToDeploymentData(config *config.Config) (*types.DeploymentData, erro
 	// 	log.Println(svc.Name)
 	// }
 	return deploymentData, nil
+}
+
+// TODO: Calculate total MRU and SRU while populating the deployment data
+func getMissingNodes(ctx context.Context, networkNodeMap map[string]*types.NetworkData, t *deployer.TFPluginClient) error {
+	for _, deploymentData := range networkNodeMap {
+		if deploymentData.NodeID != 0 {
+			continue
+		}
+
+		// freeCRU is not in NodeFilter?
+		var freeMRU, freeSRU uint64
+
+		for _, service := range deploymentData.Services {
+			freeMRU += service.Resources.Memory
+			freeSRU += service.Resources.Rootfs
+		}
+
+		filter := proxy_types.NodeFilter{
+			Status:  []string{"up"},
+			FreeSRU: &freeSRU,
+			FreeMRU: &freeMRU,
+		}
+
+		nodes, _, err := t.GridProxyClient.Nodes(ctx, filter, proxy_types.Limit{})
+		if err != nil {
+			return err
+		}
+
+		if len(nodes) == 0 || (len(nodes) == 1 && nodes[0].NodeID == 1) {
+			return fmt.Errorf("no available nodes")
+		}
+
+		// TODO: still need to agree on logic to select the node
+		for _, node := range nodes {
+			if node.NodeID != 1 {
+				deploymentData.NodeID = uint32(node.NodeID)
+				break
+			}
+		}
+	}
+
+	return nil
 }

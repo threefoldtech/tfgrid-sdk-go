@@ -50,11 +50,11 @@ func NewApp(net, mnemonic, configPath string) (*App, error) {
 	}, nil
 }
 
-func (a *App) getProjectName(key string) string {
+func (a *App) GetProjectName(key string) string {
 	return fmt.Sprintf("compose/%v/%v", a.Client.TwinID, key)
 }
 
-func (a *App) getDeploymentName(key string) string {
+func (a *App) GetDeploymentName(key string) string {
 	return fmt.Sprintf("dl_%v", key)
 }
 
