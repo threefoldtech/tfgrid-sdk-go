@@ -113,7 +113,7 @@ func (f *Farm) satisfies(filter types.FarmFilter, data *DBData) bool {
 	if filter.NodeAvailableFor != nil || filter.NodeCertified != nil ||
 		filter.NodeFreeHRU != nil || filter.NodeFreeMRU != nil ||
 		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
-		filter.NodeRentedBy != nil || (filter.NodeStatus != nil && len(filter.NodeStatus) != 0) ||
+		filter.NodeRentedBy != nil || len(filter.NodeStatus) != 0 ||
 		filter.Country != nil || filter.Region != nil ||
 		filter.NodeTotalCRU != nil || filter.NodeHasIpv6 != nil {
 		if !f.satisfyFarmNodesFilter(data, filter) {
@@ -168,7 +168,7 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			Target: node.Power.Target,
 		}
 		nodeStatus := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
-		if filter.NodeStatus != nil && len(filter.NodeStatus) != 0 && !slices.Contains(filter.NodeStatus, nodeStatus) {
+		if len(filter.NodeStatus) != 0 && !slices.Contains(filter.NodeStatus, nodeStatus) {
 			continue
 		}
 

@@ -3,6 +3,7 @@ package peer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -113,7 +114,7 @@ func (d *RpcClient) CallWithSession(ctx context.Context, twin uint32, session *s
 
 	if errResp != nil {
 		// todo: include code also
-		return fmt.Errorf(errResp.Message)
+		return errors.New(errResp.Message)
 	}
 
 	resp := response.GetResponse()
