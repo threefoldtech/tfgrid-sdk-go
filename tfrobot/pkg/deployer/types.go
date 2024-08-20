@@ -63,14 +63,14 @@ type groupDeploymentsInfo struct {
 }
 
 type vmOutput struct {
-	Name        string
-	NetworkName string
-	PublicIP4   string
-	PublicIP6   string
-	YggIP       string
-	MyceliumIP  string
-	IP          string
-	Mounts      []workloads.Mount
-	NodeID      uint32
-	ContractID  uint64
+	Name        string            `yaml:"name" json:"name"`
+	NetworkName string            `yaml:"network_name" json:"network_name"`
+	PublicIP4   string            `yaml:"public_ip4" json:"public_ip4"`
+	PublicIP6   string            `yaml:"public_ip6" json:"public_ip6"`
+	YggIP       string            `yaml:"ygg_ip" json:"ygg_ip"`
+	MyceliumIP  string            `yaml:"mycelium_ip" json:"mycelium_ip"`
+	IP          string            `yaml:"ip" json:"ip"`
+	Mounts      []workloads.Mount `yaml:"mounts" json:"mounts"`
+	NodeID      uint32            `yaml:"node_id" json:"node_id"`
+	ContractID  uint64            `yaml:"contract_id" json:"contract_id"`
 }
