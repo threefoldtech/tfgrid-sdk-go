@@ -3,7 +3,7 @@ node_groups:
     nodes_count: 3 # amount of nodes to be found
     free_cpu: 2 # number of logical cores
     free_mru: 16 # amount of memory in GB
-    free_ssd: 100 # amount of ssd storage in GB
+    free_ssd: 150 # amount of ssd storage in GB
     free_hdd: 50 # amount of hdd storage in GB
     dedicated: false # are nodes dedicated
     public_ip4: false # should the nodes have free ip v4
@@ -19,6 +19,9 @@ vms:
     ssd: # list of ssd storage needed to be mounted to the vm
       - size: 15 # size in GB, min 15 GB
         mount_point: /mnt/ssd
+    volume: # list of volume storage needed to be mounted to the vm
+      - size: 15 # size in GB, min 15 GB
+        mount_point: /mnt/vol
     public_ip4: false
     public_ip6: false
     mycelium_ip: true
