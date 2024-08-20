@@ -60,8 +60,8 @@ func TestVMWithTwoDisk(t *testing.T) {
 			"SSH_KEY": publicKey,
 		},
 		Mounts: []workloads.Mount{
-			{DiskName: disk1.Name, MountPoint: "/disk1"},
-			{DiskName: disk2.Name, MountPoint: "/disk2"},
+			{Name: disk1.Name, MountPoint: "/disk1"},
+			{Name: disk2.Name, MountPoint: "/disk2"},
 		},
 	}
 

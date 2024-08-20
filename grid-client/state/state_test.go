@@ -584,7 +584,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 		RootfsSize:    4096,
 		Entrypoint:    "entrypoint",
 		Mounts: []workloads.Mount{
-			{DiskName: "disk", MountPoint: "mount"},
+			{Name: "disk", MountPoint: "mount"},
 		},
 		Zlogs:       zlogs,
 		EnvVars:     map[string]string{"var1": "val1"},
