@@ -82,23 +82,21 @@ func disclaimerPrompt() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := fmt.Scanf("%s", &answer); err != nil {
-		return "", err
-	}
+	for i := 0; i < 3; i++ {
+		if _, err := fmt.Scanf("%s", &answer); err != nil {
+			return "", err
+		}
 
-	for i := 0; i < 2; i++ {
 		answer = strings.ToLower(answer)
 		if slices.Contains([]string{"yes", "no"}, answer) {
 			break
 		}
-		if _, err := fmt.Print("\033[33mPlease enter yes or no only: \033[0m"); err != nil {
-			return "", err
-		}
-		if _, err := fmt.Scanf("%s", &answer); err != nil {
-			return "", err
+		if i < 2 {
+			if _, err := fmt.Print("\033[33mPlease enter yes or no only: \033[0m"); err != nil {
+				return "", err
+			}
 		}
 	}
-	answer = strings.ToLower(answer)
 	if !slices.Contains([]string{"yes", "no"}, answer) {
 		return "", fmt.Errorf("disclaimer expects yes or no, found : %s", answer)
 	}
