@@ -2,8 +2,9 @@ package client
 
 import (
 	"context"
-	"log"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	backoff "github.com/cenkalti/backoff/v3"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -34,7 +35,7 @@ func bf(timeout time.Duration) *backoff.ExponentialBackOff {
 
 func notify(cmd string) func(error, time.Duration) {
 	return func(err error, duration time.Duration) {
-		log.Printf("failure: %s, command: %s, duration: %s", err.Error(), cmd, duration)
+		log.Error().Err(err).Msgf("failure: %s, command: %s, duration: %s", err.Error(), cmd, duration)
 	}
 }
 

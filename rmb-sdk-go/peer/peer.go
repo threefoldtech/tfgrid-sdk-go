@@ -292,7 +292,7 @@ func (d *Peer) handleIncoming(incoming *types.Envelope) error {
 		// this is possible only if the relay returned an error
 		// hence
 		if errResp != nil {
-			return fmt.Errorf("%s", errResp.Message)
+			return errors.New(errResp.Message)
 		}
 
 		// otherwise that's a malformed message
@@ -305,7 +305,7 @@ func (d *Peer) handleIncoming(incoming *types.Envelope) error {
 
 	if errResp != nil {
 		// todo: include code also
-		return fmt.Errorf("%s", errResp.Message)
+		return errors.New(errResp.Message)
 	}
 
 	var output []byte

@@ -770,7 +770,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 func (d *PostgresDatabase) shouldRetry(resError error) bool {
 	if resError != nil && resError.Error() == ErrResourcesCacheTableNotFound.Error() {
 		if err := d.Initialize(); err != nil {
-			log.Logger.Err(err).Msg("failed to reinitialize database")
+			log.Error().Err(err).Msg("failed to reinitialize database")
 		} else {
 			return true
 		}
