@@ -161,7 +161,7 @@ func TestQSFSDeployment(t *testing.T) {
 			"SSH_KEY": publicKey,
 		},
 		Mounts: []workloads.Mount{
-			{DiskName: qsfs.Name, MountPoint: "/qsfs"},
+			{Name: qsfs.Name, MountPoint: "/qsfs"},
 		},
 	}
 

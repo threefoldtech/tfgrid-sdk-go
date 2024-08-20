@@ -269,7 +269,7 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 		}
 
 		disksWorkloads = append(disksWorkloads, DiskWorkload)
-		mountsWorkloads = append(mountsWorkloads, workloads.Mount{DiskName: DiskWorkload.Name, MountPoint: disk.Mount})
+		mountsWorkloads = append(mountsWorkloads, workloads.Mount{Name: DiskWorkload.Name, MountPoint: disk.Mount})
 	}
 	return
 }
@@ -282,7 +282,7 @@ func parseVolumes(name string, volumes []Volume) (volWorkloads []workloads.Volum
 		}
 
 		volWorkloads = append(volWorkloads, VolWorkload)
-		mountsWorkloads = append(mountsWorkloads, workloads.Mount{DiskName: VolWorkload.Name, MountPoint: volume.Mount})
+		mountsWorkloads = append(mountsWorkloads, workloads.Mount{Name: VolWorkload.Name, MountPoint: volume.Mount})
 	}
 	return
 }

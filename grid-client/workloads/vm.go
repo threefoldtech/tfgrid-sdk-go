@@ -24,7 +24,7 @@ type VM struct {
 	PublicIP      bool   `json:"publicip"`
 	PublicIP6     bool   `json:"publicip6"`
 	Planetary     bool   `json:"planetary"`
-	Corex         bool   `json:"corex"` //TODO: Is it works ??
+	Corex         bool   `json:"corex"` // TODO: Is it works ??
 	ComputedIP    string `json:"computedip"`
 	ComputedIP6   string `json:"computedip6"`
 	PlanetaryIP   string `json:"planetary_ip"`
@@ -45,10 +45,10 @@ type VM struct {
 	ConsoleURL     string            `json:"console_url"`
 }
 
-// Mount disks struct
+// Mount disks/volumes struct
 type Mount struct {
-	DiskName   string `json:"disk_name"`
-	MountPoint string `json:"mount_point"`
+	Name       string `json:"name"`
+	MountPoint string `yaml:"mount_point" json:"mount_point"`
 }
 
 // NewVMFromWorkload generates a new vm from given workloads and deployment
@@ -123,7 +123,7 @@ func mounts(mounts []zos.MachineMount) []Mount {
 	var res []Mount
 	for _, mount := range mounts {
 		res = append(res, Mount{
-			DiskName:   mount.Name.String(),
+			Name:       mount.Name.String(),
 			MountPoint: mount.Mountpoint,
 		})
 	}
@@ -163,7 +163,7 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 
 	var mounts []zos.MachineMount
 	for _, mount := range vm.Mounts {
-		mounts = append(mounts, zos.MachineMount{Name: gridtypes.Name(mount.DiskName), Mountpoint: mount.MountPoint})
+		mounts = append(mounts, zos.MachineMount{Name: gridtypes.Name(mount.Name), Mountpoint: mount.MountPoint})
 	}
 	for _, zlog := range vm.Zlogs {
 		zlogWorkload := zlog.ZosWorkload()
@@ -255,13 +255,13 @@ func (vm *VM) LoadFromVM(vm2 *VM) {
 		names[zlog.Output] = idx - l
 	}
 	for idx, mount := range vm2.Mounts {
-		names[mount.DiskName] = idx - l
+		names[mount.Name] = idx - l
 	}
 	sort.Slice(vm.Zlogs, func(i, j int) bool {
 		return names[vm.Zlogs[i].Output] < names[vm.Zlogs[j].Output]
 	})
 	sort.Slice(vm.Mounts, func(i, j int) bool {
-		return names[vm.Mounts[i].DiskName] < names[vm.Mounts[j].DiskName]
+		return names[vm.Mounts[i].Name] < names[vm.Mounts[j].Name]
 	})
 	vm.FlistChecksum = vm2.FlistChecksum
 }

@@ -55,7 +55,7 @@ func TestVMWithVolume(t *testing.T) {
 			"SSH_KEY": publicKey,
 		},
 		Mounts: []workloads.Mount{
-			{DiskName: volume.Name, MountPoint: "/volume"},
+			{Name: volume.Name, MountPoint: "/volume"},
 		},
 	}
 

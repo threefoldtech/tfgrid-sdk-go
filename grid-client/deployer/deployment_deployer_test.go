@@ -94,11 +94,11 @@ func constructTestDeployment() workloads.Deployment {
 			Entrypoint:    "/sbin/zinit init",
 			Mounts: []workloads.Mount{
 				{
-					DiskName:   "disk1",
+					Name:       "disk1",
 					MountPoint: "/data1",
 				},
 				{
-					DiskName:   "disk2",
+					Name:       "disk2",
 					MountPoint: "/data2",
 				},
 			},
@@ -137,11 +137,11 @@ func constructTestDeployment() workloads.Deployment {
 			Entrypoint:    "/sbin/zinit init",
 			Mounts: []workloads.Mount{
 				{
-					DiskName:   "disk1",
+					Name:       "disk1",
 					MountPoint: "/data1",
 				},
 				{
-					DiskName:   "disk2",
+					Name:       "disk2",
 					MountPoint: "/data2",
 				},
 			},

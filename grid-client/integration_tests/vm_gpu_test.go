@@ -73,7 +73,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 			"SSH_KEY": publicKey,
 		},
 		Mounts: []workloads.Mount{
-			{DiskName: disk.Name, MountPoint: "/data"},
+			{Name: disk.Name, MountPoint: "/data"},
 		},
 	}
 
