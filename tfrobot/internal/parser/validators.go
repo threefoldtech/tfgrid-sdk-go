@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cosmos/go-bip39"
+	"github.com/go-playground/validator/v10"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 	"golang.org/x/sync/errgroup"
@@ -128,6 +129,21 @@ func validateVMs(vms []tfrobot.Vms, nodeGroups []tfrobot.NodesGroup, sskKeys map
 
 		if !vmNodeGroupExists {
 			return fmt.Errorf("node group: '%s' in vms group: '%s' is not found", vm.NodeGroup, vm.Name)
+		}
+
+		v := validator.New(validator.WithRequiredStructEnabled())
+		for _, disk := range vm.SSDDisks {
+			if err := v.Struct(disk); err != nil {
+				err = parseValidationError(err)
+				return err
+			}
+		}
+
+		for _, volume := range vm.Volumes {
+			if err := v.Struct(volume); err != nil {
+				err = parseValidationError(err)
+				return err
+			}
 		}
 
 	}
