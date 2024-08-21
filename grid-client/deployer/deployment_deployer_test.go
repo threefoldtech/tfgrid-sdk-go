@@ -720,7 +720,7 @@ func ExampleDeploymentDeployer_Deploy() {
 		return
 	}
 
-	dl := workloads.NewDeployment("vmdeployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment("vmdeployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	if err != nil {
 		fmt.Println(err)
@@ -779,8 +779,8 @@ func ExampleDeploymentDeployer_BatchDeploy() {
 		return
 	}
 
-	d1 := workloads.NewDeployment("vm1deployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm1}, nil)
-	d2 := workloads.NewDeployment("vm2deployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm2}, nil)
+	d1 := workloads.NewDeployment("vm1deployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm1}, nil, nil)
+	d2 := workloads.NewDeployment("vm2deployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm2}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&d1, &d2})
 	if err != nil {
 		fmt.Println(err)

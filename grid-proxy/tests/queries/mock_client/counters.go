@@ -25,7 +25,7 @@ func (g *GridProxyMockClient) Stats(ctx context.Context, filter types.StatsFilte
 			Target: node.Power.Target,
 		}
 		st := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
-		if filter.Status == nil || len(filter.Status) == 0 || slices.Contains(filter.Status, st) {
+		if len(filter.Status) == 0 || slices.Contains(filter.Status, st) {
 			res.Nodes++
 			distribution[node.Country] += 1
 			res.TotalCRU += int64(g.data.NodeTotalResources[node.NodeID].CRU)

@@ -65,7 +65,7 @@ func TestWG(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
@@ -111,7 +111,7 @@ func UpWg(wgConfig, wgConfDir string) (string, error) {
 
 	_, err = exec.Command("wg-quick", "up", f.Name()).Output()
 	if err != nil {
-		return "", errors.Wrapf(err, "could not execute wg-quick up with "+f.Name())
+		return "", errors.Wrapf(err, "could not execute wg-quick up with %s", f.Name())
 	}
 
 	return f.Name(), nil

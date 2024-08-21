@@ -295,7 +295,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	free := CalcFreeResources(total, used)
 
 	nodeStatus := nodestatus.DecideNodeStatus(nodePower, int64(n.UpdatedAt))
-	if f.Status != nil && len(f.Status) != 0 && !slices.Contains(f.Status, nodeStatus) {
+	if len(f.Status) != 0 && !slices.Contains(f.Status, nodeStatus) {
 		return false
 	}
 
@@ -363,7 +363,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.FarmIDs != nil && len(f.FarmIDs) != 0 && !slices.Contains(f.FarmIDs, n.FarmID) {
+	if len(f.FarmIDs) != 0 && !slices.Contains(f.FarmIDs, n.FarmID) {
 		return false
 	}
 
@@ -391,7 +391,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.Excluded != nil && len(f.Excluded) != 0 && slices.Contains(f.Excluded, n.NodeID) {
+	if len(f.Excluded) != 0 && slices.Contains(f.Excluded, n.NodeID) {
 		return false
 	}
 
@@ -418,7 +418,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.NodeIDs != nil && len(f.NodeIDs) != 0 && !slices.Contains(f.NodeIDs, n.NodeID) {
+	if len(f.NodeIDs) != 0 && !slices.Contains(f.NodeIDs, n.NodeID) {
 		return false
 	}
 

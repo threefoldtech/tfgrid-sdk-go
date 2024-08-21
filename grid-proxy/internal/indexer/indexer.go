@@ -75,7 +75,7 @@ func (i *Indexer[T]) get(ctx context.Context) {
 		case id := <-i.idChan:
 			res, err := i.work.Get(ctx, i.rmbClient, id)
 			if err != nil {
-				log.Error().Err(err).Str("indexer", i.name).Uint32("twinId", id).Msg("failed to call")
+				log.Debug().Err(err).Str("indexer", i.name).Uint32("twinId", id).Msg("failed to call")
 				continue
 			}
 

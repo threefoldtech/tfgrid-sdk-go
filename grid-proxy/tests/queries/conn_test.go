@@ -27,7 +27,7 @@ func TestDBManyOpenConnections(t *testing.T) {
 
 			_, _, err := DBClient.GetTwins(ctx, types.TwinFilter{}, types.Limit{Size: 100})
 			if err != nil {
-				log.Err(err).Msg("twin query failed")
+				log.Error().Err(err).Msg("twin query failed")
 				return
 			}
 

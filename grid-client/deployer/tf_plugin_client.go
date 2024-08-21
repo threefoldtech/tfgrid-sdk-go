@@ -6,7 +6,6 @@ import (
 	"io"
 	baseLog "log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -24,58 +23,16 @@ import (
 	"github.com/vedhavyas/go-subkey"
 )
 
-var (
-	// SubstrateURLs are substrate urls
-	SubstrateURLs = map[string][]string{
-		"dev":  {"wss://tfchain.dev.grid.tf/ws", "wss://tfchain.dev.grid.tf:443"},
-		"test": {"wss://tfchain.test.grid.tf/ws", "wss://tfchain.test.grid.tf:443"},
-		"qa":   {"wss://tfchain.qa.grid.tf/ws", "wss://tfchain.qa.grid.tf:443"},
-		"main": {"wss://tfchain.grid.tf/ws", "wss://tfchain.grid.tf:443"},
-	}
-	// ProxyURLs are rmb proxy urls
-	ProxyURLs = map[string]string{
-		"dev":  "https://gridproxy.dev.grid.tf/",
-		"test": "https://gridproxy.test.grid.tf/",
-		"qa":   "https://gridproxy.qa.grid.tf/",
-		"main": "https://gridproxy.grid.tf/",
-	}
-	// GraphQlURLs urls
-	GraphQlURLs = map[string]string{
-		"dev":  "https://graphql.dev.grid.tf/graphql",
-		"test": "https://graphql.test.grid.tf/graphql",
-		"qa":   "https://graphql.qa.grid.tf/graphql",
-		"main": "https://graphql.grid.tf/graphql",
-	}
-	// RelayURLs relay urls
-	RelayURLs = map[string][]string{
-		"dev": {
-			"wss://relay.dev.grid.tf",
-			"wss://relay.02.dev.grid.tf",
-		},
-		"test": {
-			"wss://relay.test.grid.tf",
-			"wss://relay.02.test.grid.tf",
-		},
-		"qa": {
-			"wss://relay.qa.grid.tf",
-			"wss://relay.02.qa.grid.tf",
-		},
-		"main": {
-			"wss://relay.grid.tf",
-		},
-	}
-)
-
 // TFPluginClient is a Threefold plugin client
 type TFPluginClient struct {
 	TwinID         uint32
 	mnemonicOrSeed string
 	Identity       substrate.Identity
-	substrateURL   []string
+	substrateURLs  []string
 	relayURLs      []string
+	proxyURLs      []string
+	graphqlURLs    []string
 	RMBTimeout     time.Duration
-	proxyURL       string
-	graphqlURL     string
 	useRmbProxy    bool
 
 	// network
@@ -110,10 +67,10 @@ type TFPluginClient struct {
 type pluginCfg struct {
 	keyType       string
 	network       string
-	substrateURL  []string
+	substrateURLs []string
 	relayURLs     []string
-	proxyURL      string
-	graphqlURL    string
+	proxyURLs     []string
+	graphqlURLs   []string
 	rmbTimeout    int
 	showLogs      bool
 	rmbInMemCache bool
@@ -133,9 +90,9 @@ func WithKeyType(keyType string) PluginOpt {
 	}
 }
 
-func WithSubstrateURL(substrateURL ...string) PluginOpt {
+func WithSubstrateURL(substrateURLs ...string) PluginOpt {
 	return func(p *pluginCfg) {
-		p.substrateURL = substrateURL
+		p.substrateURLs = substrateURLs
 	}
 }
 
@@ -145,9 +102,9 @@ func WithRelayURL(relayURLs ...string) PluginOpt {
 	}
 }
 
-func WithProxyURL(proxyURL string) PluginOpt {
+func WithProxyURL(proxyURLs ...string) PluginOpt {
 	return func(p *pluginCfg) {
-		p.proxyURL = proxyURL
+		p.proxyURLs = proxyURLs
 	}
 }
 
@@ -179,9 +136,9 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 	cfg := pluginCfg{
 		network:       "main",
 		keyType:       peer.KeyTypeSr25519,
-		substrateURL:  []string{},
-		proxyURL:      "",
-		graphqlURL:    "",
+		substrateURLs: []string{},
+		proxyURLs:     []string{},
+		graphqlURLs:   []string{},
 		relayURLs:     []string{},
 		rmbTimeout:    60, // default rmbTimeout is 60
 		showLogs:      false,
@@ -192,15 +149,17 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 		o(&cfg)
 	}
 
-	if cfg.network != "dev" && cfg.network != "qa" && cfg.network != "test" && cfg.network != "main" {
-		return cfg, errors.Errorf("network must be one of dev, qa, test, and main not %s", cfg.network)
+	if cfg.network != DevNetwork && cfg.network != QaNetwork && cfg.network != TestNetwork && cfg.network != MainNetwork {
+		return cfg, errors.Errorf("network must be one of %s, %s, %s, and %s not %s", DevNetwork, QaNetwork, TestNetwork, MainNetwork, cfg.network)
 	}
 
-	if strings.TrimSpace(cfg.proxyURL) == "" {
-		cfg.proxyURL = ProxyURLs[cfg.network]
+	if len(cfg.proxyURLs) == 0 {
+		cfg.proxyURLs = ProxyURLs[cfg.network]
 	}
-	if err := validateProxyURL(cfg.proxyURL); err != nil {
-		return cfg, errors.Wrapf(err, "could not validate proxy url %s", cfg.proxyURL)
+	for _, url := range cfg.proxyURLs {
+		if err := validateProxyURL(url); err != nil {
+			return cfg, errors.Wrapf(err, "could not validate proxy url '%s'", url)
+		}
 	}
 
 	if strings.TrimSpace(cfg.graphqlURL) == "" {
@@ -219,10 +178,10 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 		}
 	}
 
-	if len(cfg.substrateURL) == 0 {
-		cfg.substrateURL = SubstrateURLs[cfg.network]
+	if len(cfg.substrateURLs) == 0 {
+		cfg.substrateURLs = SubstrateURLs[cfg.network]
 	}
-	for _, url := range cfg.substrateURL {
+	for _, url := range cfg.substrateURLs {
 		if err := validateWssURL(url); err != nil {
 			return cfg, errors.Wrapf(err, "could not validate substrate url %s", url)
 		}
@@ -261,12 +220,12 @@ func NewTFPluginClient(
 
 	var identity substrate.Identity
 	switch cfg.keyType {
-	case "ed25519":
+	case peer.KeyTypeEd25519:
 		identity, err = substrate.NewIdentityFromEd25519Phrase(tfPluginClient.mnemonicOrSeed)
-	case "sr25519":
+	case peer.KeyTypeSr25519:
 		identity, err = substrate.NewIdentityFromSr25519Phrase(tfPluginClient.mnemonicOrSeed)
 	default:
-		err = errors.Errorf("key type must be one of ed25519 and sr25519 not %s", cfg.keyType)
+		err = errors.Errorf("key type must be one of %s and %s not %s", peer.KeyTypeEd25519, peer.KeyTypeSr25519, cfg.keyType)
 	}
 
 	if err != nil {
@@ -280,12 +239,12 @@ func NewTFPluginClient(
 	}
 
 	tfPluginClient.Network = cfg.network
-	tfPluginClient.substrateURL = cfg.substrateURL
-	tfPluginClient.proxyURL = cfg.proxyURL
-	tfPluginClient.graphqlURL = cfg.graphqlURL
+	tfPluginClient.substrateURLs = cfg.substrateURLs
+	tfPluginClient.proxyURLs = cfg.proxyURLs
+	tfPluginClient.graphqlURLs = cfg.graphqlURLs
 	tfPluginClient.relayURLs = cfg.relayURLs
 
-	manager := subi.NewManager(tfPluginClient.substrateURL...)
+	manager := subi.NewManager(tfPluginClient.substrateURLs...)
 	sub, err := manager.SubstrateExt()
 	if err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not get substrate client")
@@ -335,7 +294,7 @@ func NewTFPluginClient(
 
 	tfPluginClient.RMB = rmbClient
 
-	gridProxyClient := proxy.NewClient(tfPluginClient.proxyURL)
+	gridProxyClient := proxy.NewClient(tfPluginClient.proxyURLs...)
 	if err := validateRMBProxyServer(gridProxyClient); err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not validate rmb proxy server")
 	}
@@ -353,6 +312,10 @@ func NewTFPluginClient(
 	tfPluginClient.graphQl, err = graphql.NewGraphQl(tfPluginClient.graphqlURL)
 	if err != nil {
 		return TFPluginClient{}, errors.Wrapf(err, "could not create a new graphql with url: %s", tfPluginClient.graphqlURL)
+		// graphqlURLs := GraphQlURLs[cfg.network]
+		// tfPluginClient.graphQl, err = graphql.NewGraphQl(graphqlURLs...)
+		// if err != nil {
+		// 	return TFPluginClient{}, errors.Wrapf(err, "could not create a new graphql with urls: %s", graphqlURLs)
 	}
 
 	tfPluginClient.ContractsGetter = graphql.NewContractsGetter(tfPluginClient.TwinID, tfPluginClient.graphQl, tfPluginClient.SubstrateConn, tfPluginClient.NcPool)

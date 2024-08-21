@@ -197,6 +197,15 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
 			groupDeployments.vmDeployments[idx].NodeID = nodeID
 			groupDeployments.networkDeployments[idx].Nodes = []uint32{nodeID}
+
+			myceliumKeys := groupDeployments.networkDeployments[idx].MyceliumKeys
+			if len(myceliumKeys) != 0 {
+				myceliumKey, err := workloads.RandomMyceliumKey()
+				if err != nil {
+					log.Debug().Err(err).Send()
+				}
+				groupDeployments.networkDeployments[idx].MyceliumKeys = map[uint32][]byte{nodeID: myceliumKey}
+			}
 		}
 	}
 }
@@ -237,12 +246,13 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 			nodesIDsIdx = (nodesIDsIdx + 1) % len(nodesIDs)
 
 			vmName := fmt.Sprintf("%s%d", vmGroup.Name, i)
-			disks, mounts := parseDisks(vmName, vmGroup.SSDDisks)
+			disks, diskMounts := parseDisks(vmName, vmGroup.SSDDisks)
+			volumes, volumeMounts := parseVolumes(vmName, vmGroup.Volumes)
 
 			network := buildNetworkDeployment(vmGroup, nodeID, vmName, solutionType)
-			vm := buildVMDeployment(vmGroup, vmName, network.Name, sshKeys[vmGroup.SSHKey], mounts)
+			vm := buildVMDeployment(vmGroup, vmName, network.Name, sshKeys[vmGroup.SSHKey], append(diskMounts, volumeMounts...))
 
-			deployment := workloads.NewDeployment(vm.Name, nodeID, solutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil)
+			deployment := workloads.NewDeployment(vm.Name, nodeID, solutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil, volumes)
 
 			vmDeployments = append(vmDeployments, &deployment)
 			networkDeployments = append(networkDeployments, &network)
@@ -260,6 +270,19 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 
 		disksWorkloads = append(disksWorkloads, DiskWorkload)
 		mountsWorkloads = append(mountsWorkloads, workloads.Mount{DiskName: DiskWorkload.Name, MountPoint: disk.Mount})
+	}
+	return
+}
+
+func parseVolumes(name string, volumes []Volume) (volWorkloads []workloads.Volume, mountsWorkloads []workloads.Mount) {
+	for i, volume := range volumes {
+		VolWorkload := workloads.Volume{
+			Name:   fmt.Sprintf("%s_volume%d", name, i),
+			SizeGB: int(volume.Size),
+		}
+
+		volWorkloads = append(volWorkloads, VolWorkload)
+		mountsWorkloads = append(mountsWorkloads, workloads.Mount{DiskName: VolWorkload.Name, MountPoint: volume.Mount})
 	}
 	return
 }
@@ -317,7 +340,6 @@ func buildNetworkDeployment(vm Vms, nodeID uint32, name, solutionType string) wo
 
 		myceliumKeys[nodeID] = key
 	}
-
 	return workloads.ZNet{
 		Name:        fmt.Sprintf("%s_network", name),
 		Description: "network for mass deployment",
@@ -326,7 +348,7 @@ func buildNetworkDeployment(vm Vms, nodeID uint32, name, solutionType string) wo
 			IP:   net.IPv4(10, 20, 0, 0),
 			Mask: net.CIDRMask(16, 32),
 		}),
-		AddWGAccess:  false,
+		AddWGAccess:  vm.WireGuard,
 		MyceliumKeys: myceliumKeys,
 		SolutionType: solutionType,
 	}

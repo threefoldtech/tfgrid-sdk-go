@@ -174,8 +174,13 @@ func setVMUsedResources(vmsGroup tfrobot.Vms, vmUsedResources map[string]interfa
 	for _, disk := range vmsGroup.SSDDisks {
 		ssdDisks += disk.Size * vmsGroup.Count
 	}
+	// free volume calc
+	var volumes uint64
+	for _, volume := range vmsGroup.Volumes {
+		volumes += volume.Size * vmsGroup.Count
+	}
 
-	vmUsedResources["free_ssd"] = vmUsedResources["free_ssd"].(uint64) + (vmsGroup.RootSize * vmsGroup.Count) + ssdDisks
+	vmUsedResources["free_ssd"] = vmUsedResources["free_ssd"].(uint64) + (vmsGroup.RootSize * vmsGroup.Count) + ssdDisks + volumes
 
 	if vmsGroup.PublicIP4 {
 		vmUsedResources["public_ip4"] = vmUsedResources["public_ip4"].(uint64) + vmsGroup.Count
