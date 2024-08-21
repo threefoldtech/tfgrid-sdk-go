@@ -126,9 +126,9 @@ func WithTwinCache() PluginOpt {
 	}
 }
 
-func WithGraphQlURL(graphqlURL string) PluginOpt {
+func WithGraphQlURL(graphqlURLs []string) PluginOpt {
 	return func(p *pluginCfg) {
-		p.graphqlURL = graphqlURL
+		p.graphqlURLs = graphqlURLs
 	}
 }
 
@@ -309,13 +309,14 @@ func NewTFPluginClient(
 	tfPluginClient.K8sDeployer = NewK8sDeployer(&tfPluginClient)
 	tfPluginClient.GatewayNameDeployer = NewGatewayNameDeployer(&tfPluginClient)
 
-	tfPluginClient.graphQl, err = graphql.NewGraphQl(tfPluginClient.graphqlURL)
+	graphqlURLs := tfPluginClient.graphqlURLs
+	if len(tfPluginClient.graphqlURLs) == 0 {
+		graphqlURLs = GraphQlURLs[cfg.network]
+	}
+
+	tfPluginClient.graphQl, err = graphql.NewGraphQl(graphqlURLs...)
 	if err != nil {
-		return TFPluginClient{}, errors.Wrapf(err, "could not create a new graphql with url: %s", tfPluginClient.graphqlURL)
-		// graphqlURLs := GraphQlURLs[cfg.network]
-		// tfPluginClient.graphQl, err = graphql.NewGraphQl(graphqlURLs...)
-		// if err != nil {
-		// 	return TFPluginClient{}, errors.Wrapf(err, "could not create a new graphql with urls: %s", graphqlURLs)
+		return TFPluginClient{}, errors.Wrapf(err, "could not create a new graphql with url: %v", graphqlURLs)
 	}
 
 	tfPluginClient.ContractsGetter = graphql.NewContractsGetter(tfPluginClient.TwinID, tfPluginClient.graphQl, tfPluginClient.SubstrateConn, tfPluginClient.NcPool)
