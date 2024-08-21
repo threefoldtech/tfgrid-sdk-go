@@ -50,6 +50,7 @@ func (c *Config) LoadConfigFromReader(configFile io.Reader) error {
 }
 
 // UnmarshalYAML unmarshals the configuration file content and populates the DeploymentData map
+// TODO: Implement unmarshaler
 func (c *Config) UnmarshalYAML(content []byte) error {
 	if err := yaml.Unmarshal(content, c); err != nil {
 		return err

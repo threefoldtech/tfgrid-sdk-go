@@ -23,7 +23,7 @@ networks:
 
 services:
   server:
-    flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
     ip_types:
       - ipv4
       - ygg
@@ -38,7 +38,7 @@ services:
     depends_on:
       - frontend
   frontend:
-    flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
     entrypoint: '/sbin/zinit init'
     volumes:
       - dbdata
@@ -47,13 +47,11 @@ services:
       memory: 2048
       rootfs: 2048
     network: net1
-    node_id: 144
+    node_id: 14
     depends_on:
       - database
   database:
-    flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
-    ip_types:
-      - ipv4
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
     entrypoint: '/sbin/zinit init'
     volumes:
       - dbdata
@@ -62,7 +60,7 @@ services:
       memory: 2048
       rootfs: 2048
     network: net2
-    node_id: 144
+    node_id: 14
 
 volumes:
   webdata:

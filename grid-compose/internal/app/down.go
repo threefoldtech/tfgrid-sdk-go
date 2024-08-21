@@ -6,7 +6,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/types"
 )
 
-// Down cancels all the deployments
+// Down cancels all the deployments on the grid
 // TODO: remove known hosts
 func (a *App) Down() error {
 	if len(a.Config.Networks) == 0 {

@@ -1,4 +1,5 @@
-package types
+// Dependency package provides a directed graph of dependencies between services and resolves them
+package dependency
 
 import (
 	"fmt"
@@ -6,11 +7,13 @@ import (
 	"slices"
 )
 
+// DRGraph represents a directed graph of dependencies
 type DRGraph struct {
 	Root  *DRNode
 	Nodes map[string]*DRNode
 }
 
+// NewDRGraph creates a new directed graph
 func NewDRGraph(root *DRNode) *DRGraph {
 	return &DRGraph{
 		Nodes: make(map[string]*DRNode),
@@ -18,32 +21,35 @@ func NewDRGraph(root *DRNode) *DRGraph {
 	}
 }
 
+// DRNode represents a node in the directed graph
 type DRNode struct {
 	Name         string
 	Dependencies []*DRNode
 	Parent       *DRNode
-	Service      *Service
 }
 
-func NewDRNode(name string, service *Service) *DRNode {
+// NewDRNode creates a new node in the directed graph
+func NewDRNode(name string) *DRNode {
 	return &DRNode{
 		Name:         name,
 		Dependencies: []*DRNode{},
-		Service:      service,
 	}
 }
 
+// AddDependency adds a dependency to the node
 func (n *DRNode) AddDependency(dependency *DRNode) {
 	log.Printf("adding dependency %s -> %s", n.Name, dependency.Name)
 	n.Dependencies = append(n.Dependencies, dependency)
 }
 
+// AddNode adds a node to the graph
 func (g *DRGraph) AddNode(name string, node *DRNode) *DRNode {
 	g.Nodes[name] = node
 
 	return node
 }
 
+// ResolveDependencies resolves the dependencies of the node
 func (g *DRGraph) ResolveDependencies(node *DRNode, resolved []*DRNode, unresolved []*DRNode) ([]*DRNode, error) {
 	unresolved = append(unresolved, node)
 

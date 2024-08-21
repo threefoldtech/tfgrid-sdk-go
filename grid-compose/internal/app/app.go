@@ -50,10 +50,12 @@ func NewApp(net, mnemonic, configPath string) (*App, error) {
 	}, nil
 }
 
+// GetProjectName returns the project name for the given key
 func (a *App) GetProjectName(key string) string {
 	return fmt.Sprintf("compose/%v/%v", a.Client.TwinID, key)
 }
 
+// GetDeploymentName returns the deployment name for the given key
 func (a *App) GetDeploymentName(key string) string {
 	return fmt.Sprintf("dl_%v", key)
 }
@@ -89,7 +91,7 @@ func (a *App) checkIfExistAndAppend(node uint32, contractID uint64) {
 	a.Client.State.CurrentNodeDeployments[node] = append(a.Client.State.CurrentNodeDeployments[node], contractID)
 }
 
-// validateCredentials validates the mnemonic and network
+// validateCredentials validates the mnemonics and network values of the user
 func validateCredentials(mnemonics, network string) bool {
 	return validateMnemonics(mnemonics) && validateNetwork(network)
 }

@@ -3,3 +3,4 @@ bin/*
 out
 full_example.yml
 invalid
+grid-compose.yml

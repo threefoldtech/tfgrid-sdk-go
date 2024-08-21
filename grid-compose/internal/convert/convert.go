@@ -2,26 +2,37 @@ package convert
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
+	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/app/dependency"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/config"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/deploy"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/types"
 	proxy_types "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-func ConvertConfigToDeploymentData(ctx context.Context, t *deployer.TFPluginClient, config *config.Config) (*types.DeploymentData, error) {
+const (
+	minCPU    = 1
+	minMemory = 2048
+	minRootfs = 2048
+)
+
+// ConvertConfigToDeploymentData converts the config to deployment data that will be used to deploy the services
+func ConvertConfigToDeploymentData(ctx context.Context, client *deployer.TFPluginClient, config *config.Config) (*types.DeploymentData, error) {
 	deploymentData := &types.DeploymentData{
 		NetworkNodeMap: make(map[string]*types.NetworkData, 0),
-		ServicesGraph:  types.NewDRGraph(types.NewDRNode("root", nil)),
+		ServicesGraph:  dependency.NewDRGraph(dependency.NewDRNode("root")),
 	}
 
 	defaultNetName := deploy.GenerateDefaultNetworkName(config.Services)
 
 	for serviceName, service := range config.Services {
 		svc := service
-
 		var netName string
 		if svc.Network == "" {
 			netName = defaultNetName
@@ -48,9 +59,8 @@ func ConvertConfigToDeploymentData(ctx context.Context, t *deployer.TFPluginClie
 
 		svcNode, ok := deploymentData.ServicesGraph.Nodes[serviceName]
 		if !ok {
-			svcNode = types.NewDRNode(
+			svcNode = dependency.NewDRNode(
 				serviceName,
-				&svc,
 			)
 
 			deploymentData.ServicesGraph.AddNode(serviceName, svcNode)
@@ -65,8 +75,7 @@ func ConvertConfigToDeploymentData(ctx context.Context, t *deployer.TFPluginClie
 
 			depNode, ok := deploymentData.ServicesGraph.Nodes[dep]
 			if !ok {
-				depService := config.Services[dep]
-				depNode = types.NewDRNode(dep, &depService)
+				depNode = dependency.NewDRNode(dep)
 			}
 
 			svcNode.AddDependency(depNode)
@@ -80,34 +89,47 @@ func ConvertConfigToDeploymentData(ctx context.Context, t *deployer.TFPluginClie
 		}
 	}
 
-	if err := getMissingNodes(ctx, deploymentData.NetworkNodeMap, t); err != nil {
+	if err := getMissingNodes(ctx, deploymentData.NetworkNodeMap, client); err != nil {
 		return nil, err
 	}
 
-	// for netName, data := range deploymentData.NetworkNodeMap {
-	// 	log.Println(netName)
-	// 	log.Println(data.NodeID)
-
-	// 	for svcName := range data.Services {
-	// 		log.Println(svcName)
-	// 	}
-
-	// }
-
-	// resolvedServices, err := deploymentData.ServicesGraph.ResolveDependencies(deploymentData.ServicesGraph.Root, []*types.DRNode{}, []*types.DRNode{})
-
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// for _, svc := range resolvedServices {
-	// 	log.Println(svc.Name)
-	// }
 	return deploymentData, nil
 }
 
+// ConvertServiceToVM converts the service to a the VM workload that will be used to deploy a virtual machine on the grid
+func ConvertServiceToVM(service *types.Service, serviceName, networkName string) (workloads.VM, error) {
+	vm := workloads.VM{
+		Name:        serviceName,
+		Flist:       service.Flist,
+		Entrypoint:  service.Entrypoint,
+		CPU:         int(service.Resources.CPU),
+		Memory:      int(service.Resources.Memory),
+		RootfsSize:  int(service.Resources.Rootfs),
+		NetworkName: networkName,
+	}
+
+	if vm.RootfsSize < minRootfs {
+		vm.RootfsSize = minRootfs
+	}
+	if vm.CPU < minCPU {
+		vm.CPU = minCPU
+	}
+	if vm.Memory < minMemory {
+		vm.Memory = minMemory
+	}
+
+	assignEnvs(&vm, service.Environment)
+
+	if err := assignNetworksTypes(&vm, service.IPTypes); err != nil {
+		return workloads.VM{}, err
+	}
+	return vm, nil
+}
+
+// getMissingNodes gets the missing nodes for the deployment data.
+// It filters the nodes based on the resources required by the services in one network.
 // TODO: Calculate total MRU and SRU while populating the deployment data
-func getMissingNodes(ctx context.Context, networkNodeMap map[string]*types.NetworkData, t *deployer.TFPluginClient) error {
+func getMissingNodes(ctx context.Context, networkNodeMap map[string]*types.NetworkData, client *deployer.TFPluginClient) error {
 	for _, deploymentData := range networkNodeMap {
 		if deploymentData.NodeID != 0 {
 			continue
@@ -127,7 +149,7 @@ func getMissingNodes(ctx context.Context, networkNodeMap map[string]*types.Netwo
 			FreeMRU: &freeMRU,
 		}
 
-		nodes, _, err := t.GridProxyClient.Nodes(ctx, filter, proxy_types.Limit{})
+		nodes, _, err := client.GridProxyClient.Nodes(ctx, filter, proxy_types.Limit{})
 		if err != nil {
 			return err
 		}
@@ -146,4 +168,42 @@ func getMissingNodes(ctx context.Context, networkNodeMap map[string]*types.Netwo
 	}
 
 	return nil
+}
+
+// all assign functions will be removed when the unmarshler is implemented
+func assignEnvs(vm *workloads.VM, envs []string) {
+	env := make(map[string]string, 0)
+	for _, envVar := range envs {
+		key, value, _ := strings.Cut(envVar, "=")
+		env[key] = value
+	}
+
+	vm.EnvVars = env
+}
+
+func assignNetworksTypes(vm *workloads.VM, ipTypes []string) error {
+	for _, ipType := range ipTypes {
+		switch ipType {
+		case "ipv4":
+			vm.PublicIP = true
+		case "ipv6":
+			vm.PublicIP6 = true
+		case "ygg":
+			vm.Planetary = true
+		case "myc":
+			seed, err := getRandomMyceliumIPSeed()
+			if err != nil {
+				return fmt.Errorf("failed to get mycelium seed %w", err)
+			}
+			vm.MyceliumIPSeed = seed
+		}
+	}
+
+	return nil
+}
+
+func getRandomMyceliumIPSeed() ([]byte, error) {
+	key := make([]byte, zos.MyceliumIPSeedLen)
+	_, err := rand.Read(key)
+	return key, err
 }

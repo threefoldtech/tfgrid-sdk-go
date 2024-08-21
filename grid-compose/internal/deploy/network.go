@@ -3,6 +3,7 @@ package deploy
 import (
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
+// BuildNetworks converts the networks in the config to ZNet workloads.
 // TODO: needs to be refactored
 func BuildNetworks(networkNodeMap map[string]*types.NetworkData, networks map[string]types.Network, defaultNetName string, getProjectName func(string) string) map[string]*workloads.ZNet {
 	zNets := make(map[string]*workloads.ZNet, 0)
@@ -37,21 +39,29 @@ func BuildNetworks(networkNodeMap map[string]*types.NetworkData, networks map[st
 			Nodes:        []uint32{networkNodeMap[networkName].NodeID},
 			SolutionType: getProjectName(networkName),
 		}
+
 	}
 
 	return zNets
 }
 
+// GenerateDefaultNetworkName generates a default network name based on the sorted service names.
 func GenerateDefaultNetworkName(services map[string]types.Service) string {
-	var defaultNetName string
-
+	var serviceNames []string
 	for serviceName := range services {
+		serviceNames = append(serviceNames, serviceName)
+	}
+	sort.Strings(serviceNames)
+
+	var defaultNetName string
+	for _, serviceName := range serviceNames {
 		defaultNetName += serviceName[:2]
 	}
 
 	return fmt.Sprintf("net_%s", defaultNetName)
 }
 
+// GenerateIPNet generates a net.IPNet from the given IP and mask.
 func GenerateIPNet(ip types.IP, mask types.IPMask) net.IPNet {
 	var ipNet net.IPNet
 
@@ -83,4 +93,21 @@ func GenerateIPNet(ip types.IP, mask types.IPMask) net.IPNet {
 	}
 
 	return ipNet
+}
+
+// AssignMyCeliumKeys assigns mycelium keys to the network nodes.
+func AssignMyCeliumKeys(network *workloads.ZNet, myceliumIPSeed []byte) error {
+	keys := make(map[uint32][]byte)
+	if len(myceliumIPSeed) != 0 {
+		for _, node := range network.Nodes {
+			key, err := workloads.RandomMyceliumKey()
+			if err != nil {
+				return err
+			}
+			keys[node] = key
+		}
+	}
+
+	network.MyceliumKeys = keys
+	return nil
 }

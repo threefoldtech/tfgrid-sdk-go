@@ -37,7 +37,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringP("file", "f", "./grid-compose.yaml", "the grid-compose configuration file")
+	rootCmd.PersistentFlags().StringP("file", "f", "./grid-compose.yml", "the grid-compose configuration file")
 
 	rootCmd.AddCommand(downCmd)
 	rootCmd.AddCommand(upCmd)

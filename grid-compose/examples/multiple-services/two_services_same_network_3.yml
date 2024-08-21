@@ -2,7 +2,7 @@ version: '1.0.0'
 
 services:
   server:
-    flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
     entrypoint: '/sbin/zinit init'
     volumes:
       - webdata
@@ -12,7 +12,7 @@ services:
       rootfs: 2048
 
   database:
-    flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
     ip_types:
       - ipv4
     entrypoint: '/sbin/zinit init'
