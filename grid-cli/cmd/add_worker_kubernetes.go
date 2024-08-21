@@ -80,7 +80,7 @@ var addWorkerCmd = &cobra.Command{
 		workers := cluster.Workers
 
 		worker := workloads.K8sNode{
-			Flist:     k8sFlist,
+			Flist:     cluster.Master.Flist,
 			CPU:       workersCPU,
 			Memory:    workersMemory * 1024,
 			DiskSize:  workersDisk,
