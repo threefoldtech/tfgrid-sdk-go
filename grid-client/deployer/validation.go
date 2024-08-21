@@ -74,6 +74,19 @@ func validateProxyURL(url string) error {
 	return nil
 }
 
+func validateGraphQlURL(url string) error {
+	if len(strings.TrimSpace(url)) == 0 {
+		return errors.New("graphql url is required")
+	}
+
+	alphaOnly := regexp.MustCompile(`^https:\/\/[a-z0-9]+\.[a-z0-9]\/?([^\s<>\#%"\,\{\}\\|\\\^\[\]]+)?$`)
+	if !alphaOnly.MatchString(url) {
+		return errors.New("graphql url is invalid")
+	}
+
+	return nil
+}
+
 func validateAccountBalanceForExtrinsics(sub subi.SubstrateExt, identity substrate.Identity) error {
 	balance, err := sub.GetBalance(identity)
 	if err != nil {
