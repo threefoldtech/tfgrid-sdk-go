@@ -236,16 +236,18 @@ func TestLoadK8sFromGrid(t *testing.T) {
 	})
 
 	master := workloads.K8sNode{
-		Name:        "test",
-		Node:        1,
-		DiskSize:    0,
-		PublicIP:    false,
-		Planetary:   true,
-		CPU:         1,
-		Memory:      8,
-		PlanetaryIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
-		IP:          "1.1.1.1",
-		NetworkName: "test",
+		Name:          "test",
+		Node:          1,
+		DiskSize:      0,
+		Flist:         flist,
+		FlistChecksum: flistCheckSum,
+		PublicIP:      false,
+		Planetary:     true,
+		CPU:           1,
+		Memory:        8,
+		PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		IP:            "1.1.1.1",
+		NetworkName:   "test",
 	}
 
 	var Workers []workloads.K8sNode

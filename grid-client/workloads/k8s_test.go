@@ -13,18 +13,20 @@ var flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist
 
 // K8sWorkload to be used in tests
 var K8sWorkload = K8sNode{
-	Name:        "test",
-	Node:        0,
-	DiskSize:    5,
-	PublicIP:    false,
-	PublicIP6:   false,
-	Planetary:   false,
-	ComputedIP:  "",
-	ComputedIP6: "",
-	PlanetaryIP: "",
-	IP:          "",
-	CPU:         2,
-	Memory:      1024,
+	Name:          "test",
+	Node:          0,
+	DiskSize:      5,
+	PublicIP:      false,
+	PublicIP6:     false,
+    Planetary:     false,
+	Flist:         flist,
+	FlistChecksum: "e71ee7421f45392fbbb92309182e3006",
+	ComputedIP:    "",
+	ComputedIP6:   "",
+	PlanetaryIP:   "",
+	IP:            "",
+	CPU:           2,
+	Memory:        1024,
 }
 
 func TestK8sNodeData(t *testing.T) {
