@@ -97,46 +97,44 @@ func constructK8sCluster() (workloads.K8sCluster, error) {
 	}
 
 	master := workloads.K8sNode{
-		Name:          "K8sForTesting",
-		Node:          nodeID,
-		DiskSize:      5,
-		PublicIP:      true,
-		PublicIP6:     true,
-		Planetary:     true,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "5.5.5.5/24",
-		ComputedIP6:   "::7/64",
-		PlanetaryIP:   "::8/64",
-		IP:            "10.1.0.2",
-		CPU:           2,
-		Memory:        1024,
+		Name:        "K8sForTesting",
+		Node:        nodeID,
+		DiskSize:    5,
+		PublicIP:    true,
+		PublicIP6:   true,
+		Planetary:   true,
+		ComputedIP:  "5.5.5.5/24",
+		ComputedIP6: "::7/64",
+		PlanetaryIP: "::8/64",
+		IP:          "10.1.0.2",
+		CPU:         2,
+		Memory:      1024,
 	}
 
 	worker := workloads.K8sNode{
-		Name:          "worker1",
-		Node:          nodeID,
-		DiskSize:      5,
-		PublicIP:      true,
-		PublicIP6:     true,
-		Planetary:     true,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "",
-		ComputedIP6:   "",
-		PlanetaryIP:   "",
-		IP:            "",
-		CPU:           2,
-		Memory:        1024,
+		Name:        "worker1",
+		Node:        nodeID,
+		DiskSize:    5,
+		PublicIP:    true,
+		PublicIP6:   true,
+		Planetary:   true,
+		ComputedIP:  "",
+		ComputedIP6: "",
+		PlanetaryIP: "",
+		IP:          "",
+		CPU:         2,
+		Memory:      1024,
 	}
 	workers := []workloads.K8sNode{worker}
 	Cluster := workloads.K8sCluster{
-		Master:       &master,
-		Workers:      workers[:],
-		Token:        "tokens",
-		SSHKey:       "",
-		NetworkName:  "network",
-		NodesIPRange: make(map[uint32]gridtypes.IPNet),
+		Master:        &master,
+		Workers:       workers[:],
+		Token:         "tokens",
+		SSHKey:        "",
+		NetworkName:   "network",
+		Flist:         flist,
+		FlistChecksum: flistCheckSum,
+		NodesIPRange:  make(map[uint32]gridtypes.IPNet),
 	}
 	return Cluster, nil
 }
@@ -343,32 +341,30 @@ func ExampleK8sDeployer_Deploy() {
 	}
 
 	master := workloads.K8sNode{
-		Name:          "K8sForTesting",
-		Node:          nodeID,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		CPU:           2,
-		DiskSize:      5,
-		Memory:        1024,
+		Name:     "K8sForTesting",
+		Node:     nodeID,
+		CPU:      2,
+		DiskSize: 5,
+		Memory:   1024,
 	}
 
 	worker := workloads.K8sNode{
-		Name:          "worker1",
-		Node:          nodeID,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		DiskSize:      5,
-		CPU:           2,
-		Memory:        1024,
+		Name:     "worker1",
+		Node:     nodeID,
+		DiskSize: 5,
+		CPU:      2,
+		Memory:   1024,
 	}
 
 	cluster := workloads.K8sCluster{
-		Master:       &master,
-		Workers:      []workloads.K8sNode{worker},
-		Token:        "tokens",
-		SSHKey:       "<ssh key goes here>",
-		NetworkName:  n.Name,
-		NodesIPRange: make(map[uint32]gridtypes.IPNet),
+		Master:        &master,
+		Workers:       []workloads.K8sNode{worker},
+		Token:         "tokens",
+		SSHKey:        "<ssh key goes here>",
+		NetworkName:   n.Name,
+		Flist:         flist,
+		FlistChecksum: flistCheckSum,
+		NodesIPRange:  make(map[uint32]gridtypes.IPNet),
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &n)
@@ -416,32 +412,30 @@ func ExampleK8sDeployer_BatchDeploy() {
 	}
 
 	master := workloads.K8sNode{
-		Name:          "mr1",
-		Node:          nodeID,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		CPU:           2,
-		DiskSize:      5,
-		Memory:        1024,
+		Name:     "mr1",
+		Node:     nodeID,
+		CPU:      2,
+		DiskSize: 5,
+		Memory:   1024,
 	}
 
 	worker := workloads.K8sNode{
-		Name:          "worker1",
-		Node:          nodeID,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		DiskSize:      5,
-		CPU:           2,
-		Memory:        1024,
+		Name:     "worker1",
+		Node:     nodeID,
+		DiskSize: 5,
+		CPU:      2,
+		Memory:   1024,
 	}
 
 	cluster1 := workloads.K8sCluster{
-		Master:       &master,
-		Workers:      []workloads.K8sNode{worker},
-		Token:        "tokens",
-		SSHKey:       "<ssh key goes here>",
-		NetworkName:  n.Name,
-		NodesIPRange: make(map[uint32]gridtypes.IPNet),
+		Master:        &master,
+		Workers:       []workloads.K8sNode{worker},
+		Token:         "tokens",
+		SSHKey:        "<ssh key goes here>",
+		NetworkName:   n.Name,
+		Flist:         flist,
+		FlistChecksum: flistCheckSum,
+		NodesIPRange:  make(map[uint32]gridtypes.IPNet),
 	}
 
 	master.Name = "mr2"

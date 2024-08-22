@@ -52,7 +52,6 @@ func TestBatchK8sDeployment(t *testing.T) {
 		Node:      nodeID1,
 		DiskSize:  1,
 		Planetary: true,
-		Flist:     flist,
 		CPU:       minCPU,
 		Memory:    int(minMemory) * 1024,
 	}
@@ -62,7 +61,6 @@ func TestBatchK8sDeployment(t *testing.T) {
 		Node:      nodeID2,
 		DiskSize:  1,
 		Planetary: true,
-		Flist:     flist,
 		CPU:       minCPU,
 		Memory:    int(minMemory) * 1024,
 	}
@@ -72,7 +70,6 @@ func TestBatchK8sDeployment(t *testing.T) {
 		Node:      nodeID1,
 		DiskSize:  1,
 		Planetary: true,
-		Flist:     flist,
 		CPU:       minCPU,
 		Memory:    int(minMemory) * 1024,
 	}
@@ -82,7 +79,6 @@ func TestBatchK8sDeployment(t *testing.T) {
 		Node:      nodeID2,
 		DiskSize:  1,
 		Planetary: true,
-		Flist:     flist,
 		CPU:       minCPU,
 		Memory:    int(minMemory) * 1024,
 	}
@@ -92,6 +88,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		Workers:     []workloads.K8sNode{workerNodeData1},
 		Token:       "tokens",
 		SSHKey:      publicKey,
+		Flist:       flist,
 		NetworkName: network.Name,
 	}
 
@@ -150,5 +147,4 @@ func TestBatchK8sDeployment(t *testing.T) {
 
 	// different ips generated
 	require.Equal(t, len(slices.Compact[[]string, string]([]string{k1.Master.IP, k2.Master.IP, k1.Workers[0].IP, k2.Workers[0].IP})), 4)
-
 }

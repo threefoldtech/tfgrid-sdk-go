@@ -23,8 +23,6 @@ type K8sNode struct {
 	PublicIP       bool   `json:"publicip"`
 	PublicIP6      bool   `json:"publicip6"`
 	Planetary      bool   `json:"planetary"`
-	Flist          string `json:"flist"`
-	FlistChecksum  string `json:"flist_checksum"`
 	ComputedIP     string `json:"computedip"`
 	ComputedIP6    string `json:"computedip6"`
 	PlanetaryIP    string `json:"planetary_ip"`
@@ -41,10 +39,12 @@ type K8sNode struct {
 
 // K8sCluster struct for k8s cluster
 type K8sCluster struct {
-	Master      *K8sNode
-	Workers     []K8sNode
-	Token       string
-	NetworkName string
+	Master        *K8sNode
+	Workers       []K8sNode
+	Token         string
+	NetworkName   string
+	Flist         string `json:"flist"`
+	FlistChecksum string `json:"flist_checksum"`
 
 	// optional
 	SolutionType string
@@ -72,11 +72,6 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, 
 		}
 	}
 
-	flistCheckSum, err := GetFlistChecksum(d.FList)
-	if err != nil {
-		return k, err
-	}
-
 	var myceliumIPSeed []byte
 	if d.Network.Mycelium != nil {
 		myceliumIPSeed = d.Network.Mycelium.Seed
@@ -89,8 +84,6 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, 
 		PublicIP:       computedIP != "",
 		PublicIP6:      computedIP6 != "",
 		Planetary:      result.PlanetaryIP != "",
-		Flist:          d.FList,
-		FlistChecksum:  flistCheckSum,
 		ComputedIP:     computedIP,
 		ComputedIP6:    computedIP6,
 		PlanetaryIP:    result.PlanetaryIP,
@@ -195,23 +188,20 @@ func (k *K8sCluster) ValidateNames() error {
 
 // ValidateChecksums validate check sums for k8s flist
 func (k *K8sCluster) ValidateChecksums() error {
-	nodes := append(k.Workers, *k.Master)
-	for _, vm := range nodes {
-		if vm.FlistChecksum == "" {
-			continue
-		}
-		checksum, err := GetFlistChecksum(vm.Flist)
-		if err != nil {
-			return errors.Wrapf(err, "could not get flist %s hash", vm.Flist)
-		}
-		if vm.FlistChecksum != checksum {
-			return errors.Errorf("passed checksum %s of %s does not match %s returned from %s",
-				vm.FlistChecksum,
-				vm.Name,
-				checksum,
-				FlistChecksumURL(vm.Flist),
-			)
-		}
+	if k.FlistChecksum == "" {
+		return nil
+	}
+	checksum, err := GetFlistChecksum(k.Flist)
+	if err != nil {
+		return errors.Wrapf(err, "could not get flist %s hash", k.Flist)
+	}
+	if k.FlistChecksum != checksum {
+		return errors.Errorf("passed checksum %s of %s does not match %s returned from %s",
+			k.FlistChecksum,
+			k.Master.Name,
+			checksum,
+			FlistChecksumURL(k.Flist),
+		)
 	}
 	return nil
 }
@@ -292,7 +282,7 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 		Name:    gridtypes.Name(k.Name),
 		Type:    zos.ZMachineType,
 		Data: gridtypes.MustMarshal(zos.ZMachine{
-			FList: k.Flist,
+			FList: cluster.Flist,
 			Network: zos.MachineNetwork{
 				Interfaces: []zos.MachineInterface{
 					{

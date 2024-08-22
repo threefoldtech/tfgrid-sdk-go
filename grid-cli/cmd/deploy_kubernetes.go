@@ -82,7 +82,6 @@ var deployKubernetesCmd = &cobra.Command{
 			CPU:            masterCPU,
 			Memory:         masterMemory * 1024,
 			DiskSize:       masterDisk,
-			Flist:          k8sFlist,
 			PublicIP:       ipv4,
 			PublicIP6:      ipv6,
 			Planetary:      ygg,
@@ -142,7 +141,6 @@ var deployKubernetesCmd = &cobra.Command{
 			workerName := fmt.Sprintf("worker%d", i)
 			worker := workloads.K8sNode{
 				Name:           workerName,
-				Flist:          k8sFlist,
 				CPU:            workersCPU,
 				Memory:         workersMemory * 1024,
 				DiskSize:       workersDisk,
@@ -209,7 +207,7 @@ var deployKubernetesCmd = &cobra.Command{
 		for i := range workers {
 			workers[i].Node = uint32(workersNodes[i])
 		}
-		cluster, err := command.DeployKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey))
+		cluster, err := command.DeployKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey), k8sFlist)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

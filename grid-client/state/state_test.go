@@ -18,8 +18,10 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-const deploymentName = "testName"
-const invalid = "invalid"
+const (
+	deploymentName = "testName"
+	invalid        = "invalid"
+)
 
 func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
 	ctrl := gomock.NewController(t)
@@ -234,18 +236,16 @@ func TestLoadK8sFromGrid(t *testing.T) {
 	})
 
 	master := workloads.K8sNode{
-		Name:          "test",
-		Node:          1,
-		DiskSize:      0,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		PublicIP:      false,
-		Planetary:     true,
-		CPU:           1,
-		Memory:        8,
-		PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
-		IP:            "1.1.1.1",
-		NetworkName:   "test",
+		Name:        "test",
+		Node:        1,
+		DiskSize:    0,
+		PublicIP:    false,
+		Planetary:   true,
+		CPU:         1,
+		Memory:      8,
+		PlanetaryIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		IP:          "1.1.1.1",
+		NetworkName: "test",
 	}
 
 	var Workers []workloads.K8sNode
@@ -259,6 +259,8 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		Token:            "",
 		SSHKey:           "",
 		NetworkName:      "test",
+		Flist:            flist,
+		FlistChecksum:    flistCheckSum,
 		NodeDeploymentID: map[uint32]uint64{1: 10},
 		NodesIPRange: map[uint32]gridtypes.IPNet{
 			1: ipRange,
@@ -584,7 +586,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 		RootfsSize:    4096,
 		Entrypoint:    "entrypoint",
 		Mounts: []workloads.Mount{
-			{DiskName: "disk", MountPoint: "mount"},
+			{Name: "disk", MountPoint: "mount"},
 		},
 		Zlogs:       zlogs,
 		EnvVars:     map[string]string{"var1": "val1"},
