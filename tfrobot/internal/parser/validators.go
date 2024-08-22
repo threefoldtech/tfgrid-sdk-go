@@ -134,15 +134,13 @@ func validateVMs(vms []tfrobot.Vms, nodeGroups []tfrobot.NodesGroup, sskKeys map
 		v := validator.New(validator.WithRequiredStructEnabled())
 		for _, disk := range vm.SSDDisks {
 			if err := v.Struct(disk); err != nil {
-				err = parseValidationError(err)
-				return err
+				return parseValidationError(err)
 			}
 		}
 
 		for _, volume := range vm.Volumes {
 			if err := v.Struct(volume); err != nil {
-				err = parseValidationError(err)
-				return err
+				return parseValidationError(err)
 			}
 		}
 
