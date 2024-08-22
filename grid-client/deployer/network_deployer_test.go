@@ -151,15 +151,15 @@ func TestNetworkBatchCancel(t *testing.T) {
 	networks := []*workloads.ZNet{
 		{
 			NodeDeploymentID: map[uint32]uint64{
-			1: 100,
-			2: 200,
+				1: 100,
+				2: 200,
 			},
 			Nodes: []uint32{1},
 		},
 		{
 			NodeDeploymentID: map[uint32]uint64{
-			1: 101,
-			2: 201,
+				1: 101,
+				2: 201,
 			},
 			Nodes: []uint32{2},
 		},
