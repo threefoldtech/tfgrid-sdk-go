@@ -1,0 +1,53 @@
+version: '1.0.0'
+
+services:
+  server:
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
+    ip_types:
+      - ipv4
+      - ygg
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - webdata
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+    depends_on:
+      - database
+    environment:
+      - SSH_KEY=ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCmxUAdlMvIIDRplCLAufygUBPN3VKPIkl+ogxKzRLl00Y1j/mIm86M//axY1cH3NNCxap+8hZ2aMR5fnoKGMERWVUxC1tYuV0CBiSU7dMHWV66f58W2Cf+La6CE3aXd97Uoodku4k6k7ENuRd/+oBjRHM3qfhZ95Rhsb74vVe8PPobQuU/3JkoXQ8yf5y73yh8hirqipBBonAQ4CQiz4qGyj8e1Wj5nzezvYj/ioPLdXwOOql9gISb9iNwqj2qVfSnv8ksEBLCNeNSzUd3TRyVcOuIuCdUEYx5EnyQntZNDb8IyGZUNvqWerz8S1bMQePzCNj7xUrQHbR8+7bbh7TEVa0UHOBK3dBeFYh0UReRWRwKnXC/2IPX1MeHjYGTSbgXP5Wxn7H+AxLGNPnezMFZRpqrs8ULc788RUfvkGX259xC/YboPrIVvY/R/cQeTEdmtq+xmC2XRR1icon/dCeDpAymW0IRMb8+VCKyNLumDhMwiHIVTLbJrg+TtqGzg+43BuxGhW7eS5FP5lK2R+7WS4uu/Eg5LGHVgv7WiyfE/SrMzmf+LPejQuQJVPIRrfps+b4hHtn7+w6jF6QxZMv7VVib9cJvpd9+QWvYqWeRf+ojXWvlBgYZHa18LO/pauylsWbVoQgEmGnDUHMP8WtlMJ6wv7YuSutgApqN+xgh+w== pluto
+    healthcheck:
+      test: ['mkdir', 'test']
+      interval: '10s'
+      timeout: '1m30s'
+      retries: 3
+  frontend:
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - dbdata
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+    node_id: 14
+    depends_on:
+      - server
+  database:
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - dbdata
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+
+volumes:
+  webdata:
+    mountpoint: '/data'
+    size: 10GB
+  dbdata:
+    mountpoint: '/var/lib/postgresql/data'
+    size: 10GB

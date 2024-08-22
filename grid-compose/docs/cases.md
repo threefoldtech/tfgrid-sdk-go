@@ -1,4 +1,4 @@
-These are most if not all the cases supported by the grid compose cli when deploying one or more service to the grid.
+These are most if not all the cases supported by the grid compose tool when deploying one or more services on the grid.
 
 ## Single Service
 
@@ -9,7 +9,7 @@ This is probably the simplest case there is.
 - Filter the nodes based on the resources given to the service and choose a random one.
 - Generate a default network and assign it to the deployment.
 
-Refer to example [single_service_1.yml](../examples/single_service_1.yml)
+Refer to example [single_service_1.yml](/examples/single-service/single_service_1.yml)
 
 ### Case 2 - Node ID Given + No Assigned Network
 
@@ -19,14 +19,14 @@ Refer to example [single_service_1.yml](../examples/single_service_1.yml)
     - If there is a node available, prompt the user if they would like to use it instead.
 - Generate a default network and assign it to the deployment.
 
-Refer to example [single_service_2.yml](../examples/single_service_2.yml)
+Refer to example [single_service_2.yml](/examples/single-service/single_service_2.yml)
 
 ### Case 3 - Assigned Network
 
 - Either use the assigned node id or filter the nodes for an available node if no node id given.
 - Use the network assigned to the service when deploying.
 
-Refer to example [single_service_3.yml](../examples/single_service_3.yml)
+Refer to example [single_service_3.yml](/examples/single-service/single_service_3.yml)
 
 ## Multiple Services
 
@@ -55,10 +55,29 @@ If no networks are defined, then all the services will use the **default generat
 
 Refer to examples
 
-- [two_services_same_network_1.yml](../examples/two_services_same_network_1.yml)
-- [two_services_same_network_2.yml](../examples/two_services_same_network_2.yml)
-- [two_services_same_network_3.yml](../examples/two_services_same_network_3.yml)
+- [two_services_same_network_1.yml](/examples/multiple-services/two_services_same_network_1.yml)
+- [two_services_same_network_2.yml](/examples/multiple-services/two_services_same_network_2.yml)
+- [two_services_same_network_3.yml](/examples/multiple-services/two_services_same_network_3.yml)
 
 ### Different Networks
 
 Simple divide the services into groups having the same network(given or generated) and deal with each group using the approached described in the previous [section](#same-networkno-network).
+
+Refer to examples
+
+- [multiple_services_diff_network_1.yml](/examples/multiple-services/multiple_services_diff_network_1.yml)
+- [multiple_services_diff_network_2.yml](/examples/multiple-services/multiple_services_diff_network_2.yml)
+- [multiple_services_diff_network_3.yml](/examples/multiple-services/multiple_services_diff_network_3.yml)
+
+## Dependencies
+
+The tool supports deploying services that depend on each other. You can define dependencies in the yaml file by using the `depends_on` key, just like in docker-compose.
+
+Refer to examples:
+
+- deploying services that depend on each other on different networks:
+  - [diff_networks.yml](/examples/dependency/diff_networks.yml)
+- deploying services that depend on each other on the same network:
+  - [same_network.yml](/examples/dependency/same_network.yml)
+- a service that would depend on multiple services:
+  - [multiple_dependencies.yml](/examples/dependency/multiple_dependencies.yml)

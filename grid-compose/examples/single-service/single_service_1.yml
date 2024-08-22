@@ -2,10 +2,9 @@ version: '1.0.0'
 
 services:
   server:
-    flist: 'https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist'
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
     entrypoint: '/sbin/zinit init'
     resources:
       cpu: 1
       memory: 2048
-      rootfs: 25600
-    node_id: 14
+      rootfs: 2048
