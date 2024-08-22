@@ -42,11 +42,13 @@ func TestK8sNodeData(t *testing.T) {
 
 	t.Run("test_new_k8s_cluster", func(t *testing.T) {
 		cluster = K8sCluster{
-			Master:      &K8sWorkload,
-			Workers:     []K8sNode{},
-			Token:       "testToken",
-			SSHKey:      "",
-			NetworkName: "",
+			Master:        &K8sWorkload,
+			Workers:       []K8sNode{},
+			Token:         "testToken",
+			SSHKey:        "",
+			NetworkName:   "",
+			Flist:         flist,
+			FlistChecksum: "e71ee7421f45392fbbb92309182e3006",
 		}
 	})
 
