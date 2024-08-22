@@ -7,10 +7,11 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zos/pkg/diagnostics"
 )
 
 const (
-	healthCallCmd = "zos.system.version"
+	healthCallCmd = "zos.system.diagnostics"
 )
 
 type HealthWork struct {
@@ -31,10 +32,9 @@ func (w *HealthWork) Finders() map[string]time.Duration {
 }
 
 func (w *HealthWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.HealthReport, error) {
-	var response types.HealthReport
-	err := callNode(ctx, rmb, healthCallCmd, nil, twinId, &response)
-
-	res := getHealthReport(response, err, twinId)
+	var diagnostics diagnostics.Diagnostics
+	_ = callNode(ctx, rmb, healthCallCmd, nil, twinId, &diagnostics)
+	res := getHealthReport(diagnostics, twinId)
 	return []types.HealthReport{res}, nil
 }
 
@@ -44,19 +44,13 @@ func (w *HealthWork) Upsert(ctx context.Context, db db.Database, batch []types.H
 	return db.UpsertNodeHealth(ctx, batch)
 }
 
-// TODO: use diagnostics call instead
-func getHealthReport(response interface{}, err error, twinId uint32) types.HealthReport {
+func getHealthReport(response diagnostics.Diagnostics, twinId uint32) types.HealthReport {
 	report := types.HealthReport{
 		NodeTwinId: twinId,
 		Healthy:    false,
 		UpdatedAt:  time.Now().Unix(),
 	}
 
-	if err != nil {
-		return report
-	}
-
-	report.Healthy = true
 	return report
 }
 

@@ -69,6 +69,16 @@ func (st *State) LoadDiskFromGrid(ctx context.Context, nodeID uint32, name strin
 	return workloads.NewDiskFromWorkload(&wl)
 }
 
+// LoadVolumeFromGrid loads a volume from grid
+func (st *State) LoadVolumeFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.Volume, error) {
+	wl, dl, err := st.GetWorkloadInDeployment(ctx, nodeID, name, deploymentName)
+	if err != nil {
+		return workloads.Volume{}, errors.Wrapf(err, "could not get workload from node %d within deployment %v", nodeID, dl)
+	}
+
+	return workloads.NewVolumeFromWorkload(&wl)
+}
+
 // LoadGatewayFQDNFromGrid loads a gateway FQDN proxy from grid
 func (st *State) LoadGatewayFQDNFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.GatewayFQDNProxy, error) {
 	wl, dl, err := st.GetWorkloadInDeployment(ctx, nodeID, name, deploymentName)

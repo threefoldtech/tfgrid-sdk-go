@@ -149,7 +149,7 @@ func (c *NodeContract) satisfies(f types.ContractFilter, nodes map[uint64]Node, 
 		return false
 	}
 
-	if f.State != nil && len(f.State) != 0 && !containsState(f.State, c.State) {
+	if len(f.State) != 0 && !containsState(f.State, c.State) {
 		return false
 	}
 
@@ -197,7 +197,7 @@ func (c *NameContract) satisfies(f types.ContractFilter) bool {
 		return false
 	}
 
-	if f.State != nil && len(f.State) != 0 && !containsState(f.State, c.State) {
+	if len(f.State) != 0 && !containsState(f.State, c.State) {
 		return false
 	}
 

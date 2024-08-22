@@ -78,6 +78,9 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 			for _, disk := range dl.Disks {
 				newDl.Workloads = append(newDl.Workloads, disk.ZosWorkload())
 			}
+			for _, volume := range dl.Volumes {
+				newDl.Workloads = append(newDl.Workloads, volume.ZosWorkload())
+			}
 			for _, zdb := range dl.Zdbs {
 				newDl.Workloads = append(newDl.Workloads, zdb.ZosWorkload())
 			}
@@ -418,6 +421,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, dl *workloads.Deployment)
 	zdbs := make([]workloads.ZDB, 0)
 	qsfs := make([]workloads.QSFS, 0)
 	disks := make([]workloads.Disk, 0)
+	volumes := make([]workloads.Volume, 0)
 
 	for _, w := range deployment.Workloads {
 		if !w.Result.State.IsOkay() {
@@ -458,15 +462,24 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, dl *workloads.Deployment)
 			}
 
 			disks = append(disks, disk)
+		case zos.VolumeType:
+			volume, err := workloads.NewVolumeFromWorkload(&w)
+			if err != nil {
+				log.Error().Err(err).Msgf("error parsing volume")
+				continue
+			}
+
+			volumes = append(volumes, volume)
 		}
 	}
 
-	dl.Match(disks, qsfs, zdbs, vms)
+	dl.Match(disks, qsfs, zdbs, vms, volumes)
 
 	dl.Disks = disks
 	dl.QSFS = qsfs
 	dl.Zdbs = zdbs
 	dl.Vms = vms
+	dl.Volumes = volumes
 
 	return nil
 }

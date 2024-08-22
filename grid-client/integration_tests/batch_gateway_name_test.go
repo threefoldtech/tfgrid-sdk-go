@@ -66,7 +66,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 

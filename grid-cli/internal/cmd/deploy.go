@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
+	"slices"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -28,7 +28,7 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 		mounts = append(mounts, mount)
 	}
 	vm.NetworkName = networkName
-	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, mounts, nil, []workloads.VM{vm}, nil)
+	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, mounts, nil, []workloads.VM{vm}, nil, nil)
 
 	log.Info().Msg("deploying network")
 	err = t.NetworkDeployer.Deploy(ctx, &network)
@@ -58,9 +58,12 @@ func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, mas
 	networkName := fmt.Sprintf("%snetwork", master.Name)
 	projectName := fmt.Sprintf("kubernetes/%s", master.Name)
 	networkNodes := []uint32{master.Node}
-	if len(workers) > 0 && workers[0].Node != master.Node {
-		networkNodes = append(networkNodes, workers[0].Node)
+	for _, worker := range workers {
+		if !slices.Contains(networkNodes, worker.Node) {
+			networkNodes = append(networkNodes, worker.Node)
+		}
 	}
+
 	network, err := buildNetwork(networkName, projectName, networkNodes, len(master.MyceliumIPSeed) != 0)
 	if err != nil {
 		return workloads.K8sCluster{}, err
@@ -110,10 +113,7 @@ func DeployGatewayName(ctx context.Context, t deployer.TFPluginClient, gateway w
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "failed to deploy gateway on node %d", gateway.NodeID)
 	}
 
-	subdomains := strings.Split(gateway.Name, ".")
-	contractName := subdomains[len(subdomains)-1]
-
-	return t.State.LoadGatewayNameFromGrid(ctx, gateway.NodeID, contractName, strings.ReplaceAll(gateway.Name, ".", "_"))
+	return t.State.LoadGatewayNameFromGrid(ctx, gateway.NodeID, gateway.Name, gateway.Name)
 }
 
 // DeployGatewayFQDN deploys a gateway fqdn
@@ -128,7 +128,7 @@ func DeployGatewayFQDN(ctx context.Context, t deployer.TFPluginClient, gateway w
 
 // DeployZDBs deploys multiple zdbs
 func DeployZDBs(ctx context.Context, t deployer.TFPluginClient, projectName string, zdbs []workloads.ZDB, n int, node uint32) ([]workloads.ZDB, error) {
-	dl := workloads.NewDeployment(projectName, node, projectName, nil, "", nil, zdbs, nil, nil)
+	dl := workloads.NewDeployment(projectName, node, projectName, nil, "", nil, zdbs, nil, nil, nil)
 	log.Info().Msgf("deploying zdbs")
 	err := t.DeploymentDeployer.Deploy(ctx, &dl)
 	if err != nil {

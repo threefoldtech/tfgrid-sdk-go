@@ -76,8 +76,8 @@ func TestBatchVMDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl1 := workloads.NewDeployment(fmt.Sprintf("dl1_%s", generateRandString(10)), nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil)
-	dl2 := workloads.NewDeployment(fmt.Sprintf("dl2_%s", generateRandString(10)), nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil)
+	dl1 := workloads.NewDeployment(fmt.Sprintf("dl1_%s", generateRandString(10)), nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil, nil)
+	dl2 := workloads.NewDeployment(fmt.Sprintf("dl2_%s", generateRandString(10)), nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&dl1, &dl2})
 	require.NoError(t, err)
 

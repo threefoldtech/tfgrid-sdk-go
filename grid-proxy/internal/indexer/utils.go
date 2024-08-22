@@ -48,10 +48,5 @@ func callNode(ctx context.Context, rmbClient *peer.RpcClient, cmd string, payloa
 	subCtx, cancel := context.WithTimeout(ctx, indexerCallTimeout)
 	defer cancel()
 
-	err := rmbClient.Call(subCtx, twinId, cmd, payload, result)
-	if err != nil {
-		log.Error().Err(err).Uint32("twinId", twinId).Msg("failed to call node")
-	}
-
-	return err
+	return rmbClient.Call(subCtx, twinId, cmd, payload, result)
 }

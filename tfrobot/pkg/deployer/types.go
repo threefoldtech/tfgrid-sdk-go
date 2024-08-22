@@ -34,6 +34,7 @@ type Vms struct {
 	FreeCPU    uint64            `yaml:"cpu" validate:"required,max=32" json:"cpu"`
 	FreeMRU    float32           `yaml:"mem" validate:"required,min=0.25,max=256" json:"mem"` // min: 0.25 GB, max: 256 GB
 	SSDDisks   []Disk            `yaml:"ssd" json:"ssd"`
+	Volumes    []Volume          `yaml:"volume" json:"volume"`
 	PublicIP4  bool              `yaml:"public_ip4" json:"public_ip4"`
 	PublicIP6  bool              `yaml:"public_ip6" json:"public_ip6"`
 	Ygg        bool              `yaml:"ygg_ip" json:"ygg_ip"`
@@ -43,9 +44,15 @@ type Vms struct {
 	Entrypoint string            `yaml:"entry_point" validate:"required" json:"entry_point"`
 	SSHKey     string            `yaml:"ssh_key" validate:"required" json:"ssh_key"`
 	EnvVars    map[string]string `yaml:"env_vars" json:"env_vars"`
+	WireGuard  bool              `yaml:"wireguard" json:"wireguard"`
 }
 
 type Disk struct {
+	Size  uint64 `yaml:"size" validate:"required,min=15" json:"size"` // min 15 GB
+	Mount string `yaml:"mount_point" validate:"required" json:"mount_point"`
+}
+
+type Volume struct {
 	Size  uint64 `yaml:"size" validate:"required,min=15" json:"size"` // min 15 GB
 	Mount string `yaml:"mount_point" validate:"required" json:"mount_point"`
 }

@@ -27,6 +27,10 @@ func TestQSFSDeployment(t *testing.T) {
 		t.Skipf("plugin creation failed: %v", err)
 	}
 
+	if tfPluginClient.Network == "test" {
+		t.Skipf("https://github.com/threefoldtech/tfgrid-sdk-go/issues/1111")
+	}
+
 	publicKey, privateKey, err := GenerateSSHKeyPair()
 	require.NoError(t, err)
 
@@ -78,7 +82,7 @@ func TestQSFSDeployment(t *testing.T) {
 		metaZDBs = append(metaZDBs, zdb)
 	}
 
-	dl1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, append(dataZDBs, metaZDBs...), nil, nil)
+	dl1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, append(dataZDBs, metaZDBs...), nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl1)
 	require.NoError(t, err)
 
@@ -169,7 +173,7 @@ func TestQSFSDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, append(dataZDBs, metaZDBs...), []workloads.VM{vm}, []workloads.QSFS{qsfs})
+	dl2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, append(dataZDBs, metaZDBs...), []workloads.VM{vm}, []workloads.QSFS{qsfs}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl2)
 	require.NoError(t, err)
 

@@ -36,6 +36,10 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		env, err := cmd.Flags().GetStringToString("env")
+		if err != nil {
+			return err
+		}
 		sshFile, err := cmd.Flags().GetString("ssh")
 		if err != nil {
 			return err
@@ -44,6 +48,7 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
+		env["SSH_KEY"] = string(sshKey)
 		node, err := cmd.Flags().GetUint32("node")
 		if err != nil {
 			return err
@@ -109,7 +114,7 @@ var deployVMCmd = &cobra.Command{
 		}
 		vm := workloads.VM{
 			Name:           name,
-			EnvVars:        map[string]string{"SSH_KEY": string(sshKey)},
+			EnvVars:        env,
 			CPU:            cpu,
 			Memory:         memory * 1024,
 			GPUs:           convertGPUsToZosGPUs(gpus),
@@ -208,4 +213,5 @@ func init() {
 	deployVMCmd.Flags().Bool("ipv6", false, "assign public ipv6 for vm")
 	deployVMCmd.Flags().Bool("ygg", true, "assign yggdrasil ip for vm")
 	deployVMCmd.Flags().Bool("mycelium", true, "assign mycelium ip for vm")
+	deployVMCmd.Flags().StringToStringP("env", "e", make(map[string]string), "environment variables for the vm")
 }

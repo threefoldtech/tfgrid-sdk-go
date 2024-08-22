@@ -81,7 +81,7 @@ err = tfPluginClient.DeploymentDeployer.Cancel(ctx, &dl)
 err = tfPluginClient.NetworkDeployer.Cancel(ctx, &network)
 ```
 
-Refer to [integration examples](https://github.com/threefoldtech/tfgrid-sdk-go/grid-client/tree/development/integration_tests) directory for more examples.
+Refer to [integration examples](./integration_tests) directory for more examples.
 
 ## Run tests
 
