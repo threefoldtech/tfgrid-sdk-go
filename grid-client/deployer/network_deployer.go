@@ -48,7 +48,7 @@ func (d *NetworkDeployer) Validate(ctx context.Context, znets []*workloads.ZNet)
 		if len(znet.Nodes) == 0 {
 			err := errors.Errorf("no. of nodes in znet: %s should be nonzero positive number", znet.Name)
 			multiErr = multierror.Append(multiErr, err)
-			//continue
+			continue
 		}
 		if err := znet.Validate(); err != nil {
 			multiErr = multierror.Append(multiErr, err)

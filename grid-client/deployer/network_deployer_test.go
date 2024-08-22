@@ -60,7 +60,7 @@ func TestNetworkDeployer(t *testing.T) {
 
 	t.Run("test validate", func(t *testing.T) {
 		znet := constructTestNetwork()
-		znet.Nodes = []uint32{}
+		znet.Nodes = []uint32{1}
 		d, _, _, _ := constructTestNetworkDeployer(t, tfPluginClient, false)
 
 		znet.IPRange.Mask = net.CIDRMask(20, 32)
@@ -70,6 +70,20 @@ func TestNetworkDeployer(t *testing.T) {
 		znet.IPRange.Mask = net.CIDRMask(16, 32)
 		_, err = d.Validate(context.Background(), []*workloads.ZNet{&znet})
 		assert.NoError(t, err)
+	})
+
+	t.Run("test invalid network", func(t *testing.T) {
+		znet := constructTestNetwork()
+		znet.Nodes = []uint32{}
+		d, _, _, _ := constructTestNetworkDeployer(t, tfPluginClient, false)
+
+		znet.IPRange.Mask = net.CIDRMask(20, 32)
+		_, err := d.Validate(context.Background(), []*workloads.ZNet{&znet})
+		assert.Error(t, err)
+
+		znet.IPRange.Mask = net.CIDRMask(16, 32)
+		_, err = d.Validate(context.Background(), []*workloads.ZNet{&znet})
+		assert.Error(t, err)
 	})
 
 	d, cl, sub, ncPool := constructTestNetworkDeployer(t, tfPluginClient, true)
@@ -135,14 +149,20 @@ func TestNetworkBatchCancel(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
 	networks := []*workloads.ZNet{
-		{NodeDeploymentID: map[uint32]uint64{
+		{
+			NodeDeploymentID: map[uint32]uint64{
 			1: 100,
 			2: 200,
-		}},
-		{NodeDeploymentID: map[uint32]uint64{
+			},
+			Nodes: []uint32{1},
+		},
+		{
+			NodeDeploymentID: map[uint32]uint64{
 			1: 101,
 			2: 201,
-		}},
+			},
+			Nodes: []uint32{2},
+		},
 	}
 	tfPluginClient.State.CurrentNodeDeployments = map[uint32]state.ContractIDs{
 		1: []uint64{100, 101, 12345},
