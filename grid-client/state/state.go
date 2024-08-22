@@ -211,6 +211,8 @@ func (st *State) LoadK8sFromGrid(ctx context.Context, nodeIDs []uint32, deployme
 	cluster.NetworkName = cluster.Master.NetworkName
 	cluster.SSHKey = cluster.Master.SSHKey
 	cluster.Token = cluster.Master.Token
+	cluster.Flist = cluster.Master.Flist
+	cluster.FlistChecksum = cluster.Master.FlistChecksum
 
 	// get cluster IP ranges
 	_, err := st.LoadNetworkFromGrid(ctx, cluster.NetworkName)
