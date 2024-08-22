@@ -140,7 +140,7 @@ var deployVMCmd = &cobra.Command{
 		if volume != 0 {
 			volumeName := fmt.Sprintf("%svolume", name)
 			volumeMount = workloads.Volume{Name: volumeName, SizeGB: volume}
-			vm.Mounts = append(vm.Mounts, workloads.Mount{DiskName: volumeName, MountPoint: "/volume"})
+			vm.Mounts = append(vm.Mounts, workloads.Mount{Name: volumeName, MountPoint: "/volume"})
 		}
 		cfg, err := config.GetUserConfig()
 		if err != nil {
