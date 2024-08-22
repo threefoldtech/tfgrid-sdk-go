@@ -2,7 +2,6 @@ package app
 
 import (
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/deploy"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/types"
 )
 
@@ -10,7 +9,7 @@ import (
 // TODO: remove known hosts
 func (a *App) Down() error {
 	if len(a.Config.Networks) == 0 {
-		a.Config.Networks[deploy.GenerateDefaultNetworkName(a.Config.Services)] = types.Network{}
+		a.Config.Networks[a.GenerateDefaultNetworkName()] = types.Network{}
 	}
 	for networkName := range a.Config.Networks {
 		projectName := a.GetProjectName(networkName)

@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 
 	"github.com/cosmos/go-bip39"
@@ -58,6 +59,22 @@ func (a *App) GetProjectName(key string) string {
 // GetDeploymentName returns the deployment name for the given key
 func (a *App) GetDeploymentName(key string) string {
 	return fmt.Sprintf("dl_%v", key)
+}
+
+// GenerateDefaultNetworkName generates a default network name based on the sorted service names.
+func (a *App) GenerateDefaultNetworkName() string {
+	var serviceNames []string
+	for serviceName := range a.Config.Services {
+		serviceNames = append(serviceNames, serviceName)
+	}
+	sort.Strings(serviceNames)
+
+	var defaultNetName string
+	for _, serviceName := range serviceNames {
+		defaultNetName += serviceName[:2]
+	}
+
+	return fmt.Sprintf("net_%s", defaultNetName)
 }
 
 func (a *App) loadCurrentNodeDeployments(projectName string) error {

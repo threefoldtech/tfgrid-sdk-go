@@ -10,7 +10,6 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/app/dependency"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/deploy"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/types"
 	proxy_types "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -23,13 +22,11 @@ const (
 )
 
 // ConvertConfigToDeploymentData converts the config to deployment data that will be used to deploy the services
-func ConvertConfigToDeploymentData(ctx context.Context, client *deployer.TFPluginClient, config *config.Config) (*types.DeploymentData, error) {
+func ConvertConfigToDeploymentData(ctx context.Context, client *deployer.TFPluginClient, config *config.Config, defaultNetName string) (*types.DeploymentData, error) {
 	deploymentData := &types.DeploymentData{
 		NetworkNodeMap: make(map[string]*types.NetworkData, 0),
 		ServicesGraph:  dependency.NewDRGraph(dependency.NewDRNode("root")),
 	}
-
-	defaultNetName := deploy.GenerateDefaultNetworkName(config.Services)
 
 	for serviceName, service := range config.Services {
 		svc := service

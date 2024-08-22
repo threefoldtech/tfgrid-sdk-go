@@ -1,12 +1,11 @@
-package deploy
+package app
 
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
-
-	"net"
 	"strings"
 	"time"
 

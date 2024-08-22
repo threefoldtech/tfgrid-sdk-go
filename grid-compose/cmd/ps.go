@@ -15,7 +15,11 @@ var psCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		app := cmd.Context().Value("app").(*app.App)
+		app, ok := cmd.Context().Value("app").(*app.App)
+		if !ok {
+			log.Fatal().Msg("app not found in context")
+		}
+
 		if err := app.Ps(cmd.Context(), verbose); err != nil {
 			log.Fatal().Err(err).Send()
 		}
