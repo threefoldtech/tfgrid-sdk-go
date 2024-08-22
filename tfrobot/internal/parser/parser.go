@@ -67,8 +67,7 @@ func ValidateConfig(conf tfrobot.Config, tfPluginClient deployer.TFPluginClient)
 
 	v := validator.New(validator.WithRequiredStructEnabled())
 	if err := v.Struct(conf); err != nil {
-		err = parseValidationError(err)
-		return err
+		return parseValidationError(err)
 	}
 
 	for name, sshKey := range conf.SSHKeys {

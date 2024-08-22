@@ -130,7 +130,7 @@ var deployVMCmd = &cobra.Command{
 		if disk != 0 {
 			diskName := fmt.Sprintf("%sdisk", name)
 			mount = workloads.Disk{Name: diskName, SizeGB: disk}
-			vm.Mounts = []workloads.Mount{{DiskName: diskName, MountPoint: "/data"}}
+			vm.Mounts = []workloads.Mount{{Name: diskName, MountPoint: "/data"}}
 		}
 		cfg, err := config.GetUserConfig()
 		if err != nil {
