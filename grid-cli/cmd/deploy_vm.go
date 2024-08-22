@@ -73,6 +73,10 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		volume, err := cmd.Flags().GetInt("volume")
+		if err != nil {
+			return err
+		}
 		flist, err := cmd.Flags().GetString("flist")
 		if err != nil {
 			return err
@@ -132,6 +136,12 @@ var deployVMCmd = &cobra.Command{
 			mount = workloads.Disk{Name: diskName, SizeGB: disk}
 			vm.Mounts = []workloads.Mount{{DiskName: diskName, MountPoint: "/data"}}
 		}
+		var volumeMount workloads.Volume
+		if volume != 0 {
+			volumeName := fmt.Sprintf("%svolume", name)
+			volumeMount = workloads.Volume{Name: volumeName, SizeGB: volume}
+			vm.Mounts = append(vm.Mounts, workloads.Mount{DiskName: volumeName, MountPoint: "/volume"})
+		}
 		cfg, err := config.GetUserConfig()
 		if err != nil {
 			log.Fatal().Err(err).Send()
@@ -143,13 +153,14 @@ var deployVMCmd = &cobra.Command{
 		}
 
 		if node == 0 {
-			filter, disks, rootfss := filters.BuildVMFilter(vm, mount, farm)
+			filter, disks, _, rootfss := filters.BuildVMFilter(vm, mount, volumeMount, farm)
 			nodes, err := deployer.FilterNodes(
 				cmd.Context(),
 				t,
 				filter,
 				disks,
 				nil,
+				//volumes,
 				rootfss,
 			)
 			if err != nil {
@@ -158,7 +169,7 @@ var deployVMCmd = &cobra.Command{
 
 			node = uint32(nodes[0].NodeID)
 		}
-		resVM, err := command.DeployVM(cmd.Context(), t, vm, mount, node)
+		resVM, err := command.DeployVM(cmd.Context(), t, vm, mount, volumeMount, node)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -204,6 +215,7 @@ func init() {
 	deployVMCmd.Flags().Int("disk", 0, "disk size in gb mounted on /data")
 	deployVMCmd.Flags().String("flist", ubuntuFlist, "flist for vm")
 	deployVMCmd.Flags().StringSlice("gpus", []string{}, "gpus for vm")
+	deployVMCmd.Flags().Int("volume", 0, "volume size in gb")
 
 	deployVMCmd.Flags().String("entrypoint", ubuntuFlistEntrypoint, "entrypoint for vm")
 	// to ensure entrypoint is provided for custom flist
