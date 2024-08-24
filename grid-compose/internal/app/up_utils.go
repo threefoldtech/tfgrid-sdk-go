@@ -16,7 +16,12 @@ import (
 
 // deployVM deploys a vm on the grid
 func deployVM(ctx context.Context, client *deployer.TFPluginClient, vm workloads.VM, disks []workloads.Disk, network *workloads.ZNet, dlName string, healthCheck *types.HealthCheck) (workloads.Deployment, error) {
-	dl := workloads.NewDeployment(dlName, network.Nodes[0], network.SolutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil)
+	// volumes is nil until it is clear what it is used for
+	dl := workloads.NewDeployment(dlName, network.Nodes[0], network.SolutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil, nil)
+	if err := dl.Validate(); err != nil {
+		return workloads.Deployment{}, err
+	}
+
 	log.Info().Str("name", vm.Name).Uint32("node_id", dl.NodeID).Msg("deploying vm...")
 	if err := client.DeploymentDeployer.Deploy(ctx, &dl); err != nil {
 		return workloads.Deployment{}, err
@@ -42,7 +47,6 @@ func deployVM(ctx context.Context, client *deployer.TFPluginClient, vm workloads
 }
 
 // buildStorage converts the config volumes to disks and mounts and returns them.
-// TODO: Create a parser to parse the size given to each field in service
 func buildStorage(serviceVolumes []string, volumes map[string]types.Volume) ([]workloads.Disk, []workloads.Mount, error) {
 	var disks []workloads.Disk
 	mounts := make([]workloads.Mount, 0)

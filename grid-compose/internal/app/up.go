@@ -59,9 +59,17 @@ func (a *App) Up(ctx context.Context) error {
 		}
 		vm.Mounts = mounts
 
+		if err := vm.Validate(); err != nil {
+			return rollback(ctx, a.Client, deployedDls, deployedNets, err)
+		}
+
 		if _, ok := deployedNets[network.Name]; !ok {
 			deployedNets[network.Name] = network
 			log.Info().Str("name", network.Name).Uint32("node_id", network.Nodes[0]).Msg("deploying network...")
+			if err := network.Validate(); err != nil {
+				return rollback(ctx, a.Client, deployedDls, deployedNets, err)
+			}
+
 			if err := a.Client.NetworkDeployer.Deploy(ctx, network); err != nil {
 				return rollback(ctx, a.Client, deployedDls, deployedNets, err)
 			}

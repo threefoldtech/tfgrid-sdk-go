@@ -92,6 +92,9 @@ The `services` section defines the services to deploy. Each service has the foll
 - `flist`: The URL of the flist to deploy.
 - `resources`: The resources required by the service (CPU, memory, and rootfs) `optional`.
   - By default, the tool will use the minimum resources required to deploy the service.
+    - `cpu`: 1
+    - `memory`: 256MB
+    - `rootfs`: 2GB
 - `entrypoint`: The entrypoint command to run when the service starts.
 - `ip_types`: The types of IP addresses to assign to the service `optional`.
   - ip type can be ipv4, ipv6, mycelium, yggdrasil.

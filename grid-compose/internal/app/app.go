@@ -8,7 +8,7 @@ import (
 
 	"github.com/cosmos/go-bip39"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/config"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/pkg/parser/config"
 )
 
 // App is the main application struct that holds the client and the config data
@@ -36,7 +36,7 @@ func NewApp(net, mnemonic, configPath string) (*App, error) {
 		return nil, fmt.Errorf("failed to load config from file %w", err)
 	}
 
-	if err := config.ValidateConfig(); err != nil {
+	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate config %w", err)
 	}
 

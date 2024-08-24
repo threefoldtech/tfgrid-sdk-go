@@ -14,9 +14,7 @@ Refer to example [single_service_1.yml](/examples/single-service/single_service_
 ### Case 2 - Node ID Given + No Assigned Network
 
 - Simply use the the node id given to deploy the service.
-  - (**CURRENT BEHAVIOR**) Return an error if node is not available
-  - (**TODO BEHAVIOR**) If the available resources in the given node are less than what the service needs, filter the nodes and check if there is one that can be used.
-    - If there is a node available, prompt the user if they would like to use it instead.
+  - Return an error if node is not available
 - Generate a default network and assign it to the deployment.
 
 Refer to example [single_service_2.yml](/examples/single-service/single_service_2.yml)

@@ -6,17 +6,15 @@ import (
 	"io"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/types"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var (
-	ErrVersionNotSet               = errors.New("version not set")
-	ErrNetworkTypeNotSet           = errors.New("network type not set")
-	ErrServiceFlistNotSet          = errors.New("service flist not set")
-	ErrServiceCPUResourceNotSet    = errors.New("service cpu resource not set")
-	ErrServiceMemoryResourceNotSet = errors.New("service memory resource not set")
-	ErrStorageTypeNotSet           = errors.New("storage type not set")
-	ErrStorageSizeNotSet           = errors.New("storage size not set")
+	ErrVersionNotSet      = errors.New("version not set")
+	ErrNetworkTypeNotSet  = errors.New("network type not set")
+	ErrServiceFlistNotSet = errors.New("service flist not set")
+	ErrStorageTypeNotSet  = errors.New("storage type not set")
+	ErrStorageSizeNotSet  = errors.New("storage size not set")
 )
 
 // Config represents the configuration file content
@@ -42,42 +40,41 @@ func (c *Config) LoadConfigFromReader(configFile io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("failed to read file %w", err)
 	}
-	err = c.UnmarshalYAML(content)
+	err = yaml.Unmarshal(content, &c)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal yaml %w", err)
 	}
 	return nil
 }
 
-// UnmarshalYAML unmarshals the configuration file content and populates the DeploymentData map
-// TODO: Implement unmarshaler
-func (c *Config) UnmarshalYAML(content []byte) error {
-	if err := yaml.Unmarshal(content, c); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ValidateConfig validates the configuration file content
+// Validate validates the configuration file content
 // TODO: Create more validation rules
-func (c *Config) ValidateConfig() (err error) {
+func (c *Config) Validate() (err error) {
 	if c.Version == "" {
 		return ErrVersionNotSet
 	}
 
 	for name, service := range c.Services {
+		if len(name) > 50 {
+			return fmt.Errorf("service name %s is too long", name)
+		}
+
 		if service.Flist == "" {
 			return fmt.Errorf("%w for service %s", ErrServiceFlistNotSet, name)
 		}
 
-		if service.Resources.CPU == 0 {
-			return fmt.Errorf("%w for service %s", ErrServiceCPUResourceNotSet, name)
+		if service.Entrypoint == "" {
+			return fmt.Errorf("entrypoint not set for service %s", name)
 		}
 
-		if service.Resources.Memory == 0 {
-			return fmt.Errorf("%w for service %s", ErrServiceMemoryResourceNotSet, name)
+		if service.Resources.Memory != 0 && service.Resources.Memory < 256 {
+			return fmt.Errorf("minimum memory resource is 256 megabytes for service %s", name)
 		}
+
+		if service.Resources.Rootfs != 0 && service.Resources.Rootfs < 2048 {
+			return fmt.Errorf("minimum rootfs resource is 2 gigabytes for service %s", name)
+		}
+
 	}
 
 	return nil

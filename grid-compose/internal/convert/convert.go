@@ -4,13 +4,12 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/app/dependency"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/config"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/internal/types"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-compose/pkg/parser/config"
 	proxy_types "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -105,17 +104,15 @@ func ConvertServiceToVM(service *types.Service, serviceName, networkName string)
 		NetworkName: networkName,
 	}
 
-	if vm.RootfsSize < minRootfs {
+	if vm.RootfsSize == 0 {
 		vm.RootfsSize = minRootfs
 	}
-	if vm.CPU < minCPU {
+	if vm.CPU == 0 {
 		vm.CPU = minCPU
 	}
-	if vm.Memory < minMemory {
+	if vm.Memory == 0 {
 		vm.Memory = minMemory
 	}
-
-	assignEnvs(&vm, service.Environment)
 
 	if err := assignNetworksTypes(&vm, service.IPTypes); err != nil {
 		return workloads.VM{}, err
@@ -165,17 +162,6 @@ func getMissingNodes(ctx context.Context, networkNodeMap map[string]*types.Netwo
 	}
 
 	return nil
-}
-
-// all assign functions will be removed when the unmarshler is implemented
-func assignEnvs(vm *workloads.VM, envs []string) {
-	env := make(map[string]string, 0)
-	for _, envVar := range envs {
-		key, value, _ := strings.Cut(envVar, "=")
-		env[key] = value
-	}
-
-	vm.EnvVars = env
 }
 
 func assignNetworksTypes(vm *workloads.VM, ipTypes []string) error {
