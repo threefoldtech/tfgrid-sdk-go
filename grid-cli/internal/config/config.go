@@ -57,7 +57,7 @@ func (c *Config) Load(path string) error {
 func GetConfigPath() (string, error) {
 	configDir, err := os.UserConfigDir()
 	if _, err := os.Stat(configDir); os.IsNotExist(err) {
-		return "", errors.Wrap(err, "config directory doesn't exist")
+		return "", errors.Wrap(err, "config directory does not exist")
 	}
 
 	if err != nil {
