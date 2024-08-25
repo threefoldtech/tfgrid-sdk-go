@@ -56,6 +56,10 @@ func (c *Config) Load(path string) error {
 // GetConfigPath returns the path of tf-grid configuration file
 func GetConfigPath() (string, error) {
 	configDir, err := os.UserConfigDir()
+	if _, err := os.Stat(configDir); os.IsNotExist(err) {
+		return "", errors.Wrap(err, "config directory doesn't exist")
+	}
+
 	if err != nil {
 		return "", errors.Wrap(err, "could not get configuration directory")
 	}
