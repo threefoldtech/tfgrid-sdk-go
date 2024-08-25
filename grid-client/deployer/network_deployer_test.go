@@ -60,7 +60,6 @@ func TestNetworkDeployer(t *testing.T) {
 
 	t.Run("test validate", func(t *testing.T) {
 		znet := constructTestNetwork()
-		znet.Nodes = []uint32{}
 		d, _, _, _ := constructTestNetworkDeployer(t, tfPluginClient, false)
 
 		znet.IPRange.Mask = net.CIDRMask(20, 32)

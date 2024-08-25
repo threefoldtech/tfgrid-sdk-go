@@ -47,9 +47,10 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 
 	vm := workloads.VM{
 		Name:        "vm",
+		NodeID:      nodeID1,
 		NetworkName: network.Name,
 		CPU:         minCPU,
-		Memory:      int(minMemory) * 1024,
+		MemoryMB:    minMemory * 1024,
 		Planetary:   true,
 		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 		Entrypoint:  "/sbin/zinit init",

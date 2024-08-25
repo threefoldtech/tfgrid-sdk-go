@@ -48,9 +48,9 @@ func constructTestDeployment() workloads.Deployment {
 			Name:        "zdb1",
 			Password:    "pass1",
 			Public:      true,
-			Size:        1024,
+			SizeGB:      1024,
 			Description: "zdb_description",
-			Mode:        "data",
+			Mode:        workloads.ZDBModeUser,
 			IPs: []string{
 				"::1",
 				"::2",
@@ -62,9 +62,9 @@ func constructTestDeployment() workloads.Deployment {
 			Name:        "zdb2",
 			Password:    "pass2",
 			Public:      true,
-			Size:        1024,
+			SizeGB:      1024,
 			Description: "zdb2_description",
-			Mode:        "meta",
+			Mode:        workloads.ZDBModeUser,
 			IPs: []string{
 				"::3",
 				"::4",
@@ -76,22 +76,22 @@ func constructTestDeployment() workloads.Deployment {
 
 	vms := []workloads.VM{
 		{
-			Name:          "vm1",
-			Flist:         "https://hub.grid.tf/tf-official-apps/discourse-v4.0.flist",
-			FlistChecksum: "",
-			PublicIP:      true,
-			PublicIP6:     true,
-			Planetary:     true,
-			Corex:         true,
-			ComputedIP:    "5.5.5.5/24",
-			ComputedIP6:   "::7/64",
-			PlanetaryIP:   "::8/64",
-			IP:            "10.1.0.2",
-			Description:   "vm1_description",
-			CPU:           1,
-			Memory:        1024,
-			RootfsSize:    1024,
-			Entrypoint:    "/sbin/zinit init",
+			Name:         "vm1",
+			NodeID:       nodeID,
+			Flist:        "https://hub.grid.tf/tf-official-apps/discourse-v4.0.flist",
+			PublicIP:     true,
+			PublicIP6:    true,
+			Planetary:    true,
+			Corex:        true,
+			ComputedIP:   "5.5.5.5/24",
+			ComputedIP6:  "::7/64",
+			PlanetaryIP:  "::8/64",
+			IP:           "10.1.0.2",
+			Description:  "vm1_description",
+			CPU:          1,
+			MemoryMB:     1024,
+			RootfsSizeMB: 1024,
+			Entrypoint:   "/sbin/zinit init",
 			Mounts: []workloads.Mount{
 				{
 					Name:       "disk1",
@@ -119,22 +119,22 @@ func constructTestDeployment() workloads.Deployment {
 			NetworkName: "network",
 		},
 		{
-			Name:          "vm2",
-			Flist:         "https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist",
-			FlistChecksum: "f0ae02b6244db3a5f842decd082c4e08",
-			PublicIP:      false,
-			PublicIP6:     true,
-			Planetary:     true,
-			Corex:         true,
-			ComputedIP:    "",
-			ComputedIP6:   "::7/64",
-			PlanetaryIP:   "::8/64",
-			IP:            "10.1.0.2",
-			Description:   "vm2_description",
-			CPU:           1,
-			Memory:        1024,
-			RootfsSize:    1024,
-			Entrypoint:    "/sbin/zinit init",
+			Name:         "vm2",
+			NodeID:       nodeID,
+			Flist:        "https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist",
+			PublicIP:     false,
+			PublicIP6:    true,
+			Planetary:    true,
+			Corex:        true,
+			ComputedIP:   "",
+			ComputedIP6:  "::7/64",
+			PlanetaryIP:  "::8/64",
+			IP:           "10.1.0.2",
+			Description:  "vm2_description",
+			CPU:          1,
+			MemoryMB:     1024,
+			RootfsSizeMB: 1024,
+			Entrypoint:   "/sbin/zinit init",
 			Mounts: []workloads.Mount{
 				{
 					Name:       "disk1",
@@ -285,20 +285,6 @@ func TestDeploymentDeployerValidate(t *testing.T) {
 	assert.NoError(t, err)
 
 	d, _, sub, _, _ := constructTestDeployer(t, tfPluginClient, false)
-
-	t.Run("test validate flist checksum ", func(t *testing.T) {
-		dl := constructTestDeployment()
-
-		network := dl.NetworkName
-		checksum := dl.Vms[0].FlistChecksum
-		dl.NetworkName = network
-
-		dl.Vms[0].FlistChecksum += " "
-		assert.Error(t, d.Validate(context.Background(), []*workloads.Deployment{&dl}))
-
-		dl.Vms[0].FlistChecksum = checksum
-		assert.NoError(t, d.Validate(context.Background(), []*workloads.Deployment{&dl}))
-	})
 
 	t.Run("Validation failed", func(t *testing.T) {
 		dl := constructTestDeployment()
@@ -641,7 +627,7 @@ func TestDeploymentDeployerSync(t *testing.T) {
 		var cp workloads.Deployment
 		musUnmarshal(t, mustMarshal(t, dl), &cp)
 
-		_, err = workloads.GetUsedIPs(gridDl)
+		_, err = workloads.GetUsedIPs(gridDl, nodeID)
 		assert.NoError(t, err)
 
 		deployer.EXPECT().
@@ -705,10 +691,11 @@ func ExampleDeploymentDeployer_Deploy() {
 
 	vm := workloads.VM{
 		Name:        "vm",
+		NodeID:      nodeID,
 		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 		CPU:         2,
 		Planetary:   true,
-		Memory:      1024,
+		MemoryMB:    1024,
 		Entrypoint:  "/sbin/zinit init",
 		EnvVars:     map[string]string{"SSH_KEY": "<ssh key goes here>"},
 		NetworkName: n.Name,
@@ -754,20 +741,22 @@ func ExampleDeploymentDeployer_BatchDeploy() {
 
 	vm1 := workloads.VM{
 		Name:        "vm1",
+		NodeID:      nodeID,
 		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 		CPU:         2,
 		Planetary:   true,
-		Memory:      1024,
+		MemoryMB:    1024,
 		Entrypoint:  "/sbin/zinit init",
 		EnvVars:     map[string]string{"SSH_KEY": "<ssh key goes here>"},
 		NetworkName: n.Name,
 	}
 	vm2 := workloads.VM{
 		Name:        "vm2",
+		NodeID:      nodeID,
 		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 		CPU:         2,
 		Planetary:   true,
-		Memory:      1024,
+		MemoryMB:    1024,
 		Entrypoint:  "/sbin/zinit init",
 		EnvVars:     map[string]string{"SSH_KEY": "<ssh key goes here>"},
 		NetworkName: n.Name,

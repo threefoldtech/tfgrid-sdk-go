@@ -23,14 +23,14 @@ func TestZDBDeployment(t *testing.T) {
 		t.Skipf("https://github.com/threefoldtech/tfgrid-sdk-go/issues/1111")
 	}
 
-	zdbSize := 10
+	zdbSize := uint64(10)
 
 	nodes, err := deployer.FilterNodes(
 		context.Background(),
 		tfPluginClient,
-		generateNodeFilter(WithFreeHRU(uint64(zdbSize))),
+		generateNodeFilter(WithFreeHRU(zdbSize)),
 		nil,
-		[]uint64{*convertGBToBytes(uint64(zdbSize))},
+		[]uint64{*convertGBToBytes(zdbSize)},
 		nil,
 		1,
 	)
@@ -44,7 +44,7 @@ func TestZDBDeployment(t *testing.T) {
 		Name:        fmt.Sprintf("zdb_%s", generateRandString(10)),
 		Password:    "password",
 		Public:      true,
-		Size:        zdbSize,
+		SizeGB:      zdbSize,
 		Description: "test zdb",
 		Mode:        zos.ZDBModeUser,
 	}

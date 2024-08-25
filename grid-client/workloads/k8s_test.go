@@ -13,20 +13,22 @@ var flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist
 
 // K8sWorkload to be used in tests
 var K8sWorkload = K8sNode{
-	Name:          "test",
-	Node:          0,
-	DiskSize:      5,
-	PublicIP:      false,
-	PublicIP6:     false,
-	Planetary:     false,
-	Flist:         flist,
-	FlistChecksum: "e71ee7421f45392fbbb92309182e3006",
-	ComputedIP:    "",
-	ComputedIP6:   "",
-	PlanetaryIP:   "",
-	IP:            "",
-	CPU:           2,
-	Memory:        1024,
+	VM: &VM{
+		Name:        "test",
+		NetworkName: "network",
+		NodeID:      1,
+		PublicIP:    false,
+		PublicIP6:   false,
+		Planetary:   false,
+		Flist:       flist,
+		ComputedIP:  "",
+		ComputedIP6: "",
+		PlanetaryIP: "",
+		IP:          "",
+		CPU:         2,
+		MemoryMB:    1024,
+	},
+	DiskSizeGB: 5,
 }
 
 func TestK8sNodeData(t *testing.T) {
@@ -48,17 +50,12 @@ func TestK8sNodeData(t *testing.T) {
 			Workers:     []K8sNode{},
 			Token:       "testToken",
 			SSHKey:      "",
-			NetworkName: "",
+			NetworkName: "network",
 		}
 	})
 
-	t.Run("test_validate_names", func(t *testing.T) {
-		err := cluster.ValidateNames()
-		assert.NoError(t, err)
-	})
-
-	t.Run("test_validate_token", func(t *testing.T) {
-		err := cluster.ValidateToken()
+	t.Run("test_validate", func(t *testing.T) {
+		err := cluster.Validate()
 		assert.NoError(t, err)
 	})
 
@@ -72,10 +69,9 @@ func TestK8sNodeData(t *testing.T) {
 
 	t.Run("test_k8s_from_workload", func(t *testing.T) {
 		k8s := k8sWorkloads[1]
-		k8sFromWorkload, err := NewK8sNodeFromWorkload(k8s, 0, 5, "", "")
+		k8sFromWorkload, err := NewK8sNodeFromWorkload(k8s, 1, 5, "", "")
 		assert.NoError(t, err)
 
-		K8sWorkload.Token = "testToken"
 		k8sFromWorkload.IP = ""
 		assert.Equal(t, k8sFromWorkload, K8sWorkload)
 	})

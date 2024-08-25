@@ -12,14 +12,15 @@ import (
 
 // VMWorkload for tests
 var VMWorkload = VM{
-	Name:       "test",
-	Flist:      "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-	CPU:        2,
-	PublicIP:   true,
-	Planetary:  true,
-	Memory:     1024,
-	RootfsSize: 20 * 1024,
-	Entrypoint: "/sbin/zinit init",
+	Name:         "test",
+	NodeID:       1,
+	Flist:        "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+	CPU:          2,
+	PublicIP:     true,
+	Planetary:    true,
+	MemoryMB:     1024,
+	RootfsSizeMB: 20 * 1024,
+	Entrypoint:   "/sbin/zinit init",
 	EnvVars: map[string]string{
 		"SSH_KEY": "",
 	},
@@ -63,7 +64,7 @@ func TestVMWorkload(t *testing.T) {
 		assert.NoError(t, err)
 		vmWorkload.Result.Data = res
 
-		vmFromWorkload, err := NewVMFromWorkload(&vmWorkload, &deployment)
+		vmFromWorkload, err := NewVMFromWorkload(&vmWorkload, &deployment, 1)
 		assert.NoError(t, err)
 
 		// no result yet so they are set manually
@@ -97,7 +98,6 @@ func TestVMWorkload(t *testing.T) {
 
 	t.Run("test_vm_failed_validate", func(t *testing.T) {
 		VMWorkload.CPU = 0
-		assert.ErrorIs(t, VMWorkload.Validate(), ErrInvalidInput)
-		VMWorkload.CPU = 2
+		assert.Error(t, VMWorkload.Validate())
 	})
 }

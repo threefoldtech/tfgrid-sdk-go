@@ -26,7 +26,21 @@ type QSFS struct {
 	CompressionAlgorithm string   `json:"compression_algorithm"`
 	Metadata             Metadata `json:"metadata"`
 	Groups               Groups   `json:"groups"`
-	MetricsEndpoint      string   `json:"metrics_endpoint"`
+
+	// OUTPUT
+	MetricsEndpoint string `json:"metrics_endpoint"`
+}
+
+func (q *QSFS) Validate() error {
+	if err := validateName(q.Name); err != nil {
+		return errors.Wrap(err, "qsfs name is invalid")
+	}
+
+	if q.MinimalShards > q.ExpectedShards {
+		return errors.New("minimal shards can't be greater than expected shards")
+	}
+
+	return nil
 }
 
 // Metadata for QSFS

@@ -65,7 +65,7 @@ func constructTestFQDN() workloads.GatewayFQDNProxy {
 		NodeID:         nodeID,
 		Name:           "name",
 		TLSPassthrough: false,
-		Backends:       []zos.Backend{"http://1.1.1.1", "http://2.2.2.2"},
+		Backends:       []zos.Backend{"http://1.1.1.1"},
 		FQDN:           "name.com",
 	}
 }
@@ -120,7 +120,7 @@ func TestFQDNDeployer(t *testing.T) {
 
 	t.Run("test validate", func(t *testing.T) {
 		mockValidation(d.tfPluginClient.Identity, cl, sub, ncPool, proxyCl)
-		err := d.Validate(context.Background(), &workloads.GatewayFQDNProxy{Name: "test", NodeID: nodeID})
+		err := d.Validate(context.Background(), &gw)
 		assert.NoError(t, err)
 	})
 

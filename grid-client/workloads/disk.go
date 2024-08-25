@@ -10,7 +10,7 @@ import (
 // Disk struct
 type Disk struct {
 	Name        string `json:"name"`
-	SizeGB      int    `json:"size"`
+	SizeGB      uint64 `json:"size"`
 	Description string `json:"description"`
 }
 
@@ -29,7 +29,7 @@ func NewDiskFromWorkload(wl *gridtypes.Workload) (Disk, error) {
 	return Disk{
 		Name:        wl.Name.String(),
 		Description: wl.Description,
-		SizeGB:      int(data.Size / gridtypes.Gigabyte),
+		SizeGB:      uint64(data.Size / gridtypes.Gigabyte),
 	}, nil
 }
 
@@ -44,4 +44,16 @@ func (d *Disk) ZosWorkload() gridtypes.Workload {
 			Size: gridtypes.Unit(d.SizeGB) * gridtypes.Gigabyte,
 		}),
 	}
+}
+
+func (d *Disk) Validate() error {
+	if err := validateName(d.Name); err != nil {
+		return errors.Wrap(err, "disk name is invalid")
+	}
+
+	if d.SizeGB == 0 {
+		return errors.New("disk size should be a positive integer not zero")
+	}
+
+	return nil
 }

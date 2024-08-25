@@ -67,9 +67,9 @@ type ZNet struct {
 	IPRange      gridtypes.IPNet
 	AddWGAccess  bool
 	MyceliumKeys map[uint32][]byte
+	SolutionType string
 
 	// computed
-	SolutionType     string
 	AccessWGConfig   string
 	ExternalIP       *gridtypes.IPNet
 	ExternalSK       wgtypes.Key
@@ -161,12 +161,21 @@ func NewIPRange(n net.IPNet) gridtypes.IPNet {
 	return gridtypes.NewIPNet(n)
 }
 
-// Validate validates a network mask to be 16
+// Validate validates a network data
 func (znet *ZNet) Validate() error {
+	if err := validateName(znet.Name); err != nil {
+		return errors.Wrap(err, "network name is invalid")
+	}
+
+	if len(znet.Nodes) == 0 {
+		return fmt.Errorf("no network nodes are provided")
+	}
+
 	mask := znet.IPRange.Mask
 	if ones, _ := mask.Size(); ones != 16 {
 		return errors.Errorf("subnet in ip range %s should be 16", znet.IPRange.String())
 	}
+
 	for node, key := range znet.MyceliumKeys {
 		if len(key) != zos.MyceliumKeyLen && len(key) != 0 {
 			return fmt.Errorf("invalid mycelium key length %d must be %d or empty", len(key), zos.MyceliumKeyLen)

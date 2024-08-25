@@ -36,25 +36,13 @@ func (d *DeploymentDeployer) Validate(ctx context.Context, dls []*workloads.Depl
 		return err
 	}
 
-	var wg sync.WaitGroup
-	var errs error
-	var mu sync.Mutex
-
 	for _, dl := range dls {
-		wg.Add(1)
-		go func(dl *workloads.Deployment) {
-			defer wg.Done()
-			if err := dl.Validate(); err != nil {
-				mu.Lock()
-				defer mu.Unlock()
-				errs = multierror.Append(errs, err)
-				return
-			}
-		}(dl)
+		if err := dl.Validate(); err != nil {
+			return err
+		}
 	}
 
-	wg.Wait()
-	return errs
+	return nil
 }
 
 // GenerateVersionlessDeployments generates a new deployment without a version
@@ -430,7 +418,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, dl *workloads.Deployment)
 
 		switch w.Type {
 		case zos.ZMachineType:
-			vm, err := workloads.NewVMFromWorkload(&w, &deployment)
+			vm, err := workloads.NewVMFromWorkload(&w, &deployment, dl.NodeID)
 			if err != nil {
 				log.Error().Err(err).Msgf("error parsing vm")
 				continue
