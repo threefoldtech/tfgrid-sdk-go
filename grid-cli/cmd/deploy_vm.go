@@ -130,10 +130,10 @@ var deployVMCmd = &cobra.Command{
 			MyceliumIPSeed: seed,
 			Planetary:      ygg,
 		}
-		var mount workloads.Disk
+		var diskMount workloads.Disk
 		if disk != 0 {
 			diskName := fmt.Sprintf("%sdisk", name)
-			mount = workloads.Disk{Name: diskName, SizeGB: disk}
+			diskMount = workloads.Disk{Name: diskName, SizeGB: disk}
 			vm.Mounts = []workloads.Mount{{Name: diskName, MountPoint: "/data"}}
 		}
 		var volumeMount workloads.Volume
@@ -153,7 +153,7 @@ var deployVMCmd = &cobra.Command{
 		}
 
 		if node == 0 {
-			filter, disks, rootfss := filters.BuildVMFilter(vm, mount, farm)
+			filter, disks, rootfss := filters.BuildVMFilter(vm, diskMount, farm)
 			nodes, err := deployer.FilterNodes(
 				cmd.Context(),
 				t,
@@ -168,7 +168,7 @@ var deployVMCmd = &cobra.Command{
 
 			node = uint32(nodes[0].NodeID)
 		}
-		resVM, err := command.DeployVM(cmd.Context(), t, vm, mount, volumeMount, node)
+		resVM, err := command.DeployVM(cmd.Context(), t, vm, diskMount, volumeMount, node)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -214,7 +214,7 @@ func init() {
 	deployVMCmd.Flags().Int("disk", 0, "disk size in gb mounted on /data")
 	deployVMCmd.Flags().String("flist", ubuntuFlist, "flist for vm")
 	deployVMCmd.Flags().StringSlice("gpus", []string{}, "gpus for vm")
-	deployVMCmd.Flags().Int("volume", 0, "volume size in gb")
+	deployVMCmd.Flags().Int("volume", 0, "volume size in gb mounted on /volume")
 
 	deployVMCmd.Flags().String("entrypoint", ubuntuFlistEntrypoint, "entrypoint for vm")
 	// to ensure entrypoint is provided for custom flist

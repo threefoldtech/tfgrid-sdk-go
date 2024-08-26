@@ -15,7 +15,7 @@ import (
 )
 
 // DeployVM deploys a vm with mounts
-func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, mount workloads.Disk, volumeMount workloads.Volume, node uint32) (workloads.VM, error) {
+func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, diskMount workloads.Disk, volumeMount workloads.Volume, node uint32) (workloads.VM, error) {
 	networkName := fmt.Sprintf("%snetwork", vm.Name)
 	projectName := fmt.Sprintf("vm/%s", vm.Name)
 	network, err := buildNetwork(networkName, projectName, []uint32{node}, len(vm.MyceliumIPSeed) != 0)
@@ -23,16 +23,16 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 		return workloads.VM{}, err
 	}
 
-	mounts := []workloads.Disk{}
-	if mount.SizeGB != 0 {
-		mounts = append(mounts, mount)
+	diskMounts := []workloads.Disk{}
+	if diskMount.SizeGB != 0 {
+		diskMounts = append(diskMounts, diskMount)
 	}
 	volumeMounts := []workloads.Volume{}
 	if volumeMount.SizeGB != 0 {
 		volumeMounts = append(volumeMounts, volumeMount)
 	}
 	vm.NetworkName = networkName
-	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, mounts, nil, []workloads.VM{vm}, nil, volumeMounts)
+	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, diskMounts, nil, []workloads.VM{vm}, nil, volumeMounts)
 
 	log.Info().Msg("deploying network")
 	err = t.NetworkDeployer.Deploy(ctx, &network)
