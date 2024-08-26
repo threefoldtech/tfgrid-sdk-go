@@ -196,8 +196,15 @@ func (k *K8sCluster) ValidateNames() error {
 	return nil
 }
 
-// ValidateChecksum validate check sums for k8s flist
-func (k *K8sCluster) ValidateChecksum() error {
+// ValidateFlist validate check sums for k8s flist
+func (k *K8sCluster) ValidateFlist() error {
+	if k.Flist == "" {
+		if k.Master.Flist == "" {
+			return fmt.Errorf("invalid flist for k8s cluster %s, flist should not be empty", k.Master.Name)
+		}
+		k.Flist = k.Master.Flist
+	}
+
 	if k.FlistChecksum == "" {
 		return nil
 	}
