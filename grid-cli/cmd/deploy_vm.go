@@ -153,12 +153,12 @@ var deployVMCmd = &cobra.Command{
 		}
 
 		if node == 0 {
-			filter, disks, rootfss := filters.BuildVMFilter(vm, diskMount, farm)
+			filter, ssd, rootfss := filters.BuildVMFilter(vm, diskMount, volumeMount, farm)
 			nodes, err := deployer.FilterNodes(
 				cmd.Context(),
 				t,
 				filter,
-				disks,
+				ssd,
 				nil,
 				rootfss,
 			)
