@@ -177,7 +177,7 @@ func (znet *ZNet) Validate() error {
 		}
 	}
 	if len(znet.Nodes) == 0 {
-		return fmt.Errorf("no. of nodes in znet: %s, should be nonzero positive number", znet.Name)
+		return fmt.Errorf("number of nodes in znet: %s, should be nonzero positive number", znet.Name)
 	}
 	return nil
 }
