@@ -176,7 +176,9 @@ func (znet *ZNet) Validate() error {
 			return fmt.Errorf("invalid node %d for mycelium key, must be included in the network nodes %v", node, znet.Nodes)
 		}
 	}
-
+	if len(znet.Nodes) == 0 {
+		return fmt.Errorf("number of nodes in znet: %s, should be nonzero positive number", znet.Name)
+	}
 	return nil
 }
 
