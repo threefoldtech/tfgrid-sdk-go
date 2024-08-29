@@ -17,26 +17,8 @@ import (
 
 // K8sNode kubernetes data
 type K8sNode struct {
-	Name           string `json:"name"`
-	Node           uint32 `json:"node"`
-	DiskSize       int    `json:"disk_size"`
-	PublicIP       bool   `json:"publicip"`
-	PublicIP6      bool   `json:"publicip6"`
-	Planetary      bool   `json:"planetary"`
-	Flist          string `json:"flist"`
-	FlistChecksum  string `json:"flist_checksum"`
-	ComputedIP     string `json:"computedip"`
-	ComputedIP6    string `json:"computedip6"`
-	PlanetaryIP    string `json:"planetary_ip"`
-	MyceliumIP     string `json:"mycelium_ip"`
-	MyceliumIPSeed []byte `json:"mycelium_ip_seed"`
-	IP             string `json:"ip"`
-	CPU            int    `json:"cpu"`
-	Memory         int    `json:"memory"`
-	NetworkName    string `json:"network_name"`
-	Token          string `json:"token"`
-	SSHKey         string `json:"ssh_key"`
-	ConsoleURL     string `json:"console_url"`
+	*VM
+	DiskSizeGB uint64 `json:"disk_size"`
 }
 
 // K8sCluster struct for k8s cluster
@@ -56,7 +38,7 @@ type K8sCluster struct {
 }
 
 // NewK8sNodeFromWorkload generates a new k8s from a workload
-func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, computedIP string, computedIP6 string) (K8sNode, error) {
+func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize uint64, computedIP string, computedIP6 string) (K8sNode, error) {
 	var k K8sNode
 	data, err := wl.WorkloadData()
 	if err != nil {
@@ -82,27 +64,33 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize int, 
 		myceliumIPSeed = d.Network.Mycelium.Seed
 	}
 
+	var ip, networkName string
+	if len(d.Network.Interfaces) > 0 {
+		ip = d.Network.Interfaces[0].IP.String()
+		networkName = string(d.Network.Interfaces[0].Network)
+	}
+
 	return K8sNode{
-		Name:           string(wl.Name),
-		Node:           nodeID,
-		DiskSize:       diskSize,
-		PublicIP:       computedIP != "",
-		PublicIP6:      computedIP6 != "",
-		Planetary:      result.PlanetaryIP != "",
-		Flist:          d.FList,
-		FlistChecksum:  flistCheckSum,
-		ComputedIP:     computedIP,
-		ComputedIP6:    computedIP6,
-		PlanetaryIP:    result.PlanetaryIP,
-		MyceliumIP:     result.MyceliumIP,
-		MyceliumIPSeed: myceliumIPSeed,
-		IP:             d.Network.Interfaces[0].IP.String(),
-		CPU:            int(d.ComputeCapacity.CPU),
-		Memory:         int(d.ComputeCapacity.Memory / gridtypes.Megabyte),
-		NetworkName:    string(d.Network.Interfaces[0].Network),
-		Token:          d.Env["K3S_TOKEN"],
-		SSHKey:         d.Env["SSH_KEY"],
-		ConsoleURL:     result.ConsoleURL,
+		VM: &VM{
+			Name:           string(wl.Name),
+			NodeID:         nodeID,
+			PublicIP:       computedIP != "",
+			PublicIP6:      computedIP6 != "",
+			Planetary:      result.PlanetaryIP != "",
+			Flist:          d.FList,
+			FlistChecksum:  flistCheckSum,
+			ComputedIP:     computedIP,
+			ComputedIP6:    computedIP6,
+			PlanetaryIP:    result.PlanetaryIP,
+			MyceliumIP:     result.MyceliumIP,
+			MyceliumIPSeed: myceliumIPSeed,
+			IP:             ip,
+			CPU:            d.ComputeCapacity.CPU,
+			MemoryMB:       uint64(d.ComputeCapacity.Memory / gridtypes.Megabyte),
+			NetworkName:    networkName,
+			ConsoleURL:     result.ConsoleURL,
+		},
+		DiskSizeGB: diskSize,
 	}, nil
 }
 
@@ -149,6 +137,42 @@ func (k *K8sCluster) GenerateMetadata() (string, error) {
 	return string(deploymentDataBytes), nil
 }
 
+func (k *K8sCluster) Validate() error {
+	if err := k.Master.Validate(); err != nil {
+		return errors.Wrap(err, "master is invalid")
+	}
+
+	names := make(map[string]bool)
+	names[k.Master.Name] = true
+
+	for _, w := range k.Workers {
+		if _, ok := names[w.Name]; ok {
+			return errors.Errorf("k8s workers and master must have unique names: %s occurred more than once", w.Name)
+		}
+		names[w.Name] = true
+
+		if err := w.Validate(); err != nil {
+			return errors.Wrap(err, "worker is invalid")
+		}
+	}
+
+	if err := validateName(k.NetworkName); err != nil {
+		return errors.Wrap(err, "master name is invalid")
+	}
+
+	if err := k.ValidateToken(); err != nil {
+		return err
+	}
+
+	if len(k.NodesIPRange) != 0 {
+		if err := k.ValidateIPranges(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ValidateToken validate cluster token
 func (k *K8sCluster) ValidateToken() error {
 	if len(k.Token) < 6 {
@@ -168,59 +192,13 @@ func (k *K8sCluster) ValidateToken() error {
 
 // ValidateIPranges validates NodesIPRange of master && workers of k8s cluster
 func (k *K8sCluster) ValidateIPranges() error {
-	if _, ok := k.NodesIPRange[k.Master.Node]; !ok {
-		return errors.Errorf("the master node %d does not exist in the network's ip ranges", k.Master.Node)
+	if _, ok := k.NodesIPRange[k.Master.NodeID]; !ok {
+		return errors.Errorf("the master node %d does not exist in the network's ip ranges", k.Master.NodeID)
 	}
-	for _, w := range k.Workers {
-		if _, ok := k.NodesIPRange[w.Node]; !ok {
-			return errors.Errorf("the node with id %d in worker %s does not exist in the network's ip ranges", w.Node, w.Name)
-		}
-	}
-	return nil
-}
-
-// ValidateNames validate names for master and workers
-func (k *K8sCluster) ValidateNames() error {
-	names := make(map[string]bool)
-	names[k.Master.Name] = true
 
 	for _, w := range k.Workers {
-		if _, ok := names[w.Name]; ok {
-			return errors.Errorf("k8s workers and master must have unique names: %s occurred more than once", w.Name)
-		}
-		names[w.Name] = true
-	}
-	return nil
-}
-
-// ValidateChecksums validate check sums for k8s flist
-func (k *K8sCluster) ValidateChecksums() error {
-	nodes := append(k.Workers, *k.Master)
-	for _, vm := range nodes {
-		if vm.FlistChecksum == "" {
-			continue
-		}
-		checksum, err := GetFlistChecksum(vm.Flist)
-		if err != nil {
-			return errors.Wrapf(err, "could not get flist %s hash", vm.Flist)
-		}
-		if vm.FlistChecksum != checksum {
-			return errors.Errorf("passed checksum %s of %s does not match %s returned from %s",
-				vm.FlistChecksum,
-				vm.Name,
-				checksum,
-				FlistChecksumURL(vm.Flist),
-			)
-		}
-	}
-	return nil
-}
-
-func (k *K8sCluster) ValidateMyceliumSeed() error {
-	nodes := append(k.Workers, *k.Master)
-	for _, node := range nodes {
-		if len(node.MyceliumIPSeed) != zos.MyceliumIPSeedLen && len(node.MyceliumIPSeed) != 0 {
-			return fmt.Errorf("invalid mycelium ip seed length %d must be %d or empty", len(node.MyceliumIPSeed), zos.MyceliumIPSeedLen)
+		if _, ok := k.NodesIPRange[w.NodeID]; !ok {
+			return errors.Errorf("the node with id %d in worker %s does not exist in the network's ip ranges", w.NodeID, w.Name)
 		}
 	}
 	return nil
@@ -245,7 +223,7 @@ func (k *K8sCluster) InvalidateBrokenAttributes(sub subi.SubstrateExt) error {
 		}
 
 	}
-	if _, ok := validNodes[k.Master.Node]; !ok {
+	if _, ok := validNodes[k.Master.NodeID]; !ok {
 		k.Master = &K8sNode{}
 	}
 	return nil
@@ -259,9 +237,10 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 		Type:        zos.ZMountType,
 		Description: "",
 		Data: gridtypes.MustMarshal(zos.ZMount{
-			Size: gridtypes.Unit(k.DiskSize) * gridtypes.Gigabyte,
+			Size: gridtypes.Unit(k.DiskSizeGB) * gridtypes.Gigabyte,
 		}),
 	}
+
 	K8sWorkloads = append(K8sWorkloads, diskWorkload)
 	publicIPName := ""
 	if k.PublicIP || k.PublicIP6 {
@@ -305,8 +284,8 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 				Mycelium:  myceliumIP,
 			},
 			ComputeCapacity: zos.MachineCapacity{
-				CPU:    uint8(k.CPU),
-				Memory: gridtypes.Unit(uint(k.Memory)) * gridtypes.Megabyte,
+				CPU:    k.CPU,
+				Memory: gridtypes.Unit(uint(k.MemoryMB)) * gridtypes.Megabyte,
 			},
 			Entrypoint: "/sbin/zinit init",
 			Mounts: []zos.MachineMount{

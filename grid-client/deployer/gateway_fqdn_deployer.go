@@ -29,10 +29,11 @@ func NewGatewayFqdnDeployer(tfPluginClient *TFPluginClient) GatewayFQDNDeployer 
 // Validate validates gateway FQDN deployer
 func (d *GatewayFQDNDeployer) Validate(ctx context.Context, gw *workloads.GatewayFQDNProxy) error {
 	sub := d.tfPluginClient.SubstrateConn
-	if len(gw.Name) == 0 {
-		return errors.New("gateway workload must have a name")
-	}
 	if err := validateAccountBalanceForExtrinsics(sub, d.tfPluginClient.Identity); err != nil {
+		return err
+	}
+
+	if err := gw.Validate(); err != nil {
 		return err
 	}
 

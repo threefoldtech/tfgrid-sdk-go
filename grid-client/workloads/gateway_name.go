@@ -3,6 +3,8 @@ package workloads
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -64,6 +66,25 @@ func NewGatewayNameProxyFromZosWorkload(wl gridtypes.Workload) (GatewayNameProxy
 		Network:        network,
 		Description:    wl.Description,
 	}, nil
+}
+
+// Validate validates gateway data
+func (g *GatewayNameProxy) Validate() error {
+	if err := validateName(g.Name); err != nil {
+		return errors.Wrap(err, "gateway name is invalid")
+	}
+
+	if g.NodeID == 0 {
+		return fmt.Errorf("node ID should be a positive integer not zero")
+	}
+
+	if len(strings.TrimSpace(g.Network)) != 0 {
+		if err := validateName(g.Network); err != nil {
+			return errors.Wrap(err, "gateway network is invalid")
+		}
+	}
+
+	return validateBackend(g.Backends, g.TLSPassthrough)
 }
 
 // ZosWorkload generates a zos workload from GatewayNameProxy

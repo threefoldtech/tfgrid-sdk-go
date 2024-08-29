@@ -8,14 +8,14 @@ import (
 
 // BuildK8sNodeFilter build a filter for a k8s node
 func BuildK8sNodeFilter(k8sNode workloads.K8sNode, farmID uint64) (types.NodeFilter, []uint64, []uint64) {
-	freeMRUs := uint64(k8sNode.Memory) / 1024
-	freeSRUs := uint64(k8sNode.DiskSize)
+	freeMRUs := k8sNode.MemoryMB / 1024
+	freeSRUs := k8sNode.DiskSizeGB
 	freeIPs := uint64(0)
 
 	if k8sNode.PublicIP {
 		freeIPs = uint64(1)
 	}
-	disks := []uint64{*convertGBToBytes(uint64(k8sNode.DiskSize))}
+	disks := []uint64{*convertGBToBytes(k8sNode.DiskSizeGB)}
 	// k8s rootfs is either 2 or 0.5
 	rootfss := []uint64{*convertGBToBytes(uint64(2))}
 
@@ -24,22 +24,22 @@ func BuildK8sNodeFilter(k8sNode workloads.K8sNode, farmID uint64) (types.NodeFil
 
 // BuildVMFilter build a filter for a vm
 func BuildVMFilter(vm workloads.VM, disk workloads.Disk, volume workloads.Volume, farmID uint64) (types.NodeFilter, []uint64, []uint64) {
-	freeMRUs := uint64(vm.Memory) / 1024
-	freeSRUs := uint64(vm.RootfsSize) / 1024
+	freeMRUs := vm.MemoryMB / 1024
+	freeSRUs := vm.RootfsSizeMB / 1024
 	freeIPs := uint64(0)
 	if vm.PublicIP {
 		freeIPs = 1
 	}
-	freeSRUs += uint64(disk.SizeGB) + uint64(volume.SizeGB)
+	freeSRUs += disk.SizeGB + volume.SizeGB
 
 	ssd := make([]uint64, 0)
 	if disk.SizeGB > 0 {
-		ssd = append(ssd, *convertGBToBytes(uint64(disk.SizeGB)))
+		ssd = append(ssd, *convertGBToBytes(disk.SizeGB))
 	}
 	if volume.SizeGB > 0 {
-		ssd = append(ssd, *convertGBToBytes(uint64(volume.SizeGB)))
+		ssd = append(ssd, *convertGBToBytes(volume.SizeGB))
 	}
-	rootfss := []uint64{*convertGBToBytes(uint64(vm.RootfsSize) / 1024)}
+	rootfss := []uint64{*convertGBToBytes(vm.RootfsSizeMB / 1024)}
 	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, &freeIPs, []uint64{farmID}, nil), ssd, rootfss
 }
 
@@ -51,7 +51,7 @@ func BuildGatewayFilter(farmID uint64) types.NodeFilter {
 
 // BuildZDBFilter build a filter for a zdbs
 func BuildZDBFilter(zdb workloads.ZDB, n int, farmID uint64) (types.NodeFilter, []uint64) {
-	freeHRUs := uint64(zdb.Size * n)
+	freeHRUs := zdb.SizeGB * uint64(n)
 	return buildGenericFilter(nil, nil, &freeHRUs, nil, []uint64{farmID}, nil), []uint64{*convertGBToBytes(freeHRUs)}
 }
 

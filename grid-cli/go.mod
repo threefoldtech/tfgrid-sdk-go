@@ -11,6 +11,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.10
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.10
 	github.com/threefoldtech/zos v0.5.6-0.20240613101720-0a4726af4edd
+	github.com/vedhavyas/go-subkey v1.0.3
 )
 
 require (
@@ -46,7 +47,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240710094608-5a9ad375cb3c // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.10 // indirect
-	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/sync v0.8.0 // indirect

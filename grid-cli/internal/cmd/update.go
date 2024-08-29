@@ -22,8 +22,8 @@ func AddWorkersKubernetesCluster(ctx context.Context, t deployer.TFPluginClient,
 	}
 
 	for _, worker := range workers {
-		if !slices.Contains(network.Nodes, worker.Node) {
-			network.Nodes = append(network.Nodes, worker.Node)
+		if !slices.Contains(network.Nodes, worker.NodeID) {
+			network.Nodes = append(network.Nodes, worker.NodeID)
 		}
 	}
 
@@ -57,9 +57,9 @@ func AddWorkersKubernetesCluster(ctx context.Context, t deployer.TFPluginClient,
 }
 
 func DeleteWorkerKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, cluster workloads.K8sCluster) error {
-	usedNodes := []uint32{cluster.Master.Node}
+	usedNodes := []uint32{cluster.Master.NodeID}
 	for _, worker := range cluster.Workers {
-		usedNodes = append(usedNodes, worker.Node)
+		usedNodes = append(usedNodes, worker.NodeID)
 	}
 
 	log.Info().Msg("updating network")

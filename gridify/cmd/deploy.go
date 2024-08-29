@@ -39,15 +39,15 @@ var deployCmd = &cobra.Command{
 		case "performance":
 			spec = deployer.Performance
 		}
-		cpu, err := cmd.Flags().GetInt("cpu")
+		cpu, err := cmd.Flags().GetUint8("cpu")
 		if err != nil {
 			return err
 		}
-		memory, err := cmd.Flags().GetInt("memory")
+		memory, err := cmd.Flags().GetUint64("memory")
 		if err != nil {
 			return err
 		}
-		storage, err := cmd.Flags().GetInt("storage")
+		storage, err := cmd.Flags().GetUint64("storage")
 		if err != nil {
 			return err
 		}
@@ -82,7 +82,7 @@ func init() {
 		log.Fatal().Err(err).Send()
 	}
 	deployCmd.Flags().StringP("spec", "s", "", "vm spec can be (eco, standard, performance)")
-	deployCmd.Flags().Int("cpu", 1, "vm cpu")
-	deployCmd.Flags().Int("memory", 2, "vm memory")
-	deployCmd.Flags().Int("storage", 5, "vm storage")
+	deployCmd.Flags().Uint8("cpu", 1, "vm cpu")
+	deployCmd.Flags().Uint64("memory", 2, "vm memory")
+	deployCmd.Flags().Uint64("storage", 5, "vm storage")
 }

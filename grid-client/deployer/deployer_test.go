@@ -327,7 +327,7 @@ func TestDeployer(t *testing.T) {
 			GetNodeClient(sub, uint32(10)).
 			Return(client.NewNodeClient(13, cl, tfPluginClient.RMBTimeout), nil).AnyTimes()
 
-		err = deployer.Cancel(context.Background(), 100)
+		err = deployer.Cancel(context.Background(), dl1.ContractID)
 		assert.NoError(t, err)
 	})
 

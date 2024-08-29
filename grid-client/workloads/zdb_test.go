@@ -15,7 +15,7 @@ var ZDBWorkload = ZDB{
 	Name:        "test",
 	Password:    "password",
 	Public:      true,
-	Size:        100,
+	SizeGB:      100,
 	Description: "test des",
 	Mode:        "user",
 	//IPs:         ips,

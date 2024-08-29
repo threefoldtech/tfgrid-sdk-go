@@ -12,9 +12,9 @@ import (
 
 // VMSpec struct to hold vm specs
 type VMSpec struct {
-	CPU     int
-	Memory  int
-	Storage int
+	CPU     uint8
+	Memory  uint64
+	Storage uint64
 	Public  bool
 }
 
@@ -35,8 +35,8 @@ var (
 )
 
 func buildNodeFilter(vmSpec VMSpec) types.NodeFilter {
-	freeMRU := uint64(vmSpec.Memory * 1024 * 1024 * 1024)
-	freeSRU := uint64(vmSpec.Storage * 1024 * 1024 * 1024)
+	freeMRU := vmSpec.Memory * 1024 * 1024 * 1024
+	freeSRU := vmSpec.Storage * 1024 * 1024 * 1024
 	freeIPs := uint64(0)
 	if vmSpec.Public {
 		freeIPs = 1
@@ -69,14 +69,14 @@ func buildNetwork(projectName, deploymentName string, node uint32) workloads.ZNe
 
 func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL, deploymentName string, node uint32) workloads.Deployment {
 	vm := workloads.VM{
-		Name:       deploymentName,
-		Flist:      vmFlist,
-		CPU:        vmSpec.CPU,
-		Memory:     vmSpec.Memory * 1024,
-		RootfsSize: vmSpec.Storage * 1024,
-		PublicIP:   vmSpec.Public,
-		Planetary:  vmPlanetary,
-		Entrypoint: vmEntrypoint,
+		Name:         deploymentName,
+		Flist:        vmFlist,
+		CPU:          vmSpec.CPU,
+		MemoryMB:     vmSpec.Memory * 1024,
+		RootfsSizeMB: vmSpec.Storage * 1024,
+		PublicIP:     vmSpec.Public,
+		Planetary:    vmPlanetary,
+		Entrypoint:   vmEntrypoint,
 		EnvVars: map[string]string{
 			"REPO_URL": repoURL,
 		},

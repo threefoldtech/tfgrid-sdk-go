@@ -39,16 +39,17 @@ func TestVMDeployment(t *testing.T) {
 	network := generateBasicNetwork([]uint32{nodeID})
 
 	vm := workloads.VM{
-		Name:        "vm",
-		NetworkName: network.Name,
-		IP:          "10.20.2.5",
-		CPU:         minCPU,
-		Memory:      int(minMemory) * 1024,
-		RootfsSize:  int(minRootfs) * 1024,
-		PublicIP:    true,
-		Planetary:   true,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:  "/sbin/zinit init",
+		Name:         "vm",
+		NodeID:       nodeID,
+		NetworkName:  network.Name,
+		IP:           "10.20.2.5",
+		CPU:          minCPU,
+		MemoryMB:     minMemory * 1024,
+		RootfsSizeMB: minRootfs * 1024,
+		PublicIP:     true,
+		Planetary:    true,
+		Flist:        "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		Entrypoint:   "/sbin/zinit init",
 		EnvVars: map[string]string{
 			"SSH_KEY": publicKey,
 		},
