@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 const configFile = ".tfgridconfig"
@@ -58,6 +59,13 @@ func GetConfigPath() (string, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return "", errors.Wrap(err, "could not get configuration directory")
+	}
+	if _, err := os.Stat(configDir); os.IsNotExist(err) {
+
+		if err = os.Mkdir(configDir, 0600); err != nil {
+			return "", errors.Wrap(err, "could not create configuration directory")
+		}
+		log.Info().Msg("configuration directory has been created at " + configDir)
 	}
 	path := filepath.Join(configDir, configFile)
 	return path, nil

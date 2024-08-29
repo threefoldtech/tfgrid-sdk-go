@@ -168,7 +168,7 @@ func (znet *ZNet) Validate() error {
 	}
 
 	if len(znet.Nodes) == 0 {
-		return fmt.Errorf("no network nodes are provided")
+		return fmt.Errorf("number of nodes in znet: %s, should be nonzero positive number", znet.Name)
 	}
 
 	mask := znet.IPRange.Mask
