@@ -7,11 +7,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gliderlabs/ssh"
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )
 

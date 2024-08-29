@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 
+	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -58,4 +59,12 @@ func zlogs(dl *gridtypes.Deployment, name string) []Zlog {
 		})
 	}
 	return res
+}
+
+func (z *Zlog) Validate() error {
+	if err := validateName(z.Zmachine); err != nil {
+		return errors.Wrap(err, "zmachine name is invalid")
+	}
+
+	return nil
 }

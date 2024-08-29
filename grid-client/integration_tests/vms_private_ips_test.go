@@ -43,9 +43,10 @@ func TestDeploymentsDeploy(t *testing.T) {
 
 	vm1 := workloads.VM{
 		Name:        vm1Name,
+		NodeID:      nodeID,
 		NetworkName: network.Name,
 		CPU:         minCPU,
-		Memory:      int(minMemory) * 1024,
+		MemoryMB:    minMemory * 1024,
 		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
 		Entrypoint:  "/sbin/zinit init",
 	}
@@ -162,9 +163,10 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 
 	vm1 := workloads.VM{
 		Name:        vm1Name,
+		NodeID:      nodeID1,
 		NetworkName: network.Name,
 		CPU:         minCPU,
-		Memory:      int(minMemory) * 1024,
+		MemoryMB:    minMemory * 1024,
 		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
 		Entrypoint:  "/sbin/zinit init",
 	}
@@ -192,6 +194,9 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	d3 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID2, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil, nil)
 	d3.Vms[1].Name = vm2Name
 	d3.Vms[2].Name = vm3Name
+	d3.Vms[0].NodeID = nodeID2
+	d3.Vms[1].NodeID = nodeID2
+	d3.Vms[2].NodeID = nodeID2
 
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&d1, &d2, &d3})
 	if err != nil {

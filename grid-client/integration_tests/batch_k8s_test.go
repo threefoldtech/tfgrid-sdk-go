@@ -48,43 +48,55 @@ func TestBatchK8sDeployment(t *testing.T) {
 	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 
 	master1 := workloads.K8sNode{
-		Name:      generateRandString(10),
-		Node:      nodeID1,
-		DiskSize:  1,
-		Planetary: true,
-		Flist:     flist,
-		CPU:       minCPU,
-		Memory:    int(minMemory) * 1024,
+		VM: &workloads.VM{
+			Name:        generateRandString(10),
+			NetworkName: network.Name,
+			NodeID:      nodeID1,
+			Planetary:   true,
+			Flist:       flist,
+			CPU:         minCPU,
+			MemoryMB:    minMemory * 1024,
+		},
+		DiskSizeGB: 1,
 	}
 
 	master2 := workloads.K8sNode{
-		Name:      generateRandString(10),
-		Node:      nodeID2,
-		DiskSize:  1,
-		Planetary: true,
-		Flist:     flist,
-		CPU:       minCPU,
-		Memory:    int(minMemory) * 1024,
+		VM: &workloads.VM{
+			Name:        generateRandString(10),
+			NetworkName: network.Name,
+			NodeID:      nodeID2,
+			Planetary:   true,
+			Flist:       flist,
+			CPU:         minCPU,
+			MemoryMB:    minMemory * 1024,
+		},
+		DiskSizeGB: 1,
 	}
 
 	workerNodeData1 := workloads.K8sNode{
-		Name:      generateRandString(10),
-		Node:      nodeID1,
-		DiskSize:  1,
-		Planetary: true,
-		Flist:     flist,
-		CPU:       minCPU,
-		Memory:    int(minMemory) * 1024,
+		VM: &workloads.VM{
+			Name:        generateRandString(10),
+			NetworkName: network.Name,
+			NodeID:      nodeID1,
+			Planetary:   true,
+			Flist:       flist,
+			CPU:         minCPU,
+			MemoryMB:    minMemory * 1024,
+		},
+		DiskSizeGB: 1,
 	}
 
 	workerNodeData2 := workloads.K8sNode{
-		Name:      generateRandString(10),
-		Node:      nodeID2,
-		DiskSize:  1,
-		Planetary: true,
-		Flist:     flist,
-		CPU:       minCPU,
-		Memory:    int(minMemory) * 1024,
+		VM: &workloads.VM{
+			Name:        generateRandString(10),
+			NetworkName: network.Name,
+			NodeID:      nodeID2,
+			Planetary:   true,
+			Flist:       flist,
+			CPU:         minCPU,
+			MemoryMB:    minMemory * 1024,
+		},
+		DiskSizeGB: 1,
 	}
 
 	k8sCluster1 := workloads.K8sCluster{

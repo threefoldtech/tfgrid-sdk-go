@@ -49,7 +49,7 @@ func TestNewDeployment(t *testing.T) {
 		assert.NoError(t, err)
 		zosDeployment.Workloads[3].Result.Data = res
 
-		usedIPs, err := GetUsedIPs(zosDeployment)
+		usedIPs, err := GetUsedIPs(zosDeployment, 1)
 		assert.NoError(t, err)
 		assert.Equal(t, usedIPs, []byte{5})
 	})

@@ -63,7 +63,7 @@ func TestQSFSDeployment(t *testing.T) {
 			Name:        "qsfsDataZdb" + strconv.Itoa(i),
 			Password:    "password",
 			Public:      true,
-			Size:        zdbSize,
+			SizeGB:      zdbSize,
 			Description: "zdb for testing",
 			Mode:        zos.ZDBModeSeq,
 		}
@@ -75,7 +75,7 @@ func TestQSFSDeployment(t *testing.T) {
 			Name:        "qsfsMetaZdb" + strconv.Itoa(i),
 			Password:    "password",
 			Public:      true,
-			Size:        zdbSize,
+			SizeGB:      zdbSize,
 			Description: "zdb for testing",
 			Mode:        zos.ZDBModeUser,
 		}
@@ -151,9 +151,10 @@ func TestQSFSDeployment(t *testing.T) {
 
 	vm := workloads.VM{
 		Name:        "vm",
+		NodeID:      nodeID,
 		NetworkName: network.Name,
 		CPU:         minCPU,
-		Memory:      int(minMemory) * 1024,
+		MemoryMB:    minMemory * 1024,
 		Planetary:   true,
 		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 		Entrypoint:  "/sbin/zinit init",

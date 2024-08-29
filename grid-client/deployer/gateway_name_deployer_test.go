@@ -65,7 +65,7 @@ func constructTestName() workloads.GatewayNameProxy {
 		NodeID:         nodeID,
 		Name:           "name",
 		TLSPassthrough: false,
-		Backends:       []zos.Backend{"http://1.1.1.1", "http://2.2.2.2"},
+		Backends:       []zos.Backend{"http://1.1.1.1"},
 		FQDN:           "name.com",
 	}
 }
@@ -100,8 +100,7 @@ func TestNameDeployer(t *testing.T) {
 			).
 			Return(client.NewNodeClient(nodeID, cl, d.tfPluginClient.RMBTimeout), nil)
 
-		gatewayName := workloads.GatewayNameProxy{NodeID: nodeID}
-		err := d.Validate(context.TODO(), &gatewayName)
+		err := d.Validate(context.TODO(), &gw)
 		assert.Error(t, err)
 	})
 

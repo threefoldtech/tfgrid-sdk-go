@@ -31,7 +31,7 @@ type Vms struct {
 	Name       string            `yaml:"name" validate:"required" json:"name"`
 	Count      uint64            `yaml:"vms_count" validate:"required" json:"vms_count"`
 	NodeGroup  string            `yaml:"node_group" validate:"required" json:"node_group"`
-	FreeCPU    uint64            `yaml:"cpu" validate:"required,max=32" json:"cpu"`
+	FreeCPU    uint8             `yaml:"cpu" validate:"required,max=32" json:"cpu"`
 	FreeMRU    float32           `yaml:"mem" validate:"required,min=0.25,max=256" json:"mem"` // min: 0.25 GB, max: 256 GB
 	SSDDisks   []Disk            `yaml:"ssd" json:"ssd"`
 	Volumes    []Volume          `yaml:"volume" json:"volume"`

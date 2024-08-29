@@ -57,19 +57,19 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		cpu, err := cmd.Flags().GetInt("cpu")
+		cpu, err := cmd.Flags().GetUint8("cpu")
 		if err != nil {
 			return err
 		}
-		memory, err := cmd.Flags().GetInt("memory")
+		memory, err := cmd.Flags().GetUint64("memory")
 		if err != nil {
 			return err
 		}
-		rootfs, err := cmd.Flags().GetInt("rootfs")
+		rootfs, err := cmd.Flags().GetUint64("rootfs")
 		if err != nil {
 			return err
 		}
-		disk, err := cmd.Flags().GetInt("disk")
+		disk, err := cmd.Flags().GetUint64("disk")
 		if err != nil {
 			return err
 		}
@@ -116,9 +116,9 @@ var deployVMCmd = &cobra.Command{
 			Name:           name,
 			EnvVars:        env,
 			CPU:            cpu,
-			Memory:         memory * 1024,
+			MemoryMB:       memory * 1024,
 			GPUs:           convertGPUsToZosGPUs(gpus),
-			RootfsSize:     rootfs * 1024,
+			RootfsSizeMB:   rootfs * 1024,
 			Flist:          flist,
 			Entrypoint:     entrypoint,
 			PublicIP:       ipv4,
@@ -158,7 +158,8 @@ var deployVMCmd = &cobra.Command{
 
 			node = uint32(nodes[0].NodeID)
 		}
-		resVM, err := command.DeployVM(cmd.Context(), t, vm, mount, node)
+		vm.NodeID = node
+		resVM, err := command.DeployVM(cmd.Context(), t, vm, mount)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -198,10 +199,10 @@ func init() {
 	deployVMCmd.Flags().Uint64("farm", 1, "farm id vm should be deployed on")
 	deployVMCmd.MarkFlagsMutuallyExclusive("node", "farm")
 
-	deployVMCmd.Flags().Int("cpu", 1, "number of cpu units")
-	deployVMCmd.Flags().Int("memory", 1, "memory size in gb")
-	deployVMCmd.Flags().Int("rootfs", 2, "root filesystem size in gb")
-	deployVMCmd.Flags().Int("disk", 0, "disk size in gb mounted on /data")
+	deployVMCmd.Flags().Uint8("cpu", 1, "number of cpu units")
+	deployVMCmd.Flags().Uint64("memory", 1, "memory size in gb")
+	deployVMCmd.Flags().Uint64("rootfs", 2, "root filesystem size in gb")
+	deployVMCmd.Flags().Uint64("disk", 0, "disk size in gb mounted on /data")
 	deployVMCmd.Flags().String("flist", ubuntuFlist, "flist for vm")
 	deployVMCmd.Flags().StringSlice("gpus", []string{}, "gpus for vm")
 

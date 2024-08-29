@@ -3,11 +3,16 @@ package workloads
 
 import (
 	"encoding/json"
+	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
+
+var fqdnRegex = regexp.MustCompile(`^([a-zA-Z0-9-_]+\.)+[a-zA-Z0-9-_]{2,}$`)
 
 // GatewayFQDNProxy for gateway FQDN proxy
 type GatewayFQDNProxy struct {
@@ -57,6 +62,47 @@ func NewGatewayFQDNProxyFromZosWorkload(wl gridtypes.Workload) (GatewayFQDNProxy
 		Network:        network,
 		Description:    wl.Description,
 	}, nil
+}
+
+// Validate validates gateway data
+func (g *GatewayFQDNProxy) Validate() error {
+	if err := validateName(g.Name); err != nil {
+		return errors.Wrap(err, "gateway name is invalid")
+	}
+
+	if g.NodeID == 0 {
+		return fmt.Errorf("node ID should be a positive integer not zero")
+	}
+
+	if len(strings.TrimSpace(g.Network)) != 0 {
+		if err := validateName(g.Network); err != nil {
+			return errors.Wrap(err, "gateway network is invalid")
+		}
+	}
+
+	if !fqdnRegex.MatchString(g.FQDN) {
+		return fmt.Errorf("fqdn %s is invalid", g.FQDN)
+	}
+
+	return validateBackend(g.Backends, g.TLSPassthrough)
+}
+
+func validateBackend(backends []zos.Backend, tlsPassthrough bool) error {
+	if len(backends) == 0 {
+		return fmt.Errorf("backends list can not be empty")
+	}
+
+	if len(backends) != 1 {
+		return fmt.Errorf("only one backend is supported")
+	}
+
+	for _, backend := range backends {
+		if err := backend.Valid(tlsPassthrough); err != nil {
+			return errors.Wrapf(err, "failed to validate backend '%s'", backend)
+		}
+	}
+
+	return nil
 }
 
 // ZosWorkload generates a zos workload from GatewayFQDNProxy

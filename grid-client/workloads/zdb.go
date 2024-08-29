@@ -3,23 +3,31 @@ package workloads
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+const (
+	ZDBModeUser = "user"
+	ZDBModeSeq  = "seq"
+)
+
 // ZDB workload struct
 type ZDB struct {
-	Name        string   `json:"name"`
-	Password    string   `json:"password"`
-	Public      bool     `json:"public"`
-	Size        int      `json:"size"`
-	Description string   `json:"description"`
-	Mode        string   `json:"mode"`
-	IPs         []string `json:"ips"`
-	Port        uint32   `json:"port"`
-	Namespace   string   `json:"namespace"`
+	Name        string `json:"name"`
+	Password    string `json:"password"`
+	Public      bool   `json:"public"`
+	SizeGB      uint64 `json:"size"`
+	Description string `json:"description"`
+	Mode        string `json:"mode"`
+
+	// OUTPUT
+	IPs       []string `json:"ips"`
+	Port      uint32   `json:"port"`
+	Namespace string   `json:"namespace"`
 }
 
 // NewZDBFromWorkload generates a new zdb from a workload
@@ -45,7 +53,7 @@ func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 		Description: wl.Description,
 		Password:    data.Password,
 		Public:      data.Public,
-		Size:        int(data.Size / gridtypes.Gigabyte),
+		SizeGB:      uint64(data.Size / gridtypes.Gigabyte),
 		Mode:        data.Mode.String(),
 		IPs:         result.IPs,
 		Port:        uint32(result.Port),
@@ -61,10 +69,26 @@ func (z *ZDB) ZosWorkload() gridtypes.Workload {
 		Description: z.Description,
 		Version:     0,
 		Data: gridtypes.MustMarshal(zos.ZDB{
-			Size:     gridtypes.Unit(z.Size) * gridtypes.Gigabyte,
+			Size:     gridtypes.Unit(z.SizeGB) * gridtypes.Gigabyte,
 			Mode:     zos.ZDBMode(z.Mode),
 			Password: z.Password,
 			Public:   z.Public,
 		}),
 	}
+}
+
+func (z *ZDB) Validate() error {
+	if err := validateName(z.Name); err != nil {
+		return errors.Wrap(err, "zdb name is invalid")
+	}
+
+	if z.SizeGB == 0 {
+		return errors.New("zdb size should be a positive integer not zero")
+	}
+
+	if z.Mode != ZDBModeUser && z.Mode != ZDBModeSeq {
+		return fmt.Errorf("invalid zdb mode '%s'", z.Mode)
+	}
+
+	return nil
 }

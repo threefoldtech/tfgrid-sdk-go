@@ -33,6 +33,11 @@ func (d *GatewayNameDeployer) Validate(ctx context.Context, gw *workloads.Gatewa
 	if err := validateAccountBalanceForExtrinsics(sub, d.tfPluginClient.Identity); err != nil {
 		return err
 	}
+
+	if err := gw.Validate(); err != nil {
+		return err
+	}
+
 	return client.AreNodesUp(ctx, sub, []uint32{gw.NodeID}, d.tfPluginClient.NcPool)
 }
 

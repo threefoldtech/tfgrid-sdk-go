@@ -97,37 +97,43 @@ func constructK8sCluster() (workloads.K8sCluster, error) {
 	}
 
 	master := workloads.K8sNode{
-		Name:          "K8sForTesting",
-		Node:          nodeID,
-		DiskSize:      5,
-		PublicIP:      true,
-		PublicIP6:     true,
-		Planetary:     true,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "5.5.5.5/24",
-		ComputedIP6:   "::7/64",
-		PlanetaryIP:   "::8/64",
-		IP:            "10.1.0.2",
-		CPU:           2,
-		Memory:        1024,
+		VM: &workloads.VM{
+			Name:          "K8sForTesting",
+			NetworkName:   "network",
+			NodeID:        nodeID,
+			PublicIP:      true,
+			PublicIP6:     true,
+			Planetary:     true,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			ComputedIP:    "5.5.5.5/24",
+			ComputedIP6:   "::7/64",
+			PlanetaryIP:   "::8/64",
+			IP:            "10.1.0.2",
+			CPU:           2,
+			MemoryMB:      1024,
+		},
+		DiskSizeGB: 5,
 	}
 
 	worker := workloads.K8sNode{
-		Name:          "worker1",
-		Node:          nodeID,
-		DiskSize:      5,
-		PublicIP:      true,
-		PublicIP6:     true,
-		Planetary:     true,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		ComputedIP:    "",
-		ComputedIP6:   "",
-		PlanetaryIP:   "",
-		IP:            "",
-		CPU:           2,
-		Memory:        1024,
+		VM: &workloads.VM{
+			Name:          "worker1",
+			NetworkName:   "network",
+			NodeID:        nodeID,
+			PublicIP:      true,
+			PublicIP6:     true,
+			Planetary:     true,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			ComputedIP:    "",
+			ComputedIP6:   "",
+			PlanetaryIP:   "",
+			IP:            "",
+			CPU:           2,
+			MemoryMB:      1024,
+		},
+		DiskSizeGB: 5,
 	}
 	workers := []workloads.K8sNode{worker}
 	Cluster := workloads.K8sCluster{
@@ -149,9 +155,6 @@ func TestK8sDeployer(t *testing.T) {
 	t.Run("test validate master reachable", func(t *testing.T) {
 		k8sMockValidation(d.tfPluginClient.Identity, cl, sub, ncPool, proxyCl, d)
 
-		err = d.tfPluginClient.State.AssignNodesIPRange(&k8sCluster)
-		assert.NoError(t, err)
-
 		err = d.Validate(context.Background(), &k8sCluster)
 		assert.NoError(t, err)
 	})
@@ -165,10 +168,10 @@ func TestK8sDeployer(t *testing.T) {
 
 		nodeWorkloads := make(map[uint32][]gridtypes.Workload)
 		masterWorkloads := k8sCluster.Master.MasterZosWorkload(&k8sCluster)
-		nodeWorkloads[k8sCluster.Master.Node] = append(nodeWorkloads[k8sCluster.Master.Node], masterWorkloads...)
+		nodeWorkloads[k8sCluster.Master.NodeID] = append(nodeWorkloads[k8sCluster.Master.NodeID], masterWorkloads...)
 		for _, w := range k8sCluster.Workers {
 			workerWorkloads := w.WorkerZosWorkload(&k8sCluster)
-			nodeWorkloads[w.Node] = append(nodeWorkloads[w.Node], workerWorkloads...)
+			nodeWorkloads[w.NodeID] = append(nodeWorkloads[w.NodeID], workerWorkloads...)
 		}
 
 		wl := nodeWorkloads[nodeID]
@@ -190,7 +193,7 @@ func TestK8sDeployer(t *testing.T) {
 		k8sMockValidation(d.tfPluginClient.Identity, cl, sub, ncPool, proxyCl, d)
 
 		newDeploymentsSolutionProvider := make(map[uint32]*uint64)
-		newDeploymentsSolutionProvider[k8sCluster.Master.Node] = nil
+		newDeploymentsSolutionProvider[k8sCluster.Master.NodeID] = nil
 
 		deployer.EXPECT().Deploy(
 			gomock.Any(),
@@ -343,23 +346,27 @@ func ExampleK8sDeployer_Deploy() {
 	}
 
 	master := workloads.K8sNode{
-		Name:          "K8sForTesting",
-		Node:          nodeID,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		CPU:           2,
-		DiskSize:      5,
-		Memory:        1024,
+		VM: &workloads.VM{
+			Name:          "K8sForTesting",
+			NodeID:        nodeID,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			CPU:           2,
+			MemoryMB:      1024,
+		},
+		DiskSizeGB: 5,
 	}
 
 	worker := workloads.K8sNode{
-		Name:          "worker1",
-		Node:          nodeID,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		DiskSize:      5,
-		CPU:           2,
-		Memory:        1024,
+		VM: &workloads.VM{
+			Name:          "worker1",
+			NodeID:        nodeID,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			CPU:           2,
+			MemoryMB:      1024,
+		},
+		DiskSizeGB: 5,
 	}
 
 	cluster := workloads.K8sCluster{
@@ -416,23 +423,27 @@ func ExampleK8sDeployer_BatchDeploy() {
 	}
 
 	master := workloads.K8sNode{
-		Name:          "mr1",
-		Node:          nodeID,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		CPU:           2,
-		DiskSize:      5,
-		Memory:        1024,
+		VM: &workloads.VM{
+			Name:          "mr1",
+			NodeID:        nodeID,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			CPU:           2,
+			MemoryMB:      1024,
+		},
+		DiskSizeGB: 5,
 	}
 
 	worker := workloads.K8sNode{
-		Name:          "worker1",
-		Node:          nodeID,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		DiskSize:      5,
-		CPU:           2,
-		Memory:        1024,
+		VM: &workloads.VM{
+			Name:          "worker1",
+			NodeID:        nodeID,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			CPU:           2,
+			MemoryMB:      1024,
+		},
+		DiskSizeGB: 5,
 	}
 
 	cluster1 := workloads.K8sCluster{
