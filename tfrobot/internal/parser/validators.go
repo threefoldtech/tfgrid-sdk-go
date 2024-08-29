@@ -83,7 +83,7 @@ func validateVMs(vms []tfrobot.Vms, nodeGroups []tfrobot.NodesGroup, sskKeys map
 			return fmt.Errorf("vms group '%s' ssh key is not found, should refer to one from ssh keys map", vm.Name)
 		}
 
-		if err := workloads.ValidateFlist(vm.Flist); err != nil {
+		if err := workloads.ValidateFlist(vm.Flist, ""); err != nil {
 			return fmt.Errorf("invalid flist for vms group '%s', %w", vm.Name, err)
 		}
 

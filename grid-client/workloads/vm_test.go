@@ -12,15 +12,16 @@ import (
 
 // VMWorkload for tests
 var VMWorkload = VM{
-	Name:         "test",
-	NodeID:       1,
-	Flist:        "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-	CPU:          2,
-	PublicIP:     true,
-	Planetary:    true,
-	MemoryMB:     1024,
-	RootfsSizeMB: 20 * 1024,
-	Entrypoint:   "/sbin/zinit init",
+	Name:          "test",
+	NodeID:        1,
+	Flist:         "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+	FlistChecksum: "f94b5407f2e8635bd1b6b3dac7fef2d9",
+	CPU:           2,
+	PublicIP:      true,
+	Planetary:     true,
+	MemoryMB:      1024,
+	RootfsSizeMB:  20 * 1024,
+	Entrypoint:    "/sbin/zinit init",
 	EnvVars: map[string]string{
 		"SSH_KEY": "",
 	},

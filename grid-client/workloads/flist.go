@@ -8,6 +8,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 // FlistChecksumURL returns flist check sum url format
@@ -29,12 +31,29 @@ func GetFlistChecksum(url string) (string, error) {
 	return strings.TrimSpace(string(hash)), err
 }
 
-func ValidateFlist(flistUrl string) error {
+func ValidateFlist(flistUrl, flistChecksum string) error {
 	flistExt := path.Ext(flistUrl)
 	if flistExt != ".fl" && flistExt != ".flist" {
 		return fmt.Errorf("flist: '%s' is invalid, should have a valid flist extension", flistUrl)
 	}
 
+	// checksum check
+	if flistChecksum != "" {
+		checksum, err := GetFlistChecksum(flistUrl)
+		if err != nil {
+			return errors.Wrap(err, "failed to get flist checksum")
+		}
+		if flistChecksum != checksum {
+			return errors.Errorf(
+				"passed checksum %s does not match %s returned from %s",
+				flistChecksum,
+				checksum,
+				FlistChecksumURL(flistUrl),
+			)
+		}
+	}
+
+	// check flist
 	cl := &http.Client{
 		Timeout: 10 * time.Second,
 	}

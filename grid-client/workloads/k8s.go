@@ -54,6 +54,11 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize uint6
 		}
 	}
 
+	flistCheckSum, err := GetFlistChecksum(d.FList)
+	if err != nil {
+		return k, err
+	}
+
 	var myceliumIPSeed []byte
 	if d.Network.Mycelium != nil {
 		myceliumIPSeed = d.Network.Mycelium.Seed
@@ -73,6 +78,7 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize uint6
 			PublicIP6:      computedIP6 != "",
 			Planetary:      result.PlanetaryIP != "",
 			Flist:          d.FList,
+			FlistChecksum:  flistCheckSum,
 			ComputedIP:     computedIP,
 			ComputedIP6:    computedIP6,
 			PlanetaryIP:    result.PlanetaryIP,

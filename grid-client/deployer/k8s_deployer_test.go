@@ -91,41 +91,47 @@ func k8sMockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub
 
 func constructK8sCluster() (workloads.K8sCluster, error) {
 	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
+	flistCheckSum, err := workloads.GetFlistChecksum(flist)
+	if err != nil {
+		return workloads.K8sCluster{}, err
+	}
 
 	master := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:        "K8sForTesting",
-			NetworkName: "network",
-			NodeID:      nodeID,
-			PublicIP:    true,
-			PublicIP6:   true,
-			Planetary:   true,
-			Flist:       flist,
-			ComputedIP:  "5.5.5.5/24",
-			ComputedIP6: "::7/64",
-			PlanetaryIP: "::8/64",
-			IP:          "10.1.0.2",
-			CPU:         2,
-			MemoryMB:    1024,
+			Name:          "K8sForTesting",
+			NetworkName:   "network",
+			NodeID:        nodeID,
+			PublicIP:      true,
+			PublicIP6:     true,
+			Planetary:     true,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			ComputedIP:    "5.5.5.5/24",
+			ComputedIP6:   "::7/64",
+			PlanetaryIP:   "::8/64",
+			IP:            "10.1.0.2",
+			CPU:           2,
+			MemoryMB:      1024,
 		},
 		DiskSizeGB: 5,
 	}
 
 	worker := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:        "worker1",
-			NetworkName: "network",
-			NodeID:      nodeID,
-			PublicIP:    true,
-			PublicIP6:   true,
-			Planetary:   true,
-			Flist:       flist,
-			ComputedIP:  "",
-			ComputedIP6: "",
-			PlanetaryIP: "",
-			IP:          "",
-			CPU:         2,
-			MemoryMB:    1024,
+			Name:          "worker1",
+			NetworkName:   "network",
+			NodeID:        nodeID,
+			PublicIP:      true,
+			PublicIP6:     true,
+			Planetary:     true,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			ComputedIP:    "",
+			ComputedIP6:   "",
+			PlanetaryIP:   "",
+			IP:            "",
+			CPU:           2,
+			MemoryMB:      1024,
 		},
 		DiskSizeGB: 5,
 	}
@@ -316,6 +322,11 @@ func ExampleK8sDeployer_Deploy() {
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
 	const flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
+	flistCheckSum, err := workloads.GetFlistChecksum(flist)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
@@ -336,22 +347,24 @@ func ExampleK8sDeployer_Deploy() {
 
 	master := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:     "K8sForTesting",
-			NodeID:   nodeID,
-			Flist:    flist,
-			CPU:      2,
-			MemoryMB: 1024,
+			Name:          "K8sForTesting",
+			NodeID:        nodeID,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			CPU:           2,
+			MemoryMB:      1024,
 		},
 		DiskSizeGB: 5,
 	}
 
 	worker := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:     "worker1",
-			NodeID:   nodeID,
-			Flist:    flist,
-			CPU:      2,
-			MemoryMB: 1024,
+			Name:          "worker1",
+			NodeID:        nodeID,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			CPU:           2,
+			MemoryMB:      1024,
 		},
 		DiskSizeGB: 5,
 	}
@@ -386,6 +399,11 @@ func ExampleK8sDeployer_BatchDeploy() {
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
 	const flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
+	flistCheckSum, err := workloads.GetFlistChecksum(flist)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	tfPluginClient, err := NewTFPluginClient(mnemonic, WithNetwork(network))
 	if err != nil {
@@ -406,22 +424,24 @@ func ExampleK8sDeployer_BatchDeploy() {
 
 	master := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:     "mr1",
-			NodeID:   nodeID,
-			Flist:    flist,
-			CPU:      2,
-			MemoryMB: 1024,
+			Name:          "mr1",
+			NodeID:        nodeID,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			CPU:           2,
+			MemoryMB:      1024,
 		},
 		DiskSizeGB: 5,
 	}
 
 	worker := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:     "worker1",
-			NodeID:   nodeID,
-			Flist:    flist,
-			CPU:      2,
-			MemoryMB: 1024,
+			Name:          "worker1",
+			NodeID:        nodeID,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			CPU:           2,
+			MemoryMB:      1024,
 		},
 		DiskSizeGB: 5,
 	}

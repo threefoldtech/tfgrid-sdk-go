@@ -119,22 +119,23 @@ func constructTestDeployment() workloads.Deployment {
 			NetworkName: "network",
 		},
 		{
-			Name:         "vm2",
-			NodeID:       nodeID,
-			Flist:        "https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist",
-			PublicIP:     false,
-			PublicIP6:    true,
-			Planetary:    true,
-			Corex:        true,
-			ComputedIP:   "",
-			ComputedIP6:  "::7/64",
-			PlanetaryIP:  "::8/64",
-			IP:           "10.1.0.2",
-			Description:  "vm2_description",
-			CPU:          1,
-			MemoryMB:     1024,
-			RootfsSizeMB: 1024,
-			Entrypoint:   "/sbin/zinit init",
+			Name:          "vm2",
+			NodeID:        nodeID,
+			Flist:         "https://hub.grid.tf/omar0.3bot/omarelawady-ubuntu-20.04.flist",
+			FlistChecksum: "f0ae02b6244db3a5f842decd082c4e08",
+			PublicIP:      false,
+			PublicIP6:     true,
+			Planetary:     true,
+			Corex:         true,
+			ComputedIP:    "",
+			ComputedIP6:   "::7/64",
+			PlanetaryIP:   "::8/64",
+			IP:            "10.1.0.2",
+			Description:   "vm2_description",
+			CPU:           1,
+			MemoryMB:      1024,
+			RootfsSizeMB:  1024,
+			Entrypoint:    "/sbin/zinit init",
 			Mounts: []workloads.Mount{
 				{
 					Name:       "disk1",
@@ -285,6 +286,20 @@ func TestDeploymentDeployerValidate(t *testing.T) {
 	assert.NoError(t, err)
 
 	d, _, sub, _, _ := constructTestDeployer(t, tfPluginClient, false)
+
+	t.Run("test validate flist checksum ", func(t *testing.T) {
+		dl := constructTestDeployment()
+
+		network := dl.NetworkName
+		checksum := dl.Vms[0].FlistChecksum
+		dl.NetworkName = network
+
+		dl.Vms[0].FlistChecksum += " "
+		assert.Error(t, d.Validate(context.Background(), []*workloads.Deployment{&dl}))
+
+		dl.Vms[0].FlistChecksum = checksum
+		assert.NoError(t, d.Validate(context.Background(), []*workloads.Deployment{&dl}))
+	})
 
 	t.Run("Validation failed", func(t *testing.T) {
 		dl := constructTestDeployment()

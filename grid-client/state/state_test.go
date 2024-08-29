@@ -225,6 +225,8 @@ func TestLoadGatewayNameFromGrid(t *testing.T) {
 
 func TestLoadK8sFromGrid(t *testing.T) {
 	flist := "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+	flistCheckSum, err := workloads.GetFlistChecksum(flist)
+	assert.NoError(t, err)
 
 	res, _ := json.Marshal(zos.ZMachineResult{
 		IP:          "1.1.1.1",
@@ -233,16 +235,17 @@ func TestLoadK8sFromGrid(t *testing.T) {
 
 	master := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:        "test",
-			NodeID:      1,
-			Flist:       flist,
-			PublicIP:    false,
-			Planetary:   true,
-			CPU:         1,
-			MemoryMB:    8,
-			PlanetaryIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
-			IP:          "1.1.1.1",
-			NetworkName: "test",
+			Name:          "test",
+			NodeID:        1,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			PublicIP:      false,
+			Planetary:     true,
+			CPU:           1,
+			MemoryMB:      8,
+			PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+			IP:            "1.1.1.1",
+			NetworkName:   "test",
 		},
 	}
 
@@ -566,21 +569,22 @@ func TestLoadVMFromGrid(t *testing.T) {
 	var zlogs []workloads.Zlog
 
 	vm := workloads.VM{
-		Name:         "test",
-		NodeID:       1,
-		Flist:        "flist test",
-		PublicIP:     false,
-		ComputedIP:   "",
-		PublicIP6:    false,
-		Planetary:    true,
-		Corex:        false,
-		PlanetaryIP:  "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
-		IP:           "1.1.1.1",
-		Description:  "test des",
-		CPU:          2,
-		MemoryMB:     2048,
-		RootfsSizeMB: 4096,
-		Entrypoint:   "entrypoint",
+		Name:          "test",
+		NodeID:        1,
+		Flist:         "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		FlistChecksum: "f94b5407f2e8635bd1b6b3dac7fef2d9",
+		PublicIP:      false,
+		ComputedIP:    "",
+		PublicIP6:     false,
+		Planetary:     true,
+		Corex:         false,
+		PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+		IP:            "1.1.1.1",
+		Description:   "test des",
+		CPU:           2,
+		MemoryMB:      2048,
+		RootfsSizeMB:  4096,
+		Entrypoint:    "entrypoint",
 		Mounts: []workloads.Mount{
 			{Name: "disk", MountPoint: "mount"},
 		},
@@ -603,7 +607,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 		Name:    gridtypes.Name("test"),
 		Type:    zos.ZMachineType,
 		Data: gridtypes.MustMarshal(zos.ZMachine{
-			FList: "flist test",
+			FList: "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 			Network: zos.MachineNetwork{
 				Interfaces: []zos.MachineInterface{
 					{

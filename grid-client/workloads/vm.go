@@ -16,17 +16,18 @@ import (
 
 // VM is a virtual machine struct
 type VM struct {
-	Name        string `json:"name"`
-	NodeID      uint32 `json:"node"`
-	NetworkName string `json:"network_name"`
-	Description string `json:"description"`
-	Flist       string `json:"flist"`
-	Entrypoint  string `json:"entrypoint"`
-	PublicIP    bool   `json:"publicip"`
-	PublicIP6   bool   `json:"publicip6"`
-	Planetary   bool   `json:"planetary"`
-	Corex       bool   `json:"corex"` // TODO: Is it works ??
-	IP          string `json:"ip"`
+	Name          string `json:"name"`
+	NodeID        uint32 `json:"node"`
+	NetworkName   string `json:"network_name"`
+	Description   string `json:"description"`
+	Flist         string `json:"flist"`
+	FlistChecksum string `json:"flist_checksum"`
+	Entrypoint    string `json:"entrypoint"`
+	PublicIP      bool   `json:"publicip"`
+	PublicIP6     bool   `json:"publicip6"`
+	Planetary     bool   `json:"planetary"`
+	Corex         bool   `json:"corex"` // TODO: Is it works ??
+	IP            string `json:"ip"`
 	// used to get the same mycelium ip for the vm.
 	MyceliumIPSeed []byte            `json:"mycelium_ip_seed"`
 	GPUs           []zos.GPU         `json:"gpus"`
@@ -99,11 +100,17 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment, nodeID 
 		myceliumIPSeed = data.Network.Mycelium.Seed
 	}
 
+	flistCheckSum, err := GetFlistChecksum(data.FList)
+	if err != nil {
+		return VM{}, errors.Wrap(err, "failed to get flist checksum")
+	}
+
 	return VM{
 		Name:           wl.Name.String(),
 		NodeID:         nodeID,
 		Description:    wl.Description,
 		Flist:          data.FList,
+		FlistChecksum:  flistCheckSum,
 		PublicIP:       !pubIPRes.IP.Nil(),
 		ComputedIP:     pubIP4,
 		PublicIP6:      !pubIPRes.IPv6.Nil(),
@@ -239,7 +246,7 @@ func (vm *VM) Validate() error {
 		}
 	}
 
-	if err := ValidateFlist(vm.Flist); err != nil {
+	if err := ValidateFlist(vm.Flist, vm.FlistChecksum); err != nil {
 		return errors.Wrap(err, "flist is invalid")
 	}
 
@@ -310,6 +317,7 @@ func (vm *VM) LoadFromVM(vm2 *VM) {
 	sort.Slice(vm.Mounts, func(i, j int) bool {
 		return names[vm.Mounts[i].Name] < names[vm.Mounts[j].Name]
 	})
+	vm.FlistChecksum = vm2.FlistChecksum
 }
 
 func RandomMyceliumIPSeed() ([]byte, error) {
