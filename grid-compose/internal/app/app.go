@@ -53,7 +53,7 @@ func NewApp(net, mnemonic, configPath string) (*App, error) {
 
 // GetProjectName returns the project name for the given key
 func (a *App) GetProjectName(key string) string {
-	return fmt.Sprintf("compose/%v/%v", a.Client.TwinID, key)
+	return fmt.Sprintf("vm/compose/%v/%v", a.Client.TwinID, key)
 }
 
 // GetDeploymentName returns the deployment name for the given key

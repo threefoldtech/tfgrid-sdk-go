@@ -112,9 +112,9 @@ output:
 
 ```bash
 3:45AM INF starting peer session=tf-854215 twin=8658
-3:45AM INF canceling deployments projectName=compose/8658/net1
-3:45AM INF canceling contracts project name=compose/8658/net1
-3:45AM INF project is canceled project name=compose/8658/net1
+3:45AM INF canceling deployments projectName=vm/compose/8658/net1
+3:45AM INF canceling contracts project name=vm/compose/8658/net1
+3:45AM INF project is canceled project name=vm/compose/8658/net1
 ```
 
 ### ps
