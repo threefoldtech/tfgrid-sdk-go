@@ -408,6 +408,12 @@ $$
 BEGIN
     IF (TG_OP = 'UPDATE' AND NEW.state = 'Deleted') THEN
         BEGIN
+            -- lock cache row to prevent concurrent updates
+            PERFORM 1
+            FROM resources_cache 
+            WHERE node_id = NEW.node_id
+            FOR UPDATE;
+
             UPDATE resources_cache
             SET 
                 used_cru = resources_cache.used_cru - contract_resources.cru,
@@ -621,7 +627,7 @@ BEGIN
 
             total_ips = total_ips + (
                 CASE 
-                WHEN TG_OP = 'INSERT' 
+                WHEN TG_OP = 'INSERT'
                     THEN 1 
                 WHEn TG_OP = 'DELETE'
                     THEN -1
