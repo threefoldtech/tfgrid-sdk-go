@@ -6,11 +6,15 @@ Check `/version` on any instance to know the version.
 
 ### 3.13
 
+## Releases
+
+### v0.15.12
+
 ---
 
-- include releases from v0.13.5 to v0.14.11
-
-## Releases
+- `fix` serialization_failure due to concurrent update
+- `feat` include gpu cards in the node response
+- `feat` use proper level logging
 
 ### v0.15.11
 
