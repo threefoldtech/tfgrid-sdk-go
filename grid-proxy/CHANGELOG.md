@@ -8,7 +8,7 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
-### v0.15.12
+### v0.15.13
 
 ---
 
