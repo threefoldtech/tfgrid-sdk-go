@@ -442,7 +442,7 @@ BEGIN
                 AND resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
-                RAISE EXCEPTION 'failed reflecting node_contract updates %', SQLERRM;
+                RAISE NOTICE 'failed reflecting node_contract updates %', SQLERRM;
         END;
 
     ELSIF (TG_OP = 'INSERT') THEN
@@ -457,7 +457,7 @@ BEGIN
             WHERE resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
-                RAISE EXCEPTION 'failed calc node_contracts_count %', SQLERRM;
+                RAISE NOTICE 'failed calc node_contracts_count %', SQLERRM;
         END; 
     END IF;
 RETURN NULL;
