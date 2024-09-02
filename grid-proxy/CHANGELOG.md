@@ -8,6 +8,12 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.14
+
+---
+
+- `fix` health report depend on diagnostics
+
 ### v0.15.13
 
 ---
