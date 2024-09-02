@@ -12,10 +12,10 @@ require (
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240710094608-5a9ad375cb3c
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240827163226-d4e15e206974
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.10
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.10
-	github.com/threefoldtech/zos v0.5.6-0.20240613101720-0a4726af4edd
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.14
+	github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee
 	github.com/vedhavyas/go-subkey v1.0.3
 	gopkg.in/yaml.v3 v3.0.1
 )
