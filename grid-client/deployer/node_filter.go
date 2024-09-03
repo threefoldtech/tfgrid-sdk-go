@@ -21,6 +21,8 @@ import (
 
 const requestedPagesPerIteration = 5
 
+var ErrNoNodesMatchesResources = errors.New("could not find enough nodes with specified options")
+
 // FilterNodes filters nodes using proxy
 func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, optionalLimit ...uint64) ([]types.Node, error) {
 	ctx, cancel := context.WithCancel(ctx)
@@ -89,11 +91,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 
 		if len(optionalLimit) == 0 { // no limit and didn't reach default limit
 			if len(nodes) == 0 {
-				opts, err := serializeOptions(options)
-				if err != nil {
-					log.Debug().Err(err).Send()
-				}
-				return []types.Node{}, fmt.Errorf("could not find enough nodes with options: %s", opts)
+				return []types.Node{}, ErrNoNodesMatchesResources
 			}
 			return nodes, nil
 		}
@@ -103,11 +101,7 @@ func FilterNodes(ctx context.Context, tfPlugin TFPluginClient, options types.Nod
 		return []types.Node{}, errors.Errorf("could not find enough nodes, found errors: %v", errs)
 	}
 
-	opts, err := serializeOptions(options)
-	if err != nil {
-		log.Debug().Err(err).Send()
-	}
-	return []types.Node{}, errors.Errorf("could not find enough nodes with options: %s", opts)
+	return []types.Node{}, ErrNoNodesMatchesResources
 }
 
 func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFilter, ssdDisks, hddDisks, rootfs []uint64, limit types.Limit, output chan<- types.Node) error {
@@ -175,9 +169,7 @@ func getNodes(ctx context.Context, tfPlugin TFPluginClient, options types.NodeFi
 	return nil
 }
 
-var (
-	trueVal = true
-)
+var trueVal = true
 
 // GetPublicNode return public node ID
 func GetPublicNode(ctx context.Context, tfPlugin TFPluginClient, preferredNodes []uint32) (uint32, error) {
