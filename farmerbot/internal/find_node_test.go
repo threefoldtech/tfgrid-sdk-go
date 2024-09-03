@@ -10,9 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-	zos "github.com/threefoldtech/zos/client"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func reset(t *testing.T, farmerbot FarmerBot, oldNode1, oldNode2 node, oldFarm substrate.Farm) {
@@ -46,7 +45,7 @@ func TestFindNode(t *testing.T) {
 	assert.Error(t, err)
 
 	// mock state
-	resources := gridtypes.Capacity{HRU: gridtypes.Unit(convertGBToBytes(1)), SRU: gridtypes.Unit(convertGBToBytes(1)), CRU: 1, MRU: gridtypes.Unit(convertGBToBytes(1))}
+	resources := pkg.Capacity{HRU: convertGBToBytes(1), SRU: convertGBToBytes(1), CRU: 1, MRU: convertGBToBytes(1)}
 	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
 	state, err := newState(ctx, sub, rmb, inputs, farmTwinID)
@@ -143,7 +142,7 @@ func TestFindNode(t *testing.T) {
 
 	t.Run("test valid find node: no gpus with specified device/vendor in first node (second is found)", func(t *testing.T) {
 		node2 := farmerbot.nodes[1]
-		node2.gpus = []zos.GPU{
+		node2.gpus = []pkg.GPU{
 			{
 				Device: "device",
 				Vendor: "vendor",

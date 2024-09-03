@@ -59,9 +59,9 @@ require (
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.2.2 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240710094608-5a9ad375cb3c // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.10 // indirect
-	github.com/threefoldtech/zos v0.5.6-0.20240613101720-0a4726af4edd // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240827163226-d4e15e206974 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.14 // indirect
+	github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	golang.org/x/crypto v0.26.0 // indirect

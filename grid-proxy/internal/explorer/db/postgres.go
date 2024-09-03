@@ -360,6 +360,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"node.extra_fee",
 			"resources_cache.node_contracts_count",
 			"resources_cache.node_gpu_count AS num_gpu",
+			"resources_cache.gpus",
 			"health_report.healthy",
 			"node_ipv6.has_ipv6",
 			"resources_cache.bios",
