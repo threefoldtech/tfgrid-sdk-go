@@ -60,20 +60,21 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	}
 
 	vm := workloads.VM{
-		Name:        "gpu",
-		NetworkName: network.Name,
-		CPU:         4,
-		Memory:      1024 * 8,
-		RootfsSize:  int(minRootfs) * 1024,
-		Planetary:   true,
-		GPUs:        ConvertGPUsToStr(gpus),
-		Flist:       "https://hub.grid.tf/tf-official-vms/ubuntu-22.04.flist",
-		Entrypoint:  "/init.sh",
+		Name:         "gpu",
+		NodeID:       nodeID,
+		NetworkName:  network.Name,
+		CPU:          4,
+		MemoryMB:     1024 * 8,
+		RootfsSizeMB: minRootfs * 1024,
+		Planetary:    true,
+		GPUs:         ConvertGPUsToStr(gpus),
+		Flist:        "https://hub.grid.tf/tf-official-vms/ubuntu-22.04.flist",
+		Entrypoint:   "/init.sh",
 		EnvVars: map[string]string{
 			"SSH_KEY": publicKey,
 		},
 		Mounts: []workloads.Mount{
-			{DiskName: disk.Name, MountPoint: "/data"},
+			{Name: disk.Name, MountPoint: "/data"},
 		},
 	}
 

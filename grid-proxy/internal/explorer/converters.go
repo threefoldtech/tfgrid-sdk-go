@@ -72,6 +72,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 			Upload:   info.UploadSpeed,
 			Download: info.DownloadSpeed,
 		},
+		GPUs:     info.Gpus,
 		PriceUsd: math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
@@ -158,6 +159,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 			Upload:   info.UploadSpeed,
 			Download: info.DownloadSpeed,
 		},
+		GPUs:     info.Gpus,
 		PriceUsd: math.Round(info.PriceUsd*1000) / 1000,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)

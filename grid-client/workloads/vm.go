@@ -7,52 +7,61 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-// ErrInvalidInput for invalid inputs
-var ErrInvalidInput = errors.New("invalid input")
-
 // VM is a virtual machine struct
 type VM struct {
 	Name          string `json:"name"`
+	NodeID        uint32 `json:"node"`
+	NetworkName   string `json:"network_name"`
+	Description   string `json:"description"`
 	Flist         string `json:"flist"`
 	FlistChecksum string `json:"flist_checksum"`
+	Entrypoint    string `json:"entrypoint"`
 	PublicIP      bool   `json:"publicip"`
 	PublicIP6     bool   `json:"publicip6"`
 	Planetary     bool   `json:"planetary"`
-	Corex         bool   `json:"corex"` //TODO: Is it works ??
-	ComputedIP    string `json:"computedip"`
-	ComputedIP6   string `json:"computedip6"`
-	PlanetaryIP   string `json:"planetary_ip"`
-	MyceliumIP    string `json:"mycelium_ip"`
+	Corex         bool   `json:"corex"` // TODO: Is it works ??
 	IP            string `json:"ip"`
 	// used to get the same mycelium ip for the vm.
 	MyceliumIPSeed []byte            `json:"mycelium_ip_seed"`
-	Description    string            `json:"description"`
 	GPUs           []zos.GPU         `json:"gpus"`
-	CPU            int               `json:"cpu"`
-	Memory         int               `json:"memory"`
-	RootfsSize     int               `json:"rootfs_size"`
-	Entrypoint     string            `json:"entrypoint"`
+	CPU            uint8             `json:"cpu"`
+	MemoryMB       uint64            `json:"memory"`
+	RootfsSizeMB   uint64            `json:"rootfs_size"`
 	Mounts         []Mount           `json:"mounts"`
 	Zlogs          []Zlog            `json:"zlogs"`
 	EnvVars        map[string]string `json:"env_vars"`
-	NetworkName    string            `json:"network_name"`
-	ConsoleURL     string            `json:"console_url"`
+
+	// OUTPUT
+	ComputedIP  string `json:"computedip"`
+	ComputedIP6 string `json:"computedip6"`
+	PlanetaryIP string `json:"planetary_ip"`
+	MyceliumIP  string `json:"mycelium_ip"`
+	ConsoleURL  string `json:"console_url"`
 }
 
-// Mount disks struct
+// Mount disks/volumes struct
 type Mount struct {
-	DiskName   string `json:"disk_name"`
-	MountPoint string `json:"mount_point"`
+	Name       string `json:"name"`
+	MountPoint string `yaml:"mount_point" json:"mount_point"`
+}
+
+func (m *Mount) Validate() error {
+	if err := validateName(m.Name); err != nil {
+		return errors.Wrap(err, "mount name is invalid")
+	}
+
+	return nil
 }
 
 // NewVMFromWorkload generates a new vm from given workloads and deployment
-func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, error) {
+func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment, nodeID uint32) (VM, error) {
 	dataI, err := wl.WorkloadData()
 	if err != nil {
 		return VM{}, errors.Wrap(err, "failed to get workload data")
@@ -91,11 +100,17 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, er
 		myceliumIPSeed = data.Network.Mycelium.Seed
 	}
 
+	flistCheckSum, err := GetFlistChecksum(data.FList)
+	if err != nil {
+		return VM{}, errors.Wrap(err, "failed to get flist checksum")
+	}
+
 	return VM{
 		Name:           wl.Name.String(),
+		NodeID:         nodeID,
 		Description:    wl.Description,
 		Flist:          data.FList,
-		FlistChecksum:  "",
+		FlistChecksum:  flistCheckSum,
 		PublicIP:       !pubIPRes.IP.Nil(),
 		ComputedIP:     pubIP4,
 		PublicIP6:      !pubIPRes.IPv6.Nil(),
@@ -106,10 +121,10 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment) (VM, er
 		MyceliumIP:     result.MyceliumIP,
 		MyceliumIPSeed: myceliumIPSeed,
 		IP:             data.Network.Interfaces[0].IP.String(),
-		CPU:            int(data.ComputeCapacity.CPU),
+		CPU:            data.ComputeCapacity.CPU,
 		GPUs:           data.GPU,
-		Memory:         int(data.ComputeCapacity.Memory / gridtypes.Megabyte),
-		RootfsSize:     int(data.Size / gridtypes.Megabyte),
+		MemoryMB:       uint64(data.ComputeCapacity.Memory / gridtypes.Megabyte),
+		RootfsSizeMB:   uint64(data.Size / gridtypes.Megabyte),
 		Entrypoint:     data.Entrypoint,
 		Mounts:         mounts(data.Mounts),
 		Zlogs:          zlogs(dl, wl.Name.String()),
@@ -123,7 +138,7 @@ func mounts(mounts []zos.MachineMount) []Mount {
 	var res []Mount
 	for _, mount := range mounts {
 		res = append(res, Mount{
-			DiskName:   mount.Name.String(),
+			Name:       mount.Name.String(),
 			MountPoint: mount.Mountpoint,
 		})
 	}
@@ -163,7 +178,7 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 
 	var mounts []zos.MachineMount
 	for _, mount := range vm.Mounts {
-		mounts = append(mounts, zos.MachineMount{Name: gridtypes.Name(mount.DiskName), Mountpoint: mount.MountPoint})
+		mounts = append(mounts, zos.MachineMount{Name: gridtypes.Name(mount.Name), Mountpoint: mount.MountPoint})
 	}
 	for _, zlog := range vm.Zlogs {
 		zlogWorkload := zlog.ZosWorkload()
@@ -194,10 +209,10 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 				Mycelium:  myceliumIP,
 			},
 			ComputeCapacity: zos.MachineCapacity{
-				CPU:    uint8(vm.CPU),
-				Memory: gridtypes.Unit(uint(vm.Memory)) * gridtypes.Megabyte,
+				CPU:    vm.CPU,
+				Memory: gridtypes.Unit(uint(vm.MemoryMB)) * gridtypes.Megabyte,
 			},
-			Size:       gridtypes.Unit(vm.RootfsSize) * gridtypes.Megabyte,
+			Size:       gridtypes.Unit(vm.RootfsSizeMB) * gridtypes.Megabyte,
 			GPU:        vm.GPUs,
 			Entrypoint: vm.Entrypoint,
 			Corex:      vm.Corex,
@@ -212,39 +227,78 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 }
 
 // Validate validates a virtual machine data
-// cpu: from 1:32
-// checks if the given flistChecksum equals the checksum of the given flist
 func (vm *VM) Validate() error {
+	if err := validateName(vm.Name); err != nil {
+		return errors.Wrap(err, "virtual machine name is invalid")
+	}
+
+	if err := validateName(vm.NetworkName); err != nil {
+		return errors.Wrap(err, "network name is invalid")
+	}
+
+	if vm.NodeID == 0 {
+		return fmt.Errorf("node ID should be a positive integer not zero")
+	}
+
+	if len(strings.TrimSpace(vm.IP)) != 0 {
+		if ip := net.ParseIP(vm.IP); ip == nil {
+			return fmt.Errorf("invalid ip '%s'", vm.IP)
+		}
+	}
+
+	if err := ValidateFlist(vm.Flist, vm.FlistChecksum); err != nil {
+		return errors.Wrap(err, "flist is invalid")
+	}
+
 	if vm.CPU < 1 || vm.CPU > 32 {
-		return errors.Wrap(ErrInvalidInput, "CPUs must be more than or equal to 1 and less than or equal to 32")
+		return errors.New("CPUs must be more than or equal to 1 and less than or equal to 32")
+	}
+
+	if gridtypes.Unit(vm.MemoryMB) < 250 {
+		return fmt.Errorf("memory capacity can't be less that 250 MB")
+	}
+
+	minRoot := vm.MinRootSize()
+	if vm.RootfsSizeMB != 0 && uint64(gridtypes.Unit(vm.RootfsSizeMB)*gridtypes.Megabyte) < minRoot {
+		return fmt.Errorf("rootfs size can't be less than %d. Set to 0 for minimum", minRoot)
 	}
 
 	for _, g := range vm.GPUs {
 		_, _, _, err := g.Parts()
 		if err != nil {
-			return errors.Wrap(ErrInvalidInput, "failed to validate GPUs")
+			return errors.Wrap(err, "failed to validate GPUs")
 		}
 	}
 
-	if vm.FlistChecksum != "" {
-		checksum, err := GetFlistChecksum(vm.Flist)
-		if err != nil {
-			return errors.Wrap(err, "failed to get flist checksum")
-		}
-		if vm.FlistChecksum != checksum {
-			return errors.Errorf(
-				"passed checksum %s of %s does not match %s returned from %s",
-				vm.FlistChecksum,
-				vm.Name,
-				checksum,
-				FlistChecksumURL(vm.Flist),
-			)
-		}
-	}
 	if len(vm.MyceliumIPSeed) != zos.MyceliumIPSeedLen && len(vm.MyceliumIPSeed) != 0 {
 		return fmt.Errorf("invalid mycelium ip seed length %d must be %d or empty", len(vm.MyceliumIPSeed), zos.MyceliumIPSeedLen)
 	}
+
+	for _, zlog := range vm.Zlogs {
+		if err := zlog.Validate(); err != nil {
+			return errors.Wrap(err, "invalid zlog")
+		}
+	}
+
+	for _, mount := range vm.Mounts {
+		if err := mount.Validate(); err != nil {
+			return errors.Wrap(err, "invalid mount")
+		}
+	}
+
 	return nil
+}
+
+func (vm *VM) MinRootSize() uint64 {
+	// sru = (cpu * mem_in_gb) / 8
+	// each 1 SRU is 50GB of storage
+	sru := gridtypes.Unit(vm.CPU) * gridtypes.Unit(vm.MemoryMB) / (8 * gridtypes.Gigabyte)
+
+	if sru == 0 {
+		return uint64(500 * gridtypes.Megabyte)
+	}
+
+	return uint64(2 * gridtypes.Gigabyte)
 }
 
 // LoadFromVM compares the vm with another given vm
@@ -255,13 +309,13 @@ func (vm *VM) LoadFromVM(vm2 *VM) {
 		names[zlog.Output] = idx - l
 	}
 	for idx, mount := range vm2.Mounts {
-		names[mount.DiskName] = idx - l
+		names[mount.Name] = idx - l
 	}
 	sort.Slice(vm.Zlogs, func(i, j int) bool {
 		return names[vm.Zlogs[i].Output] < names[vm.Zlogs[j].Output]
 	})
 	sort.Slice(vm.Mounts, func(i, j int) bool {
-		return names[vm.Mounts[i].DiskName] < names[vm.Mounts[j].DiskName]
+		return names[vm.Mounts[i].Name] < names[vm.Mounts[j].Name]
 	})
 	vm.FlistChecksum = vm2.FlistChecksum
 }

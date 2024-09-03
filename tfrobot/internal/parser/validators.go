@@ -2,15 +2,14 @@ package parser
 
 import (
 	"fmt"
-	"net/http"
-	"path"
 	"regexp"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/cosmos/go-bip39"
+	"github.com/go-playground/validator/v10"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 	"golang.org/x/sync/errgroup"
 )
@@ -84,9 +83,10 @@ func validateVMs(vms []tfrobot.Vms, nodeGroups []tfrobot.NodesGroup, sskKeys map
 			return fmt.Errorf("vms group '%s' ssh key is not found, should refer to one from ssh keys map", vm.Name)
 		}
 
-		if err := validateFlist(vm.Flist, vm.Name); err != nil {
-			return err
+		if err := workloads.ValidateFlist(vm.Flist, ""); err != nil {
+			return fmt.Errorf("invalid flist for vms group '%s', %w", vm.Name, err)
 		}
+
 		for _, nodeGroup := range nodeGroups {
 			nodeGroupName := strings.TrimSpace(nodeGroup.Name)
 			if strings.TrimSpace(vm.NodeGroup) == nodeGroupName {
@@ -95,7 +95,7 @@ func validateVMs(vms []tfrobot.Vms, nodeGroups []tfrobot.NodesGroup, sskKeys map
 				usedVMsResources := setVMUsedResources(vm, usedResources[nodeGroupName])
 				usedResources[nodeGroupName] = usedVMsResources
 
-				if usedVMsResources["free_cpu"].(uint64) > nodeGroup.FreeCPU {
+				if usedVMsResources["free_cpu"].(uint8) > uint8(nodeGroup.FreeCPU) {
 					return fmt.Errorf("cannot find enough cpu in node group '%s' for vm group '%s', needed cpu is %d while available cpu is %d", nodeGroupName, vmName, usedVMsResources["free_cpu"], nodeGroup.FreeCPU)
 				}
 
@@ -130,26 +130,20 @@ func validateVMs(vms []tfrobot.Vms, nodeGroups []tfrobot.NodesGroup, sskKeys map
 			return fmt.Errorf("node group: '%s' in vms group: '%s' is not found", vm.NodeGroup, vm.Name)
 		}
 
-	}
+		v := validator.New(validator.WithRequiredStructEnabled())
+		for _, disk := range vm.SSDDisks {
+			if err := v.Struct(disk); err != nil {
+				return parseValidationError(err)
+			}
+		}
 
-	return nil
-}
+		for _, volume := range vm.Volumes {
+			if err := v.Struct(volume); err != nil {
+				return parseValidationError(err)
+			}
+		}
 
-func validateFlist(flist, name string) error {
-	flistExt := path.Ext(flist)
-	if flistExt != ".fl" && flistExt != ".flist" {
-		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, should have a valid flist extension", name, flist)
 	}
-
-	cl := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	response, err := cl.Head(flist)
-	if err != nil || response.StatusCode != http.StatusOK {
-		return fmt.Errorf("vms group '%s' flist: '%s' is invalid, failed to download flist", name, flist)
-	}
-	defer response.Body.Close()
 
 	return nil
 }
@@ -157,14 +151,14 @@ func validateFlist(flist, name string) error {
 func setVMUsedResources(vmsGroup tfrobot.Vms, vmUsedResources map[string]interface{}) map[string]interface{} {
 	if _, ok := vmUsedResources["free_cpu"]; !ok {
 		vmUsedResources = make(map[string]interface{}, 5)
-		vmUsedResources["free_cpu"] = uint64(0)
+		vmUsedResources["free_cpu"] = uint8(0)
 		vmUsedResources["free_mru"] = float32(0)
 		vmUsedResources["free_ssd"] = uint64(0)
 		vmUsedResources["public_ip4"] = uint64(0)
 		vmUsedResources["public_ip6"] = uint64(0)
 	}
 
-	if vmsGroup.FreeCPU > vmUsedResources["free_cpu"].(uint64) {
+	if vmsGroup.FreeCPU > vmUsedResources["free_cpu"].(uint8) {
 		vmUsedResources["free_cpu"] = vmsGroup.FreeCPU
 	}
 

@@ -155,7 +155,7 @@ func (st *State) LoadVMFromGrid(ctx context.Context, nodeID uint32, name string,
 		return workloads.VM{}, errors.Wrapf(err, "could not get workload from node %d", nodeID)
 	}
 
-	return workloads.NewVMFromWorkload(&wl, &dl)
+	return workloads.NewVMFromWorkload(&wl, &dl, nodeID)
 }
 
 // LoadK8sFromGrid loads k8s from grid
@@ -209,8 +209,8 @@ func (st *State) LoadK8sFromGrid(ctx context.Context, nodeIDs []uint32, deployme
 	}
 	cluster.NodeDeploymentID = nodeDeploymentID
 	cluster.NetworkName = cluster.Master.NetworkName
-	cluster.SSHKey = cluster.Master.SSHKey
-	cluster.Token = cluster.Master.Token
+	cluster.SSHKey = cluster.Master.EnvVars["SSH_KEY"]
+	cluster.Token = cluster.Master.EnvVars["K3S_TOKEN"]
 	cluster.Flist = cluster.Master.Flist
 	cluster.FlistChecksum = cluster.Master.FlistChecksum
 
@@ -244,18 +244,18 @@ func isMasterNode(workload gridtypes.Workload) (bool, error) {
 }
 
 func (st *State) computeK8sDeploymentResources(dl gridtypes.Deployment) (
-	workloadDiskSize map[string]int,
+	workloadDiskSize map[string]uint64,
 	workloadComputedIP map[string]string,
 	workloadComputedIP6 map[string]string,
 	err error,
 ) {
-	workloadDiskSize = make(map[string]int)
+	workloadDiskSize = make(map[string]uint64)
 	workloadComputedIP = make(map[string]string)
 	workloadComputedIP6 = make(map[string]string)
 
 	publicIPs := make(map[string]string)
 	publicIP6s := make(map[string]string)
-	diskSize := make(map[string]int)
+	diskSize := make(map[string]uint64)
 
 	for _, w := range dl.Workloads {
 		switch w.Type {
@@ -274,7 +274,7 @@ func (st *State) computeK8sDeploymentResources(dl gridtypes.Deployment) (
 			if err != nil {
 				return workloadDiskSize, workloadComputedIP, workloadComputedIP6, errors.Wrap(err, "failed to load disk data")
 			}
-			diskSize[string(w.Name)] = int(d.(*zos.ZMount).Size / gridtypes.Gigabyte)
+			diskSize[string(w.Name)] = uint64(d.(*zos.ZMount).Size / gridtypes.Gigabyte)
 		}
 	}
 
@@ -466,14 +466,14 @@ func (st *State) GetWorkloadInDeployment(ctx context.Context, nodeID uint32, nam
 func (st *State) AssignNodesIPRange(k *workloads.K8sCluster) (err error) {
 	network := st.Networks.GetNetwork(k.NetworkName)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
-	nodesIPRange[k.Master.Node], err = gridtypes.ParseIPNet(network.GetNodeSubnet(k.Master.Node))
+	nodesIPRange[k.Master.NodeID], err = gridtypes.ParseIPNet(network.GetNodeSubnet(k.Master.NodeID))
 	if err != nil {
 		return errors.Wrap(err, "could not parse master node ip range")
 	}
 	for _, worker := range k.Workers {
-		nodesIPRange[worker.Node], err = gridtypes.ParseIPNet(network.GetNodeSubnet(worker.Node))
+		nodesIPRange[worker.NodeID], err = gridtypes.ParseIPNet(network.GetNodeSubnet(worker.NodeID))
 		if err != nil {
-			return errors.Wrapf(err, "could not parse worker node (%d) ip range", worker.Node)
+			return errors.Wrapf(err, "could not parse worker node (%d) ip range", worker.NodeID)
 		}
 	}
 	k.NodesIPRange = nodesIPRange

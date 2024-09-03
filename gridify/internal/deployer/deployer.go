@@ -59,7 +59,7 @@ func (d *Deployer) Deploy(ctx context.Context, vmSpec VMSpec, ports []uint, depl
 
 	d.logger.Debug().Msg("getting nodes with free resources")
 
-	node, err := d.tfPluginClient.GetAvailableNode(ctx, buildNodeFilter(vmSpec), uint64(vmSpec.Storage))
+	node, err := d.tfPluginClient.GetAvailableNode(ctx, buildNodeFilter(vmSpec), vmSpec.Storage)
 	if err != nil {
 		return map[uint]string{}, errors.Wrapf(
 			err,

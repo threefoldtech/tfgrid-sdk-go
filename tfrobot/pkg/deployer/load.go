@@ -136,7 +136,7 @@ func parseDeploymentOutput(passedGroups map[string][]vmOutput, asJson bool) ([]b
 	var err error
 	var outputBytes []byte
 	outData := struct {
-		OK map[string][]vmOutput `json:"ok"`
+		OK map[string][]vmOutput
 	}{
 		OK: passedGroups,
 	}

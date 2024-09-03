@@ -118,7 +118,6 @@ SELECT
     rent_contract.twin_id as renter,
     rent_contract.contract_id as rent_contract_id,
     count(node_contract.contract_id) as node_contracts_count,
-    COALESCE(node_gpu.node_gpu_count, 0) as node_gpu_count,
     node.country as country,
     country.region as region,
     COALESCE(dmi.bios, '{}') as bios,
@@ -129,24 +128,29 @@ SELECT
     COALESCE(speed.download, 0) as download_speed,
     CASE WHEN node.certification = 'Certified' THEN true ELSE false END as certified,
     CASE WHEN farm.pricing_policy_id = 0 THEN 1 ELSE farm.pricing_policy_id END as policy_id,
-    COALESCE(node.extra_fee, 0) as extra_fee
+    COALESCE(node.extra_fee, 0) as extra_fee,
+    COALESCE(node_gpu_agg.gpus, '[]'),
+    COALESCE(node_gpu_agg.gpu_count, 0) as node_gpu_count
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id 
     LEFT JOIN node_resources_total AS node_resources_total ON node_resources_total.node_id = node.id
     LEFT JOIN rent_contract on node.node_id = rent_contract.node_id AND rent_contract.state IN ('Created', 'GracePeriod')
-    LEFT JOIN(
-        SELECT
-            node_twin_id,
-            COUNT(id) as node_gpu_count
-        FROM node_gpu
-        GROUP BY
-            node_twin_id
-    ) AS node_gpu ON node.twin_id = node_gpu.node_twin_id
     LEFT JOIN country ON LOWER(node.country) = LOWER(country.name)
     LEFT JOIN speed ON node.twin_id = speed.node_twin_id
     LEFT JOIN dmi ON node.twin_id = dmi.node_twin_id
     LEFT JOIN farm ON farm.farm_id = node.farm_id
+    -- join aggregated gpus table
+    LEFT JOIN(
+        SELECT
+            g1.node_twin_id,
+            COUNT(g1.id) gpu_count,
+            jsonb_agg(jsonb_build_object('id', g1.id, 'vendor', g1.vendor, 'contract', g1.contract, 'device', g1.device)) as gpus
+        FROM node_gpu AS g1
+            LEFT JOIN node_gpu g2 ON g1.id = g2.id
+        GROUP BY
+            g1.node_twin_id
+    ) node_gpu_agg on node_gpu_agg.node_twin_id = node.twin_id
 GROUP BY
     node.node_id,
     node_resources_total.mru,
@@ -156,7 +160,8 @@ GROUP BY
     node.farm_id,
     rent_contract.contract_id,
     rent_contract.twin_id,
-    COALESCE(node_gpu.node_gpu_count, 0),
+    COALESCE(node_gpu_agg.gpus, '[]'),
+    COALESCE(node_gpu_agg.gpu_count, 0),
     node.country,
     country.region,
     COALESCE(dmi.bios, '{}'),
@@ -188,7 +193,6 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     renter INTEGER,
     rent_contract_id INTEGER,
     node_contracts_count INTEGER NOT NULL,
-    node_gpu_count INTEGER NOT NULL,
     country TEXT,
     region TEXT,
     bios jsonb,
@@ -200,6 +204,8 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     certified BOOLEAN,
     policy_id INTEGER,
     extra_fee NUMERIC,
+    gpus jsonb,
+    node_gpu_count INTEGER NOT NULL,
     price_usd NUMERIC GENERATED ALWAYS AS (
         calc_price(
             total_cru,
@@ -408,6 +414,12 @@ $$
 BEGIN
     IF (TG_OP = 'UPDATE' AND NEW.state = 'Deleted') THEN
         BEGIN
+            -- lock cache row to prevent concurrent updates
+            PERFORM 1
+            FROM resources_cache 
+            WHERE node_id = NEW.node_id
+            FOR UPDATE;
+
             UPDATE resources_cache
             SET 
                 used_cru = resources_cache.used_cru - contract_resources.cru,
@@ -430,7 +442,7 @@ BEGIN
                 AND resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
-                RAISE EXCEPTION 'failed reflecting node_contract updates %', SQLERRM;
+                RAISE NOTICE 'failed reflecting node_contract updates %', SQLERRM;
         END;
 
     ELSIF (TG_OP = 'INSERT') THEN
@@ -445,7 +457,7 @@ BEGIN
             WHERE resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
-                RAISE EXCEPTION 'failed calc node_contracts_count %', SQLERRM;
+                RAISE NOTICE 'failed calc node_contracts_count %', SQLERRM;
         END; 
     END IF;
 RETURN NULL;
@@ -474,7 +486,19 @@ BEGIN
                 THEN -1
             ELSE 0
             END
-        )
+        ),
+            gpus = (
+                SELECT json_agg(
+                    json_build_object(
+                        'id', node_gpu.id,
+                        'vendor', node_gpu.vendor,
+                        'device', node_gpu.device,
+                        'contract', node_gpu.contract
+                    )
+                )
+                from node_gpu where node_twin_id = COALESCE(NEW.node_twin_id, OLD.node_twin_id)
+            )
+
         WHERE resources_cache.node_id = (
             SELECT node_id from node where node.twin_id = COALESCE(NEW.node_twin_id, OLD.node_twin_id)
         );
@@ -621,7 +645,7 @@ BEGIN
 
             total_ips = total_ips + (
                 CASE 
-                WHEN TG_OP = 'INSERT' 
+                WHEN TG_OP = 'INSERT'
                     THEN 1 
                 WHEn TG_OP = 'DELETE'
                     THEN -1

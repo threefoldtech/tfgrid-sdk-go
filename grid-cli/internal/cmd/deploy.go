@@ -15,10 +15,10 @@ import (
 )
 
 // DeployVM deploys a vm with mounts
-func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, mount workloads.Disk, node uint32) (workloads.VM, error) {
+func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, mount workloads.Disk) (workloads.VM, error) {
 	networkName := fmt.Sprintf("%snetwork", vm.Name)
 	projectName := fmt.Sprintf("vm/%s", vm.Name)
-	network, err := buildNetwork(networkName, projectName, []uint32{node}, len(vm.MyceliumIPSeed) != 0)
+	network, err := buildNetwork(networkName, projectName, []uint32{vm.NodeID}, len(vm.MyceliumIPSeed) != 0)
 	if err != nil {
 		return workloads.VM{}, err
 	}
@@ -28,12 +28,12 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 		mounts = append(mounts, mount)
 	}
 	vm.NetworkName = networkName
-	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, mounts, nil, []workloads.VM{vm}, nil, nil)
+	dl := workloads.NewDeployment(vm.Name, vm.NodeID, projectName, nil, networkName, mounts, nil, []workloads.VM{vm}, nil, nil)
 
 	log.Info().Msg("deploying network")
 	err = t.NetworkDeployer.Deploy(ctx, &network)
 	if err != nil {
-		return workloads.VM{}, errors.Wrapf(err, "failed to deploy network on node %d", node)
+		return workloads.VM{}, errors.Wrapf(err, "failed to deploy network on node %d", vm.NodeID)
 	}
 
 	log.Info().Msg("deploying vm")
@@ -44,11 +44,11 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 		if revertErr != nil {
 			log.Error().Err(revertErr).Msg("failed to remove network")
 		}
-		return workloads.VM{}, errors.Wrapf(err, "failed to deploy vm on node %d", node)
+		return workloads.VM{}, errors.Wrapf(err, "failed to deploy vm on node %d", vm.NodeID)
 	}
-	resVM, err := t.State.LoadVMFromGrid(ctx, node, vm.Name, dl.Name)
+	resVM, err := t.State.LoadVMFromGrid(ctx, vm.NodeID, vm.Name, dl.Name)
 	if err != nil {
-		return workloads.VM{}, errors.Wrapf(err, "failed to load vm from node %d", node)
+		return workloads.VM{}, errors.Wrapf(err, "failed to load vm from node %d", vm.NodeID)
 	}
 	return resVM, nil
 }
@@ -57,16 +57,21 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, m
 func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, master workloads.K8sNode, workers []workloads.K8sNode, sshKey, k8sFlist string) (workloads.K8sCluster, error) {
 	networkName := fmt.Sprintf("%snetwork", master.Name)
 	projectName := fmt.Sprintf("kubernetes/%s", master.Name)
-	networkNodes := []uint32{master.Node}
+	networkNodes := []uint32{master.NodeID}
 	for _, worker := range workers {
-		if !slices.Contains(networkNodes, worker.Node) {
-			networkNodes = append(networkNodes, worker.Node)
+		if !slices.Contains(networkNodes, worker.NodeID) {
+			networkNodes = append(networkNodes, worker.NodeID)
 		}
 	}
 
 	network, err := buildNetwork(networkName, projectName, networkNodes, len(master.MyceliumIPSeed) != 0)
 	if err != nil {
 		return workloads.K8sCluster{}, err
+	}
+
+	master.NetworkName = networkName
+	for i := range workers {
+		workers[i].NetworkName = networkName
 	}
 
 	cluster := workloads.K8sCluster{
@@ -95,9 +100,9 @@ func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, mas
 		}
 		return workloads.K8sCluster{}, errors.Wrap(err, "failed to deploy kubernetes cluster")
 	}
-	nodeIDs := []uint32{master.Node}
+	nodeIDs := []uint32{master.NodeID}
 	for _, worker := range workers {
-		nodeIDs = append(nodeIDs, worker.Node)
+		nodeIDs = append(nodeIDs, worker.NodeID)
 	}
 	return t.State.LoadK8sFromGrid(
 		ctx,

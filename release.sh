@@ -11,6 +11,7 @@ fi
 echo $VERSION
 
 goreleaser check
+goreleaser release --snapshot --clean
 
 tag_and_push() {
     local component="$1"

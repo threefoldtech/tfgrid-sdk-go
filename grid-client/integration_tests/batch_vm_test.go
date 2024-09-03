@@ -41,9 +41,10 @@ func TestBatchVMDeployment(t *testing.T) {
 
 	vm1 := workloads.VM{
 		Name:        "vm",
+		NodeID:      nodeID1,
 		NetworkName: network1.Name,
 		CPU:         minCPU,
-		Memory:      int(minMemory) * 1024,
+		MemoryMB:    minMemory * 1024,
 		Planetary:   true,
 		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 		Entrypoint:  "/sbin/zinit init",
@@ -54,9 +55,10 @@ func TestBatchVMDeployment(t *testing.T) {
 
 	vm2 := workloads.VM{
 		Name:        "vm",
+		NodeID:      nodeID2,
 		NetworkName: network2.Name,
 		CPU:         minCPU,
-		Memory:      int(minMemory) * 1024,
+		MemoryMB:    minMemory * 1024,
 		Planetary:   true,
 		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 		Entrypoint:  "/sbin/zinit init",

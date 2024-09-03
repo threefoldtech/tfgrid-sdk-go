@@ -236,18 +236,19 @@ func TestLoadK8sFromGrid(t *testing.T) {
 	})
 
 	master := workloads.K8sNode{
-		Name:          "test",
-		Node:          1,
-		DiskSize:      0,
-		Flist:         flist,
-		FlistChecksum: flistCheckSum,
-		PublicIP:      false,
-		Planetary:     true,
-		CPU:           1,
-		Memory:        8,
-		PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
-		IP:            "1.1.1.1",
-		NetworkName:   "test",
+		VM: &workloads.VM{
+			Name:          "test",
+			NodeID:        1,
+			Flist:         flist,
+			FlistChecksum: flistCheckSum,
+			PublicIP:      false,
+			Planetary:     true,
+			CPU:           1,
+			MemoryMB:      8,
+			PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+			IP:            "1.1.1.1",
+			NetworkName:   "test",
+		},
 	}
 
 	var Workers []workloads.K8sNode
@@ -573,8 +574,9 @@ func TestLoadVMFromGrid(t *testing.T) {
 
 	vm := workloads.VM{
 		Name:          "test",
-		Flist:         "flist test",
-		FlistChecksum: "",
+		NodeID:        1,
+		Flist:         "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		FlistChecksum: "f94b5407f2e8635bd1b6b3dac7fef2d9",
 		PublicIP:      false,
 		ComputedIP:    "",
 		PublicIP6:     false,
@@ -584,11 +586,11 @@ func TestLoadVMFromGrid(t *testing.T) {
 		IP:            "1.1.1.1",
 		Description:   "test des",
 		CPU:           2,
-		Memory:        2048,
-		RootfsSize:    4096,
+		MemoryMB:      2048,
+		RootfsSizeMB:  4096,
 		Entrypoint:    "entrypoint",
 		Mounts: []workloads.Mount{
-			{DiskName: "disk", MountPoint: "mount"},
+			{Name: "disk", MountPoint: "mount"},
 		},
 		Zlogs:       zlogs,
 		EnvVars:     map[string]string{"var1": "val1"},
@@ -609,7 +611,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 		Name:    gridtypes.Name("test"),
 		Type:    zos.ZMachineType,
 		Data: gridtypes.MustMarshal(zos.ZMachine{
-			FList: "flist test",
+			FList: "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 			Network: zos.MachineNetwork{
 				Interfaces: []zos.MachineInterface{
 					{
@@ -643,7 +645,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		state := SetupLoaderTests(t, []gridtypes.Workload{vmWl, pubWl})
 
-		got, err := state.LoadVMFromGrid(context.Background(), 1, "test", deploymentName)
+		got, err := state.LoadVMFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
 		assert.NoError(t, err)
 		assert.Equal(t, vm, got)
 	})
@@ -654,7 +656,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{vmWlCp})
 
-		_, err := state.LoadVMFromGrid(context.Background(), 1, "test", deploymentName)
+		_, err := state.LoadVMFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -667,7 +669,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{vmWlCp})
 
-		_, err := state.LoadVMFromGrid(context.Background(), 1, "test", deploymentName)
+		_, err := state.LoadVMFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
 		assert.Error(t, err)
 	})
 
@@ -677,7 +679,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 
 		state := SetupLoaderTests(t, []gridtypes.Workload{vmWlCp})
 
-		_, err := state.LoadVMFromGrid(context.Background(), 1, "test", deploymentName)
+		_, err := state.LoadVMFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
 		assert.Error(t, err)
 	})
 }
@@ -714,7 +716,7 @@ func TestLoadZdbFromGrid(t *testing.T) {
 		Name:        "test",
 		Password:    "password",
 		Public:      true,
-		Size:        100,
+		SizeGB:      100,
 		Description: "test des",
 		Mode:        "user",
 		Namespace:   "test name",

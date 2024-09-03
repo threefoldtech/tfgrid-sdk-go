@@ -3,6 +3,7 @@ package workloads
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -10,7 +11,7 @@ import (
 // Volume struct
 type Volume struct {
 	Name        string `json:"name"`
-	SizeGB      int    `json:"size"`
+	SizeGB      uint64 `json:"size"`
 	Description string `json:"description"`
 }
 
@@ -29,7 +30,7 @@ func NewVolumeFromWorkload(wl *gridtypes.Workload) (Volume, error) {
 	return Volume{
 		Name:        wl.Name.String(),
 		Description: wl.Description,
-		SizeGB:      int(data.Size / gridtypes.Gigabyte),
+		SizeGB:      uint64(data.Size / gridtypes.Gigabyte),
 	}, nil
 }
 
@@ -44,4 +45,16 @@ func (v *Volume) ZosWorkload() gridtypes.Workload {
 			Size: gridtypes.Unit(v.SizeGB) * gridtypes.Gigabyte,
 		}),
 	}
+}
+
+func (v *Volume) Validate() error {
+	if err := validateName(v.Name); err != nil {
+		return errors.Wrap(err, "volume name is invalid")
+	}
+
+	if v.SizeGB == 0 {
+		return errors.New("volume size should be a positive integer not zero")
+	}
+
+	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
+	"github.com/vedhavyas/go-subkey"
 )
 
 // Login handles login command logic
@@ -23,7 +24,9 @@ func Login() error {
 		return errors.Wrap(err, "failed to read mnemonics")
 	}
 	mnemonics = strings.TrimSpace(mnemonics)
-	if !bip39.IsMnemonicValid(mnemonics) {
+
+	_, isHexValid := subkey.DecodeHex(mnemonics)
+	if !bip39.IsMnemonicValid(mnemonics) && !isHexValid {
 		return errors.New("failed to validate mnemonics")
 	}
 

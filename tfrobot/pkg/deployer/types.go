@@ -31,7 +31,7 @@ type Vms struct {
 	Name       string            `yaml:"name" validate:"required" json:"name"`
 	Count      uint64            `yaml:"vms_count" validate:"required" json:"vms_count"`
 	NodeGroup  string            `yaml:"node_group" validate:"required" json:"node_group"`
-	FreeCPU    uint64            `yaml:"cpu" validate:"required,max=32" json:"cpu"`
+	FreeCPU    uint8             `yaml:"cpu" validate:"required,max=32" json:"cpu"`
 	FreeMRU    float32           `yaml:"mem" validate:"required,min=0.25,max=256" json:"mem"` // min: 0.25 GB, max: 256 GB
 	SSDDisks   []Disk            `yaml:"ssd" json:"ssd"`
 	Volumes    []Volume          `yaml:"volume" json:"volume"`
@@ -63,14 +63,14 @@ type groupDeploymentsInfo struct {
 }
 
 type vmOutput struct {
-	Name        string
-	NetworkName string
-	PublicIP4   string
-	PublicIP6   string
-	YggIP       string
-	MyceliumIP  string
-	IP          string
-	Mounts      []workloads.Mount
-	NodeID      uint32
-	ContractID  uint64
+	Name        string            `yaml:"name" json:"name"`
+	NetworkName string            `yaml:"network_name" json:"network_name"`
+	PublicIP4   string            `yaml:"public_ip4" json:"public_ip4"`
+	PublicIP6   string            `yaml:"public_ip6" json:"public_ip6"`
+	YggIP       string            `yaml:"ygg_ip" json:"ygg_ip"`
+	MyceliumIP  string            `yaml:"mycelium_ip" json:"mycelium_ip"`
+	IP          string            `yaml:"ip" json:"ip"`
+	Mounts      []workloads.Mount `yaml:"mounts" json:"mounts"`
+	NodeID      uint32            `yaml:"node_id" json:"node_id"`
+	ContractID  uint64            `yaml:"contract_id" json:"contract_id"`
 }

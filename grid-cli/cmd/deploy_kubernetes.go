@@ -41,15 +41,15 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		masterCPU, err := cmd.Flags().GetInt("master-cpu")
+		masterCPU, err := cmd.Flags().GetUint8("master-cpu")
 		if err != nil {
 			return err
 		}
-		masterMemory, err := cmd.Flags().GetInt("master-memory")
+		masterMemory, err := cmd.Flags().GetUint64("master-memory")
 		if err != nil {
 			return err
 		}
-		masterDisk, err := cmd.Flags().GetInt("master-disk")
+		masterDisk, err := cmd.Flags().GetUint64("master-disk")
 		if err != nil {
 			return err
 		}
@@ -78,14 +78,16 @@ var deployKubernetesCmd = &cobra.Command{
 			}
 		}
 		master := workloads.K8sNode{
-			Name:           name,
-			CPU:            masterCPU,
-			Memory:         masterMemory * 1024,
-			DiskSize:       masterDisk,
-			PublicIP:       ipv4,
-			PublicIP6:      ipv6,
-			Planetary:      ygg,
-			MyceliumIPSeed: seed,
+			VM: &workloads.VM{
+				Name:           name,
+				CPU:            masterCPU,
+				MemoryMB:       masterMemory * 1024,
+				PublicIP:       ipv4,
+				PublicIP6:      ipv6,
+				Planetary:      ygg,
+				MyceliumIPSeed: seed,
+			},
+			DiskSizeGB: masterDisk,
 		}
 
 		workersNumber, err := cmd.Flags().GetInt("workers-number")
@@ -101,15 +103,15 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		workersCPU, err := cmd.Flags().GetInt("workers-cpu")
+		workersCPU, err := cmd.Flags().GetUint8("workers-cpu")
 		if err != nil {
 			return err
 		}
-		workersMemory, err := cmd.Flags().GetInt("workers-memory")
+		workersMemory, err := cmd.Flags().GetUint64("workers-memory")
 		if err != nil {
 			return err
 		}
-		workersDisk, err := cmd.Flags().GetInt("workers-disk")
+		workersDisk, err := cmd.Flags().GetUint64("workers-disk")
 		if err != nil {
 			return err
 		}
@@ -140,14 +142,16 @@ var deployKubernetesCmd = &cobra.Command{
 			}
 			workerName := fmt.Sprintf("worker%d", i)
 			worker := workloads.K8sNode{
-				Name:           workerName,
-				CPU:            workersCPU,
-				Memory:         workersMemory * 1024,
-				DiskSize:       workersDisk,
-				PublicIP:       workersIPV4,
-				PublicIP6:      workersIPV6,
-				Planetary:      workersYgg,
-				MyceliumIPSeed: seed,
+				VM: &workloads.VM{
+					Name:           workerName,
+					CPU:            workersCPU,
+					MemoryMB:       workersMemory * 1024,
+					PublicIP:       workersIPV4,
+					PublicIP6:      workersIPV6,
+					Planetary:      workersYgg,
+					MyceliumIPSeed: seed,
+				},
+				DiskSizeGB: workersDisk,
 			}
 			workers = append(workers, worker)
 		}
@@ -182,7 +186,7 @@ var deployKubernetesCmd = &cobra.Command{
 
 			masterNode = uint32(nodes[0].NodeID)
 		}
-		master.Node = masterNode
+		master.NodeID = masterNode
 		if len(workersNodes) < workersNumber {
 			filter, disks, rootfss := filters.BuildK8sNodeFilter(
 				workers[0],
@@ -205,7 +209,7 @@ var deployKubernetesCmd = &cobra.Command{
 			}
 		}
 		for i := range workers {
-			workers[i].Node = uint32(workersNodes[i])
+			workers[i].NodeID = uint32(workersNodes[i])
 		}
 		cluster, err := command.DeployKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey), k8sFlist)
 		if err != nil {
@@ -266,17 +270,17 @@ func init() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	deployKubernetesCmd.Flags().Int("master-cpu", 1, "master number of cpu units")
-	deployKubernetesCmd.Flags().Int("master-memory", 1, "master memory size in gb")
-	deployKubernetesCmd.Flags().Int("master-disk", 2, "master disk size in gb")
+	deployKubernetesCmd.Flags().Uint8("master-cpu", 1, "master number of cpu units")
+	deployKubernetesCmd.Flags().Uint64("master-memory", 1, "master memory size in gb")
+	deployKubernetesCmd.Flags().Uint64("master-disk", 2, "master disk size in gb")
 	deployKubernetesCmd.Flags().Uint32("master-node", 0, "node id master should be deployed on")
 	deployKubernetesCmd.Flags().Uint64("master-farm", 1, "farm id master should be deployed on")
 	deployKubernetesCmd.MarkFlagsMutuallyExclusive("master-node", "master-farm")
 
 	deployKubernetesCmd.Flags().Int("workers-number", 0, "number of workers")
-	deployKubernetesCmd.Flags().Int("workers-cpu", 1, "workers number of cpu units")
-	deployKubernetesCmd.Flags().Int("workers-memory", 1, "workers memory size in gb")
-	deployKubernetesCmd.Flags().Int("workers-disk", 2, "workers disk size in gb")
+	deployKubernetesCmd.Flags().Uint8("workers-cpu", 1, "workers number of cpu units")
+	deployKubernetesCmd.Flags().Uint64("workers-memory", 1, "workers memory size in gb")
+	deployKubernetesCmd.Flags().Uint64("workers-disk", 2, "workers disk size in gb")
 	deployKubernetesCmd.Flags().UintSlice("workers-nodes", []uint{}, "node id workers should be deployed on")
 	deployKubernetesCmd.Flags().Uint64("workers-farm", 1, "farm id workers should be deployed on")
 	deployKubernetesCmd.MarkFlagsMutuallyExclusive("workers-nodes", "workers-farm")

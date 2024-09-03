@@ -36,39 +36,24 @@ func NewK8sDeployer(tfPluginClient *TFPluginClient) K8sDeployer {
 func (d *K8sDeployer) Validate(ctx context.Context, k8sCluster *workloads.K8sCluster) error {
 	sub := d.tfPluginClient.SubstrateConn
 
-	if err := d.tfPluginClient.State.AssignNodesIPRange(k8sCluster); err != nil {
-		return err
-	}
-
 	if err := validateAccountBalanceForExtrinsics(sub, d.tfPluginClient.Identity); err != nil {
 		return err
 	}
 
-	if err := k8sCluster.ValidateToken(); err != nil {
+	if err := d.tfPluginClient.State.AssignNodesIPRange(k8sCluster); err != nil {
 		return err
 	}
 
-	if err := k8sCluster.ValidateNames(); err != nil {
-		return err
-	}
-
-	if err := k8sCluster.ValidateIPranges(); err != nil {
-		return err
-	}
-
-	if err := k8sCluster.ValidateFlist(); err != nil {
-		return err
-	}
-	if err := k8sCluster.ValidateMyceliumSeed(); err != nil {
+	if err := k8sCluster.Validate(); err != nil {
 		return err
 	}
 
 	// validate cluster nodes
 	var nodes []uint32
-	nodes = append(nodes, k8sCluster.Master.Node)
+	nodes = append(nodes, k8sCluster.Master.NodeID)
 	for _, worker := range k8sCluster.Workers {
-		if !workloads.Contains(nodes, worker.Node) {
-			nodes = append(nodes, worker.Node)
+		if !workloads.Contains(nodes, worker.NodeID) {
+			nodes = append(nodes, worker.NodeID)
 		}
 	}
 	return client.AreNodesUp(ctx, sub, nodes, d.tfPluginClient.NcPool)
@@ -84,10 +69,10 @@ func (d *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context, k8sClu
 	nodeWorkloads := make(map[uint32][]gridtypes.Workload)
 
 	masterWorkloads := k8sCluster.Master.MasterZosWorkload(k8sCluster)
-	nodeWorkloads[k8sCluster.Master.Node] = append(nodeWorkloads[k8sCluster.Master.Node], masterWorkloads...)
+	nodeWorkloads[k8sCluster.Master.NodeID] = append(nodeWorkloads[k8sCluster.Master.NodeID], masterWorkloads...)
 	for _, w := range k8sCluster.Workers {
 		workerWorkloads := w.WorkerZosWorkload(k8sCluster)
-		nodeWorkloads[w.Node] = append(nodeWorkloads[w.Node], workerWorkloads...)
+		nodeWorkloads[w.NodeID] = append(nodeWorkloads[w.NodeID], workerWorkloads...)
 	}
 
 	for node, ws := range nodeWorkloads {
@@ -123,16 +108,16 @@ func (d *K8sDeployer) Deploy(ctx context.Context, k8sCluster *workloads.K8sClust
 	}
 
 	newDeploymentsSolutionProvider := make(map[uint32]*uint64)
-	newDeploymentsSolutionProvider[k8sCluster.Master.Node] = nil
+	newDeploymentsSolutionProvider[k8sCluster.Master.NodeID] = nil
 
 	k8sCluster.NodeDeploymentID, err = d.deployer.Deploy(ctx, k8sCluster.NodeDeploymentID, newDeployments, newDeploymentsSolutionProvider)
 
 	// update deployments state
 	// error is not returned immediately before updating state because of untracked failed deployments
-	if contractID, ok := k8sCluster.NodeDeploymentID[k8sCluster.Master.Node]; ok && contractID != 0 {
-		d.tfPluginClient.State.StoreContractIDs(k8sCluster.Master.Node, contractID)
+	if contractID, ok := k8sCluster.NodeDeploymentID[k8sCluster.Master.NodeID]; ok && contractID != 0 {
+		d.tfPluginClient.State.StoreContractIDs(k8sCluster.Master.NodeID, contractID)
 		for _, w := range k8sCluster.Workers {
-			d.tfPluginClient.State.StoreContractIDs(w.Node, k8sCluster.NodeDeploymentID[w.Node])
+			d.tfPluginClient.State.StoreContractIDs(w.NodeID, k8sCluster.NodeDeploymentID[w.NodeID])
 		}
 	}
 
@@ -191,7 +176,7 @@ func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.
 // Cancel cancels a k8s cluster deployment
 func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sCluster) (err error) {
 	for nodeID, contractID := range k8sCluster.NodeDeploymentID {
-		if k8sCluster.Master.Node == nodeID {
+		if k8sCluster.Master.NodeID == nodeID {
 			err = d.deployer.Cancel(ctx, contractID)
 			if err != nil {
 				return errors.Wrapf(err, "could not cancel master %s, contract %d", k8sCluster.Master.Name, contractID)
@@ -201,7 +186,7 @@ func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sClust
 			continue
 		}
 		for _, worker := range k8sCluster.Workers {
-			if worker.Node == nodeID {
+			if worker.NodeID == nodeID {
 				err = d.deployer.Cancel(ctx, contractID)
 				if err != nil {
 					return errors.Wrapf(err, "could not cancel worker %s, contract %d", worker.Name, contractID)
@@ -217,9 +202,9 @@ func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sClust
 }
 
 func (d *K8sDeployer) updateStateFromDeployments(ctx context.Context, k8sCluster *workloads.K8sCluster, newDl map[uint32][]gridtypes.Deployment) error {
-	k8sNodes := []uint32{k8sCluster.Master.Node}
+	k8sNodes := []uint32{k8sCluster.Master.NodeID}
 	for _, w := range k8sCluster.Workers {
-		k8sNodes = append(k8sNodes, w.Node)
+		k8sNodes = append(k8sNodes, w.NodeID)
 	}
 
 	k8sCluster.NodeDeploymentID = map[uint32]uint64{}
@@ -232,18 +217,18 @@ func (d *K8sDeployer) updateStateFromDeployments(ctx context.Context, k8sCluster
 			}
 
 			if dlData.Name == k8sCluster.Master.Name {
-				k8sCluster.NodeDeploymentID[k8sCluster.Master.Node] = newDl.ContractID
+				k8sCluster.NodeDeploymentID[k8sCluster.Master.NodeID] = newDl.ContractID
 			}
 		}
 	}
 
-	if contractID, ok := k8sCluster.NodeDeploymentID[k8sCluster.Master.Node]; ok && contractID != 0 {
-		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.Node], contractID) {
-			d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.Node] = append(d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.Node], contractID)
+	if contractID, ok := k8sCluster.NodeDeploymentID[k8sCluster.Master.NodeID]; ok && contractID != 0 {
+		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.NodeID], contractID) {
+			d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.NodeID], contractID)
 		}
 		for _, w := range k8sCluster.Workers {
-			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[w.Node], k8sCluster.NodeDeploymentID[w.Node]) {
-				d.tfPluginClient.State.CurrentNodeDeployments[w.Node] = append(d.tfPluginClient.State.CurrentNodeDeployments[w.Node], k8sCluster.NodeDeploymentID[w.Node])
+			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[w.NodeID], k8sCluster.NodeDeploymentID[w.NodeID]) {
+				d.tfPluginClient.State.CurrentNodeDeployments[w.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[w.NodeID], k8sCluster.NodeDeploymentID[w.NodeID])
 			}
 		}
 	}
@@ -297,14 +282,14 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 	k8sCluster.NodeDeploymentID = nodeDeploymentID
 	// maps from workload name to (public ip, node id, disk size, actual workload)
 	workloadNodeID := make(map[string]uint32)
-	workloadDiskSize := make(map[string]int)
+	workloadDiskSize := make(map[string]uint64)
 	workloadComputedIP := make(map[string]string)
 	workloadComputedIP6 := make(map[string]string)
 	workloadObj := make(map[string]gridtypes.Workload)
 
 	publicIPs := make(map[string]string)
 	publicIP6s := make(map[string]string)
-	diskSize := make(map[string]int)
+	diskSize := make(map[string]uint64)
 	for node, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
 			if w.Type == zos.ZMachineType {
@@ -323,7 +308,7 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 				if err != nil {
 					return errors.Wrap(err, "failed to load disk data")
 				}
-				diskSize[string(w.Name)] = int(d.(*zos.ZMount).Size / gridtypes.Gigabyte)
+				diskSize[string(w.Name)] = uint64(d.(*zos.ZMount).Size / gridtypes.Gigabyte)
 			}
 		}
 	}
@@ -424,7 +409,7 @@ func (d *K8sDeployer) getK8sUsedIPs(k8s *workloads.K8sCluster) map[uint32][]byte
 	if k8s.Master.IP != "" {
 		ip := net.ParseIP(k8s.Master.IP).To4()
 		if ip != nil {
-			usedIPs[k8s.Master.Node] = append(usedIPs[k8s.Master.Node], ip[3])
+			usedIPs[k8s.Master.NodeID] = append(usedIPs[k8s.Master.NodeID], ip[3])
 		}
 	}
 
@@ -432,7 +417,7 @@ func (d *K8sDeployer) getK8sUsedIPs(k8s *workloads.K8sCluster) map[uint32][]byte
 		if w.IP != "" {
 			ip := net.ParseIP(w.IP).To4()
 			if ip != nil {
-				usedIPs[w.Node] = append(usedIPs[w.Node], ip[3])
+				usedIPs[w.NodeID] = append(usedIPs[w.NodeID], ip[3])
 			}
 		}
 	}
@@ -460,20 +445,20 @@ func (d *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32, k8s *
 }
 
 func (d *K8sDeployer) assignNodesIPs(k8sCluster *workloads.K8sCluster) error {
-	masterNodeRange := k8sCluster.NodesIPRange[k8sCluster.Master.Node]
+	masterNodeRange := k8sCluster.NodesIPRange[k8sCluster.Master.NodeID]
 	if k8sCluster.Master.IP == "" || !masterNodeRange.Contains(net.ParseIP(k8sCluster.Master.IP)) {
-		ip, err := d.getK8sFreeIP(masterNodeRange, k8sCluster.Master.Node, k8sCluster)
+		ip, err := d.getK8sFreeIP(masterNodeRange, k8sCluster.Master.NodeID, k8sCluster)
 		if err != nil {
 			return errors.Wrap(err, "failed to find free ip for master")
 		}
 		k8sCluster.Master.IP = ip
 	}
 	for idx, w := range k8sCluster.Workers {
-		workerNodeRange := k8sCluster.NodesIPRange[w.Node]
+		workerNodeRange := k8sCluster.NodesIPRange[w.NodeID]
 		if w.IP != "" && workerNodeRange.Contains(net.ParseIP(w.IP)) {
 			continue
 		}
-		ip, err := d.getK8sFreeIP(workerNodeRange, w.Node, k8sCluster)
+		ip, err := d.getK8sFreeIP(workerNodeRange, w.NodeID, k8sCluster)
 		if err != nil {
 			return errors.Wrap(err, "failed to find free ip for worker")
 		}

@@ -8,7 +8,7 @@ import (
 var (
 	minRootfs uint64 = 2
 	minMemory uint64 = 2
-	minCPU           = 2
+	minCPU    uint8  = 2
 )
 
 type nodeFilterCfg struct {

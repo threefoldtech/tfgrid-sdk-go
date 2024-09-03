@@ -34,15 +34,15 @@ var addWorkerCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		workersCPU, err := cmd.Flags().GetInt("workers-cpu")
+		workersCPU, err := cmd.Flags().GetUint8("workers-cpu")
 		if err != nil {
 			return err
 		}
-		workersMemory, err := cmd.Flags().GetInt("workers-memory")
+		workersMemory, err := cmd.Flags().GetUint64("workers-memory")
 		if err != nil {
 			return err
 		}
-		workersDisk, err := cmd.Flags().GetInt("workers-disk")
+		workersDisk, err := cmd.Flags().GetUint64("workers-disk")
 		if err != nil {
 			return err
 		}
@@ -80,12 +80,14 @@ var addWorkerCmd = &cobra.Command{
 		workers := cluster.Workers
 
 		worker := workloads.K8sNode{
-			CPU:       workersCPU,
-			Memory:    workersMemory * 1024,
-			DiskSize:  workersDisk,
-			PublicIP:  workersIPV4,
-			PublicIP6: workersIPV6,
-			Planetary: workersYgg,
+			VM: &workloads.VM{
+				CPU:       workersCPU,
+				MemoryMB:  workersMemory * 1024,
+				PublicIP:  workersIPV4,
+				PublicIP6: workersIPV6,
+				Planetary: workersYgg,
+			},
+			DiskSizeGB: workersDisk,
 		}
 
 		if workersNumber > len(workersNodes) && workersNumber > 0 {
@@ -119,7 +121,7 @@ var addWorkerCmd = &cobra.Command{
 			}
 
 			worker.Name = fmt.Sprintf("worker%d", len(workers))
-			worker.Node = uint32(workersNodes[i])
+			worker.NodeID = uint32(workersNodes[i])
 			worker.MyceliumIPSeed = seed
 
 			workers = append(workers, worker)
@@ -189,9 +191,9 @@ func init() {
 	}
 
 	addWorkerCmd.Flags().Int("workers-number", 1, "number of workers to add")
-	addWorkerCmd.Flags().Int("workers-cpu", 1, "workers number of cpu units")
-	addWorkerCmd.Flags().Int("workers-memory", 1, "workers memory size in gb")
-	addWorkerCmd.Flags().Int("workers-disk", 2, "workers disk size in gb")
+	addWorkerCmd.Flags().Uint8("workers-cpu", 1, "workers number of cpu units")
+	addWorkerCmd.Flags().Uint64("workers-memory", 1, "workers memory size in gb")
+	addWorkerCmd.Flags().Uint64("workers-disk", 2, "workers disk size in gb")
 	addWorkerCmd.Flags().UintSlice("workers-nodes", []uint{}, "node ids workers should be deployed on")
 	addWorkerCmd.Flags().Uint64("workers-farm", 1, "farm id workers should be deployed on")
 	addWorkerCmd.MarkFlagsMutuallyExclusive("workers-nodes", "workers-farm")

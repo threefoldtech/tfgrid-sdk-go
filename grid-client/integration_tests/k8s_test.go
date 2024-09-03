@@ -80,30 +80,39 @@ func TestK8sDeployment(t *testing.T) {
 	k8sFlist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
 
 	master := workloads.K8sNode{
-		Name:      fmt.Sprintf("master_%s", generateRandString(5)),
-		Node:      masterNodeID,
-		DiskSize:  1,
-		CPU:       minCPU,
-		Memory:    int(minMemory) * 1024,
-		Planetary: true,
+		VM: &workloads.VM{
+			Name:        fmt.Sprintf("master_%s", generateRandString(5)),
+			NodeID:      masterNodeID,
+			NetworkName: network.Name,
+			CPU:         minCPU,
+			MemoryMB:    minMemory * 1024,
+			Planetary:   true,
+		},
+		DiskSizeGB: 1,
 	}
 
 	workerNodeData1 := workloads.K8sNode{
-		Name:      fmt.Sprintf("worker1_%s", generateRandString(5)),
-		Node:      workerNodeID,
-		DiskSize:  1,
-		CPU:       minCPU,
-		Memory:    int(minMemory) * 1024,
-		Planetary: true,
+		VM: &workloads.VM{
+			Name:        fmt.Sprintf("worker1_%s", generateRandString(5)),
+			NodeID:      workerNodeID,
+			NetworkName: network.Name,
+			CPU:         minCPU,
+			MemoryMB:    minMemory * 1024,
+			Planetary:   true,
+		},
+		DiskSizeGB: 1,
 	}
 
 	workerNodeData2 := workloads.K8sNode{
-		Name:      fmt.Sprintf("worker2_%s", generateRandString(5)),
-		Node:      workerNodeID,
-		DiskSize:  1,
-		CPU:       minCPU,
-		Memory:    int(minMemory) * 1024,
-		Planetary: true,
+		VM: &workloads.VM{
+			Name:        fmt.Sprintf("worker2_%s", generateRandString(5)),
+			NodeID:      workerNodeID,
+			NetworkName: network.Name,
+			CPU:         minCPU,
+			MemoryMB:    minMemory * 1024,
+			Planetary:   true,
+		},
+		DiskSizeGB: 1,
 	}
 
 	// deploy k8s cluster

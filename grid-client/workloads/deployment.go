@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"regexp"
 	"sort"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -15,18 +15,21 @@ import (
 
 const Version = 3
 
+var nameMatch = regexp.MustCompile("^[a-zA-Z0-9_]+$")
+
 // Deployment struct
 type Deployment struct {
 	Name             string
 	NodeID           uint32
 	SolutionType     string
 	SolutionProvider *uint64
-	NetworkName      string
-	Disks            []Disk
-	Zdbs             []ZDB
-	Vms              []VM
-	QSFS             []QSFS
-	Volumes          []Volume
+	// TODO: remove
+	NetworkName string
+	Disks       []Disk
+	Zdbs        []ZDB
+	Vms         []VM
+	QSFS        []QSFS
+	Volumes     []Volume
 
 	// computed
 	NodeDeploymentID map[uint32]uint64
@@ -64,15 +67,64 @@ func NewDeployment(name string, nodeID uint32,
 
 // Validate validates a deployment
 func (d *Deployment) Validate() error {
-	if len(d.Vms) != 0 && len(strings.TrimSpace(d.NetworkName)) == 0 {
-		return errors.New("if you pass a vm, network name must be non-empty")
+	if err := validateName(d.Name); err != nil {
+		return errors.Wrap(err, "deployment name is invalid")
+	}
+
+	if err := validateName(d.NetworkName); len(d.Vms) != 0 && err != nil {
+		return errors.Wrap(err, "you passed vm/vms in the deployment but network name is invalid")
+	}
+
+	if d.NodeID == 0 {
+		return fmt.Errorf("node ID should be a positive integer not zero")
 	}
 
 	for _, vm := range d.Vms {
 		if err := vm.Validate(); err != nil {
-			return errors.Wrapf(err, "vm %s validation failed", vm.Name)
+			return errors.Wrapf(err, "vm '%s' is invalid", vm.Name)
 		}
 	}
+
+	for _, zdb := range d.Zdbs {
+		if err := zdb.Validate(); err != nil {
+			return errors.Wrapf(err, "zdb '%s' is invalid", zdb.Name)
+		}
+	}
+
+	for _, qsfs := range d.QSFS {
+		if err := qsfs.Validate(); err != nil {
+			return errors.Wrapf(err, "qsfs '%s' is invalid", qsfs.Name)
+		}
+	}
+
+	for _, disk := range d.Disks {
+		if err := disk.Validate(); err != nil {
+			return errors.Wrapf(err, "disk '%s' is invalid", disk.Name)
+		}
+	}
+
+	for _, volume := range d.Volumes {
+		if err := volume.Validate(); err != nil {
+			return errors.Wrapf(err, "volume '%s' is invalid", volume.Name)
+		}
+	}
+
+	return nil
+}
+
+func validateName(name string) error {
+	if len(name) == 0 {
+		return fmt.Errorf("name cannot be empty")
+	}
+
+	if len(name) > 50 {
+		return fmt.Errorf("name cannot exceed 50 characters")
+	}
+
+	if !nameMatch.MatchString(name) {
+		return fmt.Errorf("unsupported character in workload name")
+	}
+
 	return nil
 }
 
@@ -217,14 +269,14 @@ func NewGridDeployment(twin uint32, workloads []gridtypes.Workload) gridtypes.De
 }
 
 // GetUsedIPs returns used IPs for a deployment
-func GetUsedIPs(dl gridtypes.Deployment) ([]byte, error) {
+func GetUsedIPs(dl gridtypes.Deployment, nodeID uint32) ([]byte, error) {
 	usedIPs := []byte{}
 	for _, w := range dl.Workloads {
 		if !w.Result.State.IsOkay() {
 			return usedIPs, errors.Errorf("workload %s state failed", w.Name)
 		}
 		if w.Type == zos.ZMachineType {
-			vm, err := NewVMFromWorkload(&w, &dl)
+			vm, err := NewVMFromWorkload(&w, &dl, nodeID)
 			if err != nil {
 				return usedIPs, errors.Wrapf(err, "error parsing vm: %s", vm.Name)
 			}
@@ -262,7 +314,7 @@ func NewDeploymentFromZosDeployment(d gridtypes.Deployment, nodeID uint32) (Depl
 	for _, workload := range d.Workloads {
 		switch workload.Type {
 		case zos.ZMachineType:
-			vm, err := NewVMFromWorkload(&workload, &d)
+			vm, err := NewVMFromWorkload(&workload, &d, nodeID)
 			if err != nil {
 				return Deployment{}, errors.Wrap(err, "failed to get vm workload")
 			}

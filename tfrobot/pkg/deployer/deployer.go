@@ -250,7 +250,7 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 			volumes, volumeMounts := parseVolumes(vmName, vmGroup.Volumes)
 
 			network := buildNetworkDeployment(vmGroup, nodeID, vmName, solutionType)
-			vm := buildVMDeployment(vmGroup, vmName, network.Name, sshKeys[vmGroup.SSHKey], append(diskMounts, volumeMounts...))
+			vm := buildVMDeployment(vmGroup, nodeID, vmName, network.Name, sshKeys[vmGroup.SSHKey], append(diskMounts, volumeMounts...))
 
 			deployment := workloads.NewDeployment(vm.Name, nodeID, solutionType, nil, network.Name, disks, nil, []workloads.VM{vm}, nil, volumes)
 
@@ -265,11 +265,11 @@ func parseDisks(name string, disks []Disk) (disksWorkloads []workloads.Disk, mou
 	for i, disk := range disks {
 		DiskWorkload := workloads.Disk{
 			Name:   fmt.Sprintf("%s_disk%d", name, i),
-			SizeGB: int(disk.Size),
+			SizeGB: disk.Size,
 		}
 
 		disksWorkloads = append(disksWorkloads, DiskWorkload)
-		mountsWorkloads = append(mountsWorkloads, workloads.Mount{DiskName: DiskWorkload.Name, MountPoint: disk.Mount})
+		mountsWorkloads = append(mountsWorkloads, workloads.Mount{Name: DiskWorkload.Name, MountPoint: disk.Mount})
 	}
 	return
 }
@@ -278,11 +278,11 @@ func parseVolumes(name string, volumes []Volume) (volWorkloads []workloads.Volum
 	for i, volume := range volumes {
 		VolWorkload := workloads.Volume{
 			Name:   fmt.Sprintf("%s_volume%d", name, i),
-			SizeGB: int(volume.Size),
+			SizeGB: volume.Size,
 		}
 
 		volWorkloads = append(volWorkloads, VolWorkload)
-		mountsWorkloads = append(mountsWorkloads, workloads.Mount{DiskName: VolWorkload.Name, MountPoint: volume.Mount})
+		mountsWorkloads = append(mountsWorkloads, workloads.Mount{Name: VolWorkload.Name, MountPoint: volume.Mount})
 	}
 	return
 }
@@ -354,7 +354,7 @@ func buildNetworkDeployment(vm Vms, nodeID uint32, name, solutionType string) wo
 	}
 }
 
-func buildVMDeployment(vm Vms, name, networkName, sshKey string, mounts []workloads.Mount) workloads.VM {
+func buildVMDeployment(vm Vms, nodeID uint32, name, networkName, sshKey string, mounts []workloads.Mount) workloads.VM {
 	envVars := vm.EnvVars
 	if envVars == nil {
 		envVars = map[string]string{}
@@ -378,15 +378,16 @@ func buildVMDeployment(vm Vms, name, networkName, sshKey string, mounts []worklo
 
 	return workloads.VM{
 		Name:           name,
+		NodeID:         nodeID,
 		NetworkName:    networkName,
 		Flist:          vm.Flist,
-		CPU:            int(vm.FreeCPU),
-		Memory:         int(vm.FreeMRU * 1024), // Memory is in MB
+		CPU:            vm.FreeCPU,
+		MemoryMB:       uint64(vm.FreeMRU * 1024), // Memory is in MB
 		PublicIP:       vm.PublicIP4,
 		PublicIP6:      vm.PublicIP6,
 		MyceliumIPSeed: myceliumSeed,
 		Planetary:      vm.Ygg,
-		RootfsSize:     int(vm.RootSize * 1024), // RootSize is in MB
+		RootfsSizeMB:   vm.RootSize * 1024, // RootSize is in MB
 		Entrypoint:     vm.Entrypoint,
 		EnvVars:        envVars,
 		Mounts:         mounts,

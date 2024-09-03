@@ -47,7 +47,7 @@ func (w *HealthWork) Upsert(ctx context.Context, db db.Database, batch []types.H
 func getHealthReport(response diagnostics.Diagnostics, twinId uint32) types.HealthReport {
 	report := types.HealthReport{
 		NodeTwinId: twinId,
-		Healthy:    false,
+		Healthy:    response.Healthy,
 		UpdatedAt:  time.Now().Unix(),
 	}
 

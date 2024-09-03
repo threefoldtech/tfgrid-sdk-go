@@ -1,5 +1,6 @@
 # This is an example .goreleaser.yml file with some sensible defaults.
 # Make sure to check the documentation at https://goreleaser.com
+version: 2
 builds:
   - dir: ./farmerbot
     env:
@@ -7,7 +8,6 @@ builds:
     goos:
       - linux
       - windows
-      - darwin
     binary: farmerbot
     id: farmerbot
 
@@ -22,7 +22,6 @@ builds:
     goos:
       - linux
       - windows
-      - darwin
     binary: tfcmd
     id: tfcmd
 
@@ -38,7 +37,6 @@ builds:
     goos:
       - linux
       - windows
-      - darwin
     binary: tf-grid-cli
     id: tf-grid-cli
 
@@ -54,7 +52,6 @@ builds:
     goos:
       - linux
       - windows
-      - darwin
     binary: tfrobot
     id: tfrobot
 
@@ -70,7 +67,6 @@ builds:
     goos:
       - linux
       - windows
-      - darwin
     binary: tfgridproxy
     id: tfgridproxy
 
@@ -86,7 +82,6 @@ builds:
     goos:
       - linux
       - windows
-      - darwin
     binary: gridify
     id: gridify
 
@@ -102,7 +97,6 @@ builds:
     goos:
       - linux
       - windows
-      - darwin
     binary: monitoring-bot
     id: monitoring-bot
 
@@ -116,7 +110,6 @@ builds:
     goos:
       - linux
       - windows
-      - darwin
     binary: cache-warmer
     id: cache-warmer
 
@@ -143,7 +136,7 @@ archives:
 checksum:
   name_template: "checksums.txt"
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 changelog:
   sort: asc
   filters:

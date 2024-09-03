@@ -55,7 +55,7 @@ var deployZDBCmd = &cobra.Command{
 			return err
 		}
 
-		size, err := cmd.Flags().GetInt("size")
+		size, err := cmd.Flags().GetUint64("size")
 		if err != nil {
 			return err
 		}
@@ -86,7 +86,7 @@ var deployZDBCmd = &cobra.Command{
 		zdb := workloads.ZDB{
 			Password:    password,
 			Public:      public,
-			Size:        size,
+			SizeGB:      size,
 			Description: description,
 			Mode:        mode,
 		}
@@ -149,7 +149,7 @@ func init() {
 		log.Fatal().Err(err).Send()
 	}
 
-	deployZDBCmd.Flags().Int("size", 0, "hdd of zdb in gb")
+	deployZDBCmd.Flags().Uint64("size", 0, "hdd of zdb in gb")
 	err = deployZDBCmd.MarkFlagRequired("size")
 	if err != nil {
 		log.Fatal().Err(err).Send()
