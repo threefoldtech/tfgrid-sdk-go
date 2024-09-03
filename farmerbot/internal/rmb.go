@@ -4,16 +4,15 @@ import (
 	"context"
 	"time"
 
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	zos "github.com/threefoldtech/zos/client"
-	"github.com/threefoldtech/zos/pkg"
 )
 
 // RMB is an rmb abstract client interface.
 type RMB interface {
-	Statistics(ctx context.Context, nodeTwin uint32) (stats zos.Counters, err error)
+	Statistics(ctx context.Context, nodeTwin uint32) (stats pkg.Counters, err error)
 	GetStoragePools(ctx context.Context, nodeTwin uint32) (pools []pkg.PoolMetrics, err error)
-	ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []zos.GPU, err error)
+	ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []pkg.GPU, err error)
 }
 
 type RMBNodeClient struct {
@@ -29,7 +28,7 @@ func NewRmbNodeClient(rmb rmb.Client) *RMBNodeClient {
 }
 
 // Statistics returns some node statistics. Including total and available cpu, memory, storage, etc...
-func (r *RMBNodeClient) Statistics(ctx context.Context, nodeTwin uint32) (stats zos.Counters, err error) {
+func (r *RMBNodeClient) Statistics(ctx context.Context, nodeTwin uint32) (stats pkg.Counters, err error) {
 	ctx, cancel := context.WithTimeout(ctx, r.rmbTimeout)
 	defer cancel()
 
@@ -47,7 +46,7 @@ func (r *RMBNodeClient) GetStoragePools(ctx context.Context, nodeTwin uint32) (p
 }
 
 // ListGPUs return a list of all gpus on the node.
-func (r *RMBNodeClient) ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []zos.GPU, err error) {
+func (r *RMBNodeClient) ListGPUs(ctx context.Context, nodeTwin uint32) (gpus []pkg.GPU, err error) {
 	ctx, cancel := context.WithTimeout(ctx, r.rmbTimeout)
 	defer cancel()
 

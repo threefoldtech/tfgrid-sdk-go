@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	zos "github.com/threefoldtech/zos/client"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
 )
 
 // FindNode finds an available node in the farm
@@ -133,7 +133,7 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 	return uint32(nodeFound.ID), nil
 }
 
-func filterGPUsByVendors(gpus []zos.GPU, vendorsOrDevices []string) (filtered []zos.GPU) {
+func filterGPUsByVendors(gpus []pkg.GPU, vendorsOrDevices []string) (filtered []pkg.GPU) {
 	for _, gpu := range gpus {
 		for _, filter := range vendorsOrDevices {
 			if gpu.Vendor == filter {
@@ -144,7 +144,7 @@ func filterGPUsByVendors(gpus []zos.GPU, vendorsOrDevices []string) (filtered []
 	return
 }
 
-func filterGPUsByDevices(gpus []zos.GPU, vendorsOrDevices []string) (filtered []zos.GPU) {
+func filterGPUsByDevices(gpus []pkg.GPU, vendorsOrDevices []string) (filtered []pkg.GPU) {
 	for _, gpu := range gpus {
 		for _, filter := range vendorsOrDevices {
 			if gpu.Device == filter {

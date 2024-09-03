@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
 )
 
 // state is the state data for farmerbot
@@ -178,11 +178,11 @@ func getNode(
 	if (configNode.powerState == off || configNode.powerState == wakingUp) &&
 		continueOnPoweringOnErr {
 		// update the total node resources from substrate
-		configNode.resources.total.update(gridtypes.Capacity{
+		configNode.resources.total.update(pkg.Capacity{
 			CRU: uint64(configNode.Resources.CRU),
-			SRU: gridtypes.Unit(configNode.Resources.SRU),
-			HRU: gridtypes.Unit(configNode.Resources.HRU),
-			MRU: gridtypes.Unit(configNode.Resources.MRU),
+			SRU: uint64(configNode.Resources.SRU),
+			HRU: uint64(configNode.Resources.HRU),
+			MRU: uint64(configNode.Resources.MRU),
 		})
 		log.Warn().Uint32("nodeID", uint32(nodeObj.ID)).Msg("Node state is off, will skip rmb calls")
 		return configNode, nil

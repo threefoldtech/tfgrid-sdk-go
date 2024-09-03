@@ -6,8 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	zos "github.com/threefoldtech/zos/client"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
 )
 
 var cap = capacity{
@@ -37,16 +36,16 @@ func TestNodeModel(t *testing.T) {
 	}
 
 	t.Run("test update node resources", func(t *testing.T) {
-		zosResources := zos.Counters{
-			Total: gridtypes.Capacity{
+		zosResources := pkg.Counters{
+			Total: pkg.Capacity{
 				CRU:   cap.cru,
-				SRU:   gridtypes.Unit(cap.sru),
-				HRU:   gridtypes.Unit(cap.hru),
-				MRU:   gridtypes.Unit(cap.mru),
+				SRU:   cap.sru,
+				HRU:   cap.hru,
+				MRU:   cap.mru,
 				IPV4U: 1,
 			},
-			Used:   gridtypes.Capacity{},
-			System: gridtypes.Capacity{},
+			Used:   pkg.Capacity{},
+			System: pkg.Capacity{},
 		}
 
 		node.updateResources(zosResources)

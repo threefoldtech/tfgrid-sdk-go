@@ -10,9 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	zos "github.com/threefoldtech/zos/client"
-	"github.com/threefoldtech/zos/pkg"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
 )
 
 // Config is the inputs for configuration for farmerbot
@@ -41,7 +39,7 @@ type node struct {
 	resources             consumableResources
 	publicIPsUsed         uint64
 	pools                 []pkg.PoolMetrics
-	gpus                  []zos.GPU
+	gpus                  []pkg.GPU
 	hasActiveRentContract bool
 	hasActiveContracts    bool
 	dedicated             bool
@@ -188,7 +186,7 @@ func (n *node) update(
 }
 
 // UpdateResources updates the node resources from zos resources stats
-func (n *node) updateResources(stats zos.Counters) {
+func (n *node) updateResources(stats pkg.Counters) {
 	n.resources.total.update(stats.Total)
 	n.resources.used.update(stats.Used)
 	n.resources.system.update(stats.System)
@@ -256,11 +254,11 @@ func (cap *capacity) isEmpty() bool {
 	return cap.cru == 0 && cap.mru == 0 && cap.sru == 0 && cap.hru == 0
 }
 
-func (cap *capacity) update(c gridtypes.Capacity) {
+func (cap *capacity) update(c pkg.Capacity) {
 	cap.cru = c.CRU
-	cap.mru = uint64(c.MRU)
-	cap.sru = uint64(c.SRU)
-	cap.hru = uint64(c.HRU)
+	cap.mru = c.MRU
+	cap.sru = c.SRU
+	cap.hru = c.HRU
 }
 
 // Add adds a new for capacity
