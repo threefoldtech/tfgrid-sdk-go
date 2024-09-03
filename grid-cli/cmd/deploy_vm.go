@@ -69,11 +69,11 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		disk, err := cmd.Flags().GetInt("disk")
+		disk, err := cmd.Flags().GetUint64("disk")
 		if err != nil {
 			return err
 		}
-		volume, err := cmd.Flags().GetInt("volume")
+		volume, err := cmd.Flags().GetUint64("volume")
 		if err != nil {
 			return err
 		}
@@ -133,13 +133,13 @@ var deployVMCmd = &cobra.Command{
 		var diskMount workloads.Disk
 		if disk != 0 {
 			diskName := fmt.Sprintf("%sdisk", name)
-			diskMount = workloads.Disk{Name: diskName, SizeGB: uint64(disk)}
+			diskMount = workloads.Disk{Name: diskName, SizeGB: disk}
 			vm.Mounts = []workloads.Mount{{Name: diskName, MountPoint: "/data"}}
 		}
 		var volumeMount workloads.Volume
 		if volume != 0 {
 			volumeName := fmt.Sprintf("%svolume", name)
-			volumeMount = workloads.Volume{Name: volumeName, SizeGB: uint64(volume)}
+			volumeMount = workloads.Volume{Name: volumeName, SizeGB: volume}
 			vm.Mounts = append(vm.Mounts, workloads.Mount{Name: volumeName, MountPoint: "/volume"})
 		}
 		cfg, err := config.GetUserConfig()
@@ -215,7 +215,7 @@ func init() {
 	deployVMCmd.Flags().Uint64("disk", 0, "disk size in gb mounted on /data")
 	deployVMCmd.Flags().String("flist", ubuntuFlist, "flist for vm")
 	deployVMCmd.Flags().StringSlice("gpus", []string{}, "gpus for vm")
-	deployVMCmd.Flags().Int("volume", 0, "volume size in gb mounted on /volume")
+	deployVMCmd.Flags().Uint64("volume", 0, "volume size in gb mounted on /volume")
 
 	deployVMCmd.Flags().String("entrypoint", ubuntuFlistEntrypoint, "entrypoint for vm")
 	// to ensure entrypoint is provided for custom flist
