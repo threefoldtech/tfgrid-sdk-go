@@ -8,9 +8,6 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-
-	"github.com/threefoldtech/zos/pkg"
-	zosIPerfPkg "github.com/threefoldtech/zos/pkg/perf/iperf"
 )
 
 const (
@@ -20,6 +17,32 @@ const (
 
 type SpeedWork struct {
 	findersInterval map[string]time.Duration
+}
+
+type TaskResult struct {
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Timestamp   uint64      `json:"timestamp"`
+	Result      interface{} `json:"result"`
+}
+
+type IperfResult struct {
+	UploadSpeed   float64               `json:"upload_speed"`   // in bit/sec
+	DownloadSpeed float64               `json:"download_speed"` // in bit/sec
+	NodeID        uint32                `json:"node_id"`
+	NodeIpv4      string                `json:"node_ip"`
+	TestType      string                `json:"test_type"`
+	Error         string                `json:"error"`
+	CpuReport     CPUUtilizationPercent `json:"cpu_report"`
+}
+
+type CPUUtilizationPercent struct {
+	HostTotal    float64 `json:"host_total"`
+	HostUser     float64 `json:"host_user"`
+	HostSystem   float64 `json:"host_system"`
+	RemoteTotal  float64 `json:"remote_total"`
+	RemoteUser   float64 `json:"remote_user"`
+	RemoteSystem float64 `json:"remote_system"`
 }
 
 func NewSpeedWork(interval uint) *SpeedWork {
@@ -40,7 +63,7 @@ func (w *SpeedWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32)
 	}{
 		Name: testName,
 	}
-	var response pkg.TaskResult
+	var response TaskResult
 	if err := callNode(ctx, rmb, perfTestCallCmd, payload, twinId, &response); err != nil {
 		return []types.Speed{}, err
 	}
@@ -57,7 +80,7 @@ func (w *SpeedWork) Upsert(ctx context.Context, db db.Database, batch []types.Sp
 	return db.UpsertNetworkSpeed(ctx, batch)
 }
 
-func parseSpeed(res pkg.TaskResult, twinId uint32) (types.Speed, error) {
+func parseSpeed(res TaskResult, twinId uint32) (types.Speed, error) {
 	speed := types.Speed{
 		NodeTwinId: twinId,
 	}
@@ -67,7 +90,7 @@ func parseSpeed(res pkg.TaskResult, twinId uint32) (types.Speed, error) {
 		return speed, err
 	}
 
-	var iperfResults []zosIPerfPkg.IperfResult
+	var iperfResults []IperfResult
 	if err := json.Unmarshal(iperfResultBytes, &iperfResults); err != nil {
 		return speed, err
 	}

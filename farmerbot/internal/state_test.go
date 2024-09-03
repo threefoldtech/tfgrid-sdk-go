@@ -12,15 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
-	zos "github.com/threefoldtech/zos/client"
-	"github.com/threefoldtech/zos/pkg"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
 )
 
 func mockRMBAndSubstrateCalls(
 	ctx context.Context, sub *mocks.MockSubstrate, rmb *mocks.MockRMB,
 	inputs Config, on bool, noFarm bool,
-	resources gridtypes.Capacity, errs []string, emptyNode, emptyTwin bool,
+	resources pkg.Capacity, errs []string, emptyNode, emptyTwin bool,
 ) {
 	farmErr, nodesErr, nodeErr, dedicatedErr, rentErr, contractsErr, powerErr, statsErr, poolsErr, gpusErr := mocksErr(errs)
 
@@ -94,7 +92,7 @@ func mockRMBAndSubstrateCalls(
 		// 	continue
 		// }
 
-		rmb.EXPECT().Statistics(ctx, uint32(twinIDVal)).Return(zos.Counters{Total: resources}, statsErr)
+		rmb.EXPECT().Statistics(ctx, uint32(twinIDVal)).Return(pkg.Counters{Total: resources}, statsErr)
 		if statsErr != nil {
 			return
 		}
@@ -104,7 +102,7 @@ func mockRMBAndSubstrateCalls(
 			return
 		}
 
-		rmb.EXPECT().ListGPUs(ctx, uint32(twinIDVal)).Return([]zos.GPU{}, gpusErr)
+		rmb.EXPECT().ListGPUs(ctx, uint32(twinIDVal)).Return([]pkg.GPU{}, gpusErr)
 		if gpusErr != nil {
 			return
 		}
@@ -130,7 +128,7 @@ func TestSetConfig(t *testing.T) {
 		}},
 	}
 
-	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
+	resources := pkg.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
 
 	t.Run("test valid state: no periodic wake up start, wakeup threshold (< min => min)", func(t *testing.T) {
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
@@ -293,7 +291,7 @@ func TestSetConfig(t *testing.T) {
 	})
 
 	t.Run("test invalid state no node sru", func(t *testing.T) {
-		resources := gridtypes.Capacity{HRU: 1, SRU: 0, CRU: 1, MRU: 1}
+		resources := pkg.Capacity{HRU: 1, SRU: 0, CRU: 1, MRU: 1}
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs, farmTwinID)
@@ -301,7 +299,7 @@ func TestSetConfig(t *testing.T) {
 	})
 
 	t.Run("test invalid state no cru", func(t *testing.T) {
-		resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 0, MRU: 1}
+		resources := pkg.Capacity{HRU: 1, SRU: 1, CRU: 0, MRU: 1}
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs, farmTwinID)
@@ -309,7 +307,7 @@ func TestSetConfig(t *testing.T) {
 	})
 
 	t.Run("test invalid state no mru", func(t *testing.T) {
-		resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 0}
+		resources := pkg.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 0}
 		mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
 		_, err := newState(ctx, sub, rmb, inputs, farmTwinID)

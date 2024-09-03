@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 const (
@@ -47,7 +47,7 @@ func TestFarmerbot(t *testing.T) {
 	farmerbot.gridProxyClient = proxy
 
 	// mock state
-	resources := gridtypes.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
+	resources := pkg.Capacity{HRU: 1, SRU: 1, CRU: 1, MRU: 1}
 	mockRMBAndSubstrateCalls(ctx, sub, rmb, inputs, true, false, resources, []string{}, false, false)
 
 	state, err := newState(ctx, sub, rmb, inputs, farmTwinID)

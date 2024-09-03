@@ -9,8 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	zos "github.com/threefoldtech/zos/client"
-	pkg "github.com/threefoldtech/zos/pkg"
+	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
 )
 
 // MockRMB is a mock of RMB interface.
@@ -52,10 +51,10 @@ func (mr *MockRMBMockRecorder) GetStoragePools(ctx, nodeTwin interface{}) *gomoc
 }
 
 // ListGPUs mocks base method.
-func (m *MockRMB) ListGPUs(ctx context.Context, nodeTwin uint32) ([]zos.GPU, error) {
+func (m *MockRMB) ListGPUs(ctx context.Context, nodeTwin uint32) ([]pkg.GPU, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListGPUs", ctx, nodeTwin)
-	ret0, _ := ret[0].([]zos.GPU)
+	ret0, _ := ret[0].([]pkg.GPU)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -67,10 +66,10 @@ func (mr *MockRMBMockRecorder) ListGPUs(ctx, nodeTwin interface{}) *gomock.Call 
 }
 
 // Statistics mocks base method.
-func (m *MockRMB) Statistics(ctx context.Context, nodeTwin uint32) (zos.Counters, error) {
+func (m *MockRMB) Statistics(ctx context.Context, nodeTwin uint32) (pkg.Counters, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Statistics", ctx, nodeTwin)
-	ret0, _ := ret[0].(zos.Counters)
+	ret0, _ := ret[0].(pkg.Counters)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
