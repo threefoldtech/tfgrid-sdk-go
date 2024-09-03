@@ -141,7 +141,10 @@ func (k *K8sCluster) GenerateMetadata() (string, error) {
 }
 
 func (k *K8sCluster) Validate() error {
-	k.Master.Flist = k.Flist
+	if err := k.validateFlist(); err != nil {
+		return err
+	}
+
 	if err := k.Master.Validate(); err != nil {
 		return errors.Wrap(err, "master is invalid")
 	}
@@ -155,7 +158,6 @@ func (k *K8sCluster) Validate() error {
 		}
 		names[w.Name] = true
 
-		w.Flist = k.Flist
 		if err := w.Validate(); err != nil {
 			return errors.Wrap(err, "worker is invalid")
 		}
@@ -202,33 +204,6 @@ func (k *K8sCluster) ValidateIPranges() error {
 	}
 
 	for _, w := range k.Workers {
-		// // ValidateFlist validate check sums for k8s flist
-		// func (k *K8sCluster) ValidateFlist() error {
-		// 	if k.Flist == "" {
-		// 		if k.Master.Flist == "" {
-		// 			return fmt.Errorf("invalid flist for k8s cluster %s, flist should not be empty", k.Master.Name)
-		// 		}
-		// 		k.Flist = k.Master.Flist
-		// 	}
-		//
-		// 	if k.FlistChecksum == "" {
-		// 		return nil
-		// 	}
-		// 	checksum, err := GetFlistChecksum(k.Flist)
-		// 	if err != nil {
-		// 		return errors.Wrapf(err, "could not get flist %s hash", k.Flist)
-		// 	}
-		// 	if k.FlistChecksum != checksum {
-		// 		return errors.Errorf("passed checksum %s of %s does not match %s returned from %s",
-		// 			k.FlistChecksum,
-		// 			k.Master.Name,
-		// 			checksum,
-		// 			FlistChecksumURL(k.Flist),
-		// 		)
-		// 	}
-		// 	return nil
-		// }
-
 		if _, ok := k.NodesIPRange[w.NodeID]; !ok {
 			return errors.Errorf("the node with id %d in worker %s does not exist in the network's ip ranges", w.NodeID, w.Name)
 		}
@@ -329,4 +304,19 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 	K8sWorkloads = append(K8sWorkloads, workload)
 
 	return K8sWorkloads
+}
+
+func (k *K8sCluster) validateFlist() error {
+	if k.Flist == "" {
+		if k.Master.Flist == "" {
+			return fmt.Errorf("invalid flist for k8s cluster %s, flist should not be empty", k.Master.Name)
+		}
+		k.Flist = k.Master.Flist
+	}
+
+	k.Master.Flist = k.Flist
+	for i := range k.Workers {
+		k.Workers[i].Flist = k.Flist
+	}
+	return nil
 }
