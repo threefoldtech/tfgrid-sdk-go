@@ -109,6 +109,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		Workers:     []workloads.K8sNode{workerNodeData2},
 		Token:       "tokens",
 		SSHKey:      publicKey,
+		Flist:       flist,
 		NetworkName: network.Name,
 	}
 

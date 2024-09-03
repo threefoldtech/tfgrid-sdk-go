@@ -51,7 +51,7 @@ func TestK8sNodeData(t *testing.T) {
 			Workers:       []K8sNode{},
 			Token:         "testToken",
 			SSHKey:        "",
-			NetworkName:   "",
+			NetworkName:   "network",
 			Flist:         flist,
 			FlistChecksum: "e71ee7421f45392fbbb92309182e3006",
 		}

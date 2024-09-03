@@ -141,6 +141,7 @@ func (k *K8sCluster) GenerateMetadata() (string, error) {
 }
 
 func (k *K8sCluster) Validate() error {
+	k.Master.Flist = k.Flist
 	if err := k.Master.Validate(); err != nil {
 		return errors.Wrap(err, "master is invalid")
 	}
@@ -154,6 +155,7 @@ func (k *K8sCluster) Validate() error {
 		}
 		names[w.Name] = true
 
+		w.Flist = k.Flist
 		if err := w.Validate(); err != nil {
 			return errors.Wrap(err, "worker is invalid")
 		}
