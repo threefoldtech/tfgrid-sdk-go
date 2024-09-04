@@ -258,6 +258,10 @@ func NewTFPluginClient(
 
 	tfPluginClient.SubstrateConn = sub
 
+	if err := validateAccountBalanceForExtrinsics(tfPluginClient.SubstrateConn, tfPluginClient.Identity); err != nil {
+		return TFPluginClient{}, err
+	}
+
 	twinID, err := sub.GetTwinByPubKey(keyPair.Public())
 	if err != nil && errors.Is(err, substrate.ErrNotFound) {
 		return TFPluginClient{}, errors.Wrap(err, "no twin associated with the account with the given mnemonic/seed")
