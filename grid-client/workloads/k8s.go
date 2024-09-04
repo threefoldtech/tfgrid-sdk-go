@@ -141,9 +141,7 @@ func (k *K8sCluster) GenerateMetadata() (string, error) {
 }
 
 func (k *K8sCluster) Validate() error {
-	if err := k.validateFlist(); err != nil {
-		return err
-	}
+	k.assignNodesFlists()
 
 	if err := k.Master.Validate(); err != nil {
 		return errors.Wrap(err, "master is invalid")
@@ -306,11 +304,8 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 	return K8sWorkloads
 }
 
-func (k *K8sCluster) validateFlist() error {
+func (k *K8sCluster) assignNodesFlists() {
 	if k.Flist == "" {
-		if k.Master.Flist == "" {
-			return fmt.Errorf("invalid flist for k8s cluster %s, flist should not be empty", k.Master.Name)
-		}
 		k.Flist = k.Master.Flist
 	}
 
@@ -318,5 +313,4 @@ func (k *K8sCluster) validateFlist() error {
 	for i := range k.Workers {
 		k.Workers[i].Flist = k.Flist
 	}
-	return nil
 }
