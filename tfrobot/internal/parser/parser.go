@@ -48,7 +48,7 @@ func ParseConfig(file io.Reader, jsonFmt bool) (tfrobot.Config, error) {
 		return tfrobot.Config{}, err
 	}
 
-	if err := validateMnemonic(conf.Mnemonic); err != nil {
+	if err := validateMnemonicOrSeed(conf.Mnemonic); err != nil {
 		return tfrobot.Config{}, err
 	}
 

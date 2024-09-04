@@ -11,14 +11,17 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
+	"github.com/vedhavyas/go-subkey"
 	"golang.org/x/sync/errgroup"
 )
 
 var alphanumeric = regexp.MustCompile("^[a-z0-9_]+$")
 
-func validateMnemonic(mnemonic string) error {
-	if !bip39.IsMnemonicValid(mnemonic) {
-		return fmt.Errorf("invalid mnemonic: '%s'", mnemonic)
+func validateMnemonicOrSeed(mnemonicOrSeed string) error {
+	_, isSeedValid := subkey.DecodeHex(mnemonicOrSeed)
+
+	if !bip39.IsMnemonicValid(mnemonicOrSeed) && !isSeedValid {
+		return fmt.Errorf("invalid mnemonic/seed: '%s'", mnemonicOrSeed)
 	}
 	return nil
 }
