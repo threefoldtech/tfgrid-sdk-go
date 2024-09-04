@@ -9,14 +9,25 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
+	"github.com/vedhavyas/go-subkey"
 	"gopkg.in/yaml.v3"
 )
 
 func TestParseConfig(t *testing.T) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	validFlist := "https://hub.grid.tf/tf-official-apps/base:latest.flist"
+
+	// Alice identity
+	aliceIdentity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+	assert.NoError(t, err)
+
+	keyPair, err := aliceIdentity.KeyPair()
+	assert.NoError(t, err)
+
+	seed := subkey.EncodeHex(keyPair.Seed())
 
 	confStruct := tfrobot.Config{
 		NodeGroups: []tfrobot.NodesGroup{
@@ -53,7 +64,7 @@ func TestParseConfig(t *testing.T) {
 		SSHKeys: map[string]string{
 			"example1": "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAklOUpkDHrfHY17SbrmTIpNLTGK9Tjom/BWDSUGPl+nafzlHDTYW7hdI4yZ5ew18JH4JW9jbhUFrviQzM7xlELEVf4h9lFX5QVkbPppSwg0cda3Pbv7kOdJ/MTyBlWXFCR+HAo3FXRitBqxiX1nKhXpHAZsMciLq8V6RjsNAQwdsdMFvSlVK/7XAt3FaoJoAsncM1Q9x5+3V0Ww68/eIFmb1zuUFljQJKprrX88XypNDvjYNby6vw/Pb0rwert/EnmZ+AW4OZPnTPI89ZPmVMLuayrD2cE86Z/il8b+gw3r3+1nKatmIkjn2so1d01QraTlMqVSsbxNrRFi9wrf+M7Q== schacon@mylaptop.local",
 		},
-		Mnemonic: "rival oyster defense garbage fame disease mask mail family wire village vibrant index fuel dolphin",
+		Mnemonic: seed,
 		Network:  "dev",
 	}
 
