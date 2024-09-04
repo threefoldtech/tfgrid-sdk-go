@@ -23,21 +23,24 @@ func BuildK8sNodeFilter(k8sNode workloads.K8sNode, farmID uint64) (types.NodeFil
 }
 
 // BuildVMFilter build a filter for a vm
-func BuildVMFilter(vm workloads.VM, disk workloads.Disk, farmID uint64) (types.NodeFilter, []uint64, []uint64) {
+func BuildVMFilter(vm workloads.VM, disk workloads.Disk, volume workloads.Volume, farmID uint64) (types.NodeFilter, []uint64, []uint64) {
 	freeMRUs := vm.MemoryMB / 1024
 	freeSRUs := vm.RootfsSizeMB / 1024
 	freeIPs := uint64(0)
 	if vm.PublicIP {
 		freeIPs = 1
 	}
-	freeSRUs += disk.SizeGB
+	freeSRUs += disk.SizeGB + volume.SizeGB
 
-	disks := make([]uint64, 0)
+	ssd := make([]uint64, 0)
 	if disk.SizeGB > 0 {
-		disks = append(disks, *convertGBToBytes(disk.SizeGB))
+		ssd = append(ssd, *convertGBToBytes(disk.SizeGB))
+	}
+	if volume.SizeGB > 0 {
+		ssd = append(ssd, *convertGBToBytes(volume.SizeGB))
 	}
 	rootfss := []uint64{*convertGBToBytes(vm.RootfsSizeMB / 1024)}
-	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, &freeIPs, []uint64{farmID}, nil), disks, rootfss
+	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, &freeIPs, []uint64{farmID}, nil), ssd, rootfss
 }
 
 // BuildGatewayFilter build a filter for a gateway

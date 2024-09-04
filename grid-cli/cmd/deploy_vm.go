@@ -73,6 +73,10 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		volume, err := cmd.Flags().GetUint64("volume")
+		if err != nil {
+			return err
+		}
 		flist, err := cmd.Flags().GetString("flist")
 		if err != nil {
 			return err
@@ -126,11 +130,17 @@ var deployVMCmd = &cobra.Command{
 			MyceliumIPSeed: seed,
 			Planetary:      ygg,
 		}
-		var mount workloads.Disk
+		var diskMount workloads.Disk
 		if disk != 0 {
 			diskName := fmt.Sprintf("%sdisk", name)
-			mount = workloads.Disk{Name: diskName, SizeGB: disk}
+			diskMount = workloads.Disk{Name: diskName, SizeGB: disk}
 			vm.Mounts = []workloads.Mount{{Name: diskName, MountPoint: "/data"}}
+		}
+		var volumeMount workloads.Volume
+		if volume != 0 {
+			volumeName := fmt.Sprintf("%svolume", name)
+			volumeMount = workloads.Volume{Name: volumeName, SizeGB: volume}
+			vm.Mounts = append(vm.Mounts, workloads.Mount{Name: volumeName, MountPoint: "/volume"})
 		}
 		cfg, err := config.GetUserConfig()
 		if err != nil {
@@ -143,12 +153,12 @@ var deployVMCmd = &cobra.Command{
 		}
 
 		if node == 0 {
-			filter, disks, rootfss := filters.BuildVMFilter(vm, mount, farm)
+			filter, ssd, rootfss := filters.BuildVMFilter(vm, diskMount, volumeMount, farm)
 			nodes, err := deployer.FilterNodes(
 				cmd.Context(),
 				t,
 				filter,
-				disks,
+				ssd,
 				nil,
 				rootfss,
 			)
@@ -159,7 +169,7 @@ var deployVMCmd = &cobra.Command{
 			node = uint32(nodes[0].NodeID)
 		}
 		vm.NodeID = node
-		resVM, err := command.DeployVM(cmd.Context(), t, vm, mount)
+		resVM, err := command.DeployVM(cmd.Context(), t, vm, diskMount, volumeMount)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -205,6 +215,7 @@ func init() {
 	deployVMCmd.Flags().Uint64("disk", 0, "disk size in gb mounted on /data")
 	deployVMCmd.Flags().String("flist", ubuntuFlist, "flist for vm")
 	deployVMCmd.Flags().StringSlice("gpus", []string{}, "gpus for vm")
+	deployVMCmd.Flags().Uint64("volume", 0, "volume size in gb mounted on /volume")
 
 	deployVMCmd.Flags().String("entrypoint", ubuntuFlistEntrypoint, "entrypoint for vm")
 	// to ensure entrypoint is provided for custom flist
