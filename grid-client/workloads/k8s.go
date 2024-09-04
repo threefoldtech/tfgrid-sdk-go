@@ -141,8 +141,6 @@ func (k *K8sCluster) GenerateMetadata() (string, error) {
 }
 
 func (k *K8sCluster) Validate() error {
-	k.assignNodesFlists()
-
 	if err := k.Master.Validate(); err != nil {
 		return errors.Wrap(err, "master is invalid")
 	}
@@ -302,15 +300,4 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 	K8sWorkloads = append(K8sWorkloads, workload)
 
 	return K8sWorkloads
-}
-
-func (k *K8sCluster) assignNodesFlists() {
-	if k.Flist == "" {
-		k.Flist = k.Master.Flist
-	}
-
-	k.Master.Flist = k.Flist
-	for i := range k.Workers {
-		k.Workers[i].Flist = k.Flist
-	}
 }
