@@ -98,6 +98,8 @@ func (d *K8sDeployer) Deploy(ctx context.Context, k8sCluster *workloads.K8sClust
 		return err
 	}
 
+	assignNodesFlists(k8sCluster)
+
 	if err := d.Validate(ctx, k8sCluster); err != nil {
 		return err
 	}
@@ -138,6 +140,8 @@ func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.
 		if err != nil {
 			return err
 		}
+
+		assignNodesFlists(k8sCluster)
 
 		if err := d.Validate(ctx, k8sCluster); err != nil {
 			return err
@@ -465,4 +469,15 @@ func (d *K8sDeployer) assignNodesIPs(k8sCluster *workloads.K8sCluster) error {
 		k8sCluster.Workers[idx].IP = ip
 	}
 	return nil
+}
+
+func assignNodesFlists(k *workloads.K8sCluster) {
+	if k.Flist == "" {
+		k.Flist = k.Master.Flist
+	}
+
+	k.Master.Flist = k.Flist
+	for i := range k.Workers {
+		k.Workers[i].Flist = k.Flist
+	}
 }

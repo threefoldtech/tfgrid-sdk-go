@@ -81,7 +81,6 @@ var addWorkerCmd = &cobra.Command{
 
 		worker := workloads.K8sNode{
 			VM: &workloads.VM{
-				Flist:     k8sFlist,
 				CPU:       workersCPU,
 				MemoryMB:  workersMemory * 1024,
 				PublicIP:  workersIPV4,

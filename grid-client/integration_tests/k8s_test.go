@@ -87,7 +87,6 @@ func TestK8sDeployment(t *testing.T) {
 			CPU:         minCPU,
 			MemoryMB:    minMemory * 1024,
 			Planetary:   true,
-			Flist:       k8sFlist,
 		},
 		DiskSizeGB: 1,
 	}
@@ -100,7 +99,6 @@ func TestK8sDeployment(t *testing.T) {
 			CPU:         minCPU,
 			MemoryMB:    minMemory * 1024,
 			Planetary:   true,
-			Flist:       k8sFlist,
 		},
 		DiskSizeGB: 1,
 	}
@@ -113,7 +111,6 @@ func TestK8sDeployment(t *testing.T) {
 			CPU:         minCPU,
 			MemoryMB:    minMemory * 1024,
 			Planetary:   true,
-			Flist:       k8sFlist,
 		},
 		DiskSizeGB: 1,
 	}
@@ -126,6 +123,7 @@ func TestK8sDeployment(t *testing.T) {
 		Workers:     workers,
 		Token:       "tokens",
 		SSHKey:      publicKey,
+		Flist:       k8sFlist,
 		NetworkName: network.Name,
 	}
 
@@ -161,7 +159,7 @@ func TestK8sDeployment(t *testing.T) {
 	// ssh to master node //TODO:
 	// require.NoError(t, requireNodesAreReady(len(k8s.Workers)+1, masterIP, privateKey))
 
-	//update k8s cluster (remove worker)
+	// update k8s cluster (remove worker)
 	k8sCluster.Workers = []workloads.K8sNode{workerNodeData1}
 
 	err = tfPluginClient.K8sDeployer.Deploy(context.Background(), &k8sCluster)
@@ -189,7 +187,7 @@ func TestK8sDeployment(t *testing.T) {
 	// ssh to master node
 	// require.NoError(t, requireNodesAreReady(len(k8s.Workers)+1, masterIP, privateKey))
 
-	//update k8s cluster (add worker)
+	// update k8s cluster (add worker)
 	k8sCluster.Workers = append(k8sCluster.Workers, workerNodeData2)
 	err = tfPluginClient.K8sDeployer.Deploy(context.Background(), &k8sCluster)
 	require.NoError(t, err)

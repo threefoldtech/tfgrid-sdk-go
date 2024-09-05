@@ -18,8 +18,10 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-const deploymentName = "testName"
-const invalid = "invalid"
+const (
+	deploymentName = "testName"
+	invalid        = "invalid"
+)
 
 func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
 	ctrl := gomock.NewController(t)
@@ -260,6 +262,8 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		Token:            "",
 		SSHKey:           "",
 		NetworkName:      "test",
+		Flist:            flist,
+		FlistChecksum:    flistCheckSum,
 		NodeDeploymentID: map[uint32]uint64{1: 10},
 		NodesIPRange: map[uint32]gridtypes.IPNet{
 			1: ipRange,

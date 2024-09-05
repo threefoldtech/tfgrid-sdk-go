@@ -28,6 +28,9 @@ type K8sCluster struct {
 	Token       string
 	NetworkName string
 
+	Flist         string `json:"flist"`
+	FlistChecksum string `json:"flist_checksum"`
+
 	// optional
 	SolutionType string
 	SSHKey       string
@@ -271,7 +274,7 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 		Name:    gridtypes.Name(k.Name),
 		Type:    zos.ZMachineType,
 		Data: gridtypes.MustMarshal(zos.ZMachine{
-			FList: k.Flist,
+			FList: cluster.Flist,
 			Network: zos.MachineNetwork{
 				Interfaces: []zos.MachineInterface{
 					{
