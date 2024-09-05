@@ -141,6 +141,8 @@ func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.
 			return err
 		}
 
+		assignNodesFlists(k8sCluster)
+
 		if err := d.Validate(ctx, k8sCluster); err != nil {
 			return err
 		}

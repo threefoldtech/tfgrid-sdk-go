@@ -153,6 +153,7 @@ func TestK8sDeployer(t *testing.T) {
 	t.Run("test validate master reachable", func(t *testing.T) {
 		k8sMockValidation(d.tfPluginClient.Identity, cl, sub, ncPool, proxyCl, d)
 
+		assignNodesFlists(&k8sCluster)
 		err = d.Validate(context.Background(), &k8sCluster)
 		assert.NoError(t, err)
 	})
