@@ -248,7 +248,7 @@ func (m *Monitor) monitorBalance(manager client.Manager, wallet wallet) error {
 	if balance >= float64(wallet.Threshold) {
 		return nil
 	}
-	return m.sendBotMessage(fmt.Sprintf("wallet %s with address:\n%s\nhas balance = %v ⚠️", wallet.Name, wallet.Address, balance))
+	return m.sendBotMessage(fmt.Sprintf("wallet %s with address:\n%s\nhas balance = %f ⚠️", wallet.Name, wallet.Address, balance))
 }
 
 // pingGridProxies pings the different grid proxy networks
