@@ -36,6 +36,7 @@ vms:
   - name: example_b #test deployment of vms with ssd storage
     vms_count: 20
     node_group: group_b
+    mycelium_ip: true
     cpu: 1
     mem: 4
     ssd:
@@ -57,6 +58,7 @@ vms:
   - name: example_d #test deployment with wireguard access
     vms_count: 2
     node_group: group_d
+    mycelium_ip: true
     cpu: 1
     mem: 1
     wireguard: true

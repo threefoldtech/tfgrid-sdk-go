@@ -29,6 +29,7 @@
       ],
       "public_ip4": false,
       "public_ip6": false,
+      "mycelium_ip": true,
       "flist": "https://hub.grid.tf/tf-official-apps/base:latest.flist",
       "entry_point": "/sbin/zinit init",
       "root_size": 0,
