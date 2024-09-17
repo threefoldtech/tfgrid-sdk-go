@@ -32,7 +32,7 @@ const (
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set farms' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of farms"
-// @Param sort_by query string false "Sort by specific farm field" Enums(name, farm_id, twin_id, public_ips, dedicated)
+// @Param sort_by query string false "Sort by specific farm field" Enums(name, farm_id, twin_id, free_ips, total_ips, used_ips, dedicated)
 // @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param free_ips query int false "Min number of free ips in the farm"
 // @Param total_ips query int false "Min number of total ips in the farm"

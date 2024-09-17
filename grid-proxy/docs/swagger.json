@@ -315,7 +315,9 @@
                             "name",
                             "farm_id",
                             "twin_id",
-                            "public_ips",
+                            "free_ips",
+                            "total_ips",
+                            "used_ips",
                             "dedicated"
                         ],
                         "type": "string",
@@ -1610,6 +1612,9 @@
                     "items": {
                         "$ref": "#/definitions/types.Processor"
                     }
+                },
+                "updatedAt": {
+                    "type": "integer"
                 }
             }
         },
@@ -1705,6 +1710,12 @@
                 },
                 "farmingPolicyId": {
                     "type": "integer"
+                },
+                "gpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.NodeGPU"
+                    }
                 },
                 "gridVersion": {
                     "type": "integer"
@@ -1895,6 +1906,12 @@
                 "farmingPolicyId": {
                     "type": "integer"
                 },
+                "gpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.NodeGPU"
+                    }
+                },
                 "gridVersion": {
                     "type": "integer"
                 },
@@ -2017,6 +2034,9 @@
                     "type": "number"
                 },
                 "node_twin_id": {
+                    "type": "integer"
+                },
+                "updatedAt": {
                     "type": "integer"
                 },
                 "upload": {

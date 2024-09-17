@@ -323,7 +323,9 @@ const docTemplate = `{
                             "name",
                             "farm_id",
                             "twin_id",
-                            "public_ips",
+                            "free_ips",
+                            "total_ips",
+                            "used_ips",
                             "dedicated"
                         ],
                         "type": "string",
@@ -1618,6 +1620,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/types.Processor"
                     }
+                },
+                "updatedAt": {
+                    "type": "integer"
                 }
             }
         },
@@ -1713,6 +1718,12 @@ const docTemplate = `{
                 },
                 "farmingPolicyId": {
                     "type": "integer"
+                },
+                "gpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.NodeGPU"
+                    }
                 },
                 "gridVersion": {
                     "type": "integer"
@@ -1903,6 +1914,12 @@ const docTemplate = `{
                 "farmingPolicyId": {
                     "type": "integer"
                 },
+                "gpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.NodeGPU"
+                    }
+                },
                 "gridVersion": {
                     "type": "integer"
                 },
@@ -2025,6 +2042,9 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "node_twin_id": {
+                    "type": "integer"
+                },
+                "updatedAt": {
                     "type": "integer"
                 },
                 "upload": {
