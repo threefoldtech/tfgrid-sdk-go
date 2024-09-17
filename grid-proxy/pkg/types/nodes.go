@@ -51,6 +51,7 @@ type Node struct {
 	Speed             Speed        `json:"speed"`
 	GPUs              []NodeGPU    `json:"gpus"`
 	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
+	FarmFreeIps       uint         `json:"farm_free_ips"`
 	_                 string       `sort:"free_cru"`
 }
 
@@ -94,6 +95,7 @@ type NodeWithNestedCapacity struct {
 	Speed             Speed          `json:"speed"`
 	GPUs              []NodeGPU      `json:"gpus"`
 	PriceUsd          float64        `json:"price_usd"`
+	FarmFreeIps       uint           `json:"farm_free_ips"`
 }
 
 // PublicConfig node public config
