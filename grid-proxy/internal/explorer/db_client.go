@@ -152,6 +152,10 @@ func (c *DBClient) GetTwinConsumption(ctx context.Context, twinId uint64) (types
 		}
 	}
 
+	if len(allCIds) == 0 {
+		return types.TwinConsumption{}, nil
+	}
+
 	// get the latest two reports for each active contract
 	reports, err := c.DB.GetContractsLatestBillReports(ctx, nonDeletedCIds, 2)
 	if err != nil {
