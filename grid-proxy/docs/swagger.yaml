@@ -91,6 +91,8 @@ definitions:
         items:
           $ref: '#/definitions/types.Processor'
         type: array
+      updatedAt:
+        type: integer
     type: object
   types.Farm:
     properties:
@@ -153,6 +155,10 @@ definitions:
         type: string
       farmingPolicyId:
         type: integer
+      gpus:
+        items:
+          $ref: '#/definitions/types.NodeGPU'
+        type: array
       gridVersion:
         type: integer
       healthy:
@@ -277,6 +283,10 @@ definitions:
         type: string
       farmingPolicyId:
         type: integer
+      gpus:
+        items:
+          $ref: '#/definitions/types.NodeGPU'
+        type: array
       gridVersion:
         type: integer
       healthy:
@@ -344,7 +354,7 @@ definitions:
       contract_id:
         type: integer
       farm_id:
-        type: string
+        type: integer
       gateway:
         type: string
       id:
@@ -358,6 +368,8 @@ definitions:
         description: in bit/sec
         type: number
       node_twin_id:
+        type: integer
+      updatedAt:
         type: integer
       upload:
         description: in bit/sec
@@ -950,6 +962,80 @@ paths:
           schema:
             type: string
       summary: Show the details for specific gateway
+      tags:
+      - GridProxy
+  /ips:
+    get:
+      consumes:
+      - application/json
+      description: Get all public ips on the grid with pagination and filtration support.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Max result per page
+        in: query
+        name: size
+        type: integer
+      - description: Set ips' count on headers based on filter
+        in: query
+        name: ret_count
+        type: boolean
+      - description: Get random patch of ips
+        in: query
+        name: randomize
+        type: boolean
+      - description: Sort by specific ip field
+        enum:
+        - ip
+        - farm_id
+        - contract_id
+        in: query
+        name: sort_by
+        type: string
+      - description: The sorting order, default is 'asc'
+        enum:
+        - desc
+        - asc
+        in: query
+        name: sort_order
+        type: string
+      - description: Get ips on specific farm
+        in: query
+        name: farm_id
+        type: integer
+      - description: filter with the ip
+        in: query
+        name: ip
+        type: string
+      - description: filter with the gateway
+        in: query
+        name: gateway
+        type: string
+      - description: Get only the free ips, based on the ip have a contract id or
+          not
+        in: query
+        name: free
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.PublicIP'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Show public ips on the grid
       tags:
       - GridProxy
   /nodes:

@@ -44,6 +44,7 @@ type DBClient interface {
 	Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error)
 	NodeStatus(ctx context.Context, nodeID uint32) (res types.NodeStatus, err error)
 	Stats(ctx context.Context, filter types.StatsFilter) (res types.Stats, err error)
+	PublicIps(ctx context.Context, filter types.PublicIpFilter, limit types.Limit) ([]types.PublicIP, uint, error)
 }
 
 // Client a client to communicate with the grid proxy
@@ -349,6 +350,41 @@ func (g *Clientimpl) ContractBills(ctx context.Context, contractID uint32, limit
 	totalCount := uint(count)
 
 	return contractBills, totalCount, nil
+}
+
+// PublicIps returns all public ips on the chain based on filters and pagination params
+func (g *Clientimpl) PublicIps(ctx context.Context, filter types.PublicIpFilter, limit types.Limit) ([]types.PublicIP, uint, error) {
+	res, err := g.httpGet("public_ips", filter, limit)
+	if res != nil {
+		defer res.Body.Close()
+	}
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		err = parseError(res.Body)
+		return nil, 0, err
+	}
+
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	count, err := requestCounters(res)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	ips := []types.PublicIP{}
+	if err := json.Unmarshal(data, &ips); err != nil {
+		return nil, 0, err
+	}
+
+	totalCount := uint(count)
+
+	return ips, totalCount, nil
 }
 
 func (g *Clientimpl) newHTTPClient() *http.Client {

@@ -180,3 +180,12 @@ func (c *DBClient) GetTwinConsumption(ctx context.Context, twinId uint64) (types
 
 	return consumption, err
 }
+
+func (c *DBClient) PublicIps(ctx context.Context, filter types.PublicIpFilter, limit types.Limit) ([]types.PublicIP, uint, error) {
+	dbIps, count, err := c.DB.GetPublicIps(ctx, filter, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return dbIps, count, nil
+}

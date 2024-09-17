@@ -26,7 +26,7 @@ func (g *GridProxyMockClient) Farms(ctx context.Context, filter types.FarmFilter
 		publicIPs[g.data.FarmIDMap[publicIP.FarmID]] = append(publicIPs[g.data.FarmIDMap[publicIP.FarmID]], types.PublicIP{
 			ID:         publicIP.ID,
 			IP:         publicIP.IP,
-			ContractID: int(publicIP.ContractID),
+			ContractID: publicIP.ContractID,
 			Gateway:    publicIP.Gateway,
 		})
 	}

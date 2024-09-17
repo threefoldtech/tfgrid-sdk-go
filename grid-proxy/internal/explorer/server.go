@@ -400,6 +400,46 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 	return dbContracts, resp
 }
 
+// GetPublicIps godoc
+// @Summary Show public ips on the grid
+// @Description Get all public ips on the grid with pagination and filtration support.
+// @Tags GridProxy
+// @Accept  json
+// @Produce  json
+// @Param page query int false "Page number"
+// @Param size query int false "Max result per page"
+// @Param ret_count query bool false "Set ips' count on headers based on filter"
+// @Param randomize query bool false "Get random patch of ips"
+// @Param sort_by query string false "Sort by specific ip field" Enums(ip, farm_id, contract_id)
+// @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
+// @Param farm_id query int false "Get ips on specific farm"
+// @Param ip query string false "filter with the ip"
+// @Param gateway query string false "filter with the gateway"
+// @Param free query bool false "Get only the free ips, based on the ip have a contract id or not"
+// @Success 200 {object} []types.PublicIP
+// @Failure 400 {object} string
+// @Failure 500 {object} string
+// @Router /ips [get]
+func (a *App) GetPublicIps(r *http.Request) (interface{}, mw.Response) {
+	filter := types.PublicIpFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := limit.Valid(types.PublicIP{}); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+
+	ips, ipsCount, err := a.cl.PublicIps(r.Context(), filter, limit)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to query public ips")
+		return nil, mw.Error(err)
+	}
+
+	resp := createResponse(ipsCount, limit)
+	return ips, resp
+}
+
 // ping godoc
 // @Summary ping the server
 // @Description ping the server to check if it is running
@@ -605,6 +645,8 @@ func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Cl
 	router.HandleFunc("/contracts", mw.AsHandlerFunc(a.listContracts))
 	router.HandleFunc("/contracts/{contract_id:[0-9]+}", mw.AsHandlerFunc(a.getContract))
 	router.HandleFunc("/contracts/{contract_id:[0-9]+}/bills", mw.AsHandlerFunc(a.getContractBills))
+
+	router.HandleFunc("/public_ips", mw.AsHandlerFunc(a.GetPublicIps))
 
 	router.HandleFunc("/", mw.AsHandlerFunc(a.indexPage(router)))
 	router.HandleFunc("/ping", mw.AsHandlerFunc(a.ping))

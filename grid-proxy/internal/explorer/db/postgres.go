@@ -803,17 +803,7 @@ func (d *PostgresDatabase) GetTwins(ctx context.Context, filter types.TwinFilter
 	}
 
 	// Sorting
-	if limit.Randomize {
-		q = q.Order("random()")
-	} else if limit.SortBy != "" {
-		order := types.SortOrderAsc
-		if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
-			order = types.SortOrderDesc
-		}
-		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
-	} else {
-		q = q.Order("twin.twin_id")
-	}
+	q = sort(q, "twin.twin_id", limit)
 
 	var count int64
 	if limit.RetCount {
@@ -911,20 +901,10 @@ func (d *PostgresDatabase) GetContracts(ctx context.Context, filter types.Contra
 	}
 
 	// Sorting
-	if limit.Randomize {
-		q = q.Order("random()")
-	} else if limit.SortBy != "" {
-		order := types.SortOrderAsc
-		if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
-			order = types.SortOrderDesc
-		}
-		q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
-	} else {
-		q = q.Order("contracts.contract_id")
-	}
+	q = sort(q, "contracts.contract_id", limit)
 
 	var count int64
-	if limit.Randomize || limit.RetCount {
+	if limit.RetCount {
 		countQuery := q.Session(&gorm.Session{})
 		if res := countQuery.Count(&count); res.Error != nil {
 			return nil, 0, errors.Wrap(res.Error, "couldn't get contract count")
@@ -1034,4 +1014,51 @@ func (d *PostgresDatabase) GetContractsTotalBilledAmount(ctx context.Context, co
 	}
 
 	return total, nil
+}
+
+// GetPublicIps return all ips based on filters and pagination
+func (d *PostgresDatabase) GetPublicIps(ctx context.Context, filter types.PublicIpFilter, limit types.Limit) ([]types.PublicIP, uint, error) {
+	q := d.gormDB.WithContext(ctx).Table("public_ip").
+		Select(
+			"public_ip.id",
+			"public_ip.ip",
+			"public_ip.gateway",
+			"public_ip.contract_id",
+			"farm.farm_id",
+		).
+		Joins("LEFT JOIN farm ON farm.id = public_ip.farm_id")
+
+	if filter.FarmIDs != nil {
+		q = q.Where("farm.farm_id IN ?", filter.FarmIDs)
+	}
+	if filter.Free != nil {
+		q = q.Where("(contract_id = 0) = ?", *filter.Free)
+	}
+	if filter.Ip != nil {
+		q = q.Where("ip = ?", *filter.Ip)
+	}
+	if filter.Gateway != nil {
+		q = q.Where("gateway = ?", *filter.Gateway)
+	}
+
+	// Sorting
+	q = sort(q, "public_ip.id", limit)
+
+	// Counting
+	var count int64
+	if limit.RetCount {
+		countQuery := q.Session(&gorm.Session{})
+		if res := countQuery.Count(&count); res.Error != nil {
+			return nil, 0, errors.Wrap(res.Error, "couldn't get ips count")
+		}
+	}
+
+	// Pagination
+	q = q.Limit(int(limit.Size)).Offset(int(limit.Page-1) * int(limit.Size))
+
+	ips := []types.PublicIP{}
+	if res := q.Scan(&ips); res.Error != nil {
+		return ips, uint(count), errors.Wrap(res.Error, "failed to scan returned ips from database")
+	}
+	return ips, uint(count), nil
 }

@@ -61,6 +61,11 @@ func (r *requestCounter) ContractBills(ctx context.Context, contractID uint32, l
 	return nil, 0, errors.New("error")
 }
 
+func (r *requestCounter) PublicIps(ctx context.Context, filter types.PublicIpFilter, limit types.Limit) ([]types.PublicIP, uint, error) {
+	r.Counter++
+	return nil, 0, errors.New("error")
+}
+
 func retryingConstructor(u ...string) Client {
 	return NewRetryingClientWithTimeout(NewClient(u...), 1*time.Millisecond)
 }
