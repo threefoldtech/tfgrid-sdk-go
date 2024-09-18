@@ -706,11 +706,11 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.RentedBy != nil {
 		q = q.Where(`COALESCE(resources_cache.renter, 0) = ?`, *filter.RentedBy)
 	}
-	if filter.RentableBy != nil {
+	if filter.RentableOrRentedBy != nil {
 		q = q.Where(`((farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0) 
 			AND resources_cache.renter is null)
 			OR COALESCE(resources_cache.renter, 0) = ?
-		`, *filter.RentableBy)
+		`, *filter.RentableOrRentedBy)
 	}
 	if filter.Rented != nil {
 		q = q.Where(`? = (resources_cache.renter is not null)`, *filter.Rented)
@@ -730,7 +730,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Order("random()")
 	} else {
 		// prioritize the rented (by the twin) nodes
-		if filter.AvailableFor != nil || filter.RentableBy != nil {
+		if filter.AvailableFor != nil || filter.RentableOrRentedBy != nil {
 			q = q.Order("(case when resources_cache.renter is not null then 1 else 2 end)")
 		}
 

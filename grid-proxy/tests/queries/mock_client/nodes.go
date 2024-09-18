@@ -426,8 +426,8 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 
 	renter, ok := data.NodeRentedBy[n.NodeID]
 
-	if f.RentableBy != nil &&
-		((ok && renter != *f.RentableBy) ||
+	if f.RentableOrRentedBy != nil &&
+		((ok && renter != *f.RentableOrRentedBy) ||
 			(!ok && !(data.Farms[n.FarmID].DedicatedFarm || len(data.NonDeletedContracts[n.NodeID]) == 0))) {
 		return false
 	}
