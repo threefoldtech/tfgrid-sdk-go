@@ -141,7 +141,8 @@ type NodeFilter struct {
 	OwnedBy           *uint64  `schema:"owned_by,omitempty"`
 	Rented            *bool    `schema:"rented,omitempty"`
 	RentedBy          *uint64  `schema:"rented_by,omitempty"`
-	AvailableFor      *uint64  `schema:"available_for,omitempty"`
+	RentableBy        *uint64  `schema:"rentable_by,omitempty"`   // rented by twin or rentable
+	AvailableFor      *uint64  `schema:"available_for,omitempty"` // rented by twin or free
 	NodeID            *uint64  `schema:"node_id,omitempty"`
 	NodeIDs           []uint64 `schema:"node_ids,omitempty"`
 	TwinID            *uint64  `schema:"twin_id,omitempty"`

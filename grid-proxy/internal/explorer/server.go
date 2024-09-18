@@ -145,6 +145,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param rented query bool false "Set to true to filter rented nodes"
 // @Param rented_by query int false "rented by twin id"
 // @Param available_for query int false "available for twin id"
+// @Param rentable_by query int false "rented by a twin id or available to rent"
 // @Param farm_ids query string false "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')"
 // @Param certification_type query string false "certificate type" Enums(Certified, DIY)
 // @Param has_gpu query bool false "filter nodes on whether they have GPU support or not"

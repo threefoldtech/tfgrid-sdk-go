@@ -1013,6 +1013,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "rented by a twin id or available to rent",
+                        "name": "rentable_by",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')",
                         "name": "farm_ids",
@@ -1618,6 +1624,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/types.Processor"
                     }
+                },
+                "updatedAt": {
+                    "type": "integer"
                 }
             }
         },
@@ -1713,6 +1722,12 @@ const docTemplate = `{
                 },
                 "farmingPolicyId": {
                     "type": "integer"
+                },
+                "gpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.NodeGPU"
+                    }
                 },
                 "gridVersion": {
                     "type": "integer"
@@ -1903,6 +1918,12 @@ const docTemplate = `{
                 "farmingPolicyId": {
                     "type": "integer"
                 },
+                "gpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.NodeGPU"
+                    }
+                },
                 "gridVersion": {
                     "type": "integer"
                 },
@@ -2025,6 +2046,9 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "node_twin_id": {
+                    "type": "integer"
+                },
+                "updatedAt": {
                     "type": "integer"
                 },
                 "upload": {
