@@ -30,6 +30,7 @@ type K8sCluster struct {
 
 	Flist         string `json:"flist"`
 	FlistChecksum string `json:"flist_checksum"`
+	Entrypoint    string `json:"entry_point"`
 
 	// optional
 	SolutionType string
