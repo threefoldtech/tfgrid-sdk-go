@@ -213,6 +213,7 @@ func (st *State) LoadK8sFromGrid(ctx context.Context, nodeIDs []uint32, deployme
 	cluster.Token = cluster.Master.EnvVars["K3S_TOKEN"]
 	cluster.Flist = cluster.Master.Flist
 	cluster.FlistChecksum = cluster.Master.FlistChecksum
+	cluster.Entrypoint = cluster.Master.Entrypoint
 
 	// get cluster IP ranges
 	_, err := st.LoadNetworkFromGrid(ctx, cluster.NetworkName)

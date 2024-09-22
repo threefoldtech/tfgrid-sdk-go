@@ -291,7 +291,7 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 				CPU:    k.CPU,
 				Memory: gridtypes.Unit(uint(k.MemoryMB)) * gridtypes.Megabyte,
 			},
-			Entrypoint: "/sbin/zinit init",
+			Entrypoint: cluster.Entrypoint,
 			Mounts: []zos.MachineMount{
 				{Name: gridtypes.Name(diskName), Mountpoint: "/mydisk"},
 			},
