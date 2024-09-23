@@ -82,21 +82,6 @@ func (mr *MockDBClientMockRecorder) Contracts(ctx, filter, pagination interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Contracts", reflect.TypeOf((*MockDBClient)(nil).Contracts), ctx, filter, pagination)
 }
 
-// Stats mocks base method.
-func (m *MockDBClient) Stats(ctx context.Context, filter types.StatsFilter) (types.Stats, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Stats", ctx, filter)
-	ret0, _ := ret[0].(types.Stats)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Stats indicates an expected call of Stats.
-func (mr *MockDBClientMockRecorder) Stats(ctx, filter interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stats", reflect.TypeOf((*MockDBClient)(nil).Stats), ctx, filter)
-}
-
 // Farms mocks base method.
 func (m *MockDBClient) Farms(ctx context.Context, filter types.FarmFilter, pagination types.Limit) ([]types.Farm, int, error) {
 	m.ctrl.T.Helper()
@@ -157,6 +142,37 @@ func (m *MockDBClient) Nodes(ctx context.Context, filter types.NodeFilter, pagin
 func (mr *MockDBClientMockRecorder) Nodes(ctx, filter, pagination interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Nodes", reflect.TypeOf((*MockDBClient)(nil).Nodes), ctx, filter, pagination)
+}
+
+// PublicIps mocks base method.
+func (m *MockDBClient) PublicIps(ctx context.Context, filter types.PublicIpFilter, limit types.Limit) ([]types.PublicIP, uint, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublicIps", ctx, filter, limit)
+	ret0, _ := ret[0].([]types.PublicIP)
+	ret1, _ := ret[1].(uint)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// PublicIps indicates an expected call of PublicIps.
+func (mr *MockDBClientMockRecorder) PublicIps(ctx, filter, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublicIps", reflect.TypeOf((*MockDBClient)(nil).PublicIps), ctx, filter, limit)
+}
+
+// Stats mocks base method.
+func (m *MockDBClient) Stats(ctx context.Context, filter types.StatsFilter) (types.Stats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Stats", ctx, filter)
+	ret0, _ := ret[0].(types.Stats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Stats indicates an expected call of Stats.
+func (mr *MockDBClientMockRecorder) Stats(ctx, filter interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stats", reflect.TypeOf((*MockDBClient)(nil).Stats), ctx, filter)
 }
 
 // Twins mocks base method.
@@ -245,21 +261,6 @@ func (mr *MockClientMockRecorder) Contracts(ctx, filter, pagination interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Contracts", reflect.TypeOf((*MockClient)(nil).Contracts), ctx, filter, pagination)
 }
 
-// Stats mocks base method.
-func (m *MockClient) Stats(ctx context.Context, filter types.StatsFilter) (types.Stats, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Stats", ctx, filter)
-	ret0, _ := ret[0].(types.Stats)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Stats indicates an expected call of Stats.
-func (mr *MockClientMockRecorder) Stats(ctx, filter interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stats", reflect.TypeOf((*MockClient)(nil).Stats), ctx, filter)
-}
-
 // Farms mocks base method.
 func (m *MockClient) Farms(ctx context.Context, filter types.FarmFilter, pagination types.Limit) ([]types.Farm, int, error) {
 	m.ctrl.T.Helper()
@@ -334,6 +335,37 @@ func (m *MockClient) Ping() error {
 func (mr *MockClientMockRecorder) Ping() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockClient)(nil).Ping))
+}
+
+// PublicIps mocks base method.
+func (m *MockClient) PublicIps(ctx context.Context, filter types.PublicIpFilter, limit types.Limit) ([]types.PublicIP, uint, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublicIps", ctx, filter, limit)
+	ret0, _ := ret[0].([]types.PublicIP)
+	ret1, _ := ret[1].(uint)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// PublicIps indicates an expected call of PublicIps.
+func (mr *MockClientMockRecorder) PublicIps(ctx, filter, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublicIps", reflect.TypeOf((*MockClient)(nil).PublicIps), ctx, filter, limit)
+}
+
+// Stats mocks base method.
+func (m *MockClient) Stats(ctx context.Context, filter types.StatsFilter) (types.Stats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Stats", ctx, filter)
+	ret0, _ := ret[0].(types.Stats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Stats indicates an expected call of Stats.
+func (mr *MockClientMockRecorder) Stats(ctx, filter interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stats", reflect.TypeOf((*MockClient)(nil).Stats), ctx, filter)
 }
 
 // Twins mocks base method.

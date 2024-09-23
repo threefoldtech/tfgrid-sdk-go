@@ -785,6 +785,115 @@ const docTemplate = `{
                 }
             }
         },
+        "/ips": {
+            "get": {
+                "description": "Get all public ips on the grid with pagination and filtration support.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GridProxy"
+                ],
+                "summary": "Show public ips on the grid",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max result per page",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Set ips' count on headers based on filter",
+                        "name": "ret_count",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get random patch of ips",
+                        "name": "randomize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "ip",
+                            "farm_id",
+                            "contract_id"
+                        ],
+                        "type": "string",
+                        "description": "Sort by specific ip field",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "desc",
+                            "asc"
+                        ],
+                        "type": "string",
+                        "description": "The sorting order, default is 'asc'",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Get ips on specific farm",
+                        "name": "farm_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter with the ip",
+                        "name": "ip",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter with the gateway",
+                        "name": "gateway",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get only the free ips, based on the ip have a contract id or not",
+                        "name": "free",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.PublicIP"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/nodes": {
             "get": {
                 "description": "Get all nodes on the grid, It has pagination",
@@ -1618,6 +1727,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/types.Processor"
                     }
+                },
+                "updatedAt": {
+                    "type": "integer"
                 }
             }
         },
@@ -1713,6 +1825,12 @@ const docTemplate = `{
                 },
                 "farmingPolicyId": {
                     "type": "integer"
+                },
+                "gpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.NodeGPU"
+                    }
                 },
                 "gridVersion": {
                     "type": "integer"
@@ -1903,6 +2021,12 @@ const docTemplate = `{
                 "farmingPolicyId": {
                     "type": "integer"
                 },
+                "gpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.NodeGPU"
+                    }
+                },
                 "gridVersion": {
                     "type": "integer"
                 },
@@ -2004,7 +2128,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "farm_id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "gateway": {
                     "type": "string"
@@ -2025,6 +2149,9 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "node_twin_id": {
+                    "type": "integer"
+                },
+                "updatedAt": {
                     "type": "integer"
                 },
                 "upload": {

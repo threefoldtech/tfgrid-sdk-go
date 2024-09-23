@@ -137,3 +137,13 @@ func (g *RetryingClient) ContractBills(ctx context.Context, contractID uint32, l
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("contract_bills"))
 	return
 }
+
+// PublicIps returns the public ips based on filters and pagination
+func (g *RetryingClient) PublicIps(ctx context.Context, filter types.PublicIpFilter, limit types.Limit) (res []types.PublicIP, totalCount uint, err error) {
+	f := func() error {
+		res, totalCount, err = g.cl.PublicIps(ctx, filter, limit)
+		return err
+	}
+	err = backoff.RetryNotify(f, bf(g.timeout), notify("public_ips"))
+	return
+}

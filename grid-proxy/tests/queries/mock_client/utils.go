@@ -7,7 +7,7 @@ import (
 )
 
 type Result interface {
-	types.Contract | types.Farm | types.Node | types.Twin
+	types.Contract | types.Farm | types.Node | types.Twin | types.PublicIP
 }
 
 func CalcFreeResources(total NodeResourcesTotal, used NodeResourcesTotal) NodeResourcesTotal {

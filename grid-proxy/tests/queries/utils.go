@@ -10,7 +10,7 @@ import (
 )
 
 type Filter interface {
-	types.ContractFilter | types.NodeFilter | types.FarmFilter | types.TwinFilter | types.StatsFilter
+	types.ContractFilter | types.NodeFilter | types.FarmFilter | types.TwinFilter | types.StatsFilter | types.PublicIpFilter
 }
 
 func flip(success float32) bool {

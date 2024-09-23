@@ -12,15 +12,6 @@ type Farm struct {
 	PublicIps         []PublicIP `json:"publicIps" sort:"public_ips"`
 }
 
-// PublicIP info about public ip in the farm
-type PublicIP struct {
-	ID         string `json:"id"`
-	IP         string `json:"ip"`
-	FarmID     string `json:"farm_id"`
-	ContractID int    `json:"contract_id"`
-	Gateway    string `json:"gateway"`
-}
-
 // FarmFilter farm filters
 type FarmFilter struct {
 	FreeIPs           *uint64  `schema:"free_ips,omitempty"`
