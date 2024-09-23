@@ -1124,6 +1124,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "rented by a twin id or available to rent",
+                        "name": "rentable_by",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "List of farms separated by comma to fetch nodes from (e.g. '1,2,3')",
                         "name": "farm_ids",

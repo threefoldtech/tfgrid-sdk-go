@@ -265,6 +265,13 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		}
 		return &c
 	},
+	"RentableOrRentedBy": func(agg NodesAggregate) interface{} {
+		c := agg.twins[rand.Intn(len(agg.twins))]
+		if flip(.2) && len(agg.nodeRenters) != 0 {
+			c = agg.nodeRenters[rand.Intn(len(agg.nodeRenters))]
+		}
+		return &c
+	},
 	"AvailableFor": func(agg NodesAggregate) interface{} {
 		c := agg.twins[rand.Intn(len(agg.twins))]
 		if flip(.1) && len(agg.nodeRenters) != 0 {
