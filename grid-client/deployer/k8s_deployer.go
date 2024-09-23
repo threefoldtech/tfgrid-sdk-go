@@ -476,7 +476,11 @@ func assignNodesFlistsAndEntryPoints(k *workloads.K8sCluster) {
 		k.Flist = k.Master.Flist
 	}
 	if k.Entrypoint == "" {
-		k.Entrypoint = k.Master.Entrypoint
+		if k.Master.Entrypoint != "" {
+			k.Entrypoint = k.Master.Entrypoint
+		} else {
+			k.Entrypoint = "/sbin/zinit init" // set default value
+		}
 	}
 
 	k.Master.Flist = k.Flist
