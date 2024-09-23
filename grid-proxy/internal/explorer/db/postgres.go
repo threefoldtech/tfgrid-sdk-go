@@ -369,6 +369,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.processor",
 			"resources_cache.upload_speed",
 			"resources_cache.download_speed",
+			"public_ips_cache.free_ips as farm_free_ips",
 			calculatedDiscountColumn,
 		).
 		Joins(`

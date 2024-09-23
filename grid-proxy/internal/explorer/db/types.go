@@ -110,6 +110,7 @@ type Node struct {
 	UploadSpeed        float64
 	DownloadSpeed      float64
 	PriceUsd           float64
+	FarmFreeIps        uint
 }
 
 // NodePower struct is the farmerbot report for node status

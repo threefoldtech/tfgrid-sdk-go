@@ -186,7 +186,8 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 					Upload:   g.data.Speeds[uint32(node.TwinID)].Upload,
 					Download: g.data.Speeds[uint32(node.TwinID)].Download,
 				},
-				PriceUsd: calcDiscount(calcNodePrice(g.data, node), limit.Balance),
+				PriceUsd:    calcDiscount(calcNodePrice(g.data, node), limit.Balance),
+				FarmFreeIps: uint(g.data.FreeIPs[node.FarmID]),
 			})
 		}
 	}
@@ -282,7 +283,8 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 			Upload:   g.data.Speeds[uint32(node.TwinID)].Upload,
 			Download: g.data.Speeds[uint32(node.TwinID)].Download,
 		},
-		PriceUsd: calcNodePrice(g.data, node),
+		PriceUsd:    calcNodePrice(g.data, node),
+		FarmFreeIps: uint(g.data.FreeIPs[node.FarmID]),
 	}
 	return
 }
