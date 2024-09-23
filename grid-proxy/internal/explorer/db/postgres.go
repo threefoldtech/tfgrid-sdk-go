@@ -539,7 +539,17 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 			if strings.EqualFold(string(limit.SortOrder), string(types.SortOrderDesc)) {
 				order = types.SortOrderDesc
 			}
-			q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
+
+			switch limit.SortBy {
+			case "free_ips":
+				q = q.Order(fmt.Sprintf("public_ips_cache.free_ips %s", order))
+			case "total_ips":
+				q = q.Order(fmt.Sprintf("public_ips_cache.total_ips %s", order))
+			case "used_ips":
+				q = q.Order(fmt.Sprintf("public_ips_cache.total_ips-public_ips_cache.free_ips %s", order))
+			default:
+				q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
+			}
 		} else {
 			q = q.Order("farm.farm_id")
 		}

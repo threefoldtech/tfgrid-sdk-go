@@ -323,7 +323,9 @@ const docTemplate = `{
                             "name",
                             "farm_id",
                             "twin_id",
-                            "public_ips",
+                            "free_ips",
+                            "total_ips",
+                            "used_ips",
                             "dedicated"
                         ],
                         "type": "string",

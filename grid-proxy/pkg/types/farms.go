@@ -10,6 +10,10 @@ type Farm struct {
 	StellarAddress    string     `json:"stellarAddress"`
 	Dedicated         bool       `json:"dedicated" sort:"dedicated"`
 	PublicIps         []PublicIP `json:"publicIps" sort:"public_ips"`
+	// TODO: maybe separate the sorting params in a different struct
+	_ string `sort:"free_ips"`
+	_ string `sort:"total_ips"`
+	_ string `sort:"used_ips"`
 }
 
 // FarmFilter farm filters
