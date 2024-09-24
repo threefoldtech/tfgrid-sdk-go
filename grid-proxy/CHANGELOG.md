@@ -2,11 +2,17 @@
 
 Check `/version` on any instance to know the version.
 
-## Projects
-
-### 3.13
-
 ## Releases
+
+### v0.15.17
+
+---
+
+- `fix` null consumption for twins doesn't contain contracts.
+- `feat` add `rentable_or_rented_by` filter on nodes endpoint.
+- `feat` add `free_farm_ips` field on node response.
+- `feat` allow sorting by total/free/used ips on farm endpoint.
+- `feat` add new `public_ips` endpoint.
 
 ### v0.15.14
 

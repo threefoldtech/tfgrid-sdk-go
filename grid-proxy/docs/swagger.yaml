@@ -149,6 +149,8 @@ definitions:
         $ref: '#/definitions/types.Dmi'
       extraFee:
         type: integer
+      farm_free_ips:
+        type: integer
       farmId:
         type: integer
       farmName:
@@ -276,6 +278,8 @@ definitions:
       dmi:
         $ref: '#/definitions/types.Dmi'
       extraFee:
+        type: integer
+      farm_free_ips:
         type: integer
       farmId:
         type: integer
@@ -1199,7 +1203,7 @@ paths:
         type: integer
       - description: rented by a twin id or available to rent
         in: query
-        name: rentable_by
+        name: rentable_or_rented_by
         type: integer
       - description: List of farms separated by comma to fetch nodes from (e.g. '1,2,3')
         in: query
