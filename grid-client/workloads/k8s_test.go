@@ -54,6 +54,7 @@ func TestK8sNodeData(t *testing.T) {
 			NetworkName:   "network",
 			Flist:         flist,
 			FlistChecksum: "e71ee7421f45392fbbb92309182e3006",
+			Entrypoint:    "/sbin/zinit init",
 		}
 	})
 

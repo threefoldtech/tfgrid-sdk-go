@@ -30,6 +30,7 @@ type K8sCluster struct {
 
 	Flist         string `json:"flist"`
 	FlistChecksum string `json:"flist_checksum"`
+	Entrypoint    string `json:"entry_point"`
 
 	// optional
 	SolutionType string
@@ -290,7 +291,7 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 				CPU:    k.CPU,
 				Memory: gridtypes.Unit(uint(k.MemoryMB)) * gridtypes.Megabyte,
 			},
-			Entrypoint: "/sbin/zinit init",
+			Entrypoint: cluster.Entrypoint,
 			Mounts: []zos.MachineMount{
 				{Name: gridtypes.Name(diskName), Mountpoint: "/mydisk"},
 			},

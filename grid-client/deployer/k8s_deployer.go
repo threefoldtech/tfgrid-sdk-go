@@ -98,7 +98,7 @@ func (d *K8sDeployer) Deploy(ctx context.Context, k8sCluster *workloads.K8sClust
 		return err
 	}
 
-	assignNodesFlists(k8sCluster)
+	assignNodesFlistsAndEntryPoints(k8sCluster)
 
 	if err := d.Validate(ctx, k8sCluster); err != nil {
 		return err
@@ -141,7 +141,7 @@ func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.
 			return err
 		}
 
-		assignNodesFlists(k8sCluster)
+		assignNodesFlistsAndEntryPoints(k8sCluster)
 
 		if err := d.Validate(ctx, k8sCluster); err != nil {
 			return err
@@ -471,13 +471,22 @@ func (d *K8sDeployer) assignNodesIPs(k8sCluster *workloads.K8sCluster) error {
 	return nil
 }
 
-func assignNodesFlists(k *workloads.K8sCluster) {
+func assignNodesFlistsAndEntryPoints(k *workloads.K8sCluster) {
 	if k.Flist == "" {
 		k.Flist = k.Master.Flist
 	}
+	if k.Entrypoint == "" {
+		if k.Master.Entrypoint != "" {
+			k.Entrypoint = k.Master.Entrypoint
+		} else {
+			k.Entrypoint = "/sbin/zinit init" // set default value
+		}
+	}
 
 	k.Master.Flist = k.Flist
+	k.Master.Entrypoint = k.Entrypoint
 	for i := range k.Workers {
 		k.Workers[i].Flist = k.Flist
+		k.Workers[i].Entrypoint = k.Entrypoint
 	}
 }
