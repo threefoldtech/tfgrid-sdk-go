@@ -1126,7 +1126,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "rented by a twin id or available to rent",
-                        "name": "rentable_by",
+                        "name": "rentable_or_rented_by",
                         "in": "query"
                     },
                     {
@@ -1831,6 +1831,9 @@ const docTemplate = `{
                 "farmName": {
                     "type": "string"
                 },
+                "farm_free_ips": {
+                    "type": "integer"
+                },
                 "farmingPolicyId": {
                     "type": "integer"
                 },
@@ -2025,6 +2028,9 @@ const docTemplate = `{
                 },
                 "farmName": {
                     "type": "string"
+                },
+                "farm_free_ips": {
+                    "type": "integer"
                 },
                 "farmingPolicyId": {
                     "type": "integer"
