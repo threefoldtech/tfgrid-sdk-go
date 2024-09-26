@@ -90,8 +90,7 @@ func k8sMockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub
 }
 
 func constructK8sCluster() (workloads.K8sCluster, error) {
-	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
-	flistCheckSum, err := workloads.GetFlistChecksum(flist)
+	flistCheckSum, err := workloads.GetFlistChecksum(workloads.K8sFlist)
 	if err != nil {
 		return workloads.K8sCluster{}, err
 	}
@@ -138,7 +137,7 @@ func constructK8sCluster() (workloads.K8sCluster, error) {
 		Token:         "tokens",
 		SSHKey:        "",
 		NetworkName:   "network",
-		Flist:         flist,
+		Flist:         workloads.K8sFlist,
 		FlistChecksum: flistCheckSum,
 		NodesIPRange:  make(map[uint32]gridtypes.IPNet),
 	}
@@ -320,8 +319,7 @@ func ExampleK8sDeployer_Deploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	const flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
-	flistCheckSum, err := workloads.GetFlistChecksum(flist)
+	flistCheckSum, err := workloads.GetFlistChecksum(workloads.K8sFlist)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -370,7 +368,7 @@ func ExampleK8sDeployer_Deploy() {
 		Token:         "tokens",
 		SSHKey:        "<ssh key goes here>",
 		NetworkName:   n.Name,
-		Flist:         flist,
+		Flist:         workloads.K8sFlist,
 		FlistChecksum: flistCheckSum,
 		NodesIPRange:  make(map[uint32]gridtypes.IPNet),
 	}
@@ -395,8 +393,7 @@ func ExampleK8sDeployer_BatchDeploy() {
 	const network = "<dev, test, qa, main>"
 	const nodeID = 11 // use any node with status up, use ExampleFilterNodes to get valid nodeID
 
-	const flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
-	flistCheckSum, err := workloads.GetFlistChecksum(flist)
+	flistCheckSum, err := workloads.GetFlistChecksum(workloads.K8sFlist)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -445,7 +442,7 @@ func ExampleK8sDeployer_BatchDeploy() {
 		Token:         "tokens",
 		SSHKey:        "<ssh key goes here>",
 		NetworkName:   n.Name,
-		Flist:         flist,
+		Flist:         workloads.K8sFlist,
 		FlistChecksum: flistCheckSum,
 		NodesIPRange:  make(map[uint32]gridtypes.IPNet),
 	}

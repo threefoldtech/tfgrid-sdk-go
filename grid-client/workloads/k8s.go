@@ -15,6 +15,9 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
+// old: https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist
+var K8sFlist = "https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist"
+
 // K8sNode kubernetes data
 type K8sNode struct {
 	*VM

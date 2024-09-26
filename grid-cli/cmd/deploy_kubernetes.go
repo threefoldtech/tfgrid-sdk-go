@@ -14,8 +14,6 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 )
 
-var k8sFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
-
 // deployKubernetesCmd represents the deploy kubernetes command
 var deployKubernetesCmd = &cobra.Command{
 	Use:   "kubernetes",
@@ -211,7 +209,7 @@ var deployKubernetesCmd = &cobra.Command{
 		for i := range workers {
 			workers[i].NodeID = uint32(workersNodes[i])
 		}
-		cluster, err := command.DeployKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey), k8sFlist)
+		cluster, err := command.DeployKubernetesCluster(cmd.Context(), t, master, workers, string(sshKey), workloads.K8sFlist)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
