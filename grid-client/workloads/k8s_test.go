@@ -9,8 +9,6 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
-var flist = "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
-
 // K8sWorkload to be used in tests
 var K8sWorkload = K8sNode{
 	VM: &VM{
@@ -20,8 +18,8 @@ var K8sWorkload = K8sNode{
 		PublicIP:      false,
 		PublicIP6:     false,
 		Planetary:     false,
-		Flist:         flist,
-		FlistChecksum: "e71ee7421f45392fbbb92309182e3006",
+		Flist:         K8sFlist,
+		FlistChecksum: "f25c9e75e8df3b4fab3ee4de25fa5e17",
 		ComputedIP:    "",
 		ComputedIP6:   "",
 		PlanetaryIP:   "",
@@ -52,7 +50,7 @@ func TestK8sNodeData(t *testing.T) {
 			Token:         "testToken",
 			SSHKey:        "",
 			NetworkName:   "network",
-			Flist:         flist,
+			Flist:         K8sFlist,
 			FlistChecksum: "e71ee7421f45392fbbb92309182e3006",
 			Entrypoint:    "/sbin/zinit init",
 		}

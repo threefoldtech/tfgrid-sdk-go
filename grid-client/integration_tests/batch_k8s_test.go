@@ -45,8 +45,6 @@ func TestBatchK8sDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	flist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
-
 	master1 := workloads.K8sNode{
 		VM: &workloads.VM{
 			Name:        generateRandString(10),
@@ -100,7 +98,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		Workers:     []workloads.K8sNode{workerNodeData1},
 		Token:       "tokens",
 		SSHKey:      publicKey,
-		Flist:       flist,
+		Flist:       workloads.K8sFlist,
 		NetworkName: network.Name,
 	}
 
@@ -109,7 +107,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 		Workers:     []workloads.K8sNode{workerNodeData2},
 		Token:       "tokens",
 		SSHKey:      publicKey,
-		Flist:       flist,
+		Flist:       workloads.K8sFlist,
 		NetworkName: network.Name,
 	}
 

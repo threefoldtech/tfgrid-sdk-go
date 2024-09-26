@@ -77,8 +77,6 @@ func TestK8sDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	k8sFlist := "https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist"
-
 	master := workloads.K8sNode{
 		VM: &workloads.VM{
 			Name:        fmt.Sprintf("master_%s", generateRandString(5)),
@@ -123,7 +121,7 @@ func TestK8sDeployment(t *testing.T) {
 		Workers:     workers,
 		Token:       "tokens",
 		SSHKey:      publicKey,
-		Flist:       k8sFlist,
+		Flist:       workloads.K8sFlist,
 		NetworkName: network.Name,
 	}
 
