@@ -54,6 +54,9 @@ const (
 // @Param node_has_gpu query bool false "True for farms who have at least one node with a GPU"
 // @Param node_has_ipv6 query bool false "True for farms who have at least one node with an ipv6"
 // @Param node_certified query bool false "True for farms who have at least one certified node"
+// @Param node_wg_supported query string false "filter farms which its nodes support wg networking"
+// @Param node_ygg_supported query string false "filter farms which its nodes support ygg networking"
+// @Param node_pub_ip_supported query string false "filter farms which its nodes support public ip"
 // @Param country query string false "farm country"
 // @Param region query string false "farm region"
 // @Success 200 {object} []types.Farm
@@ -157,6 +160,9 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param owned_by query int false "get nodes owned by twin id"
 // @Param price_min query string false "get nodes with price greater than this"
 // @Param price_max query string false "get nodes with price smaller than this"
+// @Param wg_supported query string false "get nodes that support wg networking"
+// @Param ygg_supported query string false "get nodes that support ygg networking"
+// @Param pub_ip_supported query string false "get nodes that support public ip"
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string

@@ -16,43 +16,51 @@ type NodePower struct {
 	Target string `json:"target"`
 }
 
+// NodeFeatures is a list of supported features on the node
+type NodeFeaturesResp struct {
+	WireGuard bool `json:"wireguard"`
+	Yggdrasil bool `json:"yggdrasil"`
+	PublicIp  bool `json:"public_ip"`
+}
+
 // Node is a struct holding the data for a Node for the nodes view
 type Node struct {
-	ID                string       `json:"id"`
-	NodeID            int          `json:"nodeId" sort:"node_id"`
-	FarmID            int          `json:"farmId" sort:"farm_id"`
-	FarmName          string       `json:"farmName"`
-	TwinID            int          `json:"twinId" sort:"twin_id"`
-	Country           string       `json:"country" sort:"country"`
-	GridVersion       int          `json:"gridVersion"`
-	City              string       `json:"city" sort:"city"`
-	Uptime            int64        `json:"uptime" sort:"uptime"`
-	Created           int64        `json:"created" sort:"created"`
-	FarmingPolicyID   int          `json:"farmingPolicyId"`
-	UpdatedAt         int64        `json:"updatedAt" sort:"updated_at"`
-	TotalResources    Capacity     `json:"total_resources" sort:"total_"`
-	UsedResources     Capacity     `json:"used_resources" sort:"used_"`
-	Location          Location     `json:"location"`
-	PublicConfig      PublicConfig `json:"publicConfig"`
-	Status            string       `json:"status" sort:"status"`
-	CertificationType string       `json:"certificationType"`
-	Dedicated         bool         `json:"dedicated"`
-	InDedicatedFarm   bool         `json:"inDedicatedFarm" sort:"dedicated_farm"`
-	RentContractID    uint         `json:"rentContractId" sort:"rent_contract_id"`
-	Rented            bool         `json:"rented" sort:"rented"`
-	Rentable          bool         `json:"rentable" sort:"rentable"`
-	RentedByTwinID    uint         `json:"rentedByTwinId"`
-	SerialNumber      string       `json:"serialNumber"`
-	Power             NodePower    `json:"power"`
-	NumGPU            int          `json:"num_gpu" sort:"num_gpu"`
-	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
-	Healthy           bool         `json:"healthy"`
-	Dmi               Dmi          `json:"dmi"`
-	Speed             Speed        `json:"speed"`
-	GPUs              []NodeGPU    `json:"gpus"`
-	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
-	FarmFreeIps       uint         `json:"farm_free_ips"`
-	_                 string       `sort:"free_cru"`
+	ID                string           `json:"id"`
+	NodeID            int              `json:"nodeId" sort:"node_id"`
+	FarmID            int              `json:"farmId" sort:"farm_id"`
+	FarmName          string           `json:"farmName"`
+	TwinID            int              `json:"twinId" sort:"twin_id"`
+	Country           string           `json:"country" sort:"country"`
+	GridVersion       int              `json:"gridVersion"`
+	City              string           `json:"city" sort:"city"`
+	Uptime            int64            `json:"uptime" sort:"uptime"`
+	Created           int64            `json:"created" sort:"created"`
+	FarmingPolicyID   int              `json:"farmingPolicyId"`
+	UpdatedAt         int64            `json:"updatedAt" sort:"updated_at"`
+	TotalResources    Capacity         `json:"total_resources" sort:"total_"`
+	UsedResources     Capacity         `json:"used_resources" sort:"used_"`
+	Location          Location         `json:"location"`
+	PublicConfig      PublicConfig     `json:"publicConfig"`
+	Status            string           `json:"status" sort:"status"`
+	CertificationType string           `json:"certificationType"`
+	Dedicated         bool             `json:"dedicated"`
+	InDedicatedFarm   bool             `json:"inDedicatedFarm" sort:"dedicated_farm"`
+	RentContractID    uint             `json:"rentContractId" sort:"rent_contract_id"`
+	Rented            bool             `json:"rented" sort:"rented"`
+	Rentable          bool             `json:"rentable" sort:"rentable"`
+	RentedByTwinID    uint             `json:"rentedByTwinId"`
+	SerialNumber      string           `json:"serialNumber"`
+	Power             NodePower        `json:"power"`
+	NumGPU            int              `json:"num_gpu" sort:"num_gpu"`
+	ExtraFee          uint64           `json:"extraFee" sort:"extra_fee"`
+	Healthy           bool             `json:"healthy"`
+	Dmi               Dmi              `json:"dmi"`
+	Speed             Speed            `json:"speed"`
+	GPUs              []NodeGPU        `json:"gpus"`
+	PriceUsd          float64          `json:"price_usd" sort:"price_usd"`
+	FarmFreeIps       uint             `json:"farm_free_ips"`
+	Features          NodeFeaturesResp `json:"features"`
+	_                 string           `sort:"free_cru"`
 }
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
@@ -63,39 +71,40 @@ type CapacityResult struct {
 
 // Node to be compatible with old view
 type NodeWithNestedCapacity struct {
-	ID                string         `json:"id"`
-	NodeID            int            `json:"nodeId"`
-	FarmID            int            `json:"farmId"`
-	FarmName          string         `json:"farmName"`
-	TwinID            int            `json:"twinId"`
-	Country           string         `json:"country"`
-	GridVersion       int            `json:"gridVersion"`
-	City              string         `json:"city"`
-	Uptime            int64          `json:"uptime"`
-	Created           int64          `json:"created"`
-	FarmingPolicyID   int            `json:"farmingPolicyId"`
-	UpdatedAt         int64          `json:"updatedAt"`
-	Capacity          CapacityResult `json:"capacity"`
-	Location          Location       `json:"location"`
-	PublicConfig      PublicConfig   `json:"publicConfig"`
-	Status            string         `json:"status"` // added node status field for up or down
-	CertificationType string         `json:"certificationType"`
-	Dedicated         bool           `json:"dedicated"`
-	InDedicatedFarm   bool           `json:"inDedicatedFarm"`
-	RentContractID    uint           `json:"rentContractId"`
-	RentedByTwinID    uint           `json:"rentedByTwinId"`
-	Rented            bool           `json:"rented"`
-	Rentable          bool           `json:"rentable"`
-	SerialNumber      string         `json:"serialNumber"`
-	Power             NodePower      `json:"power"`
-	NumGPU            int            `json:"num_gpu"`
-	ExtraFee          uint64         `json:"extraFee"`
-	Healthy           bool           `json:"healthy"`
-	Dmi               Dmi            `json:"dmi"`
-	Speed             Speed          `json:"speed"`
-	GPUs              []NodeGPU      `json:"gpus"`
-	PriceUsd          float64        `json:"price_usd"`
-	FarmFreeIps       uint           `json:"farm_free_ips"`
+	ID                string           `json:"id"`
+	NodeID            int              `json:"nodeId"`
+	FarmID            int              `json:"farmId"`
+	FarmName          string           `json:"farmName"`
+	TwinID            int              `json:"twinId"`
+	Country           string           `json:"country"`
+	GridVersion       int              `json:"gridVersion"`
+	City              string           `json:"city"`
+	Uptime            int64            `json:"uptime"`
+	Created           int64            `json:"created"`
+	FarmingPolicyID   int              `json:"farmingPolicyId"`
+	UpdatedAt         int64            `json:"updatedAt"`
+	Capacity          CapacityResult   `json:"capacity"`
+	Location          Location         `json:"location"`
+	PublicConfig      PublicConfig     `json:"publicConfig"`
+	Status            string           `json:"status"` // added node status field for up or down
+	CertificationType string           `json:"certificationType"`
+	Dedicated         bool             `json:"dedicated"`
+	InDedicatedFarm   bool             `json:"inDedicatedFarm"`
+	RentContractID    uint             `json:"rentContractId"`
+	RentedByTwinID    uint             `json:"rentedByTwinId"`
+	Rented            bool             `json:"rented"`
+	Rentable          bool             `json:"rentable"`
+	SerialNumber      string           `json:"serialNumber"`
+	Power             NodePower        `json:"power"`
+	NumGPU            int              `json:"num_gpu"`
+	ExtraFee          uint64           `json:"extraFee"`
+	Healthy           bool             `json:"healthy"`
+	Dmi               Dmi              `json:"dmi"`
+	Speed             Speed            `json:"speed"`
+	GPUs              []NodeGPU        `json:"gpus"`
+	PriceUsd          float64          `json:"price_usd"`
+	FarmFreeIps       uint             `json:"farm_free_ips"`
+	Features          NodeFeaturesResp `json:"features"`
 }
 
 // PublicConfig node public config
@@ -161,4 +170,7 @@ type NodeFilter struct {
 	PriceMax           *float64 `schema:"price_max,omitempty"`
 	Excluded           []uint64 `schema:"excluded,omitempty"`
 	HasIpv6            *bool    `schema:"has_ipv6,omitempty"`
+	WGSupported        *bool    `schema:"wg_supported,omitempty"`
+	YggSupported       *bool    `schema:"ygg_supported,omitempty"`
+	PubIpSupported     *bool    `schema:"pub_ip_supported,omitempty"`
 }

@@ -41,6 +41,7 @@ type DBData struct {
 	Locations           map[string]Location
 	HealthReports       map[uint32]bool
 	NodeIpv6            map[uint32]bool
+	NodeLight           map[uint32]bool
 	DMIs                map[uint32]types.Dmi
 	Speeds              map[uint32]types.Speed
 	PricingPolicies     map[uint]PricingPolicy
@@ -598,6 +599,32 @@ func loadNodeIpv6(db *sql.DB, data *DBData) error {
 	return nil
 }
 
+func loadNodeFeatures(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT
+		COALESCE(node_twin_id, 0),
+		COALESCE(light, false),
+		COALESCE(updated_at, 0)
+	FROM
+		node_features;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var node types.NodeFeatures
+		if err := rows.Scan(
+			&node.NodeTwinId,
+			&node.Light,
+			&node.UpdatedAt,
+		); err != nil {
+			return err
+		}
+		data.NodeLight[node.NodeTwinId] = node.Light
+	}
+
+	return nil
+}
+
 func loadDMIs(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
 	var dmis []types.Dmi
 	err := gormDB.Table("dmi").Scan(&dmis).Error
@@ -755,6 +782,7 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		DMIs:                make(map[uint32]types.Dmi),
 		Speeds:              make(map[uint32]types.Speed),
 		NodeIpv6:            make(map[uint32]bool),
+		NodeLight:           make(map[uint32]bool),
 		PricingPolicies:     make(map[uint]PricingPolicy),
 		WorkloadsNumbers:    make(map[uint32]uint32),
 		DB:                  db,
@@ -805,6 +833,9 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadNodeIpv6(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadNodeFeatures(db, &data); err != nil {
 		return data, err
 	}
 	if err := loadDMIs(db, gormDB, &data); err != nil {

@@ -132,6 +132,9 @@ func (d *PostgresDatabase) GetLastUpsertsTimestamp() (types.IndexersState, error
 	if res := d.gormDB.Table("node_workloads").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Workloads.UpdatedAt); res.Error != nil {
 		return report, errors.Wrap(res.Error, "couldn't get workloads last updated_at")
 	}
+	if res := d.gormDB.Table("node_features").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Features.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get features last updated_at")
+	}
 	return report, nil
 }
 
@@ -143,6 +146,7 @@ func (d *PostgresDatabase) Initialize() error {
 		&types.Speed{},
 		&types.HasIpv6{},
 		&types.NodesWorkloads{},
+		&types.NodeFeatures{},
 	); err != nil {
 		return errors.Wrap(err, "failed to migrate indexer tables")
 	}
@@ -363,6 +367,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.gpus",
 			"health_report.healthy",
 			"node_ipv6.has_ipv6",
+			"node_features.light as light",
 			"resources_cache.bios",
 			"resources_cache.baseboard",
 			"resources_cache.memory",
@@ -380,6 +385,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			LEFT JOIN location ON node.location_id = location.id
 			LEFT JOIN health_report ON node.twin_id = health_report.node_twin_id
 			LEFT JOIN node_ipv6 ON node.twin_id = node_ipv6.node_twin_id
+			LEFT JOIN node_features ON node.twin_id = node_features.node_twin_id
 		`)
 
 	if filter.HasGPU != nil || filter.GpuDeviceName != nil ||
@@ -416,7 +422,9 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
 		filter.NodeRentedBy != nil || len(filter.NodeStatus) != 0 ||
 		filter.NodeTotalCRU != nil || filter.Country != nil ||
-		filter.Region != nil || filter.NodeHasIpv6 != nil {
+		filter.Region != nil || filter.NodeHasIpv6 != nil ||
+		filter.NodeWGSupported != nil || filter.NodeYggSupported != nil ||
+		filter.NodePubIpSupported != nil {
 		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
 			Group(`
 				farm.id,
@@ -483,6 +491,20 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		nodeQuery = nodeQuery.
 			Joins("LEFT JOIN node_ipv6 ON node_ipv6.node_twin_id = node.twin_id").
 			Where("COALESCE(has_ipv6, false) = ?", *filter.NodeHasIpv6)
+	}
+
+	if filter.NodeWGSupported != nil || filter.NodeYggSupported != nil || filter.NodePubIpSupported != nil {
+		nodeQuery = nodeQuery.Joins("LEFT JOIN node_features ON node_features.node_twin_id = node.twin_id")
+
+		if filter.NodeWGSupported != nil {
+			nodeQuery = nodeQuery.Where(`COALESCE(node_features.light, false) != ?`, *filter.NodeWGSupported)
+		}
+		if filter.NodeYggSupported != nil {
+			nodeQuery = nodeQuery.Where(`COALESCE(node_features.light, false) != ?`, *filter.NodeYggSupported)
+		}
+		if filter.NodePubIpSupported != nil {
+			nodeQuery = nodeQuery.Where(`COALESCE(node_features.light, false) != ?`, *filter.NodePubIpSupported)
+		}
 	}
 
 	q := d.farmTableQuery(ctx, filter, nodeQuery)
@@ -734,6 +756,15 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	}
 	if filter.PriceMax != nil {
 		q = q.Where(`calc_discount(resources_cache.price_usd, ?) <= ?`, limit.Balance, *filter.PriceMax)
+	}
+	if filter.WGSupported != nil {
+		q = q.Where(`COALESCE(node_features.light, false) != ?`, *filter.WGSupported)
+	}
+	if filter.YggSupported != nil {
+		q = q.Where(`COALESCE(node_features.light, false) != ?`, *filter.YggSupported)
+	}
+	if filter.PubIpSupported != nil {
+		q = q.Where(`COALESCE(node_features.light, false) != ?`, *filter.PubIpSupported)
 	}
 
 	// Sorting

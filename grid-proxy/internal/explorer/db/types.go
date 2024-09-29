@@ -41,6 +41,7 @@ type Database interface {
 	UpsertNetworkSpeed(ctx context.Context, speeds []types.Speed) error
 	UpsertNodeIpv6Report(ctx context.Context, ips []types.HasIpv6) error
 	UpsertNodeWorkloads(ctx context.Context, workloads []types.NodesWorkloads) error
+	UpsertNodeFeatures(ctx context.Context, features []types.NodeFeatures) error
 }
 
 type ContractBilling types.ContractBilling
@@ -111,6 +112,7 @@ type Node struct {
 	DownloadSpeed      float64
 	PriceUsd           float64
 	FarmFreeIps        uint
+	Light              bool
 }
 
 // NodePower struct is the farmerbot report for node status

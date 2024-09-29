@@ -144,6 +144,27 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		}
 		return &v
 	},
+	"NodeWGSupported": func(_ FarmsAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
+	"NodeYggSupported": func(_ FarmsAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
+	"NodePubIpSupported": func(_ FarmsAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
 }
 
 type FarmsAggregate struct {

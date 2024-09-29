@@ -97,3 +97,14 @@ type Memory struct {
 	Manufacturer string `json:"manufacturer"`
 	Type         string `json:"type"`
 }
+
+// NodeFeatures holds the features the node support
+type NodeFeatures struct {
+	NodeTwinId uint32 `json:"node_twin_id,omitempty" gorm:"unique;not null"`
+	Light      bool   `json:"light"`
+	UpdatedAt  int64
+}
+
+func (NodeFeatures) TableName() string {
+	return "node_features"
+}

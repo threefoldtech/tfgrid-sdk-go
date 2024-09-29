@@ -188,6 +188,11 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				},
 				PriceUsd:    calcDiscount(calcNodePrice(g.data, node), limit.Balance),
 				FarmFreeIps: uint(g.data.FreeIPs[node.FarmID]),
+				Features: types.NodeFeaturesResp{
+					WireGuard: !g.data.NodeLight[uint32(node.TwinID)],
+					Yggdrasil: !g.data.NodeLight[uint32(node.TwinID)],
+					PublicIp:  !g.data.NodeLight[uint32(node.TwinID)],
+				},
 			})
 		}
 	}
@@ -285,6 +290,11 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		},
 		PriceUsd:    calcNodePrice(g.data, node),
 		FarmFreeIps: uint(g.data.FreeIPs[node.FarmID]),
+		Features: types.NodeFeaturesResp{
+			WireGuard: !g.data.NodeLight[uint32(node.TwinID)],
+			Yggdrasil: !g.data.NodeLight[uint32(node.TwinID)],
+			PublicIp:  !g.data.NodeLight[uint32(node.TwinID)],
+		},
 	}
 	return
 }
@@ -331,6 +341,16 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if f.HasIpv6 != nil && *f.HasIpv6 != data.NodeIpv6[uint32(n.TwinID)] {
+		return false
+	}
+
+	if f.WGSupported != nil && *f.WGSupported == data.NodeLight[uint32(n.TwinID)] {
+		return false
+	}
+	if f.YggSupported != nil && *f.YggSupported == data.NodeLight[uint32(n.TwinID)] {
+		return false
+	}
+	if f.PubIpSupported != nil && *f.PubIpSupported == data.NodeLight[uint32(n.TwinID)] {
 		return false
 	}
 

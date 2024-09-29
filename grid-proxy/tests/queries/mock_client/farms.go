@@ -115,7 +115,9 @@ func (f *Farm) satisfies(filter types.FarmFilter, data *DBData) bool {
 		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
 		filter.NodeRentedBy != nil || len(filter.NodeStatus) != 0 ||
 		filter.Country != nil || filter.Region != nil ||
-		filter.NodeTotalCRU != nil || filter.NodeHasIpv6 != nil {
+		filter.NodeTotalCRU != nil || filter.NodeHasIpv6 != nil ||
+		filter.NodeWGSupported != nil || filter.NodeYggSupported != nil ||
+		filter.NodePubIpSupported != nil {
 		if !f.satisfyFarmNodesFilter(data, filter) {
 			return false
 		}
@@ -185,6 +187,16 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 		}
 
 		if filter.NodeHasIpv6 != nil && *filter.NodeHasIpv6 != data.NodeIpv6[uint32(node.TwinID)] {
+			continue
+		}
+
+		if filter.NodeWGSupported != nil && *filter.NodeWGSupported == data.NodeLight[uint32(node.TwinID)] {
+			continue
+		}
+		if filter.NodeYggSupported != nil && *filter.NodeYggSupported == data.NodeLight[uint32(node.TwinID)] {
+			continue
+		}
+		if filter.NodePubIpSupported != nil && *filter.NodePubIpSupported == data.NodeLight[uint32(node.TwinID)] {
 			continue
 		}
 

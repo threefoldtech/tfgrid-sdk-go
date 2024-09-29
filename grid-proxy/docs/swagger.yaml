@@ -157,6 +157,8 @@ definitions:
         type: string
       farmingPolicyId:
         type: integer
+      features:
+        $ref: '#/definitions/types.NodeFeaturesResp'
       gpus:
         items:
           $ref: '#/definitions/types.NodeGPU'
@@ -205,6 +207,15 @@ definitions:
         type: integer
       used_resources:
         $ref: '#/definitions/types.Capacity'
+    type: object
+  types.NodeFeaturesResp:
+    properties:
+      public_ip:
+        type: boolean
+      wireguard:
+        type: boolean
+      yggdrasil:
+        type: boolean
     type: object
   types.NodeGPU:
     properties:
@@ -287,6 +298,8 @@ definitions:
         type: string
       farmingPolicyId:
         type: integer
+      features:
+        $ref: '#/definitions/types.NodeFeaturesResp'
       gpus:
         items:
           $ref: '#/definitions/types.NodeGPU'
@@ -748,6 +761,18 @@ paths:
         in: query
         name: node_certified
         type: boolean
+      - description: filter farms which its nodes support wg networking
+        in: query
+        name: node_wg_supported
+        type: string
+      - description: filter farms which its nodes support ygg networking
+        in: query
+        name: node_ygg_supported
+        type: string
+      - description: filter farms which its nodes support public ip
+        in: query
+        name: node_pub_ip_supported
+        type: string
       - description: farm country
         in: query
         name: country
@@ -1251,6 +1276,18 @@ paths:
       - description: get nodes with price smaller than this
         in: query
         name: price_max
+        type: string
+      - description: get nodes that support wg networking
+        in: query
+        name: wg_supported
+        type: string
+      - description: get nodes that support ygg networking
+        in: query
+        name: ygg_supported
+        type: string
+      - description: get nodes that support public ip
+        in: query
+        name: pub_ip_supported
         type: string
       produces:
       - application/json

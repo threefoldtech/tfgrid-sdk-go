@@ -355,6 +355,27 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		num := rand.Intn(10)
 		return shuffledIds[:num]
 	},
+	"WGSupported": func(_ NodesAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
+	"YggSupported": func(_ NodesAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
+	"PubIpSupported": func(_ NodesAggregate) interface{} {
+		v := true
+		if flip(.5) {
+			v = false
+		}
+		return &v
+	},
 }
 
 func TestNode(t *testing.T) {

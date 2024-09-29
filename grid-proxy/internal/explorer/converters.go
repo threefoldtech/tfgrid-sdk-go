@@ -75,6 +75,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 		GPUs:        info.Gpus,
 		PriceUsd:    math.Round(info.PriceUsd*1000) / 1000,
 		FarmFreeIps: info.FarmFreeIps,
+		Features:    decideNodeFeatures(info.Light),
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0 || info.ExtraFee > 0
@@ -163,6 +164,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		GPUs:        info.Gpus,
 		PriceUsd:    math.Round(info.PriceUsd*1000) / 1000,
 		FarmFreeIps: info.FarmFreeIps,
+		Features:    decideNodeFeatures(info.Light),
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0 || info.ExtraFee > 0
@@ -201,4 +203,12 @@ func contractFromDBContract(info db.DBContract) (types.Contract, error) {
 		Details:    details,
 	}
 	return contract, nil
+}
+
+func decideNodeFeatures(light bool) types.NodeFeaturesResp {
+	return types.NodeFeaturesResp{
+		WireGuard: !light,
+		Yggdrasil: !light,
+		PublicIp:  !light,
+	}
 }
