@@ -1117,7 +1117,7 @@ ALTER TABLE public.node_workloads
 
 CREATE TABLE IF NOT EXISTS public.node_features (
     node_twin_id bigint NOT NULL,
-    light boolean,
+    features jsonb,
     updated_at bigint
 );
 

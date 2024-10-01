@@ -112,7 +112,7 @@ type Node struct {
 	DownloadSpeed      float64
 	PriceUsd           float64
 	FarmFreeIps        uint
-	Light              bool
+	Features           []string `gorm:"type:jsonb;serializer:json"`
 }
 
 // NodePower struct is the farmerbot report for node status

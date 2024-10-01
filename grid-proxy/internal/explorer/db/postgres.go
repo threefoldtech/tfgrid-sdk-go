@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -367,7 +368,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.gpus",
 			"health_report.healthy",
 			"node_ipv6.has_ipv6",
-			"node_features.light as light",
+			"node_features.features as features",
 			"resources_cache.bios",
 			"resources_cache.baseboard",
 			"resources_cache.memory",
@@ -423,8 +424,7 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 		filter.NodeRentedBy != nil || len(filter.NodeStatus) != 0 ||
 		filter.NodeTotalCRU != nil || filter.Country != nil ||
 		filter.Region != nil || filter.NodeHasIpv6 != nil ||
-		filter.NodeWGSupported != nil || filter.NodeYggSupported != nil ||
-		filter.NodePubIpSupported != nil {
+		len(filter.NodeFeatures) != 0 {
 		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
 			Group(`
 				farm.id,
@@ -493,18 +493,15 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 			Where("COALESCE(has_ipv6, false) = ?", *filter.NodeHasIpv6)
 	}
 
-	if filter.NodeWGSupported != nil || filter.NodeYggSupported != nil || filter.NodePubIpSupported != nil {
-		nodeQuery = nodeQuery.Joins("LEFT JOIN node_features ON node_features.node_twin_id = node.twin_id")
+	if len(filter.NodeFeatures) != 0 {
+		jsonList, err := json.Marshal(filter.NodeFeatures)
+		if err != nil {
+			return nil, 0, errors.Wrap(err, "failed to marshal the features filter to json list")
+		}
 
-		if filter.NodeWGSupported != nil {
-			nodeQuery = nodeQuery.Where(`COALESCE(node_features.light, false) != ?`, *filter.NodeWGSupported)
-		}
-		if filter.NodeYggSupported != nil {
-			nodeQuery = nodeQuery.Where(`COALESCE(node_features.light, false) != ?`, *filter.NodeYggSupported)
-		}
-		if filter.NodePubIpSupported != nil {
-			nodeQuery = nodeQuery.Where(`COALESCE(node_features.light, false) != ?`, *filter.NodePubIpSupported)
-		}
+		nodeQuery = nodeQuery.
+			Joins("LEFT JOIN node_features ON node_features.node_twin_id = node.twin_id").
+			Where(`COALESCE(node_features.features, '[]') @> ?`, jsonList)
 	}
 
 	q := d.farmTableQuery(ctx, filter, nodeQuery)
@@ -757,14 +754,16 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.PriceMax != nil {
 		q = q.Where(`calc_discount(resources_cache.price_usd, ?) <= ?`, limit.Balance, *filter.PriceMax)
 	}
-	if filter.WGSupported != nil {
-		q = q.Where(`COALESCE(node_features.light, false) != ?`, *filter.WGSupported)
-	}
-	if filter.YggSupported != nil {
-		q = q.Where(`COALESCE(node_features.light, false) != ?`, *filter.YggSupported)
-	}
-	if filter.PubIpSupported != nil {
-		q = q.Where(`COALESCE(node_features.light, false) != ?`, *filter.PubIpSupported)
+	if len(filter.Features) != 0 {
+		// The @> operator checks if all the right elements exist on the left,
+		// it needs a proper json object on the right hand side.
+		// check https://www.postgresql.org/docs/9.4/functions-json.html for jsonb operators
+		jsonList, err := json.Marshal(filter.Features)
+		if err != nil {
+			return nil, 0, errors.Wrap(err, "failed to marshal the features filter to json list")
+		}
+
+		q = q.Where(`COALESCE(node_features.features, '[]') @> ?`, jsonList)
 	}
 
 	// Sorting

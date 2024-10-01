@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
@@ -144,26 +145,9 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		}
 		return &v
 	},
-	"NodeWGSupported": func(_ FarmsAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
-		return &v
-	},
-	"NodeYggSupported": func(_ FarmsAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
-		return &v
-	},
-	"NodePubIpSupported": func(_ FarmsAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
-		return &v
+	"NodeFeatures": func(_ FarmsAggregate) interface{} {
+		randomLen := rand.Intn(5)
+		return getRandomSliceFrom(types.FeaturesSet, randomLen)
 	},
 }
 

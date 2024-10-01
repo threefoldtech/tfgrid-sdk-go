@@ -2,7 +2,6 @@ package indexer
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
@@ -51,15 +50,7 @@ func parseNodeFeatures(twinId uint32, features []string) types.NodeFeatures {
 	res := types.NodeFeatures{
 		NodeTwinId: twinId,
 		UpdatedAt:  time.Now().Unix(),
-		Light:      false,
-	}
-
-	for _, feat := range features {
-		if strings.Contains(feat, "light") {
-			res.Light = true
-			return res
-		}
-
+		Features:   features,
 	}
 
 	return res

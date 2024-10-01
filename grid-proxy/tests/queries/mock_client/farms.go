@@ -116,8 +116,7 @@ func (f *Farm) satisfies(filter types.FarmFilter, data *DBData) bool {
 		filter.NodeRentedBy != nil || len(filter.NodeStatus) != 0 ||
 		filter.Country != nil || filter.Region != nil ||
 		filter.NodeTotalCRU != nil || filter.NodeHasIpv6 != nil ||
-		filter.NodeWGSupported != nil || filter.NodeYggSupported != nil ||
-		filter.NodePubIpSupported != nil {
+		len(filter.NodeFeatures) != 0 {
 		if !f.satisfyFarmNodesFilter(data, filter) {
 			return false
 		}
@@ -190,13 +189,7 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			continue
 		}
 
-		if filter.NodeWGSupported != nil && *filter.NodeWGSupported == data.NodeLight[uint32(node.TwinID)] {
-			continue
-		}
-		if filter.NodeYggSupported != nil && *filter.NodeYggSupported == data.NodeLight[uint32(node.TwinID)] {
-			continue
-		}
-		if filter.NodePubIpSupported != nil && *filter.NodePubIpSupported == data.NodeLight[uint32(node.TwinID)] {
+		if len(filter.NodeFeatures) != 0 && !sliceContains(data.NodeFeatures[uint32(node.TwinID)], filter.NodeFeatures) {
 			continue
 		}
 

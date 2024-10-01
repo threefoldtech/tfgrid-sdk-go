@@ -470,20 +470,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "filter farms which its nodes support wg networking",
-                        "name": "node_wg_supported",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "filter farms which its nodes support ygg networking",
-                        "name": "node_ygg_supported",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "filter farms which its nodes support public ip",
-                        "name": "node_pub_ip_supported",
+                        "description": "filter farms with list of supported features on its nods",
+                        "name": "node_features",
                         "in": "query"
                     },
                     {
@@ -1219,20 +1207,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "get nodes that support wg networking",
-                        "name": "wg_supported",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "get nodes that support ygg networking",
-                        "name": "ygg_supported",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "get nodes that support public ip",
-                        "name": "pub_ip_supported",
+                        "description": "filter nodes with list of supported features",
+                        "name": "features",
                         "in": "query"
                     }
                 ],
@@ -1874,7 +1850,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "features": {
-                    "$ref": "#/definitions/types.NodeFeaturesResp"
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "gpus": {
                     "type": "array",
@@ -1947,20 +1926,6 @@ const docTemplate = `{
                 },
                 "used_resources": {
                     "$ref": "#/definitions/types.Capacity"
-                }
-            }
-        },
-        "types.NodeFeaturesResp": {
-            "type": "object",
-            "properties": {
-                "public_ip": {
-                    "type": "boolean"
-                },
-                "wireguard": {
-                    "type": "boolean"
-                },
-                "yggdrasil": {
-                    "type": "boolean"
                 }
             }
         },
@@ -2089,7 +2054,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "features": {
-                    "$ref": "#/definitions/types.NodeFeaturesResp"
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "gpus": {
                     "type": "array",

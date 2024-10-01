@@ -66,7 +66,7 @@ Work a struct that implement the interface `Work` which have three methods:
    - Interval: `1 hour`
    - Default caller worker number: 10
    - Dump table: `node_workloads`
-6. Features indexer:
+7. Features indexer:
    - Function: get the supported features on each node.
    - Interval: `1 day`
    - Default caller worker number: 10

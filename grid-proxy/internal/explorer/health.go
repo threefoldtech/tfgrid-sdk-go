@@ -52,7 +52,8 @@ func createReport(db DBClient, peer rmb.Client, idxIntervals map[string]uint) ty
 		isIndexerStale(indexers.Health.UpdatedAt, idxIntervals["health"]) ||
 		isIndexerStale(indexers.Ipv6.UpdatedAt, idxIntervals["ipv6"]) ||
 		isIndexerStale(indexers.Speed.UpdatedAt, idxIntervals["speed"]) ||
-		isIndexerStale(indexers.Workloads.UpdatedAt, idxIntervals["workloads"]) {
+		isIndexerStale(indexers.Workloads.UpdatedAt, idxIntervals["workloads"]) ||
+		isIndexerStale(indexers.Features.UpdatedAt, idxIntervals["features"]) {
 		report.TotalStateOk = false
 	}
 

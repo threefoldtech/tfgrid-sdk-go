@@ -98,11 +98,10 @@ type Memory struct {
 	Type         string `json:"type"`
 }
 
-// NodeFeatures holds the features the node support
 type NodeFeatures struct {
-	NodeTwinId uint32 `json:"node_twin_id,omitempty" gorm:"unique;not null"`
-	Light      bool   `json:"light"`
-	UpdatedAt  int64
+	NodeTwinId uint32   `json:"node_twin_id,omitempty" gorm:"unique;not null"`
+	UpdatedAt  int64    `json:"updated_at"`
+	Features   []string `json:"features" gorm:"type:jsonb;serializer:json"`
 }
 
 func (NodeFeatures) TableName() string {

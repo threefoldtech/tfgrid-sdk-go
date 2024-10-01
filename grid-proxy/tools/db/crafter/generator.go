@@ -999,15 +999,15 @@ func (c *Crafter) GenerateNodeFeatures() error {
 
 	var reports []types.NodeFeatures
 	for i := start; i < end; i++ {
-		light := true
+		features := types.Zos3NodesFeatures
 		if flip(.5) {
-			light = false
+			features = types.Zos4NodesFeatures
 		}
 
 		report := types.NodeFeatures{
 			NodeTwinId: uint32(nodeTwinsStart + i),
 			UpdatedAt:  time.Now().Unix(),
-			Light:      light,
+			Features:   features,
 		}
 		reports = append(reports, report)
 	}
