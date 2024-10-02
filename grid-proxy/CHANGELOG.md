@@ -4,6 +4,12 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.15.18
+
+---
+
+- `feat` init the node features indexer and features queries/field to node.
+
 ### v0.15.17
 
 ---
