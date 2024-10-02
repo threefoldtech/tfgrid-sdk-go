@@ -52,7 +52,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	gpus, err := nodeClient.GPUs(context.Background())
 	require.NoError(t, err)
 
-	network,err := generateBasicNetwork([]uint32{nodeID})
+	network, err := generateBasicNetwork([]uint32{nodeID})
 	if err != nil {
 		t.Skipf("network creation failed: %v", err)
 	}
@@ -62,9 +62,9 @@ func TestVMWithGPUDeployment(t *testing.T) {
 		SizeGB: 20,
 	}
 
-	myCeliumSeed, err:=workloads.RandomMyceliumIPSeed()
-	if err != nil{
-		t.Skip("could not create vm mycelium IP seed: %v", err)
+	myCeliumSeed, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create vm mycelium IP seed: %v", err)
 	}
 	vm := workloads.VM{
 		Name:         "gpu",

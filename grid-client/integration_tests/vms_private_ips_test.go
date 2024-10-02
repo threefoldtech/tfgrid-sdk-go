@@ -40,10 +40,10 @@ func TestDeploymentsDeploy(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{nodeID})
-	if err != nil{ 
-		t.Skipf("network creation failed: %v", err) 
+	if err != nil {
+		t.Skipf("network creation failed: %v", err)
 	}
-	
+
 	vm1 := workloads.VM{
 		Name:        vm1Name,
 		NodeID:      nodeID,
@@ -163,8 +163,8 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{nodeID1, nodeID2})
-	if err != nil{ 
-		t.Skipf("network creation failed: %v", err) 
+	if err != nil {
+		t.Skipf("network creation failed: %v", err)
 	}
 
 	vm1 := workloads.VM{

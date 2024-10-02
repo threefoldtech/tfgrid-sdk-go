@@ -36,13 +36,13 @@ func TestVMDeployment(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network, err:= generateBasicNetwork([]uint32{nodeID})
+	network, err := generateBasicNetwork([]uint32{nodeID})
 	if err != nil {
 		t.Skipf("network creation failed: %v", err)
 	}
-	myCeliumSeed, err:=workloads.RandomMyceliumIPSeed()
-	if err != nil{
-		t.Skip("could not create vm mycelium IP seed: %v", err)
+	myCeliumSeed, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create vm mycelium IP seed: %v", err)
 	}
 
 	vm := workloads.VM{

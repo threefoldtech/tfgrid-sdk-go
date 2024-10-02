@@ -55,10 +55,10 @@ func TestQSFSDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{nodeID})
-	if err != nil{ 
-		t.Skipf("network creation failed: %v", err) 
+	if err != nil {
+		t.Skipf("network creation failed: %v", err)
 	}
-	
+
 	dataZDBs := []workloads.ZDB{}
 	metaZDBs := []workloads.ZDB{}
 	for i := 1; i <= DataZDBNum; i++ {
@@ -152,9 +152,9 @@ func TestQSFSDeployment(t *testing.T) {
 		},
 	}
 
-	vm,err := generateBasicVM("vm", nodeID, network.Name, publicKey)
-	if err != nil{ 
-		t.Skipf("vm creation failed: %v", err) 
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
+	if err != nil {
+		t.Skipf("vm creation failed: %v", err)
 	}
 	vm.Mounts = []workloads.Mount{
 		{Name: qsfs.Name, MountPoint: "/qsfs"},

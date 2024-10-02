@@ -74,32 +74,32 @@ func TestK8sDeployment(t *testing.T) {
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
-	
+
 	t.Cleanup(func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		require.NoError(t, err)
 	})
-	masterSeed, err:= workloads.RandomMyceliumIPSeed()
-	if err != nil{
-		t.Skip("could not create master mycelium IP seed: %v", err)
+	masterSeed, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create master mycelium IP seed: %v", err)
 	}
-	workerNodeSeed1, err:= workloads.RandomMyceliumIPSeed()
-	if err != nil{
-		t.Skip("could not create worker Node1 mycelium IP seed: %v", err)
+	workerNodeSeed1, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create worker Node1 mycelium IP seed: %v", err)
 	}
-	workerNodeSeed2, err:= workloads.RandomMyceliumIPSeed()
-	if err != nil{
-		t.Skip("could not create worker Node2 mycelium IP seed: %v", err)
+	workerNodeSeed2, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create worker Node2 mycelium IP seed: %v", err)
 	}
 
 	master := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:        fmt.Sprintf("master_%s", generateRandString(5)),
-			NodeID:      masterNodeID,
-			NetworkName: network.Name,
-			CPU:         minCPU,
-			MemoryMB:    minMemory * 1024,
-			Planetary:   true,
+			Name:           fmt.Sprintf("master_%s", generateRandString(5)),
+			NodeID:         masterNodeID,
+			NetworkName:    network.Name,
+			CPU:            minCPU,
+			MemoryMB:       minMemory * 1024,
+			Planetary:      true,
 			MyceliumIPSeed: masterSeed,
 		},
 		DiskSizeGB: 1,
@@ -107,12 +107,12 @@ func TestK8sDeployment(t *testing.T) {
 
 	workerNodeData1 := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:        fmt.Sprintf("worker1_%s", generateRandString(5)),
-			NodeID:      workerNodeID,
-			NetworkName: network.Name,
-			CPU:         minCPU,
-			MemoryMB:    minMemory * 1024,
-			Planetary:   true,
+			Name:           fmt.Sprintf("worker1_%s", generateRandString(5)),
+			NodeID:         workerNodeID,
+			NetworkName:    network.Name,
+			CPU:            minCPU,
+			MemoryMB:       minMemory * 1024,
+			Planetary:      true,
 			MyceliumIPSeed: workerNodeSeed1,
 		},
 		DiskSizeGB: 1,
@@ -120,17 +120,16 @@ func TestK8sDeployment(t *testing.T) {
 
 	workerNodeData2 := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:        fmt.Sprintf("worker2_%s", generateRandString(5)),
-			NodeID:      workerNodeID,
-			NetworkName: network.Name,
-			CPU:         minCPU,
-			MemoryMB:    minMemory * 1024,
-			Planetary:   true,
+			Name:           fmt.Sprintf("worker2_%s", generateRandString(5)),
+			NodeID:         workerNodeID,
+			NetworkName:    network.Name,
+			CPU:            minCPU,
+			MemoryMB:       minMemory * 1024,
+			Planetary:      true,
 			MyceliumIPSeed: workerNodeSeed2,
 		},
 		DiskSizeGB: 1,
 	}
-	
 
 	// deploy k8s cluster
 	workers := []workloads.K8sNode{workerNodeData1, workerNodeData2}

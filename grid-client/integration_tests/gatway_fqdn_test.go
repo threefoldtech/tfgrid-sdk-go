@@ -48,7 +48,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{nodeID})
-	if err != nil{
+	if err != nil {
 		t.Skipf("network creation failed: %v", err)
 	}
 	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)

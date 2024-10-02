@@ -36,10 +36,10 @@ func TestVMWithTwoDisk(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network,err := generateBasicNetwork([]uint32{nodeID})
-	if err != nil{ 
-		t.Skipf("network creation failed: %v", err) 
-	
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	if err != nil {
+		t.Skipf("network creation failed: %v", err)
+
 	}
 	disk1 := workloads.Disk{
 		Name:   "diskTest1",
@@ -51,15 +51,14 @@ func TestVMWithTwoDisk(t *testing.T) {
 	}
 
 	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
-	if err != nil{ 
-		t.Skipf("vm creation failed: %v", err) 
+	if err != nil {
+		t.Skipf("vm creation failed: %v", err)
 	}
 	vm.RootfsSizeMB = minRootfs * 1024
 	vm.Mounts = []workloads.Mount{
 		{Name: disk1.Name, MountPoint: "/disk1"},
 		{Name: disk2.Name, MountPoint: "/disk2"},
 	}
-	
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)

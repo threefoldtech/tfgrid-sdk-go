@@ -37,25 +37,23 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{nodeID})
-	if err != nil{ 
-		t.Skipf("network creation failed: %v", err) 
+	if err != nil {
+		t.Skipf("network creation failed: %v", err)
 	}
 
-	vm1,err := generateBasicVM("vm1", nodeID, network.Name, publicKey)
-	if err != nil{ 
-		t.Skipf("vm creation failed: %v", err) 
+	vm1, err := generateBasicVM("vm1", nodeID, network.Name, publicKey)
+	if err != nil {
+		t.Skipf("vm creation failed: %v", err)
 	}
 	vm1.RootfsSizeMB = minRootfs * 1024
 	vm1.PublicIP6 = true
 
-
 	vm2, err := generateBasicVM("vm2", nodeID, network.Name, publicKey)
-	if err != nil{ 
-		t.Skipf("vm creation failed: %v", err) 
+	if err != nil {
+		t.Skipf("vm creation failed: %v", err)
 	}
-	vm2.RootfsSizeMB = minRootfs *1024
+	vm2.RootfsSizeMB = minRootfs * 1024
 	vm2.PublicIP6 = true
-
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)

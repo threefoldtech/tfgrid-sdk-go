@@ -35,9 +35,9 @@ func TestBatchK8sDeployment(t *testing.T) {
 	nodeID1 := uint32(nodes[0].NodeID)
 	nodeID2 := uint32(nodes[1].NodeID)
 
-	network,err := generateBasicNetwork([]uint32{nodeID1, nodeID2})
+	network, err := generateBasicNetwork([]uint32{nodeID1, nodeID2})
 	require.NoError(t, err)
-	
+
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
 

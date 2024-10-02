@@ -44,9 +44,9 @@ func TestVMWithVolume(t *testing.T) {
 		Name:   "volume",
 		SizeGB: 1,
 	}
-	myCeliumSeed, err:=workloads.RandomMyceliumIPSeed()
-	if err != nil{
-		t.Skip("could not create vm mycelium IP seed: %v", err)
+	myCeliumSeed, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create vm mycelium IP seed: %v", err)
 	}
 
 	vm := workloads.VM{

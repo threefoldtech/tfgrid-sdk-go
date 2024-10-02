@@ -41,15 +41,15 @@ func TestWG(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network,err := generateBasicNetwork([]uint32{nodeID})
-	if err != nil{ 
-		t.Skipf("network creation failed: %v", err) 
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	if err != nil {
+		t.Skipf("network creation failed: %v", err)
 	}
 	network.AddWGAccess = true
 
 	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
-	if err != nil{ 
-		t.Skipf("vm creation failed: %v", err) 
+	if err != nil {
+		t.Skipf("vm creation failed: %v", err)
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)

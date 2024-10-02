@@ -52,7 +52,7 @@ func TestBatchVMDeployment(t *testing.T) {
 	if err != nil {
 		t.Skipf("vm2 creation failed: %v", err)
 	}
-	
+
 	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []*workloads.ZNet{&network1, &network2})
 	require.NoError(t, err)
 
