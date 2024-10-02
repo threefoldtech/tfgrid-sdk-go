@@ -474,10 +474,9 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	foundGpuFilter := f.HasGPU != nil || f.GpuDeviceName != nil || f.GpuVendorName != nil || f.GpuVendorID != nil || f.GpuDeviceID != nil || f.GpuAvailable != nil
 	gpus, foundGpuCards := data.GPUs[uint32(n.TwinID)]
 
-	if !foundGpuCards && foundGpuFilter {
+	if !foundGpuCards && f.IsGpuFilterRequested() {
 		return false
 	}
 
@@ -496,7 +495,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		}
 	}
 
-	if !foundSuitableCard && foundGpuFilter {
+	if !foundSuitableCard && f.IsGpuFilterRequested() {
 		return false
 	}
 

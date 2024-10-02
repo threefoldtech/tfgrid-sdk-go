@@ -110,13 +110,7 @@ func (f *Farm) satisfies(filter types.FarmFilter, data *DBData) bool {
 		return false
 	}
 
-	if filter.NodeAvailableFor != nil || filter.NodeCertified != nil ||
-		filter.NodeFreeHRU != nil || filter.NodeFreeMRU != nil ||
-		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
-		filter.NodeRentedBy != nil || len(filter.NodeStatus) != 0 ||
-		filter.Country != nil || filter.Region != nil ||
-		filter.NodeTotalCRU != nil || filter.NodeHasIpv6 != nil ||
-		len(filter.NodeFeatures) != 0 {
+	if filter.IsNodeFilterRequested() {
 		if !f.satisfyFarmNodesFilter(data, filter) {
 			return false
 		}

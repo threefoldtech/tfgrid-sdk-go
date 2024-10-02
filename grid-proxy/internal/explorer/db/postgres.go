@@ -389,9 +389,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			LEFT JOIN node_features ON node.twin_id = node_features.node_twin_id
 		`)
 
-	if filter.HasGPU != nil || filter.GpuDeviceName != nil ||
-		filter.GpuVendorName != nil || filter.GpuVendorID != nil ||
-		filter.GpuDeviceID != nil || filter.GpuAvailable != nil {
+	if filter.IsGpuFilterRequested() {
 		q.Joins(
 			`RIGHT JOIN (?) AS gpu ON gpu.node_twin_id = node.twin_id`, nodeGpuSubquery,
 		)
@@ -418,13 +416,9 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 			"LEFT JOIN public_ips_cache ON public_ips_cache.farm_id = farm.farm_id",
 		)
 
-	if filter.NodeAvailableFor != nil || filter.NodeFreeHRU != nil ||
-		filter.NodeCertified != nil || filter.NodeFreeMRU != nil ||
-		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
-		filter.NodeRentedBy != nil || len(filter.NodeStatus) != 0 ||
-		filter.NodeTotalCRU != nil || filter.Country != nil ||
-		filter.Region != nil || filter.NodeHasIpv6 != nil ||
-		len(filter.NodeFeatures) != 0 {
+	if filter.IsNodeFilterRequested() {
+		// TODO: would it be a good option to delegate here to the GetNodes?
+		// how this will affect the performance benchmark?
 		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
 			Group(`
 				farm.id,

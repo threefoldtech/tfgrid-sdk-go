@@ -166,6 +166,12 @@ type NodeFilter struct {
 	Features           []string `schema:"features,omitempty"`
 }
 
-func (f NodeFilter) Valid() error {
-	return validNodeFeatures(f.Features)
+func (f NodeFilter) Validate() error {
+	return validateNodeFeatures(f.Features)
+}
+
+func (f NodeFilter) IsGpuFilterRequested() bool {
+	return f.HasGPU != nil || f.GpuDeviceName != nil ||
+		f.GpuVendorName != nil || f.GpuVendorID != nil ||
+		f.GpuDeviceID != nil || f.GpuAvailable != nil
 }

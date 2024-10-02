@@ -67,10 +67,12 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 	if err := parseQueryParams(r, &filter, &limit); err != nil {
 		return nil, mw.BadRequest(err)
 	}
+	// TODO: move the validation into the parsing function
+	// the parser should be generic to accept the different filters
 	if err := limit.Valid(types.Farm{}); err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	if err := filter.Valid(); err != nil {
+	if err := filter.Validate(); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -220,7 +222,7 @@ func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 	if err := limit.Valid(types.Node{}); err != nil {
 		return nil, mw.BadRequest(err)
 	}
-	if err := filter.Valid(); err != nil {
+	if err := filter.Validate(); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 

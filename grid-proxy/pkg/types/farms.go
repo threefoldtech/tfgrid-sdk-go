@@ -43,6 +43,16 @@ type FarmFilter struct {
 	Region            *string  `schema:"region,omitempty"`
 }
 
-func (f FarmFilter) Valid() error {
-	return validNodeFeatures(f.NodeFeatures)
+func (f FarmFilter) Validate() error {
+	return validateNodeFeatures(f.NodeFeatures)
+}
+
+func (f FarmFilter) IsNodeFilterRequested() bool {
+	return f.NodeAvailableFor != nil || f.NodeFreeHRU != nil ||
+		f.NodeCertified != nil || f.NodeFreeMRU != nil ||
+		f.NodeFreeSRU != nil || f.NodeHasGPU != nil ||
+		f.NodeRentedBy != nil || len(f.NodeStatus) != 0 ||
+		f.NodeTotalCRU != nil || f.Country != nil ||
+		f.Region != nil || f.NodeHasIpv6 != nil ||
+		len(f.NodeFeatures) != 0
 }

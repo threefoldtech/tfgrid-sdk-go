@@ -1,3 +1,4 @@
+-- THIS IS JUST FOR DEBUGGING PURPOSES
 
 
 -- by the time, updated_at gets outdated which break some functionalities
