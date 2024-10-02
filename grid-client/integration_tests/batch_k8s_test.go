@@ -131,14 +131,14 @@ func TestBatchK8sDeployment(t *testing.T) {
 	require.Equal(t, len(k1.Workers), 1)
 
 	// Check that master is reachable
-	require.NotEmpty(t, k1.Master.PlanetaryIP)
+	require.NotEmpty(t, k1.Master.MyceliumIP)
 	require.NotEmpty(t, k1.Master.IP)
 	require.NotEqual(t, k1.Master.IP, k1.Workers[0].IP)
 
-	require.True(t, CheckConnection(k1.Workers[0].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k1.Workers[0].MyceliumIP, "22"))
 
 	// ssh to master node
-	require.NoError(t, requireNodesAreReady(len(k1.Workers)+1, k1.Master.PlanetaryIP, privateKey))
+	require.NoError(t, requireNodesAreReady(len(k1.Workers)+1, k1.Master.MyceliumIP, privateKey))
 
 	// cluster 2
 	k2, err := tfPluginClient.State.LoadK8sFromGrid(context.Background(), []uint32{nodeID2}, k8sCluster2.Master.Name)
@@ -148,14 +148,14 @@ func TestBatchK8sDeployment(t *testing.T) {
 	require.Equal(t, len(k2.Workers), 1)
 
 	// Check that master is reachable
-	require.NotEmpty(t, k1.Master.PlanetaryIP)
+	require.NotEmpty(t, k1.Master.MyceliumIP)
 	require.NotEmpty(t, k1.Master.IP)
 	require.NotEqual(t, k1.Master.IP, k2.Workers[0].IP)
 
 	require.True(t, CheckConnection(k2.Workers[0].MyceliumIP, "22"))
 
 	// ssh to master node
-	require.NoError(t, requireNodesAreReady(len(k2.Workers)+1, k2.Master.PlanetaryIP, privateKey))
+	require.NoError(t, requireNodesAreReady(len(k2.Workers)+1, k2.Master.MyceliumIP, privateKey))
 
 	// different ips generated
 	require.Equal(t, len(slices.Compact[[]string, string]([]string{k1.Master.IP, k2.Master.IP, k1.Workers[0].IP, k2.Workers[0].IP})), 4)

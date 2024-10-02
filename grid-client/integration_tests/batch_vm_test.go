@@ -79,17 +79,17 @@ func TestBatchVMDeployment(t *testing.T) {
 
 	v1, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID1, vm1.Name, dl1.Name)
 	require.NoError(t, err)
-	require.NotEmpty(t, v1.PlanetaryIP)
+	require.NotEmpty(t, v1.MyceliumIP)
 
-	output, err := RemoteRun("root", v1.PlanetaryIP, "ls /", privateKey)
+	output, err := RemoteRun("root", v1.MyceliumIP, "ls /", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, "root")
 
 	v2, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID2, vm2.Name, dl2.Name)
 	require.NoError(t, err)
-	require.NotEmpty(t, v2.PlanetaryIP)
+	require.NotEmpty(t, v2.MyceliumIP)
 
-	output, err = RemoteRun("root", v2.PlanetaryIP, "ls /", privateKey)
+	output, err = RemoteRun("root", v2.MyceliumIP, "ls /", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, "root")
 }
