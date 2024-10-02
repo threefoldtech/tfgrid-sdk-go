@@ -54,6 +54,7 @@ const (
 // @Param node_has_gpu query bool false "True for farms who have at least one node with a GPU"
 // @Param node_has_ipv6 query bool false "True for farms who have at least one node with an ipv6"
 // @Param node_certified query bool false "True for farms who have at least one certified node"
+// @Param node_features query string false "filter farms with list of supported features on its nods"
 // @Param country query string false "farm country"
 // @Param region query string false "farm region"
 // @Success 200 {object} []types.Farm
@@ -66,7 +67,12 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 	if err := parseQueryParams(r, &filter, &limit); err != nil {
 		return nil, mw.BadRequest(err)
 	}
+	// TODO: move the validation into the parsing function
+	// the parser should be generic to accept the different filters
 	if err := limit.Valid(types.Farm{}); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := filter.Validate(); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 
@@ -157,6 +163,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param owned_by query int false "get nodes owned by twin id"
 // @Param price_min query string false "get nodes with price greater than this"
 // @Param price_max query string false "get nodes with price smaller than this"
+// @Param features query string false "filter nodes with list of supported features"
 // @Success 200 {object} []types.Node
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -213,6 +220,9 @@ func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 		return nil, mw.BadRequest(err)
 	}
 	if err := limit.Valid(types.Node{}); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+	if err := filter.Validate(); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 

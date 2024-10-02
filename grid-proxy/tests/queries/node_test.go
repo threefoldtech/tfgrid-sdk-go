@@ -355,6 +355,10 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		num := rand.Intn(10)
 		return shuffledIds[:num]
 	},
+	"Features": func(_ NodesAggregate) interface{} {
+		randomLen := rand.Intn(5)
+		return getRandomSliceFrom(types.FeaturesSet, randomLen)
+	},
 }
 
 func TestNode(t *testing.T) {

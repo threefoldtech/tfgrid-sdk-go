@@ -470,6 +470,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "filter farms with list of supported features on its nods",
+                        "name": "node_features",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "description": "farm country",
                         "name": "country",
                         "in": "query"
@@ -1198,6 +1204,12 @@ const docTemplate = `{
                         "description": "get nodes with price smaller than this",
                         "name": "price_max",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter nodes with list of supported features",
+                        "name": "features",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1837,6 +1849,12 @@ const docTemplate = `{
                 "farmingPolicyId": {
                     "type": "integer"
                 },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "gpus": {
                     "type": "array",
                     "items": {
@@ -2034,6 +2052,12 @@ const docTemplate = `{
                 },
                 "farmingPolicyId": {
                     "type": "integer"
+                },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "gpus": {
                     "type": "array",

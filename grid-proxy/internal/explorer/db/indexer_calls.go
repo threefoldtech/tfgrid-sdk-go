@@ -76,3 +76,11 @@ func (p *PostgresDatabase) UpsertNodeWorkloads(ctx context.Context, workloads []
 	}
 	return p.gormDB.WithContext(ctx).Table("node_workloads").Clauses(conflictClause).Create(&workloads).Error
 }
+
+func (p *PostgresDatabase) UpsertNodeFeatures(ctx context.Context, features []types.NodeFeatures) error {
+	conflictClause := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "node_twin_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"features", "updated_at"}),
+	}
+	return p.gormDB.WithContext(ctx).Table("node_features").Clauses(conflictClause).Create(&features).Error
+}

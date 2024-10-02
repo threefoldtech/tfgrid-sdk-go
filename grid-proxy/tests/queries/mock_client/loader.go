@@ -41,6 +41,7 @@ type DBData struct {
 	Locations           map[string]Location
 	HealthReports       map[uint32]bool
 	NodeIpv6            map[uint32]bool
+	NodeFeatures        map[uint32][]string
 	DMIs                map[uint32]types.Dmi
 	Speeds              map[uint32]types.Speed
 	PricingPolicies     map[uint]PricingPolicy
@@ -49,7 +50,7 @@ type DBData struct {
 	DB *sql.DB
 }
 
-func loadNodes(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
+func loadNodes(gormDB *gorm.DB, data *DBData) error {
 	var nodes []Node
 	err := gormDB.Table("node").Scan(&nodes).Error
 	if err != nil {
@@ -598,7 +599,22 @@ func loadNodeIpv6(db *sql.DB, data *DBData) error {
 	return nil
 }
 
-func loadDMIs(db *sql.DB, gormDB *gorm.DB, data *DBData) error {
+func loadNodeFeatures(gormDB *gorm.DB, data *DBData) error {
+	var featuresReports []types.NodeFeatures
+
+	// load using gorm to utilize the json serializer
+	if err := gormDB.Table("node_features").Scan(&featuresReports).Error; err != nil {
+		return err
+	}
+
+	for _, feat := range featuresReports {
+		data.NodeFeatures[feat.NodeTwinId] = feat.Features
+	}
+
+	return nil
+}
+
+func loadDMIs(gormDB *gorm.DB, data *DBData) error {
 	var dmis []types.Dmi
 	err := gormDB.Table("dmi").Scan(&dmis).Error
 	if err != nil {
@@ -755,11 +771,12 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		DMIs:                make(map[uint32]types.Dmi),
 		Speeds:              make(map[uint32]types.Speed),
 		NodeIpv6:            make(map[uint32]bool),
+		NodeFeatures:        make(map[uint32][]string),
 		PricingPolicies:     make(map[uint]PricingPolicy),
 		WorkloadsNumbers:    make(map[uint32]uint32),
 		DB:                  db,
 	}
-	if err := loadNodes(db, gormDB, &data); err != nil {
+	if err := loadNodes(gormDB, &data); err != nil {
 		return data, err
 	}
 	if err := loadFarms(db, &data); err != nil {
@@ -807,7 +824,10 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 	if err := loadNodeIpv6(db, &data); err != nil {
 		return data, err
 	}
-	if err := loadDMIs(db, gormDB, &data); err != nil {
+	if err := loadNodeFeatures(gormDB, &data); err != nil {
+		return data, err
+	}
+	if err := loadDMIs(gormDB, &data); err != nil {
 		return data, err
 	}
 	if err := loadSpeeds(db, &data); err != nil {

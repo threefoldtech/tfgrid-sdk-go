@@ -140,5 +140,9 @@ func generateData(db *sql.DB, gormDB *gorm.DB, seed int) error {
 	if err := generator.GeneratePricingPolicies(); err != nil {
 		return fmt.Errorf("failed to generate PricingPolicies: %w", err)
 	}
+
+	if err := generator.GenerateNodeFeatures(); err != nil {
+		return fmt.Errorf("failed to generate NodeFeatures: %w", err)
+	}
 	return nil
 }

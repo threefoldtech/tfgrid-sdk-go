@@ -110,12 +110,7 @@ func (f *Farm) satisfies(filter types.FarmFilter, data *DBData) bool {
 		return false
 	}
 
-	if filter.NodeAvailableFor != nil || filter.NodeCertified != nil ||
-		filter.NodeFreeHRU != nil || filter.NodeFreeMRU != nil ||
-		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
-		filter.NodeRentedBy != nil || len(filter.NodeStatus) != 0 ||
-		filter.Country != nil || filter.Region != nil ||
-		filter.NodeTotalCRU != nil || filter.NodeHasIpv6 != nil {
+	if filter.IsNodeFilterRequested() {
 		if !f.satisfyFarmNodesFilter(data, filter) {
 			return false
 		}
@@ -185,6 +180,10 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 		}
 
 		if filter.NodeHasIpv6 != nil && *filter.NodeHasIpv6 != data.NodeIpv6[uint32(node.TwinID)] {
+			continue
+		}
+
+		if len(filter.NodeFeatures) != 0 && !sliceContains(data.NodeFeatures[uint32(node.TwinID)], filter.NodeFeatures) {
 			continue
 		}
 

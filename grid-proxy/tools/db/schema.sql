@@ -1111,3 +1111,16 @@ CREATE TABLE IF NOT EXISTS public.node_workloads (
 ALTER TABLE public.node_workloads 
     OWNER TO postgres;
 
+--
+-- Name: node_features; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS public.node_features (
+    node_twin_id bigint NOT NULL,
+    features jsonb,
+    updated_at bigint
+);
+
+ALTER TABLE public.node_features 
+    OWNER TO postgres;
+

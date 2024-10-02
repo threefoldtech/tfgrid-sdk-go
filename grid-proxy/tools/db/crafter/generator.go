@@ -991,3 +991,31 @@ func (c *Crafter) GenerateNodeWorkloads() error {
 
 	return nil
 }
+
+func (c *Crafter) GenerateNodeFeatures() error {
+	start := c.NodeStart
+	end := c.NodeStart + c.NodeCount
+	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
+
+	var reports []types.NodeFeatures
+	for i := start; i < end; i++ {
+		features := types.Zos3NodesFeatures
+		if flip(.5) {
+			features = types.Zos4NodesFeatures
+		}
+
+		report := types.NodeFeatures{
+			NodeTwinId: uint32(nodeTwinsStart + i),
+			UpdatedAt:  time.Now().Unix(),
+			Features:   features,
+		}
+		reports = append(reports, report)
+	}
+
+	if err := c.gormDB.Create(reports).Error; err != nil {
+		return fmt.Errorf("failed to insert node features reports: %w", err)
+	}
+	fmt.Println("node features number reports generated")
+
+	return nil
+}

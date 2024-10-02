@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -53,4 +54,14 @@ func getPage[R Result](res []R, limit types.Limit) ([]R, int) {
 	res = res[start:end]
 
 	return res, totalCount
+}
+
+func sliceContains(set []string, subset []string) bool {
+	for _, item := range subset {
+		if !slices.Contains(set, item) {
+			return false
+		}
+	}
+
+	return true
 }

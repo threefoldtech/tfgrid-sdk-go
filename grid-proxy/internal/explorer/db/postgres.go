@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -132,6 +133,9 @@ func (d *PostgresDatabase) GetLastUpsertsTimestamp() (types.IndexersState, error
 	if res := d.gormDB.Table("node_workloads").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Workloads.UpdatedAt); res.Error != nil {
 		return report, errors.Wrap(res.Error, "couldn't get workloads last updated_at")
 	}
+	if res := d.gormDB.Table("node_features").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Features.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get features last updated_at")
+	}
 	return report, nil
 }
 
@@ -143,6 +147,7 @@ func (d *PostgresDatabase) Initialize() error {
 		&types.Speed{},
 		&types.HasIpv6{},
 		&types.NodesWorkloads{},
+		&types.NodeFeatures{},
 	); err != nil {
 		return errors.Wrap(err, "failed to migrate indexer tables")
 	}
@@ -363,6 +368,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.gpus",
 			"health_report.healthy",
 			"node_ipv6.has_ipv6",
+			"node_features.features as features",
 			"resources_cache.bios",
 			"resources_cache.baseboard",
 			"resources_cache.memory",
@@ -380,11 +386,10 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			LEFT JOIN location ON node.location_id = location.id
 			LEFT JOIN health_report ON node.twin_id = health_report.node_twin_id
 			LEFT JOIN node_ipv6 ON node.twin_id = node_ipv6.node_twin_id
+			LEFT JOIN node_features ON node.twin_id = node_features.node_twin_id
 		`)
 
-	if filter.HasGPU != nil || filter.GpuDeviceName != nil ||
-		filter.GpuVendorName != nil || filter.GpuVendorID != nil ||
-		filter.GpuDeviceID != nil || filter.GpuAvailable != nil {
+	if filter.IsGpuFilterRequested() {
 		q.Joins(
 			`RIGHT JOIN (?) AS gpu ON gpu.node_twin_id = node.twin_id`, nodeGpuSubquery,
 		)
@@ -411,12 +416,9 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 			"LEFT JOIN public_ips_cache ON public_ips_cache.farm_id = farm.farm_id",
 		)
 
-	if filter.NodeAvailableFor != nil || filter.NodeFreeHRU != nil ||
-		filter.NodeCertified != nil || filter.NodeFreeMRU != nil ||
-		filter.NodeFreeSRU != nil || filter.NodeHasGPU != nil ||
-		filter.NodeRentedBy != nil || len(filter.NodeStatus) != 0 ||
-		filter.NodeTotalCRU != nil || filter.Country != nil ||
-		filter.Region != nil || filter.NodeHasIpv6 != nil {
+	if filter.IsNodeFilterRequested() {
+		// TODO: would it be a good option to delegate here to the GetNodes?
+		// how this will affect the performance benchmark?
 		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
 			Group(`
 				farm.id,
@@ -483,6 +485,17 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		nodeQuery = nodeQuery.
 			Joins("LEFT JOIN node_ipv6 ON node_ipv6.node_twin_id = node.twin_id").
 			Where("COALESCE(has_ipv6, false) = ?", *filter.NodeHasIpv6)
+	}
+
+	if len(filter.NodeFeatures) != 0 {
+		jsonList, err := json.Marshal(filter.NodeFeatures)
+		if err != nil {
+			return nil, 0, errors.Wrap(err, "failed to marshal the features filter to json list")
+		}
+
+		nodeQuery = nodeQuery.
+			Joins("LEFT JOIN node_features ON node_features.node_twin_id = node.twin_id").
+			Where(`COALESCE(node_features.features, '[]') @> ?`, jsonList)
 	}
 
 	q := d.farmTableQuery(ctx, filter, nodeQuery)
@@ -734,6 +747,17 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	}
 	if filter.PriceMax != nil {
 		q = q.Where(`calc_discount(resources_cache.price_usd, ?) <= ?`, limit.Balance, *filter.PriceMax)
+	}
+	if len(filter.Features) != 0 {
+		// The @> operator checks if all the right elements exist on the left,
+		// it needs a proper json object on the right hand side.
+		// check https://www.postgresql.org/docs/9.4/functions-json.html for jsonb operators
+		jsonList, err := json.Marshal(filter.Features)
+		if err != nil {
+			return nil, 0, errors.Wrap(err, "failed to marshal the features filter to json list")
+		}
+
+		q = q.Where(`COALESCE(node_features.features, '[]') @> ?`, jsonList)
 	}
 
 	// Sorting

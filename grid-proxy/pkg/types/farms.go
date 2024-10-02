@@ -38,6 +38,21 @@ type FarmFilter struct {
 	NodeHasGPU        *bool    `schema:"node_has_gpu,omitempty"`
 	NodeHasIpv6       *bool    `schema:"node_has_ipv6,omitempty"`
 	NodeCertified     *bool    `schema:"node_certified,omitempty"`
+	NodeFeatures      []string `schema:"node_features,omitempty"`
 	Country           *string  `schema:"country,omitempty"`
 	Region            *string  `schema:"region,omitempty"`
+}
+
+func (f FarmFilter) Validate() error {
+	return validateNodeFeatures(f.NodeFeatures)
+}
+
+func (f FarmFilter) IsNodeFilterRequested() bool {
+	return f.NodeAvailableFor != nil || f.NodeFreeHRU != nil ||
+		f.NodeCertified != nil || f.NodeFreeMRU != nil ||
+		f.NodeFreeSRU != nil || f.NodeHasGPU != nil ||
+		f.NodeRentedBy != nil || len(f.NodeStatus) != 0 ||
+		f.NodeTotalCRU != nil || f.Country != nil ||
+		f.Region != nil || f.NodeHasIpv6 != nil ||
+		len(f.NodeFeatures) != 0
 }

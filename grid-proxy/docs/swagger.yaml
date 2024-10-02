@@ -157,6 +157,10 @@ definitions:
         type: string
       farmingPolicyId:
         type: integer
+      features:
+        items:
+          type: string
+        type: array
       gpus:
         items:
           $ref: '#/definitions/types.NodeGPU'
@@ -287,6 +291,10 @@ definitions:
         type: string
       farmingPolicyId:
         type: integer
+      features:
+        items:
+          type: string
+        type: array
       gpus:
         items:
           $ref: '#/definitions/types.NodeGPU'
@@ -748,6 +756,10 @@ paths:
         in: query
         name: node_certified
         type: boolean
+      - description: filter farms with list of supported features on its nods
+        in: query
+        name: node_features
+        type: string
       - description: farm country
         in: query
         name: country
@@ -1251,6 +1263,10 @@ paths:
       - description: get nodes with price smaller than this
         in: query
         name: price_max
+        type: string
+      - description: filter nodes with list of supported features
+        in: query
+        name: features
         type: string
       produces:
       - application/json

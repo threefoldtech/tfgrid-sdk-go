@@ -70,6 +70,8 @@ type flags struct {
 	ipv6IndexerIntervalMins      uint
 	workloadsIndexerNumWorkers   uint
 	workloadsIndexerIntervalMins uint
+	featuresIndexerNumWorkers    uint
+	featuresIndexerIntervalMins  uint
 }
 
 func main() {
@@ -107,6 +109,8 @@ func main() {
 	flag.UintVar(&f.ipv6IndexerNumWorkers, "ipv6-indexer-workers", 10, "number of workers checking on node having ipv6")
 	flag.UintVar(&f.workloadsIndexerIntervalMins, "workloads-indexer-interval", 60, "node workloads check interval in min")
 	flag.UintVar(&f.workloadsIndexerNumWorkers, "workloads-indexer-workers", 10, "number of workers checking on node workloads number")
+	flag.UintVar(&f.featuresIndexerIntervalMins, "features-indexer-interval", 60*24, "node features check interval in min")
+	flag.UintVar(&f.featuresIndexerNumWorkers, "features-indexer-workers", 10, "number of workers checking on node supported features")
 	flag.Parse()
 
 	// shows version and exit
@@ -155,6 +159,7 @@ func main() {
 		indexerIntervals["workloads"] = f.workloadsIndexerIntervalMins
 		indexerIntervals["ipv6"] = f.ipv6IndexerIntervalMins
 		indexerIntervals["speed"] = f.speedIndexerIntervalMins
+		indexerIntervals["features"] = f.featuresIndexerIntervalMins
 	} else {
 		log.Info().Msg("Indexers did not start")
 	}
@@ -224,6 +229,15 @@ func startIndexers(ctx context.Context, f flags, db db.Database, rpcRmbClient *p
 		f.workloadsIndexerNumWorkers,
 	)
 	wlNumIdx.Start(ctx)
+
+	featIdx := indexer.NewIndexer[types.NodeFeatures](
+		indexer.NewFeatureWork(f.featuresIndexerIntervalMins),
+		"features",
+		db,
+		rpcRmbClient,
+		f.featuresIndexerNumWorkers,
+	)
+	featIdx.Start(ctx)
 }
 
 func app(s *http.Server, f flags) error {

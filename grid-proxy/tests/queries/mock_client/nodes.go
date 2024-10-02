@@ -188,6 +188,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				},
 				PriceUsd:    calcDiscount(calcNodePrice(g.data, node), limit.Balance),
 				FarmFreeIps: uint(g.data.FreeIPs[node.FarmID]),
+				Features:    g.data.NodeFeatures[uint32(node.TwinID)],
 			})
 		}
 	}
@@ -285,6 +286,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		},
 		PriceUsd:    calcNodePrice(g.data, node),
 		FarmFreeIps: uint(g.data.FreeIPs[node.FarmID]),
+		Features:    g.data.NodeFeatures[uint32(node.TwinID)],
 	}
 	return
 }
@@ -331,6 +333,10 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if f.HasIpv6 != nil && *f.HasIpv6 != data.NodeIpv6[uint32(n.TwinID)] {
+		return false
+	}
+
+	if len(f.Features) != 0 && !sliceContains(data.NodeFeatures[uint32(n.TwinID)], f.Features) {
 		return false
 	}
 
@@ -468,10 +474,9 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	foundGpuFilter := f.HasGPU != nil || f.GpuDeviceName != nil || f.GpuVendorName != nil || f.GpuVendorID != nil || f.GpuDeviceID != nil || f.GpuAvailable != nil
 	gpus, foundGpuCards := data.GPUs[uint32(n.TwinID)]
 
-	if !foundGpuCards && foundGpuFilter {
+	if !foundGpuCards && f.IsGpuFilterRequested() {
 		return false
 	}
 
@@ -490,7 +495,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		}
 	}
 
-	if !foundSuitableCard && foundGpuFilter {
+	if !foundSuitableCard && f.IsGpuFilterRequested() {
 		return false
 	}
 

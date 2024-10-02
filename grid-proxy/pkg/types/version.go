@@ -16,6 +16,7 @@ type IndexersState struct {
 	Speed     IndexerState `json:"speed"`
 	Ipv6      IndexerState `json:"ipv6"`
 	Workloads IndexerState `json:"workloads"`
+	Features  IndexerState `json:"features"`
 }
 
 // Health represent the healthiness of the server and connections

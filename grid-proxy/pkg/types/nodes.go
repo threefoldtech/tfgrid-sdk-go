@@ -52,6 +52,7 @@ type Node struct {
 	GPUs              []NodeGPU    `json:"gpus"`
 	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
 	FarmFreeIps       uint         `json:"farm_free_ips"`
+	Features          []string     `json:"features"`
 	_                 string       `sort:"free_cru"`
 }
 
@@ -96,6 +97,7 @@ type NodeWithNestedCapacity struct {
 	GPUs              []NodeGPU      `json:"gpus"`
 	PriceUsd          float64        `json:"price_usd"`
 	FarmFreeIps       uint           `json:"farm_free_ips"`
+	Features          []string       `json:"features"`
 }
 
 // PublicConfig node public config
@@ -161,4 +163,15 @@ type NodeFilter struct {
 	PriceMax           *float64 `schema:"price_max,omitempty"`
 	Excluded           []uint64 `schema:"excluded,omitempty"`
 	HasIpv6            *bool    `schema:"has_ipv6,omitempty"`
+	Features           []string `schema:"features,omitempty"`
+}
+
+func (f NodeFilter) Validate() error {
+	return validateNodeFeatures(f.Features)
+}
+
+func (f NodeFilter) IsGpuFilterRequested() bool {
+	return f.HasGPU != nil || f.GpuDeviceName != nil ||
+		f.GpuVendorName != nil || f.GpuVendorID != nil ||
+		f.GpuDeviceID != nil || f.GpuAvailable != nil
 }

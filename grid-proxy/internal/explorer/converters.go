@@ -75,9 +75,14 @@ func nodeFromDBNode(info db.Node) types.Node {
 		GPUs:        info.Gpus,
 		PriceUsd:    math.Round(info.PriceUsd*1000) / 1000,
 		FarmFreeIps: info.FarmFreeIps,
+		Features:    info.Features,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0 || info.ExtraFee > 0
+	// have an empty list instead of null in the json response
+	if node.Features == nil {
+		node.Features = []string{}
+	}
 	return node
 }
 
@@ -163,9 +168,13 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		GPUs:        info.Gpus,
 		PriceUsd:    math.Round(info.PriceUsd*1000) / 1000,
 		FarmFreeIps: info.FarmFreeIps,
+		Features:    info.Features,
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0 || info.ExtraFee > 0
+	if node.Features == nil {
+		node.Features = []string{}
+	}
 	return node
 }
 

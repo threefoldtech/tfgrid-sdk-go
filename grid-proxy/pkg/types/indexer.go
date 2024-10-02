@@ -97,3 +97,13 @@ type Memory struct {
 	Manufacturer string `json:"manufacturer"`
 	Type         string `json:"type"`
 }
+
+type NodeFeatures struct {
+	NodeTwinId uint32   `json:"node_twin_id,omitempty" gorm:"unique;not null"`
+	UpdatedAt  int64    `json:"updated_at"`
+	Features   []string `json:"features" gorm:"type:jsonb;serializer:json"`
+}
+
+func (NodeFeatures) TableName() string {
+	return "node_features"
+}

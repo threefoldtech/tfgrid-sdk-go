@@ -34,6 +34,10 @@ db-fill: ## Fill the database with a randomly generated data
 		--reset \
 		--seed 13
 
+db-update:
+	@echo "Updating node uptimes"
+	@psql postgresql://postgres:postgres@$(PQ_HOST):5432/tfgrid-graphql < ./internal/explorer/db/helpers.sql
+
 db-dump: ## Load a dump of the database 		(Args: `p=<path/to/file.sql`)
 	@docker cp $(p) postgres:/dump.sql;
 	@docker exec $(PQ_CONTAINER) bash -c "psql -U postgres  -d tfgrid-graphql < ./dump.sql"
