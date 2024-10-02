@@ -78,24 +78,24 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 	v2, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm2.Name, dl.Name)
 	require.NoError(t, err)
 
-	yggIP1 := v1.PlanetaryIP
-	yggIP2 := v2.PlanetaryIP
+	myceliumIP1 := v1.MyceliumIP
+	myceliumIP2 := v2.MyceliumIP
 
-	require.NotEmpty(t, yggIP1)
-	require.NotEmpty(t, yggIP2)
+	require.NotEmpty(t, myceliumIP1)
+	require.NotEmpty(t, myceliumIP2)
 
-	_, err = RemoteRun("root", yggIP1, "apt install -y netcat", privateKey)
+	_, err = RemoteRun("root", myceliumIP1, "apt install -y netcat", privateKey)
 	require.NoError(t, err)
 
-	_, err = RemoteRun("root", yggIP2, "apt install -y netcat", privateKey)
+	_, err = RemoteRun("root", myceliumIP2, "apt install -y netcat", privateKey)
 	require.NoError(t, err)
 
-	// check yggIP2 from vm1
-	_, err = RemoteRun("root", yggIP1, fmt.Sprintf("nc -z %s 22", yggIP2), privateKey)
+	// check myceliumIP2 from vm1
+	_, err = RemoteRun("root", myceliumIP1, fmt.Sprintf("nc -z %s 22", myceliumIP2), privateKey)
 	require.NoError(t, err)
 
-	// check yggIP1 from vm2
-	_, err = RemoteRun("root", yggIP2, fmt.Sprintf("nc -z %s 22", yggIP1), privateKey)
+	// check myceliumIP1 from vm2
+	_, err = RemoteRun("root", myceliumIP2, fmt.Sprintf("nc -z %s 22", myceliumIP1), privateKey)
 	require.NoError(t, err)
 
 	privateIP1 := v1.IP
@@ -106,11 +106,11 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 	require.NotEqual(t, privateIP1, privateIP2)
 
 	// check privateIP2 from vm1
-	_, err = RemoteRun("root", yggIP1, fmt.Sprintf("nc -z %s 22", privateIP2), privateKey)
+	_, err = RemoteRun("root", myceliumIP1, fmt.Sprintf("nc -z %s 22", privateIP2), privateKey)
 	require.NoError(t, err)
 
 	// check privateIP1 from vm2
-	_, err = RemoteRun("root", yggIP2, fmt.Sprintf("nc -z %s 22", privateIP1), privateKey)
+	_, err = RemoteRun("root", myceliumIP2, fmt.Sprintf("nc -z %s 22", privateIP1), privateKey)
 	require.NoError(t, err)
 
 	publicIP6_1 := strings.Split(v1.ComputedIP6, "/")[0]
@@ -120,10 +120,10 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 	require.NotEmpty(t, publicIP6_2)
 
 	// check publicIP62 from vm1
-	_, err = RemoteRun("root", yggIP1, fmt.Sprintf("nc -z %s 22", publicIP6_2), privateKey)
+	_, err = RemoteRun("root", myceliumIP1, fmt.Sprintf("nc -z %s 22", publicIP6_2), privateKey)
 	require.NoError(t, err)
 
 	// check publicIP61 from vm2
-	_, err = RemoteRun("root", yggIP2, fmt.Sprintf("nc -z %s 22", publicIP6_1), privateKey)
+	_, err = RemoteRun("root", myceliumIP2, fmt.Sprintf("nc -z %s 22", publicIP6_1), privateKey)
 	require.NoError(t, err)
 }

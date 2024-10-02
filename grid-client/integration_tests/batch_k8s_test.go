@@ -152,7 +152,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 	require.NotEmpty(t, k1.Master.IP)
 	require.NotEqual(t, k1.Master.IP, k2.Workers[0].IP)
 
-	require.True(t, CheckConnection(k2.Workers[0].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k2.Workers[0].MyceliumIP, "22"))
 
 	// ssh to master node
 	require.NoError(t, requireNodesAreReady(len(k2.Workers)+1, k2.Master.PlanetaryIP, privateKey))

@@ -137,7 +137,6 @@ func generateBasicVM(vmName string, nodeID uint32, networkName string, publicKey
 		NetworkName: networkName,
 		CPU:         minCPU,
 		MemoryMB:    minMemory * 1024,
-		Planetary:   true,
 		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 		Entrypoint:  "/sbin/zinit init",
 		EnvVars: map[string]string{

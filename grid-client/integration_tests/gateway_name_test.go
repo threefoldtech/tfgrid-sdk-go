@@ -81,7 +81,7 @@ func TestGatewayNameDeployment(t *testing.T) {
 	v, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm.Name, dl.Name)
 	require.NoError(t, err)
 
-	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
+	backend := fmt.Sprintf("http://[%s]:9000", v.MyceliumIP)
 	gw := workloads.GatewayNameProxy{
 		NodeID:         gwNodeID,
 		Name:           generateRandString(10),
@@ -101,7 +101,7 @@ func TestGatewayNameDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, result.FQDN)
 
-	_, err = RemoteRun("root", v.PlanetaryIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+	_, err = RemoteRun("root", v.MyceliumIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 	require.NoError(t, err)
 
 	time.Sleep(3 * time.Second)

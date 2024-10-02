@@ -188,8 +188,8 @@ func TestQSFSDeployment(t *testing.T) {
 	metrics := resQSFS.MetricsEndpoint
 	require.NotEmpty(t, metrics)
 
-	planetaryIP := resVM.PlanetaryIP
-	require.NotEmpty(t, planetaryIP)
+	myceliimIP := resVM.MyceliumIP
+	require.NotEmpty(t, myceliimIP)
 
 	// get metrics
 	cmd := exec.Command("curl", metrics)
@@ -198,7 +198,7 @@ func TestQSFSDeployment(t *testing.T) {
 	require.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 0")
 
 	// try write to a file in mounted disk
-	_, err = RemoteRun("root", planetaryIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
+	_, err = RemoteRun("root", myceliimIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
 	require.NoError(t, err)
 
 	time.Sleep(5 * time.Second)
