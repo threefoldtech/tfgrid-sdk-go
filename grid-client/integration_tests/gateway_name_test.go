@@ -56,21 +56,10 @@ func TestGatewayNameDeployment(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
-
-	vm := workloads.VM{
-		Name:        "vm",
-		NodeID:      nodeID,
-		NetworkName: network.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Planetary:   true,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-	}
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	require.NoError(t, err)
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
+	require.NoError(t, err)
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)

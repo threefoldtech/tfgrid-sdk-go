@@ -129,7 +129,7 @@ func generateRandString(n int) string {
 func generateBasicVM(vmName string, nodeID uint32, networkName string, publicKey string) (workloads.VM, error) {
 	seed, err := workloads.RandomMyceliumIPSeed()
 	if err != nil {
-		return workloads.VM{}, nil
+		return workloads.VM{}, err
 	}
 	return workloads.VM{
 		Name:        vmName,

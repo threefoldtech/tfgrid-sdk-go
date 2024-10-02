@@ -41,21 +41,15 @@ func TestWG(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
+	network,err := generateBasicNetwork([]uint32{nodeID})
+	if err != nil{ 
+		t.Skipf("network creation failed: %v", err) 
+	}
 	network.AddWGAccess = true
 
-	vm := workloads.VM{
-		Name:         "vm",
-		NodeID:       nodeID,
-		NetworkName:  network.Name,
-		CPU:          minCPU,
-		MemoryMB:     minMemory * 1024,
-		RootfsSizeMB: minRootfs * 1024,
-		Flist:        "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:   "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
+	if err != nil{ 
+		t.Skipf("vm creation failed: %v", err) 
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)

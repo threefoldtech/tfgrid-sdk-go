@@ -112,6 +112,7 @@ func TestK8sDeployment(t *testing.T) {
 		},
 		DiskSizeGB: 1,
 	}
+	
 
 	// deploy k8s cluster
 	workers := []workloads.K8sNode{workerNodeData1, workerNodeData2}

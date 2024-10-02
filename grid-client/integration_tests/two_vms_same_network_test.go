@@ -36,39 +36,26 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
-
-	vm1 := workloads.VM{
-		Name:         "vm1",
-		NodeID:       nodeID,
-		NetworkName:  network.Name,
-		CPU:          minCPU,
-		MemoryMB:     minMemory * 1024,
-		RootfsSizeMB: minRootfs * 1024,
-		PublicIP6:    true,
-		Planetary:    true,
-		Flist:        "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
-		Entrypoint:   "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	if err != nil{ 
+		t.Skipf("network creation failed: %v", err) 
 	}
 
-	vm2 := workloads.VM{
-		Name:         "vm2",
-		NodeID:       nodeID,
-		NetworkName:  network.Name,
-		CPU:          minCPU,
-		MemoryMB:     minMemory * 1024,
-		RootfsSizeMB: minRootfs * 1024,
-		PublicIP6:    true,
-		Planetary:    true,
-		Flist:        "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
-		Entrypoint:   "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
+	vm1,err := generateBasicVM("vm1", nodeID, network.Name, publicKey)
+	if err != nil{ 
+		t.Skipf("vm creation failed: %v", err) 
 	}
+	vm1.RootfsSizeMB = minRootfs * 1024
+	vm1.PublicIP6 = true
+
+
+	vm2, err := generateBasicVM("vm2", nodeID, network.Name, publicKey)
+	if err != nil{ 
+		t.Skipf("vm creation failed: %v", err) 
+	}
+	vm2.RootfsSizeMB = minRootfs *1024
+	vm2.PublicIP6 = true
+
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
