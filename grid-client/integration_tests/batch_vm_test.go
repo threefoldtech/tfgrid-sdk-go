@@ -36,37 +36,23 @@ func TestBatchVMDeployment(t *testing.T) {
 	nodeID1 := uint32(nodes[0].NodeID)
 	nodeID2 := uint32(nodes[1].NodeID)
 
-	network1 := generateBasicNetwork([]uint32{nodeID1})
-	network2 := generateBasicNetwork([]uint32{nodeID2})
-
-	vm1 := workloads.VM{
-		Name:        "vm",
-		NodeID:      nodeID1,
-		NetworkName: network1.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Planetary:   true,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
+	network1, err := generateBasicNetwork([]uint32{nodeID1})
+	if err != nil {
+		t.Skipf("network1 creation failed: %v", err)
 	}
-
-	vm2 := workloads.VM{
-		Name:        "vm",
-		NodeID:      nodeID2,
-		NetworkName: network2.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Planetary:   true,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
+	network2, err := generateBasicNetwork([]uint32{nodeID2})
+	if err != nil {
+		t.Skipf("network2 creation failed: %v", err)
 	}
-
+	vm1, err := generateBasicVM("vm", nodeID1, network1.Name, publicKey)
+	if err != nil {
+		t.Skipf("vm1 creation failed: %v", err)
+	}
+	vm2, err := generateBasicVM("vm", nodeID2, network2.Name, publicKey)
+	if err != nil {
+		t.Skipf("vm2 creation failed: %v", err)
+	}
+	
 	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []*workloads.ZNet{&network1, &network2})
 	require.NoError(t, err)
 

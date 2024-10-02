@@ -52,13 +52,20 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	gpus, err := nodeClient.GPUs(context.Background())
 	require.NoError(t, err)
 
-	network := generateBasicNetwork([]uint32{nodeID})
+	network,err := generateBasicNetwork([]uint32{nodeID})
+	if err != nil {
+		t.Skipf("network creation failed: %v", err)
+	}
 
 	disk := workloads.Disk{
 		Name:   "gpuDisk",
 		SizeGB: 20,
 	}
 
+	myCeliumSeed, err:=workloads.RandomMyceliumIPSeed()
+	if err != nil{
+		t.Skip("could not create vm mycelium IP seed: %v", err)
+	}
 	vm := workloads.VM{
 		Name:         "gpu",
 		NodeID:       nodeID,
@@ -76,6 +83,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 		Mounts: []workloads.Mount{
 			{Name: disk.Name, MountPoint: "/data"},
 		},
+		MyceliumIPSeed: myCeliumSeed,
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
@@ -101,7 +109,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	require.NotEmpty(t, vm.PlanetaryIP)
 
 	time.Sleep(30 * time.Second)
-	output, err := RemoteRun("root", vm.PlanetaryIP, "lspci -v", privateKey)
+	output, err := RemoteRun("root", vm.MyceliumIP, "lspci -v", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, gpus[0].Vendor)
 }

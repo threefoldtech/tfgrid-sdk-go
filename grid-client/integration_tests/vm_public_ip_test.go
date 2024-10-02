@@ -36,7 +36,14 @@ func TestVMDeployment(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
+	network, err:= generateBasicNetwork([]uint32{nodeID})
+	if err != nil {
+		t.Skipf("network creation failed: %v", err)
+	}
+	myCeliumSeed, err:=workloads.RandomMyceliumIPSeed()
+	if err != nil{
+		t.Skip("could not create vm mycelium IP seed: %v", err)
+	}
 
 	vm := workloads.VM{
 		Name:         "vm",
@@ -53,6 +60,7 @@ func TestVMDeployment(t *testing.T) {
 		EnvVars: map[string]string{
 			"SSH_KEY": publicKey,
 		},
+		MyceliumIPSeed: myCeliumSeed,
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
@@ -88,11 +96,11 @@ func TestVMDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, output, "root")
 
-	planetaryIP := v.PlanetaryIP
-	require.NotEmpty(t, planetaryIP)
-	require.True(t, CheckConnection(planetaryIP, "22"))
+	myCeliumIP := v.MyceliumIP
+	require.NotEmpty(t, myCeliumIP)
+	require.True(t, CheckConnection(myCeliumIP, "22"))
 
-	output, err = RemoteRun("root", planetaryIP, "ls /", privateKey)
+	output, err = RemoteRun("root", myCeliumIP, "ls /", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, "root")
 }

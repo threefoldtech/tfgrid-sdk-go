@@ -31,13 +31,13 @@ func setup() (deployer.TFPluginClient, error) {
 }
 
 func generateBasicNetwork(nodeIDs []uint32) (workloads.ZNet, error) {
-	celiumKeys := make(map[uint32][]byte)
+	myCeliumKeys := make(map[uint32][]byte)
 	for _, nodeID := range nodeIDs {
 		key, err := workloads.RandomMyceliumKey()
 		if err != nil {
 			return workloads.ZNet{}, fmt.Errorf("could not create mycelium key: %v", err)
 		}
-		celiumKeys[nodeID] = key
+		myCeliumKeys[nodeID] = key
 	}
 	return workloads.ZNet{
 		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
@@ -47,7 +47,7 @@ func generateBasicNetwork(nodeIDs []uint32) (workloads.ZNet, error) {
 			IP:   net.IPv4(10, 20, 0, 0),
 			Mask: net.CIDRMask(16, 32),
 		}),
-		MyceliumKeys: celiumKeys,
+		MyceliumKeys: myCeliumKeys,
 	}, nil
 }
 

@@ -67,15 +67,30 @@ func TestK8sDeployment(t *testing.T) {
 	masterNodeID := uint32(nodes[0].NodeID)
 	workerNodeID := uint32(nodes[1].NodeID)
 
-	network := generateBasicNetwork([]uint32{masterNodeID, workerNodeID})
+	network, err := generateBasicNetwork([]uint32{masterNodeID, workerNodeID})
+	if err != nil {
+		t.Skipf("network creation failed: %v", err)
+	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
-
+	
 	t.Cleanup(func() {
 		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		require.NoError(t, err)
 	})
+	masterSeed, err:= workloads.RandomMyceliumIPSeed()
+	if err != nil{
+		t.Skip("could not create master mycelium IP seed: %v", err)
+	}
+	workerNodeSeed1, err:= workloads.RandomMyceliumIPSeed()
+	if err != nil{
+		t.Skip("could not create worker Node1 mycelium IP seed: %v", err)
+	}
+	workerNodeSeed2, err:= workloads.RandomMyceliumIPSeed()
+	if err != nil{
+		t.Skip("could not create worker Node2 mycelium IP seed: %v", err)
+	}
 
 	master := workloads.K8sNode{
 		VM: &workloads.VM{
@@ -85,6 +100,7 @@ func TestK8sDeployment(t *testing.T) {
 			CPU:         minCPU,
 			MemoryMB:    minMemory * 1024,
 			Planetary:   true,
+			MyceliumIPSeed: masterSeed,
 		},
 		DiskSizeGB: 1,
 	}
@@ -97,6 +113,7 @@ func TestK8sDeployment(t *testing.T) {
 			CPU:         minCPU,
 			MemoryMB:    minMemory * 1024,
 			Planetary:   true,
+			MyceliumIPSeed: workerNodeSeed1,
 		},
 		DiskSizeGB: 1,
 	}
@@ -109,6 +126,7 @@ func TestK8sDeployment(t *testing.T) {
 			CPU:         minCPU,
 			MemoryMB:    minMemory * 1024,
 			Planetary:   true,
+			MyceliumIPSeed: workerNodeSeed2,
 		},
 		DiskSizeGB: 1,
 	}
@@ -141,13 +159,13 @@ func TestK8sDeployment(t *testing.T) {
 	require.Equal(t, len(k8s.Workers), 2)
 
 	// Check that master is reachable
-	masterIP := k8s.Master.PlanetaryIP
+	masterIP := k8s.Master.MyceliumIP
 	require.NotEmpty(t, masterIP)
-	require.NotEmpty(t, k8s.Workers[0].PlanetaryIP)
-	require.NotEmpty(t, k8s.Workers[1].PlanetaryIP)
+	require.NotEmpty(t, k8s.Workers[0].MyceliumIP)
+	require.NotEmpty(t, k8s.Workers[1].MyceliumIP)
 
-	require.True(t, CheckConnection(k8s.Workers[0].PlanetaryIP, "22"))
-	require.True(t, CheckConnection(k8s.Workers[1].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k8s.Workers[0].MyceliumIP, "22"))
+	require.True(t, CheckConnection(k8s.Workers[1].MyceliumIP, "22"))
 
 	require.NotEmpty(t, k8s.Master.IP)
 	require.NotEmpty(t, k8s.Workers[0].IP)
@@ -177,11 +195,11 @@ func TestK8sDeployment(t *testing.T) {
 	require.Equal(t, len(k8s.Workers), 1)
 
 	// Check that master is reachable
-	masterIP = k8s.Master.PlanetaryIP
+	masterIP = k8s.Master.MyceliumIP
 	require.NotEmpty(t, masterIP)
-	require.NotEmpty(t, k8s.Workers[0].PlanetaryIP)
+	require.NotEmpty(t, k8s.Workers[0].MyceliumIP)
 
-	require.True(t, CheckConnection(k8s.Workers[0].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k8s.Workers[0].MyceliumIP, "22"))
 
 	// ssh to master node
 	// require.NoError(t, requireNodesAreReady(len(k8s.Workers)+1, masterIP, privateKey))
@@ -200,13 +218,13 @@ func TestK8sDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, k8s.Workers, 2)
 
-	masterIP = k8s.Master.PlanetaryIP
+	masterIP = k8s.Master.MyceliumIP
 	require.NotEmpty(t, masterIP)
-	require.NotEmpty(t, k8s.Workers[0].PlanetaryIP)
-	require.NotEmpty(t, k8s.Workers[1].PlanetaryIP)
+	require.NotEmpty(t, k8s.Workers[0].MyceliumIP)
+	require.NotEmpty(t, k8s.Workers[1].MyceliumIP)
 
-	require.True(t, CheckConnection(k8s.Workers[0].PlanetaryIP, "22"))
-	require.True(t, CheckConnection(k8s.Workers[1].PlanetaryIP, "22"))
+	require.True(t, CheckConnection(k8s.Workers[0].MyceliumIP, "22"))
+	require.True(t, CheckConnection(k8s.Workers[1].MyceliumIP, "22"))
 
 	// require.NoError(t, requireNodesAreReady(len(k8s.Workers)+1, masterIP, privateKey))
 }

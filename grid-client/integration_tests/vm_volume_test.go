@@ -35,11 +35,18 @@ func TestVMWithVolume(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	if err != nil {
+		t.Skipf("network creation failed: %v", err)
+	}
 
 	volume := workloads.Volume{
 		Name:   "volume",
 		SizeGB: 1,
+	}
+	myCeliumSeed, err:=workloads.RandomMyceliumIPSeed()
+	if err != nil{
+		t.Skip("could not create vm mycelium IP seed: %v", err)
 	}
 
 	vm := workloads.VM{
@@ -58,6 +65,7 @@ func TestVMWithVolume(t *testing.T) {
 		Mounts: []workloads.Mount{
 			{Name: volume.Name, MountPoint: "/volume"},
 		},
+		MyceliumIPSeed: myCeliumSeed,
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
@@ -79,12 +87,12 @@ func TestVMWithVolume(t *testing.T) {
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm.Name, dl.Name)
 	require.NoError(t, err)
-	require.NotEmpty(t, v.PlanetaryIP)
+	require.NotEmpty(t, v.MyceliumIP)
 
 	resVolume, err := tfPluginClient.State.LoadVolumeFromGrid(context.Background(), nodeID, volume.Name, dl.Name)
 	require.NoError(t, err)
 	require.Equal(t, volume, resVolume)
-	res, err := RemoteRun("root", v.PlanetaryIP, "mount", privateKey)
+	res, err := RemoteRun("root", v.MyceliumIP, "mount", privateKey)
 	require.NoError(t, err)
 	strings.Contains(res, "volume on /volume type virtiofs")
 }

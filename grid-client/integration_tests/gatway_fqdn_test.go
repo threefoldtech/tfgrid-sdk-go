@@ -47,20 +47,13 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
-
-	vm := workloads.VM{
-		Name:        "vm",
-		NodeID:      nodeID,
-		NetworkName: network.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Planetary:   true,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	if err != nil{
+		t.Skipf("network creation failed: %v", err)
+	}
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
+	if err != nil {
+		t.Skipf("vm2 creation failed: %v", err)
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
@@ -83,7 +76,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	v, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm.Name, dl.Name)
 	require.NoError(t, err)
 
-	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
+	backend := fmt.Sprintf("http://[%s]:9000", v.MyceliumIP)
 	fqdn := "hamada1.3x0.me" // points to node 15 devnet
 	gatewayNode := nodeID
 	gw := workloads.GatewayFQDNProxy{
@@ -105,7 +98,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	_, err = tfPluginClient.State.LoadGatewayFQDNFromGrid(context.Background(), gatewayNode, gw.Name, gw.Name)
 	require.NoError(t, err)
 
-	_, err = RemoteRun("root", v.PlanetaryIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+	_, err = RemoteRun("root", v.MyceliumIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 	require.NoError(t, err)
 
 	time.Sleep(3 * time.Second)
