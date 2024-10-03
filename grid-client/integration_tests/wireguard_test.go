@@ -51,6 +51,7 @@ func TestWG(t *testing.T) {
 	if err != nil {
 		t.Skipf("vm creation failed: %v", err)
 	}
+	vm.RootfsSizeMB = minRootfs * 1024
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
