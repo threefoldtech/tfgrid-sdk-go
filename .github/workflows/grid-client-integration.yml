@@ -4,9 +4,8 @@ defaults:
   run:
     working-directory: grid-client
 on:
-  schedule:
-    - cron: 0 3 * * *
-  workflow_dispatch:
+  push:
+    branches: ["development_support_testing_using_mycelium"]
 
 jobs:
   test:
@@ -47,7 +46,7 @@ jobs:
           NETWORK: ${{ matrix.network }}
         # run: make integration
         run: |
-          for test in $(go run scripts/scrap_tests.go)
+          for test in $(go run scripts/scrap_tests/scrap_tests.go)
           do
             go test -v ./integration_tests -run $test
           done
