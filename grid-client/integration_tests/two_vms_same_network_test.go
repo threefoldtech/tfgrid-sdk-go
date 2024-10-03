@@ -40,15 +40,46 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 	if err != nil {
 		t.Skipf("network creation failed: %v", err)
 	}
-
-	vm1, err := generateBasicVM("vm1", nodeID, network.Name, publicKey)
+	myCeliumSeed1, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create vm mycelium IP seed: %v", err)
+	}
+	vm1 := workloads.VM{
+		Name:        "vm1",
+		NodeID:      nodeID,
+		NetworkName: network.Name,
+		CPU:         minCPU,
+		MemoryMB:    minMemory * 1024,
+		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		Entrypoint:  "/sbin/zinit init",
+		EnvVars: map[string]string{
+			"SSH_KEY": publicKey,
+		},
+		MyceliumIPSeed: myCeliumSeed1,
+	}
 	if err != nil {
 		t.Skipf("vm creation failed: %v", err)
 	}
 	vm1.RootfsSizeMB = minRootfs * 1024
 	vm1.PublicIP6 = true
 
-	vm2, err := generateBasicVM("vm2", nodeID, network.Name, publicKey)
+	myCeliumSeed2, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create vm mycelium IP seed: %v", err)
+	}
+	vm2 := workloads.VM{
+		Name:        "vm2",
+		NodeID:      nodeID,
+		NetworkName: network.Name,
+		CPU:         minCPU,
+		MemoryMB:    minMemory * 1024,
+		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		Entrypoint:  "/sbin/zinit init",
+		EnvVars: map[string]string{
+			"SSH_KEY": publicKey,
+		},
+		MyceliumIPSeed: myCeliumSeed2,
+	}
 	if err != nil {
 		t.Skipf("vm creation failed: %v", err)
 	}
