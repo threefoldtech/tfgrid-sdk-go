@@ -106,6 +106,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, g2.FQDN)
 
+	require.NotEmpty(t, v.MyceliumIP)
 	_, err = RemoteRun("root", v.MyceliumIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 	require.NoError(t, err)
 

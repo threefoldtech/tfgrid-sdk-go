@@ -46,50 +46,70 @@ func TestBatchK8sDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	masterSeed1, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create master1 mycelium IP seed: %v", err)
+	}
+	masterSeed2, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create master2 mycelium IP seed: %v", err)
+	}
+	workerNodeSeed1, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create worker Node1 mycelium IP seed: %v", err)
+	}
+	workerNodeSeed2, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		t.Skipf("could not create worker Node2 mycelium IP seed: %v", err)
+	}
 	master1 := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:        generateRandString(10),
-			NetworkName: network.Name,
-			NodeID:      nodeID1,
-			Planetary:   true,
-			CPU:         minCPU,
-			MemoryMB:    minMemory * 1024,
+			Name:           generateRandString(10),
+			NetworkName:    network.Name,
+			NodeID:         nodeID1,
+			Planetary:      true,
+			CPU:            minCPU,
+			MemoryMB:       minMemory * 1024,
+			MyceliumIPSeed: masterSeed1,
 		},
 		DiskSizeGB: 1,
 	}
 
 	master2 := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:        generateRandString(10),
-			NetworkName: network.Name,
-			NodeID:      nodeID2,
-			Planetary:   true,
-			CPU:         minCPU,
-			MemoryMB:    minMemory * 1024,
+			Name:           generateRandString(10),
+			NetworkName:    network.Name,
+			NodeID:         nodeID2,
+			Planetary:      true,
+			CPU:            minCPU,
+			MemoryMB:       minMemory * 1024,
+			MyceliumIPSeed: masterSeed2,
 		},
 		DiskSizeGB: 1,
 	}
 
 	workerNodeData1 := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:        generateRandString(10),
-			NetworkName: network.Name,
-			NodeID:      nodeID1,
-			Planetary:   true,
-			CPU:         minCPU,
-			MemoryMB:    minMemory * 1024,
+			Name:           generateRandString(10),
+			NetworkName:    network.Name,
+			NodeID:         nodeID1,
+			Planetary:      true,
+			CPU:            minCPU,
+			MemoryMB:       minMemory * 1024,
+			MyceliumIPSeed: workerNodeSeed1,
 		},
 		DiskSizeGB: 1,
 	}
 
 	workerNodeData2 := workloads.K8sNode{
 		VM: &workloads.VM{
-			Name:        generateRandString(10),
-			NetworkName: network.Name,
-			NodeID:      nodeID2,
-			Planetary:   true,
-			CPU:         minCPU,
-			MemoryMB:    minMemory * 1024,
+			Name:           generateRandString(10),
+			NetworkName:    network.Name,
+			NodeID:         nodeID2,
+			Planetary:      true,
+			CPU:            minCPU,
+			MemoryMB:       minMemory * 1024,
+			MyceliumIPSeed: workerNodeSeed2,
 		},
 		DiskSizeGB: 1,
 	}
