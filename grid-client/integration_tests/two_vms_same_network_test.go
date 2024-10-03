@@ -50,7 +50,7 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 		NetworkName: network.Name,
 		CPU:         minCPU,
 		MemoryMB:    minMemory * 1024,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
 		Entrypoint:  "/sbin/zinit init",
 		EnvVars: map[string]string{
 			"SSH_KEY": publicKey,
@@ -73,7 +73,7 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 		NetworkName: network.Name,
 		CPU:         minCPU,
 		MemoryMB:    minMemory * 1024,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
 		Entrypoint:  "/sbin/zinit init",
 		EnvVars: map[string]string{
 			"SSH_KEY": publicKey,
