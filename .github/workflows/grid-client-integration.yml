@@ -54,7 +54,7 @@ jobs:
           NETWORK: ${{ matrix.network }}
         # run: make integration
         run: |
-          for test in $(go run scripts/scrap_tests.go)
+          for test in $(go run scripts/scrap_tests/scrap_tests.go)
           do
             go test -v ./integration_tests -run $test
           done
