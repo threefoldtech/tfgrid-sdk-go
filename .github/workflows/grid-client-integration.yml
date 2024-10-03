@@ -4,8 +4,9 @@ defaults:
   run:
     working-directory: grid-client
 on:
-  push:
-    branches: ["development_support_testing_using_mycelium"]
+  schedule:
+    - cron: 0 3 * * *
+  workflow_dispatch:
 
 jobs:
   test:
