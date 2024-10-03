@@ -4,8 +4,8 @@ defaults:
   run:
     working-directory: grid-cli
 on:
-  # schedule:
-  #   - cron: "0 9 * * *"
+  schedule:
+    - cron: "0 9 * * *"
   workflow_dispatch:
 
 jobs:
