@@ -116,7 +116,7 @@ func TestQSFSDeployment(t *testing.T) {
 	metaBackends := []workloads.Backend{}
 	for i := 0; i < DataZDBNum; i++ {
 		dataBackends = append(dataBackends, workloads.Backend{
-			Address:   "[" + resDataZDBs[i].IPs[1] + "]" + ":" + fmt.Sprint(resDataZDBs[i].Port),
+			Address:   "[" + resDataZDBs[i].IPs[2] + "]" + ":" + fmt.Sprint(resDataZDBs[i].Port),
 			Namespace: resDataZDBs[i].Namespace,
 			Password:  resDataZDBs[i].Password,
 		})
@@ -124,7 +124,7 @@ func TestQSFSDeployment(t *testing.T) {
 
 	for i := 0; i < MetaZDBNum; i++ {
 		metaBackends = append(metaBackends, workloads.Backend{
-			Address:   "[" + resMetaZDBs[i].IPs[1] + "]" + ":" + fmt.Sprint(resMetaZDBs[i].Port),
+			Address:   "[" + resMetaZDBs[i].IPs[2] + "]" + ":" + fmt.Sprint(resMetaZDBs[i].Port),
 			Namespace: resMetaZDBs[i].Namespace,
 			Password:  resMetaZDBs[i].Password,
 		})
