@@ -22,6 +22,7 @@ const (
 )
 
 func TestQSFSDeployment(t *testing.T) {
+	t.Skipf("related issue: https://github.com/threefoldtech/zos/issues/2403")
 	tfPluginClient, err := setup()
 	if err != nil {
 		t.Skipf("plugin creation failed: %v", err)
