@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // DiskWorkload to be used for tests
@@ -16,7 +16,7 @@ var DiskWorkload = Disk{
 }
 
 func TestDiskWorkload(t *testing.T) {
-	var disk gridtypes.Workload
+	var disk zos.Workload
 
 	t.Run("test_disk_from_map", func(t *testing.T) {
 		diskMap, err := ToMap(DiskWorkload)

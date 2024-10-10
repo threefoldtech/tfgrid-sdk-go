@@ -11,6 +11,7 @@ import (
 	zerolog "github.com/rs/zerolog/log"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -60,23 +61,27 @@ func (d *K8sDeployer) Validate(ctx context.Context, k8sCluster *workloads.K8sClu
 }
 
 // GenerateVersionlessDeployments generates a new deployment without a version
-func (d *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context, k8sCluster *workloads.K8sCluster) (map[uint32]gridtypes.Deployment, error) {
+func (d *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context, k8sCluster *workloads.K8sCluster) (map[uint32]zosTypes.Deployment, error) {
 	err := d.assignNodesIPs(k8sCluster)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to assign node ips")
 	}
-	deployments := make(map[uint32]gridtypes.Deployment)
-	nodeWorkloads := make(map[uint32][]gridtypes.Workload)
+	deployments := make(map[uint32]zosTypes.Deployment)
+	nodeWorkloads := make(map[uint32][]zosTypes.Workload)
 
 	masterWorkloads := k8sCluster.Master.MasterZosWorkload(k8sCluster)
-	nodeWorkloads[k8sCluster.Master.NodeID] = append(nodeWorkloads[k8sCluster.Master.NodeID], masterWorkloads...)
+	for _, m := range masterWorkloads {
+		nodeWorkloads[k8sCluster.Master.NodeID] = append(nodeWorkloads[k8sCluster.Master.NodeID], zosTypes.NewWorkloadFromZosWorkload(m))
+	}
 	for _, w := range k8sCluster.Workers {
 		workerWorkloads := w.WorkerZosWorkload(k8sCluster)
-		nodeWorkloads[w.NodeID] = append(nodeWorkloads[w.NodeID], workerWorkloads...)
+		for _, w := range workerWorkloads {
+			nodeWorkloads[k8sCluster.Master.NodeID] = append(nodeWorkloads[k8sCluster.Master.NodeID], zosTypes.NewWorkloadFromZosWorkload(w))
+		}
 	}
 
 	for node, ws := range nodeWorkloads {
-		dl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, ws)
+		dl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, 0, ws)
 		dl.Metadata, err = k8sCluster.GenerateMetadata()
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to generate deployment %s metadata", k8sCluster.Master.Name)
@@ -128,7 +133,7 @@ func (d *K8sDeployer) Deploy(ctx context.Context, k8sCluster *workloads.K8sClust
 
 // BatchDeploy deploys multiple clusters using the deployer
 func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.K8sCluster) error {
-	newDeployments := make(map[uint32][]gridtypes.Deployment)
+	newDeployments := make(map[uint32][]zosTypes.Deployment)
 	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
 
 	for _, k8sCluster := range k8sClusters {
@@ -157,7 +162,7 @@ func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.
 			newDeploymentsSolutionProvider[nodeID] = nil
 
 			if _, ok := newDeployments[nodeID]; !ok {
-				newDeployments[nodeID] = []gridtypes.Deployment{dl}
+				newDeployments[nodeID] = []zosTypes.Deployment{dl}
 				continue
 			}
 			newDeployments[nodeID] = append(newDeployments[nodeID], dl)
@@ -169,7 +174,7 @@ func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.
 	// update deployments state
 	// error is not returned immediately before updating state because of untracked failed deployments
 	for _, k8sCluster := range k8sClusters {
-		if err := d.updateStateFromDeployments(ctx, k8sCluster, newDls); err != nil {
+		if err := d.updateStateFromDeployments(k8sCluster, newDls); err != nil {
 			return errors.Wrapf(err, "failed to update cluster with master name '%s' state", k8sCluster.Master.Name)
 		}
 	}
@@ -205,7 +210,7 @@ func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sClust
 	return nil
 }
 
-func (d *K8sDeployer) updateStateFromDeployments(ctx context.Context, k8sCluster *workloads.K8sCluster, newDl map[uint32][]gridtypes.Deployment) error {
+func (d *K8sDeployer) updateStateFromDeployments(k8sCluster *workloads.K8sCluster, newDl map[uint32][]zosTypes.Deployment) error {
 	k8sNodes := []uint32{k8sCluster.Master.NodeID}
 	for _, w := range k8sCluster.Workers {
 		k8sNodes = append(k8sNodes, w.NodeID)
@@ -242,7 +247,7 @@ func (d *K8sDeployer) updateStateFromDeployments(ctx context.Context, k8sCluster
 
 // UpdateFromRemote update a k8s cluster
 func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workloads.K8sCluster) error {
-	if err := d.removeDeletedContracts(ctx, k8sCluster); err != nil {
+	if err := d.removeDeletedContracts(k8sCluster); err != nil {
 		return errors.Wrap(err, "failed to remove deleted contracts")
 	}
 	currentDeployments, err := d.deployer.GetDeployments(ctx, k8sCluster.NodeDeploymentID)
@@ -255,8 +260,8 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 	// calculate k's properties from the currently deployed deployments
 	for _, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
-			if w.Type == zos.ZMachineType {
-				d, err := w.WorkloadData()
+			if w.Type == zosTypes.ZMachineType {
+				d, err := w.Workload3().WorkloadData()
 				if err != nil {
 					zerolog.Error().Err(err).Msg("failed to get workload data")
 				}
@@ -296,34 +301,34 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 	diskSize := make(map[string]uint64)
 	for node, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
-			if w.Type == zos.ZMachineType {
-				workloadNodeID[string(w.Name)] = node
-				workloadObj[string(w.Name)] = w
+			if w.Type == zosTypes.ZMachineType {
+				workloadNodeID[w.Name] = node
+				workloadObj[w.Name] = *w.Workload3()
 
-			} else if w.Type == zos.PublicIPType {
+			} else if w.Type == zosTypes.PublicIPType {
 				d := zos.PublicIPResult{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
 					return errors.Wrap(err, "failed to load public ip data")
 				}
-				publicIPs[string(w.Name)] = d.IP.String()
-				publicIP6s[string(w.Name)] = d.IPv6.String()
-			} else if w.Type == zos.ZMountType {
-				d, err := w.WorkloadData()
+				publicIPs[w.Name] = d.IP.String()
+				publicIP6s[w.Name] = d.IPv6.String()
+			} else if w.Type == zosTypes.ZMountType {
+				d, err := w.Workload3().WorkloadData()
 				if err != nil {
 					return errors.Wrap(err, "failed to load disk data")
 				}
-				diskSize[string(w.Name)] = uint64(d.(*zos.ZMount).Size / gridtypes.Gigabyte)
+				diskSize[w.Name] = uint64(d.(*zos.ZMount).Size) / zosTypes.Gigabyte
 			}
 		}
 	}
 	for _, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
-			if w.Type == zos.ZMachineType {
+			if w.Type == zosTypes.ZMachineType {
 				publicIPKey := fmt.Sprintf("%sip", w.Name)
 				diskKey := fmt.Sprintf("%sdisk", w.Name)
-				workloadDiskSize[string(w.Name)] = diskSize[diskKey]
-				workloadComputedIP[string(w.Name)] = publicIPs[publicIPKey]
-				workloadComputedIP6[string(w.Name)] = publicIP6s[publicIPKey]
+				workloadDiskSize[w.Name] = diskSize[diskKey]
+				workloadComputedIP[w.Name] = publicIPs[publicIPKey]
+				workloadComputedIP6[w.Name] = publicIP6s[publicIPKey]
 			}
 		}
 	}
@@ -390,7 +395,7 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 	return nil
 }
 
-func (d *K8sDeployer) removeDeletedContracts(ctx context.Context, k8sCluster *workloads.K8sCluster) error {
+func (d *K8sDeployer) removeDeletedContracts(k8sCluster *workloads.K8sCluster) error {
 	sub := d.tfPluginClient.SubstrateConn
 	nodeDeploymentID := make(map[uint32]uint64)
 	for nodeID, deploymentID := range k8sCluster.NodeDeploymentID {

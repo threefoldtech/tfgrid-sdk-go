@@ -3,7 +3,7 @@ package workloads
 
 import (
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
@@ -15,10 +15,15 @@ type Disk struct {
 }
 
 // NewDiskFromWorkload generates a new disk from a workload
-func NewDiskFromWorkload(wl *gridtypes.Workload) (Disk, error) {
-	dataI, err := wl.WorkloadData()
+func NewDiskFromWorkload(wl *zosTypes.Workload) (Disk, error) {
+	var dataI interface{}
+
+	dataI, err := wl.Workload3().WorkloadData()
 	if err != nil {
-		return Disk{}, errors.Wrap(err, "failed to get workload data")
+		dataI, err = wl.Workload4().WorkloadData()
+		if err != nil {
+			return Disk{}, errors.Wrap(err, "failed to get workload data")
+		}
 	}
 
 	data, ok := dataI.(*zos.ZMount)
@@ -27,21 +32,21 @@ func NewDiskFromWorkload(wl *gridtypes.Workload) (Disk, error) {
 	}
 
 	return Disk{
-		Name:        wl.Name.String(),
+		Name:        wl.Name,
 		Description: wl.Description,
-		SizeGB:      uint64(data.Size / gridtypes.Gigabyte),
+		SizeGB:      uint64(data.Size) / zosTypes.Gigabyte,
 	}, nil
 }
 
 // ZosWorkload generates a workload from a disk
-func (d *Disk) ZosWorkload() gridtypes.Workload {
-	return gridtypes.Workload{
-		Name:        gridtypes.Name(d.Name),
+func (d *Disk) ZosWorkload() zosTypes.Workload {
+	return zosTypes.Workload{
+		Name:        d.Name,
 		Version:     0,
-		Type:        zos.ZMountType,
+		Type:        zosTypes.ZMountType,
 		Description: d.Description,
-		Data: gridtypes.MustMarshal(zos.ZMount{
-			Size: gridtypes.Unit(d.SizeGB) * gridtypes.Gigabyte,
+		Data: zosTypes.MustMarshal(zosTypes.ZMount{
+			Size: d.SizeGB * zosTypes.Gigabyte,
 		}),
 	}
 }

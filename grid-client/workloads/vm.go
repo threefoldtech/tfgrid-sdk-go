@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -30,7 +32,7 @@ type VM struct {
 	IP            string `json:"ip"`
 	// used to get the same mycelium ip for the vm.
 	MyceliumIPSeed []byte            `json:"mycelium_ip_seed"`
-	GPUs           []zos.GPU         `json:"gpus"`
+	GPUs           []zosTypes.GPU    `json:"gpus"`
 	CPU            uint8             `json:"cpu"`
 	MemoryMB       uint64            `json:"memory"`
 	RootfsSizeMB   uint64            `json:"rootfs_size"`
@@ -61,18 +63,13 @@ func (m *Mount) Validate() error {
 }
 
 // NewVMFromWorkload generates a new vm from given workloads and deployment
-func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment, nodeID uint32) (VM, error) {
-	dataI, err := wl.WorkloadData()
+func NewVMFromWorkload(wl *zosTypes.Workload, dl *zosTypes.Deployment, nodeID uint32) (VM, error) {
+	data, err := wl.ZMachineWorkload()
 	if err != nil {
-		return VM{}, errors.Wrap(err, "failed to get workload data")
+		return VM{}, errors.Errorf("could not create zmachine workload from data")
 	}
 
-	data, ok := dataI.(*zos.ZMachine)
-	if !ok {
-		return VM{}, errors.Errorf("could not create vm workload from data %v", dataI)
-	}
-
-	var result zos.ZMachineResult
+	var result zosTypes.ZMachineResult
 
 	if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
 		return VM{}, errors.Wrap(err, "failed to get vm result")
@@ -80,7 +77,7 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment, nodeID 
 
 	var pubIPRes zos.PublicIPResult
 	if !data.Network.PublicIP.IsEmpty() {
-		pubIPRes, err = pubIP(dl, data.Network.PublicIP)
+		pubIPRes, err = pubIP(dl, data.Network.PublicIP.String())
 		if err != nil {
 			return VM{}, errors.Wrap(err, "failed to get public ip workload")
 		}
@@ -105,8 +102,21 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment, nodeID 
 		return VM{}, errors.Wrap(err, "failed to get flist checksum")
 	}
 
+	var dataGPUs []zosTypes.GPU
+	for _, g := range data.GPU {
+		dataGPUs = append(dataGPUs, zosTypes.GPU(g))
+	}
+
+	var dataMounts []zosTypes.MachineMount
+	for _, m := range data.Mounts {
+		dataMounts = append(dataMounts, zosTypes.MachineMount{
+			Name:       m.Name.String(),
+			Mountpoint: m.Mountpoint,
+		})
+	}
+
 	return VM{
-		Name:           wl.Name.String(),
+		Name:           wl.Name,
 		NodeID:         nodeID,
 		Description:    wl.Description,
 		Flist:          data.FList,
@@ -122,30 +132,30 @@ func NewVMFromWorkload(wl *gridtypes.Workload, dl *gridtypes.Deployment, nodeID 
 		MyceliumIPSeed: myceliumIPSeed,
 		IP:             data.Network.Interfaces[0].IP.String(),
 		CPU:            data.ComputeCapacity.CPU,
-		GPUs:           data.GPU,
+		GPUs:           dataGPUs,
 		MemoryMB:       uint64(data.ComputeCapacity.Memory / gridtypes.Megabyte),
 		RootfsSizeMB:   uint64(data.Size / gridtypes.Megabyte),
 		Entrypoint:     data.Entrypoint,
-		Mounts:         mounts(data.Mounts),
-		Zlogs:          zlogs(dl, wl.Name.String()),
+		Mounts:         mounts(dataMounts),
+		Zlogs:          zlogs(dl, wl.Name),
 		EnvVars:        data.Env,
 		NetworkName:    string(data.Network.Interfaces[0].Network),
 		ConsoleURL:     result.ConsoleURL,
 	}, nil
 }
 
-func mounts(mounts []zos.MachineMount) []Mount {
+func mounts(mounts []zosTypes.MachineMount) []Mount {
 	var res []Mount
 	for _, mount := range mounts {
 		res = append(res, Mount{
-			Name:       mount.Name.String(),
+			Name:       mount.Name,
 			MountPoint: mount.Mountpoint,
 		})
 	}
 	return res
 }
 
-func pubIP(dl *gridtypes.Deployment, name gridtypes.Name) (zos.PublicIPResult, error) {
+func pubIP(dl *zosTypes.Deployment, name string) (zos.PublicIPResult, error) {
 	pubIPWl, err := dl.Get(name)
 	if err != nil || !pubIPWl.Workload.Result.State.IsOkay() {
 		pubIPWl = nil
@@ -167,8 +177,8 @@ func pubIP(dl *gridtypes.Deployment, name gridtypes.Name) (zos.PublicIPResult, e
 }
 
 // ZosWorkload generates zos vm workloads
-func (vm *VM) ZosWorkload() []gridtypes.Workload {
-	var workloads []gridtypes.Workload
+func (vm *VM) ZosWorkload() []zosTypes.Workload {
+	var workloads []zosTypes.Workload
 
 	publicIPName := ""
 	if vm.PublicIP || vm.PublicIP6 {
@@ -176,43 +186,43 @@ func (vm *VM) ZosWorkload() []gridtypes.Workload {
 		workloads = append(workloads, ConstructPublicIPWorkload(publicIPName, vm.PublicIP, vm.PublicIP6))
 	}
 
-	var mounts []zos.MachineMount
+	var mounts []zosTypes.MachineMount
 	for _, mount := range vm.Mounts {
-		mounts = append(mounts, zos.MachineMount{Name: gridtypes.Name(mount.Name), Mountpoint: mount.MountPoint})
+		mounts = append(mounts, zosTypes.MachineMount{Name: mount.Name, Mountpoint: mount.MountPoint})
 	}
 	for _, zlog := range vm.Zlogs {
 		zlogWorkload := zlog.ZosWorkload()
 		workloads = append(workloads, zlogWorkload)
 	}
-	var myceliumIP *zos.MyceliumIP
+	var myceliumIP *zosTypes.MyceliumIP
 	if len(vm.MyceliumIPSeed) != 0 {
-		myceliumIP = &zos.MyceliumIP{
-			Network: gridtypes.Name(vm.NetworkName),
+		myceliumIP = &zosTypes.MyceliumIP{
+			Network: vm.NetworkName,
 			Seed:    vm.MyceliumIPSeed,
 		}
 	}
-	workload := gridtypes.Workload{
+	workload := zosTypes.Workload{
 		Version: 0,
-		Name:    gridtypes.Name(vm.Name),
-		Type:    zos.ZMachineType,
-		Data: gridtypes.MustMarshal(zos.ZMachine{
+		Name:    vm.Name,
+		Type:    zosTypes.ZMachineType,
+		Data: zosTypes.MustMarshal(zosTypes.ZMachine{
 			FList: vm.Flist,
-			Network: zos.MachineNetwork{
-				Interfaces: []zos.MachineInterface{
+			Network: zosTypes.MachineNetwork{
+				Interfaces: []zosTypes.MachineInterface{
 					{
-						Network: gridtypes.Name(vm.NetworkName),
+						Network: vm.NetworkName,
 						IP:      net.ParseIP(vm.IP),
 					},
 				},
-				PublicIP:  gridtypes.Name(publicIPName),
+				PublicIP:  publicIPName,
 				Planetary: vm.Planetary,
 				Mycelium:  myceliumIP,
 			},
-			ComputeCapacity: zos.MachineCapacity{
+			ComputeCapacity: zosTypes.MachineCapacity{
 				CPU:    vm.CPU,
-				Memory: gridtypes.Unit(uint(vm.MemoryMB)) * gridtypes.Megabyte,
+				Memory: vm.MemoryMB * uint64(gridtypes.Megabyte),
 			},
-			Size:       gridtypes.Unit(vm.RootfsSizeMB) * gridtypes.Megabyte,
+			Size:       vm.RootfsSizeMB * uint64(gridtypes.Megabyte),
 			GPU:        vm.GPUs,
 			Entrypoint: vm.Entrypoint,
 			Corex:      vm.Corex,
@@ -270,8 +280,8 @@ func (vm *VM) Validate() error {
 		}
 	}
 
-	if len(vm.MyceliumIPSeed) != zos.MyceliumIPSeedLen && len(vm.MyceliumIPSeed) != 0 {
-		return fmt.Errorf("invalid mycelium ip seed length %d must be %d or empty", len(vm.MyceliumIPSeed), zos.MyceliumIPSeedLen)
+	if len(vm.MyceliumIPSeed) != zosTypes.MyceliumIPSeedLen && len(vm.MyceliumIPSeed) != 0 {
+		return fmt.Errorf("invalid mycelium ip seed length %d must be %d or empty", len(vm.MyceliumIPSeed), zosTypes.MyceliumIPSeedLen)
 	}
 
 	for _, zlog := range vm.Zlogs {
@@ -320,8 +330,57 @@ func (vm *VM) LoadFromVM(vm2 *VM) {
 	vm.FlistChecksum = vm2.FlistChecksum
 }
 
+func (vm *VM) AssignPrivateIP(
+	networkName,
+	ipRange string,
+	nodeID uint32,
+	ipRangeCIDR *net.IPNet,
+	ip net.IP,
+	curHostID byte,
+	usedHosts map[string]map[uint32][]byte,
+) (string, error) {
+	vmIP := net.ParseIP(vm.IP).To4()
+
+	// if vm private ip is given
+	if vmIP != nil {
+		vmHostID := vmIP[3] // host ID of the private ip
+
+		nodeUsedHostIDs := usedHosts[networkName][nodeID]
+
+		// TODO: use of a duplicate IP vs an updated vm with a new/old IP
+		if slices.Contains(nodeUsedHostIDs, vmHostID) {
+			// return "", fmt.Errorf("duplicate private ip '%v' in vm '%s' is used", vmIP, vm.Name)
+			return vmIP.String(), nil
+		}
+
+		if !ipRangeCIDR.Contains(vmIP) {
+			return "", fmt.Errorf("deployment ip range '%v' doesn't contain ip '%v' for vm '%s'", ipRange, vmIP, vm.Name)
+		}
+
+		usedHosts[networkName][nodeID] = append(usedHosts[networkName][nodeID], vmHostID)
+		return vmIP.String(), nil
+	}
+
+	nodeUsedHostIDs := usedHosts[networkName][nodeID]
+
+	// try to find available host ID in the deployment ip range
+	for slices.Contains(nodeUsedHostIDs, curHostID) {
+		if curHostID == 254 {
+			return "", errors.New("all 253 ips of the network are exhausted")
+		}
+		curHostID++
+	}
+
+	usedHosts[networkName][nodeID] = append(usedHosts[networkName][nodeID], curHostID)
+
+	vmIP = ip.To4()
+	vmIP[3] = curHostID
+
+	return vmIP.String(), nil
+}
+
 func RandomMyceliumIPSeed() ([]byte, error) {
-	key := make([]byte, zos.MyceliumIPSeedLen)
+	key := make([]byte, zosTypes.MyceliumIPSeedLen)
 	_, err := rand.Read(key)
 	return key, err
 }

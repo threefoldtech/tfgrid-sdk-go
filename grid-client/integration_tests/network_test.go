@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 func TestNetworkDeployment(t *testing.T) {
@@ -31,10 +31,10 @@ func TestNetworkDeployment(t *testing.T) {
 		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
 		Description: "not skynet",
 		Nodes:       []uint32{nodeID1},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zos.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess: true,
 	}
 
