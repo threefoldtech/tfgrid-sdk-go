@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
@@ -16,10 +16,15 @@ type Volume struct {
 }
 
 // NewVolumeFromWorkload generates a new volume from a workload
-func NewVolumeFromWorkload(wl *gridtypes.Workload) (Volume, error) {
-	dataI, err := wl.WorkloadData()
+func NewVolumeFromWorkload(wl *zosTypes.Workload) (Volume, error) {
+	var dataI interface{}
+
+	dataI, err := wl.Workload3().WorkloadData()
 	if err != nil {
-		return Volume{}, fmt.Errorf("failed to get workload data: %w", err)
+		dataI, err = wl.Workload4().WorkloadData()
+		if err != nil {
+			return Volume{}, errors.Wrap(err, "failed to get workload data")
+		}
 	}
 
 	data, ok := dataI.(*zos.Volume)
@@ -28,21 +33,21 @@ func NewVolumeFromWorkload(wl *gridtypes.Workload) (Volume, error) {
 	}
 
 	return Volume{
-		Name:        wl.Name.String(),
+		Name:        wl.Name,
 		Description: wl.Description,
-		SizeGB:      uint64(data.Size / gridtypes.Gigabyte),
+		SizeGB:      uint64(data.Size) / zosTypes.Gigabyte,
 	}, nil
 }
 
 // ZosWorkload generates a workload from a volume
-func (v *Volume) ZosWorkload() gridtypes.Workload {
-	return gridtypes.Workload{
-		Name:        gridtypes.Name(v.Name),
+func (v *Volume) ZosWorkload() zosTypes.Workload {
+	return zosTypes.Workload{
+		Name:        v.Name,
 		Version:     0,
-		Type:        zos.VolumeType,
+		Type:        zosTypes.VolumeType,
 		Description: v.Description,
-		Data: gridtypes.MustMarshal(zos.ZMount{
-			Size: gridtypes.Unit(v.SizeGB) * gridtypes.Gigabyte,
+		Data: zosTypes.MustMarshal(zosTypes.ZMount{
+			Size: v.SizeGB * zosTypes.Gigabyte,
 		}),
 	}
 }

@@ -83,7 +83,7 @@ func buildDeployment(vmSpec VMSpec, networkName, projectName, repoURL, deploymen
 		NetworkName: networkName,
 	}
 
-	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, nil, nil, []workloads.VM{vm}, nil, nil)
+	dl := workloads.NewDeployment(vm.Name, node, projectName, nil, networkName, nil, nil, []workloads.VM{vm}, nil, nil, nil)
 	return dl
 }
 
