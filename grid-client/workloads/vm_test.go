@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // VMWorkload for tests
@@ -30,23 +29,23 @@ var VMWorkload = VM{
 }
 
 func TestVMWorkload(t *testing.T) {
-	var workloadsFromVM []gridtypes.Workload
-	var vmWorkload gridtypes.Workload
+	var workloadsFromVM []zos.Workload
+	var vmWorkload zos.Workload
 
 	VMWorkload.Zlogs = []Zlog{ZlogWorkload}
 
-	pubIPWorkload := gridtypes.Workload{
+	pubIPWorkload := zos.Workload{
 		Version: 0,
-		Name:    gridtypes.Name("testip"),
+		Name:    "testip",
 		Type:    zos.PublicIPType,
-		Data: gridtypes.MustMarshal(zos.PublicIP{
+		Data: zos.MustMarshal(zos.PublicIP{
 			V4: true,
 			V6: false,
 		}),
 	}
 
 	pubIPWorkload.Result.State = "ok"
-	deployment := NewGridDeployment(1, []gridtypes.Workload{vmWorkload, pubIPWorkload})
+	deployment := NewGridDeployment(1, 0, []zos.Workload{vmWorkload, pubIPWorkload})
 
 	t.Run("test vm from/to map", func(t *testing.T) {
 		vmMap, err := ToMap(VMWorkload)
@@ -83,13 +82,18 @@ func TestVMWorkload(t *testing.T) {
 	})
 
 	t.Run("test_mounts", func(t *testing.T) {
-		dataI, err := vmWorkload.WorkloadData()
+		zosZmachine, err := vmWorkload.ZMachineWorkload()
 		assert.NoError(t, err)
 
-		zosZmachine, ok := dataI.(*zos.ZMachine)
-		assert.True(t, ok)
+		var dataMounts []zos.MachineMount
+		for _, m := range zosZmachine.Mounts {
+			dataMounts = append(dataMounts, zos.MachineMount{
+				Name:       m.Name.String(),
+				Mountpoint: m.Mountpoint,
+			})
+		}
 
-		mountsOfVMWorkload := mounts(zosZmachine.Mounts)
+		mountsOfVMWorkload := mounts(dataMounts)
 		assert.Equal(t, mountsOfVMWorkload, VMWorkload.Mounts)
 	})
 

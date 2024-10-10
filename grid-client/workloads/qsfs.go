@@ -7,7 +7,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
@@ -58,7 +58,7 @@ type Group struct {
 }
 
 // Backend is a zos backend
-type Backend zos.ZdbBackend
+type Backend zosTypes.ZdbBackend
 
 // Groups is a list of groups
 type Groups []Group
@@ -66,25 +66,25 @@ type Groups []Group
 // Backends is a list of backends
 type Backends []Backend
 
-func (g *Group) zosGroup() (zdbGroup zos.ZdbGroup) {
+func (g *Group) zosGroup() (zdbGroup zosTypes.ZdbGroup) {
 	for _, b := range g.Backends {
 		zdbGroup.Backends = append(zdbGroup.Backends, b.zosBackend())
 	}
 	return zdbGroup
 }
 
-func (gs Groups) zosGroups() (zdbGroups []zos.ZdbGroup) {
+func (gs Groups) zosGroups() (zdbGroups []zosTypes.ZdbGroup) {
 	for _, e := range gs {
 		zdbGroups = append(zdbGroups, e.zosGroup())
 	}
 	return zdbGroups
 }
 
-func (b *Backend) zosBackend() zos.ZdbBackend {
-	return zos.ZdbBackend(*b)
+func (b *Backend) zosBackend() zosTypes.ZdbBackend {
+	return zosTypes.ZdbBackend(*b)
 }
 
-func (bs Backends) zosBackends() (zdbBackends []zos.ZdbBackend) {
+func (bs Backends) zosBackends() (zdbBackends []zosTypes.ZdbBackend) {
 	for _, e := range bs {
 		zdbBackends = append(zdbBackends, e.zosBackend())
 	}
@@ -110,18 +110,14 @@ func GroupsFromZos(gs []zos.ZdbGroup) (groups Groups) {
 }
 
 // NewQSFSFromWorkload generates a new QSFS from a workload
-func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
-	var data *zos.QuantumSafeFS
-	dataI, err := wl.WorkloadData()
+func NewQSFSFromWorkload(wl *zosTypes.Workload) (QSFS, error) {
+	var dataI interface{}
+
+	dataI, err := wl.Workload3().WorkloadData()
 	if err != nil {
-		return QSFS{}, err
-	}
-
-	var res zos.QuatumSafeFSResult
-
-	if !reflect.DeepEqual(wl.Result, gridtypes.Result{}) {
-		if err := wl.Result.Unmarshal(&res); err != nil {
-			return QSFS{}, err
+		dataI, err = wl.Workload4().WorkloadData()
+		if err != nil {
+			return QSFS{}, errors.Wrap(err, "failed to get workload data")
 		}
 	}
 
@@ -130,10 +126,17 @@ func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
 		return QSFS{}, fmt.Errorf("could not create qsfs workload from data %v", dataI)
 	}
 
+	var result zos.QuatumSafeFSResult
+	if !reflect.DeepEqual(wl.Result, zosTypes.Result{}) {
+		if err := wl.Result.Unmarshal(&result); err != nil {
+			return QSFS{}, err
+		}
+	}
+
 	return QSFS{
-		Name:                 string(wl.Name),
+		Name:                 wl.Name,
 		Description:          wl.Description,
-		Cache:                int(data.Cache) / int(gridtypes.Megabyte),
+		Cache:                int(data.Cache) / int(zosTypes.Megabyte),
 		MinimalShards:        data.Config.MinimalShards,
 		ExpectedShards:       data.Config.ExpectedShards,
 		RedundantGroups:      data.Config.RedundantGroups,
@@ -150,50 +153,51 @@ func NewQSFSFromWorkload(wl *gridtypes.Workload) (QSFS, error) {
 			Backends:            BackendsFromZos(data.Config.Meta.Config.Backends),
 		},
 		Groups:          GroupsFromZos(data.Config.Groups),
-		MetricsEndpoint: res.MetricsEndpoint,
+		MetricsEndpoint: result.MetricsEndpoint,
 	}, nil
 }
 
 // ZosWorkload generates a zos workload
-func (q *QSFS) ZosWorkload() (gridtypes.Workload, error) {
+func (q *QSFS) ZosWorkload() (zosTypes.Workload, error) {
 	k, err := hex.DecodeString(q.EncryptionKey)
 	if err != nil {
-		return gridtypes.Workload{}, err
+		return zosTypes.Workload{}, err
 	}
 	mk, err := hex.DecodeString(q.EncryptionKey)
 	if err != nil {
-		return gridtypes.Workload{}, err
+		return zosTypes.Workload{}, err
 	}
-	workload := gridtypes.Workload{
+
+	workload := zosTypes.Workload{
 		Version:     0,
-		Name:        gridtypes.Name(q.Name),
-		Type:        zos.QuantumSafeFSType,
+		Name:        q.Name,
+		Type:        zosTypes.QuantumSafeFSType,
 		Description: q.Description,
-		Data: gridtypes.MustMarshal(zos.QuantumSafeFS{
-			Cache: gridtypes.Unit(uint64(q.Cache) * uint64(gridtypes.Megabyte)),
-			Config: zos.QuantumSafeFSConfig{
+		Data: zosTypes.MustMarshal(zosTypes.QuantumSafeFS{
+			Cache: uint64(q.Cache) * zosTypes.Megabyte,
+			Config: zosTypes.QuantumSafeFSConfig{
 				MinimalShards:     q.MinimalShards,
 				ExpectedShards:    q.ExpectedShards,
 				RedundantGroups:   q.RedundantGroups,
 				RedundantNodes:    q.RedundantNodes,
 				MaxZDBDataDirSize: q.MaxZDBDataDirSize,
-				Encryption: zos.Encryption{
-					Algorithm: zos.EncryptionAlgorithm(q.EncryptionAlgorithm),
-					Key:       zos.EncryptionKey(k),
+				Encryption: zosTypes.Encryption{
+					Algorithm: zosTypes.EncryptionAlgorithm(q.EncryptionAlgorithm),
+					Key:       zosTypes.EncryptionKey(k),
 				},
-				Meta: zos.QuantumSafeMeta{
+				Meta: zosTypes.QuantumSafeMeta{
 					Type: q.Metadata.Type,
-					Config: zos.QuantumSafeConfig{
+					Config: zosTypes.QuantumSafeConfig{
 						Prefix: q.Metadata.Prefix,
-						Encryption: zos.Encryption{
-							Algorithm: zos.EncryptionAlgorithm(q.EncryptionAlgorithm),
-							Key:       zos.EncryptionKey(mk),
+						Encryption: zosTypes.Encryption{
+							Algorithm: zosTypes.EncryptionAlgorithm(q.EncryptionAlgorithm),
+							Key:       zosTypes.EncryptionKey(mk),
 						},
 						Backends: q.Metadata.Backends.zosBackends(),
 					},
 				},
 				Groups: q.Groups.zosGroups(),
-				Compression: zos.QuantumCompression{
+				Compression: zosTypes.QuantumCompression{
 					Algorithm: q.CompressionAlgorithm,
 				},
 			},
@@ -205,17 +209,16 @@ func (q *QSFS) ZosWorkload() (gridtypes.Workload, error) {
 
 // UpdateFromWorkload updates a QSFS from a workload
 // TODO: no updates, should construct itself from the workload
-func (q *QSFS) UpdateFromWorkload(wl *gridtypes.Workload) error {
+func (q *QSFS) UpdateFromWorkload(wl *zosTypes.Workload) error {
 	if wl == nil {
 		q.MetricsEndpoint = ""
 		return nil
 	}
 	var res zos.QuatumSafeFSResult
 
-	if !reflect.DeepEqual(wl.Result, gridtypes.Result{}) {
+	if !reflect.DeepEqual(wl.Result, zosTypes.Result{}) {
 		if err := wl.Result.Unmarshal(&res); err != nil {
-			return errors.Wrap(err, "error unmarshalling json")
-
+			return err
 		}
 	}
 

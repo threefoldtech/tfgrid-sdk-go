@@ -49,7 +49,7 @@ func TestZDBDeployment(t *testing.T) {
 		Mode:        zos.ZDBModeUser,
 	}
 
-	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, []workloads.ZDB{zdb}, nil, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 

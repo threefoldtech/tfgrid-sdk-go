@@ -8,31 +8,31 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // Network
-var Network = ZNet{
+var n = ZNet{
 	Name:        "testingNetwork",
 	Description: "network for testing",
 	Nodes:       []uint32{1},
-	IPRange: gridtypes.NewIPNet(net.IPNet{
+	IPRange: zos.IPNet{IPNet: net.IPNet{
 		IP:   net.IPv4(10, 20, 0, 0),
 		Mask: net.CIDRMask(16, 32),
-	}),
+	}},
 	AddWGAccess: false,
 }
 
 func TestNetwork(t *testing.T) {
 	t.Run("test_ip_net", func(t *testing.T) {
 		ip := IPNet(10, 20, 0, 0, 16)
-		assert.Equal(t, ip, Network.IPRange)
+		assert.Equal(t, ip, n.IPRange)
 	})
 
 	t.Run("test_wg_ip", func(t *testing.T) {
-		wgIP := WgIP(Network.IPRange)
+		wgIP := WgIP(n.IPRange)
 
-		wgIPRange, err := gridtypes.ParseIPNet("100.64.20.0/32")
+		wgIPRange, err := zos.ParseIPNet("100.64.20.0/32")
 		assert.NoError(t, err)
 
 		assert.Equal(t, wgIP, wgIPRange)
@@ -41,7 +41,7 @@ func TestNetwork(t *testing.T) {
 	t.Run("test_generate_wg_config", func(t *testing.T) {
 		config := GenerateWGConfig(
 			"", "", "", "",
-			Network.IPRange.String(),
+			n.IPRange.String(),
 		)
 
 		assert.Equal(t, config, strings.ReplaceAll(fmt.Sprintf(`
@@ -53,7 +53,7 @@ func TestNetwork(t *testing.T) {
 			AllowedIPs = %s, 100.64.0.0/16
 			PersistentKeepalive = 25
 			Endpoint = %s
-			`, "", "", "", Network.IPRange.String(), ""), "\t", "")+"\t",
+			`, "", "", "", n.IPRange.String(), ""), "\t", "")+"\t",
 		)
 	})
 }

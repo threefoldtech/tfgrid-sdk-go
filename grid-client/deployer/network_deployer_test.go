@@ -13,8 +13,7 @@ import (
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 func constructTestNetwork() workloads.ZNet {
@@ -22,10 +21,10 @@ func constructTestNetwork() workloads.ZNet {
 		Name:        "network",
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zosTypes.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess: false,
 	}
 }
@@ -63,11 +62,11 @@ func TestNetworkDeployer(t *testing.T) {
 		d, _, _, _ := constructTestNetworkDeployer(t, tfPluginClient, false)
 
 		znet.IPRange.Mask = net.CIDRMask(20, 32)
-		_, err := d.Validate(context.Background(), []*workloads.ZNet{&znet})
+		_, err := d.Validate(context.Background(), []workloads.Network{&znet})
 		assert.Error(t, err)
 
 		znet.IPRange.Mask = net.CIDRMask(16, 32)
-		_, err = d.Validate(context.Background(), []*workloads.ZNet{&znet})
+		_, err = d.Validate(context.Background(), []workloads.Network{&znet})
 		assert.NoError(t, err)
 	})
 
@@ -77,11 +76,11 @@ func TestNetworkDeployer(t *testing.T) {
 		d, _, _, _ := constructTestNetworkDeployer(t, tfPluginClient, false)
 
 		znet.IPRange.Mask = net.CIDRMask(20, 32)
-		_, err := d.Validate(context.Background(), []*workloads.ZNet{&znet})
+		_, err := d.Validate(context.Background(), []workloads.Network{&znet})
 		assert.Error(t, err)
 
 		znet.IPRange.Mask = net.CIDRMask(16, 32)
-		_, err = d.Validate(context.Background(), []*workloads.ZNet{&znet})
+		_, err = d.Validate(context.Background(), []workloads.Network{&znet})
 		assert.Error(t, err)
 	})
 
@@ -111,7 +110,7 @@ func TestNetworkDeployer(t *testing.T) {
 			Return(client.NewNodeClient(twinID, cl, d.tfPluginClient.RMBTimeout), nil).
 			AnyTimes()
 
-		dls, err := d.GenerateVersionlessDeployments(context.Background(), []*workloads.ZNet{&znet})
+		dls, err := d.GenerateVersionlessDeployments(context.Background(), []workloads.Network{&znet})
 		assert.NoError(t, err)
 
 		externalIP := ""
@@ -120,7 +119,7 @@ func TestNetworkDeployer(t *testing.T) {
 		}
 
 		metadata, err := json.Marshal(workloads.NetworkMetaData{
-			Version: workloads.Version,
+			Version: int(workloads.Version3),
 			UserAccesses: []workloads.UserAccess{
 				{
 					Subnet:     externalIP,
@@ -131,14 +130,14 @@ func TestNetworkDeployer(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), []zos.Peer{}, string(metadata), nil)
-		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
+		workload := znet.ZosWorkload(znet.NodesIPRange[nodeID], znet.Keys[nodeID].String(), uint16(znet.WGPort[nodeID]), []zosTypes.Peer{}, string(metadata), nil)
+		networkDl := workloads.NewGridDeployment(twinID, 0, []zosTypes.Workload{workload})
 
 		networkDl.Metadata = "{\"version\":3,\"type\":\"network\",\"name\":\"network\",\"projectName\":\"Network\"}"
 
 		assert.Equal(t, len(networkDl.Workloads), len(dls[znet.Nodes[0]][0].Workloads))
 		assert.Equal(t, networkDl.Workloads, dls[znet.Nodes[0]][0].Workloads)
-		assert.Equal(t, dls, map[uint32][]gridtypes.Deployment{
+		assert.Equal(t, dls, map[uint32][]zosTypes.Deployment{
 			nodeID: {networkDl},
 		})
 	})
@@ -147,15 +146,15 @@ func TestNetworkDeployer(t *testing.T) {
 func TestNetworkBatchCancel(t *testing.T) {
 	tfPluginClient, err := setup()
 	assert.NoError(t, err)
-	networks := []*workloads.ZNet{
-		{
+	networks := []workloads.Network{
+		&workloads.ZNet{
 			NodeDeploymentID: map[uint32]uint64{
 				1: 100,
 				2: 200,
 			},
 			Nodes: []uint32{1},
 		},
-		{
+		&workloads.ZNet{
 			NodeDeploymentID: map[uint32]uint64{
 				1: 101,
 				2: 201,
@@ -174,8 +173,8 @@ func TestNetworkBatchCancel(t *testing.T) {
 	).Return(nil)
 	err = net.BatchCancel(context.Background(), networks)
 	assert.NoError(t, err)
-	assert.Len(t, networks[0].NodeDeploymentID, 0)
-	assert.Len(t, networks[1].NodeDeploymentID, 0)
+	assert.Len(t, networks[0].GetNodeDeploymentID(), 0)
+	assert.Len(t, networks[1].GetNodeDeploymentID(), 0)
 	assert.Len(t, tfPluginClient.State.CurrentNodeDeployments[1], 1)
 	assert.Len(t, tfPluginClient.State.CurrentNodeDeployments[2], 0)
 }
@@ -195,10 +194,10 @@ func ExampleNetworkDeployer_Deploy() {
 		Name:        "network",
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zosTypes.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess: false,
 	}
 
@@ -226,24 +225,24 @@ func ExampleNetworkDeployer_BatchDeploy() {
 		Name:        "network1",
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zosTypes.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess: false,
 	}
 	n2 := workloads.ZNet{
 		Name:        "network2",
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zosTypes.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess: false,
 	}
 
-	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []*workloads.ZNet{&n1, &n2})
+	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []workloads.Network{&n1, &n2})
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	gridtypes "github.com/threefoldtech/zos/pkg/gridtypes"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // MockDeployer is a mock of MockDeployer interface.
@@ -36,10 +36,10 @@ func (m *MockDeployer) EXPECT() *MockDeployerMockRecorder {
 }
 
 // BatchDeploy mocks base method.
-func (m *MockDeployer) BatchDeploy(ctx context.Context, deployments map[uint32][]gridtypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]gridtypes.Deployment, error) {
+func (m *MockDeployer) BatchDeploy(ctx context.Context, deployments map[uint32][]zosTypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]zosTypes.Deployment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BatchDeploy", ctx, deployments, deploymentsSolutionProvider)
-	ret0, _ := ret[0].(map[uint32][]gridtypes.Deployment)
+	ret0, _ := ret[0].(map[uint32][]zosTypes.Deployment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -65,7 +65,7 @@ func (mr *MockDeployerMockRecorder) Cancel(ctx, contractID interface{}) *gomock.
 }
 
 // Deploy mocks base method.
-func (m *MockDeployer) Deploy(ctx context.Context, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]gridtypes.Deployment, newDeploymentSolutionProvider map[uint32]*uint64) (map[uint32]uint64, error) {
+func (m *MockDeployer) Deploy(ctx context.Context, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]zosTypes.Deployment, newDeploymentSolutionProvider map[uint32]*uint64) (map[uint32]uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider)
 	ret0, _ := ret[0].(map[uint32]uint64)
@@ -80,10 +80,10 @@ func (mr *MockDeployerMockRecorder) Deploy(ctx, oldDeploymentIDs, newDeployments
 }
 
 // GetDeployments mocks base method.
-func (m *MockDeployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
+func (m *MockDeployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]zosTypes.Deployment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDeployments", ctx, dls)
-	ret0, _ := ret[0].(map[uint32]gridtypes.Deployment)
+	ret0, _ := ret[0].(map[uint32]zosTypes.Deployment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

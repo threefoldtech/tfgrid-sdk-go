@@ -5,8 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 func TestDeploymentUtils(t *testing.T) {
@@ -16,7 +15,7 @@ func TestDeploymentUtils(t *testing.T) {
 	identity := tfPluginClient.Identity
 	twinID := tfPluginClient.TwinID
 
-	dl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{})
+	dl := workloads.NewGridDeployment(twinID, 0, []zosTypes.Workload{})
 
 	dlName, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
 	assert.NoError(t, err)
@@ -54,10 +53,10 @@ func TestDeploymentUtils(t *testing.T) {
 	})
 
 	t.Run("deployments workloads exist", func(t *testing.T) {
-		exists := HasWorkload(&dlName, zos.GatewayFQDNProxyType)
+		exists := HasWorkload(&dlName, zosTypes.GatewayFQDNProxyType)
 		assert.Equal(t, exists, false)
 
-		exists = HasWorkload(&dlName, zos.GatewayNameProxyType)
+		exists = HasWorkload(&dlName, zosTypes.GatewayNameProxyType)
 		assert.Equal(t, exists, true)
 	})
 
@@ -65,8 +64,8 @@ func TestDeploymentUtils(t *testing.T) {
 		cap, err := Capacity(dlName)
 		assert.NoError(t, err)
 		assert.Equal(t, cap.CRU, uint64(0))
-		assert.Equal(t, cap.SRU, gridtypes.Unit(0))
-		assert.Equal(t, cap.MRU, gridtypes.Unit(0))
-		assert.Equal(t, cap.HRU, gridtypes.Unit(0))
+		assert.Equal(t, cap.SRU, uint64(0))
+		assert.Equal(t, cap.MRU, uint64(0))
+		assert.Equal(t, cap.HRU, uint64(0))
 	})
 }
