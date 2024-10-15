@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, group NodesGroup, excludedNodes []uint64) ([]int, error) {
+func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, group NodesGroup, excludedNodes []uint64, yggExistsInVms bool) ([]int, error) {
 	filter := types.NodeFilter{}
 	filter.Excluded = excludedNodes
 
@@ -37,6 +38,9 @@ func filterNodes(ctx context.Context, tfPluginClient deployer.TFPluginClient, gr
 	}
 	if group.PublicIP6 {
 		filter.IPv6 = &group.PublicIP6
+	}
+	if !group.PublicIP4 && !group.PublicIP6 && !yggExistsInVms {
+		filter.Features = []string{zos.NetworkLightType, zos.ZMachineLightType}
 	}
 	if group.Dedicated {
 		filter.Dedicated = &group.Dedicated
