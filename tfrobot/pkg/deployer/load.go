@@ -186,6 +186,18 @@ func loadGroupDeployments(ctx context.Context, tfPluginClient deployer.TFPluginC
 					}
 					vmsInfo = append(vmsInfo, vmInfo)
 				}
+				for _, vm := range deployment.VmsLight {
+					vmInfo := vmOutput{
+						Name:        vm.Name,
+						NetworkName: deployment.NetworkName,
+						NodeID:      deployment.NodeID,
+						ContractID:  deployment.ContractID,
+						MyceliumIP:  vm.MyceliumIP,
+						IP:          vm.IP,
+						Mounts:      vm.Mounts,
+					}
+					vmsInfo = append(vmsInfo, vmInfo)
+				}
 			}
 			return nil
 		})
@@ -221,7 +233,7 @@ func loadNodeDeployments(ctx context.Context, tfPluginClient deployer.TFPluginCl
 			return nil, err
 		}
 
-		if len(deployment.Vms) != 0 {
+		if len(deployment.Vms) != 0 || len(deployment.VmsLight) != 0 {
 			deployments = append(deployments, deployment)
 		}
 
