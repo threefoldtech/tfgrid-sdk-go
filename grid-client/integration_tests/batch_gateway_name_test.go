@@ -45,7 +45,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 
 	network, err := generateBasicNetwork([]uint32{nodeID1, nodeID2})
 	require.NoError(t, err)
-	
+
 	vm, err := generateBasicVM("vm", nodeID1, network.Name, publicKey)
 	require.NoError(t, err)
 

@@ -38,13 +38,13 @@ func TestBatchVMDeployment(t *testing.T) {
 
 	network1, err := generateBasicNetwork([]uint32{nodeID1})
 	require.NoError(t, err)
-	
+
 	network2, err := generateBasicNetwork([]uint32{nodeID2})
 	require.NoError(t, err)
-	
+
 	vm1, err := generateBasicVM("vm", nodeID1, network1.Name, publicKey)
 	require.NoError(t, err)
-	
+
 	vm2, err := generateBasicVM("vm", nodeID2, network2.Name, publicKey)
 	require.NoError(t, err)
 

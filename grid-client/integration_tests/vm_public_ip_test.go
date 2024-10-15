@@ -38,7 +38,7 @@ func TestVMDeployment(t *testing.T) {
 
 	network, err := generateBasicNetwork([]uint32{nodeID})
 	require.NoError(t, err)
-	
+
 	myCeliumSeed, err := workloads.RandomMyceliumIPSeed()
 	require.NoError(t, err)
 

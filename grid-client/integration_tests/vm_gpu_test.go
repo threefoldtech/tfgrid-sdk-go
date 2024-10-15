@@ -62,7 +62,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 
 	myCeliumSeed, err := workloads.RandomMyceliumIPSeed()
 	require.NoError(t, err)
-	
+
 	vm := workloads.VM{
 		Name:         "gpu",
 		NodeID:       nodeID,

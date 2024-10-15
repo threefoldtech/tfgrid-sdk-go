@@ -54,8 +54,8 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 			"SSH_KEY": publicKey,
 		},
 		MyceliumIPSeed: myCeliumSeed1,
-		RootfsSizeMB: minRootfs *1024,
-		PublicIP6: true,
+		RootfsSizeMB:   minRootfs * 1024,
+		PublicIP6:      true,
 	}
 
 	myCeliumSeed2, err := workloads.RandomMyceliumIPSeed()
@@ -73,8 +73,8 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 			"SSH_KEY": publicKey,
 		},
 		MyceliumIPSeed: myCeliumSeed2,
-		RootfsSizeMB: minRootfs *1024,
-		PublicIP6:true ,
+		RootfsSizeMB:   minRootfs * 1024,
+		PublicIP6:      true,
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)

@@ -57,7 +57,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 
 	workerNodeSeed2, err := workloads.RandomMyceliumIPSeed()
 	require.NoError(t, err)
-	
+
 	master1 := workloads.K8sNode{
 		VM: &workloads.VM{
 			Name:           generateRandString(10),

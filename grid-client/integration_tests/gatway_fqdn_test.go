@@ -49,7 +49,7 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 
 	network, err := generateBasicNetwork([]uint32{nodeID})
 	require.NoError(t, err)
-	
+
 	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
 	require.NoError(t, err)
 

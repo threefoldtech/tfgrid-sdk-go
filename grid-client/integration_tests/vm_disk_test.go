@@ -50,7 +50,7 @@ func TestVMWithTwoDisk(t *testing.T) {
 
 	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
 	require.NoError(t, err)
-	
+
 	vm.RootfsSizeMB = minRootfs * 1024
 	vm.Mounts = []workloads.Mount{
 		{Name: disk1.Name, MountPoint: "/disk1"},
