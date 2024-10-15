@@ -37,13 +37,11 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{nodeID})
-	if err != nil {
-		t.Skipf("network creation failed: %v", err)
-	}
+	require.NoError(t, err)
+
 	myCeliumSeed1, err := workloads.RandomMyceliumIPSeed()
-	if err != nil {
-		t.Skipf("could not create vm mycelium IP seed: %v", err)
-	}
+	require.NoError(t, err)
+
 	vm1 := workloads.VM{
 		Name:        "vm1",
 		NodeID:      nodeID,
@@ -56,17 +54,13 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 			"SSH_KEY": publicKey,
 		},
 		MyceliumIPSeed: myCeliumSeed1,
+		RootfsSizeMB: minRootfs *1024,
+		PublicIP6: true,
 	}
-	if err != nil {
-		t.Skipf("vm creation failed: %v", err)
-	}
-	vm1.RootfsSizeMB = minRootfs * 1024
-	vm1.PublicIP6 = true
 
 	myCeliumSeed2, err := workloads.RandomMyceliumIPSeed()
-	if err != nil {
-		t.Skipf("could not create vm mycelium IP seed: %v", err)
-	}
+	require.NoError(t, err)
+
 	vm2 := workloads.VM{
 		Name:        "vm2",
 		NodeID:      nodeID,
@@ -79,12 +73,9 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 			"SSH_KEY": publicKey,
 		},
 		MyceliumIPSeed: myCeliumSeed2,
+		RootfsSizeMB: minRootfs *1024,
+		PublicIP6:true ,
 	}
-	if err != nil {
-		t.Skipf("vm creation failed: %v", err)
-	}
-	vm2.RootfsSizeMB = minRootfs * 1024
-	vm2.PublicIP6 = true
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)

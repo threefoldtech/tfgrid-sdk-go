@@ -37,21 +37,16 @@ func TestBatchVMDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network1, err := generateBasicNetwork([]uint32{nodeID1})
-	if err != nil {
-		t.Skipf("network1 creation failed: %v", err)
-	}
+	require.NoError(t, err)
+	
 	network2, err := generateBasicNetwork([]uint32{nodeID2})
-	if err != nil {
-		t.Skipf("network2 creation failed: %v", err)
-	}
+	require.NoError(t, err)
+	
 	vm1, err := generateBasicVM("vm", nodeID1, network1.Name, publicKey)
-	if err != nil {
-		t.Skipf("vm1 creation failed: %v", err)
-	}
+	require.NoError(t, err)
+	
 	vm2, err := generateBasicVM("vm", nodeID2, network2.Name, publicKey)
-	if err != nil {
-		t.Skipf("vm2 creation failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []*workloads.ZNet{&network1, &network2})
 	require.NoError(t, err)

@@ -36,18 +36,14 @@ func TestVMWithVolume(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{nodeID})
-	if err != nil {
-		t.Skipf("network creation failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	volume := workloads.Volume{
 		Name:   "volume",
 		SizeGB: 1,
 	}
 	myCeliumSeed, err := workloads.RandomMyceliumIPSeed()
-	if err != nil {
-		t.Skipf("could not create vm mycelium IP seed: %v", err)
-	}
+	require.NoError(t, err)
 
 	vm := workloads.VM{
 		Name:         "vm",

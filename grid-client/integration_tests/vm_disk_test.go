@@ -37,10 +37,8 @@ func TestVMWithTwoDisk(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{nodeID})
-	if err != nil {
-		t.Skipf("network creation failed: %v", err)
+	require.NoError(t, err)
 
-	}
 	disk1 := workloads.Disk{
 		Name:   "diskTest1",
 		SizeGB: 1,
@@ -51,9 +49,8 @@ func TestVMWithTwoDisk(t *testing.T) {
 	}
 
 	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
-	if err != nil {
-		t.Skipf("vm creation failed: %v", err)
-	}
+	require.NoError(t, err)
+	
 	vm.RootfsSizeMB = minRootfs * 1024
 	vm.Mounts = []workloads.Mount{
 		{Name: disk1.Name, MountPoint: "/disk1"},

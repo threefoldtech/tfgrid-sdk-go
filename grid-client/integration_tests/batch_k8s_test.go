@@ -47,21 +47,17 @@ func TestBatchK8sDeployment(t *testing.T) {
 	})
 
 	masterSeed1, err := workloads.RandomMyceliumIPSeed()
-	if err != nil {
-		t.Skipf("could not create master1 mycelium IP seed: %v", err)
-	}
+	require.NoError(t, err)
+
 	masterSeed2, err := workloads.RandomMyceliumIPSeed()
-	if err != nil {
-		t.Skipf("could not create master2 mycelium IP seed: %v", err)
-	}
+	require.NoError(t, err)
+
 	workerNodeSeed1, err := workloads.RandomMyceliumIPSeed()
-	if err != nil {
-		t.Skipf("could not create worker Node1 mycelium IP seed: %v", err)
-	}
+	require.NoError(t, err)
+
 	workerNodeSeed2, err := workloads.RandomMyceliumIPSeed()
-	if err != nil {
-		t.Skipf("could not create worker Node2 mycelium IP seed: %v", err)
-	}
+	require.NoError(t, err)
+	
 	master1 := workloads.K8sNode{
 		VM: &workloads.VM{
 			Name:           generateRandString(10),

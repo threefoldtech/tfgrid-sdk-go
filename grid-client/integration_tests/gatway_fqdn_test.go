@@ -48,13 +48,10 @@ func TestGatewayFQDNDeployment(t *testing.T) {
 	nodeID := uint32(nodes[0].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{nodeID})
-	if err != nil {
-		t.Skipf("network creation failed: %v", err)
-	}
+	require.NoError(t, err)
+	
 	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
-	if err != nil {
-		t.Skipf("vm2 creation failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)

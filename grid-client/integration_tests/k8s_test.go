@@ -68,9 +68,7 @@ func TestK8sDeployment(t *testing.T) {
 	workerNodeID := uint32(nodes[1].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{masterNodeID, workerNodeID})
-	if err != nil {
-		t.Skipf("network creation failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
@@ -80,17 +78,13 @@ func TestK8sDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 	masterSeed, err := workloads.RandomMyceliumIPSeed()
-	if err != nil {
-		t.Skipf("could not create master mycelium IP seed: %v", err)
-	}
+	require.NoError(t, err)
+
 	workerNodeSeed1, err := workloads.RandomMyceliumIPSeed()
-	if err != nil {
-		t.Skipf("could not create worker Node1 mycelium IP seed: %v", err)
-	}
+	require.NoError(t, err)
+
 	workerNodeSeed2, err := workloads.RandomMyceliumIPSeed()
-	if err != nil {
-		t.Skipf("could not create worker Node2 mycelium IP seed: %v", err)
-	}
+	require.NoError(t, err)
 
 	master := workloads.K8sNode{
 		VM: &workloads.VM{

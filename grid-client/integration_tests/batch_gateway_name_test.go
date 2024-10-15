@@ -44,13 +44,10 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	nodeID2 := uint32(nodes[1].NodeID)
 
 	network, err := generateBasicNetwork([]uint32{nodeID1, nodeID2})
-	if err != nil {
-		t.Skipf("network creation failed: %v", err)
-	}
+	require.NoError(t, err)
+	
 	vm, err := generateBasicVM("vm", nodeID1, network.Name, publicKey)
-	if err != nil {
-		t.Skipf("vm creation failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
