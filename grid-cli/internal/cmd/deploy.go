@@ -57,6 +57,53 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, d
 	return resVM, nil
 }
 
+// DeployVMLight deploys a vm-light with mounts
+func DeployVMLight(ctx context.Context, t deployer.TFPluginClient, vm workloads.VMLight, diskMount workloads.Disk, volumeMount workloads.Volume) (workloads.VMLight, error) {
+	networkName := fmt.Sprintf("%snetwork", vm.Name)
+	projectName := fmt.Sprintf("vm/%s", vm.Name)
+	network, err := buildNetworkLight(networkName, projectName, []uint32{vm.NodeID})
+	if err != nil {
+		return workloads.VMLight{}, err
+	}
+
+	diskMounts := []workloads.Disk{}
+	if diskMount.SizeGB != 0 {
+		diskMounts = append(diskMounts, diskMount)
+	}
+
+	volumeMounts := []workloads.Volume{}
+	if volumeMount.SizeGB != 0 {
+		volumeMounts = append(volumeMounts, volumeMount)
+	}
+
+	vm.NetworkName = networkName
+	dl := workloads.NewDeployment(vm.Name, vm.NodeID, projectName, nil, networkName, diskMounts, nil, nil, []workloads.VMLight{vm}, nil, volumeMounts)
+
+	log.Info().Msg("deploying network")
+	err = t.NetworkDeployer.Deploy(ctx, &network)
+	if err != nil {
+		return workloads.VMLight{}, errors.Wrapf(err, "failed to deploy network on node %d", vm.NodeID)
+	}
+
+	log.Info().Msg("deploying vm")
+	err = t.DeploymentDeployer.Deploy(ctx, &dl)
+	if err != nil {
+		log.Warn().Msg("error happened while deploying. removing network")
+		revertErr := t.NetworkDeployer.Cancel(ctx, &network)
+		if revertErr != nil {
+			log.Error().Err(revertErr).Msg("failed to remove network")
+		}
+		return workloads.VMLight{}, errors.Wrapf(err, "failed to deploy vm on node %d", vm.NodeID)
+	}
+
+	resVM, err := t.State.LoadVMLightFromGrid(ctx, vm.NodeID, vm.Name, dl.Name)
+	if err != nil {
+		return workloads.VMLight{}, errors.Wrapf(err, "failed to load vm from node %d", vm.NodeID)
+	}
+
+	return resVM, nil
+}
+
 // DeployKubernetesCluster deploys a kubernetes cluster
 func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, master workloads.K8sNode, workers []workloads.K8sNode, sshKey, k8sFlist string) (workloads.K8sCluster, error) {
 	networkName := fmt.Sprintf("%snetwork", master.Name)
@@ -170,6 +217,28 @@ func buildNetwork(name, projectName string, nodes []uint32, addMycelium bool) (w
 		}
 	}
 	return workloads.ZNet{
+		Name:  name,
+		Nodes: nodes,
+		IPRange: zos.IPNet{IPNet: net.IPNet{
+			IP:   net.IPv4(10, 20, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}},
+		MyceliumKeys: keys,
+		SolutionType: projectName,
+	}, nil
+}
+
+func buildNetworkLight(name, projectName string, nodes []uint32) (workloads.ZNetLight, error) {
+	keys := make(map[uint32][]byte)
+	for _, node := range nodes {
+		key, err := workloads.RandomMyceliumKey()
+		if err != nil {
+			return workloads.ZNetLight{}, err
+		}
+		keys[node] = key
+	}
+
+	return workloads.ZNetLight{
 		Name:  name,
 		Nodes: nodes,
 		IPRange: zos.IPNet{IPNet: net.IPNet{
