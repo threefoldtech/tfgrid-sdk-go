@@ -1,0 +1,71 @@
+name: Proxy Schema Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      NETWORK:
+        description: 'Network to run test on'
+        required: true
+        default: 'local'
+        type: choice
+        options: 
+        - local
+        - dev
+        - qa
+        - test
+        - main
+  push:
+  pull_request:
+    branches:
+    - development
+
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: grid-proxy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+
+      - name: Setting up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Installing all necessary packages
+        run: pip install -r tests/schema_test/requirments.txt
+
+      - name: Build
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+        run: |
+          go mod tidy
+          make db-start
+          make db-fill
+          make server-start m="$MNEMONICS" &
+
+      - name: Wait on localhost
+        uses: iFaxity/wait-on-action@v1
+        with:
+          resource: http://localhost:8080
+
+      - name: Run tests
+        run: NETWORK=${{ github.event.inputs.NETWORK }} python3 -m pytest -v ./tests/schema_test/ --html=./tests/schema_test/report.html
+        
+      - name: Upload pytest test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-pytest-results
+          path: |
+            ///home/runner/work/tfgrid-sdk-go/tfgrid-sdk-go/grid-proxy/tests/schema_test/report.html
+            ///home/runner/work/tfgrid-sdk-go/tfgrid-sdk-go/grid-proxy/tests/schema_test/assets
+        if: ${{ always() }}
