@@ -13,8 +13,7 @@ import (
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // ContractsGetter for contracts getter from graphql
@@ -188,11 +187,11 @@ func (c *ContractsGetter) GetNodeContractsByTypeAndName(projectName, deploymentT
 }
 
 // filterNameContracts returns the name contracts of the given name gateways
-func (c *ContractsGetter) filterNameContracts(nameContracts []Contract, nameGatewayWorkloads []gridtypes.Workload) []Contract {
+func (c *ContractsGetter) filterNameContracts(nameContracts []Contract, nameGatewayWorkloads []zos.Workload) []Contract {
 	filteredNameContracts := make([]Contract, 0)
 	for _, contract := range nameContracts {
 		for _, w := range nameGatewayWorkloads {
-			if w.Name.String() == contract.Name {
+			if w.Name == contract.Name {
 				filteredNameContracts = append(filteredNameContracts, contract)
 			}
 		}
@@ -201,22 +200,22 @@ func (c *ContractsGetter) filterNameContracts(nameContracts []Contract, nameGate
 	return filteredNameContracts
 }
 
-func (c *ContractsGetter) filterNameGatewaysWithinNodeContracts(nodeContracts []Contract) ([]gridtypes.Workload, error) {
-	nameGatewayWorkloads := make([]gridtypes.Workload, 0)
+func (c *ContractsGetter) filterNameGatewaysWithinNodeContracts(nodeContracts []Contract) ([]zos.Workload, error) {
+	nameGatewayWorkloads := make([]zos.Workload, 0)
 	for _, contract := range nodeContracts {
 		nodeClient, err := c.ncPool.GetNodeClient(c.substrateConn, contract.NodeID)
 		if err != nil {
-			return []gridtypes.Workload{}, errors.Wrapf(err, "could not get node client: %d", contract.NodeID)
+			return []zos.Workload{}, errors.Wrapf(err, "could not get node client: %d", contract.NodeID)
 		}
 
 		contractID, err := strconv.Atoi(contract.ContractID)
 		if err != nil {
-			return []gridtypes.Workload{}, errors.Wrapf(err, "could not parse contract id: %s", contract.ContractID)
+			return []zos.Workload{}, errors.Wrapf(err, "could not parse contract id: %s", contract.ContractID)
 		}
 
 		dl, err := nodeClient.DeploymentGet(context.Background(), uint64(contractID))
 		if err != nil {
-			return []gridtypes.Workload{}, errors.Wrapf(err, "could not get deployment %d from node %d", contractID, contract.NodeID)
+			return []zos.Workload{}, errors.Wrapf(err, "could not get deployment %d from node %d", contractID, contract.NodeID)
 		}
 
 		for _, workload := range dl.Workloads {

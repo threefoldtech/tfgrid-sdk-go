@@ -5,14 +5,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 func TestPublicIPWorkload(t *testing.T) {
-	var publicIPWorkload gridtypes.Workload
+	var publicIPWorkload zos.Workload
 
 	t.Run("test_construct_pub_ip_workload", func(t *testing.T) {
 		publicIPWorkload = ConstructPublicIPWorkload("test", true, true)
-		assert.NoError(t, publicIPWorkload.Type.Valid())
+		assert.Equal(t, publicIPWorkload.Type, zos.PublicIPType)
 	})
 }

@@ -13,6 +13,7 @@ import (
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 	"golang.org/x/exp/maps"
@@ -90,7 +91,7 @@ func (st *State) LoadGatewayFQDNFromGrid(ctx context.Context, nodeID uint32, nam
 	if err != nil {
 		return workloads.GatewayFQDNProxy{}, errors.Wrapf(err, "could not generate deployment metadata for %s", name)
 	}
-	gateway, err := workloads.NewGatewayFQDNProxyFromZosWorkload(wl)
+	gateway, err := workloads.NewGatewayFQDNProxyFromZosWorkload(*wl.Workload3())
 	if err != nil {
 		return workloads.GatewayFQDNProxy{}, err
 	}
@@ -126,7 +127,7 @@ func (st *State) LoadGatewayNameFromGrid(ctx context.Context, nodeID uint32, nam
 	if err != nil {
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "could not generate deployment metadata for %s", deploymentName)
 	}
-	gateway, err := workloads.NewGatewayNameProxyFromZosWorkload(wl)
+	gateway, err := workloads.NewGatewayNameProxyFromZosWorkload(*wl.Workload3())
 	if err != nil {
 		return workloads.GatewayNameProxy{}, err
 	}
@@ -158,6 +159,16 @@ func (st *State) LoadVMFromGrid(ctx context.Context, nodeID uint32, name string,
 	return workloads.NewVMFromWorkload(&wl, &dl, nodeID)
 }
 
+// LoadVMLightFromGrid loads a vm-light from a grid
+func (st *State) LoadVMLightFromGrid(ctx context.Context, nodeID uint32, name string, deploymentName string) (workloads.VMLight, error) {
+	wl, dl, err := st.GetWorkloadInDeployment(ctx, nodeID, name, deploymentName)
+	if err != nil {
+		return workloads.VMLight{}, errors.Wrapf(err, "could not get workload from node %d", nodeID)
+	}
+
+	return workloads.NewVMLightFromWorkload(&wl, &dl, nodeID)
+}
+
 // LoadK8sFromGrid loads k8s from grid
 func (st *State) LoadK8sFromGrid(ctx context.Context, nodeIDs []uint32, deploymentName string) (workloads.K8sCluster, error) {
 	clusterDeployments := make(map[uint32]gridtypes.Deployment)
@@ -167,7 +178,7 @@ func (st *State) LoadK8sFromGrid(ctx context.Context, nodeIDs []uint32, deployme
 		if err != nil {
 			return workloads.K8sCluster{}, errors.Wrapf(err, "could not get deployment %s", deploymentName)
 		}
-		clusterDeployments[nodeID] = deployment
+		clusterDeployments[nodeID] = *deployment.ZosDeployment()
 		nodeDeploymentID[nodeID] = deployment.ContractID
 	}
 
@@ -328,7 +339,7 @@ func (st *State) LoadNetworkFromGrid(ctx context.Context, name string) (znet wor
 			}
 
 			for _, wl := range dl.Workloads {
-				if wl.Type == zos.NetworkType && wl.Name == gridtypes.Name(name) {
+				if wl.Type == zosTypes.NetworkType && wl.Name == name {
 					znet, err = workloads.NewNetworkFromWorkload(wl, nodeID)
 					if err != nil {
 						return workloads.ZNet{}, errors.Wrapf(err, "failed to get network from workload %s", name)
@@ -359,7 +370,7 @@ func (st *State) LoadNetworkFromGrid(ctx context.Context, name string) (znet wor
 
 	// merge networks
 	var nodes []uint32
-	nodesIPRange := map[uint32]gridtypes.IPNet{}
+	nodesIPRange := map[uint32]zosTypes.IPNet{}
 	wgPort := map[uint32]int{}
 	keys := map[uint32]wgtypes.Key{}
 	for _, net := range zNets {
@@ -389,6 +400,76 @@ func (st *State) LoadNetworkFromGrid(ctx context.Context, name string) (znet wor
 	return znet, nil
 }
 
+// LoadNetworkLightFromGrid loads a network-light from grid
+func (st *State) LoadNetworkLightFromGrid(ctx context.Context, name string) (znet workloads.ZNetLight, err error) {
+	var zNets []workloads.ZNetLight
+	nodeDeploymentsIDs := map[uint32]uint64{}
+
+	sub := st.Substrate
+	for nodeID := range st.CurrentNodeDeployments {
+		nodeClient, err := st.NcPool.GetNodeClient(sub, nodeID)
+		if err != nil {
+			return znet, errors.Wrapf(err, "could not get node client: %d", nodeID)
+		}
+
+		for _, contractID := range st.CurrentNodeDeployments[nodeID] {
+			dl, err := nodeClient.DeploymentGet(ctx, contractID)
+			if err != nil {
+				return znet, errors.Wrapf(err, "could not get network deployment %d from node %d", contractID, nodeID)
+			}
+
+			if len(strings.TrimSpace(dl.Metadata)) == 0 {
+				contract, err := sub.GetContract(contractID)
+				if err != nil {
+					return znet, errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
+				}
+				dl.Metadata = contract.ContractType.NodeContract.DeploymentData
+				if len(strings.TrimSpace(dl.Metadata)) == 0 {
+					return znet, errors.Wrapf(err, "contract %d doesn't have metadata", contractID)
+				}
+			}
+
+			deploymentData, err := workloads.ParseDeploymentData(dl.Metadata)
+			if err != nil {
+				return znet, errors.Wrapf(err, "could not generate deployment metadata for %s", name)
+			}
+
+			for _, wl := range dl.Workloads {
+				if wl.Type == zosTypes.NetworkLightType && wl.Name == name {
+					znet, err = workloads.NewNetworkLightFromWorkload(wl, nodeID)
+					if err != nil {
+						return workloads.ZNetLight{}, errors.Wrapf(err, "failed to get network from workload %s", name)
+					}
+
+					znet.SolutionType = deploymentData.ProjectName
+					zNets = append(zNets, znet)
+					nodeDeploymentsIDs[nodeID] = dl.ContractID
+					break
+				}
+			}
+		}
+	}
+
+	if reflect.DeepEqual(znet, workloads.ZNetLight{}) {
+		return znet, errors.Wrapf(ErrNotFound, "failed to get network %s", name)
+	}
+
+	// merge networks
+	var nodes []uint32
+	nodesIPRange := map[uint32]zosTypes.IPNet{}
+	for _, net := range zNets {
+		maps.Copy(nodesIPRange, net.NodesIPRange)
+		nodes = append(nodes, net.Nodes...)
+	}
+
+	znet.NodeDeploymentID = nodeDeploymentsIDs
+	znet.Nodes = nodes
+	znet.NodesIPRange = nodesIPRange
+
+	st.Networks.UpdateNetworkSubnets(znet.Name, znet.NodesIPRange)
+	return znet, nil
+}
+
 // LoadDeploymentFromGrid loads deployment from grid
 func (st *State) LoadDeploymentFromGrid(ctx context.Context, nodeID uint32, name string) (workloads.Deployment, error) {
 	_, deployment, err := st.GetWorkloadInDeployment(ctx, nodeID, "", name)
@@ -405,7 +486,10 @@ func (st *State) LoadDeploymentFromGrid(ctx context.Context, nodeID uint32, name
 
 	_, err = st.LoadNetworkFromGrid(ctx, d.NetworkName)
 	if err != nil {
-		return workloads.Deployment{}, errors.Wrapf(err, "failed to load network %s", d.NetworkName)
+		_, err = st.LoadNetworkLightFromGrid(ctx, d.NetworkName)
+		if err != nil {
+			return workloads.Deployment{}, errors.Wrapf(err, "failed to load network %s", d.NetworkName)
+		}
 	}
 	d.IPrange = st.Networks.GetNetwork(d.NetworkName).Subnets[nodeID]
 
@@ -414,34 +498,34 @@ func (st *State) LoadDeploymentFromGrid(ctx context.Context, nodeID uint32, name
 
 // GetWorkloadInDeployment return a workload in a deployment using their names and node ID
 // if name is empty it returns a deployment with name equal to deploymentName and empty workload
-func (st *State) GetWorkloadInDeployment(ctx context.Context, nodeID uint32, name string, deploymentName string) (gridtypes.Workload, gridtypes.Deployment, error) {
+func (st *State) GetWorkloadInDeployment(ctx context.Context, nodeID uint32, name string, deploymentName string) (zosTypes.Workload, zosTypes.Deployment, error) {
 	sub := st.Substrate
 	if contractIDs, ok := st.CurrentNodeDeployments[nodeID]; ok {
 		nodeClient, err := st.NcPool.GetNodeClient(sub, nodeID)
 		if err != nil {
-			return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get node client: %d", nodeID)
+			return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(err, "could not get node client: %d", nodeID)
 		}
 
 		for _, contractID := range contractIDs {
 			dl, err := nodeClient.DeploymentGet(ctx, contractID)
 			if err != nil {
-				return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get deployment %d from node %d", contractID, nodeID)
+				return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(err, "could not get deployment %d from node %d", contractID, nodeID)
 			}
 
 			if len(strings.TrimSpace(dl.Metadata)) == 0 {
 				contract, err := sub.GetContract(contractID)
 				if err != nil {
-					return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
+					return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
 				}
 				dl.Metadata = contract.ContractType.NodeContract.DeploymentData
 				if len(strings.TrimSpace(dl.Metadata)) == 0 {
-					return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "contract %d doesn't have metadata", contractID)
+					return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(err, "contract %d doesn't have metadata", contractID)
 				}
 			}
 
 			dlData, err := workloads.ParseDeploymentData(dl.Metadata)
 			if err != nil {
-				return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(err, "could not get deployment %d data", contractID)
+				return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(err, "could not get deployment %d data", contractID)
 			}
 
 			if dlData.Name != deploymentName {
@@ -449,18 +533,18 @@ func (st *State) GetWorkloadInDeployment(ctx context.Context, nodeID uint32, nam
 			}
 
 			if name == "" {
-				return gridtypes.Workload{}, dl, nil
+				return zosTypes.Workload{}, dl, nil
 			}
 
 			for _, workload := range dl.Workloads {
-				if workload.Name == gridtypes.Name(name) {
+				if workload.Name == name {
 					return workload, dl, nil
 				}
 			}
 		}
-		return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(ErrNotFound, "failed to find workload '%s'", name)
+		return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(ErrNotFound, "failed to find workload '%s'", name)
 	}
-	return gridtypes.Workload{}, gridtypes.Deployment{}, errors.Wrapf(ErrNotFound, "failed to find deployment %s on node %d", name, nodeID)
+	return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(ErrNotFound, "failed to find deployment %s on node %d", name, nodeID)
 }
 
 // AssignNodesIPRange to assign ip range of k8s cluster nodes
