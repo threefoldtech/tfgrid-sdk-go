@@ -64,7 +64,7 @@ func TestZDBDeployment(t *testing.T) {
 	require.NotEmpty(t, z.Namespace)
 	require.NotEmpty(t, z.Port)
 
-	zdbEndpoint := fmt.Sprintf("[%s]:%v", z.IPs[1], z.Port)
+	zdbEndpoint := fmt.Sprintf("[%s]:%v", z.IPs[2], z.Port)
 
 	redisDB := redis.NewClient(&redis.Options{
 		Addr: zdbEndpoint,

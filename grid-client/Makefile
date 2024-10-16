@@ -1,6 +1,6 @@
 PWD := $(shell pwd)
 GOPATH := $(shell go env GOPATH)
-integration_tests := $(shell go run scripts/scrap_tests.go)
+integration_tests := $(shell go run scripts/scrap_tests/scrap_tests.go)
 
 all: verifiers test
 
