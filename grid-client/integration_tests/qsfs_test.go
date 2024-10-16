@@ -152,9 +152,8 @@ func TestQSFSDeployment(t *testing.T) {
 	}
 
 	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
-	if err != nil {
-		t.Skipf("vm creation failed: %v", err)
-	}
+	require.NoError(t, err)
+
 	vm.Mounts = []workloads.Mount{
 		{Name: qsfs.Name, MountPoint: "/qsfs"},
 	}

@@ -46,67 +46,32 @@ func TestBatchK8sDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	masterSeed1, err := workloads.RandomMyceliumIPSeed()
-	require.NoError(t, err)
-
-	masterSeed2, err := workloads.RandomMyceliumIPSeed()
-	require.NoError(t, err)
-
-	workerNodeSeed1, err := workloads.RandomMyceliumIPSeed()
-	require.NoError(t, err)
-
-	workerNodeSeed2, err := workloads.RandomMyceliumIPSeed()
+	masterVM1, err := generateBasicVM(generateRandString(10), nodeID1, network.Name, "")
 	require.NoError(t, err)
 
 	master1 := workloads.K8sNode{
-		VM: &workloads.VM{
-			Name:           generateRandString(10),
-			NetworkName:    network.Name,
-			NodeID:         nodeID1,
-			Planetary:      true,
-			CPU:            minCPU,
-			MemoryMB:       minMemory * 1024,
-			MyceliumIPSeed: masterSeed1,
-		},
+		VM:         &masterVM1,
 		DiskSizeGB: 1,
 	}
+	masterVM2, err := generateBasicVM(generateRandString(10), nodeID2, network.Name, "")
+	require.NoError(t, err)
 
 	master2 := workloads.K8sNode{
-		VM: &workloads.VM{
-			Name:           generateRandString(10),
-			NetworkName:    network.Name,
-			NodeID:         nodeID2,
-			Planetary:      true,
-			CPU:            minCPU,
-			MemoryMB:       minMemory * 1024,
-			MyceliumIPSeed: masterSeed2,
-		},
+		VM:         &masterVM2,
 		DiskSizeGB: 1,
 	}
+	vm1, err := generateBasicVM(generateRandString(10), nodeID1, network.Name, "")
+	require.NoError(t, err)
 
 	workerNodeData1 := workloads.K8sNode{
-		VM: &workloads.VM{
-			Name:           generateRandString(10),
-			NetworkName:    network.Name,
-			NodeID:         nodeID1,
-			Planetary:      true,
-			CPU:            minCPU,
-			MemoryMB:       minMemory * 1024,
-			MyceliumIPSeed: workerNodeSeed1,
-		},
+		VM:         &vm1,
 		DiskSizeGB: 1,
 	}
+	vm2, err := generateBasicVM(generateRandString(10), nodeID2, network.Name, "")
+	require.NoError(t, err)
 
 	workerNodeData2 := workloads.K8sNode{
-		VM: &workloads.VM{
-			Name:           generateRandString(10),
-			NetworkName:    network.Name,
-			NodeID:         nodeID2,
-			Planetary:      true,
-			CPU:            minCPU,
-			MemoryMB:       minMemory * 1024,
-			MyceliumIPSeed: workerNodeSeed2,
-		},
+		VM:         &vm2,
 		DiskSizeGB: 1,
 	}
 

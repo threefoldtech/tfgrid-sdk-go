@@ -77,51 +77,27 @@ func TestK8sDeployment(t *testing.T) {
 		err = tfPluginClient.NetworkDeployer.Cancel(context.Background(), &network)
 		require.NoError(t, err)
 	})
-	masterSeed, err := workloads.RandomMyceliumIPSeed()
-	require.NoError(t, err)
 
-	workerNodeSeed1, err := workloads.RandomMyceliumIPSeed()
-	require.NoError(t, err)
-
-	workerNodeSeed2, err := workloads.RandomMyceliumIPSeed()
+	masterVM, err := generateBasicVM(fmt.Sprintf("master_%s", generateRandString(5)), masterNodeID, network.Name, "")
 	require.NoError(t, err)
 
 	master := workloads.K8sNode{
-		VM: &workloads.VM{
-			Name:           fmt.Sprintf("master_%s", generateRandString(5)),
-			NodeID:         masterNodeID,
-			NetworkName:    network.Name,
-			CPU:            minCPU,
-			MemoryMB:       minMemory * 1024,
-			Planetary:      true,
-			MyceliumIPSeed: masterSeed,
-		},
+		VM:         &masterVM,
 		DiskSizeGB: 1,
 	}
+
+	vm1, err := generateBasicVM(fmt.Sprintf("worker1_%s", generateRandString(5)), workerNodeID, network.Name, "")
+	require.NoError(t, err)
 
 	workerNodeData1 := workloads.K8sNode{
-		VM: &workloads.VM{
-			Name:           fmt.Sprintf("worker1_%s", generateRandString(5)),
-			NodeID:         workerNodeID,
-			NetworkName:    network.Name,
-			CPU:            minCPU,
-			MemoryMB:       minMemory * 1024,
-			Planetary:      true,
-			MyceliumIPSeed: workerNodeSeed1,
-		},
+		VM:         &vm1,
 		DiskSizeGB: 1,
 	}
+	vm2, err := generateBasicVM(fmt.Sprintf("worker2_%s", generateRandString(5)), workerNodeID, network.Name, "")
+	require.NoError(t, err)
 
 	workerNodeData2 := workloads.K8sNode{
-		VM: &workloads.VM{
-			Name:           fmt.Sprintf("worker2_%s", generateRandString(5)),
-			NodeID:         workerNodeID,
-			NetworkName:    network.Name,
-			CPU:            minCPU,
-			MemoryMB:       minMemory * 1024,
-			Planetary:      true,
-			MyceliumIPSeed: workerNodeSeed2,
-		},
+		VM:         &vm2,
 		DiskSizeGB: 1,
 	}
 

@@ -39,43 +39,21 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 	network, err := generateBasicNetwork([]uint32{nodeID})
 	require.NoError(t, err)
 
-	myCeliumSeed1, err := workloads.RandomMyceliumIPSeed()
+	ubuntuFlist := "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"
+
+	vm1, err := generateBasicVM("vm1", nodeID, network.Name, publicKey)
 	require.NoError(t, err)
 
-	vm1 := workloads.VM{
-		Name:        "vm1",
-		NodeID:      nodeID,
-		NetworkName: network.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-		MyceliumIPSeed: myCeliumSeed1,
-		RootfsSizeMB:   minRootfs * 1024,
-		PublicIP6:      true,
-	}
+	vm1.Flist = ubuntuFlist
+	vm1.RootfsSizeMB = minRootfs * 1024
+	vm1.PublicIP6 = true
 
-	myCeliumSeed2, err := workloads.RandomMyceliumIPSeed()
+	vm2, err := generateBasicVM("vm2", nodeID, network.Name, publicKey)
 	require.NoError(t, err)
 
-	vm2 := workloads.VM{
-		Name:        "vm2",
-		NodeID:      nodeID,
-		NetworkName: network.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-		MyceliumIPSeed: myCeliumSeed2,
-		RootfsSizeMB:   minRootfs * 1024,
-		PublicIP6:      true,
-	}
+	vm2.Flist = ubuntuFlist
+	vm2.RootfsSizeMB = minRootfs * 1024
+	vm2.PublicIP6 = true
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)

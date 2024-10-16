@@ -39,26 +39,12 @@ func TestVMDeployment(t *testing.T) {
 	network, err := generateBasicNetwork([]uint32{nodeID})
 	require.NoError(t, err)
 
-	myCeliumSeed, err := workloads.RandomMyceliumIPSeed()
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
 	require.NoError(t, err)
 
-	vm := workloads.VM{
-		Name:         "vm",
-		NodeID:       nodeID,
-		NetworkName:  network.Name,
-		IP:           "10.20.2.5",
-		CPU:          minCPU,
-		MemoryMB:     minMemory * 1024,
-		RootfsSizeMB: minRootfs * 1024,
-		PublicIP:     true,
-		Planetary:    true,
-		Flist:        "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:   "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-		MyceliumIPSeed: myCeliumSeed,
-	}
+	vm.IP = "10.20.2.5"
+	vm.RootfsSizeMB = minRootfs * 1024
+	vm.PublicIP = true
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)

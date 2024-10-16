@@ -42,26 +42,13 @@ func TestVMWithVolume(t *testing.T) {
 		Name:   "volume",
 		SizeGB: 1,
 	}
-	myCeliumSeed, err := workloads.RandomMyceliumIPSeed()
+
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
 	require.NoError(t, err)
 
-	vm := workloads.VM{
-		Name:         "vm",
-		NodeID:       nodeID,
-		NetworkName:  network.Name,
-		CPU:          minCPU,
-		MemoryMB:     minMemory * 1024,
-		RootfsSizeMB: minRootfs * 1024,
-		Planetary:    true,
-		Flist:        "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:   "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-		Mounts: []workloads.Mount{
-			{Name: volume.Name, MountPoint: "/volume"},
-		},
-		MyceliumIPSeed: myCeliumSeed,
+	vm.RootfsSizeMB = minRootfs * 1024
+	vm.Mounts = []workloads.Mount{
+		{Name: volume.Name, MountPoint: "/volume"},
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)

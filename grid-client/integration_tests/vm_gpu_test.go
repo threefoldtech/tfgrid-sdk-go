@@ -60,27 +60,17 @@ func TestVMWithGPUDeployment(t *testing.T) {
 		SizeGB: 20,
 	}
 
-	myCeliumSeed, err := workloads.RandomMyceliumIPSeed()
+	vm, err := generateBasicVM("gpu", nodeID, network.Name, publicKey)
 	require.NoError(t, err)
 
-	vm := workloads.VM{
-		Name:         "gpu",
-		NodeID:       nodeID,
-		NetworkName:  network.Name,
-		CPU:          4,
-		MemoryMB:     1024 * 8,
-		RootfsSizeMB: minRootfs * 1024,
-		Planetary:    true,
-		GPUs:         ConvertGPUsToStr(gpus),
-		Flist:        "https://hub.grid.tf/tf-official-vms/ubuntu-22.04.flist",
-		Entrypoint:   "/init.sh",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-		Mounts: []workloads.Mount{
-			{Name: disk.Name, MountPoint: "/data"},
-		},
-		MyceliumIPSeed: myCeliumSeed,
+	vm.CPU = 4
+	vm.MemoryMB = 1024 * 8
+	vm.RootfsSizeMB = minRootfs * 1024
+	vm.GPUs = ConvertGPUsToStr(gpus)
+	vm.Flist = "https://hub.grid.tf/tf-official-vms/ubuntu-22.04.flist"
+	vm.Entrypoint = "/init.sh"
+	vm.Mounts = []workloads.Mount{
+		{Name: disk.Name, MountPoint: "/data"},
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
