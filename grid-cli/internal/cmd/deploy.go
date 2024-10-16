@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // DeployVM deploys a vm with mounts
@@ -32,7 +32,7 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, d
 		volumeMounts = append(volumeMounts, volumeMount)
 	}
 	vm.NetworkName = networkName
-	dl := workloads.NewDeployment(vm.Name, vm.NodeID, projectName, nil, networkName, diskMounts, nil, []workloads.VM{vm}, nil, volumeMounts)
+	dl := workloads.NewDeployment(vm.Name, vm.NodeID, projectName, nil, networkName, diskMounts, nil, []workloads.VM{vm}, nil, nil, volumeMounts)
 
 	log.Info().Msg("deploying network")
 	err = t.NetworkDeployer.Deploy(ctx, &network)
@@ -185,7 +185,7 @@ func DeployGatewayFQDN(ctx context.Context, t deployer.TFPluginClient, gateway w
 
 // DeployZDBs deploys multiple zdbs
 func DeployZDBs(ctx context.Context, t deployer.TFPluginClient, projectName string, zdbs []workloads.ZDB, n int, node uint32) ([]workloads.ZDB, error) {
-	dl := workloads.NewDeployment(projectName, node, projectName, nil, "", nil, zdbs, nil, nil, nil)
+	dl := workloads.NewDeployment(projectName, node, projectName, nil, "", nil, zdbs, nil, nil, nil, nil)
 	log.Info().Msgf("deploying zdbs")
 	err := t.DeploymentDeployer.Deploy(ctx, &dl)
 	if err != nil {
@@ -219,10 +219,10 @@ func buildNetwork(name, projectName string, nodes []uint32, addMycelium bool) (w
 	return workloads.ZNet{
 		Name:  name,
 		Nodes: nodes,
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zos.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 20, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		MyceliumKeys: keys,
 		SolutionType: projectName,
 	}, nil

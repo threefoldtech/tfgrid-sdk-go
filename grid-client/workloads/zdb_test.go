@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // ZDBWorkload for tests
@@ -24,7 +23,7 @@ var ZDBWorkload = ZDB{
 }
 
 func TestZDB(t *testing.T) {
-	var zdbWorkload gridtypes.Workload
+	var zdbWorkload zos.Workload
 
 	t.Run("test zdb to/from map", func(t *testing.T) {
 		zdbMap, err := ToMap(ZDBWorkload)

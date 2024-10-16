@@ -59,7 +59,7 @@ type Volume struct {
 
 type groupDeploymentsInfo struct {
 	vmDeployments      []*workloads.Deployment
-	networkDeployments []*workloads.ZNet
+	networkDeployments []workloads.Network
 }
 
 type vmOutput struct {

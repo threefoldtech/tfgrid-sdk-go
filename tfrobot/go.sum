@@ -138,6 +138,8 @@ github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240827163226
 github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20240827163226-d4e15e206974/go.mod h1:dtDKAPiUDxAwIkfHV7xcAFZcOm+xwNIuOI1MLFS+MeQ=
 github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee h1:pqpYVM0qkXujplHNfH6w5GDqcY5sLJAgOc4/hlR6+Xw=
 github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee/go.mod h1:lut72yYMJhgK0QRvF0Wd/mB3+OfIoXWz04DQuXck3Sw=
+github.com/threefoldtech/zos4 v0.5.6-0.20241008102757-02d898c580c4 h1:JCExxpPL32G7evO/+gHwlZLfAX1+l9QN9t55tnPDCp0=
+github.com/threefoldtech/zos4 v0.5.6-0.20241008102757-02d898c580c4/go.mod h1:7KFtZaCcEFwQ1/cz/+hkYK616Ww04ISZgmMqLWHz6To=
 github.com/tklauser/go-sysconf v0.3.11 h1:89WgdJhk5SNwJfu+GKyYveZ4IaJ7xAkecBo+KdJV0CM=
 github.com/tklauser/go-sysconf v0.3.11/go.mod h1:GqXfhXY3kiPa0nAXPDIQIWzJbMCB7AmcWpGR8lSZfqI=
 github.com/tklauser/numcpus v0.6.0 h1:kebhY2Qt+3U6RNK7UqpYNA+tJ23IBEGKkB7JQBfDYms=

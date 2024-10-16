@@ -21,9 +21,16 @@ type nodeFilterCfg struct {
 	domain   bool
 	hasGPU   bool
 	rentedBy uint64
+	features []string
 }
 
 type nodeFilterOpts func(*nodeFilterCfg)
+
+func WithFeatures(features []string) nodeFilterOpts {
+	return func(p *nodeFilterCfg) {
+		p.features = features
+	}
+}
 
 func WithFreeSRU(sruGB uint64) nodeFilterOpts {
 	return func(p *nodeFilterCfg) {
@@ -89,9 +96,10 @@ func generateNodeFilter(opts ...nodeFilterOpts) types.NodeFilter {
 	}
 
 	nodeFilter := types.NodeFilter{
-		FarmIDs: []uint64{1}, // freefarm is used in tests
-		Status:  []string{"up"},
-		FreeSRU: convertGBToBytes(cfg.freeSRU + minRootfs),
+		FarmIDs:  []uint64{1}, // freefarm is used in tests
+		Status:   []string{"up"},
+		FreeSRU:  convertGBToBytes(cfg.freeSRU + minRootfs),
+		Features: cfg.features,
 	}
 
 	if cfg.freeHRU > 0 {

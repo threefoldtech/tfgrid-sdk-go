@@ -17,6 +17,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
@@ -173,10 +174,14 @@ func TestK8sDeployer(t *testing.T) {
 		}
 
 		wl := nodeWorkloads[nodeID]
-		testDl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, wl)
+		var zosWls []zosTypes.Workload
+		for _, w := range wl {
+			zosWls = append(zosWls, zosTypes.NewWorkloadFromZosWorkload(w))
+		}
+		testDl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, 0, zosWls)
 		testDl.Metadata = "{\"version\":3,\"type\":\"kubernetes\",\"name\":\"K8sForTesting\",\"projectName\":\"kubernetes/K8sForTesting\"}"
 
-		assert.Equal(t, dls, map[uint32]gridtypes.Deployment{
+		assert.Equal(t, dls, map[uint32]zosTypes.Deployment{
 			nodeID: testDl,
 		})
 	})
@@ -335,10 +340,10 @@ func ExampleK8sDeployer_Deploy() {
 		Name:        "network",
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zosTypes.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess: false,
 	}
 
@@ -409,10 +414,10 @@ func ExampleK8sDeployer_BatchDeploy() {
 		Name:        "network",
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zosTypes.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess: false,
 	}
 
