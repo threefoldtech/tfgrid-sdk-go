@@ -1,4 +1,4 @@
-// Package state for grid state
+// // Package state for grid state
 package state
 
 import (
@@ -13,6 +13,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/mocks"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -23,7 +24,7 @@ const (
 	invalid        = "invalid"
 )
 
-func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
+func SetupLoaderTests(t *testing.T, wls []zosTypes.Workload) *State {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -34,7 +35,7 @@ func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
 	state := NewState(ncPool, sub)
 	state.CurrentNodeDeployments = map[uint32]ContractIDs{1: []uint64{10}}
 
-	dl1 := workloads.NewGridDeployment(13, wls)
+	dl1 := workloads.NewGridDeployment(13, 0, wls)
 	dl1.ContractID = 10
 
 	ncPool.EXPECT().
@@ -44,7 +45,7 @@ func SetupLoaderTests(t *testing.T, wls []gridtypes.Workload) *State {
 	cl.EXPECT().
 		Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-			var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
+			var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
 			dl1.Metadata = "{\"type\":\"\",\"name\":\"testName\",\"projectName\":\"\"}"
 			*res = dl1
 			return nil
@@ -64,18 +65,18 @@ func TestLoadDiskFromGrid(t *testing.T) {
 		Description: "test des",
 	}
 
-	diskWl := gridtypes.Workload{
-		Name:        gridtypes.Name("test"),
+	diskWl := zosTypes.Workload{
+		Name:        "test",
 		Version:     0,
-		Type:        zos.ZMountType,
+		Type:        zosTypes.ZMountType,
 		Description: "test des",
-		Data: gridtypes.MustMarshal(zos.ZMount{
-			Size: 100 * gridtypes.Gigabyte,
+		Data: zosTypes.MustMarshal(zosTypes.ZMount{
+			Size: 100 * zosTypes.Gigabyte,
 		}),
 	}
 
 	t.Run("success", func(t *testing.T) {
-		state := SetupLoaderTests(t, []gridtypes.Workload{diskWl})
+		state := SetupLoaderTests(t, []zosTypes.Workload{diskWl})
 
 		got, err := state.LoadDiskFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
@@ -86,7 +87,7 @@ func TestLoadDiskFromGrid(t *testing.T) {
 		diskWlCp := diskWl
 		diskWlCp.Type = invalid
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{diskWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{diskWlCp})
 
 		_, err := state.LoadDiskFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -94,12 +95,12 @@ func TestLoadDiskFromGrid(t *testing.T) {
 
 	t.Run("wrong workload data", func(t *testing.T) {
 		diskWlCp := diskWl
-		diskWlCp.Type = zos.GatewayNameProxyType
-		diskWlCp.Data = gridtypes.MustMarshal(zos.GatewayNameProxy{
+		diskWlCp.Type = zosTypes.GatewayNameProxyType
+		diskWlCp.Data = zosTypes.MustMarshal(zos.GatewayNameProxy{
 			Name: "name",
 		})
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{diskWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{diskWlCp})
 
 		_, err := state.LoadDiskFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -107,11 +108,11 @@ func TestLoadDiskFromGrid(t *testing.T) {
 }
 
 func TestLoadGatewayFQDNFromGrid(t *testing.T) {
-	gatewayWl := gridtypes.Workload{
+	gatewayWl := zosTypes.Workload{
 		Version: 0,
-		Type:    zos.GatewayFQDNProxyType,
-		Name:    gridtypes.Name("test"),
-		Data: gridtypes.MustMarshal(zos.GatewayFQDNProxy{
+		Type:    zosTypes.GatewayFQDNProxyType,
+		Name:    "test",
+		Data: zosTypes.MustMarshal(zos.GatewayFQDNProxy{
 			GatewayBase: zos.GatewayBase{
 				TLSPassthrough: true,
 				Backends:       []zos.Backend{"http://1.1.1.1"},
@@ -130,7 +131,7 @@ func TestLoadGatewayFQDNFromGrid(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWl})
+		state := SetupLoaderTests(t, []zosTypes.Workload{gatewayWl})
 
 		got, err := state.LoadGatewayFQDNFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
@@ -141,7 +142,7 @@ func TestLoadGatewayFQDNFromGrid(t *testing.T) {
 		gatewayWlCp := gatewayWl
 		gatewayWlCp.Type = invalid
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{gatewayWlCp})
 
 		_, err := state.LoadGatewayFQDNFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -149,12 +150,12 @@ func TestLoadGatewayFQDNFromGrid(t *testing.T) {
 
 	t.Run("wrong workload data", func(t *testing.T) {
 		gatewayWlCp := gatewayWl
-		gatewayWlCp.Type = zos.GatewayNameProxyType
-		gatewayWlCp.Data = gridtypes.MustMarshal(zos.GatewayNameProxy{
+		gatewayWlCp.Type = zosTypes.GatewayNameProxyType
+		gatewayWlCp.Data = zosTypes.MustMarshal(zos.GatewayNameProxy{
 			Name: "name",
 		})
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{gatewayWlCp})
 
 		_, err := state.LoadGatewayFQDNFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -167,20 +168,20 @@ func TestLoadGatewayNameFromGrid(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	gatewayWl := gridtypes.Workload{
+	gatewayWl := zosTypes.Workload{
 		Version: 0,
-		Type:    zos.GatewayNameProxyType,
-		Name:    gridtypes.Name(deploymentName),
-		Data: gridtypes.MustMarshal(zos.GatewayNameProxy{
+		Type:    zosTypes.GatewayNameProxyType,
+		Name:    deploymentName,
+		Data: zosTypes.MustMarshal(zos.GatewayNameProxy{
 			GatewayBase: zos.GatewayBase{
 				TLSPassthrough: true,
 				Backends:       []zos.Backend{"http://1.1.1.1"},
 			},
 			Name: "test",
 		}),
-		Result: gridtypes.Result{
+		Result: zosTypes.Result{
 			Created: 1000,
-			State:   gridtypes.StateOk,
+			State:   zosTypes.StateOk,
 			Data:    res,
 		},
 	}
@@ -195,7 +196,7 @@ func TestLoadGatewayNameFromGrid(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWl})
+		state := SetupLoaderTests(t, []zosTypes.Workload{gatewayWl})
 
 		got, err := state.LoadGatewayNameFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
@@ -205,7 +206,7 @@ func TestLoadGatewayNameFromGrid(t *testing.T) {
 		gatewayWlCp := gatewayWl
 		gatewayWlCp.Type = invalid
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{gatewayWlCp})
 
 		_, err := state.LoadGatewayNameFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -213,12 +214,12 @@ func TestLoadGatewayNameFromGrid(t *testing.T) {
 
 	t.Run("wrong workload data", func(t *testing.T) {
 		gatewayWlCp := gatewayWl
-		gatewayWlCp.Type = zos.GatewayFQDNProxyType
-		gatewayWlCp.Data = gridtypes.MustMarshal(zos.GatewayFQDNProxy{
+		gatewayWlCp.Type = zosTypes.GatewayFQDNProxyType
+		gatewayWlCp.Data = zosTypes.MustMarshal(zos.GatewayFQDNProxy{
 			FQDN: "123",
 		})
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{gatewayWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{gatewayWlCp})
 
 		_, err := state.LoadGatewayNameFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -254,7 +255,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 
 	var Workers []workloads.K8sNode
 
-	ipRange, err := gridtypes.ParseIPNet("1.1.1.1/24")
+	ipRange, err := zosTypes.ParseIPNet("1.1.1.1/24")
 	assert.NoError(t, err)
 
 	cluster := workloads.K8sCluster{
@@ -267,44 +268,44 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		FlistChecksum:    flistCheckSum,
 		NodeDeploymentID: map[uint32]uint64{1: 10},
 		NodesIPRange: map[uint32]gridtypes.IPNet{
-			1: ipRange,
+			1: gridtypes.IPNet(ipRange),
 		},
 	}
 
-	k8sWorkload := gridtypes.Workload{
+	k8sWorkload := zosTypes.Workload{
 		Version: 0,
-		Name:    gridtypes.Name("test"),
-		Type:    zos.ZMachineType,
-		Data: gridtypes.MustMarshal(zos.ZMachine{
+		Name:    "test",
+		Type:    zosTypes.ZMachineType,
+		Data: zosTypes.MustMarshal(zosTypes.ZMachine{
 			FList: flist,
-			Network: zos.MachineNetwork{
-				Interfaces: []zos.MachineInterface{
+			Network: zosTypes.MachineNetwork{
+				Interfaces: []zosTypes.MachineInterface{
 					{
-						Network: gridtypes.Name("test"),
+						Network: "test",
 						IP:      net.ParseIP("1.1.1.1"),
 					},
 				},
 				Planetary: true,
 			},
 			Size: 100,
-			ComputeCapacity: zos.MachineCapacity{
+			ComputeCapacity: zosTypes.MachineCapacity{
 				CPU:    1,
-				Memory: 8 * gridtypes.Megabyte,
+				Memory: 8 * zosTypes.Megabyte,
 			},
-			Mounts:     []zos.MachineMount{},
+			Mounts:     []zosTypes.MachineMount{},
 			Entrypoint: "",
 			Env:        map[string]string{},
 			Corex:      false,
 		}),
-		Result: gridtypes.Result{
+		Result: zosTypes.Result{
 			Created: 5000,
-			State:   gridtypes.StateOk,
+			State:   zosTypes.StateOk,
 			Data:    res,
 		},
 	}
 
 	metadata, err := json.Marshal(workloads.NetworkMetaData{
-		Version: workloads.Version,
+		Version: int(workloads.Version3),
 		UserAccesses: []workloads.UserAccess{
 			{
 				Subnet:     "",
@@ -315,24 +316,24 @@ func TestLoadK8sFromGrid(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	networkWl := gridtypes.Workload{
+	networkWl := zosTypes.Workload{
 		Version: 0,
-		Name:    gridtypes.Name("test"),
-		Type:    zos.NetworkType,
-		Data: gridtypes.MustMarshal(zos.Network{
-			NetworkIPRange: gridtypes.MustParseIPNet(ipRange.String()),
+		Name:    "test",
+		Type:    zosTypes.NetworkType,
+		Data: zosTypes.MustMarshal(zosTypes.Network{
+			NetworkIPRange: zosTypes.MustParseIPNet(ipRange.String()),
 			Subnet:         ipRange,
 			WGPrivateKey:   "",
 			WGListenPort:   0,
-			Peers:          []zos.Peer{},
+			Peers:          []zosTypes.Peer{},
 		}),
 		Metadata:    string(metadata),
 		Description: "test description",
-		Result:      gridtypes.Result{},
+		Result:      zosTypes.Result{},
 	}
 
 	t.Run("success", func(t *testing.T) {
-		state := SetupLoaderTests(t, []gridtypes.Workload{networkWl, k8sWorkload})
+		state := SetupLoaderTests(t, []zosTypes.Workload{networkWl, k8sWorkload})
 
 		got, err := state.LoadK8sFromGrid(context.Background(), []uint32{1}, deploymentName)
 		assert.NoError(t, err)
@@ -343,7 +344,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 		k8sWorkloadCp := k8sWorkload
 		k8sWorkloadCp.Type = invalid
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{k8sWorkloadCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{k8sWorkloadCp})
 
 		_, err := state.LoadK8sFromGrid(context.Background(), []uint32{1}, deploymentName)
 		assert.Error(t, err)
@@ -351,12 +352,12 @@ func TestLoadK8sFromGrid(t *testing.T) {
 
 	t.Run("wrong workload data", func(t *testing.T) {
 		k8sWorkloadCp := k8sWorkload
-		k8sWorkloadCp.Type = zos.ZMachineType
-		k8sWorkloadCp.Data = gridtypes.MustMarshal(zos.ZMachine{
+		k8sWorkloadCp.Type = zosTypes.ZMachineType
+		k8sWorkloadCp.Data = zosTypes.MustMarshal(zosTypes.ZMachine{
 			FList: "",
 		})
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{k8sWorkloadCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{k8sWorkloadCp})
 
 		_, err := state.LoadK8sFromGrid(context.Background(), []uint32{1}, deploymentName)
 		assert.Error(t, err)
@@ -364,7 +365,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 }
 
 func TestLoadNetworkFromGrid(t *testing.T) {
-	ipRange, err := gridtypes.ParseIPNet("1.1.1.1/24")
+	ipRange, err := zosTypes.ParseIPNet("1.1.1.1/24")
 	assert.NoError(t, err)
 
 	znet := workloads.ZNet{
@@ -376,12 +377,12 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 		NodeDeploymentID: map[uint32]uint64{1: 10},
 		WGPort:           map[uint32]int{},
 		Keys:             map[uint32]wgtypes.Key{},
-		NodesIPRange:     map[uint32]gridtypes.IPNet{1: ipRange},
+		NodesIPRange:     map[uint32]zosTypes.IPNet{1: ipRange},
 		MyceliumKeys:     make(map[uint32][]byte),
 	}
 
 	metadata, err := json.Marshal(workloads.NetworkMetaData{
-		Version: workloads.Version,
+		Version: int(workloads.Version3),
 		UserAccesses: []workloads.UserAccess{
 			{
 				Subnet:     "",
@@ -392,24 +393,24 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	networkWl := gridtypes.Workload{
+	networkWl := zosTypes.Workload{
 		Version: 0,
-		Name:    gridtypes.Name("test"),
-		Type:    zos.NetworkType,
-		Data: gridtypes.MustMarshal(zos.Network{
-			NetworkIPRange: gridtypes.MustParseIPNet(znet.IPRange.String()),
+		Name:    "test",
+		Type:    zosTypes.NetworkType,
+		Data: zosTypes.MustMarshal(zosTypes.Network{
+			NetworkIPRange: zosTypes.MustParseIPNet(znet.IPRange.String()),
 			Subnet:         ipRange,
 			WGPrivateKey:   "",
 			WGListenPort:   0,
-			Peers:          []zos.Peer{},
+			Peers:          []zosTypes.Peer{},
 		}),
 		Metadata:    string(metadata),
 		Description: "test description",
-		Result:      gridtypes.Result{},
+		Result:      zosTypes.Result{},
 	}
 
 	t.Run("success", func(t *testing.T) {
-		state := SetupLoaderTests(t, []gridtypes.Workload{networkWl})
+		state := SetupLoaderTests(t, []zosTypes.Workload{networkWl})
 
 		got, err := state.LoadNetworkFromGrid(context.Background(), "test")
 		assert.NoError(t, err)
@@ -420,7 +421,7 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 		networkWlCp := networkWl
 		networkWlCp.Type = invalid
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{networkWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{networkWlCp})
 
 		_, err := state.LoadNetworkFromGrid(context.Background(), "test")
 		assert.Error(t, err)
@@ -428,14 +429,76 @@ func TestLoadNetworkFromGrid(t *testing.T) {
 
 	t.Run("wrong workload data", func(t *testing.T) {
 		networkWlCp := networkWl
-		networkWlCp.Type = zos.GatewayNameProxyType
-		networkWlCp.Data = gridtypes.MustMarshal(zos.Network{
+		networkWlCp.Type = zosTypes.GatewayNameProxyType
+		networkWlCp.Data = zosTypes.MustMarshal(zosTypes.Network{
 			WGPrivateKey: "key",
 		})
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{networkWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{networkWlCp})
 
 		_, err := state.LoadNetworkFromGrid(context.Background(), "test")
+		assert.Error(t, err)
+	})
+}
+
+func TestLoadNetworkLightFromGrid(t *testing.T) {
+	ipRange, err := zosTypes.ParseIPNet("1.1.1.1/24")
+	assert.NoError(t, err)
+
+	znet := workloads.ZNetLight{
+		Name:             "test",
+		Description:      "test description",
+		Nodes:            []uint32{1},
+		NodeDeploymentID: map[uint32]uint64{1: 10},
+		NodesIPRange:     map[uint32]zosTypes.IPNet{1: ipRange},
+		MyceliumKeys:     map[uint32][]byte{1: zosTypes.Bytes{}},
+	}
+
+	metadata, err := json.Marshal(workloads.NetworkMetaData{
+		Version: int(workloads.Version3),
+	})
+	assert.NoError(t, err)
+
+	networkWl := zosTypes.Workload{
+		Version: 0,
+		Name:    "test",
+		Type:    zosTypes.NetworkLightType,
+		Data: zosTypes.MustMarshal(zosTypes.NetworkLight{
+			Subnet: ipRange,
+		}),
+		Metadata:    string(metadata),
+		Description: "test description",
+		Result:      zosTypes.Result{},
+	}
+
+	t.Run("success", func(t *testing.T) {
+		state := SetupLoaderTests(t, []zosTypes.Workload{networkWl})
+
+		got, err := state.LoadNetworkLightFromGrid(context.Background(), "test")
+		assert.NoError(t, err)
+		assert.Equal(t, znet, got)
+	})
+
+	t.Run("invalid type", func(t *testing.T) {
+		networkWlCp := networkWl
+		networkWlCp.Type = invalid
+
+		state := SetupLoaderTests(t, []zosTypes.Workload{networkWlCp})
+
+		_, err := state.LoadNetworkLightFromGrid(context.Background(), "test")
+		assert.Error(t, err)
+	})
+
+	t.Run("wrong workload data", func(t *testing.T) {
+		networkWlCp := networkWl
+		networkWlCp.Type = zosTypes.GatewayNameProxyType
+		networkWlCp.Data = zosTypes.MustMarshal(zosTypes.Network{
+			WGPrivateKey: "key",
+		})
+
+		state := SetupLoaderTests(t, []zosTypes.Workload{networkWlCp})
+
+		_, err := state.LoadNetworkLightFromGrid(context.Background(), "test")
 		assert.Error(t, err)
 	})
 }
@@ -450,47 +513,47 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 	k, err := hex.DecodeString("4d778ba3216e4da4231540c92a55f06157cabba802f9b68fb0f78375d2e825af")
 	assert.NoError(t, err)
 
-	qsfsWl := gridtypes.Workload{
+	qsfsWl := zosTypes.Workload{
 		Version:     0,
-		Name:        gridtypes.Name("test"),
-		Type:        zos.QuantumSafeFSType,
+		Name:        "test",
+		Type:        zosTypes.QuantumSafeFSType,
 		Description: "test des",
-		Data: gridtypes.MustMarshal(zos.QuantumSafeFS{
-			Cache: 2048 * gridtypes.Megabyte,
-			Config: zos.QuantumSafeFSConfig{
+		Data: zosTypes.MustMarshal(zosTypes.QuantumSafeFS{
+			Cache: 2048 * zosTypes.Megabyte,
+			Config: zosTypes.QuantumSafeFSConfig{
 				MinimalShards:     10,
 				ExpectedShards:    20,
 				RedundantGroups:   2,
 				RedundantNodes:    5,
 				MaxZDBDataDirSize: 10,
-				Encryption: zos.Encryption{
-					Algorithm: zos.EncryptionAlgorithm("AES"),
-					Key:       zos.EncryptionKey(k),
+				Encryption: zosTypes.Encryption{
+					Algorithm: zosTypes.EncryptionAlgorithm("AES"),
+					Key:       zosTypes.EncryptionKey(k),
 				},
-				Meta: zos.QuantumSafeMeta{
+				Meta: zosTypes.QuantumSafeMeta{
 					Type: "zdb",
-					Config: zos.QuantumSafeConfig{
+					Config: zosTypes.QuantumSafeConfig{
 						Prefix: "test",
-						Encryption: zos.Encryption{
-							Algorithm: zos.EncryptionAlgorithm("AES"),
-							Key:       zos.EncryptionKey(k),
+						Encryption: zosTypes.Encryption{
+							Algorithm: zosTypes.EncryptionAlgorithm("AES"),
+							Key:       zosTypes.EncryptionKey(k),
 						},
-						Backends: []zos.ZdbBackend{
+						Backends: []zosTypes.ZdbBackend{
 							{Address: "1.1.1.1", Namespace: "test ns", Password: "password"},
 						},
 					},
 				},
-				Groups: []zos.ZdbGroup{{Backends: []zos.ZdbBackend{
+				Groups: []zosTypes.ZdbGroup{{Backends: []zosTypes.ZdbBackend{
 					{Address: "2.2.2.2", Namespace: "test ns2", Password: "password2"},
 				}}},
-				Compression: zos.QuantumCompression{
+				Compression: zosTypes.QuantumCompression{
 					Algorithm: "snappy",
 				},
 			},
 		}),
-		Result: gridtypes.Result{
+		Result: zosTypes.Result{
 			Created: 10000,
-			State:   gridtypes.StateOk,
+			State:   zosTypes.StateOk,
 			Data:    res,
 		},
 	}
@@ -523,7 +586,7 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		state := SetupLoaderTests(t, []gridtypes.Workload{qsfsWl})
+		state := SetupLoaderTests(t, []zosTypes.Workload{qsfsWl})
 
 		got, err := state.LoadQSFSFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
@@ -533,7 +596,7 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 		qsfsWlCp := qsfsWl
 		qsfsWlCp.Type = invalid
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{qsfsWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{qsfsWlCp})
 
 		_, err := state.LoadQSFSFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -541,12 +604,12 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 
 	t.Run("wrong workload data", func(t *testing.T) {
 		qsfsWlCp := qsfsWl
-		qsfsWlCp.Type = zos.GatewayNameProxyType
-		qsfsWlCp.Data = gridtypes.MustMarshal(zos.GatewayNameProxy{
+		qsfsWlCp.Type = zosTypes.GatewayNameProxyType
+		qsfsWlCp.Data = zosTypes.MustMarshal(zos.GatewayNameProxy{
 			Name: "name",
 		})
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{qsfsWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{qsfsWlCp})
 
 		_, err := state.LoadQSFSFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -556,7 +619,7 @@ func TestLoadQSFSFromGrid(t *testing.T) {
 		qsfsWlCp := qsfsWl
 		qsfsWlCp.Result.Data = nil
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{qsfsWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{qsfsWlCp})
 
 		_, err := state.LoadQSFSFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -598,53 +661,53 @@ func TestLoadVMFromGrid(t *testing.T) {
 		NetworkName: "test_network",
 	}
 
-	pubWl := gridtypes.Workload{
+	pubWl := zosTypes.Workload{
 		Version: 0,
-		Name:    gridtypes.Name("testip"),
-		Type:    zos.PublicIPType,
-		Data: gridtypes.MustMarshal(zos.PublicIP{
+		Name:    "testip",
+		Type:    zosTypes.PublicIPType,
+		Data: zosTypes.MustMarshal(zosTypes.PublicIP{
 			V4: true,
 		}),
 	}
 
-	vmWl := gridtypes.Workload{
+	vmWl := zosTypes.Workload{
 		Version: 0,
-		Name:    gridtypes.Name("test"),
-		Type:    zos.ZMachineType,
-		Data: gridtypes.MustMarshal(zos.ZMachine{
+		Name:    "test",
+		Type:    zosTypes.ZMachineType,
+		Data: zosTypes.MustMarshal(zosTypes.ZMachine{
 			FList: "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-			Network: zos.MachineNetwork{
-				Interfaces: []zos.MachineInterface{
+			Network: zosTypes.MachineNetwork{
+				Interfaces: []zosTypes.MachineInterface{
 					{
-						Network: gridtypes.Name("test_network"),
+						Network: "test_network",
 						IP:      net.ParseIP("1.1.1.1"),
 					},
 				},
 				PublicIP:  pubWl.Name,
 				Planetary: true,
 			},
-			ComputeCapacity: zos.MachineCapacity{
+			ComputeCapacity: zosTypes.MachineCapacity{
 				CPU:    uint8(2),
-				Memory: 2048 * gridtypes.Megabyte,
+				Memory: 2048 * zosTypes.Megabyte,
 			},
-			Size:       4096 * gridtypes.Megabyte,
+			Size:       4096 * zosTypes.Megabyte,
 			Entrypoint: "entrypoint",
 			Corex:      false,
-			Mounts: []zos.MachineMount{
-				{Name: gridtypes.Name("disk"), Mountpoint: "mount"},
+			Mounts: []zosTypes.MachineMount{
+				{Name: "disk", Mountpoint: "mount"},
 			},
 			Env: map[string]string{"var1": "val1"},
 		}),
 		Description: "test des",
-		Result: gridtypes.Result{
+		Result: zosTypes.Result{
 			Created: 5000,
-			State:   gridtypes.StateOk,
+			State:   zosTypes.StateOk,
 			Data:    vmRes,
 		},
 	}
 
 	t.Run("success", func(t *testing.T) {
-		state := SetupLoaderTests(t, []gridtypes.Workload{vmWl, pubWl})
+		state := SetupLoaderTests(t, []zosTypes.Workload{vmWl, pubWl})
 
 		got, err := state.LoadVMFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
 		assert.NoError(t, err)
@@ -655,7 +718,7 @@ func TestLoadVMFromGrid(t *testing.T) {
 		vmWlCp := vmWl
 		vmWlCp.Type = invalid
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{vmWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{vmWlCp})
 
 		_, err := state.LoadVMFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
 		assert.Error(t, err)
@@ -663,12 +726,12 @@ func TestLoadVMFromGrid(t *testing.T) {
 
 	t.Run("wrong workload data", func(t *testing.T) {
 		vmWlCp := vmWl
-		vmWlCp.Type = zos.GatewayFQDNProxyType
-		vmWlCp.Data = gridtypes.MustMarshal(zos.GatewayFQDNProxy{
+		vmWlCp.Type = zosTypes.GatewayFQDNProxyType
+		vmWlCp.Data = zosTypes.MustMarshal(zos.GatewayFQDNProxy{
 			FQDN: "123",
 		})
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{vmWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{vmWlCp})
 
 		_, err := state.LoadVMFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
 		assert.Error(t, err)
@@ -678,9 +741,115 @@ func TestLoadVMFromGrid(t *testing.T) {
 		vmWlCp := vmWl
 		vmWlCp.Result.Data = nil
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{vmWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{vmWlCp})
 
 		_, err := state.LoadVMFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
+		assert.Error(t, err)
+	})
+}
+
+func TestLoadVMLightFromGrid(t *testing.T) {
+	vmRes, err := json.Marshal(zos.ZMachineResult{
+		ID:          "5",
+		IP:          "5.5.5.5",
+		PlanetaryIP: "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
+	})
+	assert.NoError(t, err)
+
+	var zlogs []workloads.Zlog
+
+	vm := workloads.VMLight{
+		Name:          "test",
+		NodeID:        1,
+		Flist:         "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		FlistChecksum: "f94b5407f2e8635bd1b6b3dac7fef2d9",
+		Corex:         false,
+		IP:            "1.1.1.1",
+		Description:   "test des",
+		CPU:           2,
+		MemoryMB:      2048,
+		RootfsSizeMB:  4096,
+		Entrypoint:    "entrypoint",
+		Mounts: []workloads.Mount{
+			{Name: "disk", MountPoint: "mount"},
+		},
+		Zlogs:       zlogs,
+		EnvVars:     map[string]string{"var1": "val1"},
+		NetworkName: "test_network",
+	}
+
+	vmWl := zosTypes.Workload{
+		Version: 0,
+		Name:    "test",
+		Type:    zosTypes.ZMachineLightType,
+		Data: zosTypes.MustMarshal(zosTypes.ZMachineLight{
+			FList: "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+			Network: zosTypes.MachineNetworkLight{
+				Interfaces: []zosTypes.MachineInterface{
+					{
+						Network: "test_network",
+						IP:      net.ParseIP("1.1.1.1"),
+					},
+				},
+			},
+			ComputeCapacity: zosTypes.MachineCapacity{
+				CPU:    uint8(2),
+				Memory: 2048 * zosTypes.Megabyte,
+			},
+			Size:       4096 * zosTypes.Megabyte,
+			Entrypoint: "entrypoint",
+			Corex:      false,
+			Mounts: []zosTypes.MachineMount{
+				{Name: "disk", Mountpoint: "mount"},
+			},
+			Env: map[string]string{"var1": "val1"},
+		}),
+		Description: "test des",
+		Result: zosTypes.Result{
+			Created: 5000,
+			State:   zosTypes.StateOk,
+			Data:    vmRes,
+		},
+	}
+
+	t.Run("success", func(t *testing.T) {
+		state := SetupLoaderTests(t, []zosTypes.Workload{vmWl})
+
+		got, err := state.LoadVMLightFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
+		assert.NoError(t, err)
+		assert.Equal(t, vm, got)
+	})
+
+	t.Run("invalid type", func(t *testing.T) {
+		vmWlCp := vmWl
+		vmWlCp.Type = invalid
+
+		state := SetupLoaderTests(t, []zosTypes.Workload{vmWlCp})
+
+		_, err := state.LoadVMLightFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
+		assert.Error(t, err)
+	})
+
+	t.Run("wrong workload data", func(t *testing.T) {
+		vmWlCp := vmWl
+		vmWlCp.Type = zosTypes.GatewayFQDNProxyType
+		vmWlCp.Data = zosTypes.MustMarshal(zos.GatewayFQDNProxy{
+			FQDN: "123",
+		})
+
+		state := SetupLoaderTests(t, []zosTypes.Workload{vmWlCp})
+
+		_, err := state.LoadVMLightFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid result data", func(t *testing.T) {
+		vmWlCp := vmWl
+		vmWlCp.Result.Data = nil
+
+		state := SetupLoaderTests(t, []zosTypes.Workload{vmWlCp})
+
+		_, err := state.LoadVMLightFromGrid(context.Background(), vm.NodeID, "test", deploymentName)
 		assert.Error(t, err)
 	})
 }
@@ -696,19 +865,19 @@ func TestLoadZdbFromGrid(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	zdbWl := gridtypes.Workload{
-		Name:        gridtypes.Name("test"),
-		Type:        zos.ZDBType,
+	zdbWl := zosTypes.Workload{
+		Name:        "test",
+		Type:        zosTypes.ZDBType,
 		Description: "test des",
 		Version:     0,
-		Result: gridtypes.Result{
+		Result: zosTypes.Result{
 			Created: 1000,
-			State:   gridtypes.StateOk,
+			State:   zosTypes.StateOk,
 			Data:    res,
 		},
-		Data: gridtypes.MustMarshal(zos.ZDB{
-			Size:     100 * gridtypes.Gigabyte,
-			Mode:     zos.ZDBMode("user"),
+		Data: zosTypes.MustMarshal(zosTypes.ZDB{
+			Size:     100 * zosTypes.Gigabyte,
+			Mode:     "user",
 			Password: "password",
 			Public:   true,
 		}),
@@ -729,7 +898,7 @@ func TestLoadZdbFromGrid(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		state := SetupLoaderTests(t, []gridtypes.Workload{zdbWl})
+		state := SetupLoaderTests(t, []zosTypes.Workload{zdbWl})
 
 		got, err := state.LoadZdbFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.NoError(t, err)
@@ -740,7 +909,7 @@ func TestLoadZdbFromGrid(t *testing.T) {
 		zdbWlCp := zdbWl
 		zdbWlCp.Type = invalid
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{zdbWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{zdbWlCp})
 
 		_, err := state.LoadZdbFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -748,12 +917,12 @@ func TestLoadZdbFromGrid(t *testing.T) {
 
 	t.Run("wrong workload data", func(t *testing.T) {
 		zdbWlCp := zdbWl
-		zdbWlCp.Type = zos.GatewayNameProxyType
-		zdbWlCp.Data = gridtypes.MustMarshal(zos.GatewayNameProxy{
+		zdbWlCp.Type = zosTypes.GatewayNameProxyType
+		zdbWlCp.Data = zosTypes.MustMarshal(zos.GatewayNameProxy{
 			Name: "name",
 		})
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{zdbWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{zdbWlCp})
 
 		_, err := state.LoadZdbFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)
@@ -763,7 +932,7 @@ func TestLoadZdbFromGrid(t *testing.T) {
 		zdbWlCp := zdbWl
 		zdbWlCp.Result.Data = nil
 
-		state := SetupLoaderTests(t, []gridtypes.Workload{zdbWlCp})
+		state := SetupLoaderTests(t, []zosTypes.Workload{zdbWlCp})
 
 		_, err := state.LoadZdbFromGrid(context.Background(), 1, "test", deploymentName)
 		assert.Error(t, err)

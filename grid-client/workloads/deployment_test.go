@@ -6,17 +6,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 func TestNewDeployment(t *testing.T) {
-	var zosDeployment gridtypes.Deployment
+	var zosDeployment zos.Deployment
 	deployment := NewDeployment(
-		"test", 1, "", nil, Network.Name,
+		"test", 1, "", nil, n.Name,
 		[]Disk{DiskWorkload},
 		[]ZDB{ZDBWorkload},
 		[]VM{VMWorkload},
+		[]VMLight{},
 		[]QSFS{QSFSWorkload},
 		[]Volume{volumeWorkload},
 	)
@@ -30,13 +30,13 @@ func TestNewDeployment(t *testing.T) {
 		zosDeployment, err = deployment.ZosDeployment(1)
 		assert.NoError(t, err)
 
-		workloads := []gridtypes.Workload{DiskWorkload.ZosWorkload(), ZDBWorkload.ZosWorkload()}
+		workloads := []zos.Workload{DiskWorkload.ZosWorkload(), ZDBWorkload.ZosWorkload()}
 		workloads = append(workloads, VMWorkload.ZosWorkload()...)
 		QSFS, err := QSFSWorkload.ZosWorkload()
 		assert.NoError(t, err)
 		workloads = append(workloads, QSFS, volumeWorkload.ZosWorkload())
 
-		newZosDeployment := NewGridDeployment(1, workloads)
+		newZosDeployment := NewGridDeployment(1, 0, workloads)
 		assert.Equal(t, newZosDeployment, zosDeployment)
 	})
 
@@ -56,7 +56,7 @@ func TestNewDeployment(t *testing.T) {
 
 	t.Run("test deployment match", func(t *testing.T) {
 		dlCp := deployment
-		deployment.Match([]Disk{}, []QSFS{}, []ZDB{}, []VM{}, []Volume{})
+		deployment.Match([]Disk{}, []QSFS{}, []ZDB{}, []VM{}, []VMLight{}, []Volume{})
 		assert.Equal(t, deployment, dlCp)
 	})
 

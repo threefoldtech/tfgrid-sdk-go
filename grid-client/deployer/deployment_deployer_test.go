@@ -18,6 +18,7 @@ import (
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
@@ -493,8 +494,8 @@ func TestDeploymentDeployerSync(t *testing.T) {
 		dl.NodeDeploymentID = make(map[uint32]uint64)
 
 		net := constructTestNetwork()
-		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zos.Peer{}, "", nil)
-		networkDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{workload})
+		workload := net.ZosWorkload(net.NodesIPRange[nodeID], "", uint16(0), []zosTypes.Peer{}, "", nil)
+		networkDl := workloads.NewGridDeployment(twinID, 0, []zosTypes.Workload{workload})
 
 		d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
 		d.tfPluginClient.State.Networks = state.NetworkState{
@@ -510,7 +511,7 @@ func TestDeploymentDeployerSync(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), twinID, "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
+				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
 				*res = networkDl
 				return nil
 			}).AnyTimes()
@@ -534,104 +535,90 @@ func TestDeploymentDeployerSync(t *testing.T) {
 		err = json.NewEncoder(log.Writer()).Encode(gridDl.Workloads)
 		assert.NoError(t, err)
 
-		for _, zlog := range gridDl.ByType(zos.ZLogsType) {
-			*zlog.Workload = zlog.WithResults(gridtypes.Result{
-				State: gridtypes.StateOk,
-			})
+		for i, w := range gridDl.Workloads {
+			if w.Type == zos.ZLogsType.String() || w.Type == zos.ZMountType.String() {
+				gridDl.Workloads[i] = w.WithResults(zosTypes.Result{
+					State: zosTypes.StateOk,
+				})
+			}
+
+			if w.Type == zos.ZMachineType.String() {
+				if w.Name == dl.Vms[0].Name {
+					gridDl.Workloads[i] = w.WithResults(zosTypes.Result{
+						State: zosTypes.StateOk,
+						Data: mustMarshal(t, zos.ZMachineResult{
+							IP:          dl.Vms[0].IP,
+							PlanetaryIP: dl.Vms[0].PlanetaryIP,
+						}),
+					})
+				}
+
+				if w.Name == dl.Vms[1].Name {
+					gridDl.Workloads[i] = w.WithResults(zosTypes.Result{
+						State: zosTypes.StateOk,
+						Data: mustMarshal(t, zos.ZMachineResult{
+							IP:          dl.Vms[1].IP,
+							PlanetaryIP: dl.Vms[1].PlanetaryIP,
+						}),
+					})
+				}
+			}
+
+			if w.Type == zos.QuantumSafeFSType.String() {
+				gridDl.Workloads[i] = w.WithResults(zosTypes.Result{
+					State: zosTypes.StateOk,
+					Data: mustMarshal(t, zos.QuatumSafeFSResult{
+						MetricsEndpoint: dl.QSFS[0].MetricsEndpoint,
+					}),
+				})
+			}
+
+			if w.Type == zos.ZDBType.String() {
+				if w.Name == dl.Zdbs[0].Name {
+					gridDl.Workloads[i] = w.WithResults(zosTypes.Result{
+						State: zosTypes.StateOk,
+						Data: mustMarshal(t, zos.ZDBResult{
+							Namespace: dl.Zdbs[0].Namespace,
+							IPs:       dl.Zdbs[0].IPs,
+							Port:      uint(dl.Zdbs[0].Port),
+						}),
+					})
+				}
+
+				if w.Name == dl.Zdbs[1].Name {
+					gridDl.Workloads[i] = w.WithResults(zosTypes.Result{
+						State: zosTypes.StateOk,
+						Data: mustMarshal(t, zos.ZDBResult{
+							Namespace: dl.Zdbs[1].Namespace,
+							IPs:       dl.Zdbs[1].IPs,
+							Port:      uint(dl.Zdbs[1].Port),
+						}),
+					})
+				}
+			}
+
+			if w.Type == zos.PublicIPType.String() {
+				if w.Name == dl.Vms[0].Name+"ip" {
+					gridDl.Workloads[i] = w.WithResults(zosTypes.Result{
+						State: zosTypes.StateOk,
+						Data: mustMarshal(t, zos.PublicIPResult{
+							IP:   gridtypes.MustParseIPNet(dl.Vms[0].ComputedIP),
+							IPv6: gridtypes.MustParseIPNet(dl.Vms[0].ComputedIP6),
+						}),
+					})
+				}
+
+				if w.Name == dl.Vms[1].Name+"ip" {
+					gridDl.Workloads[i] = w.WithResults(zosTypes.Result{
+						State: zosTypes.StateOk,
+						Data: mustMarshal(t, zos.PublicIPResult{
+							IP:   gridtypes.MustParseIPNet(dl.Vms[1].ComputedIP),
+							IPv6: gridtypes.MustParseIPNet(dl.Vms[1].ComputedIP6),
+						}),
+					})
+				}
+			}
 		}
-
-		for _, disk := range gridDl.ByType(zos.ZMountType) {
-			*disk.Workload = disk.WithResults(gridtypes.Result{
-				State: gridtypes.StateOk,
-			})
-		}
-
-		wl, err := gridDl.Get(gridtypes.Name(dl.Vms[0].Name))
-		assert.NoError(t, err)
-
-		*wl.Workload = wl.WithResults(gridtypes.Result{
-			State: gridtypes.StateOk,
-			Data: mustMarshal(t, zos.ZMachineResult{
-				IP:          dl.Vms[0].IP,
-				PlanetaryIP: dl.Vms[0].PlanetaryIP,
-			}),
-		})
-
-		dataI, err := wl.WorkloadData()
-		assert.NoError(t, err)
-
-		data, ok := dataI.(*zos.ZMachine)
-		assert.True(t, ok)
-		pubIP, err := gridDl.Get(data.Network.PublicIP)
-		assert.NoError(t, err)
-
-		*pubIP.Workload = pubIP.WithResults(gridtypes.Result{
-			State: gridtypes.StateOk,
-			Data: mustMarshal(t, zos.PublicIPResult{
-				IP:   gridtypes.MustParseIPNet(dl.Vms[0].ComputedIP),
-				IPv6: gridtypes.MustParseIPNet(dl.Vms[0].ComputedIP6),
-			}),
-		})
-
-		wl, err = gridDl.Get(gridtypes.Name(dl.Vms[1].Name))
-		assert.NoError(t, err)
-
-		dataI, err = wl.WorkloadData()
-		assert.NoError(t, err)
-
-		data, ok = dataI.(*zos.ZMachine)
-		assert.True(t, ok)
-		pubIP, err = gridDl.Get(data.Network.PublicIP)
-		assert.NoError(t, err)
-
-		*pubIP.Workload = pubIP.WithResults(gridtypes.Result{
-			State: gridtypes.StateOk,
-			Data: mustMarshal(t, zos.PublicIPResult{
-				IPv6: gridtypes.MustParseIPNet(dl.Vms[1].ComputedIP6),
-			}),
-		})
-
-		*wl.Workload = wl.WithResults(gridtypes.Result{
-			State: gridtypes.StateOk,
-			Data: mustMarshal(t, zos.ZMachineResult{
-				IP:          dl.Vms[1].IP,
-				PlanetaryIP: dl.Vms[1].PlanetaryIP,
-			}),
-		})
-
-		wl, err = gridDl.Get(gridtypes.Name(dl.QSFS[0].Name))
-		assert.NoError(t, err)
-
-		*wl.Workload = wl.WithResults(gridtypes.Result{
-			State: gridtypes.StateOk,
-			Data: mustMarshal(t, zos.QuatumSafeFSResult{
-				MetricsEndpoint: dl.QSFS[0].MetricsEndpoint,
-			}),
-		})
-
-		wl, err = gridDl.Get(gridtypes.Name(dl.Zdbs[0].Name))
-		assert.NoError(t, err)
-
-		*wl.Workload = wl.WithResults(gridtypes.Result{
-			State: gridtypes.StateOk,
-			Data: mustMarshal(t, zos.ZDBResult{
-				Namespace: dl.Zdbs[0].Namespace,
-				IPs:       dl.Zdbs[0].IPs,
-				Port:      uint(dl.Zdbs[0].Port),
-			}),
-		})
-
-		wl, err = gridDl.Get(gridtypes.Name(dl.Zdbs[1].Name))
-		assert.NoError(t, err)
-
-		*wl.Workload = wl.WithResults(gridtypes.Result{
-			State: gridtypes.StateOk,
-			Data: mustMarshal(t, zos.ZDBResult{
-				Namespace: dl.Zdbs[1].Namespace,
-				IPs:       dl.Zdbs[1].IPs,
-				Port:      uint(dl.Zdbs[1].Port),
-			}),
-		})
 
 		for i := 0; 2*i < len(gridDl.Workloads); i++ {
 			gridDl.Workloads[i], gridDl.Workloads[len(gridDl.Workloads)-1-i] = gridDl.Workloads[len(gridDl.Workloads)-1-i], gridDl.Workloads[i]
@@ -647,7 +634,7 @@ func TestDeploymentDeployerSync(t *testing.T) {
 
 		deployer.EXPECT().
 			GetDeployments(gomock.Any(), map[uint32]uint64{}).
-			Return(map[uint32]gridtypes.Deployment{nodeID: gridDl}, nil)
+			Return(map[uint32]zosTypes.Deployment{nodeID: gridDl}, nil)
 		// manager.EXPECT().Commit(context.Background()).AnyTimes()
 		assert.NoError(t, d.Sync(context.Background(), &dl))
 		assert.Equal(t, dl.Vms, cp.Vms)
@@ -662,7 +649,7 @@ func TestDeploymentDeployerSync(t *testing.T) {
 		dl.ContractID = contractID
 		sub.EXPECT().IsValidContract(dl.ContractID).Return(false, nil).AnyTimes()
 
-		err := d.syncContract(context.Background(), &dl)
+		err := d.syncContract(&dl)
 		assert.NoError(t, err)
 		assert.Equal(t, dl.ContractID, uint64(0))
 		dl.ContractID = contractID
@@ -670,7 +657,7 @@ func TestDeploymentDeployerSync(t *testing.T) {
 
 		deployer.EXPECT().
 			GetDeployments(gomock.Any(), map[uint32]uint64{nodeID: contractID}).
-			Return(map[uint32]gridtypes.Deployment{}, nil)
+			Return(map[uint32]zosTypes.Deployment{}, nil)
 
 		assert.NoError(t, d.Sync(context.Background(), &dl))
 
@@ -697,10 +684,10 @@ func ExampleDeploymentDeployer_Deploy() {
 		Name:        "network",
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zosTypes.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess: false,
 	}
 
@@ -722,7 +709,7 @@ func ExampleDeploymentDeployer_Deploy() {
 		return
 	}
 
-	dl := workloads.NewDeployment("vmdeployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm}, nil, nil)
+	dl := workloads.NewDeployment("vmdeployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	if err != nil {
 		fmt.Println(err)
@@ -747,10 +734,10 @@ func ExampleDeploymentDeployer_BatchDeploy() {
 		Name:        "network",
 		Description: "network for testing",
 		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zosTypes.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess: false,
 	}
 
@@ -783,8 +770,8 @@ func ExampleDeploymentDeployer_BatchDeploy() {
 		return
 	}
 
-	d1 := workloads.NewDeployment("vm1deployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm1}, nil, nil)
-	d2 := workloads.NewDeployment("vm2deployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm2}, nil, nil)
+	d1 := workloads.NewDeployment("vm1deployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm1}, nil, nil, nil)
+	d2 := workloads.NewDeployment("vm2deployment", nodeID, "", nil, n.Name, nil, nil, []workloads.VM{vm2}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&d1, &d2})
 	if err != nil {
 		fmt.Println(err)

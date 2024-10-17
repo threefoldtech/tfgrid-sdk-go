@@ -81,6 +81,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/zos/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
@@ -160,8 +161,19 @@ func NewNodeClient(nodeTwin uint32, bus rmb.Client, timeout time.Duration) *Node
 	}
 }
 
+// SystemGetNodeFeatures gets the supported nodes features.
+func (n *NodeClient) SystemGetNodeFeatures(ctx context.Context) (feat []string, err error) {
+	ctx, cancel := context.WithTimeout(ctx, n.timeout)
+	defer cancel()
+
+	const cmd = "zos.system.node_features_get"
+
+	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &feat)
+	return
+}
+
 // DeploymentDeploy sends the deployment to the node for processing.
-func (n *NodeClient) DeploymentDeploy(ctx context.Context, dl gridtypes.Deployment) error {
+func (n *NodeClient) DeploymentDeploy(ctx context.Context, dl zosTypes.Deployment) error {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
@@ -171,7 +183,7 @@ func (n *NodeClient) DeploymentDeploy(ctx context.Context, dl gridtypes.Deployme
 
 // DeploymentUpdate update the given deployment. deployment must be a valid update for
 // a deployment that has been already created via DeploymentDeploy
-func (n *NodeClient) DeploymentUpdate(ctx context.Context, dl gridtypes.Deployment) error {
+func (n *NodeClient) DeploymentUpdate(ctx context.Context, dl zosTypes.Deployment) error {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
@@ -180,7 +192,7 @@ func (n *NodeClient) DeploymentUpdate(ctx context.Context, dl gridtypes.Deployme
 }
 
 // DeploymentGet gets a deployment via contract ID
-func (n *NodeClient) DeploymentGet(ctx context.Context, contractID uint64) (dl gridtypes.Deployment, err error) {
+func (n *NodeClient) DeploymentGet(ctx context.Context, contractID uint64) (dl zosTypes.Deployment, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
@@ -211,7 +223,7 @@ func (n *NodeClient) DeploymentDelete(ctx context.Context, contractID uint64) er
 }
 
 // DeploymentList gets all deployments for a twin
-func (n *NodeClient) DeploymentList(ctx context.Context) (dls []gridtypes.Deployment, err error) {
+func (n *NodeClient) DeploymentList(ctx context.Context) (dls []zosTypes.Deployment, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 
@@ -300,7 +312,7 @@ func (n *NodeClient) NetworkListInterfaces(ctx context.Context) (map[string][]ne
 }
 
 // DeploymentChanges return changes of a deployment via contract ID
-func (n *NodeClient) DeploymentChanges(ctx context.Context, contractID uint64) (changes []gridtypes.Workload, err error) {
+func (n *NodeClient) DeploymentChanges(ctx context.Context, contractID uint64) (changes []zosTypes.Workload, err error) {
 	ctx, cancel := context.WithTimeout(ctx, n.timeout)
 	defer cancel()
 

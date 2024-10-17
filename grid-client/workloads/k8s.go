@@ -131,7 +131,7 @@ func (k *K8sCluster) GenerateMetadata() (string, error) {
 	}
 
 	deploymentData := DeploymentData{
-		Version:     Version,
+		Version:     int(Version3),
 		Name:        k.Master.Name,
 		Type:        "kubernetes",
 		ProjectName: k.SolutionType,
@@ -253,7 +253,7 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 	publicIPName := ""
 	if k.PublicIP || k.PublicIP6 {
 		publicIPName = fmt.Sprintf("%sip", k.Name)
-		K8sWorkloads = append(K8sWorkloads, ConstructPublicIPWorkload(publicIPName, k.PublicIP, k.PublicIP6))
+		K8sWorkloads = append(K8sWorkloads, ConstructK8sPublicIPWorkload(publicIPName, k.PublicIP, k.PublicIP6))
 	}
 	envVars := map[string]string{
 		"SSH_KEY":           cluster.SSHKey,
@@ -305,4 +305,17 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 	K8sWorkloads = append(K8sWorkloads, workload)
 
 	return K8sWorkloads
+}
+
+// ConstructPublicIPWorkload constructs a public IP workload
+func ConstructK8sPublicIPWorkload(workloadName string, ipv4 bool, ipv6 bool) gridtypes.Workload {
+	return gridtypes.Workload{
+		Version: 0,
+		Name:    gridtypes.Name(workloadName),
+		Type:    zos.PublicIPType,
+		Data: gridtypes.MustMarshal(zos.PublicIP{
+			V4: ipv4,
+			V6: ipv6,
+		}),
+	}
 }

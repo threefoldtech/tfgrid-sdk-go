@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
@@ -17,31 +17,36 @@ type Zlog struct {
 }
 
 // ZosWorkload generates a zlog workload
-func (zlog *Zlog) ZosWorkload() gridtypes.Workload {
+func (zlog *Zlog) ZosWorkload() zosTypes.Workload {
 	url := []byte(zlog.Output)
 	urlHash := md5.Sum(url)
 
-	return gridtypes.Workload{
+	return zosTypes.Workload{
 		Version: 0,
-		Name:    gridtypes.Name(hex.EncodeToString(urlHash[:])),
-		Type:    zos.ZLogsType,
-		Data: gridtypes.MustMarshal(zos.ZLogs{
-			ZMachine: gridtypes.Name(zlog.Zmachine),
+		Name:    hex.EncodeToString(urlHash[:]),
+		Type:    zosTypes.ZLogsType,
+		Data: zosTypes.MustMarshal(zosTypes.ZLogs{
+			ZMachine: zlog.Zmachine,
 			Output:   zlog.Output,
 		}),
 	}
 }
 
-func zlogs(dl *gridtypes.Deployment, name string) []Zlog {
+func zlogs(dl *zosTypes.Deployment, name string) []Zlog {
 	var res []Zlog
-	for _, wl := range dl.ByType(zos.ZLogsType) {
+	for _, wl := range dl.ByType(zosTypes.ZLogsType) {
 		if !wl.Result.State.IsOkay() {
 			continue
 		}
 
-		dataI, err := wl.WorkloadData()
+		var dataI interface{}
+
+		dataI, err := wl.Workload3().WorkloadData()
 		if err != nil {
-			continue
+			dataI, err = wl.Workload4().WorkloadData()
+			if err != nil {
+				continue
+			}
 		}
 
 		data, ok := dataI.(*zos.ZLogs)
