@@ -1,0 +1,32 @@
+version: '1.0.0'
+
+services:
+  server:
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - webdata
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+
+  database:
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
+    ip_types:
+      - ipv4
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - dbdata
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+
+volumes:
+  webdata:
+    mountpoint: '/data'
+    size: 10GB
+  dbdata:
+    mountpoint: '/var/lib/postgresql/data'
+    size: 10GB

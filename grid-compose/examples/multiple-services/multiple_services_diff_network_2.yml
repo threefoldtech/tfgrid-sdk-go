@@ -1,0 +1,74 @@
+version: '1.0.0'
+
+networks:
+  net1:
+    name: 'miaminet'
+    range:
+      ip:
+        type: ipv4
+        ip: 10.20.0.0
+      mask:
+        type: cidr
+        mask: 16/32
+      wg: true
+  net2:
+    name: 'cartoonnetwork'
+    range:
+      ip:
+        type: ipv4
+        ip: 10.20.0.0
+      mask:
+        type: cidr
+        mask: 16/32
+
+services:
+  server:
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - webdata
+    node_id: 144
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+    network: net2
+  server2:
+    node_id: 11
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - webdata
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+    network: net1
+  frontend:
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - dbdata
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+    network: net1
+  database:
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
+    entrypoint: '/sbin/zinit init'
+    volumes:
+      - dbdata
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+    network: net2
+
+volumes:
+  webdata:
+    mountpoint: '/data'
+    size: 10GB
+  dbdata:
+    mountpoint: '/var/lib/postgresql/data'
+    size: 10GB
