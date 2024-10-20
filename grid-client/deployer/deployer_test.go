@@ -16,6 +16,7 @@ import (
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -58,22 +59,22 @@ type gatewayWorkloadGenerator interface {
 	ZosWorkload() gridtypes.Workload
 }
 
-func newDeploymentWithGateway(identity substrate.Identity, twinID uint32, version uint32, gw gatewayWorkloadGenerator) (gridtypes.Deployment, error) {
-	dl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{})
+func newDeploymentWithGateway(identity substrate.Identity, twinID uint32, version uint32, gw gatewayWorkloadGenerator) (zosTypes.Deployment, error) {
+	dl := workloads.NewGridDeployment(twinID, 0, []zosTypes.Workload{})
 	dl.Version = version
 
-	dl.Workloads = append(dl.Workloads, gw.ZosWorkload())
+	dl.Workloads = append(dl.Workloads, zosTypes.NewWorkloadFromZosWorkload(gw.ZosWorkload()))
 	dl.Workloads[0].Version = version
 
 	err := dl.Sign(twinID, identity)
 	if err != nil {
-		return gridtypes.Deployment{}, err
+		return zosTypes.Deployment{}, err
 	}
 
 	return dl, nil
 }
 
-func deploymentWithNameGateway(identity substrate.Identity, twinID uint32, TLSPassthrough bool, version uint32, backendURL string) (gridtypes.Deployment, error) {
+func deploymentWithNameGateway(identity substrate.Identity, twinID uint32, TLSPassthrough bool, version uint32, backendURL string) (zosTypes.Deployment, error) {
 	gw := workloads.GatewayNameProxy{
 		Name:           "name",
 		TLSPassthrough: TLSPassthrough,
@@ -83,7 +84,7 @@ func deploymentWithNameGateway(identity substrate.Identity, twinID uint32, TLSPa
 	return newDeploymentWithGateway(identity, twinID, version, &gw)
 }
 
-func deploymentWithFQDN(identity substrate.Identity, twinID uint32, version uint32) (gridtypes.Deployment, error) {
+func deploymentWithFQDN(identity substrate.Identity, twinID uint32, version uint32) (zosTypes.Deployment, error) {
 	gw := workloads.GatewayFQDNProxy{
 		Name:     "fqdn",
 		FQDN:     "a.b.com",
@@ -93,7 +94,7 @@ func deploymentWithFQDN(identity substrate.Identity, twinID uint32, version uint
 	return newDeploymentWithGateway(identity, twinID, version, &gw)
 }
 
-func hash(dl *gridtypes.Deployment) (string, error) {
+func hash(dl *zosTypes.Deployment) (string, error) {
 	hash, err := dl.ChallengeHash()
 	if err != nil {
 		return "", err
@@ -152,7 +153,7 @@ func TestDeployer(t *testing.T) {
 		dl2, err := deploymentWithFQDN(identity, twinID, 0)
 		require.NoError(t, err)
 
-		newDls := map[uint32]gridtypes.Deployment{
+		newDls := map[uint32]zosTypes.Deployment{
 			10: dl1,
 			20: dl2,
 		}
@@ -201,17 +202,17 @@ func TestDeployer(t *testing.T) {
 			Return(client.NewNodeClient(23, cl, tfPluginClient.RMBTimeout), nil)
 
 		cl.EXPECT().
-			Call(gomock.Any(), uint32(13), "zos.deployment.deploy", dl1, gomock.Any()).
+			Call(gomock.Any(), uint32(13), "zos.deployment.deploy", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				dl1.Workloads[0].Result.State = gridtypes.StateOk
+				dl1.Workloads[0].Result.State = zosTypes.StateOk
 				dl1.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
 				return nil
 			})
 
 		cl.EXPECT().
-			Call(gomock.Any(), uint32(23), "zos.deployment.deploy", dl2, gomock.Any()).
+			Call(gomock.Any(), uint32(23), "zos.deployment.deploy", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				dl2.Workloads[0].Result.State = gridtypes.StateOk
+				dl2.Workloads[0].Result.State = zosTypes.StateOk
 				dl2.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayFQDNResult{})
 				return nil
 			})
@@ -219,7 +220,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
 				*res = dl1.Workloads
 				return nil
 			})
@@ -227,7 +228,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(23), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
 				*res = dl2.Workloads
 				return nil
 			})
@@ -246,7 +247,7 @@ func TestDeployer(t *testing.T) {
 		assert.NoError(t, err)
 		versionedDl.SignatureRequirement = newVersionlessDl.SignatureRequirement
 
-		newDls := map[uint32]gridtypes.Deployment{
+		newDls := map[uint32]zosTypes.Deployment{
 			10: newVersionlessDl,
 		}
 
@@ -273,7 +274,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
+				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
 				*res = oldDl
 				return nil
 			}).AnyTimes()
@@ -290,9 +291,9 @@ func TestDeployer(t *testing.T) {
 			).Return(uint64(100), nil)
 
 		cl.EXPECT().
-			Call(gomock.Any(), uint32(13), "zos.deployment.update", versionedDl, gomock.Any()).
+			Call(gomock.Any(), uint32(13), "zos.deployment.update", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				versionedDl.Workloads[0].Result.State = gridtypes.StateOk
+				versionedDl.Workloads[0].Result.State = zosTypes.StateOk
 				versionedDl.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
 				return nil
 			})
@@ -300,7 +301,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
 				*res = versionedDl.Workloads
 				return nil
 			}).AnyTimes()
@@ -347,8 +348,8 @@ func TestDeployer(t *testing.T) {
 		dl6, err := deploymentWithNameGateway(identity, twinID, true, 0, backendURLWithTLSPassthrough)
 		assert.NoError(t, err)
 
-		dl2.Workloads = append(dl2.Workloads, g.ZosWorkload())
-		dl3.Workloads = append(dl3.Workloads, g.ZosWorkload())
+		dl2.Workloads = append(dl2.Workloads, zosTypes.NewWorkloadFromZosWorkload(g.ZosWorkload()))
+		dl3.Workloads = append(dl3.Workloads, zosTypes.NewWorkloadFromZosWorkload(g.ZosWorkload()))
 		assert.NoError(t, dl2.Sign(twinID, identity))
 		assert.NoError(t, dl3.Sign(twinID, identity))
 
@@ -367,7 +368,7 @@ func TestDeployer(t *testing.T) {
 			20: 200,
 			40: 400,
 		}
-		newDls := map[uint32]gridtypes.Deployment{
+		newDls := map[uint32]zosTypes.Deployment{
 			20: dl3,
 			30: dl4,
 			40: dl6,
@@ -427,7 +428,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
 				*res = dl1.Workloads
 				return nil
 			}).AnyTimes()
@@ -435,7 +436,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(23), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
 				*res = dl2.Workloads
 				return nil
 			}).AnyTimes()
@@ -443,7 +444,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(33), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
 				*res = dl4.Workloads
 				return nil
 			}).AnyTimes()
@@ -451,7 +452,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(43), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]gridtypes.Workload = result.(*[]gridtypes.Workload)
+				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
 				*res = dl5.Workloads
 				return nil
 			}).AnyTimes()
@@ -459,7 +460,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
+				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
 				*res = dl1
 				return nil
 			}).AnyTimes()
@@ -467,7 +468,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(23), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
+				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
 				*res = dl2
 				return nil
 			}).AnyTimes()
@@ -475,7 +476,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(33), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
+				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
 				*res = dl4
 				return nil
 			}).AnyTimes()
@@ -483,7 +484,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(43), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *gridtypes.Deployment = result.(*gridtypes.Deployment)
+				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
 				*res = dl5
 				return nil
 			}).AnyTimes()
@@ -494,9 +495,9 @@ func TestDeployer(t *testing.T) {
 				dl2.Workloads = dl3.Workloads
 				dl2.Version = 1
 				dl2.Workloads[0].Version = 1
-				dl2.Workloads[0].Result.State = gridtypes.StateOk
+				dl2.Workloads[0].Result.State = zosTypes.StateOk
 				dl2.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
-				dl2.Workloads[1].Result.State = gridtypes.StateOk
+				dl2.Workloads[1].Result.State = zosTypes.StateOk
 				dl2.Workloads[1].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
 				return nil
 			})
@@ -504,7 +505,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(33), "zos.deployment.deploy", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				dl4.Workloads[0].Result.State = gridtypes.StateOk
+				dl4.Workloads[0].Result.State = zosTypes.StateOk
 				dl4.Workloads[0].Result.Data, _ = json.Marshal(zos.GatewayProxyResult{})
 				return nil
 			})

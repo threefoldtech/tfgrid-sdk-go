@@ -4,7 +4,7 @@ package state
 import (
 	"sync"
 
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // NetworkState is a struct of networks names and their networks and mutex to protect the state
@@ -38,7 +38,7 @@ func (nm *NetworkState) GetNetwork(networkName string) Network {
 }
 
 // UpdateNetworkSubnets updates a network subnets given its name
-func (nm *NetworkState) UpdateNetworkSubnets(networkName string, ipRange map[uint32]gridtypes.IPNet) {
+func (nm *NetworkState) UpdateNetworkSubnets(networkName string, ipRange map[uint32]zos.IPNet) {
 	network := nm.GetNetwork(networkName)
 	network.Subnets = map[uint32]string{}
 	for nodeID, subnet := range ipRange {

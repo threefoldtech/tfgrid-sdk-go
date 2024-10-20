@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
 )
 
@@ -31,10 +31,15 @@ type ZDB struct {
 }
 
 // NewZDBFromWorkload generates a new zdb from a workload
-func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
-	dataI, err := wl.WorkloadData()
+func NewZDBFromWorkload(wl *zosTypes.Workload) (ZDB, error) {
+	var dataI interface{}
+
+	dataI, err := wl.Workload3().WorkloadData()
 	if err != nil {
-		return ZDB{}, errors.Wrap(err, "failed to get workload data")
+		dataI, err = wl.Workload4().WorkloadData()
+		if err != nil {
+			return ZDB{}, errors.Wrap(err, "failed to get workload data")
+		}
 	}
 
 	data, ok := dataI.(*zos.ZDB)
@@ -42,18 +47,18 @@ func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 		return ZDB{}, errors.Errorf("could not create zdb workload from data %v", dataI)
 	}
 
-	var result zos.ZDBResult
+	var result zosTypes.ZDBResult
 
 	if err := json.Unmarshal(wl.Result.Data, &result); err != nil {
 		return ZDB{}, errors.Wrap(err, "failed to get zdb result")
 	}
 
 	return ZDB{
-		Name:        wl.Name.String(),
+		Name:        wl.Name,
 		Description: wl.Description,
 		Password:    data.Password,
 		Public:      data.Public,
-		SizeGB:      uint64(data.Size / gridtypes.Gigabyte),
+		SizeGB:      uint64(data.Size) / zosTypes.Gigabyte,
 		Mode:        data.Mode.String(),
 		IPs:         result.IPs,
 		Port:        uint32(result.Port),
@@ -62,15 +67,15 @@ func NewZDBFromWorkload(wl *gridtypes.Workload) (ZDB, error) {
 }
 
 // ZosWorkload generates a workload from a zdb
-func (z *ZDB) ZosWorkload() gridtypes.Workload {
-	return gridtypes.Workload{
-		Name:        gridtypes.Name(z.Name),
-		Type:        zos.ZDBType,
+func (z *ZDB) ZosWorkload() zosTypes.Workload {
+	return zosTypes.Workload{
+		Name:        z.Name,
+		Type:        zosTypes.ZDBType,
 		Description: z.Description,
 		Version:     0,
-		Data: gridtypes.MustMarshal(zos.ZDB{
-			Size:     gridtypes.Unit(z.SizeGB) * gridtypes.Gigabyte,
-			Mode:     zos.ZDBMode(z.Mode),
+		Data: zosTypes.MustMarshal(zosTypes.ZDB{
+			Size:     z.SizeGB * zosTypes.Gigabyte,
+			Mode:     z.Mode,
 			Password: z.Password,
 			Public:   z.Public,
 		}),

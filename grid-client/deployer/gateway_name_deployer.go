@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // GatewayNameDeployer for deploying a GatewayName
@@ -42,12 +42,12 @@ func (d *GatewayNameDeployer) Validate(ctx context.Context, gw *workloads.Gatewa
 }
 
 // GenerateVersionlessDeployments generates deployments for gateway name deployer without versions
-func (d *GatewayNameDeployer) GenerateVersionlessDeployments(ctx context.Context, gw *workloads.GatewayNameProxy) (map[uint32]gridtypes.Deployment, error) {
-	deployments := make(map[uint32]gridtypes.Deployment)
+func (d *GatewayNameDeployer) GenerateVersionlessDeployments(ctx context.Context, gw *workloads.GatewayNameProxy) (map[uint32]zosTypes.Deployment, error) {
+	deployments := make(map[uint32]zosTypes.Deployment)
 	var err error
 
-	dl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, []gridtypes.Workload{})
-	dl.Workloads = append(dl.Workloads, gw.ZosWorkload())
+	dl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, 0, []zosTypes.Workload{})
+	dl.Workloads = append(dl.Workloads, zosTypes.NewWorkloadFromZosWorkload(gw.ZosWorkload()))
 
 	dl.Metadata, err = gw.GenerateMetadata()
 	if err != nil {
@@ -104,7 +104,7 @@ func (d *GatewayNameDeployer) Deploy(ctx context.Context, gw *workloads.GatewayN
 
 // BatchDeploy deploys multiple deployments using the deployer
 func (d *GatewayNameDeployer) BatchDeploy(ctx context.Context, gws []*workloads.GatewayNameProxy) error {
-	newDeployments := make(map[uint32][]gridtypes.Deployment)
+	newDeployments := make(map[uint32][]zosTypes.Deployment)
 	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
 
 	for _, gw := range gws {
@@ -132,7 +132,7 @@ func (d *GatewayNameDeployer) BatchDeploy(ctx context.Context, gws []*workloads.
 			newDeploymentsSolutionProvider[nodeID] = nil
 
 			if _, ok := newDeployments[nodeID]; !ok {
-				newDeployments[nodeID] = []gridtypes.Deployment{dl}
+				newDeployments[nodeID] = []zosTypes.Deployment{dl}
 				continue
 			}
 			newDeployments[nodeID] = append(newDeployments[nodeID], dl)
@@ -144,7 +144,7 @@ func (d *GatewayNameDeployer) BatchDeploy(ctx context.Context, gws []*workloads.
 	// update state
 	// error is not returned immediately before updating state because of untracked failed deployments
 	for _, gw := range gws {
-		if err := d.updateStateFromDeployments(ctx, gw, newDls); err != nil {
+		if err := d.updateStateFromDeployments(gw, newDls); err != nil {
 			return errors.Wrapf(err, "failed to update gateway fqdn '%s' state", gw.Name)
 		}
 	}
@@ -174,7 +174,7 @@ func (d *GatewayNameDeployer) Cancel(ctx context.Context, gw *workloads.GatewayN
 	return nil
 }
 
-func (d *GatewayNameDeployer) updateStateFromDeployments(ctx context.Context, gw *workloads.GatewayNameProxy, newDls map[uint32][]gridtypes.Deployment) error {
+func (d *GatewayNameDeployer) updateStateFromDeployments(gw *workloads.GatewayNameProxy, newDls map[uint32][]zosTypes.Deployment) error {
 	gw.NodeDeploymentID = map[uint32]uint64{}
 
 	for _, newDl := range newDls[gw.NodeID] {
@@ -241,7 +241,7 @@ func (d *GatewayNameDeployer) Sync(ctx context.Context, gw *workloads.GatewayNam
 		return errors.Wrap(err, "could not get deployment objects")
 	}
 	dl := dls[gw.NodeID]
-	wl, _ := dl.Get(gridtypes.Name(gw.Name))
+	wl, _ := dl.Get(gw.Name)
 
 	gwWorkload := workloads.GatewayNameProxy{}
 	gw.Backends = gwWorkload.Backends
@@ -252,7 +252,7 @@ func (d *GatewayNameDeployer) Sync(ctx context.Context, gw *workloads.GatewayNam
 
 	// if the node acknowledges it, we are golden
 	if wl != nil && wl.Result.State.IsOkay() {
-		gwWorkload, err := workloads.NewGatewayNameProxyFromZosWorkload(*wl.Workload)
+		gwWorkload, err := workloads.NewGatewayNameProxyFromZosWorkload(*wl.Workload.Workload3())
 		gw.Backends = gwWorkload.Backends
 		gw.Name = gwWorkload.Name
 		gw.FQDN = gwWorkload.FQDN

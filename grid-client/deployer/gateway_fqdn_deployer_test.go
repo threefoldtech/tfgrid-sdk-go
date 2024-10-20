@@ -17,6 +17,7 @@ import (
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
@@ -128,11 +129,11 @@ func TestFQDNDeployer(t *testing.T) {
 		dls, err := d.GenerateVersionlessDeployments(context.Background(), &gw)
 		assert.NoError(t, err)
 
-		testDl := workloads.NewGridDeployment(twinID, []gridtypes.Workload{
+		testDl := workloads.NewGridDeployment(twinID, 0, []zosTypes.Workload{
 			{
 				Version: 0,
-				Type:    zos.GatewayFQDNProxyType,
-				Name:    gridtypes.Name(gw.Name),
+				Type:    zosTypes.GatewayFQDNProxyType,
+				Name:    gw.Name,
 				Data: gridtypes.MustMarshal(zos.GatewayFQDNProxy{
 					GatewayBase: zos.GatewayBase{
 						TLSPassthrough: gw.TLSPassthrough,
@@ -144,7 +145,7 @@ func TestFQDNDeployer(t *testing.T) {
 		})
 		testDl.Metadata = "{\"version\":3,\"type\":\"Gateway Fqdn\",\"name\":\"name\",\"projectName\":\"name\"}"
 
-		assert.Equal(t, dls, map[uint32]gridtypes.Deployment{
+		assert.Equal(t, dls, map[uint32]zosTypes.Deployment{
 			nodeID: testDl,
 		})
 	})
@@ -319,7 +320,7 @@ func TestFQDNDeployer(t *testing.T) {
 		assert.NoError(t, err)
 
 		dl := dls[nodeID]
-		dl.Workloads[0].Result.State = gridtypes.StateOk
+		dl.Workloads[0].Result.State = zosTypes.StateOk
 		dl.Workloads[0].Result.Data, err = json.Marshal(zos.GatewayFQDNResult{})
 		assert.NoError(t, err)
 
@@ -329,8 +330,8 @@ func TestFQDNDeployer(t *testing.T) {
 
 		deployer.EXPECT().
 			GetDeployments(gomock.Any(), map[uint32]uint64{nodeID: contractID}).
-			DoAndReturn(func(ctx context.Context, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
-				return map[uint32]gridtypes.Deployment{nodeID: dl}, nil
+			DoAndReturn(func(ctx context.Context, _ map[uint32]uint64) (map[uint32]zosTypes.Deployment, error) {
+				return map[uint32]zosTypes.Deployment{nodeID: dl}, nil
 			})
 
 		gw.FQDN = "123"
@@ -357,8 +358,8 @@ func TestFQDNDeployer(t *testing.T) {
 
 		deployer.EXPECT().
 			GetDeployments(gomock.Any(), map[uint32]uint64{nodeID: contractID}).
-			DoAndReturn(func(ctx context.Context, _ map[uint32]uint64) (map[uint32]gridtypes.Deployment, error) {
-				return map[uint32]gridtypes.Deployment{nodeID: dl}, nil
+			DoAndReturn(func(ctx context.Context, _ map[uint32]uint64) (map[uint32]zosTypes.Deployment, error) {
+				return map[uint32]zosTypes.Deployment{nodeID: dl}, nil
 			})
 
 		gw.FQDN = "123"

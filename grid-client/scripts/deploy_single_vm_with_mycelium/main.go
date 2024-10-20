@@ -10,8 +10,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 func main() {
@@ -35,10 +35,10 @@ func main() {
 		Name:        "test_net",
 		Description: "network to deploy vm with mycelium",
 		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zos.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 1, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess:  false,
 		MyceliumKeys: map[uint32][]byte{nodeID: myceliumKey},
 	}
@@ -69,7 +69,7 @@ func main() {
 		},
 	}
 
-	dl := workloads.NewDeployment("vm_with_mycelium", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil)
+	dl := workloads.NewDeployment("vm_with_mycelium", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil, nil)
 	err = tf.DeploymentDeployer.Deploy(context.Background(), &dl)
 	if err != nil {
 		log.Fatal().Err(err).Send()

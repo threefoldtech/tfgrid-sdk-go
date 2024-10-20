@@ -18,7 +18,6 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
 )
 
 const (
@@ -189,7 +188,7 @@ func parseVMsGroup(vms []Vms, nodeGroup string, nodesIDs []int, sshKeys map[stri
 }
 
 func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodesIDs []int, groupDeployments *groupDeploymentsInfo) {
-	var networksToBeCanceled []*workloads.ZNet
+	var networksToBeCanceled []workloads.Network
 	for idx, network := range groupDeployments.networkDeployments {
 		if groupDeployments.vmDeployments[idx].ContractID == 0 {
 			networksToBeCanceled = append(networksToBeCanceled, network)
@@ -202,18 +201,18 @@ func updateFailedDeployments(ctx context.Context, tfPluginClient deployer.TFPlug
 	}
 
 	for idx, deployment := range groupDeployments.vmDeployments {
-		if deployment.ContractID == 0 || len(groupDeployments.networkDeployments[idx].NodeDeploymentID) == 0 {
+		if deployment.ContractID == 0 || len(groupDeployments.networkDeployments[idx].GetNodeDeploymentID()) == 0 {
 			nodeID := uint32(nodesIDs[idx%len(nodesIDs)])
 			groupDeployments.vmDeployments[idx].NodeID = nodeID
-			groupDeployments.networkDeployments[idx].Nodes = []uint32{nodeID}
+			groupDeployments.networkDeployments[idx].SetNodes([]uint32{nodeID})
 
-			myceliumKeys := groupDeployments.networkDeployments[idx].MyceliumKeys
+			myceliumKeys := groupDeployments.networkDeployments[idx].GetMyceliumKeys()
 			if len(myceliumKeys) != 0 {
 				myceliumKey, err := workloads.RandomMyceliumKey()
 				if err != nil {
 					log.Debug().Err(err).Send()
 				}
-				groupDeployments.networkDeployments[idx].MyceliumKeys = map[uint32][]byte{nodeID: myceliumKey}
+				groupDeployments.networkDeployments[idx].SetMyceliumKeys(map[uint32][]byte{nodeID: myceliumKey})
 			}
 		}
 	}
@@ -241,7 +240,7 @@ func massDeploy(ctx context.Context, tfPluginClient deployer.TFPluginClient, dep
 
 func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) groupDeploymentsInfo {
 	var vmDeployments []*workloads.Deployment
-	var networkDeployments []*workloads.ZNet
+	var networkDeployments []workloads.Network
 	var nodesIDsIdx int
 
 	// here we loop over all groups of vms within the same node group, and for every group
@@ -304,12 +303,12 @@ func parseVolumes(name string, volumes []Volume) (volWorkloads []workloads.Volum
 	return
 }
 
-func getNotDeployedDeployments(groupDeployments *groupDeploymentsInfo) ([]*workloads.ZNet, []*workloads.Deployment) {
+func getNotDeployedDeployments(groupDeployments *groupDeploymentsInfo) ([]workloads.Network, []*workloads.Deployment) {
 	var failedVmDeployments []*workloads.Deployment
-	var failedNetworkDeployments []*workloads.ZNet
+	var failedNetworkDeployments []workloads.Network
 
 	for i := range groupDeployments.networkDeployments {
-		if len(groupDeployments.networkDeployments[i].NodeDeploymentID) == 0 {
+		if len(groupDeployments.networkDeployments[i].GetNodeDeploymentID()) == 0 {
 			failedNetworkDeployments = append(failedNetworkDeployments, groupDeployments.networkDeployments[i])
 		}
 
@@ -380,10 +379,10 @@ func buildNetworkDeployment(vm Vms, nodeID uint32, name, solutionType string) wo
 		Name:        fmt.Sprintf("%s_network", name),
 		Description: "network for mass deployment",
 		Nodes:       []uint32{nodeID},
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zos.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 20, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
+		}},
 		AddWGAccess:  vm.WireGuard,
 		MyceliumKeys: myceliumKeys,
 		SolutionType: solutionType,
