@@ -36,24 +36,15 @@ func TestVMDeployment(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	require.NoError(t, err)
 
-	vm := workloads.VM{
-		Name:         "vm",
-		NodeID:       nodeID,
-		NetworkName:  network.Name,
-		IP:           "10.20.2.5",
-		CPU:          minCPU,
-		MemoryMB:     minMemory * 1024,
-		RootfsSizeMB: minRootfs * 1024,
-		PublicIP:     true,
-		Planetary:    true,
-		Flist:        "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:   "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-	}
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
+	require.NoError(t, err)
+
+	vm.IP = "10.20.2.5"
+	vm.RootfsSizeMB = minRootfs * 1024
+	vm.PublicIP = true
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
@@ -63,7 +54,7 @@ func TestVMDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
@@ -88,11 +79,11 @@ func TestVMDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, output, "root")
 
-	planetaryIP := v.PlanetaryIP
-	require.NotEmpty(t, planetaryIP)
-	require.True(t, CheckConnection(planetaryIP, "22"))
+	myCeliumIP := v.MyceliumIP
+	require.NotEmpty(t, myCeliumIP)
+	require.True(t, CheckConnection(myCeliumIP, "22"))
 
-	output, err = RemoteRun("root", planetaryIP, "ls /", privateKey)
+	output, err = RemoteRun("root", myCeliumIP, "ls /", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, "root")
 }

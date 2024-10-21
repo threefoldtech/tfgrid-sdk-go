@@ -22,6 +22,7 @@ const (
 )
 
 func TestQSFSDeployment(t *testing.T) {
+	t.Skipf("related issue: https://github.com/threefoldtech/zos/issues/2403")
 	tfPluginClient, err := setup()
 	if err != nil {
 		t.Skipf("plugin creation failed: %v", err)
@@ -54,7 +55,8 @@ func TestQSFSDeployment(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	require.NoError(t, err)
 
 	dataZDBs := []workloads.ZDB{}
 	metaZDBs := []workloads.ZDB{}
@@ -82,7 +84,7 @@ func TestQSFSDeployment(t *testing.T) {
 		metaZDBs = append(metaZDBs, zdb)
 	}
 
-	dl1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, append(dataZDBs, metaZDBs...), nil, nil, nil)
+	dl1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, "", nil, append(dataZDBs, metaZDBs...), nil, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl1)
 	require.NoError(t, err)
 
@@ -113,7 +115,7 @@ func TestQSFSDeployment(t *testing.T) {
 	metaBackends := []workloads.Backend{}
 	for i := 0; i < DataZDBNum; i++ {
 		dataBackends = append(dataBackends, workloads.Backend{
-			Address:   "[" + resDataZDBs[i].IPs[1] + "]" + ":" + fmt.Sprint(resDataZDBs[i].Port),
+			Address:   "[" + resDataZDBs[i].IPs[2] + "]" + ":" + fmt.Sprint(resDataZDBs[i].Port),
 			Namespace: resDataZDBs[i].Namespace,
 			Password:  resDataZDBs[i].Password,
 		})
@@ -121,7 +123,7 @@ func TestQSFSDeployment(t *testing.T) {
 
 	for i := 0; i < MetaZDBNum; i++ {
 		metaBackends = append(metaBackends, workloads.Backend{
-			Address:   "[" + resMetaZDBs[i].IPs[1] + "]" + ":" + fmt.Sprint(resMetaZDBs[i].Port),
+			Address:   "[" + resMetaZDBs[i].IPs[2] + "]" + ":" + fmt.Sprint(resMetaZDBs[i].Port),
 			Namespace: resMetaZDBs[i].Namespace,
 			Password:  resMetaZDBs[i].Password,
 		})
@@ -149,21 +151,11 @@ func TestQSFSDeployment(t *testing.T) {
 		},
 	}
 
-	vm := workloads.VM{
-		Name:        "vm",
-		NodeID:      nodeID,
-		NetworkName: network.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Planetary:   true,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-		Mounts: []workloads.Mount{
-			{Name: qsfs.Name, MountPoint: "/qsfs"},
-		},
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
+	require.NoError(t, err)
+
+	vm.Mounts = []workloads.Mount{
+		{Name: qsfs.Name, MountPoint: "/qsfs"},
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
@@ -174,7 +166,7 @@ func TestQSFSDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, append(dataZDBs, metaZDBs...), []workloads.VM{vm}, []workloads.QSFS{qsfs}, nil)
+	dl2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, append(dataZDBs, metaZDBs...), []workloads.VM{vm}, nil, []workloads.QSFS{qsfs}, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl2)
 	require.NoError(t, err)
 
@@ -194,8 +186,8 @@ func TestQSFSDeployment(t *testing.T) {
 	metrics := resQSFS.MetricsEndpoint
 	require.NotEmpty(t, metrics)
 
-	planetaryIP := resVM.PlanetaryIP
-	require.NotEmpty(t, planetaryIP)
+	myceliimIP := resVM.MyceliumIP
+	require.NotEmpty(t, myceliimIP)
 
 	// get metrics
 	cmd := exec.Command("curl", metrics)
@@ -204,7 +196,7 @@ func TestQSFSDeployment(t *testing.T) {
 	require.Contains(t, string(output), "fs_syscalls{syscall=\"create\"} 0")
 
 	// try write to a file in mounted disk
-	_, err = RemoteRun("root", planetaryIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
+	_, err = RemoteRun("root", myceliimIP, "cd /qsfs && echo hamadatext >> hamadafile", privateKey)
 	require.NoError(t, err)
 
 	time.Sleep(5 * time.Second)

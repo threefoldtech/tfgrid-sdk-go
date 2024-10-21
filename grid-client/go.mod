@@ -17,6 +17,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.18
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.15.18
 	github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee
+	github.com/threefoldtech/zos4 v0.5.6-0.20241008102757-02d898c580c4
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.27.0
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa

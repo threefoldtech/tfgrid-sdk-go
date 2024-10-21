@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // QSFSWorkload for testing
@@ -36,7 +36,7 @@ var QSFSWorkload = QSFS{
 }
 
 func TestQSFSWorkload(t *testing.T) {
-	var qsfs gridtypes.Workload
+	var qsfs zos.Workload
 
 	t.Run("test qsfs from/to map", func(t *testing.T) {
 		qsfsMap, err := ToMap(QSFSWorkload)

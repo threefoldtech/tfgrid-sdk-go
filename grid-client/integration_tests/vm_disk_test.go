@@ -36,7 +36,8 @@ func TestVMWithTwoDisk(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	require.NoError(t, err)
 
 	disk1 := workloads.Disk{
 		Name:   "diskTest1",
@@ -47,23 +48,13 @@ func TestVMWithTwoDisk(t *testing.T) {
 		SizeGB: 2,
 	}
 
-	vm := workloads.VM{
-		Name:         "vm",
-		NodeID:       nodeID,
-		NetworkName:  network.Name,
-		CPU:          minCPU,
-		MemoryMB:     minMemory * 1024,
-		RootfsSizeMB: minRootfs * 1024,
-		Planetary:    true,
-		Flist:        "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:   "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-		Mounts: []workloads.Mount{
-			{Name: disk1.Name, MountPoint: "/disk1"},
-			{Name: disk2.Name, MountPoint: "/disk2"},
-		},
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
+	require.NoError(t, err)
+
+	vm.RootfsSizeMB = minRootfs * 1024
+	vm.Mounts = []workloads.Mount{
+		{Name: disk1.Name, MountPoint: "/disk1"},
+		{Name: disk2.Name, MountPoint: "/disk2"},
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
@@ -74,7 +65,7 @@ func TestVMWithTwoDisk(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, []workloads.Disk{disk1, disk2}, nil, []workloads.VM{vm}, nil, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, []workloads.Disk{disk1, disk2}, nil, []workloads.VM{vm}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
@@ -85,7 +76,7 @@ func TestVMWithTwoDisk(t *testing.T) {
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm.Name, dl.Name)
 	require.NoError(t, err)
-	require.NotEmpty(t, v.PlanetaryIP)
+	require.NotEmpty(t, v.MyceliumIP)
 
 	resDisk1, err := tfPluginClient.State.LoadDiskFromGrid(context.Background(), nodeID, disk1.Name, dl.Name)
 	require.NoError(t, err)
@@ -96,49 +87,49 @@ func TestVMWithTwoDisk(t *testing.T) {
 	require.Equal(t, disk2, resDisk2)
 
 	// Check that disk has been mounted successfully
-	output, err := RemoteRun("root", v.PlanetaryIP, "df -h | grep -w /disk1", privateKey)
+	output, err := RemoteRun("root", v.MyceliumIP, "df -h | grep -w /disk1", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, fmt.Sprintf("%d.0G", disk1.SizeGB))
 
-	output, err = RemoteRun("root", v.PlanetaryIP, "df -h | grep -w /disk2", privateKey)
+	output, err = RemoteRun("root", v.MyceliumIP, "df -h | grep -w /disk2", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, fmt.Sprintf("%d.0G", disk2.SizeGB))
 
 	// create file -> d1, check file size, move file -> d2, check file size
 
-	_, err = RemoteRun("root", v.PlanetaryIP, "dd if=/dev/vda bs=1M count=512 of=/disk1/test.txt", privateKey)
+	_, err = RemoteRun("root", v.MyceliumIP, "dd if=/dev/vda bs=1M count=512 of=/disk1/test.txt", privateKey)
 	require.NoError(t, err)
 
-	res, err := RemoteRun("root", v.PlanetaryIP, "du /disk1/test.txt | head -n1 | awk '{print $1;}' | tr -d -c 0-9", privateKey)
+	res, err := RemoteRun("root", v.MyceliumIP, "du /disk1/test.txt | head -n1 | awk '{print $1;}' | tr -d -c 0-9", privateKey)
 	require.NoError(t, err)
 	require.Equal(t, res, strconv.Itoa(512*1024))
 
-	_, err = RemoteRun("root", v.PlanetaryIP, "mv /disk1/test.txt /disk2/", privateKey)
+	_, err = RemoteRun("root", v.MyceliumIP, "mv /disk1/test.txt /disk2/", privateKey)
 	require.NoError(t, err)
 
-	res, err = RemoteRun("root", v.PlanetaryIP, "du /disk2/test.txt | head -n1 | awk '{print $1;}' | tr -d -c 0-9", privateKey)
+	res, err = RemoteRun("root", v.MyceliumIP, "du /disk2/test.txt | head -n1 | awk '{print $1;}' | tr -d -c 0-9", privateKey)
 	require.NoError(t, err)
 	require.Equal(t, res, strconv.Itoa(512*1024))
 
 	// create file -> d2, check file size, copy file -> d1, check file size
 
-	_, err = RemoteRun("root", v.PlanetaryIP, "dd if=/dev/vdb bs=1M count=512 of=/disk2/test.txt", privateKey)
+	_, err = RemoteRun("root", v.MyceliumIP, "dd if=/dev/vdb bs=1M count=512 of=/disk2/test.txt", privateKey)
 	require.NoError(t, err)
 
-	res, err = RemoteRun("root", v.PlanetaryIP, "du /disk2/test.txt | head -n1 | awk '{print $1;}' | tr -d -c 0-9", privateKey)
+	res, err = RemoteRun("root", v.MyceliumIP, "du /disk2/test.txt | head -n1 | awk '{print $1;}' | tr -d -c 0-9", privateKey)
 	require.NoError(t, err)
 	require.Equal(t, res, strconv.Itoa(512*1024))
 
-	_, err = RemoteRun("root", v.PlanetaryIP, "cp /disk2/test.txt /disk1/", privateKey)
+	_, err = RemoteRun("root", v.MyceliumIP, "cp /disk2/test.txt /disk1/", privateKey)
 	require.NoError(t, err)
 
-	res, err = RemoteRun("root", v.PlanetaryIP, "du /disk1/test.txt | head -n1 | awk '{print $1;}' | tr -d -c 0-9", privateKey)
+	res, err = RemoteRun("root", v.MyceliumIP, "du /disk1/test.txt | head -n1 | awk '{print $1;}' | tr -d -c 0-9", privateKey)
 	require.NoError(t, err)
 	require.Equal(t, res, strconv.Itoa(512*1024))
 
 	// copy same file -> d1 (not enough space)
 
-	_, err = RemoteRun("root", v.PlanetaryIP, "cp /disk2/test.txt /disk1/test2.txt", privateKey)
+	_, err = RemoteRun("root", v.MyceliumIP, "cp /disk2/test.txt /disk1/test2.txt", privateKey)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "No space left on device")
 }

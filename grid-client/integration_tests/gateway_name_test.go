@@ -56,21 +56,10 @@ func TestGatewayNameDeployment(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
-
-	vm := workloads.VM{
-		Name:        "vm",
-		NodeID:      nodeID,
-		NetworkName: network.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Planetary:   true,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-	}
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	require.NoError(t, err)
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
+	require.NoError(t, err)
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
@@ -80,7 +69,7 @@ func TestGatewayNameDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
@@ -92,7 +81,7 @@ func TestGatewayNameDeployment(t *testing.T) {
 	v, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm.Name, dl.Name)
 	require.NoError(t, err)
 
-	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
+	backend := fmt.Sprintf("http://[%s]:9000", v.MyceliumIP)
 	gw := workloads.GatewayNameProxy{
 		NodeID:         gwNodeID,
 		Name:           generateRandString(10),
@@ -112,7 +101,7 @@ func TestGatewayNameDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, result.FQDN)
 
-	_, err = RemoteRun("root", v.PlanetaryIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+	_, err = RemoteRun("root", v.MyceliumIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 	require.NoError(t, err)
 
 	time.Sleep(3 * time.Second)

@@ -43,21 +43,11 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	nodeID1 := uint32(nodes[0].NodeID)
 	nodeID2 := uint32(nodes[1].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID1, nodeID2})
+	network, err := generateBasicNetwork([]uint32{nodeID1, nodeID2})
+	require.NoError(t, err)
 
-	vm := workloads.VM{
-		Name:        "vm",
-		NodeID:      nodeID1,
-		NetworkName: network.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Planetary:   true,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-	}
+	vm, err := generateBasicVM("vm", nodeID1, network.Name, publicKey)
+	require.NoError(t, err)
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	require.NoError(t, err)
@@ -67,7 +57,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil)
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
@@ -79,7 +69,7 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	v, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID1, vm.Name, dl.Name)
 	require.NoError(t, err)
 
-	backend := fmt.Sprintf("http://[%s]:9000", v.PlanetaryIP)
+	backend := fmt.Sprintf("http://[%s]:9000", v.MyceliumIP)
 	gw1 := workloads.GatewayNameProxy{
 		NodeID:         nodeID1,
 		Name:           generateRandString(10),
@@ -113,7 +103,8 @@ func TestBatchGatewayNameDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, g2.FQDN)
 
-	_, err = RemoteRun("root", v.PlanetaryIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
+	require.NotEmpty(t, v.MyceliumIP)
+	_, err = RemoteRun("root", v.MyceliumIP, "apk add python3; python3 -m http.server 9000 --bind :: &> /dev/null &", privateKey)
 	require.NoError(t, err)
 
 	time.Sleep(3 * time.Second)

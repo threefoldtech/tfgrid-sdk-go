@@ -120,6 +120,8 @@ var addWorkerCmd = &cobra.Command{
 				}
 			}
 
+			vm := *worker.VM
+			worker.VM = &vm
 			worker.Name = fmt.Sprintf("worker%d", len(workers))
 			worker.NodeID = uint32(workersNodes[i])
 			worker.MyceliumIPSeed = seed

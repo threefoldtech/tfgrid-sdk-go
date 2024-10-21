@@ -35,29 +35,20 @@ func TestVMWithVolume(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	require.NoError(t, err)
 
 	volume := workloads.Volume{
 		Name:   "volume",
 		SizeGB: 1,
 	}
 
-	vm := workloads.VM{
-		Name:         "vm",
-		NodeID:       nodeID,
-		NetworkName:  network.Name,
-		CPU:          minCPU,
-		MemoryMB:     minMemory * 1024,
-		RootfsSizeMB: minRootfs * 1024,
-		Planetary:    true,
-		Flist:        "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:   "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-		Mounts: []workloads.Mount{
-			{Name: volume.Name, MountPoint: "/volume"},
-		},
+	vm, err := generateBasicVM("vm", nodeID, network.Name, publicKey)
+	require.NoError(t, err)
+
+	vm.RootfsSizeMB = minRootfs * 1024
+	vm.Mounts = []workloads.Mount{
+		{Name: volume.Name, MountPoint: "/volume"},
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
@@ -68,7 +59,7 @@ func TestVMWithVolume(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, []workloads.Volume{volume})
+	dl := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil, []workloads.Volume{volume})
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &dl)
 	require.NoError(t, err)
 
@@ -79,12 +70,12 @@ func TestVMWithVolume(t *testing.T) {
 
 	v, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID, vm.Name, dl.Name)
 	require.NoError(t, err)
-	require.NotEmpty(t, v.PlanetaryIP)
+	require.NotEmpty(t, v.MyceliumIP)
 
 	resVolume, err := tfPluginClient.State.LoadVolumeFromGrid(context.Background(), nodeID, volume.Name, dl.Name)
 	require.NoError(t, err)
 	require.Equal(t, volume, resVolume)
-	res, err := RemoteRun("root", v.PlanetaryIP, "mount", privateKey)
+	res, err := RemoteRun("root", v.MyceliumIP, "mount", privateKey)
 	require.NoError(t, err)
 	strings.Contains(res, "volume on /volume type virtiofs")
 }

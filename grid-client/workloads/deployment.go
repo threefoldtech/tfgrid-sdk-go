@@ -9,11 +9,8 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
-
-const Version = 3
 
 var nameMatch = regexp.MustCompile("^[a-zA-Z0-9_]+$")
 
@@ -25,11 +22,13 @@ type Deployment struct {
 	SolutionProvider *uint64
 	// TODO: remove
 	NetworkName string
-	Disks       []Disk
-	Zdbs        []ZDB
-	Vms         []VM
-	QSFS        []QSFS
-	Volumes     []Volume
+
+	Disks    []Disk
+	Zdbs     []ZDB
+	Vms      []VM
+	VmsLight []VMLight
+	QSFS     []QSFS
+	Volumes  []Volume
 
 	// computed
 	NodeDeploymentID map[uint32]uint64
@@ -48,6 +47,7 @@ func NewDeployment(name string, nodeID uint32,
 	disks []Disk,
 	zdbs []ZDB,
 	vms []VM,
+	vmsLight []VMLight,
 	QSFS []QSFS,
 	volumes []Volume,
 ) Deployment {
@@ -60,6 +60,7 @@ func NewDeployment(name string, nodeID uint32,
 		Disks:            disks,
 		Zdbs:             zdbs,
 		Vms:              vms,
+		VmsLight:         vmsLight,
 		QSFS:             QSFS,
 		Volumes:          volumes,
 	}
@@ -79,9 +80,19 @@ func (d *Deployment) Validate() error {
 		return fmt.Errorf("node ID should be a positive integer not zero")
 	}
 
+	if len(d.Vms) > 0 && len(d.VmsLight) > 0 {
+		return fmt.Errorf("cannot deploy vms with vm-light on the same node")
+	}
+
 	for _, vm := range d.Vms {
 		if err := vm.Validate(); err != nil {
 			return errors.Wrapf(err, "vm '%s' is invalid", vm.Name)
+		}
+	}
+
+	for _, vm := range d.VmsLight {
+		if err := vm.Validate(); err != nil {
+			return errors.Wrapf(err, "vm-light '%s' is invalid", vm.Name)
 		}
 	}
 
@@ -117,8 +128,9 @@ func validateName(name string) error {
 		return fmt.Errorf("name cannot be empty")
 	}
 
-	if len(name) > 50 {
-		return fmt.Errorf("name cannot exceed 50 characters")
+	// this because max virtio fs tag length is 36 and it is used by cloud-hypervisor
+	if len(name) > 36 {
+		return fmt.Errorf("name cannot exceed 36 characters")
 	}
 
 	if !nameMatch.MatchString(name) {
@@ -134,10 +146,15 @@ func (d *Deployment) GenerateMetadata() (string, error) {
 		d.SolutionType = fmt.Sprintf("vm/%s", d.Name)
 	}
 
+	typ := "vm"
+	if len(d.VmsLight) > 0 {
+		typ = "vm-light"
+	}
+
 	deploymentData := DeploymentData{
-		Version:     Version,
+		Version:     int(Version3),
 		Name:        d.Name,
-		Type:        "vm",
+		Type:        typ,
 		ProjectName: d.SolutionType,
 	}
 
@@ -152,6 +169,7 @@ func (d *Deployment) GenerateMetadata() (string, error) {
 // Nullify resets deployment
 func (d *Deployment) Nullify() {
 	d.Vms = nil
+	d.VmsLight = nil
 	d.QSFS = nil
 	d.Disks = nil
 	d.Zdbs = nil
@@ -160,9 +178,11 @@ func (d *Deployment) Nullify() {
 }
 
 // Match objects to match the input
-func (d *Deployment) Match(disks []Disk, QSFS []QSFS, zdbs []ZDB, vms []VM, volumes []Volume) {
+func (d *Deployment) Match(disks []Disk, QSFS []QSFS, zdbs []ZDB, vms []VM, vmsLight []VMLight, volumes []Volume) {
 	vmMap := make(map[string]*VM)
-	l := len(d.Disks) + len(d.QSFS) + len(d.Zdbs) + len(d.Vms) + len(d.Volumes)
+	vmLightMap := make(map[string]*VMLight)
+
+	l := len(d.Disks) + len(d.QSFS) + len(d.Zdbs) + len(d.Vms) + len(d.VmsLight) + len(d.Volumes)
 	names := make(map[string]int)
 	for idx, o := range d.Disks {
 		names[o.Name] = idx - l
@@ -180,6 +200,10 @@ func (d *Deployment) Match(disks []Disk, QSFS []QSFS, zdbs []ZDB, vms []VM, volu
 		names[o.Name] = idx - l
 		vmMap[o.Name] = &d.Vms[idx]
 	}
+	for idx, o := range d.VmsLight {
+		names[o.Name] = idx - l
+		vmLightMap[o.Name] = &d.VmsLight[idx]
+	}
 	sort.Slice(disks, func(i, j int) bool {
 		return names[disks[i].Name] < names[disks[j].Name]
 	})
@@ -195,17 +219,26 @@ func (d *Deployment) Match(disks []Disk, QSFS []QSFS, zdbs []ZDB, vms []VM, volu
 	sort.Slice(vms, func(i, j int) bool {
 		return names[vms[i].Name] < names[vms[j].Name]
 	})
+	sort.Slice(vmsLight, func(i, j int) bool {
+		return names[vmsLight[i].Name] < names[vmsLight[j].Name]
+	})
 	for idx := range vms {
 		vm, ok := vmMap[vms[idx].Name]
 		if ok {
 			vms[idx].LoadFromVM(vm)
 		}
 	}
+	for idx := range vmsLight {
+		vm, ok := vmLightMap[vmsLight[idx].Name]
+		if ok {
+			vmsLight[idx].LoadFromVM(vm)
+		}
+	}
 }
 
 // ZosDeployment generates a new zos deployment from a deployment
-func (d *Deployment) ZosDeployment(twin uint32) (gridtypes.Deployment, error) {
-	wls := []gridtypes.Workload{}
+func (d *Deployment) ZosDeployment(twin uint32) (zos.Deployment, error) {
+	wls := []zos.Workload{}
 
 	for _, d := range d.Disks {
 		wls = append(wls, d.ZosWorkload())
@@ -220,10 +253,15 @@ func (d *Deployment) ZosDeployment(twin uint32) (gridtypes.Deployment, error) {
 		wls = append(wls, vmWls...)
 	}
 
+	for _, v := range d.VmsLight {
+		vmLightWls := v.ZosWorkload()
+		wls = append(wls, vmLightWls...)
+	}
+
 	for _, q := range d.QSFS {
 		qWls, err := q.ZosWorkload()
 		if err != nil {
-			return gridtypes.Deployment{}, err
+			return zos.Deployment{}, err
 		}
 		wls = append(wls, qWls)
 	}
@@ -231,34 +269,19 @@ func (d *Deployment) ZosDeployment(twin uint32) (gridtypes.Deployment, error) {
 		wls = append(wls, v.ZosWorkload())
 	}
 
-	return gridtypes.Deployment{
-		Version: 0,
-		TwinID:  twin, // LocalTwin,
-		// this contract id must match the one on substrate
-		ContractID: d.ContractID,
-		Workloads:  wls,
-		SignatureRequirement: gridtypes.SignatureRequirement{
-			WeightRequired: 1,
-			Requests: []gridtypes.SignatureRequest{
-				{
-					TwinID: twin,
-					Weight: 1,
-				},
-			},
-		},
-	}, nil
+	return NewGridDeployment(twin, d.ContractID, wls), nil
 }
 
 // NewGridDeployment generates a new grid deployment
-func NewGridDeployment(twin uint32, workloads []gridtypes.Workload) gridtypes.Deployment {
-	return gridtypes.Deployment{
-		Version: 0,
-		TwinID:  twin, // LocalTwin,
-		// this contract id must match the one on substrate
-		Workloads: workloads,
-		SignatureRequirement: gridtypes.SignatureRequirement{
+func NewGridDeployment(twin uint32, contractID uint64, workloads []zos.Workload) zos.Deployment {
+	return zos.Deployment{
+		Version:    0,
+		TwinID:     twin, // LocalTwin,
+		ContractID: contractID,
+		Workloads:  workloads,
+		SignatureRequirement: zos.SignatureRequirement{
 			WeightRequired: 1,
-			Requests: []gridtypes.SignatureRequest{
+			Requests: []zos.SignatureRequest{
 				{
 					TwinID: twin,
 					Weight: 1,
@@ -269,7 +292,7 @@ func NewGridDeployment(twin uint32, workloads []gridtypes.Workload) gridtypes.De
 }
 
 // GetUsedIPs returns used IPs for a deployment
-func GetUsedIPs(dl gridtypes.Deployment, nodeID uint32) ([]byte, error) {
+func GetUsedIPs(dl zos.Deployment, nodeID uint32) ([]byte, error) {
 	usedIPs := []byte{}
 	for _, w := range dl.Workloads {
 		if !w.Result.State.IsOkay() {
@@ -300,16 +323,19 @@ func ParseDeploymentData(deploymentMetaData string) (DeploymentData, error) {
 }
 
 // NewDeploymentFromZosDeployment generates deployment from zos deployment
-func NewDeploymentFromZosDeployment(d gridtypes.Deployment, nodeID uint32) (Deployment, error) {
+func NewDeploymentFromZosDeployment(d zos.Deployment, nodeID uint32) (Deployment, error) {
 	deploymentData, err := ParseDeploymentData(d.Metadata)
 	if err != nil {
 		return Deployment{}, errors.Wrap(err, "failed to parse deployment data")
 	}
+
 	vms := make([]VM, 0)
+	vmsLight := make([]VMLight, 0)
 	disks := make([]Disk, 0)
 	qs := make([]QSFS, 0)
 	zdbs := make([]ZDB, 0)
 	volumes := make([]Volume, 0)
+
 	var networkName string
 	for _, workload := range d.Workloads {
 		switch workload.Type {
@@ -320,6 +346,13 @@ func NewDeploymentFromZosDeployment(d gridtypes.Deployment, nodeID uint32) (Depl
 			}
 			vms = append(vms, vm)
 			networkName = vm.NetworkName
+		case zos.ZMachineLightType:
+			vmLight, err := NewVMLightFromWorkload(&workload, &d, nodeID)
+			if err != nil {
+				return Deployment{}, errors.Wrap(err, "failed to get vm-light workload")
+			}
+			vmsLight = append(vmsLight, vmLight)
+			networkName = vmLight.NetworkName
 		case zos.ZDBType:
 			zdb, err := NewZDBFromWorkload(&workload)
 			if err != nil {
@@ -353,6 +386,7 @@ func NewDeploymentFromZosDeployment(d gridtypes.Deployment, nodeID uint32) (Depl
 		SolutionType:     deploymentData.ProjectName,
 		NetworkName:      networkName,
 		Vms:              vms,
+		VmsLight:         vmsLight,
 		Disks:            disks,
 		QSFS:             qs,
 		Zdbs:             zdbs,

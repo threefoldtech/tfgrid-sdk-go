@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 var volumeWorkload = Volume{
@@ -14,7 +14,7 @@ var volumeWorkload = Volume{
 }
 
 func TestVolumeWorkload(t *testing.T) {
-	var volume gridtypes.Workload
+	var volume zos.Workload
 
 	t.Run("test_volume_from_map", func(t *testing.T) {
 		volumeMap, err := ToMap(volumeWorkload)

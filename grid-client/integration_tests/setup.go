@@ -16,8 +16,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"golang.org/x/crypto/ssh"
+)
+
+const (
+	ubuntuFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"
 )
 
 func setup() (deployer.TFPluginClient, error) {
@@ -30,16 +34,25 @@ func setup() (deployer.TFPluginClient, error) {
 	return deployer.NewTFPluginClient(mnemonics, deployer.WithNetwork(network), deployer.WithLogs())
 }
 
-func generateBasicNetwork(nodeIDs []uint32) workloads.ZNet {
+func generateBasicNetwork(nodeIDs []uint32) (workloads.ZNet, error) {
+	myCeliumKeys := make(map[uint32][]byte)
+	for _, nodeID := range nodeIDs {
+		key, err := workloads.RandomMyceliumKey()
+		if err != nil {
+			return workloads.ZNet{}, fmt.Errorf("could not create mycelium key: %v", err)
+		}
+		myCeliumKeys[nodeID] = key
+	}
 	return workloads.ZNet{
 		Name:        fmt.Sprintf("net_%s", generateRandString(10)),
 		Description: "network for testing",
 		Nodes:       nodeIDs,
-		IPRange: gridtypes.NewIPNet(net.IPNet{
+		IPRange: zos.IPNet{IPNet: net.IPNet{
 			IP:   net.IPv4(10, 20, 0, 0),
 			Mask: net.CIDRMask(16, 32),
-		}),
-	}
+		}},
+		MyceliumKeys: myCeliumKeys,
+	}, nil
 }
 
 // CheckConnection used to test connection
@@ -115,4 +128,24 @@ func generateRandString(n int) string {
 		b[i] = letters[mrand.Intn(len(letters))]
 	}
 	return string(b)
+}
+
+func generateBasicVM(vmName string, nodeID uint32, networkName string, publicKey string) (workloads.VM, error) {
+	seed, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		return workloads.VM{}, err
+	}
+	return workloads.VM{
+		Name:        vmName,
+		NodeID:      nodeID,
+		NetworkName: networkName,
+		CPU:         minCPU,
+		MemoryMB:    minMemory * 1024,
+		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
+		Entrypoint:  "/sbin/zinit init",
+		EnvVars: map[string]string{
+			"SSH_KEY": publicKey,
+		},
+		MyceliumIPSeed: seed,
+	}, nil
 }

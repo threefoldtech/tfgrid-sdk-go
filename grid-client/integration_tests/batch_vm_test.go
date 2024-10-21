@@ -36,38 +36,19 @@ func TestBatchVMDeployment(t *testing.T) {
 	nodeID1 := uint32(nodes[0].NodeID)
 	nodeID2 := uint32(nodes[1].NodeID)
 
-	network1 := generateBasicNetwork([]uint32{nodeID1})
-	network2 := generateBasicNetwork([]uint32{nodeID2})
+	network1, err := generateBasicNetwork([]uint32{nodeID1})
+	require.NoError(t, err)
 
-	vm1 := workloads.VM{
-		Name:        "vm",
-		NodeID:      nodeID1,
-		NetworkName: network1.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Planetary:   true,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-	}
+	network2, err := generateBasicNetwork([]uint32{nodeID2})
+	require.NoError(t, err)
 
-	vm2 := workloads.VM{
-		Name:        "vm",
-		NodeID:      nodeID2,
-		NetworkName: network2.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Planetary:   true,
-		Flist:       "https://hub.grid.tf/tf-official-apps/base:latest.flist",
-		Entrypoint:  "/sbin/zinit init",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-	}
+	vm1, err := generateBasicVM("vm", nodeID1, network1.Name, publicKey)
+	require.NoError(t, err)
 
-	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []*workloads.ZNet{&network1, &network2})
+	vm2, err := generateBasicVM("vm", nodeID2, network2.Name, publicKey)
+	require.NoError(t, err)
+
+	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []workloads.Network{&network1, &network2})
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -78,8 +59,8 @@ func TestBatchVMDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl1 := workloads.NewDeployment(fmt.Sprintf("dl1_%s", generateRandString(10)), nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil, nil)
-	dl2 := workloads.NewDeployment(fmt.Sprintf("dl2_%s", generateRandString(10)), nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil, nil)
+	dl1 := workloads.NewDeployment(fmt.Sprintf("dl1_%s", generateRandString(10)), nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil, nil, nil)
+	dl2 := workloads.NewDeployment(fmt.Sprintf("dl2_%s", generateRandString(10)), nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&dl1, &dl2})
 	require.NoError(t, err)
 
@@ -93,17 +74,17 @@ func TestBatchVMDeployment(t *testing.T) {
 
 	v1, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID1, vm1.Name, dl1.Name)
 	require.NoError(t, err)
-	require.NotEmpty(t, v1.PlanetaryIP)
+	require.NotEmpty(t, v1.MyceliumIP)
 
-	output, err := RemoteRun("root", v1.PlanetaryIP, "ls /", privateKey)
+	output, err := RemoteRun("root", v1.MyceliumIP, "ls /", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, "root")
 
 	v2, err := tfPluginClient.State.LoadVMFromGrid(context.Background(), nodeID2, vm2.Name, dl2.Name)
 	require.NoError(t, err)
-	require.NotEmpty(t, v2.PlanetaryIP)
+	require.NotEmpty(t, v2.MyceliumIP)
 
-	output, err = RemoteRun("root", v2.PlanetaryIP, "ls /", privateKey)
+	output, err = RemoteRun("root", v2.MyceliumIP, "ls /", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, "root")
 }
