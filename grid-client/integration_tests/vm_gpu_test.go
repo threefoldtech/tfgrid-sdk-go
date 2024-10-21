@@ -52,30 +52,25 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	gpus, err := nodeClient.GPUs(context.Background())
 	require.NoError(t, err)
 
-	network := generateBasicNetwork([]uint32{nodeID})
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	require.NoError(t, err)
 
 	disk := workloads.Disk{
 		Name:   "gpuDisk",
 		SizeGB: 20,
 	}
 
-	vm := workloads.VM{
-		Name:         "gpu",
-		NodeID:       nodeID,
-		NetworkName:  network.Name,
-		CPU:          4,
-		MemoryMB:     1024 * 8,
-		RootfsSizeMB: minRootfs * 1024,
-		Planetary:    true,
-		GPUs:         ConvertGPUsToStr(gpus),
-		Flist:        "https://hub.grid.tf/tf-official-vms/ubuntu-22.04.flist",
-		Entrypoint:   "/init.sh",
-		EnvVars: map[string]string{
-			"SSH_KEY": publicKey,
-		},
-		Mounts: []workloads.Mount{
-			{Name: disk.Name, MountPoint: "/data"},
-		},
+	vm, err := generateBasicVM("gpu", nodeID, network.Name, publicKey)
+	require.NoError(t, err)
+
+	vm.CPU = 4
+	vm.MemoryMB = 1024 * 8
+	vm.RootfsSizeMB = minRootfs * 1024
+	vm.GPUs = ConvertGPUsToStr(gpus)
+	vm.Flist = "https://hub.grid.tf/tf-official-vms/ubuntu-22.04.flist"
+	vm.Entrypoint = "/init.sh"
+	vm.Mounts = []workloads.Mount{
+		{Name: disk.Name, MountPoint: "/data"},
 	}
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
@@ -101,7 +96,7 @@ func TestVMWithGPUDeployment(t *testing.T) {
 	require.NotEmpty(t, vm.PlanetaryIP)
 
 	time.Sleep(30 * time.Second)
-	output, err := RemoteRun("root", vm.PlanetaryIP, "lspci -v", privateKey)
+	output, err := RemoteRun("root", vm.MyceliumIP, "lspci -v", privateKey)
 	require.NoError(t, err)
 	require.Contains(t, output, gpus[0].Vendor)
 }
