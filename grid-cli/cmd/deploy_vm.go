@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
@@ -141,8 +142,14 @@ var deployVMCmd = &cobra.Command{
 				Entrypoint:     entrypoint,
 				MyceliumIPSeed: seed,
 			}
-			executeVMLight(cmd.Context(), t, vm, node, farm, disk, volume)
-			return nil
+			err = executeVMLight(cmd.Context(), t, vm, node, farm, disk, volume)
+			if err == nil {
+				return nil
+			}
+
+			if !errors.Is(err, deployer.ErrNoNodesMatchesResources) {
+				log.Fatal().Err(err).Send()
+			}
 		}
 
 		vm := workloads.VM{
@@ -159,7 +166,11 @@ var deployVMCmd = &cobra.Command{
 			MyceliumIPSeed: seed,
 			Planetary:      ygg,
 		}
-		executeVM(cmd.Context(), t, vm, node, farm, disk, volume)
+		err = executeVM(cmd.Context(), t, vm, node, farm, disk, volume)
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
 		return nil
 	},
 }
@@ -207,7 +218,7 @@ func executeVM(
 	vm workloads.VM,
 	node uint32,
 	farm, disk, volume uint64,
-) {
+) error {
 	var diskMount workloads.Disk
 	if disk != 0 {
 		diskName := fmt.Sprintf("%sdisk", vm.Name)
@@ -233,7 +244,7 @@ func executeVM(
 			rootfss,
 		)
 		if err != nil {
-			log.Fatal().Err(err).Send()
+			return err
 		}
 
 		node = uint32(nodes[0].NodeID)
@@ -242,7 +253,7 @@ func executeVM(
 	vm.NodeID = node
 	resVM, err := command.DeployVM(ctx, t, vm, diskMount, volumeMount)
 	if err != nil {
-		log.Fatal().Err(err).Send()
+		return err
 	}
 
 	if vm.PublicIP {
@@ -257,6 +268,8 @@ func executeVM(
 	if len(resVM.MyceliumIP) != 0 {
 		log.Info().Msgf("vm mycelium ip: %s", resVM.MyceliumIP)
 	}
+
+	return nil
 }
 
 func executeVMLight(
@@ -264,7 +277,7 @@ func executeVMLight(
 	vm workloads.VMLight,
 	node uint32,
 	farm, disk, volume uint64,
-) {
+) error {
 	var diskMount workloads.Disk
 	if disk != 0 {
 		diskName := fmt.Sprintf("%sdisk", vm.Name)
@@ -290,7 +303,7 @@ func executeVMLight(
 			rootfss,
 		)
 		if err != nil {
-			log.Fatal().Err(err).Send()
+			return err
 		}
 
 		node = uint32(nodes[0].NodeID)
@@ -299,10 +312,12 @@ func executeVMLight(
 	vm.NodeID = node
 	resVM, err := command.DeployVMLight(ctx, t, vm, diskMount, volumeMount)
 	if err != nil {
-		log.Fatal().Err(err).Send()
+		return err
 	}
 
 	if len(resVM.MyceliumIP) != 0 {
 		log.Info().Msgf("vm mycelium ip: %s", resVM.MyceliumIP)
 	}
+
+	return nil
 }
