@@ -305,7 +305,7 @@ func createServer(f flags, dbClient explorer.DBClient, gitCommit string, relayCl
 	}
 
 	return &http.Server{
-		Handler:           http.TimeoutHandler(router, 30*time.Second, "request timed-out. server took too long to respond"), // 30 seconds for slow sql operations
+		Handler:           http.TimeoutHandler(router, 30*time.Second, http.ErrHandlerTimeout.Error()), // 30 seconds for slow sql operations
 		Addr:              f.address,
 		ReadHeaderTimeout: 5 * time.Second,
 	}, nil
