@@ -254,21 +254,9 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 			nodesIDsIdx = (nodesIDsIdx + 1) % len(nodesIDs)
 
 			vmName := fmt.Sprintf("%s%d", vmGroup.Name, i)
-			disks, diskMounts := parseDisks(vmName, vmGroup.SSDDisks)
-			volumes, volumeMounts := parseVolumes(vmName, vmGroup.Volumes)
 
 			network := buildNetworkDeployment(vmGroup, nodeID, vmName, solutionType)
-			deployment := workloads.NewDeployment("", nodeID, solutionType, nil, network.GetName(), disks, nil, nil, nil, nil, volumes)
-
-			if !vmGroup.WireGuard && !vmGroup.PublicIP4 && !vmGroup.PublicIP6 && !vmGroup.Ygg {
-				vm := buildVMLightDeployment(vmGroup, nodeID, vmName, network.GetName(), sshKeys[vmGroup.SSHKey], append(diskMounts, volumeMounts...))
-				deployment.VmsLight = append(deployment.VmsLight, vm)
-				deployment.Name = vm.Name
-			} else {
-				vm := buildVMDeployment(vmGroup, nodeID, vmName, network.GetName(), sshKeys[vmGroup.SSHKey], append(diskMounts, volumeMounts...))
-				deployment.Vms = append(deployment.Vms, vm)
-				deployment.Name = vm.Name
-			}
+			deployment := buildDeployment(vmGroup, nodeID, network.GetName(), vmName, solutionType, sshKeys[vmGroup.SSHKey])
 
 			vmDeployments = append(vmDeployments, &deployment)
 			networkDeployments = append(networkDeployments, network)
@@ -345,8 +333,28 @@ func getBlockedNodes(groupDeployments groupDeploymentsInfo) []uint64 {
 	return blockedNodes
 }
 
+func buildDeployment(vmGroup Vms, nodeID uint32, networkName, vmName, solutionType, sshKey string) workloads.Deployment {
+	disks, diskMounts := parseDisks(vmName, vmGroup.SSDDisks)
+	volumes, volumeMounts := parseVolumes(vmName, vmGroup.Volumes)
+
+	deployment := workloads.NewDeployment("", nodeID, solutionType, nil, networkName, disks, nil, nil, nil, nil, volumes)
+
+	if !vmGroup.WireGuard && !vmGroup.PublicIP4 && !vmGroup.PublicIP6 && !vmGroup.Ygg {
+		vm := buildVMLightDeployment(vmGroup, nodeID, vmName, networkName, sshKey, append(diskMounts, volumeMounts...))
+		deployment.VmsLight = append(deployment.VmsLight, vm)
+		deployment.Name = vm.Name
+	} else {
+		vm := buildVMDeployment(vmGroup, nodeID, vmName, networkName, sshKey, append(diskMounts, volumeMounts...))
+		deployment.Vms = append(deployment.Vms, vm)
+		deployment.Name = vm.Name
+	}
+
+	return deployment
+}
+
 func buildNetworkDeployment(vm Vms, nodeID uint32, name, solutionType string) workloads.Network {
 	if !vm.PublicIP4 && !vm.Ygg && !vm.Mycelium {
+		log.Warn().Str("vm name", name).Msg("ygg ip, mycelium ip and public IP options are false. Setting mycelium IP to true")
 		vm.Mycelium = true
 	}
 
@@ -396,11 +404,6 @@ func buildVMDeployment(vm Vms, nodeID uint32, name, networkName, sshKey string, 
 	}
 	envVars["SSH_KEY"] = sshKey
 
-	if !vm.PublicIP4 && !vm.Ygg && !vm.Mycelium {
-		log.Warn().Str("vms group", vm.Name).Msg("ygg ip, mycelium ip and public IP options are false. Setting mycelium IP to true")
-		vm.Mycelium = true
-	}
-
 	// get random mycelium seeds
 	var myceliumSeed []byte
 	var err error
@@ -435,11 +438,6 @@ func buildVMLightDeployment(vm Vms, nodeID uint32, name, networkName, sshKey str
 		envVars = map[string]string{}
 	}
 	envVars["SSH_KEY"] = sshKey
-
-	if !vm.PublicIP4 && !vm.Ygg && !vm.Mycelium {
-		log.Warn().Str("vms group", vm.Name).Msg("ygg ip, mycelium ip and public IP options are false. Setting mycelium IP to true")
-		vm.Mycelium = true
-	}
 
 	// get random mycelium seeds
 	var myceliumSeed []byte
