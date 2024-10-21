@@ -96,6 +96,7 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize uint6
 			MemoryMB:       uint64(d.ComputeCapacity.Memory / gridtypes.Megabyte),
 			NetworkName:    networkName,
 			ConsoleURL:     result.ConsoleURL,
+			EnvVars:        d.Env,
 		},
 		DiskSizeGB: diskSize,
 	}, nil

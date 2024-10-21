@@ -21,10 +21,11 @@ func AddWorkersKubernetesCluster(ctx context.Context, t deployer.TFPluginClient,
 		return workloads.K8sCluster{}, err
 	}
 
-	for _, worker := range workers {
+	for i, worker := range workers {
 		if !slices.Contains(network.Nodes, worker.NodeID) {
 			network.Nodes = append(network.Nodes, worker.NodeID)
 		}
+		cluster.Workers[i].NetworkName = network.Name
 	}
 
 	if addMycelium {

@@ -39,17 +39,13 @@ func TestDeploymentsDeploy(t *testing.T) {
 
 	nodeID := uint32(nodes[0].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID})
+	network, err := generateBasicNetwork([]uint32{nodeID})
+	require.NoError(t, err)
 
-	vm1 := workloads.VM{
-		Name:        vm1Name,
-		NodeID:      nodeID,
-		NetworkName: network.Name,
-		CPU:         minCPU,
-		MemoryMB:    minMemory * 1024,
-		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
-		Entrypoint:  "/sbin/zinit init",
-	}
+	vm1, err := generateBasicVM(vm1Name, nodeID, network.Name, "")
+	require.NoError(t, err)
+
+	vm1.Flist = ubuntuFlist
 
 	err = tfPluginClient.NetworkDeployer.Deploy(context.Background(), &network)
 	if err != nil {
@@ -159,7 +155,8 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 	nodeID1 := uint32(nodes[0].NodeID)
 	nodeID2 := uint32(nodes[1].NodeID)
 
-	network := generateBasicNetwork([]uint32{nodeID1, nodeID2})
+	network, err := generateBasicNetwork([]uint32{nodeID1, nodeID2})
+	require.NoError(t, err)
 
 	vm1 := workloads.VM{
 		Name:        vm1Name,
@@ -167,7 +164,7 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		NetworkName: network.Name,
 		CPU:         minCPU,
 		MemoryMB:    minMemory * 1024,
-		Flist:       "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist",
+		Flist:       ubuntuFlist,
 		Entrypoint:  "/sbin/zinit init",
 	}
 

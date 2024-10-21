@@ -249,6 +249,7 @@ func TestLoadK8sFromGrid(t *testing.T) {
 			PlanetaryIP:   "203:8b0b:5f3e:b859:c36:efdf:ab6e:50cc",
 			IP:            "1.1.1.1",
 			NetworkName:   "test",
+			EnvVars:       map[string]string{},
 		},
 	}
 

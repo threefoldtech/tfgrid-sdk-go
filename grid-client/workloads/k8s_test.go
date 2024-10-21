@@ -75,6 +75,7 @@ func TestK8sNodeData(t *testing.T) {
 		assert.NoError(t, err)
 
 		k8sFromWorkload.IP = ""
+		k8sFromWorkload.EnvVars = nil
 		assert.Equal(t, k8sFromWorkload, K8sWorkload)
 	})
 
