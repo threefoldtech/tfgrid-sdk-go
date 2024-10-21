@@ -3,6 +3,7 @@ package filters
 
 import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
@@ -19,17 +20,18 @@ func BuildK8sNodeFilter(k8sNode workloads.K8sNode, farmID uint64) (types.NodeFil
 	// k8s rootfs is either 2 or 0.5
 	rootfss := []uint64{*convertGBToBytes(uint64(2))}
 
-	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, &freeIPs, []uint64{farmID}, nil), disks, rootfss
+	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, &freeIPs, []uint64{farmID}, nil, false), disks, rootfss
 }
 
 // BuildVMFilter build a filter for a vm
-func BuildVMFilter(vm workloads.VM, disk workloads.Disk, volume workloads.Volume, farmID uint64) (types.NodeFilter, []uint64, []uint64) {
-	freeMRUs := vm.MemoryMB / 1024
-	freeSRUs := vm.RootfsSizeMB / 1024
+func BuildVMFilter(disk workloads.Disk, volume workloads.Volume, farmID, memoryMB, rootfsMB uint64, ipv4, light bool) (types.NodeFilter, []uint64, []uint64) {
+	freeMRUs := memoryMB / 1024
+	freeSRUs := rootfsMB / 1024
 	freeIPs := uint64(0)
-	if vm.PublicIP {
+	if ipv4 {
 		freeIPs = 1
 	}
+
 	freeSRUs += disk.SizeGB + volume.SizeGB
 
 	ssd := make([]uint64, 0)
@@ -39,23 +41,24 @@ func BuildVMFilter(vm workloads.VM, disk workloads.Disk, volume workloads.Volume
 	if volume.SizeGB > 0 {
 		ssd = append(ssd, *convertGBToBytes(volume.SizeGB))
 	}
-	rootfss := []uint64{*convertGBToBytes(vm.RootfsSizeMB / 1024)}
-	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, &freeIPs, []uint64{farmID}, nil), ssd, rootfss
+
+	rootfss := []uint64{*convertGBToBytes(rootfsMB / 1024)}
+	return buildGenericFilter(&freeMRUs, &freeSRUs, nil, &freeIPs, []uint64{farmID}, nil, light), ssd, rootfss
 }
 
 // BuildGatewayFilter build a filter for a gateway
 func BuildGatewayFilter(farmID uint64) types.NodeFilter {
 	domain := true
-	return buildGenericFilter(nil, nil, nil, nil, []uint64{farmID}, &domain)
+	return buildGenericFilter(nil, nil, nil, nil, []uint64{farmID}, &domain, false)
 }
 
 // BuildZDBFilter build a filter for a zdbs
 func BuildZDBFilter(zdb workloads.ZDB, n int, farmID uint64) (types.NodeFilter, []uint64) {
 	freeHRUs := zdb.SizeGB * uint64(n)
-	return buildGenericFilter(nil, nil, &freeHRUs, nil, []uint64{farmID}, nil), []uint64{*convertGBToBytes(freeHRUs)}
+	return buildGenericFilter(nil, nil, &freeHRUs, nil, []uint64{farmID}, nil, false), []uint64{*convertGBToBytes(freeHRUs)}
 }
 
-func buildGenericFilter(mrus, srus, hrus, ips *uint64, farmIDs []uint64, domain *bool) types.NodeFilter {
+func buildGenericFilter(mrus, srus, hrus, ips *uint64, farmIDs []uint64, domain *bool, light bool) types.NodeFilter {
 	var freeMRUs *uint64
 	if mrus != nil {
 		freeMRUs = convertGBToBytes(*mrus)
@@ -69,15 +72,22 @@ func buildGenericFilter(mrus, srus, hrus, ips *uint64, farmIDs []uint64, domain 
 		freeHRUs = convertGBToBytes(*hrus)
 	}
 	rented := false
+
+	var features []string
+	if light {
+		features = append(features, zos.NetworkLightType, zos.ZMachineLightType)
+	}
+
 	return types.NodeFilter{
-		Status:  []string{"up"},
-		FreeMRU: freeMRUs,
-		FreeSRU: freeSRUs,
-		FreeHRU: freeHRUs,
-		FreeIPs: ips,
-		FarmIDs: farmIDs,
-		Domain:  domain,
-		Rented:  &rented,
+		Status:   []string{"up"},
+		FreeMRU:  freeMRUs,
+		FreeSRU:  freeSRUs,
+		FreeHRU:  freeHRUs,
+		FreeIPs:  ips,
+		FarmIDs:  farmIDs,
+		Domain:   domain,
+		Rented:   &rented,
+		Features: features,
 	}
 }
 

@@ -2,9 +2,11 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
@@ -116,6 +118,40 @@ var deployVMCmd = &cobra.Command{
 				log.Fatal().Err(err).Send()
 			}
 		}
+
+		cfg, err := config.GetUserConfig()
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network))
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		// if no public ips or yggdrasil then we should go for the light deployment
+		if !ipv4 && !ipv6 && !ygg {
+			vm := workloads.VMLight{
+				Name:           name,
+				EnvVars:        env,
+				CPU:            cpu,
+				MemoryMB:       memory * 1024,
+				GPUs:           convertGPUsToZosGPUs(gpus),
+				RootfsSizeMB:   rootfs * 1024,
+				Flist:          flist,
+				Entrypoint:     entrypoint,
+				MyceliumIPSeed: seed,
+			}
+			err = executeVMLight(cmd.Context(), t, vm, node, farm, disk, volume)
+			if err == nil {
+				return nil
+			}
+
+			if !errors.Is(err, deployer.ErrNoNodesMatchesResources) {
+				log.Fatal().Err(err).Send()
+			}
+		}
+
 		vm := workloads.VM{
 			Name:           name,
 			EnvVars:        env,
@@ -130,62 +166,11 @@ var deployVMCmd = &cobra.Command{
 			MyceliumIPSeed: seed,
 			Planetary:      ygg,
 		}
-		var diskMount workloads.Disk
-		if disk != 0 {
-			diskName := fmt.Sprintf("%sdisk", name)
-			diskMount = workloads.Disk{Name: diskName, SizeGB: disk}
-			vm.Mounts = []workloads.Mount{{Name: diskName, MountPoint: "/data"}}
-		}
-		var volumeMount workloads.Volume
-		if volume != 0 {
-			volumeName := fmt.Sprintf("%svolume", name)
-			volumeMount = workloads.Volume{Name: volumeName, SizeGB: volume}
-			vm.Mounts = append(vm.Mounts, workloads.Mount{Name: volumeName, MountPoint: "/volume"})
-		}
-		cfg, err := config.GetUserConfig()
+		err = executeVM(cmd.Context(), t, vm, node, farm, disk, volume)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network))
-		if err != nil {
-			log.Fatal().Err(err).Send()
-		}
-
-		if node == 0 {
-			filter, ssd, rootfss := filters.BuildVMFilter(vm, diskMount, volumeMount, farm)
-			nodes, err := deployer.FilterNodes(
-				cmd.Context(),
-				t,
-				filter,
-				ssd,
-				nil,
-				rootfss,
-			)
-			if err != nil {
-				log.Fatal().Err(err).Send()
-			}
-
-			node = uint32(nodes[0].NodeID)
-		}
-		vm.NodeID = node
-		resVM, err := command.DeployVM(cmd.Context(), t, vm, diskMount, volumeMount)
-		if err != nil {
-			log.Fatal().Err(err).Send()
-		}
-
-		if ipv4 {
-			log.Info().Msgf("vm ipv4: %s", resVM.ComputedIP)
-		}
-		if ipv6 {
-			log.Info().Msgf("vm ipv6: %s", resVM.ComputedIP6)
-		}
-		if ygg {
-			log.Info().Msgf("vm planetary ip: %s", resVM.PlanetaryIP)
-		}
-		if mycelium {
-			log.Info().Msgf("vm mycelium ip: %s", resVM.MyceliumIP)
-		}
 		return nil
 	},
 }
@@ -223,7 +208,116 @@ func init() {
 
 	deployVMCmd.Flags().Bool("ipv4", false, "assign public ipv4 for vm")
 	deployVMCmd.Flags().Bool("ipv6", false, "assign public ipv6 for vm")
-	deployVMCmd.Flags().Bool("ygg", true, "assign yggdrasil ip for vm")
+	deployVMCmd.Flags().Bool("ygg", false, "assign yggdrasil ip for vm")
 	deployVMCmd.Flags().Bool("mycelium", true, "assign mycelium ip for vm")
 	deployVMCmd.Flags().StringToStringP("env", "e", make(map[string]string), "environment variables for the vm")
+}
+
+func executeVM(
+	ctx context.Context, t deployer.TFPluginClient,
+	vm workloads.VM,
+	node uint32,
+	farm, disk, volume uint64,
+) error {
+	var diskMount workloads.Disk
+	if disk != 0 {
+		diskName := fmt.Sprintf("%sdisk", vm.Name)
+		diskMount = workloads.Disk{Name: diskName, SizeGB: disk}
+		vm.Mounts = []workloads.Mount{{Name: diskName, MountPoint: "/data"}}
+	}
+
+	var volumeMount workloads.Volume
+	if volume != 0 {
+		volumeName := fmt.Sprintf("%svolume", vm.Name)
+		volumeMount = workloads.Volume{Name: volumeName, SizeGB: volume}
+		vm.Mounts = append(vm.Mounts, workloads.Mount{Name: volumeName, MountPoint: "/volume"})
+	}
+
+	if node == 0 {
+		filter, ssd, rootfss := filters.BuildVMFilter(diskMount, volumeMount, farm, vm.MemoryMB, vm.RootfsSizeMB, vm.PublicIP, false)
+		nodes, err := deployer.FilterNodes(
+			ctx,
+			t,
+			filter,
+			ssd,
+			nil,
+			rootfss,
+		)
+		if err != nil {
+			return err
+		}
+
+		node = uint32(nodes[0].NodeID)
+	}
+
+	vm.NodeID = node
+	resVM, err := command.DeployVM(ctx, t, vm, diskMount, volumeMount)
+	if err != nil {
+		return err
+	}
+
+	if vm.PublicIP {
+		log.Info().Msgf("vm ipv4: %s", resVM.ComputedIP)
+	}
+	if vm.PublicIP6 {
+		log.Info().Msgf("vm ipv6: %s", resVM.ComputedIP6)
+	}
+	if vm.Planetary {
+		log.Info().Msgf("vm planetary ip: %s", resVM.PlanetaryIP)
+	}
+	if len(resVM.MyceliumIP) != 0 {
+		log.Info().Msgf("vm mycelium ip: %s", resVM.MyceliumIP)
+	}
+
+	return nil
+}
+
+func executeVMLight(
+	ctx context.Context, t deployer.TFPluginClient,
+	vm workloads.VMLight,
+	node uint32,
+	farm, disk, volume uint64,
+) error {
+	var diskMount workloads.Disk
+	if disk != 0 {
+		diskName := fmt.Sprintf("%sdisk", vm.Name)
+		diskMount = workloads.Disk{Name: diskName, SizeGB: disk}
+		vm.Mounts = []workloads.Mount{{Name: diskName, MountPoint: "/data"}}
+	}
+
+	var volumeMount workloads.Volume
+	if volume != 0 {
+		volumeName := fmt.Sprintf("%svolume", vm.Name)
+		volumeMount = workloads.Volume{Name: volumeName, SizeGB: volume}
+		vm.Mounts = append(vm.Mounts, workloads.Mount{Name: volumeName, MountPoint: "/volume"})
+	}
+
+	if node == 0 {
+		filter, ssd, rootfss := filters.BuildVMFilter(diskMount, volumeMount, farm, vm.MemoryMB, vm.RootfsSizeMB, false, true)
+		nodes, err := deployer.FilterNodes(
+			ctx,
+			t,
+			filter,
+			ssd,
+			nil,
+			rootfss,
+		)
+		if err != nil {
+			return err
+		}
+
+		node = uint32(nodes[0].NodeID)
+	}
+
+	vm.NodeID = node
+	resVM, err := command.DeployVMLight(ctx, t, vm, diskMount, volumeMount)
+	if err != nil {
+		return err
+	}
+
+	if len(resVM.MyceliumIP) != 0 {
+		log.Info().Msgf("vm mycelium ip: %s", resVM.MyceliumIP)
+	}
+
+	return nil
 }

@@ -21,7 +21,7 @@ tfcmd deploy vm [flags]
 - disk: size of disk in GB mounted on /data. if not set no disk workload is made.
 - volume: size of volume in GB mounted on /volume. if not set no volume workload is made
 - entrypoint: entrypoint for VM flist (default "/sbin/zinit init"). note: setting this without the flist option will fail.
-- flist: flist used in VM (default "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"). note: setting this without the entrypoint option will fail.
+- flist: flist used in VM (default "<https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist>"). note: setting this without the entrypoint option will fail.
 - ipv4: assign public ipv4 for VM (default false).
 - ipv6: assign public ipv6 for VM (default false).
 - memory: memory size in GB (default 1).
