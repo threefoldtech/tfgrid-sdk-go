@@ -46,38 +46,38 @@ func TestBatchK8sDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	masterVM1, err := generateBasicVM(generateRandString(10), nodeID1, network.Name, "")
+	master1VM, err := generateBasicVM(generateRandString(10), nodeID1, network.Name, "")
 	require.NoError(t, err)
 
 	master1 := workloads.K8sNode{
-		VM:         &masterVM1,
+		VM:         &master1VM,
 		DiskSizeGB: 1,
 	}
-	masterVM2, err := generateBasicVM(generateRandString(10), nodeID2, network.Name, "")
+	master2VM, err := generateBasicVM(generateRandString(10), nodeID2, network.Name, "")
 	require.NoError(t, err)
 
 	master2 := workloads.K8sNode{
-		VM:         &masterVM2,
+		VM:         &master2VM,
 		DiskSizeGB: 1,
 	}
 	vm1, err := generateBasicVM(generateRandString(10), nodeID1, network.Name, "")
 	require.NoError(t, err)
 
-	workerNodeData1 := workloads.K8sNode{
+	worker1NodeData := workloads.K8sNode{
 		VM:         &vm1,
 		DiskSizeGB: 1,
 	}
 	vm2, err := generateBasicVM(generateRandString(10), nodeID2, network.Name, "")
 	require.NoError(t, err)
 
-	workerNodeData2 := workloads.K8sNode{
+	worker2NodeData := workloads.K8sNode{
 		VM:         &vm2,
 		DiskSizeGB: 1,
 	}
 
 	k8sCluster1 := workloads.K8sCluster{
 		Master:      &master1,
-		Workers:     []workloads.K8sNode{workerNodeData1},
+		Workers:     []workloads.K8sNode{worker1NodeData},
 		Token:       "tokens",
 		SSHKey:      publicKey,
 		Flist:       workloads.K8sFlist,
@@ -86,7 +86,7 @@ func TestBatchK8sDeployment(t *testing.T) {
 
 	k8sCluster2 := workloads.K8sCluster{
 		Master:      &master2,
-		Workers:     []workloads.K8sNode{workerNodeData2},
+		Workers:     []workloads.K8sNode{worker2NodeData},
 		Token:       "tokens",
 		SSHKey:      publicKey,
 		Flist:       workloads.K8sFlist,

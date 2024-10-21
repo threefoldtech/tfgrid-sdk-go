@@ -19,7 +19,9 @@ import (
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	"golang.org/x/crypto/ssh"
 )
-
+const (
+	ubuntuFlist = "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"
+)
 func setup() (deployer.TFPluginClient, error) {
 	mnemonics := os.Getenv("MNEMONICS")
 	log.Printf("mnemonics: %s", mnemonics)

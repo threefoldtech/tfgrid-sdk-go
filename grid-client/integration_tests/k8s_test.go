@@ -89,20 +89,20 @@ func TestK8sDeployment(t *testing.T) {
 	vm1, err := generateBasicVM(fmt.Sprintf("worker1_%s", generateRandString(5)), workerNodeID, network.Name, "")
 	require.NoError(t, err)
 
-	workerNodeData1 := workloads.K8sNode{
+	worker1NodeData := workloads.K8sNode{
 		VM:         &vm1,
 		DiskSizeGB: 1,
 	}
 	vm2, err := generateBasicVM(fmt.Sprintf("worker2_%s", generateRandString(5)), workerNodeID, network.Name, "")
 	require.NoError(t, err)
 
-	workerNodeData2 := workloads.K8sNode{
+	worker2NodeData := workloads.K8sNode{
 		VM:         &vm2,
 		DiskSizeGB: 1,
 	}
 
 	// deploy k8s cluster
-	workers := []workloads.K8sNode{workerNodeData1, workerNodeData2}
+	workers := []workloads.K8sNode{worker1NodeData, worker2NodeData}
 
 	k8sCluster := workloads.K8sCluster{
 		Master:      &master,
@@ -146,7 +146,7 @@ func TestK8sDeployment(t *testing.T) {
 	// require.NoError(t, requireNodesAreReady(len(k8s.Workers)+1, masterIP, privateKey))
 
 	// update k8s cluster (remove worker)
-	k8sCluster.Workers = []workloads.K8sNode{workerNodeData1}
+	k8sCluster.Workers = []workloads.K8sNode{worker1NodeData}
 
 	err = tfPluginClient.K8sDeployer.Deploy(context.Background(), &k8sCluster)
 	require.NoError(t, err)
@@ -174,7 +174,7 @@ func TestK8sDeployment(t *testing.T) {
 	// require.NoError(t, requireNodesAreReady(len(k8s.Workers)+1, masterIP, privateKey))
 
 	// update k8s cluster (add worker)
-	k8sCluster.Workers = append(k8sCluster.Workers, workerNodeData2)
+	k8sCluster.Workers = append(k8sCluster.Workers, worker2NodeData)
 	err = tfPluginClient.K8sDeployer.Deploy(context.Background(), &k8sCluster)
 	require.NoError(t, err)
 

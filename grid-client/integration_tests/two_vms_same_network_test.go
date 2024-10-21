@@ -39,8 +39,6 @@ func TestTwoVMsSameNetworkWithPublicIPV6(t *testing.T) {
 	network, err := generateBasicNetwork([]uint32{nodeID})
 	require.NoError(t, err)
 
-	ubuntuFlist := "https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist"
-
 	vm1, err := generateBasicVM("vm1", nodeID, network.Name, publicKey)
 	require.NoError(t, err)
 
