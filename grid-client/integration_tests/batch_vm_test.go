@@ -48,7 +48,7 @@ func TestBatchVMDeployment(t *testing.T) {
 	vm2, err := generateBasicVM("vm", nodeID2, network2.Name, publicKey)
 	require.NoError(t, err)
 
-	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []*workloads.ZNet{&network1, &network2})
+	err = tfPluginClient.NetworkDeployer.BatchDeploy(context.Background(), []workloads.Network{&network1, &network2})
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -59,8 +59,8 @@ func TestBatchVMDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dl1 := workloads.NewDeployment(fmt.Sprintf("dl1_%s", generateRandString(10)), nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil, nil)
-	dl2 := workloads.NewDeployment(fmt.Sprintf("dl2_%s", generateRandString(10)), nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil, nil)
+	dl1 := workloads.NewDeployment(fmt.Sprintf("dl1_%s", generateRandString(10)), nodeID1, "", nil, network1.Name, nil, nil, []workloads.VM{vm1}, nil, nil, nil)
+	dl2 := workloads.NewDeployment(fmt.Sprintf("dl2_%s", generateRandString(10)), nodeID2, "", nil, network2.Name, nil, nil, []workloads.VM{vm2}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.BatchDeploy(context.Background(), []*workloads.Deployment{&dl1, &dl2})
 	require.NoError(t, err)
 

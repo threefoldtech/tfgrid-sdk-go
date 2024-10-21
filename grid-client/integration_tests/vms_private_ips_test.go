@@ -59,7 +59,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 		}
 	})
 
-	d1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil, nil)
+	d1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &d1)
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +72,7 @@ func TestDeploymentsDeploy(t *testing.T) {
 		}
 	})
 
-	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil, nil)
+	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm1}, nil, nil, nil)
 	err = tfPluginClient.DeploymentDeployer.Deploy(context.Background(), &d2)
 	if err != nil {
 		t.Fatal(err)
@@ -180,15 +180,15 @@ func TestDeploymentsBatchDeploy(t *testing.T) {
 		}
 	})
 
-	d1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil, nil)
+	d1 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil, nil, nil)
 	d1.Vms[1].Name = vm2Name
 	d1.Vms[2].Name = vm3Name
 
-	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil, nil)
+	d2 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID1, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil, nil, nil)
 	d2.Vms[1].Name = vm2Name
 	d2.Vms[2].Name = vm3Name
 
-	d3 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID2, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil, nil)
+	d3 := workloads.NewDeployment(fmt.Sprintf("dl_%s", generateRandString(10)), nodeID2, "", nil, network.Name, nil, nil, []workloads.VM{vm1, vm1, vm1}, nil, nil, nil)
 	d3.Vms[1].Name = vm2Name
 	d3.Vms[2].Name = vm3Name
 	d3.Vms[0].NodeID = nodeID2

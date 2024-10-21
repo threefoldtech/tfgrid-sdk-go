@@ -4,15 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"slices"
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // DeploymentDeployer for deploying a deployment
@@ -46,8 +44,8 @@ func (d *DeploymentDeployer) Validate(ctx context.Context, dls []*workloads.Depl
 }
 
 // GenerateVersionlessDeployments generates a new deployment without a version
-func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context, dls []*workloads.Deployment) (map[uint32][]gridtypes.Deployment, error) {
-	gridDlsPerNodes := make(map[uint32][]gridtypes.Deployment)
+func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context, dls []*workloads.Deployment) (map[uint32][]zos.Deployment, error) {
+	gridDlsPerNodes := make(map[uint32][]zos.Deployment)
 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -62,7 +60,7 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 		wg.Add(1)
 		go func(dl *workloads.Deployment) {
 			defer wg.Done()
-			newDl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, []gridtypes.Workload{})
+			newDl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, 0, []zos.Workload{})
 			for _, disk := range dl.Disks {
 				newDl.Workloads = append(newDl.Workloads, disk.ZosWorkload())
 			}
@@ -73,6 +71,9 @@ func (d *DeploymentDeployer) GenerateVersionlessDeployments(ctx context.Context,
 				newDl.Workloads = append(newDl.Workloads, zdb.ZosWorkload())
 			}
 			for _, vm := range dl.Vms {
+				newDl.Workloads = append(newDl.Workloads, vm.ZosWorkload()...)
+			}
+			for _, vm := range dl.VmsLight {
 				newDl.Workloads = append(newDl.Workloads, vm.ZosWorkload()...)
 			}
 
@@ -120,7 +121,7 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 
 	dl.NodeDeploymentID, err = d.deployer.Deploy(
 		ctx, dl.NodeDeploymentID,
-		map[uint32]gridtypes.Deployment{dl.NodeID: dlsPerNodes[dl.NodeID][0]},
+		map[uint32]zos.Deployment{dl.NodeID: dlsPerNodes[dl.NodeID][0]},
 		map[uint32]*uint64{dl.NodeID: dl.SolutionProvider},
 	)
 
@@ -160,7 +161,7 @@ func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.D
 	// update deployment and plugin state
 	// error is not returned immediately before updating state because of untracked failed deployments
 	for _, dl := range dls {
-		if err := d.updateStateFromDeployments(ctx, dl, newDls); err != nil {
+		if err := d.updateStateFromDeployments(dl, newDls); err != nil {
 			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to update deployment '%s' state", dl.Name))
 		}
 	}
@@ -187,7 +188,7 @@ func (d *DeploymentDeployer) Cancel(ctx context.Context, dl *workloads.Deploymen
 	return nil
 }
 
-func (d *DeploymentDeployer) updateStateFromDeployments(ctx context.Context, dl *workloads.Deployment, newDls map[uint32][]gridtypes.Deployment) error {
+func (d *DeploymentDeployer) updateStateFromDeployments(dl *workloads.Deployment, newDls map[uint32][]zos.Deployment) error {
 	dl.NodeDeploymentID = map[uint32]uint64{}
 
 	for _, newDl := range newDls[dl.NodeID] {
@@ -257,7 +258,7 @@ func (d *DeploymentDeployer) calculateNetworksUsedIPs(ctx context.Context, dls [
 
 	// calculate used host IDs per network
 	for _, dl := range dls {
-		if len(dl.Vms) == 0 {
+		if len(dl.Vms) == 0 && len(dl.VmsLight) == 0 {
 			continue
 		}
 
@@ -303,7 +304,7 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 	}
 
 	for _, dl := range dls {
-		if len(dl.Vms) == 0 {
+		if len(dl.Vms) == 0 && len(dl.VmsLight) == 0 {
 			newDls = append(newDls, dl)
 			continue
 		}
@@ -320,45 +321,27 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 		curHostID := byte(2)
 
 		for idx, vm := range dl.Vms {
-			vmIP := net.ParseIP(vm.IP).To4()
-
-			// if vm private ip is given
-			if vmIP != nil {
-				vmHostID := vmIP[3] // host ID of the private ip
-
-				nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
-
-				// TODO: use of a duplicate IP vs an updated vm with a new/old IP
-				if slices.Contains(nodeUsedHostIDs, vmHostID) {
-					continue
-					// return fmt.Errorf("duplicate private ip '%v' in vm '%s' is used", vmIP, vm.Name)
-				}
-
-				if !ipRangeCIDR.Contains(vmIP) {
-					errs = multierror.Append(errs, fmt.Errorf("deployment ip range '%v' doesn't contain ip '%v' for vm '%s'", ipRange, vmIP, vm.Name))
-					continue
-				}
-
-				usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], vmHostID)
+			vmIP, err := vm.AssignPrivateIP(dl.NetworkName, ipRange, dl.NodeID,
+				ipRangeCIDR, ip, curHostID, usedHosts,
+			)
+			if err != nil {
+				errs = multierror.Append(errs, errors.Wrapf(err, "failed to assign IP to vm %s", vm.Name))
 				continue
 			}
 
-			nodeUsedHostIDs := usedHosts[dl.NetworkName][dl.NodeID]
+			dl.Vms[idx].IP = vmIP
+		}
 
-			// try to find available host ID in the deployment ip range
-			for slices.Contains(nodeUsedHostIDs, curHostID) {
-				if curHostID == 254 {
-					errs = multierror.Append(errs, errors.New("all 253 ips of the network are exhausted"))
-					continue
-				}
-				curHostID++
+		for idx, vmLight := range dl.VmsLight {
+			vmLightIP, err := vmLight.AssignPrivateIP(dl.NetworkName, ipRange, dl.NodeID,
+				ipRangeCIDR, ip, curHostID, usedHosts,
+			)
+			if err != nil {
+				errs = multierror.Append(errs, errors.Wrapf(err, "failed to assign IP to vm %s", vmLight.Name))
+				continue
 			}
 
-			usedHosts[dl.NetworkName][dl.NodeID] = append(usedHosts[dl.NetworkName][dl.NodeID], curHostID)
-
-			vmIP = ip.To4()
-			vmIP[3] = curHostID
-			dl.Vms[idx].IP = vmIP.String()
+			dl.VmsLight[idx].IP = vmLightIP
 		}
 
 		dl.IPrange = ipRange
@@ -368,7 +351,7 @@ func (d *DeploymentDeployer) assignPrivateIPs(ctx context.Context, dls []*worklo
 	return newDls, errs
 }
 
-func (d *DeploymentDeployer) syncContract(ctx context.Context, dl *workloads.Deployment) error {
+func (d *DeploymentDeployer) syncContract(dl *workloads.Deployment) error {
 	sub := d.tfPluginClient.SubstrateConn
 
 	if dl.ContractID == 0 {
@@ -389,7 +372,7 @@ func (d *DeploymentDeployer) syncContract(ctx context.Context, dl *workloads.Dep
 
 // Sync syncs the deployments // TODO: remove
 func (d *DeploymentDeployer) Sync(ctx context.Context, dl *workloads.Deployment) error {
-	err := d.syncContract(ctx, dl)
+	err := d.syncContract(dl)
 	if err != nil {
 		return err
 	}
@@ -406,6 +389,7 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, dl *workloads.Deployment)
 	}
 
 	vms := make([]workloads.VM, 0)
+	vmsLight := make([]workloads.VMLight, 0)
 	zdbs := make([]workloads.ZDB, 0)
 	qsfs := make([]workloads.QSFS, 0)
 	disks := make([]workloads.Disk, 0)
@@ -424,6 +408,14 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, dl *workloads.Deployment)
 				continue
 			}
 			vms = append(vms, vm)
+
+		case zos.ZMachineLightType:
+			vmLight, err := workloads.NewVMLightFromWorkload(&w, &deployment, dl.NodeID)
+			if err != nil {
+				log.Error().Err(err).Msgf("error parsing vm-light")
+				continue
+			}
+			vmsLight = append(vmsLight, vmLight)
 
 		case zos.ZDBType:
 			zdb, err := workloads.NewZDBFromWorkload(&w)
@@ -461,12 +453,13 @@ func (d *DeploymentDeployer) Sync(ctx context.Context, dl *workloads.Deployment)
 		}
 	}
 
-	dl.Match(disks, qsfs, zdbs, vms, volumes)
+	dl.Match(disks, qsfs, zdbs, vms, vmsLight, volumes)
 
 	dl.Disks = disks
 	dl.QSFS = qsfs
 	dl.Zdbs = zdbs
 	dl.Vms = vms
+	dl.VmsLight = vmsLight
 	dl.Volumes = volumes
 
 	return nil

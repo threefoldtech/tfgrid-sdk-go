@@ -134,7 +134,7 @@ func (g *GatewayFQDNProxy) GenerateMetadata() (string, error) {
 	}
 
 	deploymentData := DeploymentData{
-		Version:     Version,
+		Version:     int(Version3),
 		Name:        g.Name,
 		Type:        "Gateway Fqdn",
 		ProjectName: g.SolutionType,

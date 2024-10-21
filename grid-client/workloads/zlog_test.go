@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // ZlogWorkload for tests
@@ -18,7 +18,7 @@ func TestZLog(t *testing.T) {
 	zlogWorkload := ZlogWorkload.ZosWorkload()
 	zlogWorkload.Result.State = "ok"
 
-	deployment := NewGridDeployment(1, []gridtypes.Workload{zlogWorkload})
+	deployment := NewGridDeployment(1, 0, []zos.Workload{zlogWorkload})
 
 	t.Run("test_zLogs_from_deployment", func(t *testing.T) {
 		zlogs := zlogs(&deployment, ZlogWorkload.Zmachine)
