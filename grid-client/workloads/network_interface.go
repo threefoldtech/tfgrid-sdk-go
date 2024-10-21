@@ -32,8 +32,6 @@ type Network interface {
 		endpoints map[uint32]net.IP,
 		nodeUsedPorts map[uint32][]uint16,
 	) (map[uint32]zos.Deployment, error)
-	generateDeployments(endpointIPs map[uint32]net.IP, usedPorts map[uint32][]uint16, publicNode, twinID uint32,
-	) (map[uint32]zos.Deployment, error)
 	ReadNodesConfig(ctx context.Context, nodeDeployments map[uint32]zos.Deployment) error
 
 	GetNodes() []uint32

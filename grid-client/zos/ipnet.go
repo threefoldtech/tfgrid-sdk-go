@@ -13,7 +13,7 @@ func ParseIPNet(txt string) (r IPNet, err error) {
 		//empty ip net value
 		return r, nil
 	}
-	//fmt.Println("parsing: ", string(text))
+
 	ip, net, err := net.ParseCIDR(txt)
 	if err != nil {
 		return r, err
@@ -52,7 +52,7 @@ func (i IPNet) MarshalJSON() ([]byte, error) {
 	return []byte(v), nil
 }
 
-// MarshalJSON dumps iprange as a string
+// MarshalText dumps iprange as a string
 func (i IPNet) MarshalText() ([]byte, error) {
 	if len(i.IPNet.IP) == 0 {
 		return []byte{}, nil

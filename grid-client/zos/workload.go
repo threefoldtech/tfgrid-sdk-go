@@ -3,6 +3,7 @@ package zos
 import (
 	"encoding/json"
 	"io"
+	"slices"
 
 	"github.com/threefoldtech/zos/pkg/gridtypes"
 	gridtypes4 "github.com/threefoldtech/zos4/pkg/gridtypes"
@@ -56,13 +57,7 @@ func (r *Result) Unmarshal(v interface{}) error {
 type ResultState string
 
 func (s ResultState) IsAny(state ...ResultState) bool {
-	for _, in := range state {
-		if s == in {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(state, s)
 }
 
 func (s ResultState) IsOkay() bool {

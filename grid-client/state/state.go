@@ -370,6 +370,7 @@ func (st *State) LoadNetworkFromGrid(ctx context.Context, name string) (znet wor
 
 	// merge networks
 	var nodes []uint32
+	myceliumKeys := make(map[uint32][]byte)
 	nodesIPRange := map[uint32]zosTypes.IPNet{}
 	wgPort := map[uint32]int{}
 	keys := map[uint32]wgtypes.Key{}
@@ -377,12 +378,14 @@ func (st *State) LoadNetworkFromGrid(ctx context.Context, name string) (znet wor
 		maps.Copy(nodesIPRange, net.NodesIPRange)
 		maps.Copy(wgPort, net.WGPort)
 		maps.Copy(keys, net.Keys)
+		maps.Copy(myceliumKeys, net.MyceliumKeys)
 		nodes = append(nodes, net.Nodes...)
 	}
 
 	znet.NodeDeploymentID = nodeDeploymentsIDs
 	znet.Nodes = nodes
 	znet.NodesIPRange = nodesIPRange
+	znet.MyceliumKeys = myceliumKeys
 	znet.Keys = keys
 	znet.WGPort = wgPort
 
@@ -456,15 +459,18 @@ func (st *State) LoadNetworkLightFromGrid(ctx context.Context, name string) (zne
 
 	// merge networks
 	var nodes []uint32
-	nodesIPRange := map[uint32]zosTypes.IPNet{}
+	nodesIPRange := make(map[uint32]zosTypes.IPNet)
+	myceliumKeys := make(map[uint32][]byte)
 	for _, net := range zNets {
 		maps.Copy(nodesIPRange, net.NodesIPRange)
 		nodes = append(nodes, net.Nodes...)
+		maps.Copy(myceliumKeys, net.MyceliumKeys)
 	}
 
 	znet.NodeDeploymentID = nodeDeploymentsIDs
 	znet.Nodes = nodes
 	znet.NodesIPRange = nodesIPRange
+	znet.MyceliumKeys = myceliumKeys
 
 	st.Networks.UpdateNetworkSubnets(znet.Name, znet.NodesIPRange)
 	return znet, nil
