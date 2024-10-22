@@ -255,7 +255,7 @@ func buildDeployments(vms []Vms, nodesIDs []int, sshKeys map[string]string) grou
 
 			vmName := fmt.Sprintf("%s%d", vmGroup.Name, i)
 
-			network := buildNetworkDeployment(vmGroup, nodeID, vmName, solutionType)
+			network := buildNetworkDeployment(&vmGroup, nodeID, vmName, solutionType)
 			deployment := buildDeployment(vmGroup, nodeID, network.GetName(), vmName, solutionType, sshKeys[vmGroup.SSHKey])
 
 			vmDeployments = append(vmDeployments, &deployment)
@@ -352,7 +352,7 @@ func buildDeployment(vmGroup Vms, nodeID uint32, networkName, vmName, solutionTy
 	return deployment
 }
 
-func buildNetworkDeployment(vm Vms, nodeID uint32, name, solutionType string) workloads.Network {
+func buildNetworkDeployment(vm *Vms, nodeID uint32, name, solutionType string) workloads.Network {
 	if !vm.PublicIP4 && !vm.Ygg && !vm.Mycelium {
 		log.Warn().Str("vm name", name).Msg("ygg ip, mycelium ip and public IP options are false. Setting mycelium IP to true")
 		vm.Mycelium = true
