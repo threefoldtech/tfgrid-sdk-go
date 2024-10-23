@@ -75,8 +75,8 @@ func (d *K8sDeployer) GenerateVersionlessDeployments(ctx context.Context, k8sClu
 	}
 	for _, w := range k8sCluster.Workers {
 		workerWorkloads := w.WorkerZosWorkload(k8sCluster)
-		for _, w := range workerWorkloads {
-			nodeWorkloads[k8sCluster.Master.NodeID] = append(nodeWorkloads[k8sCluster.Master.NodeID], zosTypes.NewWorkloadFromZosWorkload(w))
+		for _, wr := range workerWorkloads {
+			nodeWorkloads[w.NodeID] = append(nodeWorkloads[w.NodeID], zosTypes.NewWorkloadFromZosWorkload(wr))
 		}
 	}
 
