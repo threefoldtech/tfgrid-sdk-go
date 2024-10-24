@@ -2,9 +2,11 @@ package deployer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	baseLog "log"
+	"net/http"
 	"os"
 	"time"
 
@@ -271,6 +273,11 @@ func NewTFPluginClient(
 	}
 	tfPluginClient.TwinID = twinID
 
+	// make sure the account used is verified we have the user public key in bytes(pkBytes)
+	if getTwinVerificationState(twinID) != "VERIFIED" {
+		return TFPluginClient{}, fmt.Errorf("can not run deployments for unverified user, please visit https://dashboard.grid.tf/ to verify your account")
+	}
+
 	tfPluginClient.useRmbProxy = true
 	// if tfPluginClient.useRmbProxy
 	sessionID := generateSessionID()
@@ -345,4 +352,46 @@ func (t *TFPluginClient) BatchCancelContract(contracts []uint64) error {
 
 func generateSessionID() string {
 	return fmt.Sprintf("tf-%d", os.Getpid())
+}
+
+// make sure the account used is verified we have the user public key in bytes(pkBytes)
+func getTwinVerificationState(twinID uint32) (status string) {
+	verificationServiceURL := "https://kyc1.gent01.dev.grid.tf/api/v1/status"
+	status = "FAILED"
+
+	request, err := http.NewRequest(http.MethodGet, verificationServiceURL, nil)
+	if err != nil {
+		return
+	}
+
+	q := request.URL.Query()
+	q.Set("twinID", fmt.Sprint(twinID))
+	request.URL.RawQuery = q.Encode()
+
+	cl := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	response, err := cl.Do(request)
+	if err != nil {
+		return
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return
+	}
+
+	bodyMap := map[string]string{}
+	err = json.Unmarshal(body, &bodyMap)
+	if err != nil {
+		return
+	}
+
+	if response.StatusCode != http.StatusOK {
+		log.Error().Msgf("failed to verify user status: %s", bodyMap["error"])
+		return
+	}
+	return bodyMap["status"]
 }
