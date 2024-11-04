@@ -31,7 +31,7 @@ var cancelCmd = &cobra.Command{
 			return err
 		}
 
-		tfPluginClient, err := setup(cfg, debug)
+		tfPluginClient, err := setup(cfg, debug, false)
 		if err != nil {
 			return err
 		}

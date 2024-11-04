@@ -18,7 +18,7 @@ const jsonExt = ".json"
 
 var allowedExt = []string{".yml", ".yaml", jsonExt}
 
-func setup(conf tfrobot.Config, debug bool) (deployer.TFPluginClient, error) {
+func setup(conf tfrobot.Config, debug, noColor bool) (deployer.TFPluginClient, error) {
 	network := conf.Network
 	log.Debug().Str("network", network).Send()
 
@@ -30,8 +30,12 @@ func setup(conf tfrobot.Config, debug bool) (deployer.TFPluginClient, error) {
 		deployer.WithRMBTimeout(30),
 		deployer.WithNetwork(network),
 	}
+
 	if debug {
 		opts = append(opts, deployer.WithLogs())
+	}
+	if noColor {
+		opts = append(opts, deployer.WithNoColorLogs())
 	}
 
 	return deployer.NewTFPluginClient(mnemonic, opts...)

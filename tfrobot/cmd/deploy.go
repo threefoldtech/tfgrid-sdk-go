@@ -31,6 +31,10 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrap(err, "error in output file")
 		}
+		noColor, err := cmd.Flags().GetBool("no-color")
+		if err != nil {
+			return err
+		}
 
 		if err = checkOutputFile(outputPath); err != nil {
 			return err
@@ -41,7 +45,7 @@ var deployCmd = &cobra.Command{
 			return err
 		}
 
-		tfPluginClient, err := setup(cfg, debug)
+		tfPluginClient, err := setup(cfg, debug, noColor)
 		if err != nil {
 			return err
 		}
@@ -64,4 +68,5 @@ func init() {
 	deployCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
 	deployCmd.Flags().StringP("config", "c", "", "path to config file")
 	deployCmd.Flags().StringP("output", "o", "output.yaml", "path to output file")
+	deployCmd.Flags().Bool("no-color", false, "disable output styling")
 }
