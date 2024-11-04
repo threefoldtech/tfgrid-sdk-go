@@ -155,6 +155,7 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 		relayURLs:     []string{},
 		rmbTimeout:    60, // default rmbTimeout is 60
 		showLogs:      false,
+		noColorLogs:   false,
 		rmbInMemCache: true,
 	}
 

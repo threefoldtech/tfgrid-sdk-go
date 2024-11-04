@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/internal/parser"
@@ -28,10 +27,6 @@ var loadCmd = &cobra.Command{
 		debug, err := cmd.Flags().GetBool("debug")
 		if err != nil {
 			return fmt.Errorf("invalid log debug mode input '%v' with error: %w", debug, err)
-		}
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		if debug {
-			zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		}
 
 		outputPath, err := cmd.Flags().GetString("output")
@@ -89,4 +84,12 @@ var loadCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func init() {
+	rootCmd.AddCommand(loadCmd)
+
+	loadCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
+	loadCmd.Flags().StringP("config", "c", "", "path to config file")
+	loadCmd.Flags().StringP("output", "o", "output.yaml", "path to output file")
 }

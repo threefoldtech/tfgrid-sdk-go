@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/internal/parser"
 	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
@@ -24,11 +23,6 @@ var cancelCmd = &cobra.Command{
 		debug, err := cmd.Flags().GetBool("debug")
 		if err != nil {
 			return fmt.Errorf("invalid log debug mode input '%v' with error: %w", debug, err)
-		}
-
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		if debug {
-			zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		}
 
 		configPath, err := cmd.Flags().GetString("config")
@@ -69,4 +63,11 @@ var cancelCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func init() {
+	rootCmd.AddCommand(cancelCmd)
+
+	cancelCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
+	cancelCmd.Flags().StringP("config", "c", "", "path to config file")
 }
