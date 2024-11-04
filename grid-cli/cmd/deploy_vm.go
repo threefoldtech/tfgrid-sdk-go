@@ -114,6 +114,11 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		noColor, err := cmd.Flags().GetBool("no-color")
+		if err != nil {
+			return err
+		}
+
 		var seed []byte
 		if mycelium {
 			seed, err = workloads.RandomMyceliumIPSeed()
@@ -127,7 +132,15 @@ var deployVMCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network))
+		opts := []deployer.PluginOpt{
+			deployer.WithNetwork(cfg.Network),
+		}
+
+		if noColor {
+			opts = append(opts, deployer.WithNoColorLogs())
+		}
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -223,6 +236,7 @@ func init() {
 	deployVMCmd.Flags().Bool("ygg", false, "assign yggdrasil ip for vm")
 	deployVMCmd.Flags().Bool("mycelium", true, "assign mycelium ip for vm")
 	deployVMCmd.Flags().StringToStringP("env", "e", make(map[string]string), "environment variables for the vm")
+	deployVMCmd.Flags().Bool("no-color", false, "disable output styling")
 }
 
 func executeVM(

@@ -17,12 +17,25 @@ var getVMCmd = &cobra.Command{
 	Short: "Get deployed vm",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		noColor, err := cmd.Flags().GetBool("no-color")
+		if err != nil {
+			return
+		}
 		cfg, err := config.GetUserConfig()
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network), deployer.WithRMBTimeout(100))
+		opts := []deployer.PluginOpt{
+			deployer.WithNetwork(cfg.Network),
+			deployer.WithRMBTimeout(100),
+		}
+
+		if noColor {
+			opts = append(opts, deployer.WithNoColorLogs())
+		}
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -41,4 +54,5 @@ var getVMCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getVMCmd)
+	getVMCmd.Flags().Bool("no-color", false, "disable output styling")
 }

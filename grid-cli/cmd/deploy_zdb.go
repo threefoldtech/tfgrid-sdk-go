@@ -34,6 +34,10 @@ var deployZDBCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		noColor, err := cmd.Flags().GetBool("no-color")
+		if err != nil {
+			return err
+		}
 
 		if len(names) > 0 && len(names) != count {
 			return fmt.Errorf("please provide '%d' names not '%d'", count, len(names))
@@ -106,7 +110,16 @@ var deployZDBCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network), deployer.WithRMBTimeout(100))
+		opts := []deployer.PluginOpt{
+			deployer.WithNetwork(cfg.Network),
+			deployer.WithRMBTimeout(100),
+		}
+
+		if noColor {
+			opts = append(opts, deployer.WithNoColorLogs())
+		}
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -166,4 +179,5 @@ func init() {
 	deployZDBCmd.Flags().Uint32("node", 0, "node id that zdb should be deployed on")
 	deployZDBCmd.Flags().Uint64("farm", 1, "farm id that zdb should be deployed on")
 	deployZDBCmd.MarkFlagsMutuallyExclusive("node", "farm")
+	deployZDBCmd.Flags().Bool("no-color", false, "disable output styling")
 }

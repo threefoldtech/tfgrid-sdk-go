@@ -23,6 +23,11 @@ var deployGatewayFQDNCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		noColor, err := cmd.Flags().GetBool("no-color")
+		if err != nil {
+			return err
+		}
+
 		gateway := workloads.GatewayFQDNProxy{
 			Name:           name,
 			Backends:       zosBackends,
@@ -36,7 +41,16 @@ var deployGatewayFQDNCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network), deployer.WithRMBTimeout(100))
+		opts := []deployer.PluginOpt{
+			deployer.WithNetwork(cfg.Network),
+			deployer.WithRMBTimeout(100),
+		}
+
+		if noColor {
+			opts = append(opts, deployer.WithNoColorLogs())
+		}
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -62,4 +76,5 @@ func init() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
+	deployGatewayFQDNCmd.Flags().Bool("no-color", false, "disable output styling")
 }

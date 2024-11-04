@@ -30,12 +30,26 @@ var deployGatewayNameCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		noColor, err := cmd.Flags().GetBool("no-color")
+		if err != nil {
+			return err
+		}
+
 		cfg, err := config.GetUserConfig()
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network), deployer.WithRMBTimeout(100))
+		opts := []deployer.PluginOpt{
+			deployer.WithNetwork(cfg.Network),
+			deployer.WithRMBTimeout(100),
+		}
+
+		if noColor {
+			opts = append(opts, deployer.WithNoColorLogs())
+		}
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -70,4 +84,5 @@ func init() {
 	deployGatewayNameCmd.Flags().Uint32("node", 0, "node id gateway should be deployed on")
 	deployGatewayNameCmd.Flags().Uint64("farm", 1, "farm id gateway should be deployed on")
 	deployGatewayNameCmd.MarkFlagsMutuallyExclusive("node", "farm")
+	deployGatewayNameCmd.Flags().Bool("no-color", false, "disable output styling")
 }
