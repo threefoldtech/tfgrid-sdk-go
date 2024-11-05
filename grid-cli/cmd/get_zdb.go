@@ -57,5 +57,5 @@ var getZDBCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getZDBCmd)
-	getZDBCmd.Flags().Bool("no-color", false, "disable output styling")
+	getZDBCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
 }

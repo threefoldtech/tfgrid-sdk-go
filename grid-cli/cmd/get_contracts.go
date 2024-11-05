@@ -51,7 +51,7 @@ var getContractsCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getContractsCmd)
-	getContractsCmd.Flags().Bool("no-color", false, "disable output styling")
+	getContractsCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
 }
 
 func printContractTables(contracts graphql.Contracts, writer io.Writer) {

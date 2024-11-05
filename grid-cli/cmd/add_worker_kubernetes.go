@@ -217,5 +217,5 @@ func init() {
 	addWorkerCmd.Flags().Bool("workers-ipv6", false, "assign public ipv6 for workers")
 	addWorkerCmd.Flags().Bool("workers-ygg", true, "assign yggdrasil ip for workers")
 	addWorkerCmd.Flags().Bool("workers-mycelium", true, "assign mycelium ip for workers")
-	addWorkerCmd.Flags().Bool("no-color", false, "disable output styling")
+	addWorkerCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
 }

@@ -64,5 +64,5 @@ var getContractCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getContractCmd)
-	getContractCmd.Flags().Bool("no-color", false, "disable output styling")
+	getContractCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
 }

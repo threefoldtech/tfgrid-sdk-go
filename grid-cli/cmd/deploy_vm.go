@@ -236,7 +236,7 @@ func init() {
 	deployVMCmd.Flags().Bool("ygg", false, "assign yggdrasil ip for vm")
 	deployVMCmd.Flags().Bool("mycelium", true, "assign mycelium ip for vm")
 	deployVMCmd.Flags().StringToStringP("env", "e", make(map[string]string), "environment variables for the vm")
-	deployVMCmd.Flags().Bool("no-color", false, "disable output styling")
+	deployVMCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
 }
 
 func executeVM(
