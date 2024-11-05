@@ -25,13 +25,17 @@ var cancelCmd = &cobra.Command{
 		if err != nil {
 			return errors.Wrapf(err, "invalid log debug mode input '%v'", debug)
 		}
+		noColor, err := cmd.Flags().GetBool("no-color")
+		if err != nil {
+			return err
+		}
 
 		cfg, err := readConfig(configPath)
 		if err != nil {
 			return err
 		}
 
-		tfPluginClient, err := setup(cfg, debug, false)
+		tfPluginClient, err := setup(cfg, debug, noColor)
 		if err != nil {
 			return err
 		}
@@ -50,4 +54,5 @@ func init() {
 
 	cancelCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
 	cancelCmd.Flags().StringP("config", "c", "", "path to config file")
+	cancelCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
 }
