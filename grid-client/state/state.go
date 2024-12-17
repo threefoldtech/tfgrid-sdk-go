@@ -316,20 +316,17 @@ func (st *State) LoadNetworkFromGrid(ctx context.Context, name string) (znet wor
 			return znet, errors.Wrapf(err, "could not get node client: %d", nodeID)
 		}
 
-		for _, contractID := range st.CurrentNodeDeployments[nodeID] {
-			dl, err := nodeClient.DeploymentGet(ctx, contractID)
-			if err != nil {
-				return znet, errors.Wrapf(err, "could not get network deployment %d from node %d", contractID, nodeID)
-			}
+		dls, err := nodeClient.DeploymentList(ctx)
+		if err != nil {
+			return znet, errors.Wrapf(err, "could not get all deployments from node %d", nodeID)
+		}
+
+		for _, dl := range dls {
 
 			if len(strings.TrimSpace(dl.Metadata)) == 0 {
-				contract, err := sub.GetContract(contractID)
+				dl.Metadata, err = getContractMetadata(sub, dl.ContractID, nodeID)
 				if err != nil {
-					return znet, errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
-				}
-				dl.Metadata = contract.ContractType.NodeContract.DeploymentData
-				if len(strings.TrimSpace(dl.Metadata)) == 0 {
-					return znet, errors.Wrapf(err, "contract %d doesn't have metadata", contractID)
+					return znet, err
 				}
 			}
 
@@ -410,25 +407,22 @@ func (st *State) LoadNetworkLightFromGrid(ctx context.Context, name string) (zne
 
 	sub := st.Substrate
 	for nodeID := range st.CurrentNodeDeployments {
+
 		nodeClient, err := st.NcPool.GetNodeClient(sub, nodeID)
 		if err != nil {
 			return znet, errors.Wrapf(err, "could not get node client: %d", nodeID)
 		}
 
-		for _, contractID := range st.CurrentNodeDeployments[nodeID] {
-			dl, err := nodeClient.DeploymentGet(ctx, contractID)
-			if err != nil {
-				return znet, errors.Wrapf(err, "could not get network deployment %d from node %d", contractID, nodeID)
-			}
+		dls, err := nodeClient.DeploymentList(ctx)
+		if err != nil {
+			return znet, errors.Wrapf(err, "could not get all deployments from node %d", nodeID)
+		}
 
+		for _, dl := range dls {
 			if len(strings.TrimSpace(dl.Metadata)) == 0 {
-				contract, err := sub.GetContract(contractID)
+				dl.Metadata, err = getContractMetadata(sub, dl.ContractID, nodeID)
 				if err != nil {
-					return znet, errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
-				}
-				dl.Metadata = contract.ContractType.NodeContract.DeploymentData
-				if len(strings.TrimSpace(dl.Metadata)) == 0 {
-					return znet, errors.Wrapf(err, "contract %d doesn't have metadata", contractID)
+					return znet, err
 				}
 			}
 
@@ -570,4 +564,18 @@ func (st *State) AssignNodesIPRange(k *workloads.K8sCluster) (err error) {
 	k.NodesIPRange = nodesIPRange
 
 	return nil
+}
+
+func getContractMetadata(sub subi.SubstrateExt, contractID uint64, nodeID uint32) (string, error) {
+	contract, err := sub.GetContract(contractID)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not get contract %d from node %d", contractID, nodeID)
+	}
+
+	metadata := contract.ContractType.NodeContract.DeploymentData
+	if len(strings.TrimSpace(metadata)) == 0 {
+		return "", errors.Wrapf(err, "contract %d doesn't have metadata", contractID)
+	}
+
+	return metadata, nil
 }
