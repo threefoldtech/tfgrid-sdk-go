@@ -43,11 +43,11 @@ func SetupLoaderTests(t *testing.T, wls []zosTypes.Workload) *State {
 		Return(client.NewNodeClient(13, cl, 10), nil).AnyTimes()
 
 	cl.EXPECT().
-		Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
+		Call(gomock.Any(), uint32(13), "zos.deployment.list", gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-			var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
+			var res *[]zosTypes.Deployment = result.(*[]zosTypes.Deployment)
 			dl1.Metadata = "{\"type\":\"\",\"name\":\"testName\",\"projectName\":\"\"}"
-			*res = dl1
+			*res = []zosTypes.Deployment{dl1}
 			return nil
 		}).AnyTimes()
 
