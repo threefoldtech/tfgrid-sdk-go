@@ -54,5 +54,5 @@ func init() {
 
 	cancelCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
 	cancelCmd.Flags().StringP("config", "c", "", "path to config file")
-	cancelCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
+	cancelCmd.Flags().Bool("no-color", false, "disable output styling")
 }

@@ -179,5 +179,5 @@ func init() {
 	deployZDBCmd.Flags().Uint32("node", 0, "node id that zdb should be deployed on")
 	deployZDBCmd.Flags().Uint64("farm", 1, "farm id that zdb should be deployed on")
 	deployZDBCmd.MarkFlagsMutuallyExclusive("node", "farm")
-	deployZDBCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
+	deployZDBCmd.Flags().Bool("no-color", false, "disable output styling")
 }

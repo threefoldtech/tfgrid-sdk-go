@@ -64,5 +64,5 @@ func init() {
 	loadCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
 	loadCmd.Flags().StringP("config", "c", "", "path to config file")
 	loadCmd.Flags().StringP("output", "o", "output.yaml", "path to output file")
-	loadCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
+	loadCmd.Flags().Bool("no-color", false, "disable output styling")
 }

@@ -84,5 +84,5 @@ func init() {
 	deployGatewayNameCmd.Flags().Uint32("node", 0, "node id gateway should be deployed on")
 	deployGatewayNameCmd.Flags().Uint64("farm", 1, "farm id gateway should be deployed on")
 	deployGatewayNameCmd.MarkFlagsMutuallyExclusive("node", "farm")
-	deployGatewayNameCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
+	deployGatewayNameCmd.Flags().Bool("no-color", false, "disable output styling")
 }

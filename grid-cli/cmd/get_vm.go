@@ -54,5 +54,5 @@ var getVMCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getVMCmd)
-	getVMCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
+	getVMCmd.Flags().Bool("no-color", false, "disable output styling")
 }

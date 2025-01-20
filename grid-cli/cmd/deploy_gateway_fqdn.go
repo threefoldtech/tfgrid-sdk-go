@@ -76,5 +76,5 @@ func init() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	deployGatewayFQDNCmd.Flags().BoolP("no-color", "n", false, "disable output styling")
+	deployGatewayFQDNCmd.Flags().Bool("no-color", false, "disable output styling")
 }
