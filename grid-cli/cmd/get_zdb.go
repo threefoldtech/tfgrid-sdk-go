@@ -19,7 +19,7 @@ var getZDBCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {
-			return
+			log.Fatal().Err(err).Send()
 		}
 
 		cfg, err := config.GetUserConfig()
