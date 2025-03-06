@@ -9,14 +9,47 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  generate-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    outputs:
+      tests: ${{ steps.scrap-tests.outputs.tests }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+        id: go
+
+      - name: Generate tests
+        id: scrap-tests
+        run: |
+          tests="["
+          for test in $(go run scripts/scrap_tests/scrap_tests.go)
+          do
+            tests+="\"$test\","
+          done
+
+          tests=${tests%,}  # Remove the trailing comma
+          tests+="]"
+
+          # Save the tests to a file
+          echo "$tests" > tests.txt
+          echo "tests=$(cat tests.txt)" >> $GITHUB_OUTPUT
+
+  test-dev:
+    needs: generate-tests
+    name: Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 0
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
-        network: [dev, qa, test, main]
-
+        network: ["dev"]
+        tests: ${{ fromJson(needs.generate-tests.outputs.tests) }}
     steps:
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -37,17 +70,131 @@ jobs:
           sudo apt-get install -y wireguard
           sudo apt-get install dirmngr
           sudo apt-get install curl
-          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.7/mycelium-private-x86_64-unknown-linux-musl.tar.gz
-          tar xzf mycelium-private-x86_64-unknown-linux-musl.tar.gz
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.7/mycelium-x86_64-unknown-linux-musl.tar.gz
+          tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
           sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
-
-      - name: Test
+      - name: Test ${{ matrix.tests }}
         env:
           MNEMONICS: ${{ secrets.MNEMONICS }}
           NETWORK: ${{ matrix.network }}
-        # run: make integration
+        run: go test -v ./integration_tests -run ${{ matrix.tests }}
+        
+  test-qa:
+    needs: generate-tests
+    name: Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 0
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        network: ["qa"]
+        tests: ${{ fromJson(needs.generate-tests.outputs.tests) }}
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: Get dependencies
         run: |
-          for test in $(go run scripts/scrap_tests/scrap_tests.go)
-          do
-            go test -v ./integration_tests -run $test
-          done
+          go mod download
+
+      - name: install curl, wg and mycelium and add peers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wireguard
+          sudo apt-get install dirmngr
+          sudo apt-get install curl
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.7/mycelium-x86_64-unknown-linux-musl.tar.gz
+          tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
+          sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
+      - name: Test ${{ matrix.tests }}
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        run: go test -v ./integration_tests -run ${{ matrix.tests }}
+
+  test-test:
+    needs: generate-tests
+    name: Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 0
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        network: ["test"]
+        tests: ${{ fromJson(needs.generate-tests.outputs.tests) }}
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: Get dependencies
+        run: |
+          go mod download
+
+      - name: install curl, wg and mycelium and add peers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wireguard
+          sudo apt-get install dirmngr
+          sudo apt-get install curl
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.7/mycelium-x86_64-unknown-linux-musl.tar.gz
+          tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
+          sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
+      - name: Test ${{ matrix.tests }}
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        run: go test -v ./integration_tests -run ${{ matrix.tests }}
+
+  test-main:
+    needs: generate-tests
+    name: Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 0
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        network: ["main"]
+        tests: ${{ fromJson(needs.generate-tests.outputs.tests) }}
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: Get dependencies
+        run: |
+          go mod download
+
+      - name: install curl, wg and mycelium and add peers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wireguard
+          sudo apt-get install dirmngr
+          sudo apt-get install curl
+          wget https://github.com/threefoldtech/mycelium/releases/download/v0.5.7/mycelium-x86_64-unknown-linux-musl.tar.gz
+          tar xzf mycelium-x86_64-unknown-linux-musl.tar.gz
+          sudo ./mycelium --peers tcp://188.40.132.242:9651 quic://185.69.166.8:9651 --tun-name utun9 -k /tmp/mycelium_priv_key.bin &
+      - name: Test ${{ matrix.tests }}
+        env:
+          MNEMONICS: ${{ secrets.MNEMONICS }}
+          NETWORK: ${{ matrix.network }}
+        run: go test -v ./integration_tests -run ${{ matrix.tests }}
