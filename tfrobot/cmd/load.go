@@ -2,7 +2,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -50,7 +49,7 @@ var loadCmd = &cobra.Command{
 			return err
 		}
 
-		if err := deployer.RunLoader(context.Background(), cfg, tfPluginClient, debug, outputPath); err != nil {
+		if err := deployer.RunLoader(cmd.Context(), cfg, tfPluginClient, debug, outputPath); err != nil {
 			return errors.Wrap(err, "failed to load configured deployments")
 		}
 

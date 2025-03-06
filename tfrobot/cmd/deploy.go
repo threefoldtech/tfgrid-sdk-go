@@ -2,7 +2,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -54,7 +53,7 @@ var deployCmd = &cobra.Command{
 			return errors.Wrapf(err, "failed to validate configuration file '%s' with error", configPath)
 		}
 
-		if errs := deployer.RunDeployer(context.Background(), cfg, tfPluginClient, outputPath, debug); errs != nil {
+		if errs := deployer.RunDeployer(cmd.Context(), cfg, tfPluginClient, outputPath, debug); errs != nil {
 			return errors.Wrap(err, "failed to run deployer")
 		}
 
