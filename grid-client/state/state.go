@@ -500,13 +500,13 @@ func (st *State) LoadDeploymentFromGrid(ctx context.Context, nodeID uint32, name
 // if name is empty it returns a deployment with name equal to deploymentName and empty workload
 func (st *State) GetWorkloadInDeployment(ctx context.Context, nodeID uint32, name string, deploymentName string) (zosTypes.Workload, zosTypes.Deployment, error) {
 	sub := st.Substrate
+	if _, ok := st.CurrentNodeDeployments[nodeID]; !ok {
+		return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(ErrNotFound, "failed to find deployment %s on node %d", name, nodeID)
+	}
+
 	nodeClient, err := st.NcPool.GetNodeClient(sub, nodeID)
 	if err != nil {
 		return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(err, "could not get node client: %d", nodeID)
-	}
-
-	if _, ok := st.CurrentNodeDeployments[nodeID]; !ok {
-		return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(ErrNotFound, "failed to find deployment %s on node %d", name, nodeID)
 	}
 
 	dls, err := nodeClient.DeploymentList(ctx)
@@ -516,13 +516,9 @@ func (st *State) GetWorkloadInDeployment(ctx context.Context, nodeID uint32, nam
 
 	for _, dl := range dls {
 		if len(strings.TrimSpace(dl.Metadata)) == 0 {
-			if err != nil {
-				return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(err, "could not get contract %d from node %d", dl.ContractID, nodeID)
-			}
 			dl.Metadata, err = getContractMetadata(sub, dl.ContractID, nodeID)
-
-			if len(strings.TrimSpace(dl.Metadata)) == 0 {
-				return zosTypes.Workload{}, zosTypes.Deployment{}, errors.Wrapf(err, "contract %d doesn't have metadata", dl.ContractID)
+			if err != nil {
+				return zosTypes.Workload{}, zosTypes.Deployment{}, err
 			}
 		}
 
