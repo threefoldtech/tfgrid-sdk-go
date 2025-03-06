@@ -62,12 +62,26 @@ var addWorkerCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		noColor, err := cmd.Flags().GetBool("no-color")
+		if err != nil {
+			return err
+		}
+
 		cfg, err := config.GetUserConfig()
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network), deployer.WithRMBTimeout(100))
+		opts := []deployer.PluginOpt{
+			deployer.WithNetwork(cfg.Network),
+			deployer.WithRMBTimeout(100),
+		}
+
+		if noColor {
+			opts = append(opts, deployer.WithNoColorLogs())
+		}
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -203,4 +217,5 @@ func init() {
 	addWorkerCmd.Flags().Bool("workers-ipv6", false, "assign public ipv6 for workers")
 	addWorkerCmd.Flags().Bool("workers-ygg", true, "assign yggdrasil ip for workers")
 	addWorkerCmd.Flags().Bool("workers-mycelium", true, "assign mycelium ip for workers")
+	addWorkerCmd.Flags().Bool("no-color", false, "disable output styling")
 }

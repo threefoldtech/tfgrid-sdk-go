@@ -63,11 +63,15 @@ var deployKubernetesCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
 		mycelium, err := cmd.Flags().GetBool("mycelium")
 		if err != nil {
 			return err
 		}
+		noColor, err := cmd.Flags().GetBool("no-color")
+		if err != nil {
+			return err
+		}
+
 		var seed []byte
 		if mycelium {
 			seed, err = workloads.RandomMyceliumIPSeed()
@@ -159,7 +163,16 @@ var deployKubernetesCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network), deployer.WithRMBTimeout(100))
+		opts := []deployer.PluginOpt{
+			deployer.WithNetwork(cfg.Network),
+			deployer.WithRMBTimeout(100),
+		}
+
+		if noColor {
+			opts = append(opts, deployer.WithNoColorLogs())
+		}
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

@@ -3,12 +3,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
-	"github.com/rs/zerolog"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/internal/parser"
 	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
 )
 
@@ -20,53 +17,42 @@ var cancelCmd = &cobra.Command{
 		if len(cmd.Flags().Args()) != 0 {
 			return fmt.Errorf("'cancel' and %v cannot be used together, please use one command at a time", cmd.Flags().Args())
 		}
-
-		debug, err := cmd.Flags().GetBool("debug")
-		if err != nil {
-			return fmt.Errorf("invalid log debug mode input '%v' with error: %w", debug, err)
-		}
-
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		if debug {
-			zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		}
-
 		configPath, err := cmd.Flags().GetString("config")
 		if err != nil {
-			return fmt.Errorf("error in configuration file: %w", err)
+			return errors.Wrap(err, "error in configuration file")
 		}
-
-		if configPath == "" {
-			return fmt.Errorf("required configuration file path is empty")
-		}
-
-		configFile, err := os.Open(configPath)
+		debug, err := cmd.Flags().GetBool("debug")
 		if err != nil {
-			return fmt.Errorf("failed to open configuration file '%s' with error: %w", configPath, err)
+			return errors.Wrapf(err, "invalid log debug mode input '%v'", debug)
 		}
-		defer configFile.Close()
-
-		jsonFmt := filepath.Ext(configPath) == jsonExt
-		ymlFmt := filepath.Ext(configPath) == yamlExt || filepath.Ext(configPath) == ymlExt
-		if !jsonFmt && !ymlFmt {
-			return fmt.Errorf("unsupported configuration file format '%s', should be [yaml, yml, json]", configPath)
-		}
-
-		cfg, err := parser.ParseConfig(configFile, jsonFmt)
+		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {
-			return fmt.Errorf("failed to parse configuration file '%s' with error: %w", configPath, err)
+			return err
 		}
 
-		tfPluginClient, err := setup(cfg, debug)
+		cfg, err := readConfig(configPath)
+		if err != nil {
+			return err
+		}
+
+		tfPluginClient, err := setup(cfg, debug, noColor)
 		if err != nil {
 			return err
 		}
 
 		err = deployer.RunCanceler(cfg, tfPluginClient, debug)
 		if err != nil {
-			return fmt.Errorf("failed to cancel configured deployments with error: %w", err)
+			return errors.Wrap(err, "failed to cancel configured deployments")
 		}
 
 		return nil
 	},
+}
+
+func init() {
+	rootCmd.AddCommand(cancelCmd)
+
+	cancelCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
+	cancelCmd.Flags().StringP("config", "c", "", "path to config file")
+	cancelCmd.Flags().Bool("no-color", false, "disable output styling")
 }

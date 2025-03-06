@@ -114,6 +114,11 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		noColor, err := cmd.Parent().Flags().GetBool("no-color")
+		if err != nil {
+			return err
+		}
+
 		var seed []byte
 		if mycelium {
 			seed, err = workloads.RandomMyceliumIPSeed()
@@ -127,7 +132,15 @@ var deployVMCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network))
+		opts := []deployer.PluginOpt{
+			deployer.WithNetwork(cfg.Network),
+		}
+
+		if noColor {
+			opts = append(opts, deployer.WithNoColorLogs())
+		}
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

@@ -79,6 +79,7 @@ type pluginCfg struct {
 	graphqlURLs   []string
 	rmbTimeout    int
 	showLogs      bool
+	noColorLogs   bool
 	rmbInMemCache bool
 }
 
@@ -126,6 +127,12 @@ func WithLogs() PluginOpt {
 	}
 }
 
+func WithNoColorLogs() PluginOpt {
+	return func(p *pluginCfg) {
+		p.noColorLogs = true
+	}
+}
+
 func WithTwinCache() PluginOpt {
 	return func(p *pluginCfg) {
 		p.rmbInMemCache = false
@@ -148,6 +155,7 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 		relayURLs:     []string{},
 		rmbTimeout:    60, // default rmbTimeout is 60
 		showLogs:      false,
+		noColorLogs:   false,
 		rmbInMemCache: true,
 	}
 
@@ -208,7 +216,7 @@ func NewTFPluginClient(
 		return TFPluginClient{}, err
 	}
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, NoColor: cfg.noColorLogs})
 	if cfg.showLogs {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
