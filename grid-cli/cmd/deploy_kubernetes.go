@@ -304,5 +304,4 @@ func init() {
 	deployKubernetesCmd.Flags().Bool("ipv6", false, "assign public ipv6 for master")
 	deployKubernetesCmd.Flags().Bool("ygg", true, "assign yggdrasil ip for master")
 	deployKubernetesCmd.Flags().Bool("mycelium", true, "assign mycelium ip for master")
-	deployKubernetesCmd.Flags().Bool("no-color", false, "disable output styling")
 }

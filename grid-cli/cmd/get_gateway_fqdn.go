@@ -54,5 +54,4 @@ var getGatewayFQDNCmd = &cobra.Command{
 
 func init() {
 	getGatewayCmd.AddCommand(getGatewayFQDNCmd)
-	getGatewayFQDNCmd.Flags().Bool("no-color", false, "disable output styling")
 }

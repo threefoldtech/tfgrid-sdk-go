@@ -55,5 +55,4 @@ var getKubernetesCmd = &cobra.Command{
 
 func init() {
 	getCmd.AddCommand(getKubernetesCmd)
-	getKubernetesCmd.Flags().Bool("no-color", false, "disable output styling")
 }

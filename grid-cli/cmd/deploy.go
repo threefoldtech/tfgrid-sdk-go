@@ -13,5 +13,5 @@ var deployCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(deployCmd)
-
+	deployCmd.PersistentFlags().Bool("no-color", false, "disable output styling")
 }

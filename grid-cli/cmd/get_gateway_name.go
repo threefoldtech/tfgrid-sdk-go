@@ -54,5 +54,4 @@ var getGatewayNameCmd = &cobra.Command{
 
 func init() {
 	getGatewayCmd.AddCommand(getGatewayNameCmd)
-	getGatewayNameCmd.Flags().Bool("no-color", false, "disable output styling")
 }
