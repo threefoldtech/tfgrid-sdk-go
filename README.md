@@ -17,7 +17,6 @@ This repo contains the go clients for Threefold grid.
 -   [user contracts mon](./user-contracts-mon/README.md)
 -   [activation service](./activation-service/README.md)
 -   [farmerbot](./farmerbot/README.md)
--   [node-registrar](./node-registrar/README.md)
 
 ## Release
 

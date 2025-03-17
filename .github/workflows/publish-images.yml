@@ -34,8 +34,6 @@ jobs:
             image: "tfgridproxy"
           - dir: "tools/relay-cache-warmer"
             image: "relay-cache-warmer"
-          - dir: "node-registrar"
-            image: "tfregistrar"
 
     steps:
       - name: Checkout the repo
