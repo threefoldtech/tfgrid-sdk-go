@@ -113,22 +113,22 @@ builds:
       - -X github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.commit={{.Commit}}
 
-  - dir: ./tools/relay-cache-warmer
-    goos:
-      - linux
-      - windows
-      - darwin
-    binary: cache-warmer
-    id: cache-warmer
+  # - dir: ./tools/relay-cache-warmer
+  #   goos:
+  #     - linux
+  #     - windows
+  #     - darwin
+  #   binary: cache-warmer
+  #   id: cache-warmer
 
-    ignore:
-      - goos: windows
-    ldflags:
-      - -X main.version={{.Tag}}
-      - -X main.commit={{.Commit}}
+  #   ignore:
+  #     - goos: windows
+  #   ldflags:
+  #     - -X main.version={{.Tag}}
+  #     - -X main.commit={{.Commit}}
 
 archives:
-  - format: tar.gz
+  - formats: ['tar.gz']
     # this name template makes the OS and Arch compatible with the results of uname.
     name_template: >-
       {{ .ProjectName }}_
@@ -140,7 +140,7 @@ archives:
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        format: zip
+        formats: ['zip']
 checksum:
   name_template: "checksums.txt"
 snapshot:
