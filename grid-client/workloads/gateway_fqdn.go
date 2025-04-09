@@ -92,10 +92,6 @@ func validateBackend(backends []zos.Backend, tlsPassthrough bool) error {
 		return fmt.Errorf("backends list can not be empty")
 	}
 
-	if len(backends) != 1 {
-		return fmt.Errorf("only one backend is supported")
-	}
-
 	for _, backend := range backends {
 		if err := backend.Valid(tlsPassthrough); err != nil {
 			return errors.Wrapf(err, "failed to validate backend '%s'", backend)
