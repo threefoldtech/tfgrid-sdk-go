@@ -126,13 +126,8 @@ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241007205731-5e76664a3cc4 h1:XIXVdFrum50Wnxv62sS+cEgqHtvdInWB2Co8AJVJ8xs=
-github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241007205731-5e76664a3cc4/go.mod h1:cOL5YgHUmDG5SAXrsZxFjUECRQQuAqOoqvXhZG5sEUw=
+github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241127100051-77e684bcb1b2 h1:VW2J36F8g/kJn4IkY0JiRFmb1gFcdjiOyltfJLJ0mYU=
 github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241127100051-77e684bcb1b2/go.mod h1:cOL5YgHUmDG5SAXrsZxFjUECRQQuAqOoqvXhZG5sEUw=
-github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee h1:pqpYVM0qkXujplHNfH6w5GDqcY5sLJAgOc4/hlR6+Xw=
-github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee/go.mod h1:lut72yYMJhgK0QRvF0Wd/mB3+OfIoXWz04DQuXck3Sw=
-github.com/threefoldtech/zos4 v0.5.6-0.20241008102757-02d898c580c4 h1:JCExxpPL32G7evO/+gHwlZLfAX1+l9QN9t55tnPDCp0=
-github.com/threefoldtech/zos4 v0.5.6-0.20241008102757-02d898c580c4/go.mod h1:7KFtZaCcEFwQ1/cz/+hkYK616Ww04ISZgmMqLWHz6To=
 github.com/threefoldtech/zosbase v0.1.4 h1:ZLm06TujSSIU8rX28X5Dx7utWQhiDqKBoTqGKBKOwDI=
 github.com/threefoldtech/zosbase v0.1.4/go.mod h1:rxc49wA04S4IsBOYe0omVO7nu7GXridueh2PJh34gSo=
 github.com/tklauser/go-sysconf v0.3.11 h1:89WgdJhk5SNwJfu+GKyYveZ4IaJ7xAkecBo+KdJV0CM=
