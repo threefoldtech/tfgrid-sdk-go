@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos4/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 // Bytes value that is represented as hex when serialized to json
@@ -60,7 +60,7 @@ func (h Bytes) MarshalText() (text []byte, err error) {
 }
 
 func (wl *Workload) NetworkLightWorkload() (*zos.NetworkLight, error) {
-	dataI, err := wl.Workload4().WorkloadData()
+	dataI, err := wl.Workload3().WorkloadData()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get workload data")
 	}

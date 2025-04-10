@@ -4,7 +4,7 @@ package workloads
 import (
 	"github.com/pkg/errors"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 // Disk struct
@@ -20,10 +20,7 @@ func NewDiskFromWorkload(wl *zosTypes.Workload) (Disk, error) {
 
 	dataI, err := wl.Workload3().WorkloadData()
 	if err != nil {
-		dataI, err = wl.Workload4().WorkloadData()
-		if err != nil {
-			return Disk{}, errors.Wrap(err, "failed to get workload data")
-		}
+		return Disk{}, errors.Wrap(err, "failed to get workload data")
 	}
 
 	data, ok := dataI.(*zos.ZMount)

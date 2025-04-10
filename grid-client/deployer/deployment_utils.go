@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 // CountDeploymentPublicIPs counts the public IPs of a deployment

@@ -18,8 +18,8 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/vedhavyas/go-subkey"
 )
 

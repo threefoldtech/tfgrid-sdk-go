@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 // Volume struct
@@ -21,10 +21,7 @@ func NewVolumeFromWorkload(wl *zosTypes.Workload) (Volume, error) {
 
 	dataI, err := wl.Workload3().WorkloadData()
 	if err != nil {
-		dataI, err = wl.Workload4().WorkloadData()
-		if err != nil {
-			return Volume{}, errors.Wrap(err, "failed to get workload data")
-		}
+		return Volume{}, errors.Wrap(err, "failed to get workload data")
 	}
 
 	data, ok := dataI.(*zos.Volume)

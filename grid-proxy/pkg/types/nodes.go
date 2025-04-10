@@ -1,6 +1,6 @@
 package types
 
-import "github.com/threefoldtech/zos/pkg/gridtypes"
+import "github.com/threefoldtech/zosbase/pkg/gridtypes"
 
 // Location represent the geographic info about the node
 type Location struct {

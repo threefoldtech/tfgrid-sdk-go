@@ -10,7 +10,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

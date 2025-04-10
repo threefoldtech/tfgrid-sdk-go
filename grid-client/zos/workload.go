@@ -5,8 +5,7 @@ import (
 	"io"
 	"slices"
 
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	gridtypes4 "github.com/threefoldtech/zos4/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 type Workload struct {
@@ -91,23 +90,6 @@ func NewWorkloadFromZosWorkload(wl gridtypes.Workload) Workload {
 	}
 }
 
-func NewWorkloadFromZosWorkload4(wl gridtypes4.Workload) Workload {
-	return Workload{
-		Version:     wl.Version,
-		Name:        wl.Name.String(),
-		Type:        wl.Type.String(),
-		Data:        wl.Data,
-		Metadata:    wl.Metadata,
-		Description: wl.Description,
-		Result: Result{
-			Created: int64(wl.Result.Created),
-			State:   ResultState(wl.Result.State),
-			Error:   wl.Result.Error,
-			Data:    wl.Result.Data,
-		},
-	}
-}
-
 func (wl *Workload) Workload3() *gridtypes.Workload {
 	return &gridtypes.Workload{
 		Version:     wl.Version,
@@ -125,43 +107,13 @@ func (wl *Workload) Workload3() *gridtypes.Workload {
 	}
 }
 
-func (wl *Workload) Workload4() *gridtypes4.Workload {
-	return &gridtypes4.Workload{
-		Version:     wl.Version,
-		Name:        gridtypes4.Name(wl.Name),
-		Type:        gridtypes4.WorkloadType(wl.Type),
-		Data:        wl.Data,
-		Metadata:    wl.Metadata,
-		Description: wl.Description,
-		Result: gridtypes4.Result{
-			Created: gridtypes4.Timestamp(wl.Result.Created),
-			State:   gridtypes4.ResultState(wl.Result.State),
-			Error:   wl.Result.Error,
-			Data:    wl.Result.Data,
-		},
-	}
-}
-
 func (wl *Workload) Challenge(w io.Writer) error {
-	if wl.Type == NetworkLightType || wl.Type == ZMachineLightType {
-		return wl.Workload4().Challenge(w)
-	}
 
 	return wl.Workload3().Challenge(w)
 }
 
 // Capacity returns the used capacity by this workload
 func (wl *Workload) Capacity() (Capacity, error) {
-	if wl.Type == NetworkLightType || wl.Type == ZMachineLightType {
-		cap, err := wl.Workload4().Capacity()
-		return Capacity{
-			CRU:   cap.CRU,
-			SRU:   uint64(cap.SRU),
-			HRU:   uint64(cap.HRU),
-			MRU:   uint64(cap.MRU),
-			IPV4U: cap.IPV4U,
-		}, err
-	}
 
 	cap, err := wl.Workload3().Capacity()
 	return Capacity{
