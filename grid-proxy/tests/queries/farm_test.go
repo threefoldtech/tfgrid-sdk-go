@@ -67,6 +67,16 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 			return nil
 		}
 
+		runesList := []rune(c)
+		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
+		if a > b {
+			a, b = b, a
+		}
+		runesList = runesList[a : b+1]
+		c = string(runesList)
+		if len(c) == 0 {
+			return nil
+		}
 		return &c
 	},
 	"NameContains": func(agg FarmsAggregate) interface{} {

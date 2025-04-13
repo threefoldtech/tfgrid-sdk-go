@@ -130,6 +130,16 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 			return nil
 		}
 
+		runesList := []rune(region)
+		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
+		if a > b {
+			a, b = b, a
+		}
+		runesList = runesList[a : b+1]
+		region = string(runesList)
+		if len(region) == 0 {
+			return nil
+		}
 		return &region
 	},
 	"CountryContains": func(agg NodesAggregate) interface{} {

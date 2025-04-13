@@ -175,7 +175,7 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			continue
 		}
 
-		if filter.Region != nil && !strings.EqualFold(*filter.Region, data.Regions[node.Country]) {
+		if filter.Region != nil && !stringMatch(data.Regions[node.Country], *filter.Region) {
 			continue
 		}
 
