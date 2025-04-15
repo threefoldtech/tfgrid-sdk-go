@@ -125,26 +125,14 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		return &country
 	},
 	"Region": func(agg NodesAggregate) interface{} {
-		region := changeCase(agg.regions[rand.Intn(len(agg.regions))])
+		region := getRandomItemSubstring(agg.regions)
 		if len(region) == 0 {
 			return nil
 		}
-
 		return &region
 	},
 	"CountryContains": func(agg NodesAggregate) interface{} {
-		c := agg.countries[rand.Intn(len(agg.countries))]
-		if len(c) == 0 {
-			return nil
-		}
-
-		runesList := []rune(c)
-		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
-		if a > b {
-			a, b = b, a
-		}
-		runesList = runesList[a : b+1]
-		c = string(runesList)
+		c := getRandomItemSubstring(agg.countries)
 		if len(c) == 0 {
 			return nil
 		}
@@ -160,18 +148,10 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		return &city
 	},
 	"CityContains": func(agg NodesAggregate) interface{} {
-		c := agg.cities[rand.Intn(len(agg.cities))]
+		c := getRandomItemSubstring(agg.cities)
 		if len(c) == 0 {
 			return nil
 		}
-
-		runesList := []rune(c)
-		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
-		if a > b {
-			a, b = b, a
-		}
-		runesList = runesList[a : b+1]
-		c = string(runesList)
 		return &c
 	},
 	"FarmName": func(agg NodesAggregate) interface{} {
@@ -183,18 +163,10 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		return &name
 	},
 	"FarmNameContains": func(agg NodesAggregate) interface{} {
-		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
+		c := getRandomItemSubstring(agg.farmNames)
 		if len(c) == 0 {
 			return nil
 		}
-
-		runesList := []rune(c)
-		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
-		if a > b {
-			a, b = b, a
-		}
-		runesList = runesList[a : b+1]
-		c = string(runesList)
 		return &c
 	},
 	"FarmIDs": func(agg NodesAggregate) interface{} {

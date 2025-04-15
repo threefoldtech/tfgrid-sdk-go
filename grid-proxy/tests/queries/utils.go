@@ -36,6 +36,29 @@ func min(a, b uint64) uint64 {
 	return b
 }
 
+// getRandomItemSubstring
+// - selects a random item from input slice
+// - transform case the selected item
+// - extracts a random substring from the selected item
+func getRandomItemSubstring(items []string) string {
+	if len(items) == 0 {
+		return ""
+	}
+
+	item := items[rand.Intn(len(items))]
+	item = changeCase(item)
+	if len(item) == 0 {
+		return ""
+	}
+
+	runesList := []rune(item)
+	a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
+	if a > b {
+		a, b = b, a
+	}
+	return string(runesList[a : b+1])
+}
+
 func changeCase(s string) string {
 	if len(s) == 0 {
 		return s

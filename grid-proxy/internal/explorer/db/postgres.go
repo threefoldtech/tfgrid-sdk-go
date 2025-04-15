@@ -477,7 +477,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	}
 
 	if filter.Region != nil {
-		nodeQuery = nodeQuery.Where("LOWER(node_location.continent) = LOWER(?)", *filter.Region)
+		nodeQuery = nodeQuery.Where("node_location.continent ILIKE '%' || ? || '%'", *filter.Region)
 	}
 
 	if len(filter.NodeStatus) != 0 {
@@ -681,7 +681,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where("node.city ILIKE '%' || ? || '%'", *filter.CityContains)
 	}
 	if filter.Region != nil {
-		q = q.Where("LOWER(node_location.continent) = LOWER(?)", *filter.Region)
+		q = q.Where("node_location.continent ILIKE '%' || ? || '%'", *filter.Region)
 	}
 	if filter.NodeID != nil {
 		q = q.Where("node.node_id = ?", *filter.NodeID)
