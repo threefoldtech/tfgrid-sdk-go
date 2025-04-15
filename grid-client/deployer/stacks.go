@@ -90,7 +90,7 @@ var (
 		},
 		MainNetwork: {
 			"wss://relay.grid.tf",
-			"wss://relay.02.grid.tf",
+			// "wss://relay.02.grid.tf",
 		},
 	}
 

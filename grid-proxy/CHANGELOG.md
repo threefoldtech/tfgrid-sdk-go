@@ -4,6 +4,12 @@ Check `/version` on any instance to know the version.
 
 ## Releases
 
+### v0.16.16
+
+---
+
+- `feat` modify region filter to do substring search
+
 ### v0.16.5
 
 ---
