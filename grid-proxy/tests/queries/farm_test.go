@@ -62,37 +62,18 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		return &country
 	},
 	"Region": func(agg FarmsAggregate) interface{} {
-		c := changeCase(agg.regions[rand.Intn(len(agg.regions))])
-		if len(c) == 0 {
+		value := getRandomItemSubstring(agg.regions)
+		if len(value) == 0 {
 			return nil
 		}
-
-		runesList := []rune(c)
-		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
-		if a > b {
-			a, b = b, a
-		}
-		runesList = runesList[a : b+1]
-		c = string(runesList)
-		if len(c) == 0 {
-			return nil
-		}
-		return &c
+		return &value
 	},
 	"NameContains": func(agg FarmsAggregate) interface{} {
-		c := agg.farmNames[rand.Intn(len(agg.farmNames))]
-		runesList := []rune(c)
-		a, b := rand.Intn(len(runesList)), rand.Intn(len(runesList))
-		if a > b {
-			a, b = b, a
-		}
-		runesList = runesList[a : b+1]
-		c = string(runesList)
-		if len(c) == 0 {
+		name := getRandomItemSubstring(agg.farmNames)
+		if len(name) == 0 {
 			return nil
 		}
-
-		return &c
+		return &name
 	},
 	"CertificationType": func(agg FarmsAggregate) interface{} {
 		return &agg.certifications[rand.Intn(len(agg.certifications))]
