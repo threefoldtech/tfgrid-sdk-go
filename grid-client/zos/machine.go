@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 // ZMachine reservation data
@@ -145,7 +145,7 @@ func (r *ZMachineResult) UnmarshalJSON(data []byte) error {
 }
 
 func (wl *Workload) ZMachineWorkload() (*zos.ZMachine, error) {
-	dataI, err := wl.Workload3().WorkloadData()
+	dataI, err := wl.Workload().WorkloadData()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get workload data")
 	}

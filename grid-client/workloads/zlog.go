@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 // Zlog logger struct
@@ -41,12 +41,9 @@ func zlogs(dl *zosTypes.Deployment, name string) []Zlog {
 
 		var dataI interface{}
 
-		dataI, err := wl.Workload3().WorkloadData()
+		dataI, err := wl.Workload.Workload().WorkloadData()
 		if err != nil {
-			dataI, err = wl.Workload4().WorkloadData()
-			if err != nil {
-				continue
-			}
+			continue
 		}
 
 		data, ok := dataI.(*zos.ZLogs)

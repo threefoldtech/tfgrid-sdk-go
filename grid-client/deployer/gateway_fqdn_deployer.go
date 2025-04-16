@@ -217,7 +217,7 @@ func (d *GatewayFQDNDeployer) Sync(ctx context.Context, gw *workloads.GatewayFQD
 	gw.Network = gwWorkload.Network
 
 	if wl != nil && wl.Result.State.IsOkay() {
-		gwWorkload, err := workloads.NewGatewayFQDNProxyFromZosWorkload(*wl.Workload.Workload3())
+		gwWorkload, err := workloads.NewGatewayFQDNProxyFromZosWorkload(*wl.Workload.Workload())
 		gw.Backends = gwWorkload.Backends
 		gw.Name = gwWorkload.Name
 		gw.FQDN = gwWorkload.FQDN

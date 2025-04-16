@@ -3,8 +3,7 @@ package zos
 import (
 	"io"
 
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	gridtypes4 "github.com/threefoldtech/zos4/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 type ZosDeployment interface {
@@ -100,27 +99,10 @@ func NewGridDeployment(twin uint32, workloads []Workload) Deployment {
 }
 
 func (d *Deployment) Valid() error {
-	for _, wl := range d.Workloads {
-		if wl.Type == NetworkLightType || wl.Type == ZMachineLightType {
-			return d.zosDeployment4().Valid()
-		}
-	}
 	return d.zosDeployment().Valid()
 }
 
 func (d *Deployment) Sign(twin uint32, sk Signer) error {
-	for _, wl := range d.Workloads {
-		if wl.Type == NetworkLightType || wl.Type == ZMachineLightType {
-			dl := d.zosDeployment4()
-			err := dl.Sign(twin, sk)
-			if err != nil {
-				return err
-			}
-
-			d.copySignature4(dl)
-			return nil
-		}
-	}
 
 	dl := d.zosDeployment()
 	err := dl.Sign(twin, sk)
@@ -133,39 +115,15 @@ func (d *Deployment) Sign(twin uint32, sk Signer) error {
 }
 
 func (d *Deployment) ChallengeHash() ([]byte, error) {
-	for _, wl := range d.Workloads {
-		if wl.Type == NetworkLightType || wl.Type == ZMachineLightType {
-			return d.zosDeployment4().ChallengeHash()
-		}
-	}
 	return d.zosDeployment().ChallengeHash()
 }
 
 func (d *Deployment) Challenge(w io.Writer) error {
-	for _, wl := range d.Workloads {
-		if wl.Type == NetworkLightType || wl.Type == ZMachineLightType {
-			return d.zosDeployment4().Challenge(w)
-		}
-	}
 	return d.zosDeployment().Challenge(w)
 }
 
 // Get a workload by name
 func (d *Deployment) Get(name string) (*WorkloadWithID, error) {
-	for _, wl := range d.Workloads {
-		if wl.Type == NetworkLightType || wl.Type == ZMachineLightType {
-			w, err := d.zosDeployment4().Get(gridtypes4.Name(name))
-			if err != nil {
-				return nil, err
-			}
-
-			workload := NewWorkloadFromZosWorkload4(*w.Workload)
-			return &WorkloadWithID{
-				Workload: &workload,
-				ID:       WorkloadID(w.ID),
-			}, nil
-		}
-	}
 
 	w, err := d.zosDeployment().Get(gridtypes.Name(name))
 	if err != nil {
@@ -181,24 +139,6 @@ func (d *Deployment) Get(name string) (*WorkloadWithID, error) {
 
 func (d *Deployment) ByType(typ ...string) []*WorkloadWithID {
 	var workloadsWithID []*WorkloadWithID
-
-	for _, wl := range d.Workloads {
-		if wl.Type == NetworkLightType || wl.Type == ZMachineLightType {
-			var types []gridtypes4.WorkloadType
-			for _, t := range typ {
-				types = append(types, gridtypes4.WorkloadType(t))
-			}
-			wls := d.zosDeployment4().ByType(types...)
-
-			for _, w := range wls {
-				workload := NewWorkloadFromZosWorkload4(*w.Workload)
-				workloadsWithID = append(workloadsWithID, &WorkloadWithID{
-					Workload: &workload,
-					ID:       WorkloadID(w.ID),
-				})
-			}
-		}
-	}
 
 	var types []gridtypes.WorkloadType
 	for _, t := range typ {
@@ -223,7 +163,7 @@ func (d *Deployment) zosDeployment() *gridtypes.Deployment {
 	var workloads []gridtypes.Workload
 
 	for _, wl := range d.Workloads {
-		workloads = append(workloads, *wl.Workload3())
+		workloads = append(workloads, *wl.Workload())
 	}
 
 	for _, req := range d.SignatureRequirement.Requests {
@@ -251,52 +191,7 @@ func (d *Deployment) zosDeployment() *gridtypes.Deployment {
 	}
 }
 
-func (d *Deployment) zosDeployment4() *gridtypes4.Deployment {
-	var requests []gridtypes4.SignatureRequest
-	var signatures []gridtypes4.Signature
-	var workloads []gridtypes4.Workload
-
-	for _, wl := range d.Workloads {
-		workloads = append(workloads, *wl.Workload4())
-	}
-
-	for _, req := range d.SignatureRequirement.Requests {
-		requests = append(requests, gridtypes4.SignatureRequest(req))
-	}
-
-	for _, sign := range d.SignatureRequirement.Signatures {
-		signatures = append(signatures, gridtypes4.Signature(sign))
-	}
-
-	return &gridtypes4.Deployment{
-		Version:     d.Version,
-		TwinID:      d.TwinID,
-		ContractID:  d.ContractID,
-		Metadata:    d.Metadata,
-		Description: d.Description,
-		Expiration:  gridtypes4.Timestamp(d.Expiration),
-		SignatureRequirement: gridtypes4.SignatureRequirement{
-			Requests:       requests,
-			WeightRequired: d.SignatureRequirement.WeightRequired,
-			Signatures:     signatures,
-			SignatureStyle: gridtypes4.SignatureStyle(d.SignatureRequirement.SignatureStyle),
-		},
-		Workloads: workloads,
-	}
-}
-
 func (d *Deployment) copySignature(dl *gridtypes.Deployment) {
-	for _, sign := range dl.SignatureRequirement.Signatures {
-		d.SignatureRequirement.Signatures = append(
-			d.SignatureRequirement.Signatures, Signature{
-				TwinID:        sign.TwinID,
-				Signature:     sign.Signature,
-				SignatureType: sign.SignatureType,
-			})
-	}
-}
-
-func (d *Deployment) copySignature4(dl *gridtypes4.Deployment) {
 	for _, sign := range dl.SignatureRequirement.Signatures {
 		d.SignatureRequirement.Signatures = append(
 			d.SignatureRequirement.Signatures, Signature{

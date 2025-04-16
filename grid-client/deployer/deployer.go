@@ -19,7 +19,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"golang.org/x/sync/errgroup"
 )
 

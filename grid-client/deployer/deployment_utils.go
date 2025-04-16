@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 // CountDeploymentPublicIPs counts the public IPs of a deployment
@@ -13,7 +13,7 @@ func CountDeploymentPublicIPs(dl zosTypes.Deployment) (uint32, error) {
 	var res uint32
 	for _, wl := range dl.Workloads {
 		if wl.Type == zosTypes.PublicIPType {
-			data, err := wl.Workload3().WorkloadData()
+			data, err := wl.Workload().WorkloadData()
 			if err != nil {
 				return res, errors.Wrapf(err, "could not parse workload data for workload %s", wl.Name)
 			}

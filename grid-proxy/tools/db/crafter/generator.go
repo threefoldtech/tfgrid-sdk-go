@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 const deleted = "Deleted"

@@ -83,9 +83,9 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/zos/pkg/capacity/dmi"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/capacity/dmi"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 // ErrNoAccessibleInterfaceFound no accessible interface found

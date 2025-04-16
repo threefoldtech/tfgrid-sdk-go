@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 var fqdnRegex = regexp.MustCompile(`^([a-zA-Z0-9-_]+\.)+[a-zA-Z0-9-_]{2,}$`)
@@ -90,10 +90,6 @@ func (g *GatewayFQDNProxy) Validate() error {
 func validateBackend(backends []zos.Backend, tlsPassthrough bool) error {
 	if len(backends) == 0 {
 		return fmt.Errorf("backends list can not be empty")
-	}
-
-	if len(backends) != 1 {
-		return fmt.Errorf("only one backend is supported")
 	}
 
 	for _, backend := range backends {

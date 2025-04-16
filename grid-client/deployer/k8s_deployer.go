@@ -12,8 +12,8 @@ import (
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 // K8sDeployer for deploying k8s
@@ -261,7 +261,7 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 	for _, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
 			if w.Type == zosTypes.ZMachineType {
-				d, err := w.Workload3().WorkloadData()
+				d, err := w.Workload().WorkloadData()
 				if err != nil {
 					zerolog.Error().Err(err).Msg("failed to get workload data")
 				}
@@ -303,7 +303,7 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 		for _, w := range dl.Workloads {
 			if w.Type == zosTypes.ZMachineType {
 				workloadNodeID[w.Name] = node
-				workloadObj[w.Name] = *w.Workload3()
+				workloadObj[w.Name] = *w.Workload()
 
 			} else if w.Type == zosTypes.PublicIPType {
 				ipResult := zos.PublicIPResult{}
@@ -313,7 +313,7 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 				publicIPs[w.Name] = ipResult.IP.String()
 				publicIP6s[w.Name] = ipResult.IPv6.String()
 			} else if w.Type == zosTypes.ZMountType {
-				wl, err := w.Workload3().WorkloadData()
+				wl, err := w.Workload().WorkloadData()
 				if err != nil {
 					return d.tfPluginClient.sentry.error(errors.Wrap(err, "failed to load disk data"))
 				}
