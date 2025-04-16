@@ -21,6 +21,10 @@ var getContractCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
+		disableSentry, err := cmd.Flags().GetBool("disable-sentry")
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
 
 		cfg, err := config.GetUserConfig()
 		if err != nil {
@@ -36,6 +40,9 @@ var getContractCmd = &cobra.Command{
 			opts = append(opts, deployer.WithNoColorLogs())
 		}
 
+		if disableSentry {
+			opts = append(opts, deployer.WithDisableSentry())
+		}
 		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()

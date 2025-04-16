@@ -34,6 +34,10 @@ var loadCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		disableSentry, err := cmd.Flags().GetBool("disable-sentry")
+		if err != nil {
+			return err
+		}
 
 		if err = checkOutputFile(outputPath); err != nil {
 			return err
@@ -44,7 +48,7 @@ var loadCmd = &cobra.Command{
 			return err
 		}
 
-		tfPluginClient, err := setup(cfg, debug, noColor)
+		tfPluginClient, err := setup(cfg, debug, noColor, disableSentry)
 		if err != nil {
 			return err
 		}

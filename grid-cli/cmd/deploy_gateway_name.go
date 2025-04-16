@@ -34,6 +34,10 @@ var deployGatewayNameCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		disableSentry, err := cmd.Flags().GetBool("disable-sentry")
+		if err != nil {
+			return err
+		}
 
 		cfg, err := config.GetUserConfig()
 		if err != nil {
@@ -49,6 +53,9 @@ var deployGatewayNameCmd = &cobra.Command{
 			opts = append(opts, deployer.WithNoColorLogs())
 		}
 
+		if disableSentry {
+			opts = append(opts, deployer.WithDisableSentry())
+		}
 		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()

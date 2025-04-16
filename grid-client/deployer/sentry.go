@@ -28,12 +28,14 @@ func initSentry(twinID uint32, network string) (gridSentry, error) {
 }
 
 func (s *gridSentry) error(err error) error {
-	sentry.WithScope(func(scope *sentry.Scope) {
-		scope.SetContext("user", map[string]interface{}{
-			"twin": s.twinID,
+	if s.twinID != 0 {
+		sentry.WithScope(func(scope *sentry.Scope) {
+			scope.SetContext("user", map[string]interface{}{
+				"twin": s.twinID,
+			})
 		})
-	})
-	sentry.CaptureException(err)
+		sentry.CaptureException(err)
+	}
 
 	return err
 }

@@ -29,13 +29,17 @@ var cancelCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		disableSentry, err := cmd.Flags().GetBool("disable-sentry")
+		if err != nil {
+			return err
+		}
 
 		cfg, err := readConfig(configPath)
 		if err != nil {
 			return err
 		}
 
-		tfPluginClient, err := setup(cfg, debug, noColor)
+		tfPluginClient, err := setup(cfg, debug, noColor, disableSentry)
 		if err != nil {
 			return err
 		}
@@ -55,4 +59,5 @@ func init() {
 	cancelCmd.Flags().BoolP("debug", "d", false, "allow debug logs")
 	cancelCmd.Flags().StringP("config", "c", "", "path to config file")
 	cancelCmd.Flags().Bool("no-color", false, "disable output styling")
+	cancelCmd.Flags().Bool("disable-sentry", false, "disable sentry")
 }

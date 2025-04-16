@@ -21,7 +21,21 @@ var cancelCmd = &cobra.Command{
 			log.Fatal().Err(err).Send()
 		}
 
-		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, deployer.WithNetwork(cfg.Network), deployer.WithRMBTimeout(100))
+		disableSentry, err := cmd.Flags().GetBool("disable-sentry")
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		opts := []deployer.PluginOpt{
+			deployer.WithNetwork(cfg.Network),
+			deployer.WithRMBTimeout(100),
+		}
+
+		if disableSentry {
+			opts = append(opts, deployer.WithDisableSentry())
+		}
+
+		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

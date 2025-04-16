@@ -18,7 +18,7 @@ const jsonExt = ".json"
 
 var allowedExt = []string{".yml", ".yaml", jsonExt}
 
-func setup(conf tfrobot.Config, debug, noColor bool) (deployer.TFPluginClient, error) {
+func setup(conf tfrobot.Config, debug, noColor, disableSentry bool) (deployer.TFPluginClient, error) {
 	network := conf.Network
 	log.Debug().Str("network", network).Send()
 
@@ -36,6 +36,9 @@ func setup(conf tfrobot.Config, debug, noColor bool) (deployer.TFPluginClient, e
 	}
 	if noColor {
 		opts = append(opts, deployer.WithNoColorLogs())
+	}
+	if disableSentry {
+		opts = append(opts, deployer.WithDisableSentry())
 	}
 
 	return deployer.NewTFPluginClient(mnemonic, opts...)
