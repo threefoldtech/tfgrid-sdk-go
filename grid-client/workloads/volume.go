@@ -19,7 +19,7 @@ type Volume struct {
 func NewVolumeFromWorkload(wl *zosTypes.Workload) (Volume, error) {
 	var dataI interface{}
 
-	dataI, err := wl.Workload3().WorkloadData()
+	dataI, err := wl.Workload().WorkloadData()
 	if err != nil {
 		return Volume{}, errors.Wrap(err, "failed to get workload data")
 	}

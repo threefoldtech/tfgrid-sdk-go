@@ -60,7 +60,7 @@ func (h Bytes) MarshalText() (text []byte, err error) {
 }
 
 func (wl *Workload) NetworkLightWorkload() (*zos.NetworkLight, error) {
-	dataI, err := wl.Workload3().WorkloadData()
+	dataI, err := wl.Workload().WorkloadData()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get workload data")
 	}

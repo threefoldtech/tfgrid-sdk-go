@@ -91,7 +91,7 @@ func (st *State) LoadGatewayFQDNFromGrid(ctx context.Context, nodeID uint32, nam
 	if err != nil {
 		return workloads.GatewayFQDNProxy{}, errors.Wrapf(err, "could not generate deployment metadata for %s", name)
 	}
-	gateway, err := workloads.NewGatewayFQDNProxyFromZosWorkload(*wl.Workload3())
+	gateway, err := workloads.NewGatewayFQDNProxyFromZosWorkload(*wl.Workload())
 	if err != nil {
 		return workloads.GatewayFQDNProxy{}, err
 	}
@@ -127,7 +127,7 @@ func (st *State) LoadGatewayNameFromGrid(ctx context.Context, nodeID uint32, nam
 	if err != nil {
 		return workloads.GatewayNameProxy{}, errors.Wrapf(err, "could not generate deployment metadata for %s", deploymentName)
 	}
-	gateway, err := workloads.NewGatewayNameProxyFromZosWorkload(*wl.Workload3())
+	gateway, err := workloads.NewGatewayNameProxyFromZosWorkload(*wl.Workload())
 	if err != nil {
 		return workloads.GatewayNameProxy{}, err
 	}
@@ -194,12 +194,12 @@ func (st *State) LoadK8sFromGrid(ctx context.Context, nodeIDs []uint32, deployme
 				return workloads.K8sCluster{}, errors.Wrapf(err, "could not compute node %s, resources", workload.Name)
 			}
 
-			node, err := workloads.NewK8sNodeFromWorkload(*workload.Workload3(), nodeID, workloadDiskSize[workload.Name], workloadComputedIP[workload.Name], workloadComputedIP6[workload.Name])
+			node, err := workloads.NewK8sNodeFromWorkload(*workload.Workload(), nodeID, workloadDiskSize[workload.Name], workloadComputedIP[workload.Name], workloadComputedIP6[workload.Name])
 			if err != nil {
 				return workloads.K8sCluster{}, errors.Wrapf(err, "could not generate node data for %s", workload.Name)
 			}
 
-			isMaster, err := isMasterNode(*workload.Workload3())
+			isMaster, err := isMasterNode(*workload.Workload())
 			if err != nil {
 				return workloads.K8sCluster{}, err
 			}
@@ -282,7 +282,7 @@ func (st *State) computeK8sDeploymentResources(dl zosTypes.Deployment) (
 
 		case zos.ZMountType.String():
 
-			d, err := w.Workload3().WorkloadData()
+			d, err := w.Workload().WorkloadData()
 			if err != nil {
 				return workloadDiskSize, workloadComputedIP, workloadComputedIP6, errors.Wrap(err, "failed to load disk data")
 			}

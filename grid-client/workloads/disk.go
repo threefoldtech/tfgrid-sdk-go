@@ -18,7 +18,7 @@ type Disk struct {
 func NewDiskFromWorkload(wl *zosTypes.Workload) (Disk, error) {
 	var dataI interface{}
 
-	dataI, err := wl.Workload3().WorkloadData()
+	dataI, err := wl.Workload().WorkloadData()
 	if err != nil {
 		return Disk{}, errors.Wrap(err, "failed to get workload data")
 	}

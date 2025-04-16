@@ -34,7 +34,7 @@ type ZDB struct {
 func NewZDBFromWorkload(wl *zosTypes.Workload) (ZDB, error) {
 	var dataI interface{}
 
-	dataI, err := wl.Workload3().WorkloadData()
+	dataI, err := wl.Workload().WorkloadData()
 	if err != nil {
 		return ZDB{}, errors.Wrap(err, "failed to get workload data")
 	}

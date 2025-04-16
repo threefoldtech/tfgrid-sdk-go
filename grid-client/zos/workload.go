@@ -90,7 +90,7 @@ func NewWorkloadFromZosWorkload(wl gridtypes.Workload) Workload {
 	}
 }
 
-func (wl *Workload) Workload3() *gridtypes.Workload {
+func (wl *Workload) Workload() *gridtypes.Workload {
 	return &gridtypes.Workload{
 		Version:     wl.Version,
 		Name:        gridtypes.Name(wl.Name),
@@ -109,13 +109,13 @@ func (wl *Workload) Workload3() *gridtypes.Workload {
 
 func (wl *Workload) Challenge(w io.Writer) error {
 
-	return wl.Workload3().Challenge(w)
+	return wl.Workload().Challenge(w)
 }
 
 // Capacity returns the used capacity by this workload
 func (wl *Workload) Capacity() (Capacity, error) {
 
-	cap, err := wl.Workload3().Capacity()
+	cap, err := wl.Workload().Capacity()
 	return Capacity{
 		CRU:   cap.CRU,
 		SRU:   uint64(cap.SRU),

@@ -163,7 +163,7 @@ func (d *Deployment) zosDeployment() *gridtypes.Deployment {
 	var workloads []gridtypes.Workload
 
 	for _, wl := range d.Workloads {
-		workloads = append(workloads, *wl.Workload3())
+		workloads = append(workloads, *wl.Workload())
 	}
 
 	for _, req := range d.SignatureRequirement.Requests {

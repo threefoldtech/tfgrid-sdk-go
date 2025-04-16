@@ -41,7 +41,7 @@ func zlogs(dl *zosTypes.Deployment, name string) []Zlog {
 
 		var dataI interface{}
 
-		dataI, err := wl.Workload3().WorkloadData()
+		dataI, err := wl.Workload.Workload().WorkloadData()
 		if err != nil {
 			continue
 		}
