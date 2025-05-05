@@ -129,6 +129,41 @@ func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, erro
 	return priv, nil
 }
 
+// getRelayConnections tries to connect to all relays and returns only the successful ones
+func getRelayConnections(relayURLs []string, identity substrate.Identity, session string, twinID uint32) ([]string, []InnerConnection, error) {
+	var successfulRelayURLs []string
+	var successfulConnections []InnerConnection
+
+	for _, relayURL := range relayURLs {
+		parsedURL, err := url.Parse(relayURL)
+		if err != nil {
+			log.Warn().Err(err).Str("url", relayURL).Msg("failed to parse relay URL")
+			continue
+		}
+
+		conn := NewConnection(identity, relayURL, session, twinID)
+		if conn.TryConnect() {
+			log.Info().Str("url", relayURL).Msg("connected")
+			successfulRelayURLs = append(successfulRelayURLs, parsedURL.Host)
+			successfulConnections = append(successfulConnections, conn)
+			continue
+		}
+
+		log.Warn().Str("url", relayURL).Msg("failed to connect")
+	}
+
+	if len(successfulRelayURLs) == 0 {
+		return nil, nil, errors.New("failed to connect to any relay")
+	}
+
+	sort.Slice(successfulRelayURLs, func(i, j int) bool {
+		return strings.ToLower(successfulRelayURLs[i]) < strings.ToLower(successfulRelayURLs[j])
+	})
+	successfulRelayURLs = slices.Compact(successfulRelayURLs)
+
+	return successfulRelayURLs, successfulConnections, nil
+}
+
 func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 	var identity substrate.Identity
 	var err error
@@ -220,21 +255,12 @@ func NewPeer(
 		publicKey = privKey.PubKey().SerializeCompressed()
 	}
 
-	var relayURLs []string
-	for _, relayURL := range cfg.relayURLs {
-		url, err := url.Parse(relayURL)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse url: %s", relayURL)
-		}
-		relayURLs = append(relayURLs, url.Host)
+	relayURLs, conns, err := getRelayConnections(cfg.relayURLs, identity, cfg.session, twin.ID)
+	if err != nil {
+		return nil, err
 	}
 
-	// sort and remove duplicates
-	sort.Slice(relayURLs, func(i, j int) bool { return strings.ToLower(relayURLs[i]) < strings.ToLower(relayURLs[j]) })
-	relayURLs = slices.Compact(relayURLs)
-
 	joinURLs := strings.Join(relayURLs, "_")
-
 	if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || joinURLs != *twin.Relay {
 		log.Info().Str("Relay url/s", joinURLs).Msg("twin relay/public key didn't match, updating on chain ...")
 		if _, err = subConn.UpdateTwin(identity, joinURLs, publicKey); err != nil {
@@ -243,10 +269,8 @@ func NewPeer(
 	}
 
 	reader := make(chan []byte)
-
-	weightCons := make([]WeightItem[InnerConnection], len(cfg.relayURLs))
-	for _, url := range cfg.relayURLs {
-		conn := NewConnection(identity, url, cfg.session, twin.ID)
+	weightCons := make([]WeightItem[InnerConnection], 0, len(conns))
+	for _, conn := range conns {
 		conn.Start(ctx, reader)
 		weightCons = append(weightCons, WeightItem[InnerConnection]{Item: conn, Weight: 1})
 	}

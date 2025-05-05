@@ -174,7 +174,7 @@ func (c *InnerConnection) Start(ctx context.Context, output chan []byte) {
 			if err == context.Canceled {
 				break
 			} else if err != nil {
-				log.Error().Err(err).Send()
+				log.Error().Err(err).Str("url", c.url).Msg("relay connection error")
 			}
 
 			<-time.After(2 * time.Second)
@@ -190,6 +190,18 @@ func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte
 	}
 
 	return c.loop(ctx, con, output)
+}
+
+// TryConnect attempts to establish a connection and returns true if successful, false otherwise
+func (c *InnerConnection) TryConnect() bool {
+	con, err := c.connect()
+	if err != nil {
+		log.Debug().Err(err).Str("url", c.url).Msg("failed to connect to relay")
+		return false
+	}
+
+	con.Close()
+	return true
 }
 
 func (c *InnerConnection) connect() (*websocket.Conn, error) {
