@@ -20,3 +20,7 @@ coverage/
 bin/
 
 dist/
+
+# workspace 
+go.work
+go.work.sum
