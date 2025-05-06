@@ -93,7 +93,7 @@ func isValidIpv4(ip string) bool {
 		if err != nil {
 			return false
 		}
-		
+
 		if num < 0 || num > 255 {
 			return false
 		}
@@ -106,12 +106,12 @@ func isValidIpv6(ip string) bool {
 		if strings.Count(ip, "::") > 1 {
 			return false
 		}
-		
+
 		parts := strings.Split(ip, "::")
 		if len(parts) > 2 {
 			return false
 		}
-		
+
 		// Check the parts before and after ::
 		if len(parts[0]) > 0 {
 			beforeParts := strings.Split(parts[0], ":")
@@ -121,7 +121,7 @@ func isValidIpv6(ip string) bool {
 				}
 			}
 		}
-		
+
 		if len(parts) > 1 && len(parts[1]) > 0 {
 			afterParts := strings.Split(parts[1], ":")
 			for _, part := range afterParts {
@@ -130,22 +130,22 @@ func isValidIpv6(ip string) bool {
 				}
 			}
 		}
-		
+
 		return true
 	}
-	
+
 	// Handle regular (uncompressed) IPv6
 	parts := strings.Split(ip, ":")
 	if len(parts) != 8 {
 		return false
 	}
-	
+
 	for _, part := range parts {
 		if !isValidIpv6Hextet(part) {
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -155,14 +155,14 @@ func isValidIpv6Hextet(hextet string) bool {
 	if len(hextet) == 0 || len(hextet) > 4 {
 		return false
 	}
-	
+
 	for _, c := range hextet {
 		isHex := (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 		if !isHex {
 			return false
 		}
 	}
-	
+
 	return true
 }
 

@@ -55,16 +55,16 @@ func (p *PostgresDatabase) UpsertNodeDmi(ctx context.Context, dmis []types.Dmi) 
 
 func (p *PostgresDatabase) UpsertNetworkSpeed(ctx context.Context, speeds []types.Speed) error {
 	conflictClause := clause.OnConflict{
-		Columns:   []clause.Column{{Name: "node_twin_id"}},
+		Columns: []clause.Column{{Name: "node_twin_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
-			"download", 
-			"upload", 
-			"udp_download_ipv4", 
+			"download",
+			"upload",
+			"udp_download_ipv4",
 			"udp_upload_ipv4",
-			"tcp_download_ipv6", 
-			"tcp_upload_ipv6", 
-			"udp_download_ipv6", 
-			"udp_upload_ipv6", 
+			"tcp_download_ipv6",
+			"tcp_upload_ipv6",
+			"udp_download_ipv6",
+			"udp_upload_ipv6",
 			"updated_at",
 		}),
 	}

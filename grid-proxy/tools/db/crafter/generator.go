@@ -814,16 +814,16 @@ func (c *Crafter) GenerateSpeedReports() error {
 	var speedReports []types.Speed
 	for i := start; i < end; i += 2 {
 		speedReport := types.Speed{
-			NodeTwinId:       uint32(nodeTwinsStart + i),
-			Upload:           rand.Float64() * float64(rand.Intn(9999999)),
-			Download:         rand.Float64() * float64(rand.Intn(9999999)),
-			UDPDownloadIPv4:  rand.Float64() * float64(rand.Intn(9999999)),
-			UDPUploadIPv4:    rand.Float64() * float64(rand.Intn(9999999)),
-			TCPDownloadIPv6:  rand.Float64() * float64(rand.Intn(9999999)),
-			TCPUploadIPv6:    rand.Float64() * float64(rand.Intn(9999999)),
-			UDPDownloadIPv6:  rand.Float64() * float64(rand.Intn(9999999)),
-			UDPUploadIPv6:    rand.Float64() * float64(rand.Intn(9999999)),
-			UpdatedAt:        time.Now().Unix(),
+			NodeTwinId:      uint32(nodeTwinsStart + i),
+			Upload:          rand.Float64() * float64(rand.Intn(9999999)),
+			Download:        rand.Float64() * float64(rand.Intn(9999999)),
+			UDPDownloadIPv4: rand.Float64() * float64(rand.Intn(9999999)),
+			UDPUploadIPv4:   rand.Float64() * float64(rand.Intn(9999999)),
+			TCPDownloadIPv6: rand.Float64() * float64(rand.Intn(9999999)),
+			TCPUploadIPv6:   rand.Float64() * float64(rand.Intn(9999999)),
+			UDPDownloadIPv6: rand.Float64() * float64(rand.Intn(9999999)),
+			UDPUploadIPv6:   rand.Float64() * float64(rand.Intn(9999999)),
+			UpdatedAt:       time.Now().Unix(),
 		}
 		speedReports = append(speedReports, speedReport)
 	}
