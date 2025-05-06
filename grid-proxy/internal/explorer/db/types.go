@@ -111,6 +111,12 @@ type Node struct {
 	Gpus               []types.NodeGPU   `gorm:"type:jsonb;serializer:json"`
 	UploadSpeed        float64
 	DownloadSpeed      float64
+	UDPDownloadIPv4    float64
+	UDPUploadIPv4      float64
+	TCPDownloadIPv6    float64
+	TCPUploadIPv6      float64
+	UDPDownloadIPv6    float64
+	UDPUploadIPv6      float64
 	PriceUsd           float64
 	FarmFreeIps        uint
 	Features           []string `gorm:"type:jsonb;serializer:json"`

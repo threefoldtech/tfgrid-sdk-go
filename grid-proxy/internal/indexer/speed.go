@@ -3,6 +3,8 @@ package indexer
 import (
 	"context"
 	"encoding/json"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
@@ -80,6 +82,90 @@ func (w *SpeedWork) Upsert(ctx context.Context, db db.Database, batch []types.Sp
 	return db.UpsertNetworkSpeed(ctx, batch)
 }
 
+func isValidIpv4(ip string) bool {
+	parts := strings.Split(ip, ".")
+	if len(parts) != 4 {
+		return false
+	}
+
+	for _, part := range parts {
+		num, err := strconv.Atoi(part)
+		if err != nil {
+			return false
+		}
+		
+		if num < 0 || num > 255 {
+			return false
+		}
+	}
+	return true
+}
+
+func isValidIpv6(ip string) bool {
+	if strings.Contains(ip, "::") {
+		if strings.Count(ip, "::") > 1 {
+			return false
+		}
+		
+		parts := strings.Split(ip, "::")
+		if len(parts) > 2 {
+			return false
+		}
+		
+		// Check the parts before and after ::
+		if len(parts[0]) > 0 {
+			beforeParts := strings.Split(parts[0], ":")
+			for _, part := range beforeParts {
+				if !isValidIpv6Hextet(part) {
+					return false
+				}
+			}
+		}
+		
+		if len(parts) > 1 && len(parts[1]) > 0 {
+			afterParts := strings.Split(parts[1], ":")
+			for _, part := range afterParts {
+				if !isValidIpv6Hextet(part) {
+					return false
+				}
+			}
+		}
+		
+		return true
+	}
+	
+	// Handle regular (uncompressed) IPv6
+	parts := strings.Split(ip, ":")
+	if len(parts) != 8 {
+		return false
+	}
+	
+	for _, part := range parts {
+		if !isValidIpv6Hextet(part) {
+			return false
+		}
+	}
+	
+	return true
+}
+
+// Helper function to validate an IPv6 hexadecimal segment
+func isValidIpv6Hextet(hextet string) bool {
+	// Each IPv6 segment must be a valid hexadecimal value between 0 and FFFF
+	if len(hextet) == 0 || len(hextet) > 4 {
+		return false
+	}
+	
+	for _, c := range hextet {
+		isHex := (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+		if !isHex {
+			return false
+		}
+	}
+	
+	return true
+}
+
 func parseSpeed(res TaskResult, twinId uint32) (types.Speed, error) {
 	speed := types.Speed{
 		NodeTwinId: twinId,
@@ -95,14 +181,34 @@ func parseSpeed(res TaskResult, twinId uint32) (types.Speed, error) {
 		return speed, err
 	}
 
-	// TODO: better parsing
-	// we have four speeds tcp/udp for ipv4/ipv6.
-	// now, we just pick the first non-zero
+	// Parse the results into the appropriate fields based on TestType and IpVersion
 	for _, report := range iperfResults {
-		if report.DownloadSpeed != 0 {
-			speed.Download = report.DownloadSpeed
+		isIpv4 := isValidIpv4(report.NodeIpv4)
+		isIpv6 := isValidIpv6(report.NodeIpv4)
+		if report.TestType == "tcp" && isIpv4 {
 			speed.Upload = report.UploadSpeed
-			return speed, nil
+			speed.Download = report.DownloadSpeed
+		} else if report.TestType == "udp" && isIpv4 {
+			speed.UDPUploadIPv4 = report.UploadSpeed
+			speed.UDPDownloadIPv4 = report.DownloadSpeed
+		} else if report.TestType == "tcp" && isIpv6 {
+			speed.TCPUploadIPv6 = report.UploadSpeed
+			speed.TCPDownloadIPv6 = report.DownloadSpeed
+		} else if report.TestType == "udp" && isIpv6 {
+			speed.UDPUploadIPv6 = report.UploadSpeed
+			speed.UDPDownloadIPv6 = report.DownloadSpeed
+		}
+	}
+
+	// For backward compatibility, if no TCP/IPv4 values were found but others were,
+	// set default Upload/Download to the first valid result
+	if speed.Upload == 0 && speed.Download == 0 {
+		for _, report := range iperfResults {
+			if report.DownloadSpeed != 0 || report.UploadSpeed != 0 {
+				speed.Upload = report.UploadSpeed
+				speed.Download = report.DownloadSpeed
+				break
+			}
 		}
 	}
 
