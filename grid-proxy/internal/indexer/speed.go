@@ -112,7 +112,6 @@ func isValidIpv6(ip string) bool {
 			return false
 		}
 
-		// Check the parts before and after ::
 		if len(parts[0]) > 0 {
 			beforeParts := strings.Split(parts[0], ":")
 			for _, part := range beforeParts {
@@ -149,9 +148,7 @@ func isValidIpv6(ip string) bool {
 	return true
 }
 
-// Helper function to validate an IPv6 hexadecimal segment
 func isValidIpv6Hextet(hextet string) bool {
-	// Each IPv6 segment must be a valid hexadecimal value between 0 and FFFF
 	if len(hextet) == 0 || len(hextet) > 4 {
 		return false
 	}
@@ -181,7 +178,6 @@ func parseSpeed(res TaskResult, twinId uint32) (types.Speed, error) {
 		return speed, err
 	}
 
-	// Parse the results into the appropriate fields based on TestType and IpVersion
 	for _, report := range iperfResults {
 		isIpv4 := isValidIpv4(report.NodeIpv4)
 		isIpv6 := isValidIpv6(report.NodeIpv4)
@@ -197,18 +193,6 @@ func parseSpeed(res TaskResult, twinId uint32) (types.Speed, error) {
 		} else if report.TestType == "udp" && isIpv6 {
 			speed.UDPUploadIPv6 = report.UploadSpeed
 			speed.UDPDownloadIPv6 = report.DownloadSpeed
-		}
-	}
-
-	// For backward compatibility, if no TCP/IPv4 values were found but others were,
-	// set default Upload/Download to the first valid result
-	if speed.Upload == 0 && speed.Download == 0 {
-		for _, report := range iperfResults {
-			if report.DownloadSpeed != 0 || report.UploadSpeed != 0 {
-				speed.Upload = report.UploadSpeed
-				speed.Download = report.DownloadSpeed
-				break
-			}
 		}
 	}
 
