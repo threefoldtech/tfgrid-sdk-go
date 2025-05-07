@@ -1,0 +1,24 @@
+version: '1.0.0'
+
+networks:
+  net1:
+    name: 'miaminet'
+    range:
+      ip:
+        type: ipv4
+        ip: 10.20.0.0
+      mask:
+        type: cidr
+        mask: 16/32
+
+services:
+  server:
+    flist: 'https://hub.grid.tf/tf-official-apps/threefoldtech-ubuntu-22.04.flist'
+    entrypoint: '/sbin/zinit init'
+    resources:
+      cpu: 1
+      memory: 2048
+      rootfs: 2048
+    network: net1
+    ip_types:
+      - myc

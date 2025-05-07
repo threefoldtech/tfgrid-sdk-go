@@ -12,4 +12,5 @@ use (
 	./tfrobot
 	./tools/relay-cache-warmer
 	./user-contracts-mon
+	./grid-compose
 )
