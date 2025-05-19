@@ -58,6 +58,21 @@ func (Speed) TableName() string {
 	return "speed"
 }
 
+// CpuBenchmark holds measures to the performance of the CPU for a node
+// used as both gorm model and server json response
+type CpuBenchmark struct {
+	NodeTwinId     uint32  `json:"node_twin_id,omitempty" gorm:"unique;not null"`
+	SingleThreaded float64 `json:"single" gorm:"column:single_threaded"`
+	MultiThreaded  float64 `json:"multi" gorm:"column:multi_threaded"`
+	Threads        int     `json:"threads" gorm:"column:threads"`
+	Workloads      int     `json:"workloads" gorm:"column:workloads"`
+	UpdatedAt      int64   `json:"updated_at,omitempty" gorm:"column:updated_at"`
+}
+
+func (CpuBenchmark) TableName() string {
+	return "cpu_benchmark"
+}
+
 // NodesWorkloads holds the number of workloads on a node
 type NodesWorkloads struct {
 	NodeTwinId      uint32 `json:"node_twin_id,omitempty" gorm:"unique;not null"`

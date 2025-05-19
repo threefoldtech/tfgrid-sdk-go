@@ -39,6 +39,7 @@ type Database interface {
 	UpsertNodeHealth(ctx context.Context, healthReports []types.HealthReport) error
 	UpsertNodeDmi(ctx context.Context, dmis []types.Dmi) error
 	UpsertNetworkSpeed(ctx context.Context, speeds []types.Speed) error
+	UpsertCpuBenchmark(ctx context.Context, cpuBenchmarks []types.CpuBenchmark) error
 	UpsertNodeIpv6Report(ctx context.Context, ips []types.HasIpv6) error
 	UpsertNodeWorkloads(ctx context.Context, workloads []types.NodesWorkloads) error
 	UpsertNodeFeatures(ctx context.Context, features []types.NodeFeatures) error
@@ -117,6 +118,10 @@ type Node struct {
 	TCPUploadIPv6      float64           `gorm:"column:tcp_upload_ipv6"`
 	UDPDownloadIPv6    float64           `gorm:"column:udp_download_ipv6"`
 	UDPUploadIPv6      float64           `gorm:"column:udp_upload_ipv6"`
+	SingleThreaded     float64
+	MultiThreaded      float64
+	Threads            int
+	Workloads          int
 	PriceUsd           float64
 	FarmFreeIps        uint
 	Features           []string `gorm:"type:jsonb;serializer:json"`

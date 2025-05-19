@@ -71,6 +71,15 @@ func (p *PostgresDatabase) UpsertNetworkSpeed(ctx context.Context, speeds []type
 	return p.gormDB.WithContext(ctx).Table("speed").Clauses(conflictClause).Create(&speeds).Error
 }
 
+func (p *PostgresDatabase) UpsertCpuBenchmark(ctx context.Context, cpuBenchmarks []types.CpuBenchmark) error {
+	conflictClause := clause.OnConflict{
+		Columns:   []clause.Column{{Name: "node_twin_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"single_threaded", "multi_threaded", "threads", "workloads", "updated_at"}),
+	}
+
+	return p.gormDB.WithContext(ctx).Table("cpu_benchmark").Clauses(conflictClause).Create(&cpuBenchmarks).Error
+}
+
 func (p *PostgresDatabase) UpsertNodeIpv6Report(ctx context.Context, ips []types.HasIpv6) error {
 	onConflictClause := clause.OnConflict{
 		Columns:   []clause.Column{{Name: "node_twin_id"}},

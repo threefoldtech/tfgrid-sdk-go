@@ -10,13 +10,14 @@ type IndexerState struct {
 }
 
 type IndexersState struct {
-	Gpu       IndexerState `json:"gpu"`
-	Health    IndexerState `json:"health"`
-	Dmi       IndexerState `json:"dmi"`
-	Speed     IndexerState `json:"speed"`
-	Ipv6      IndexerState `json:"ipv6"`
-	Workloads IndexerState `json:"workloads"`
-	Features  IndexerState `json:"features"`
+	Gpu          IndexerState `json:"gpu"`
+	Health       IndexerState `json:"health"`
+	Dmi          IndexerState `json:"dmi"`
+	Speed        IndexerState `json:"speed"`
+	CpuBenchmark IndexerState `json:"cpu_benchmark"`
+	Ipv6         IndexerState `json:"ipv6"`
+	Workloads    IndexerState `json:"workloads"`
+	Features     IndexerState `json:"features"`
 }
 
 // Health represent the healthiness of the server and connections

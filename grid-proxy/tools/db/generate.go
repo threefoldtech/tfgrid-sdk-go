@@ -121,6 +121,10 @@ func generateData(db *sql.DB, gormDB *gorm.DB, seed int) error {
 		return fmt.Errorf("failed to generate speed reports: %w", err)
 	}
 
+	if err := generator.GenerateCpuBenchmarkReports(); err != nil {
+		return fmt.Errorf("failed to generate cpuBenchmark reports: %w", err)
+	}
+
 	if err := generator.GenerateDmi(); err != nil {
 		return fmt.Errorf("failed to generate dmi reports: %w", err)
 	}

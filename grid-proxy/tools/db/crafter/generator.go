@@ -836,6 +836,32 @@ func (c *Crafter) GenerateSpeedReports() error {
 	return nil
 }
 
+func (c *Crafter) GenerateCpuBenchmarkReports() error {
+	start := c.NodeStart
+	end := c.NodeStart + c.NodeCount
+	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
+
+	var cpuBenchmarkReports []types.CpuBenchmark
+	for i := start; i < end; i += 2 {
+		cpuBenchmarkReport := types.CpuBenchmark{
+			NodeTwinId:     uint32(nodeTwinsStart + i),
+			SingleThreaded: rand.Float64() * 1000,
+			MultiThreaded:  rand.Float64() * 5000,
+			Threads:        rand.Intn(64) + 1,
+			Workloads:      rand.Intn(20) + 1,
+			UpdatedAt:      time.Now().Unix(),
+		}
+		cpuBenchmarkReports = append(cpuBenchmarkReports, cpuBenchmarkReport)
+	}
+
+	if err := c.gormDB.Create(cpuBenchmarkReports).Error; err != nil {
+		return fmt.Errorf("failed to insert cpuBenchmark: %w", err)
+	}
+	fmt.Println("cpuBenchmark reports generated")
+
+	return nil
+}
+
 func (c *Crafter) GenerateDmi() error {
 	start := c.NodeStart
 	end := c.NodeStart + c.NodeCount

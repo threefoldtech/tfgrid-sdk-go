@@ -49,6 +49,7 @@ type Node struct {
 	Healthy           bool         `json:"healthy"`
 	Dmi               Dmi          `json:"dmi"`
 	Speed             Speed        `json:"speed"`
+	CpuBenchmark      CpuBenchmark `json:"cpu_benchmark"`
 	GPUs              []NodeGPU    `json:"gpus"`
 	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
 	FarmFreeIps       uint         `json:"farm_free_ips"`
@@ -94,6 +95,7 @@ type NodeWithNestedCapacity struct {
 	Healthy           bool           `json:"healthy"`
 	Dmi               Dmi            `json:"dmi"`
 	Speed             Speed          `json:"speed"`
+	CpuBenchmark      CpuBenchmark   `json:"cpu_benchmark"`
 	GPUs              []NodeGPU      `json:"gpus"`
 	PriceUsd          float64        `json:"price_usd"`
 	FarmFreeIps       uint           `json:"farm_free_ips"`

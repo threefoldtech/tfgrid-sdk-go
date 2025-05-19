@@ -43,6 +43,7 @@ type DBData struct {
 	NodeFeatures        map[uint32][]string
 	DMIs                map[uint32]types.Dmi
 	Speeds              map[uint32]types.Speed
+	CpuBenchmarks       map[uint32]types.CpuBenchmark
 	PricingPolicies     map[uint]PricingPolicy
 	WorkloadsNumbers    map[uint32]uint32
 
@@ -630,6 +631,37 @@ func loadSpeeds(db *sql.DB, data *DBData) error {
 	return nil
 }
 
+func loadCpuBenchmarks(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+    SELECT 
+        node_twin_id,
+        single_threaded,
+        multi_threaded,
+        threads,
+        workloads,
+        updated_at
+    FROM 
+        cpu_benchmark;`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var cpuBenchmark types.CpuBenchmark
+		if err := rows.Scan(
+			&cpuBenchmark.NodeTwinId,
+			&cpuBenchmark.SingleThreaded,
+			&cpuBenchmark.MultiThreaded,
+			&cpuBenchmark.Threads,
+			&cpuBenchmark.Workloads,
+			&cpuBenchmark.UpdatedAt,
+		); err != nil {
+			return err
+		}
+		data.CpuBenchmarks[cpuBenchmark.NodeTwinId] = cpuBenchmark
+	}
+	return nil
+}
+
 func loadWorkloadsNumber(db *sql.DB, data *DBData) error {
 	rows, err := db.Query(`
 		SELECT
@@ -767,6 +799,7 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		HealthReports:       make(map[uint32]bool),
 		DMIs:                make(map[uint32]types.Dmi),
 		Speeds:              make(map[uint32]types.Speed),
+		CpuBenchmarks:       make(map[uint32]types.CpuBenchmark),
 		NodeIpv6:            make(map[uint32]bool),
 		NodeFeatures:        make(map[uint32][]string),
 		PricingPolicies:     make(map[uint]PricingPolicy),
@@ -828,6 +861,9 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadSpeeds(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadCpuBenchmarks(db, &data); err != nil {
 		return data, err
 	}
 	if err := loadPricingPolicies(db, &data); err != nil {

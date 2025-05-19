@@ -127,6 +127,9 @@ func (d *PostgresDatabase) GetLastUpsertsTimestamp() (types.IndexersState, error
 	if res := d.gormDB.Table("speed").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Speed.UpdatedAt); res.Error != nil {
 		return report, errors.Wrap(res.Error, "couldn't get speed last updated_at")
 	}
+	if res := d.gormDB.Table("cpu_benchmark").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.CpuBenchmark.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get cpubenchmark last updated_at")
+	}
 	if res := d.gormDB.Table("dmi").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Dmi.UpdatedAt); res.Error != nil {
 		return report, errors.Wrap(res.Error, "couldn't get dmi last updated_at")
 	}
@@ -148,6 +151,7 @@ func (d *PostgresDatabase) Initialize() error {
 		&types.HealthReport{},
 		&types.Dmi{},
 		&types.Speed{},
+		&types.CpuBenchmark{},
 		&types.HasIpv6{},
 		&types.NodesWorkloads{},
 		&types.NodeFeatures{},
@@ -385,6 +389,10 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.tcp_upload_ipv6",
 			"resources_cache.udp_download_ipv6",
 			"resources_cache.udp_upload_ipv6",
+			"resources_cache.single_threaded_cpu as single_threaded",
+			"resources_cache.multi_threaded_cpu as multi_threaded",
+			"resources_cache.threads_cpu as threads",
+			"resources_cache.workloads_cpu as workloads",
 			"public_ips_cache.free_ips as farm_free_ips",
 			calculatedDiscountColumn,
 		).
