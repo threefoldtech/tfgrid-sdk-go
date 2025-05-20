@@ -12,7 +12,7 @@ cache-warmer --interval 10 --graphql https://graphql.grid.tf/graphql --redis-url
 
 ## Build
 
-You need Go(1.21) and make.
+You need Go(1.23) and make.
 Run:
 
 ```bash
