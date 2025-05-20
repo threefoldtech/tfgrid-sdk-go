@@ -337,6 +337,7 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"farm.name as farm_name",
 			"node.twin_id",
 			"node.country",
+			"node_location.continent",
 			"node.grid_version",
 			"node.city",
 			"node.uptime",

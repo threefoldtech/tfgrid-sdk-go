@@ -153,6 +153,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				Location: types.Location{
 					Country:   node.Country,
 					City:      node.City,
+					Region:    g.data.Regions[node.Country],
 					Longitude: g.data.Locations[node.LocationID].Longitude,
 					Latitude:  g.data.Locations[node.LocationID].Latitude,
 				},
@@ -250,6 +251,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		Location: types.Location{
 			Country:   node.Country,
 			City:      node.City,
+			Region:    g.data.Regions[node.Country],
 			Longitude: g.data.Locations[node.LocationID].Longitude,
 			Latitude:  g.data.Locations[node.LocationID].Latitude,
 		},

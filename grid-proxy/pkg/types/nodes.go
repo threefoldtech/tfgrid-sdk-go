@@ -6,6 +6,7 @@ import "github.com/threefoldtech/zosbase/pkg/gridtypes"
 type Location struct {
 	Country   string   `json:"country"`
 	City      string   `json:"city"`
+	Region    string   `json:"region"`
 	Longitude *float64 `json:"longitude"`
 	Latitude  *float64 `json:"latitude"`
 }

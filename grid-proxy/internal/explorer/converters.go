@@ -43,6 +43,7 @@ func nodeFromDBNode(info db.Node) types.Node {
 			City:      info.City,
 			Longitude: info.Longitude,
 			Latitude:  info.Latitude,
+			Region:    info.Continent,
 		},
 		PublicConfig: types.PublicConfig{
 			Domain: info.Domain,
@@ -136,6 +137,7 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 			City:      info.City,
 			Longitude: info.Longitude,
 			Latitude:  info.Latitude,
+			Region:    info.Continent,
 		},
 		PublicConfig: types.PublicConfig{
 			Domain: info.Domain,
