@@ -100,7 +100,7 @@ func mockValidation(identity substrate.Identity, cl *mocks.RMBMockClient, sub *m
 		gomock.Any(),
 		gomock.Any()).
 		DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-			var res *client.PublicConfig = result.(*client.PublicConfig)
+			res := result.(*client.PublicConfig)
 			cfg := client.PublicConfig{IPv4: gridtypes.IPNet{IPNet: net.IPNet{IP: net.ParseIP("192.168.1.10")}}}
 			*res = cfg
 			return nil

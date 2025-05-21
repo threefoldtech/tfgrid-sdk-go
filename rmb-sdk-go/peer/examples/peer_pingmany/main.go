@@ -108,18 +108,18 @@ func main() {
 
 }
 
-func rmbCall(ctx context.Context, bus *peer.RpcClient, twinId uint32) error {
-
-	var res interface{}
-	err := bus.Call(ctx, twinId, "rmb.version", nil, &res)
-	if err != nil {
-		return err
-	}
-
-	log.Info().Uint32("twinId", twinId).Msgf("%+v", res)
-
-	return nil
-}
+// func rmbCall(ctx context.Context, bus *peer.RpcClient, twinId uint32) error {
+//
+// 	var res interface{}
+// 	err := bus.Call(ctx, twinId, "rmb.version", nil, &res)
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	log.Info().Uint32("twinId", twinId).Msgf("%+v", res)
+//
+// 	return nil
+// }
 
 func Map[SA []A, SB []B, A any, B any](s SA, fn func(A) B) SB {
 

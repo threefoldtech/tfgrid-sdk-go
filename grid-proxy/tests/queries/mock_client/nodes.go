@@ -25,6 +25,7 @@ func isRentable(db DBData, node Node) bool {
 		(db.Farms[node.FarmID].DedicatedFarm ||
 			len(db.NonDeletedContracts[node.NodeID]) == 0)
 }
+
 func isRented(db DBData, node Node) bool {
 	_, ok := db.NodeRentedBy[node.NodeID]
 	return ok
@@ -435,7 +436,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 
 	if f.RentableOrRentedBy != nil &&
 		((ok && renter != *f.RentableOrRentedBy) ||
-			(!ok && !(data.Farms[n.FarmID].DedicatedFarm || len(data.NonDeletedContracts[n.NodeID]) == 0))) {
+			(!ok && (!data.Farms[n.FarmID].DedicatedFarm && len(data.NonDeletedContracts[n.NodeID]) != 0))) {
 		return false
 	}
 

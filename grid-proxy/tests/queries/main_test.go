@@ -12,7 +12,6 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	proxyDB "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
@@ -37,7 +36,7 @@ var (
 	mockClient      proxyclient.Client
 	data            mock.DBData
 	gridProxyClient proxyclient.Client
-	DBClient        db.Database
+	DBClient        proxyDB.Database
 )
 
 func parseCmdline() {

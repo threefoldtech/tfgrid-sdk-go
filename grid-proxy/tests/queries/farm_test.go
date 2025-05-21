@@ -11,7 +11,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
@@ -79,10 +78,7 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		return &agg.certifications[rand.Intn(len(agg.certifications))]
 	},
 	"Dedicated": func(agg FarmsAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"NodeFreeMRU": func(agg FarmsAggregate) interface{} {
@@ -113,32 +109,23 @@ var farmFilterRandomValueGenerator = map[string]func(agg FarmsAggregate) interfa
 		return &agg.rentersTwinIDs[rand.Intn(len(agg.rentersTwinIDs))]
 	},
 	"NodeCertified": func(agg FarmsAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"NodeRentedBy": func(agg FarmsAggregate) interface{} {
 		return &agg.rentersTwinIDs[rand.Intn(len(agg.rentersTwinIDs))]
 	},
 	"NodeHasGPU": func(agg FarmsAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"NodeHasIpv6": func(_ FarmsAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"NodeFeatures": func(_ FarmsAggregate) interface{} {
 		randomLen := rand.Intn(5)
-		return getRandomSliceFrom(types.FeaturesSet, randomLen)
+		return getRandomSliceFrom(proxytypes.FeaturesSet, randomLen)
 	},
 }
 
@@ -404,5 +391,4 @@ func sortPublicIPs(local, remote []proxytypes.Farm) {
 			return remote[id].PublicIps[i].ID < remote[id].PublicIps[j].ID
 		})
 	}
-
 }

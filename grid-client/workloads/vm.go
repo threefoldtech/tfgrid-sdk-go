@@ -157,7 +157,7 @@ func mounts(mounts []zosTypes.MachineMount) []Mount {
 
 func pubIP(dl *zosTypes.Deployment, name string) (zos.PublicIPResult, error) {
 	pubIPWl, err := dl.Get(name)
-	if err != nil || !pubIPWl.Workload.Result.State.IsOkay() {
+	if err != nil || !pubIPWl.Result.State.IsOkay() {
 		pubIPWl = nil
 		return zos.PublicIPResult{}, err
 	}

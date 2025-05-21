@@ -102,10 +102,7 @@ func calcPublicIpsAggregates(data *mock.DBData) (agg PublicIpsAggregate) {
 
 var publicIpGen = map[string]func(agg PublicIpsAggregate) any{
 	"Free": func(_ PublicIpsAggregate) any {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"FarmIDs": func(agg PublicIpsAggregate) any {

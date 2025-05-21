@@ -55,17 +55,18 @@ func formatLevel(i interface{}) string {
 
 // SetupLogging ...
 func SetupLogging(level string) {
-	if level == "debug" {
+	switch level {
+	case "debug":
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else if level == "info" {
+	case "info":
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	} else if level == "warn" {
+	case "warn":
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	} else if level == "error" {
+	case "error":
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-	} else if level == "fatal" {
+	case "fatal":
 		zerolog.SetGlobalLevel(zerolog.FatalLevel)
-	} else if level == "panic" {
+	case "panic":
 		zerolog.SetGlobalLevel(zerolog.PanicLevel)
 	}
 	log.Logger = log.Output(zerolog.ConsoleWriter{

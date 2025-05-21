@@ -348,7 +348,7 @@ func TestDeploymentDeployerDeploy(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), twinID, "zos.network.list_private_ips", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]string = result.(*[]string)
+				res := result.(*[]string)
 				*res = []string{}
 				return nil
 			}).AnyTimes()
@@ -511,7 +511,7 @@ func TestDeploymentDeployerSync(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), twinID, "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
+				res := result.(*zosTypes.Deployment)
 				*res = networkDl
 				return nil
 			}).AnyTimes()
@@ -523,7 +523,7 @@ func TestDeploymentDeployerSync(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), twinID, "zos.network.list_private_ips", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]string = result.(*[]string)
+				res := result.(*[]string)
 				*res = []string{}
 				return nil
 			})

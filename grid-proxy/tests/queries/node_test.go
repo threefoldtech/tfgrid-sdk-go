@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
 )
 
@@ -58,17 +57,11 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		return getRandomSliceFrom(statuses, randomLen)
 	},
 	"Healthy": func(_ NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"HasIpv6": func(_ NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"FreeMRU": func(agg NodesAggregate) interface{} {
@@ -76,7 +69,6 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 			return &agg.freeMRUs[rand.Intn(len(agg.freeMRUs))]
 		}
 		return rndref(0, agg.maxFreeMRU)
-
 	},
 	"FreeHRU": func(agg NodesAggregate) interface{} {
 		if flip(.1) {
@@ -101,14 +93,12 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 			return &agg.totalHRUs[rand.Intn(len(agg.totalHRUs))]
 		}
 		return rndref(0, agg.maxTotalHRU)
-
 	},
 	"TotalSRU": func(agg NodesAggregate) interface{} {
 		if flip(.1) {
 			return &agg.totalSRUs[rand.Intn(len(agg.totalSRUs))]
 		}
 		return rndref(0, agg.maxTotalSRU)
-
 	},
 	"TotalCRU": func(agg NodesAggregate) interface{} {
 		if flip(.1) {
@@ -182,52 +172,31 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		return rndref(0, agg.maxFreeIPs)
 	},
 	"IPv4": func(agg NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"IPv6": func(agg NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"Domain": func(agg NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"InDedicatedFarm": func(agg NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"Dedicated": func(agg NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"Rentable": func(agg NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"Rented": func(agg NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"RentedBy": func(agg NodesAggregate) interface{} {
@@ -271,10 +240,7 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		return &certType
 	},
 	"HasGPU": func(agg NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"NumGPU": func(agg NodesAggregate) interface{} {
@@ -302,10 +268,7 @@ var nodeFilterRandomValueGenerator = map[string]func(agg NodesAggregate) interfa
 		return &deviceIDs[rand.Intn(len(deviceIDs))]
 	},
 	"GpuAvailable": func(agg NodesAggregate) interface{} {
-		v := true
-		if flip(.5) {
-			v = false
-		}
+		v := !flip(.5)
 		return &v
 	},
 	"PriceMin": func(_ NodesAggregate) interface{} {
@@ -439,9 +402,9 @@ func TestNode(t *testing.T) {
 	t.Run("nodes test has_gpu filter", func(t *testing.T) {
 		t.Parallel()
 
-		l := proxytypes.DefaultLimit()
+		l := types.DefaultLimit()
 		hasGPU := true
-		f := proxytypes.NodeFilter{
+		f := types.NodeFilter{
 			HasGPU: &hasGPU,
 		}
 
@@ -498,7 +461,7 @@ func TestNode(t *testing.T) {
 	t.Run("node staking discount", func(t *testing.T) {
 		t.Parallel()
 
-		limits := proxytypes.DefaultLimit()
+		limits := types.DefaultLimit()
 		limits.Balance = 9999999999 // in usd
 
 		got, _, err := gridProxyClient.Nodes(context.Background(), types.NodeFilter{}, limits)

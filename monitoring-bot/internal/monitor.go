@@ -16,7 +16,6 @@ import (
 
 	"github.com/cosmos/go-bip39"
 	"github.com/rs/zerolog/log"
-	client "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
@@ -62,7 +61,7 @@ type Monitor struct {
 	mnemonics  map[network]string
 	farms      map[network]string
 	wallets    wallets
-	managers   map[network]client.Manager
+	managers   map[network]substrate.Manager
 	rmbClients map[network]*peer.RpcClient
 }
 
@@ -95,10 +94,10 @@ func NewMonitor(ctx context.Context, env config, wallets wallets) (Monitor, erro
 	mon.mnemonics[qaNetwork] = mon.env.qaMnemonic
 	mon.mnemonics[mainNetwork] = mon.env.mainMnemonic
 
-	mon.managers = make(map[network]client.Manager, 4)
+	mon.managers = make(map[network]substrate.Manager, 4)
 	mon.rmbClients = make(map[network]*peer.RpcClient, 4)
 	for _, network := range networks {
-		mon.managers[network] = client.NewManager(SubstrateURLs[network]...)
+		mon.managers[network] = substrate.NewManager(SubstrateURLs[network]...)
 
 		sessionID := fmt.Sprintf("monbot-%d", os.Getpid())
 		rmbClient, err := peer.NewRpcClient(ctx, mon.mnemonics[network], mon.managers[network], peer.WithRelay(RelayURLS[network]), peer.WithSession(sessionID))
@@ -219,14 +218,14 @@ func (m *Monitor) sendBotMessage(msg string) error {
 }
 
 // getBalance gets the balance in TFT for the address given
-func (m *Monitor) getBalance(manager client.Manager, address address) (float64, error) {
+func (m *Monitor) getBalance(manager substrate.Manager, address address) (float64, error) {
 	con, err := manager.Substrate()
 	if err != nil {
 		return 0, err
 	}
 	defer con.Close()
 
-	account, err := client.FromAddress(string(address))
+	account, err := substrate.FromAddress(string(address))
 	if err != nil {
 		return 0, err
 	}
@@ -241,7 +240,7 @@ func (m *Monitor) getBalance(manager client.Manager, address address) (float64, 
 
 // monitorBalance sends a message with the balance to a telegram bot
 // if it is less than the tft threshold
-func (m *Monitor) monitorBalance(manager client.Manager, wallet wallet) error {
+func (m *Monitor) monitorBalance(manager substrate.Manager, wallet wallet) error {
 	log.Debug().Msgf("get balance for %v", wallet.Address)
 	balance, err := m.getBalance(manager, wallet.Address)
 	if err != nil {

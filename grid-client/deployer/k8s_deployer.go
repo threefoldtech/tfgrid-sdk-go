@@ -301,18 +301,20 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 	diskSize := make(map[string]uint64)
 	for node, dl := range currentDeployments {
 		for _, w := range dl.Workloads {
-			if w.Type == zosTypes.ZMachineType {
+			switch w.Type {
+			case zosTypes.ZMachineType:
 				workloadNodeID[w.Name] = node
 				workloadObj[w.Name] = *w.Workload()
 
-			} else if w.Type == zosTypes.PublicIPType {
+			case zosTypes.PublicIPType:
 				ipResult := zos.PublicIPResult{}
 				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
 					return d.tfPluginClient.sentry.error(errors.Wrap(err, "failed to load public ip data"))
 				}
 				publicIPs[w.Name] = ipResult.IP.String()
 				publicIP6s[w.Name] = ipResult.IPv6.String()
-			} else if w.Type == zosTypes.ZMountType {
+
+			case zosTypes.ZMountType:
 				wl, err := w.Workload().WorkloadData()
 				if err != nil {
 					return d.tfPluginClient.sentry.error(errors.Wrap(err, "failed to load disk data"))

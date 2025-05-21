@@ -10,12 +10,12 @@ type Contract struct {
 
 // IsDeleted checks if contract is deleted
 func (c *Contract) IsDeleted() bool {
-	return c.Contract.State.IsDeleted
+	return c.State.IsDeleted
 }
 
 // IsCreated checks if contract is created
 func (c *Contract) IsCreated() bool {
-	return c.Contract.State.IsCreated
+	return c.State.IsCreated
 }
 
 // TwinID returns contract's twin ID
@@ -25,5 +25,5 @@ func (c *Contract) TwinID() uint32 {
 
 // PublicIPCount returns contract's public IPs count
 func (c *Contract) PublicIPCount() uint32 {
-	return uint32(c.Contract.ContractType.NodeContract.PublicIPsCount)
+	return uint32(c.ContractType.NodeContract.PublicIPsCount)
 }
