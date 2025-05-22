@@ -20,7 +20,7 @@ import (
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
-	"github.com/vedhavyas/go-subkey"
+	subkey "github.com/vedhavyas/go-subkey"
 )
 
 var (
@@ -227,7 +227,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
+				res := result.(*[]zosTypes.Workload)
 				*res = dl1.Workloads
 				return nil
 			})
@@ -235,7 +235,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(23), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
+				res := result.(*[]zosTypes.Workload)
 				*res = dl2.Workloads
 				return nil
 			})
@@ -281,7 +281,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
+				res := result.(*zosTypes.Deployment)
 				*res = oldDl
 				return nil
 			}).AnyTimes()
@@ -308,7 +308,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
+				res := result.(*[]zosTypes.Workload)
 				*res = versionedDl.Workloads
 				return nil
 			}).AnyTimes()
@@ -435,7 +435,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
+				res := result.(*[]zosTypes.Workload)
 				*res = dl1.Workloads
 				return nil
 			}).AnyTimes()
@@ -443,7 +443,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(23), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
+				res := result.(*[]zosTypes.Workload)
 				*res = dl2.Workloads
 				return nil
 			}).AnyTimes()
@@ -451,7 +451,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(33), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
+				res := result.(*[]zosTypes.Workload)
 				*res = dl4.Workloads
 				return nil
 			}).AnyTimes()
@@ -459,7 +459,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(43), "zos.deployment.changes", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *[]zosTypes.Workload = result.(*[]zosTypes.Workload)
+				res := result.(*[]zosTypes.Workload)
 				*res = dl5.Workloads
 				return nil
 			}).AnyTimes()
@@ -467,7 +467,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(13), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
+				res := result.(*zosTypes.Deployment)
 				*res = dl1
 				return nil
 			}).AnyTimes()
@@ -475,7 +475,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(23), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
+				res := result.(*zosTypes.Deployment)
 				*res = dl2
 				return nil
 			}).AnyTimes()
@@ -483,7 +483,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(33), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
+				res := result.(*zosTypes.Deployment)
 				*res = dl4
 				return nil
 			}).AnyTimes()
@@ -491,7 +491,7 @@ func TestDeployer(t *testing.T) {
 		cl.EXPECT().
 			Call(gomock.Any(), uint32(43), "zos.deployment.get", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, twin uint32, fn string, data, result interface{}) error {
-				var res *zosTypes.Deployment = result.(*zosTypes.Deployment)
+				res := result.(*zosTypes.Deployment)
 				*res = dl5
 				return nil
 			}).AnyTimes()

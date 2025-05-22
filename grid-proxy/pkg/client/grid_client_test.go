@@ -232,7 +232,7 @@ func AssertHTTPRequest(
 		foundURL := r.URL
 		parsedPath, err := url.Parse(path)
 		if err != nil {
-			_, _ = w.Write([]byte(fmt.Sprintf(`{"error": "failed to parse expected path: %s"}`, err.Error())))
+			_, _ = fmt.Fprintf(w, `{"error": "failed to parse expected path: %s"}`, err.Error())
 			return
 		}
 
@@ -245,7 +245,7 @@ func AssertHTTPRequest(
 			_, _ = w.Write([]byte(response))
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(fmt.Sprintf(`{"error": "expected path and methods: %s, %s. found: %s, %s"}`, path, method, expectedURL, r.Method)))
+			_, _ = fmt.Fprintf(w, `{"error": "expected path and methods: %s, %s. found: %s, %s"}`, path, method, expectedURL, r.Method)
 		}
 	}))
 	defer ts.Close()
@@ -267,6 +267,7 @@ func AssertHTTPRequest(
 func TestSuccess(t *testing.T) {
 	testSuccess(t, NewClient)
 }
+
 func testSuccess(t *testing.T, f ProxyFunc) {
 	nodesFilter, nodesLimit, expectedNodesURL := nodesFilterValues()
 	farmsFilter, farmsLimit, expectedFarmsURL := farmsFilterValues()

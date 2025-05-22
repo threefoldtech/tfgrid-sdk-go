@@ -185,7 +185,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 			return nil, fmt.Errorf("failed to include node with id %d with error: %w", nodeID, err)
 		}
 
-		f.state.addNode(node)
+		f.addNode(node)
 		return nil, nil
 	})
 
@@ -206,7 +206,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		// Exclude node from farmerbot management
 		// (It is not allowed if we tried to power on a node the farmer decided to power off)
 		// the farmer should include it again if he wants to the bot to manage it
-		f.state.deleteNode(nodeID)
+		f.deleteNode(nodeID)
 		return nil, nil
 	})
 
@@ -227,7 +227,7 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		// Exclude node from farmerbot management
 		// (It is not allowed if we tried to power off a node the farmer decided to power on)
 		// the farmer should include it again if he wants to the bot to manage it
-		f.state.deleteNode(nodeID)
+		f.deleteNode(nodeID)
 		return nil, nil
 	})
 
@@ -240,7 +240,6 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 		peer.WithSession(fmt.Sprintf("farmerbot-%d", f.farm.ID)),
 		peer.WithKeyType(f.keyType),
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to create farmerbot direct peer with error: %w", err)
 	}
@@ -253,28 +252,28 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 	var wakeUpCalls uint8
 
 	log.Debug().Msg("Fetch nodes")
-	farmNodes, err := subConn.GetNodes(uint32(f.state.farm.ID))
+	farmNodes, err := subConn.GetNodes(uint32(f.farm.ID))
 	if err != nil {
 		return err
 	}
 
 	// remove nodes that don't exist anymore in the farm
-	for _, node := range f.state.nodes {
+	for _, node := range f.nodes {
 		if !slices.Contains(farmNodes, uint32(node.ID)) {
-			f.state.deleteNode(uint32(node.ID))
+			f.deleteNode(uint32(node.ID))
 		}
 	}
 
-	farmNodes = addPriorityToNodes(f.state.config.PriorityNodes, farmNodes)
+	farmNodes = addPriorityToNodes(f.config.PriorityNodes, farmNodes)
 
 	for _, nodeID := range farmNodes {
-		if slices.Contains(f.state.config.ExcludedNodes, nodeID) {
+		if slices.Contains(f.config.ExcludedNodes, nodeID) {
 			continue
 		}
 
 		// if the user specified included nodes or
 		// no nodes are specified so all nodes will be added (except excluded)
-		if !slices.Contains(f.state.config.IncludedNodes, nodeID) && len(f.state.config.IncludedNodes) > 0 {
+		if !slices.Contains(f.config.IncludedNodes, nodeID) && len(f.config.IncludedNodes) > 0 {
 			continue
 		}
 
@@ -284,7 +283,7 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 			log.Error().Err(err).Send()
 		}
 
-		_, node, err := f.state.getNode(nodeID)
+		_, node, err := f.getNode(nodeID)
 		if err != nil {
 			log.Error().Err(err).Send()
 		}
@@ -300,14 +299,14 @@ func (f *FarmerBot) iterateOnNodes(ctx context.Context, subConn Substrate) error
 		if roundStart.Day() == 1 && roundStart.Hour() == 1 && roundStart.Minute() < int(timeoutUpdate.Minutes()) {
 			log.Debug().Uint32("nodeID", nodeID).Msg("Reset random wake-up times the first day of the month")
 			node.timesRandomWakeUps = 0
-			err = f.state.updateNode(node)
+			err = f.updateNode(node)
 			if err != nil {
 				log.Error().Err(err).Send()
 			}
 		}
 
 		if f.shouldWakeUp(ctx, &node, roundStart, wakeUpCalls) {
-			err = f.state.updateNode(node)
+			err = f.updateNode(node)
 			if err != nil {
 				log.Error().Err(err).Send()
 			}
@@ -355,14 +354,14 @@ func addPriorityToNodes(priorityNodes, farmNodes []uint32) []uint32 {
 }
 
 func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, nodeID uint32) error {
-	neverShutDown := slices.Contains(f.state.config.NeverShutDownNodes, nodeID)
+	neverShutDown := slices.Contains(f.config.NeverShutDownNodes, nodeID)
 
-	_, oldNode, err := f.state.getNode(nodeID)
+	_, oldNode, err := f.getNode(nodeID)
 	if err == nil { // node exists
-		updateErr := oldNode.update(ctx, subConn, f.rmbNodeClient, neverShutDown, f.state.farm.DedicatedFarm, f.config.ContinueOnPoweringOnErr)
+		updateErr := oldNode.update(ctx, subConn, f.rmbNodeClient, neverShutDown, f.farm.DedicatedFarm, f.config.ContinueOnPoweringOnErr)
 
 		// update old node state even if it failed
-		if err := f.state.updateNode(oldNode); err != nil {
+		if err := f.updateNode(oldNode); err != nil {
 			return fmt.Errorf("failed to update node state %d with error: %w", uint32(oldNode.ID), err)
 		}
 
@@ -375,12 +374,12 @@ func (f *FarmerBot) addOrUpdateNode(ctx context.Context, subConn Substrate, node
 	}
 
 	// if node doesn't exist, we should add it
-	nodeObj, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, f.config.ContinueOnPoweringOnErr, neverShutDown, false, f.state.farm.DedicatedFarm, on)
+	nodeObj, err := getNode(ctx, subConn, f.rmbNodeClient, nodeID, f.config.ContinueOnPoweringOnErr, neverShutDown, false, f.farm.DedicatedFarm, on)
 	if err != nil {
 		return fmt.Errorf("failed to get node %d: %w", nodeID, err)
 	}
 
-	f.state.addNode(nodeObj)
+	f.addNode(nodeObj)
 	log.Debug().Uint32("nodeID", nodeID).Msg("Node is added with latest changes successfully")
 	return nil
 }

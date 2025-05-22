@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/go-envparse v0.1.0
 	github.com/jedib0t/go-pretty/v6 v6.5.3
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241127100051-77e684bcb1b2
@@ -34,7 +34,6 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/schema v1.4.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
@@ -52,17 +51,14 @@ require (
 	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee // indirect
-	github.com/tklauser/go-sysconf v0.3.12 // indirect
-	github.com/yusufpapurcu/wmi v1.2.4 // indirect
+	github.com/tklauser/numcpus v0.6.1 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
-	gonum.org/v1/gonum v0.15.0 // indirect
-	google.golang.org/protobuf v1.36.4 // indirect
+	gonum.org/v1/gonum v0.16.0 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
 

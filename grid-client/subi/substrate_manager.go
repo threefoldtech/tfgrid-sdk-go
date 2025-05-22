@@ -29,7 +29,7 @@ func NewManager(url ...string) Manager {
 
 // SubstrateExt returns a substrate implementation to be used
 func (m *Manager) SubstrateExt() (*SubstrateImpl, error) {
-	sub, err := m.Manager.Substrate()
+	sub, err := m.Substrate()
 	return &SubstrateImpl{Substrate: sub}, err
 }
 
@@ -101,7 +101,7 @@ func (s *SubstrateImpl) GetPricingPolicy(policyID uint32) (pricingPolicy substra
 
 // GetNodeTwin returns the twin ID for a node ID
 func (s *SubstrateImpl) GetNodeTwin(nodeID uint32) (uint32, error) {
-	node, err := s.Substrate.GetNode(nodeID)
+	node, err := s.GetNode(nodeID)
 	if err != nil {
 		return 0, normalizeNotFoundErrors(err)
 	}
@@ -110,7 +110,7 @@ func (s *SubstrateImpl) GetNodeTwin(nodeID uint32) (uint32, error) {
 
 // GetTwinPK returns twin's public key
 func (s *SubstrateImpl) GetTwinPK(id uint32) ([]byte, error) {
-	twin, err := s.Substrate.GetTwin(id)
+	twin, err := s.GetTwin(id)
 	if err != nil {
 		return nil, normalizeNotFoundErrors(err)
 	}

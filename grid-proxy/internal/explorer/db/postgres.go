@@ -26,7 +26,7 @@ var (
 	ErrNodeNotFound = errors.New("node not found")
 	// ErrFarmNotFound farm not found
 	ErrFarmNotFound = errors.New("farm not found")
-	//ErrViewNotFound
+	// ErrViewNotFound
 	ErrResourcesCacheTableNotFound = errors.New("ERROR: relation \"resources_cache\" does not exist (SQLSTATE 42P01)")
 	// ErrContractNotFound contract not found
 	ErrContractNotFound = errors.New("contract not found")
@@ -536,8 +536,8 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	}
 
 	if filter.NameContains != nil {
-		escaped := strings.Replace(*filter.NameContains, "%", "\\%", -1)
-		escaped = strings.Replace(escaped, "_", "\\_", -1)
+		escaped := strings.ReplaceAll(*filter.NameContains, "%", "\\%")
+		escaped = strings.ReplaceAll(escaped, "_", "\\_")
 		q = q.Where("farm.name ILIKE ?", fmt.Sprintf("%%%s%%", escaped))
 	}
 
@@ -783,11 +783,12 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 				order = types.SortOrderDesc
 			}
 
-			if limit.SortBy == "status" {
+			switch limit.SortBy {
+			case "status":
 				q = q.Order(nodestatus.DecideNodeStatusOrdering(order))
-			} else if limit.SortBy == "free_cru" {
+			case "free_cru":
 				q = q.Order(fmt.Sprintf("total_cru-used_cru %s", order))
-			} else {
+			default:
 				q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 			}
 		} else {
