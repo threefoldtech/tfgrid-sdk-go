@@ -12,15 +12,14 @@ import (
 )
 
 func app() error {
-	mnemonics := "<mnemonics goes here>"
-	subManager := substrate.NewManager("wss://tfchain.dev.grid.tf/ws")
+	mnemonics := "need unfair vendor potato nominee high one flower flight save electric game"
+	subManager := substrate.NewManager("ws://127.0.0.1:9944/ws")
 
 	client, err := peer.NewRpcClient(
 		context.Background(),
 		mnemonics,
 		subManager,
 		peer.WithKeyType(peer.KeyTypeSr25519),
-		peer.WithRelay("wss://relay.dev.grid.tf"),
 		peer.WithSession("test-client"),
 	)
 	if err != nil {

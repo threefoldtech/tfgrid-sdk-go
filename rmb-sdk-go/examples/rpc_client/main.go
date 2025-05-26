@@ -16,8 +16,8 @@ type version struct {
 }
 
 func app() error {
-	mnemonics := "<mnemonics goes here>"
-	subNodeURL := "wss://tfchain.dev.grid.tf/ws"
+	mnemonics := "need unfair vendor potato nominee high one flower flight save electric game"
+	subNodeURL := "ws://127.0.0.1:9944" // <- replace this with your node URL
 	relayURL := "wss://relay.dev.grid.tf"
 
 	subManager := substrate.NewManager(subNodeURL)
