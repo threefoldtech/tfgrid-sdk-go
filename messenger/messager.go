@@ -63,7 +63,7 @@ type Messenger struct {
 	Timeout        int
 	MnemonicPhrase string
 
-	AutoUpdateTwin bool
+	AutoUpdateTwin bool // TODO: manage twin identity
 	subCon         *substrate.Substrate
 	identity       substrate.Identity
 
@@ -112,11 +112,7 @@ func NewMessenger(binaryPath string, defaultTimeout int, man substrate.Manager, 
 		defaultTimeout = DefaultTimeout
 	}
 
-	subCon, err := man.Substrate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get substrate connection: %w", err)
-	}
-
+	var err error
 	messenger := &Messenger{
 		BinaryPath:      binaryPath,
 		Timeout:         defaultTimeout,
@@ -124,12 +120,17 @@ func NewMessenger(binaryPath string, defaultTimeout int, man substrate.Manager, 
 		AutoUpdateTwin:  true,
 		receiveHandlers: make(map[string]MessageHandlerFunc),
 		stopCh:          make(chan struct{}),
-		subCon:          subCon,
 	}
 
 	for _, opt := range opts {
 		opt(messenger)
 	}
+
+	if !messenger.AutoUpdateTwin {
+		return messenger, nil
+	}
+
+	// TODO: all args can be optional and add validation for related args
 
 	if messenger.identity == nil {
 		if messenger.MnemonicPhrase == "" {
@@ -142,10 +143,15 @@ func NewMessenger(binaryPath string, defaultTimeout int, man substrate.Manager, 
 		}
 	}
 
-	if messenger.AutoUpdateTwin {
-		if err := messenger.UpdateTwinWithMyceliumPubkey(context.Background()); err != nil {
-			return nil, fmt.Errorf("failed to update twin with Mycelium public key: %w", err)
-		}
+	subCon, err := man.Substrate()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get substrate connection: %w", err)
+
+	}
+	messenger.subCon = subCon
+
+	if err := messenger.UpdateTwinWithMyceliumPubkey(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to update twin with Mycelium public key: %w", err)
 	}
 
 	return messenger, nil
@@ -355,13 +361,15 @@ func (c *Messenger) processMessage(ctx context.Context, message *Message) {
 	}
 
 	// add twin id to the context for later use
-	twin, err := c.subCon.GetTwinByMyceliumPK(message.SrcPK)
-	if err != nil {
-		log.Error().Err(err).Str("key", message.SrcPK).Msg("failed to get twin ID from Mycelium public key")
-		sendErrorReply(fmt.Sprintf("failed to get twin ID: %v", err))
-		return
+	if c.AutoUpdateTwin {
+		twin, err := c.subCon.GetTwinByMyceliumPK(message.SrcPK)
+		if err != nil {
+			log.Error().Err(err).Str("key", message.SrcPK).Msg("failed to get twin ID from Mycelium public key")
+			sendErrorReply(fmt.Sprintf("failed to get twin ID: %v", err))
+			return
+		}
+		ctx = context.WithValue(ctx, TwinIdContextKey, twin.ID)
 	}
-	ctx = context.WithValue(ctx, TwinIdContextKey, twin.ID)
 
 	response, err := handler(ctx, message)
 	if err != nil {
