@@ -57,7 +57,7 @@ func (s *JSONRPCServer) RegisterHandler(method string, handler RPCHandlerFunc) {
 }
 
 func (s *JSONRPCServer) Start(ctx context.Context) error {
-	s.messenger.RegisterHandler("rpc", s.handleRPCMessage)
+	s.messenger.RegisterHandler(RPCKey, s.handleRPCMessage)
 	return s.messenger.StartReceiver(ctx)
 }
 

@@ -48,24 +48,22 @@ func (c *Messenger) GetMyceliumInfo() (*MyceliumNodeInfo, error) {
 	}
 
 	log.Debug().Str("nodePubkey", nodeInfo.NodePubkey).
-		Msg("Retrieved Mycelium node information")
+		Msg("mycelium id")
 
 	return &nodeInfo, nil
 }
 
-// UpdateTwinWithMyceliumPubkey updates mycelium public key in the twin map on chain
-func (c *Messenger) UpdateTwinWithMyceliumPubkey(ctx context.Context) error {
+// UpdateMyceliumTwin updates mycelium public key in the twin map on chain
+func (c *Messenger) UpdateMyceliumTwin(ctx context.Context) error {
 	nodeInfo, err := c.GetMyceliumInfo()
 	if err != nil {
 		return fmt.Errorf("failed to get Mycelium node information: %w", err)
 	}
-	myceliumPk := []byte(nodeInfo.NodePubkey)
 
 	twinid, err := c.subCon.GetTwinByPubKey([]byte(c.identity.PublicKey()))
 	if err != nil {
 		return fmt.Errorf("error getting twin public key: %w", err)
 	}
 
-	// TODO: better to map to pubkey instead of using twinid?
-	return c.subCon.SetTwinMyceliumPK(c.identity, twinid, myceliumPk)
+	return c.subCon.SetMyceliumTwin(c.identity, nodeInfo.NodePubkey, twinid)
 }

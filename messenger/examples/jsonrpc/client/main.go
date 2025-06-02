@@ -6,27 +6,29 @@ import (
 	"os"
 	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/messenger"
 )
 
 const (
-	chainUrl = "ws://192.168.1.125:9944"
+	chainUrl = "ws://192.168.1.10:9944"
 
 	// destination is mycelium pk or ip
 	destination = "22b45ca2c6c40650fa4c739942a7c863deeb4a88a6a2cb38b8c9b273f4ad7b0c"
 )
 
 func main() {
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04"}).With().Logger()
 	mnemonic := os.Getenv("MNEMONIC")
 
 	man := substrate.NewManager(chainUrl)
 
 	msgr, err := messenger.NewMessenger(
-		"",
-		60,
-		man,
-		messenger.WithMnemonicPhrase(mnemonic),
+		messenger.WithSubstrateManager(man),
+		messenger.WithMnemonic(mnemonic),
+		messenger.WithEnableTwinIdentity(true),
 	)
 	if err != nil {
 		fmt.Printf("Failed to create Mycelium client: %v\n", err)

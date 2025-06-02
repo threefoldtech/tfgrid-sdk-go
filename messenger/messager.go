@@ -58,14 +58,16 @@ type PushMessageBody struct {
 type MessageHandlerFunc func(ctx context.Context, message *Message) ([]byte, error)
 
 type Messenger struct {
-	BinaryPath     string
-	APIAddress     string
-	Timeout        int
-	MnemonicPhrase string
+	BinaryPath string
+	APIAddress string
+	Timeout    int
+	Mnemonic   string
 
-	AutoUpdateTwin bool // TODO: manage twin identity
-	subCon         *substrate.Substrate
-	identity       substrate.Identity
+	// EnableTwinIdentity will enfoce the messenger to manage twin identity on chain
+	EnableTwinIdentity bool
+	subCon             *substrate.Substrate
+	identity           substrate.Identity
+	manager            substrate.Manager
 
 	receiveHandlers map[string]MessageHandlerFunc
 	stopCh          chan struct{}
@@ -76,10 +78,10 @@ type Messenger struct {
 // MessengerOpt is a function that configures a Client
 type MessengerOpt func(*Messenger)
 
-// WithMnemonicPhrase sets the mnemonic phrase for the client,
-func WithMnemonicPhrase(mnemonicPhrase string) MessengerOpt {
+// WithMnemonic sets the mnemonic phrase for the client,
+func WithMnemonic(mnemonic string) MessengerOpt {
 	return func(c *Messenger) {
-		c.MnemonicPhrase = mnemonicPhrase
+		c.Mnemonic = mnemonic
 	}
 }
 
@@ -89,68 +91,76 @@ func WithIdentity(identity substrate.Identity) MessengerOpt {
 	}
 }
 
-// WithAutoUpdateTwin enables or disables automatic twin IP update
-func WithAutoUpdateTwin(autoUpdate bool) MessengerOpt {
+// WithEnableTwinIdentity enables or disables twin identity management
+func WithEnableTwinIdentity(enable bool) MessengerOpt {
 	return func(c *Messenger) {
-		c.AutoUpdateTwin = autoUpdate
+		c.EnableTwinIdentity = enable
 	}
 }
 
-func WithTimeout(timeout int) MessengerOpt {
+// WithSubstrateManager sets the substrate manager for the messenger
+func WithSubstrateManager(manager substrate.Manager) MessengerOpt {
 	return func(c *Messenger) {
-		c.Timeout = timeout
+		c.manager = manager
 	}
 }
 
-// NewMessenger creates a new mycelium client with the given options
-func NewMessenger(binaryPath string, defaultTimeout int, man substrate.Manager, opts ...MessengerOpt) (*Messenger, error) {
-	if binaryPath == "" {
-		binaryPath = DefaultMessengerBinary
+// WithBinaryPath sets the binary path for the messenger
+func WithBinaryPath(binaryPath string) MessengerOpt {
+	return func(c *Messenger) {
+		c.BinaryPath = binaryPath
 	}
+}
 
-	if defaultTimeout <= 0 {
-		defaultTimeout = DefaultTimeout
+// WithAPIAddress sets the API address for the messenger
+func WithAPIAddress(apiAddress string) MessengerOpt {
+	return func(c *Messenger) {
+		c.APIAddress = apiAddress
 	}
+}
 
-	var err error
+// NewMessenger creates a new mycelium message subsystem client with the given options
+func NewMessenger(opts ...MessengerOpt) (*Messenger, error) {
 	messenger := &Messenger{
-		BinaryPath:      binaryPath,
-		Timeout:         defaultTimeout,
-		APIAddress:      DefaultAPIAddress,
-		AutoUpdateTwin:  true,
-		receiveHandlers: make(map[string]MessageHandlerFunc),
-		stopCh:          make(chan struct{}),
+		BinaryPath:         DefaultMessengerBinary,
+		Timeout:            DefaultTimeout,
+		APIAddress:         DefaultAPIAddress,
+		EnableTwinIdentity: false,
+		receiveHandlers:    make(map[string]MessageHandlerFunc),
+		stopCh:             make(chan struct{}),
 	}
 
 	for _, opt := range opts {
 		opt(messenger)
 	}
 
-	if !messenger.AutoUpdateTwin {
+	if !messenger.EnableTwinIdentity {
 		return messenger, nil
 	}
 
-	// TODO: all args can be optional and add validation for related args
+	if messenger.manager == nil {
+		return nil, fmt.Errorf("substrate manager is required when EnableTwinIdentity is true")
+	}
+
+	if messenger.identity == nil && messenger.Mnemonic == "" {
+		return nil, fmt.Errorf("either an identity or mnemonic phrase is required when EnableTwinIdentity is true")
+	}
 
 	if messenger.identity == nil {
-		if messenger.MnemonicPhrase == "" {
-			return nil, fmt.Errorf("either an identity or mnemonic phrase is required to create a new messenger")
-		}
-
-		messenger.identity, err = substrate.NewIdentityFromSr25519Phrase(messenger.MnemonicPhrase)
+		var err error
+		messenger.identity, err = substrate.NewIdentityFromSr25519Phrase(messenger.Mnemonic)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create identity from mnemonic phrase: %w", err)
 		}
 	}
 
-	subCon, err := man.Substrate()
+	subCon, err := messenger.manager.Substrate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get substrate connection: %w", err)
-
 	}
 	messenger.subCon = subCon
 
-	if err := messenger.UpdateTwinWithMyceliumPubkey(context.Background()); err != nil {
+	if err := messenger.UpdateMyceliumTwin(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to update twin with Mycelium public key: %w", err)
 	}
 
@@ -164,16 +174,13 @@ func (c *Messenger) RegisterHandler(topic string, handler MessageHandlerFunc) {
 	c.receiveHandlers[topic] = handler
 }
 
-// TODO: should add topic rpc so it can get the right handler
 func (c *Messenger) SendMessage(destination, payload string, topic string, waitForReply bool, timeout int) (*Message, error) {
-	// TODO: run on network namespace? WithNetNs
-	log.Debug().Str("destination", destination).
-		Str("payload", payload).
+	log.Debug().
+		Str("destination", destination).
 		Msg("sending message")
 	args := []string{"message", "send", destination, payload}
 
 	if waitForReply {
-		// TODO: is there a wait option on the http server, yes
 		args = append(args, "--wait")
 
 		if timeout > 0 {
@@ -182,7 +189,6 @@ func (c *Messenger) SendMessage(destination, payload string, topic string, waitF
 			args = append(args, "--timeout", fmt.Sprintf("%d", c.Timeout))
 		}
 	}
-
 	if topic != "" {
 		args = append(args, "--topic", topic)
 	}
@@ -209,19 +215,21 @@ func (c *Messenger) SendMessage(destination, payload string, topic string, waitF
 		return nil, fmt.Errorf("failed to parse message response: %w", err)
 	}
 
-	log.Debug().Str("source", msg.SrcPK).
-		Str("payload", msg.Payload).
+	log.Debug().
+		Str("source", msg.SrcPK).
+		Str("msg_id", msg.ID).
 		Msg("received reply")
 	return &msg, nil
 }
 
 func (c *Messenger) SendReply(originalMessageID, destination, payload string) error {
-	log.Debug().Str("destination", destination).
-		Str("originalMessageID", originalMessageID).
-		Str("payload", payload).
-		Msg("sending reply via API")
+	log.Debug().
+		Str("destination", destination).
+		Str("msg_id", originalMessageID).
+		Msg("replying to message")
 
 	encodedPayload := base64.StdEncoding.EncodeToString([]byte(payload))
+	// TODO: better error handling
 	requestBody := PushMessageBody{
 		Dst: MessageDestination{
 			PK: destination,
@@ -283,8 +291,9 @@ func (c *Messenger) ReceiveMessage() (*Message, error) {
 		return nil, fmt.Errorf("failed to parse message: %w", err)
 	}
 
-	log.Debug().Str("source", msg.SrcPK).
-		Str("payload", msg.Payload).
+	log.Debug().
+		Str("source", msg.SrcPK).
+		Str("msg_id", msg.ID).
 		Msg("received message")
 	return &msg, nil
 }
@@ -293,7 +302,6 @@ func (c *Messenger) StartReceiver(ctx context.Context) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	// TODO: multiple workers?
 	c.wg.Add(1)
 	go func() {
 		defer c.wg.Done()
@@ -323,6 +331,11 @@ func (c *Messenger) receiveLoop(ctx context.Context) {
 			log.Debug().Msg("listening for message...")
 			msg, err := c.ReceiveMessage()
 			if err != nil {
+				// Check if this is a graceful shutdown scenario
+				if isGracefulShutdownError(err) || ctx.Err() != nil {
+					log.Info().Msg("shutting down message listener gracefully")
+					return
+				}
 				log.Error().Err(err).Msg("failed receiving message")
 				time.Sleep(DefaultRetryListenerInterval)
 				continue
@@ -340,7 +353,6 @@ func (c *Messenger) receiveLoop(ctx context.Context) {
 
 // TODO: each reply with error, should follow the same pattern
 func (c *Messenger) processMessage(ctx context.Context, message *Message) {
-	// Helper function to send error reply
 	sendErrorReply := func(errorMsg string) {
 		if err := c.SendReply(message.ID, message.SrcPK, errorMsg); err != nil {
 			log.Error().Err(err).Str("msg_id", message.ID).
@@ -361,14 +373,14 @@ func (c *Messenger) processMessage(ctx context.Context, message *Message) {
 	}
 
 	// add twin id to the context for later use
-	if c.AutoUpdateTwin {
-		twin, err := c.subCon.GetTwinByMyceliumPK(message.SrcPK)
+	if c.EnableTwinIdentity {
+		twin, err := c.subCon.GetMyceliumTwin(message.SrcPK)
 		if err != nil {
 			log.Error().Err(err).Str("key", message.SrcPK).Msg("failed to get twin ID from Mycelium public key")
 			sendErrorReply(fmt.Sprintf("failed to get twin ID: %v", err))
 			return
 		}
-		ctx = context.WithValue(ctx, TwinIdContextKey, twin.ID)
+		ctx = context.WithValue(ctx, TwinIdContextKey, twin)
 	}
 
 	response, err := handler(ctx, message)
@@ -394,4 +406,17 @@ func (c *Messenger) Close() {
 		c.subCon.Close()
 		c.subCon = nil
 	}
+}
+
+// isGracefulShutdownError checks if an error is related to graceful shutdown
+func isGracefulShutdownError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "context canceled") ||
+		strings.Contains(errStr, "context deadline exceeded") ||
+		strings.Contains(errStr, "signal: interrupt") ||
+		strings.Contains(errStr, "receive cancelled") ||
+		strings.Contains(errStr, "receive interrupted")
 }

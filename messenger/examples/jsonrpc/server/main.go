@@ -8,6 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/messenger"
 )
@@ -35,19 +38,19 @@ func addHandler(ctx context.Context, calc *Calculator, params json.RawMessage) (
 }
 
 const (
-	chainUrl = "ws://192.168.1.125:9944"
+	chainUrl = "ws://192.168.1.10:9944"
 )
 
 func main() {
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04"}).With().Timestamp().Logger()
 	mnemonic := os.Getenv("MNEMONIC")
 
 	manager := substrate.NewManager(chainUrl)
 
 	msgr, err := messenger.NewMessenger(
-		"",
-		60,
-		manager,
-		messenger.WithMnemonicPhrase(mnemonic),
+		messenger.WithSubstrateManager(manager),
+		messenger.WithMnemonic(mnemonic),
+		messenger.WithEnableTwinIdentity(true),
 	)
 
 	if err != nil {
