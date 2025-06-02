@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/rs/zerolog v1.26.0
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-00010101000000-000000000000
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241127100051-77e684bcb1b2
 )
 
 require (
