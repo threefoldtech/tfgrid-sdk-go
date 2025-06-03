@@ -41,3 +41,4 @@ jobs:
           - rmb-sdk-go
           - user-contracts-mon 
           - tfrobot
+          - messenger

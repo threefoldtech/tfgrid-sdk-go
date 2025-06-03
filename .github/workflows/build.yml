@@ -68,6 +68,7 @@ jobs:
           # - rmb-sdk-go
           - user-contracts-mon 
           - tfrobot
+          - messenger
 
     steps:
       - name: Checkout the repo
