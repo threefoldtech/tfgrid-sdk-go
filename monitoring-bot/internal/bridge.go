@@ -142,7 +142,6 @@ func (m *Monitor) bridgeTXWrapper(
 			return 0, 0, fmt.Errorf("failed to get Stellar balance after transaction: %w", err)
 		}
 
-		// Verify TFChain balance changed in expected direction
 		if tfchainIncrease {
 			if tfchainNew <= initialTFChain {
 				return 0, 0, fmt.Errorf("TFChain balance did not increase: before=%f, after=%f", initialTFChain, tfchainNew)
