@@ -17,6 +17,9 @@ type balanceReport struct {
 	original              float64
 	afterSendingToChain   float64
 	afterSendingToStellar float64
+	originalStellar       float64
+	stellarAfterDeposit   float64
+	stellarAfterWithdraw  float64
 }
 
 type bridgeTX func(client.Identity, network) error
@@ -37,10 +40,24 @@ func (m *Monitor) monitorBridges() error {
 		}
 
 		message.WriteString(fmt.Sprintf("- %s\n", successMessage))
-		message.WriteString("\tAccount balance reports:\n")
-		message.WriteString(fmt.Sprintf("\t\t- Original balance: %f TFT\n", report.original))
-		message.WriteString(fmt.Sprintf("\t\t- Balance after deposit with stellar bridge: %f TFT\n", report.afterSendingToChain))
-		message.WriteString(fmt.Sprintf("\t\t- Balance after withdraw with stellar bridge: %f TFT\n", report.afterSendingToStellar))
+		message.WriteString("\tBridge Operation Results:\n")
+		message.WriteString("\t1. Initial State:\n")
+		message.WriteString(fmt.Sprintf("\t   - TFChain Balance: %f TFT\n", report.original))
+		message.WriteString(fmt.Sprintf("\t   - Stellar Balance: %f TFT\n", report.originalStellar))
+		message.WriteString("\t2. Deposit (Stellar → TFChain):\n")
+		message.WriteString(fmt.Sprintf("\t   - TFChain Balance: %f TFT (+%f TFT)\n",
+			report.afterSendingToChain,
+			report.afterSendingToChain-report.original))
+		message.WriteString(fmt.Sprintf("\t   - Stellar Balance: %f TFT (-%f TFT)\n",
+			report.stellarAfterDeposit,
+			report.originalStellar-report.stellarAfterDeposit))
+		message.WriteString("\t3. Withdraw (TFChain → Stellar):\n")
+		message.WriteString(fmt.Sprintf("\t   - TFChain Balance: %f TFT (-%f TFT)\n",
+			report.afterSendingToStellar,
+			report.afterSendingToChain-report.afterSendingToStellar))
+		message.WriteString(fmt.Sprintf("\t   - Stellar Balance: %f TFT (+%f TFT)\n",
+			report.stellarAfterWithdraw,
+			report.stellarAfterWithdraw-report.stellarAfterDeposit))
 		message.WriteString("\n")
 	}
 
@@ -57,44 +74,85 @@ func (m *Monitor) monitorBridge(net network) (balanceReport, error) {
 		return balanceReport{}, err
 	}
 
-	// get current balance
-	originalBalance, err := m.getBalance(m.managers[net], address(identity.Address()))
+	// get current balances
+	originalTFChainBalance, err := m.getBalance(m.managers[net], address(identity.Address()))
 	if err != nil {
-		return balanceReport{}, fmt.Errorf("failed to get balance for account: %w", err)
+		return balanceReport{}, fmt.Errorf("failed to get TFChain balance for account: %w", err)
+	}
+	originalStellarBalance, err := m.getStellarBalance(net)
+	if err != nil {
+		return balanceReport{}, fmt.Errorf("failed to get Stellar balance for account: %w", err)
 	}
 
-	balanceAfterChain, err := m.bridgeTXWrapper(m.sendToTfChain)(identity, net)
+	// Deposit: send TFT from Stellar to TFChain
+	tfchainAfterDeposit, stellarAfterDeposit, err := m.bridgeTXWrapper(
+		m.sendToTfChain,
+		originalTFChainBalance,
+		originalStellarBalance,
+		true,
+	)(identity, net)
 	if err != nil {
 		return balanceReport{}, err
 	}
 
-	balanceAfterStellar, err := m.bridgeTXWrapper(m.sendToStellar)(identity, net)
+	// Withdraw: send TFT from TFChain to Stellar
+	tfchainAfterWithdraw, stellarAfterWithdraw, err := m.bridgeTXWrapper(
+		m.sendToStellar,
+		tfchainAfterDeposit,
+		stellarAfterDeposit,
+		false,
+	)(identity, net)
 	if err != nil {
 		return balanceReport{}, err
 	}
 
 	return balanceReport{
-		original:              originalBalance,
-		afterSendingToChain:   balanceAfterChain,
-		afterSendingToStellar: balanceAfterStellar,
+		original:              originalTFChainBalance,
+		afterSendingToChain:   tfchainAfterDeposit,
+		afterSendingToStellar: tfchainAfterWithdraw,
+		originalStellar:       originalStellarBalance,
+		stellarAfterDeposit:   stellarAfterDeposit,
+		stellarAfterWithdraw:  stellarAfterWithdraw,
 	}, nil
 }
 
 // bridgeTXWrapper does the bridge transaction, and get the balance after waiting a period of time
-func (m *Monitor) bridgeTXWrapper(tx bridgeTX) func(identity client.Identity, net network) (float64, error) {
-	return func(identity client.Identity, net network) (float64, error) {
+func (m *Monitor) bridgeTXWrapper(
+	tx bridgeTX,
+	initialTFChain float64,
+	initialStellar float64,
+	tfchainIncrease bool,
+) func(identity client.Identity, net network) (float64, float64, error) {
+	return func(identity client.Identity, net network) (float64, float64, error) {
 		if err := tx(identity, net); err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 
 		<-time.After(balanceWaitIntervalSeconds * time.Second)
 
-		balanceAfterChain, err := m.getBalance(m.managers[net], address(identity.Address()))
+		// Check TFChain balance
+		tfchainNew, err := m.getBalance(m.managers[net], address(identity.Address()))
 		if err != nil {
-			return 0, fmt.Errorf("failed to get balance for account: %w", err)
+			return 0, 0, fmt.Errorf("failed to get TFChain balance after transaction: %w", err)
 		}
 
-		return balanceAfterChain, nil
+		// Check Stellar balance
+		stellarNew, err := m.getStellarBalance(net)
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to get Stellar balance after transaction: %w", err)
+		}
+
+		// Verify TFChain balance changed in expected direction
+		if tfchainIncrease {
+			if tfchainNew <= initialTFChain {
+				return 0, 0, fmt.Errorf("TFChain balance did not increase: before=%f, after=%f", initialTFChain, tfchainNew)
+			}
+		} else {
+			if stellarNew <= initialStellar {
+				return 0, 0, fmt.Errorf("Stellar balance did not increase: before=%f, after=%f", initialStellar, stellarNew)
+			}
+		}
+		return tfchainNew, stellarNew, nil
 	}
 }
 
