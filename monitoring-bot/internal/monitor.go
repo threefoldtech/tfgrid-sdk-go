@@ -146,17 +146,17 @@ func (m *Monitor) Start(ctx context.Context) error {
 			}
 		}
 
-		// log.Debug().Msg("monitoring proxy for all networks")
-		// err := m.pingGridProxies()
-		// if err != nil {
-		// 	log.Error().Err(err).Msg("monitoring proxies failed")
-		// }
+		log.Debug().Msg("monitoring proxy for all networks")
+		err := m.pingGridProxies()
+		if err != nil {
+			log.Error().Err(err).Msg("monitoring proxies failed")
+		}
 
-		// log.Debug().Msg("monitoring relay for all networks")
-		// err = m.monitorRelay(ctx)
-		// if err != nil {
-		// 	log.Error().Err(err).Msg("monitoring relay failed")
-		// }
+		log.Debug().Msg("monitoring relay for all networks")
+		err = m.monitorRelay(ctx)
+		if err != nil {
+			log.Error().Err(err).Msg("monitoring relay failed")
+		}
 
 		if len(strings.TrimSpace(m.env.publicStellarAddress)) == 0 ||
 			len(strings.TrimSpace(m.env.publicStellarSecret)) == 0 ||
