@@ -3,8 +3,8 @@ package indexer
 import (
 	"context"
 	"encoding/json"
-	"strconv"
-	"strings"
+	"fmt"
+	"net"
 	"time"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
@@ -82,85 +82,11 @@ func (w *SpeedWork) Upsert(ctx context.Context, db db.Database, batch []types.Sp
 	return db.UpsertNetworkSpeed(ctx, batch)
 }
 
-func isValidIpv4(ip string) bool {
-	parts := strings.Split(ip, ".")
-	if len(parts) != 4 {
-		return false
+func updateWithFirstNonZero(current, newValue float64) float64 {
+	if current == 0 {
+		return newValue
 	}
-
-	for _, part := range parts {
-		num, err := strconv.Atoi(part)
-		if err != nil {
-			return false
-		}
-
-		if num < 0 || num > 255 {
-			return false
-		}
-	}
-	return true
-}
-
-func isValidIpv6(ip string) bool {
-	if strings.Contains(ip, "::") {
-		if strings.Count(ip, "::") > 1 {
-			return false
-		}
-
-		parts := strings.Split(ip, "::")
-		if len(parts) > 2 {
-			return false
-		}
-
-		if len(parts[0]) > 0 {
-			beforeParts := strings.Split(parts[0], ":")
-			for _, part := range beforeParts {
-				if !isValidIpv6Hextet(part) {
-					return false
-				}
-			}
-		}
-
-		if len(parts) > 1 && len(parts[1]) > 0 {
-			afterParts := strings.Split(parts[1], ":")
-			for _, part := range afterParts {
-				if !isValidIpv6Hextet(part) {
-					return false
-				}
-			}
-		}
-
-		return true
-	}
-
-	// Handle regular (uncompressed) IPv6
-	parts := strings.Split(ip, ":")
-	if len(parts) != 8 {
-		return false
-	}
-
-	for _, part := range parts {
-		if !isValidIpv6Hextet(part) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func isValidIpv6Hextet(hextet string) bool {
-	if len(hextet) == 0 || len(hextet) > 4 {
-		return false
-	}
-
-	for _, c := range hextet {
-		isHex := (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
-		if !isHex {
-			return false
-		}
-	}
-
-	return true
+	return current
 }
 
 func parseSpeed(res TaskResult, twinId uint32) (types.Speed, error) {
@@ -178,25 +104,34 @@ func parseSpeed(res TaskResult, twinId uint32) (types.Speed, error) {
 		return speed, err
 	}
 
+	speed.UpdatedAt = time.Now().Unix()
 	for _, report := range iperfResults {
-		isIpv4 := isValidIpv4(report.NodeIpv4)
-		isIpv6 := isValidIpv6(report.NodeIpv4)
+		ip := net.ParseIP(report.NodeIpv4)
+		if ip == nil {
+			return speed, fmt.Errorf("invalid IP address: %s", report.NodeIpv4)
+		}
+		isIpv4 := ip.To4() != nil
+		isIpv6 := ip.To4() == nil && ip.To16() != nil
 		if report.TestType == "tcp" && isIpv4 {
-			speed.Upload = report.UploadSpeed
-			speed.Download = report.DownloadSpeed
+			speed.Upload = updateWithFirstNonZero(speed.Upload, report.UploadSpeed)
+			speed.Download = updateWithFirstNonZero(speed.Download, report.DownloadSpeed)
 		} else if report.TestType == "udp" && isIpv4 {
-			speed.UDPUploadIPv4 = report.UploadSpeed
-			speed.UDPDownloadIPv4 = report.DownloadSpeed
+			speed.UDPUploadIPv4 = updateWithFirstNonZero(speed.Upload, report.UploadSpeed)
+			speed.UDPDownloadIPv4 = updateWithFirstNonZero(speed.Download, report.DownloadSpeed)
 		} else if report.TestType == "tcp" && isIpv6 {
-			speed.TCPUploadIPv6 = report.UploadSpeed
-			speed.TCPDownloadIPv6 = report.DownloadSpeed
+			speed.TCPUploadIPv6 = updateWithFirstNonZero(speed.Upload, report.UploadSpeed)
+			speed.TCPDownloadIPv6 = updateWithFirstNonZero(speed.Download, report.DownloadSpeed)
 		} else if report.TestType == "udp" && isIpv6 {
-			speed.UDPUploadIPv6 = report.UploadSpeed
-			speed.UDPDownloadIPv6 = report.DownloadSpeed
+			speed.UDPUploadIPv6 = updateWithFirstNonZero(speed.Upload, report.UploadSpeed)
+			speed.UDPDownloadIPv6 = updateWithFirstNonZero(speed.Download, report.DownloadSpeed)
+		}
+		if speed.Upload != 0 && speed.Download != 0 &&
+			speed.UDPUploadIPv4 != 0 && speed.UDPDownloadIPv4 != 0 &&
+			speed.TCPUploadIPv6 != 0 && speed.TCPDownloadIPv6 != 0 &&
+			speed.UDPUploadIPv6 != 0 && speed.UDPDownloadIPv6 != 0 {
+			return speed, nil
 		}
 	}
-
-	speed.UpdatedAt = time.Now().Unix()
 
 	return speed, nil
 }
