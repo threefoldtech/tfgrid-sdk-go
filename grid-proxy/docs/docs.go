@@ -1756,7 +1756,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/types.Processor"
                     }
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "integer"
                 }
             }
@@ -1974,6 +1974,9 @@ const docTemplate = `{
         "types.NodeStatistics": {
             "type": "object",
             "properties": {
+                "open_connections": {
+                    "type": "integer"
+                },
                 "system": {
                     "$ref": "#/definitions/types.NodeStatisticsResources"
                 },
@@ -2197,11 +2200,35 @@ const docTemplate = `{
                 "node_twin_id": {
                     "type": "integer"
                 },
-                "updatedAt": {
+                "tcp_download_ipv6": {
+                    "description": "in bit/sec",
+                    "type": "number"
+                },
+                "tcp_upload_ipv6": {
+                    "description": "in bit/sec",
+                    "type": "number"
+                },
+                "udp_download_ipv4": {
+                    "description": "in bit/sec",
+                    "type": "number"
+                },
+                "udp_download_ipv6": {
+                    "description": "in bit/sec",
+                    "type": "number"
+                },
+                "udp_upload_ipv4": {
+                    "description": "in bit/sec",
+                    "type": "number"
+                },
+                "udp_upload_ipv6": {
+                    "description": "in bit/sec",
+                    "type": "number"
+                },
+                "updated_at": {
                     "type": "integer"
                 },
                 "upload": {
-                    "description": "in bit/sec",
+                    "description": "in bit/sec let's suppose default is ipv4/tcp",
                     "type": "number"
                 }
             }
