@@ -1050,10 +1050,18 @@ ALTER TABLE public.dmi
 
 CREATE TABLE public.speed(
     node_twin_id bigint NOT NULL,
-    upload numeric,
+    upload numeric, -- let's suppose default is ipv4/tcp
     download numeric,
     updated_at bigint
 );
+
+ALTER TABLE public.speed 
+    ADD COLUMN IF NOT EXISTS udp_download_ipv4 numeric,
+    ADD COLUMN IF NOT EXISTS udp_upload_ipv4 numeric, 
+    ADD COLUMN IF NOT EXISTS tcp_download_ipv6 numeric,
+    ADD COLUMN IF NOT EXISTS tcp_upload_ipv6 numeric,
+    ADD COLUMN IF NOT EXISTS udp_download_ipv6 numeric,
+    ADD COLUMN IF NOT EXISTS udp_upload_ipv6 numeric;
 
 ALTER TABLE public.speed 
     OWNER TO postgres;

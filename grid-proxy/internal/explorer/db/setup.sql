@@ -125,6 +125,12 @@ SELECT
     COALESCE(dmi.memory, '[]') as memory,
     COALESCE(speed.upload, 0) as upload_speed,
     COALESCE(speed.download, 0) as download_speed,
+    COALESCE(speed.udp_download_ipv4, 0) as udp_download_ipv4,
+    COALESCE(speed.udp_upload_ipv4, 0) as udp_upload_ipv4,
+    COALESCE(speed.tcp_download_ipv6, 0) as tcp_download_ipv6,
+    COALESCE(speed.tcp_upload_ipv6, 0) as tcp_upload_ipv6,
+    COALESCE(speed.udp_download_ipv6, 0) as udp_download_ipv6,
+    COALESCE(speed.udp_upload_ipv6, 0) as udp_upload_ipv6,
     CASE WHEN node.certification = 'Certified' THEN true ELSE false END as certified,
     CASE WHEN farm.pricing_policy_id = 0 THEN 1 ELSE farm.pricing_policy_id END as policy_id,
     COALESCE(node.extra_fee, 0) as extra_fee,
@@ -167,6 +173,12 @@ GROUP BY
     COALESCE(dmi.memory, '[]'),
     COALESCE(speed.upload, 0),
     COALESCE(speed.download, 0),
+    COALESCE(speed.udp_download_ipv4, 0),
+    COALESCE(speed.udp_upload_ipv4, 0),
+    COALESCE(speed.tcp_download_ipv6, 0),
+    COALESCE(speed.tcp_upload_ipv6, 0),
+    COALESCE(speed.udp_download_ipv6, 0),
+    COALESCE(speed.udp_upload_ipv6, 0),
     node.certification,
     node.extra_fee,
     farm.pricing_policy_id;
@@ -196,6 +208,12 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     memory jsonb,
     upload_speed numeric,
     download_speed numeric,
+    udp_download_ipv4 numeric,
+    udp_upload_ipv4 numeric,
+    tcp_download_ipv6 numeric,
+    tcp_upload_ipv6 numeric,
+    udp_download_ipv6 numeric,
+    udp_upload_ipv6 numeric,
     certified BOOLEAN,
     policy_id INTEGER,
     extra_fee NUMERIC,
@@ -565,7 +583,13 @@ BEGIN
     BEGIN
         UPDATE resources_cache
         SET upload_speed = NEW.upload,
-            download_speed = NEW.download
+            download_speed = NEW.download,
+            udp_download_ipv4 = NEW.udp_download_ipv4,
+            udp_upload_ipv4 = NEW.udp_upload_ipv4,
+            tcp_download_ipv6 = NEW.tcp_download_ipv6,
+            tcp_upload_ipv6 = NEW.tcp_upload_ipv6,
+            udp_download_ipv6 = NEW.udp_download_ipv6,
+            udp_upload_ipv6 = NEW.udp_upload_ipv6
         WHERE resources_cache.node_id = (
             SELECT node_id from node where node.twin_id = NEW.node_twin_id
         );

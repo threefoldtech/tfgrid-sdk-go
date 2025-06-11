@@ -109,8 +109,14 @@ type Node struct {
 	Memory             []types.Memory    `gorm:"type:jsonb;serializer:json"`
 	Processor          []types.Processor `gorm:"type:jsonb;serializer:json"`
 	Gpus               []types.NodeGPU   `gorm:"type:jsonb;serializer:json"`
-	UploadSpeed        float64
-	DownloadSpeed      float64
+	UploadSpeed        float64           `gorm:"column:upload_speed"`
+	DownloadSpeed      float64           `gorm:"column:download_speed"`
+	UDPDownloadIPv4    float64           `gorm:"column:udp_download_ipv4"`
+	UDPUploadIPv4      float64           `gorm:"column:udp_upload_ipv4"`
+	TCPDownloadIPv6    float64           `gorm:"column:tcp_download_ipv6"`
+	TCPUploadIPv6      float64           `gorm:"column:tcp_upload_ipv6"`
+	UDPDownloadIPv6    float64           `gorm:"column:udp_download_ipv6"`
+	UDPUploadIPv6      float64           `gorm:"column:udp_upload_ipv6"`
 	PriceUsd           float64
 	FarmFreeIps        uint
 	Features           []string `gorm:"type:jsonb;serializer:json"`

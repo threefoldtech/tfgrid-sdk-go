@@ -42,10 +42,16 @@ func (HasIpv6) TableName() string {
 // Speed holds upload/download speeds in `bit/sec` for a node
 // used as both gorm model and server json response
 type Speed struct {
-	NodeTwinId uint32  `json:"node_twin_id,omitempty" gorm:"unique;not null"`
-	Upload     float64 `json:"upload"`   // in bit/sec
-	Download   float64 `json:"download"` // in bit/sec
-	UpdatedAt  int64   `json:"updated_at,omitempty"`
+	NodeTwinId      uint32  `json:"node_twin_id,omitempty" gorm:"unique;not null;column:node_twin_id"`
+	Upload          float64 `json:"upload" gorm:"column:upload"`                       // in bit/sec let's suppose default is ipv4/tcp
+	Download        float64 `json:"download" gorm:"column:download"`                   // in bit/sec
+	UDPDownloadIPv4 float64 `json:"udp_download_ipv4" gorm:"column:udp_download_ipv4"` // in bit/sec
+	UDPUploadIPv4   float64 `json:"udp_upload_ipv4" gorm:"column:udp_upload_ipv4"`     // in bit/sec
+	TCPDownloadIPv6 float64 `json:"tcp_download_ipv6" gorm:"column:tcp_download_ipv6"` // in bit/sec
+	TCPUploadIPv6   float64 `json:"tcp_upload_ipv6" gorm:"column:tcp_upload_ipv6"`     // in bit/sec
+	UDPDownloadIPv6 float64 `json:"udp_download_ipv6" gorm:"column:udp_download_ipv6"` // in bit/sec
+	UDPUploadIPv6   float64 `json:"udp_upload_ipv6" gorm:"column:udp_upload_ipv6"`     // in bit/sec
+	UpdatedAt       int64   `json:"updated_at,omitempty" gorm:"column:updated_at"`
 }
 
 func (Speed) TableName() string {

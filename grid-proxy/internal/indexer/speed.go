@@ -3,6 +3,8 @@ package indexer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net"
 	"time"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
@@ -80,6 +82,13 @@ func (w *SpeedWork) Upsert(ctx context.Context, db db.Database, batch []types.Sp
 	return db.UpsertNetworkSpeed(ctx, batch)
 }
 
+func updateWithFirstNonZero(current, newValue float64) float64 {
+	if current == 0 {
+		return newValue
+	}
+	return current
+}
+
 func parseSpeed(res TaskResult, twinId uint32) (types.Speed, error) {
 	speed := types.Speed{
 		NodeTwinId: twinId,
@@ -95,18 +104,34 @@ func parseSpeed(res TaskResult, twinId uint32) (types.Speed, error) {
 		return speed, err
 	}
 
-	// TODO: better parsing
-	// we have four speeds tcp/udp for ipv4/ipv6.
-	// now, we just pick the first non-zero
+	speed.UpdatedAt = time.Now().Unix()
 	for _, report := range iperfResults {
-		if report.DownloadSpeed != 0 {
-			speed.Download = report.DownloadSpeed
-			speed.Upload = report.UploadSpeed
+		ip := net.ParseIP(report.NodeIpv4)
+		if ip == nil {
+			return speed, fmt.Errorf("invalid IP address: %s", report.NodeIpv4)
+		}
+		isIpv4 := ip.To4() != nil
+		isIpv6 := ip.To4() == nil && ip.To16() != nil
+		if report.TestType == "tcp" && isIpv4 {
+			speed.Upload = updateWithFirstNonZero(speed.Upload, report.UploadSpeed)
+			speed.Download = updateWithFirstNonZero(speed.Download, report.DownloadSpeed)
+		} else if report.TestType == "udp" && isIpv4 {
+			speed.UDPUploadIPv4 = updateWithFirstNonZero(speed.Upload, report.UploadSpeed)
+			speed.UDPDownloadIPv4 = updateWithFirstNonZero(speed.Download, report.DownloadSpeed)
+		} else if report.TestType == "tcp" && isIpv6 {
+			speed.TCPUploadIPv6 = updateWithFirstNonZero(speed.Upload, report.UploadSpeed)
+			speed.TCPDownloadIPv6 = updateWithFirstNonZero(speed.Download, report.DownloadSpeed)
+		} else if report.TestType == "udp" && isIpv6 {
+			speed.UDPUploadIPv6 = updateWithFirstNonZero(speed.Upload, report.UploadSpeed)
+			speed.UDPDownloadIPv6 = updateWithFirstNonZero(speed.Download, report.DownloadSpeed)
+		}
+		if speed.Upload != 0 && speed.Download != 0 &&
+			speed.UDPUploadIPv4 != 0 && speed.UDPDownloadIPv4 != 0 &&
+			speed.TCPUploadIPv6 != 0 && speed.TCPDownloadIPv6 != 0 &&
+			speed.UDPUploadIPv6 != 0 && speed.UDPDownloadIPv6 != 0 {
 			return speed, nil
 		}
 	}
-
-	speed.UpdatedAt = time.Now().Unix()
 
 	return speed, nil
 }

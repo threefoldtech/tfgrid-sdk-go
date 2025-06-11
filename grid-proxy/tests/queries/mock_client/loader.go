@@ -597,6 +597,12 @@ func loadSpeeds(db *sql.DB, data *DBData) error {
 		node_twin_id,
 		upload,
 		download,
+		udp_download_ipv4,
+		udp_upload_ipv4,
+		tcp_download_ipv6,
+		tcp_upload_ipv6,
+		udp_download_ipv6,
+		udp_upload_ipv6,
 		updated_at
 	FROM 
 		speed;`)
@@ -609,6 +615,12 @@ func loadSpeeds(db *sql.DB, data *DBData) error {
 			&speed.NodeTwinId,
 			&speed.Upload,
 			&speed.Download,
+			&speed.UDPDownloadIPv4,
+			&speed.UDPUploadIPv4,
+			&speed.TCPDownloadIPv6,
+			&speed.TCPUploadIPv6,
+			&speed.UDPDownloadIPv6,
+			&speed.UDPUploadIPv6,
 			&speed.UpdatedAt,
 		); err != nil {
 			return err
