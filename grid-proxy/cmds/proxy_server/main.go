@@ -109,7 +109,7 @@ func main() {
 	flag.UintVar(&f.dmiIndexerNumWorkers, "dmi-indexer-workers", 1, "number of workers checking on node dmi")
 	flag.UintVar(&f.speedIndexerIntervalMins, "speed-indexer-interval", 5, "node speed check interval in min")
 	flag.UintVar(&f.speedIndexerNumWorkers, "speed-indexer-workers", 100, "number of workers checking on node speed")
-	flag.UintVar(&f.cpuBenchmarkIndexerIntervalMins, "cpu-benchmark-indexer-interval", 5, "node cpu benchmark check interval in min")
+	flag.UintVar(&f.cpuBenchmarkIndexerIntervalMins, "cpu-benchmark-indexer-interval", 60*6, "node cpu benchmark check interval in min")
 	flag.UintVar(&f.cpuBenchmarkIndexerNumWorkers, "cpu-benchmark-indexer-workers", 100, "number of workers checking on node cpu benchmark")
 	flag.UintVar(&f.ipv6IndexerIntervalMins, "ipv6-indexer-interval", 60*24, "node ipv6 check interval in min")
 	flag.UintVar(&f.ipv6IndexerNumWorkers, "ipv6-indexer-workers", 10, "number of workers checking on node having ipv6")
