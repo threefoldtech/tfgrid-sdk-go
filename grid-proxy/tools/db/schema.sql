@@ -1067,6 +1067,22 @@ ALTER TABLE public.speed
     OWNER TO postgres;
 
 --
+-- Name: cpu_benchmark; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.cpu_benchmark(
+    node_twin_id bigint NOT NULL,
+    single_threaded numeric,
+    multi_threaded numeric,
+    threads integer,
+    workloads integer,
+    updated_at bigint
+);
+
+ALTER TABLE public.cpu_benchmark 
+    OWNER TO postgres;
+
+--
 -- Name: node_ipv6; Type: TABLE; Schema: public; Owner: postgres
 --
 

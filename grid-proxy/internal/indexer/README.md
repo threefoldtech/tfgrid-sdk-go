@@ -56,17 +56,22 @@ Work a struct that implement the interface `Work` which have three methods:
    - Interval: `5 min`
    - Default caller worker number: 100
    - Dump table: `speed`
-5. Ipv6 indexer:
+5. CpuBenchmark indexer:
+   - Function: benchmark the CPU performance on the node (single-threaded and multi-threaded).
+   - Interval: `5 min`
+   - Default caller worker number: 100
+   - Dump table: `cpu_benchmark`
+6. Ipv6 indexer:
    - Function: decide if the node has ipv6 or not.
    - Interval: `1 day`
    - Default caller worker number: 10
    - Dump table: `node_ipv6`
-6. Workloads indexer:
+7. Workloads indexer:
    - Function: get the number of workloads on each node.
    - Interval: `1 hour`
    - Default caller worker number: 10
    - Dump table: `node_workloads`
-7. Features indexer:
+8. Features indexer:
    - Function: get the supported features on each node.
    - Interval: `1 day`
    - Default caller worker number: 10

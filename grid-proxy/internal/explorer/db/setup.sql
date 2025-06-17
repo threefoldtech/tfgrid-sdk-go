@@ -131,6 +131,10 @@ SELECT
     COALESCE(speed.tcp_upload_ipv6, 0) as tcp_upload_ipv6,
     COALESCE(speed.udp_download_ipv6, 0) as udp_download_ipv6,
     COALESCE(speed.udp_upload_ipv6, 0) as udp_upload_ipv6,
+    COALESCE(cpu_benchmark.single_threaded, 0) as single_threaded_cpu,
+    COALESCE(cpu_benchmark.multi_threaded, 0) as multi_threaded_cpu,
+    COALESCE(cpu_benchmark.threads, 0) as threads_cpu,
+    COALESCE(cpu_benchmark.workloads, 0) as workloads_cpu,
     CASE WHEN node.certification = 'Certified' THEN true ELSE false END as certified,
     CASE WHEN farm.pricing_policy_id = 0 THEN 1 ELSE farm.pricing_policy_id END as policy_id,
     COALESCE(node.extra_fee, 0) as extra_fee,
@@ -142,6 +146,7 @@ FROM node
     LEFT JOIN node_resources_total AS node_resources_total ON node_resources_total.node_id = node.id
     LEFT JOIN rent_contract on node.node_id = rent_contract.node_id AND rent_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN speed ON node.twin_id = speed.node_twin_id
+    LEFT JOIN cpu_benchmark ON node.twin_id = cpu_benchmark.node_twin_id
     LEFT JOIN dmi ON node.twin_id = dmi.node_twin_id
     LEFT JOIN farm ON farm.farm_id = node.farm_id
     -- join aggregated gpus table
@@ -179,6 +184,10 @@ GROUP BY
     COALESCE(speed.tcp_upload_ipv6, 0),
     COALESCE(speed.udp_download_ipv6, 0),
     COALESCE(speed.udp_upload_ipv6, 0),
+    COALESCE(cpu_benchmark.single_threaded, 0),
+    COALESCE(cpu_benchmark.multi_threaded, 0),
+    COALESCE(cpu_benchmark.threads, 0),
+    COALESCE(cpu_benchmark.workloads, 0),
     node.certification,
     node.extra_fee,
     farm.pricing_policy_id;
@@ -214,6 +223,10 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     tcp_upload_ipv6 numeric,
     udp_download_ipv6 numeric,
     udp_upload_ipv6 numeric,
+    single_threaded_cpu numeric,
+    multi_threaded_cpu numeric,
+    threads_cpu integer,
+    workloads_cpu integer,
     certified BOOLEAN,
     policy_id INTEGER,
     extra_fee NUMERIC,
@@ -605,6 +618,33 @@ CREATE OR REPLACE TRIGGER tg_speed
     AFTER INSERT OR UPDATE ON speed FOR EACH ROW
     EXECUTE PROCEDURE reflect_speed_changes();
 
+/*
+ cpu_benchmark trigger
+    - Insert new record/Update > update resources_cache
+*/
+CREATE OR REPLACE FUNCTION reflect_cpu_benchmark_changes() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    BEGIN
+        UPDATE resources_cache
+        SET single_threaded_cpu = NEW.single_threaded,
+            multi_threaded_cpu = NEW.multi_threaded,
+            threads_cpu = NEW.threads,
+            workloads_cpu = NEW.workloads
+        WHERE resources_cache.node_id = (
+            SELECT node_id from node where node.twin_id = NEW.node_twin_id
+        );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating resources_cache cpu_benchmark fields %', SQLERRM;
+    END; 
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER tg_cpu_benchmark
+    AFTER INSERT OR UPDATE ON cpu_benchmark FOR EACH ROW
+    EXECUTE PROCEDURE reflect_cpu_benchmark_changes();
 
 /*
  Public ips trigger

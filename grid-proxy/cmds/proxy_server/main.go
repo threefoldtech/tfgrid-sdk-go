@@ -56,24 +56,26 @@ type flags struct {
 	mnemonics              string
 	maxPoolOpenConnections int
 
-	noIndexer                    bool // true to stop the indexer, useful on running for testing
-	indexerUpserterBatchSize     uint
-	gpuIndexerIntervalMins       uint
-	gpuIndexerNumWorkers         uint
-	healthIndexerNumWorkers      uint
-	healthIndexerIntervalMins    uint
-	dmiIndexerNumWorkers         uint
-	dmiIndexerIntervalMins       uint
-	speedIndexerNumWorkers       uint
-	speedIndexerIntervalMins     uint
-	ipv6IndexerNumWorkers        uint
-	ipv6IndexerIntervalMins      uint
-	workloadsIndexerNumWorkers   uint
-	workloadsIndexerIntervalMins uint
-	featuresIndexerNumWorkers    uint
-	featuresIndexerIntervalMins  uint
-	locationIndexerNumWorkers    uint
-	locationIndexerIntervalMins  uint
+	noIndexer                       bool // true to stop the indexer, useful on running for testing
+	indexerUpserterBatchSize        uint
+	gpuIndexerIntervalMins          uint
+	gpuIndexerNumWorkers            uint
+	healthIndexerNumWorkers         uint
+	healthIndexerIntervalMins       uint
+	dmiIndexerNumWorkers            uint
+	dmiIndexerIntervalMins          uint
+	speedIndexerNumWorkers          uint
+	speedIndexerIntervalMins        uint
+	cpuBenchmarkIndexerNumWorkers   uint
+	cpuBenchmarkIndexerIntervalMins uint
+	ipv6IndexerNumWorkers           uint
+	ipv6IndexerIntervalMins         uint
+	workloadsIndexerNumWorkers      uint
+	workloadsIndexerIntervalMins    uint
+	featuresIndexerNumWorkers       uint
+	featuresIndexerIntervalMins     uint
+	locationIndexerNumWorkers       uint
+	locationIndexerIntervalMins     uint
 }
 
 func main() {
@@ -107,6 +109,8 @@ func main() {
 	flag.UintVar(&f.dmiIndexerNumWorkers, "dmi-indexer-workers", 1, "number of workers checking on node dmi")
 	flag.UintVar(&f.speedIndexerIntervalMins, "speed-indexer-interval", 5, "node speed check interval in min")
 	flag.UintVar(&f.speedIndexerNumWorkers, "speed-indexer-workers", 100, "number of workers checking on node speed")
+	flag.UintVar(&f.cpuBenchmarkIndexerIntervalMins, "cpu-benchmark-indexer-interval", 60*6, "node cpu benchmark check interval in min")
+	flag.UintVar(&f.cpuBenchmarkIndexerNumWorkers, "cpu-benchmark-indexer-workers", 100, "number of workers checking on node cpu benchmark")
 	flag.UintVar(&f.ipv6IndexerIntervalMins, "ipv6-indexer-interval", 60*24, "node ipv6 check interval in min")
 	flag.UintVar(&f.ipv6IndexerNumWorkers, "ipv6-indexer-workers", 10, "number of workers checking on node having ipv6")
 	flag.UintVar(&f.workloadsIndexerIntervalMins, "workloads-indexer-interval", 60, "node workloads check interval in min")
@@ -166,6 +170,7 @@ func main() {
 		indexerIntervals["workloads"] = f.workloadsIndexerIntervalMins
 		indexerIntervals["ipv6"] = f.ipv6IndexerIntervalMins
 		indexerIntervals["speed"] = f.speedIndexerIntervalMins
+		indexerIntervals["cpu_benchmark"] = f.cpuBenchmarkIndexerIntervalMins
 		indexerIntervals["features"] = f.featuresIndexerIntervalMins
 		indexerIntervals["location"] = f.locationIndexerIntervalMins
 	} else {
@@ -219,6 +224,15 @@ func startIndexers(ctx context.Context, f flags, db db.Database, rpcRmbClient *p
 		f.speedIndexerNumWorkers,
 	)
 	speedIdx.Start(ctx)
+
+	cpuBenchmarkIdx := indexer.NewIndexer[types.CpuBenchmark](
+		indexer.NewCpuBenchmarkWork(f.cpuBenchmarkIndexerIntervalMins),
+		"CpuBenchmark",
+		db,
+		rpcRmbClient,
+		f.cpuBenchmarkIndexerNumWorkers,
+	)
+	cpuBenchmarkIdx.Start(ctx)
 
 	ipv6Idx := indexer.NewIndexer[types.HasIpv6](
 		indexer.NewIpv6Work(f.ipv6IndexerIntervalMins),
