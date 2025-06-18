@@ -74,6 +74,7 @@ type Node struct {
 	Country            string
 	GridVersion        int64
 	City               string
+	Continent          string
 	Uptime             int64
 	Created            int64
 	FarmingPolicyID    int64

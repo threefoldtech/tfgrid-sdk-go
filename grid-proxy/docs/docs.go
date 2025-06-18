@@ -1802,6 +1802,9 @@ const docTemplate = `{
                 "country": {
                     "type": "string"
                 },
+                "region": {
+                    "type": "string"
+                },
                 "latitude": {
                     "type": "number"
                 },
