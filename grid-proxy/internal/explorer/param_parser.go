@@ -27,17 +27,26 @@ func parseQueryParams(r *http.Request, types_ ...interface{}) error {
 	limitParams := make(map[string][]string)
 	filterParams := make(map[string][]string)
 
-	// a helper step to be able to decide if a param is limit query or a filter
+	// a helper step to be able to decide if a param is limit or filter query
 	limitKeys := make(map[string]struct{})
 	for _, key := range getSchemaTags(types.Limit{}) {
 		limitKeys[key] = struct{}{}
 	}
 
 	for _, type_ := range types_ {
+		if types.IsSelectType(type_) {
+            if err := types.ParseSelectFields(params, type_); err != nil {
+                return fmt.Errorf("failed to parse select fields: %w", err)
+            }
+            continue
+        }
 		// separate the values of filter/limit into two maps so it is clear what we decode in this iteration
 		// not doing this will make the decoding always fails cause r.URL.Query slice will not fit in only filter or limit
-		// but it has values for both
+		// but it has values for both (select is handled separately with custom parsing)
 		for key, val := range params {
+			if key == "select" {
+                continue
+            }
 			if _, ok := limitKeys[key]; ok {
 				limitParams[key] = val
 			} else {
@@ -48,6 +57,7 @@ func parseQueryParams(r *http.Request, types_ ...interface{}) error {
 		// deciding which param values will be decoded in the iteration
 		// default it will be the filter map (for nodes/farms/etc..)
 		// but if the interface is inferable to `Limit` type then it is limit
+		// or if it's a select type then use custom select parsing
 		param := filterParams
 		if _, ok := type_.(*types.Limit); ok {
 			param = limitParams

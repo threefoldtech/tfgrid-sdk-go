@@ -56,3 +56,21 @@ func (f FarmFilter) IsNodeFilterRequested() bool {
 		f.Region != nil || f.NodeHasIpv6 != nil ||
 		len(f.NodeFeatures) != 0
 }
+
+// FarmSelect represents fields that can be selected in farms API response
+type FarmSelect struct {
+	Name              bool `schema:"name"`
+	FarmID            bool `schema:"farm_id"`
+	TwinID            bool `schema:"twin_id"`
+	PricingPolicyID   bool `schema:"pricing_policy_id"`
+	CertificationType bool `schema:"certification_type"`
+	StellarAddress    bool `schema:"stellar_address"`
+	Dedicated         bool `schema:"dedicated"`
+	PublicIps         bool `schema:"public_ips"`
+}
+
+// HasSelection returns true if any field is selected
+func (fs FarmSelect) HasSelection() bool {
+	return fs.Name || fs.FarmID || fs.TwinID || fs.PricingPolicyID ||
+		fs.CertificationType || fs.StellarAddress || fs.Dedicated || fs.PublicIps
+}

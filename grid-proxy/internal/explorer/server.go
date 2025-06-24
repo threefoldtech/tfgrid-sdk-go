@@ -64,7 +64,8 @@ const (
 func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 	filter := types.FarmFilter{}
 	limit := types.DefaultLimit()
-	if err := parseQueryParams(r, &filter, &limit); err != nil {
+	farmSelect := types.FarmSelect{}
+	if err := parseQueryParams(r, &filter, &limit, &farmSelect); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 	// TODO: move the validation into the parsing function
@@ -84,6 +85,12 @@ func (a *App) listFarms(r *http.Request) (interface{}, mw.Response) {
 
 	// return the number of pages and totalCount in the response headers
 	resp := createResponse(uint(farmsCount), limit)
+
+	// Apply field selection if specified
+	if farmSelect.HasSelection() {
+		filteredFarms := types.FilterFarmsResponse(dbFarms, farmSelect)
+		return filteredFarms, resp
+	}
 
 	return dbFarms, resp
 }
@@ -124,6 +131,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param size query int false "Max result per page"
 // @Param ret_count query bool false "Set nodes' count on headers based on filter"
 // @Param randomize query bool false "Get random patch of nodes"
+// @Param select query string false "Select specific fields to return. Comma-separated values. E.g., 'id,farmId,country'. Supports snake_case and camelCase field names."
 // @Param sort_by query string false "Sort by specific node field" Enums(status, node_id, farm_id, twin_id, uptime, created, updated_at, country, city, dedicated_farm, rent_contract_id, total_cru, total_mru, total_hru, total_sru, used_cru, used_mru, used_hru, used_sru, num_gpu, extra_fee)
 // @Param sort_order query string false "The sorting order, default is 'asc'" Enums(desc, asc)
 // @Param balance query string false "a balance in usd, used to apply staking discount on nodes price"
@@ -216,7 +224,8 @@ func (a *App) getGateways(r *http.Request) (interface{}, mw.Response) {
 func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 	filter := types.NodeFilter{}
 	limit := types.DefaultLimit()
-	if err := parseQueryParams(r, &filter, &limit); err != nil {
+	nodeSelect := types.NodeSelect{}
+	if err := parseQueryParams(r, &filter, &limit, &nodeSelect); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 	if err := limit.Valid(types.Node{}); err != nil {
@@ -232,6 +241,13 @@ func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	resp := createResponse(uint(nodesCount), limit)
+	
+	// Apply field selection if specified
+	if nodeSelect.HasSelection() {
+		filteredNodes := types.FilterNodesResponse(dbNodes, nodeSelect)
+		return filteredNodes, resp
+	}
+	
 	return dbNodes, resp
 }
 
@@ -316,6 +332,7 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 // @Param account_id query string false "Account address"
 // @Param relay query string false "Relay address"
 // @Param public_key query string false "Twin public key"
+// @Param select query string false "Select specific fields to return. Comma-separated values. E.g., 'twinId,accountId,relay'. Supports snake_case and camelCase field names."
 // @Success 200 {object} []types.Twin
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -323,7 +340,8 @@ func (a *App) getNodeStatus(r *http.Request) (interface{}, mw.Response) {
 func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 	filter := types.TwinFilter{}
 	limit := types.DefaultLimit()
-	if err := parseQueryParams(r, &filter, &limit); err != nil {
+	twinSelect := types.TwinSelect{}
+	if err := parseQueryParams(r, &filter, &limit, &twinSelect); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 	if err := limit.Valid(types.Twin{}); err != nil {
@@ -337,6 +355,13 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	resp := createResponse(uint(twinsCount), limit)
+	
+	// Apply field selection if specified
+	if twinSelect.HasSelection() {
+		filteredTwins := types.FilterTwinsResponse(twins, twinSelect)
+		return filteredTwins, resp
+	}
+	
 	return twins, resp
 }
 
@@ -388,6 +413,7 @@ func (a *App) getTwinConsumption(r *http.Request) (interface{}, mw.Response) {
 // @Param deployment_data query string false "contract deployment data in case of 'node' contracts"
 // @Param deployment_hash query string false "contract deployment hash in case of 'node' contracts"
 // @Param number_of_public_ips query int false "Min number of public ips in the 'node' contract"
+// @Param select query string false "Select specific fields to return. Comma-separated values. E.g., 'contractId,twinId,state'. Supports snake_case and camelCase field names."
 // @Success 200 {object} []types.Contract
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -395,7 +421,8 @@ func (a *App) getTwinConsumption(r *http.Request) (interface{}, mw.Response) {
 func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 	filter := types.ContractFilter{}
 	limit := types.DefaultLimit()
-	if err := parseQueryParams(r, &filter, &limit); err != nil {
+	contractSelect := types.ContractSelect{}
+	if err := parseQueryParams(r, &filter, &limit, &contractSelect); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 	if err := limit.Valid(types.Contract{}); err != nil {
@@ -409,6 +436,13 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	resp := createResponse(uint(contractsCount), limit)
+	
+	// Apply field selection if specified
+	if contractSelect.HasSelection() {
+		filteredContracts := types.FilterContractsResponse(dbContracts, contractSelect)
+		return filteredContracts, resp
+	}
+	
 	return dbContracts, resp
 }
 
@@ -428,6 +462,7 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 // @Param ip query string false "filter with the ip"
 // @Param gateway query string false "filter with the gateway"
 // @Param free query bool false "Get only the free ips, based on the ip have a contract id or not"
+// @Param select query string false "Select specific fields to return. Comma-separated values. E.g., 'id,ip,farmId'. Supports snake_case and camelCase field names."
 // @Success 200 {object} []types.PublicIP
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -435,7 +470,8 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 func (a *App) GetPublicIps(r *http.Request) (interface{}, mw.Response) {
 	filter := types.PublicIpFilter{}
 	limit := types.DefaultLimit()
-	if err := parseQueryParams(r, &filter, &limit); err != nil {
+	publicIPSelect := types.PublicIPSelect{}
+	if err := parseQueryParams(r, &filter, &limit, &publicIPSelect); err != nil {
 		return nil, mw.BadRequest(err)
 	}
 	if err := limit.Valid(types.PublicIP{}); err != nil {
@@ -449,6 +485,13 @@ func (a *App) GetPublicIps(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	resp := createResponse(ipsCount, limit)
+	
+	// Apply field selection if specified
+	if publicIPSelect.HasSelection() {
+		filteredIps := types.FilterPublicIPsResponse(ips, publicIPSelect)
+		return filteredIps, resp
+	}
+	
 	return ips, resp
 }
 

@@ -16,6 +16,19 @@ type TwinFilter struct {
 	PublicKey *string `schema:"public_key,omitempty"`
 }
 
+// TwinSelect represents fields that can be selected in twins API response
+type TwinSelect struct {
+	TwinID    bool `schema:"twin_id"`
+	AccountID bool `schema:"account_id"`
+	Relay     bool `schema:"relay"`
+	PublicKey bool `schema:"public_key"`
+}
+
+// HasSelection returns true if any field is selected
+func (ts TwinSelect) HasSelection() bool {
+	return ts.TwinID || ts.AccountID || ts.Relay || ts.PublicKey
+}
+
 // TwinConsumption show a report of user spent in TFT
 type TwinConsumption struct {
 	LastHourConsumption float64 `json:"last_hour_consumption"`
