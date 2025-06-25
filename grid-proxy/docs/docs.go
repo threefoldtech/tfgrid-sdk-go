@@ -134,6 +134,12 @@ const docTemplate = `{
                         "description": "Min number of public ips in the 'node' contract",
                         "name": "number_of_public_ips",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Select specific fields to return. Comma-separated values. E.g., 'contractId,twinId,state'. Supports snake_case and camelCase field names.",
+                        "name": "select",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -832,6 +838,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Select specific fields to return. Comma-separated values. E.g., 'id,farmId,country'. Supports snake_case and camelCase field names.",
+                        "name": "select",
+                        "in": "query"
+                    },
+                    {
                         "enum": [
                             "status",
                             "node_id",
@@ -1383,6 +1395,12 @@ const docTemplate = `{
                         "description": "Get only the free ips, based on the ip have a contract id or not",
                         "name": "free",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Select specific fields to return. Comma-separated values. E.g., 'id,ip,farmId'. Supports snake_case and camelCase field names.",
+                        "name": "select",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1538,6 +1556,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Twin public key",
                         "name": "public_key",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Select specific fields to return. Comma-separated values. E.g., 'twinId,accountId,relay'. Supports snake_case and camelCase field names.",
+                        "name": "select",
                         "in": "query"
                     }
                 ],
@@ -1732,6 +1756,29 @@ const docTemplate = `{
                 }
             }
         },
+        "types.CpuBenchmark": {
+            "type": "object",
+            "properties": {
+                "multi": {
+                    "type": "number"
+                },
+                "node_twin_id": {
+                    "type": "integer"
+                },
+                "single": {
+                    "type": "number"
+                },
+                "threads": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "workloads": {
+                    "type": "integer"
+                }
+            }
+        },
         "types.Dmi": {
             "type": "object",
             "properties": {
@@ -1802,14 +1849,14 @@ const docTemplate = `{
                 "country": {
                     "type": "string"
                 },
-                "region": {
-                    "type": "string"
-                },
                 "latitude": {
                     "type": "number"
                 },
                 "longitude": {
                     "type": "number"
+                },
+                "region": {
+                    "type": "string"
                 }
             }
         },
@@ -1835,6 +1882,9 @@ const docTemplate = `{
                 },
                 "country": {
                     "type": "string"
+                },
+                "cpu_benchmark": {
+                    "$ref": "#/definitions/types.CpuBenchmark"
                 },
                 "created": {
                     "type": "integer"
@@ -2042,6 +2092,9 @@ const docTemplate = `{
                 },
                 "country": {
                     "type": "string"
+                },
+                "cpu_benchmark": {
+                    "$ref": "#/definitions/types.CpuBenchmark"
                 },
                 "created": {
                     "type": "integer"

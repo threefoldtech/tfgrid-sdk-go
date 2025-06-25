@@ -27,7 +27,7 @@ func parseQueryParams(r *http.Request, types_ ...interface{}) error {
 	limitParams := make(map[string][]string)
 	filterParams := make(map[string][]string)
 
-	// a helper step to be able to decide if a param is limit or filter query
+	// a helper step to be able to decide if a param is limit query or a filter
 	limitKeys := make(map[string]struct{})
 	for _, key := range getSchemaTags(types.Limit{}) {
 		limitKeys[key] = struct{}{}
