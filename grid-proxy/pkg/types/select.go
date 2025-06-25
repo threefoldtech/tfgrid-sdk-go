@@ -68,7 +68,6 @@ func IsSelectType(type_ interface{}) bool {
 	return strings.HasSuffix(typeName, "Select")
 }
 
-
 // filterNodesResponse filters node response based on selected fields
 func FilterNodesResponse(nodes []Node, nodeSelect NodeSelect) []map[string]interface{} {
 	if !nodeSelect.HasSelection() {
@@ -82,7 +81,7 @@ func FilterNodesResponse(nodes []Node, nodeSelect NodeSelect) []map[string]inter
 	result := make([]map[string]interface{}, len(nodes))
 	for i, node := range nodes {
 		filteredNode := make(map[string]interface{})
-		
+
 		if nodeSelect.ID {
 			filteredNode["id"] = node.ID
 		}
@@ -191,10 +190,10 @@ func FilterNodesResponse(nodes []Node, nodeSelect NodeSelect) []map[string]inter
 		if nodeSelect.Features {
 			filteredNode["features"] = node.Features
 		}
-		
+
 		result[i] = filteredNode
 	}
-	
+
 	return result
 }
 
@@ -212,7 +211,7 @@ func FilterFarmsResponse(farms []Farm, farmSelect FarmSelect) []map[string]inter
 	result := make([]map[string]interface{}, len(farms))
 	for i, farm := range farms {
 		filteredFarm := make(map[string]interface{})
-		
+
 		if farmSelect.Name {
 			filteredFarm["name"] = farm.Name
 		}
@@ -237,10 +236,10 @@ func FilterFarmsResponse(farms []Farm, farmSelect FarmSelect) []map[string]inter
 		if farmSelect.PublicIps {
 			filteredFarm["publicIps"] = farm.PublicIps
 		}
-		
+
 		result[i] = filteredFarm
 	}
-	
+
 	return result
 }
 
@@ -303,15 +302,15 @@ func typesFarmToMap(farm Farm) map[string]interface{} {
 // filterTwinsResponse filters twin response based on selected fields
 func FilterTwinsResponse(twins []Twin, twinSelect TwinSelect) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(twins))
-	
+
 	for i, twin := range twins {
 		if !twinSelect.HasSelection() {
 			result[i] = twinToMap(twin)
 			continue
 		}
-		
+
 		filteredTwin := make(map[string]interface{})
-		
+
 		if twinSelect.TwinID {
 			filteredTwin["twinId"] = twin.TwinID
 		}
@@ -324,10 +323,10 @@ func FilterTwinsResponse(twins []Twin, twinSelect TwinSelect) []map[string]inter
 		if twinSelect.PublicKey {
 			filteredTwin["publicKey"] = twin.PublicKey
 		}
-		
+
 		result[i] = filteredTwin
 	}
-	
+
 	return result
 }
 
@@ -344,15 +343,15 @@ func twinToMap(twin Twin) map[string]interface{} {
 // filterContractsResponse filters contract response based on selected fields
 func FilterContractsResponse(contracts []Contract, contractSelect ContractSelect) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(contracts))
-	
+
 	for i, contract := range contracts {
 		if !contractSelect.HasSelection() {
 			result[i] = contractToMap(contract)
 			continue
 		}
-		
+
 		filteredContract := make(map[string]interface{})
-		
+
 		if contractSelect.ContractID {
 			filteredContract["contractId"] = contract.ContractID
 		}
@@ -371,10 +370,10 @@ func FilterContractsResponse(contracts []Contract, contractSelect ContractSelect
 		if contractSelect.Details {
 			filteredContract["details"] = contract.Details
 		}
-		
+
 		result[i] = filteredContract
 	}
-	
+
 	return result
 }
 
@@ -393,15 +392,15 @@ func contractToMap(contract Contract) map[string]interface{} {
 // filterPublicIPsResponse filters public IP response based on selected fields
 func FilterPublicIPsResponse(ips []PublicIP, publicIPSelect PublicIPSelect) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(ips))
-	
+
 	for i, ip := range ips {
 		if !publicIPSelect.HasSelection() {
 			result[i] = publicIPToMap(ip)
 			continue
 		}
-		
+
 		filteredIP := make(map[string]interface{})
-		
+
 		if publicIPSelect.ID {
 			filteredIP["id"] = ip.ID
 		}
@@ -417,10 +416,10 @@ func FilterPublicIPsResponse(ips []PublicIP, publicIPSelect PublicIPSelect) []ma
 		if publicIPSelect.FarmID {
 			filteredIP["farmId"] = ip.FarmID
 		}
-		
+
 		result[i] = filteredIP
 	}
-	
+
 	return result
 }
 

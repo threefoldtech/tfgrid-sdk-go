@@ -241,13 +241,13 @@ func (a *App) listNodes(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	resp := createResponse(uint(nodesCount), limit)
-	
+
 	// Apply field selection if specified
 	if nodeSelect.HasSelection() {
 		filteredNodes := types.FilterNodesResponse(dbNodes, nodeSelect)
 		return filteredNodes, resp
 	}
-	
+
 	return dbNodes, resp
 }
 
@@ -355,13 +355,13 @@ func (a *App) listTwins(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	resp := createResponse(uint(twinsCount), limit)
-	
+
 	// Apply field selection if specified
 	if twinSelect.HasSelection() {
 		filteredTwins := types.FilterTwinsResponse(twins, twinSelect)
 		return filteredTwins, resp
 	}
-	
+
 	return twins, resp
 }
 
@@ -436,13 +436,13 @@ func (a *App) listContracts(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	resp := createResponse(uint(contractsCount), limit)
-	
+
 	// Apply field selection if specified
 	if contractSelect.HasSelection() {
 		filteredContracts := types.FilterContractsResponse(dbContracts, contractSelect)
 		return filteredContracts, resp
 	}
-	
+
 	return dbContracts, resp
 }
 
@@ -485,13 +485,13 @@ func (a *App) GetPublicIps(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	resp := createResponse(ipsCount, limit)
-	
+
 	// Apply field selection if specified
 	if publicIPSelect.HasSelection() {
 		filteredIps := types.FilterPublicIPsResponse(ips, publicIPSelect)
 		return filteredIps, resp
 	}
-	
+
 	return ips, resp
 }
 
