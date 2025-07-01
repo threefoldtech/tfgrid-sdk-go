@@ -9,6 +9,11 @@ import (
 
 const defaultPricingPolicyID = uint32(1)
 
+// The price of TFT stored on the TFChain is expressed in mUSD per 1 TFT.
+// To convert this to USD, the formula is:
+// tft_price_units_usd = tft_price / 1000
+const mUSDToUSD = 1000
+
 // Calculator struct for calculating the cost of resources
 type Calculator struct {
 	substrateConn subi.SubstrateExt
@@ -43,7 +48,7 @@ func (c *Calculator) CalculateCost(cru, mru, hru, sru int64, publicIP, certified
 	// cost per month in mUSD
 	costPerMonth := (cu*float64(pricingPolicy.CU.Value) + su*float64(pricingPolicy.SU.Value) + ipv4*float64(pricingPolicy.IPU.Value)) * certifiedFactor * 24 * 30
 	// convert to USD
-	return costPerMonth / 1000, nil
+	return costPerMonth / mUSDToUSD, nil
 }
 
 // CalculateDiscount calculates the discount of a given cost
