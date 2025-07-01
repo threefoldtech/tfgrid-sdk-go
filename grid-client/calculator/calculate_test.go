@@ -62,7 +62,7 @@ func TestSubstrateErrors(t *testing.T) {
 	calculator := NewCalculator(sub, identity)
 
 	t.Run("test tft pricing policy error", func(t *testing.T) {
-		sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{}, errors.New("error")).AnyTimes()
+		sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{}, errors.New("error")).AnyTimes()
 
 		_, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
 		assert.Error(t, err)
@@ -72,7 +72,7 @@ func TestSubstrateErrors(t *testing.T) {
 	})
 
 	t.Run("test tft balance error", func(t *testing.T) {
-		sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{}, nil).AnyTimes()
+		sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{}, nil).AnyTimes()
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{}, errors.New("error")).AnyTimes()
 
 		_, _, err = calculator.CalculatePricesAfterDiscount(0)
