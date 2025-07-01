@@ -14,6 +14,11 @@ const defaultPricingPolicyID = uint32(1)
 // tft_price_units_usd = tft_price / 1000
 const mUSDToUSD = 1000
 
+// UnitFactor represents the smallest unit conversion factor for both USD and TFT
+// 1 USD = 10,000,000 unit-USD
+// 1 TFT = 10,000,000 unit-TFT (TFT's Planck)
+const UnitFactor = 1e7
+
 // Calculator struct for calculating the cost of resources
 type Calculator struct {
 	substrateConn subi.SubstrateExt
@@ -141,3 +146,13 @@ func calculateCU(cru, mru int64) float64 {
 
 	return cu
 }
+func (c *Calculator) CalculateUniqueNameCost() (float64, error) {
+	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
+	if err != nil {
+		return 0, err
+	}
+	// cost in unit-USD
+	monthlyCost := float64(pricingPolicy.UniqueName.Value) * 24 * 30
+	return float64(monthlyCost) / UnitFactor, nil
+}
+
