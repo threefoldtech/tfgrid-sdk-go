@@ -15,6 +15,11 @@ const defaultPricingPolicyID = uint32(1)
 // tft_price_units_usd = tft_price / 1000
 const mUSDToUSD = 1000
 
+// UnitFactor represents the smallest unit conversion factor for both USD and TFT
+// 1 USD = 10,000,000 unit-USD
+// 1 TFT = 10,000,000 unit-TFT (TFT's Planck)
+const UnitFactor = 1e7
+
 // Calculator struct for calculating the cost of resources
 type Calculator struct {
 	substrateConn subi.SubstrateExt
@@ -59,27 +64,23 @@ func (c *Calculator) CalculatePricesAfterDiscount(cost float64) (dedicatedPrice,
 		return
 	}
 
-	// discount for shared Nodes
 	sharedPrice = cost
-
-	// discount for Dedicated Nodes
 	discount := float64(pricingPolicy.DedicatedNodesDiscount)
 	dedicatedPrice = cost - cost*(discount/100)
 
-	// discount for Twin Balance in TFT
 	accountBalance, err := c.substrateConn.GetBalance(c.identity)
 	if err != nil {
 		return
 	}
 
-	BalanceTFT := float64(accountBalance.Free.Int64()) / 1e7
+	balanceTFT := float64(accountBalance.Free.Int64()) / UnitFactor
 
-	balance, err := c.TFTtoUSD(BalanceTFT)
+	balanceUSD, err := c.TFTtoUSD(balanceTFT)
 	if err != nil {
 		return
 	}
 
-	sharedDiscount, dedicatedDiscount := getApplicableDiscount(balance, dedicatedPrice, sharedPrice)
+	sharedDiscount, dedicatedDiscount := getApplicableDiscount(balanceUSD, dedicatedPrice, sharedPrice)
 
 	dedicatedPrice = dedicatedPrice - dedicatedPrice*dedicatedDiscount
 	sharedPrice = sharedPrice - sharedPrice*sharedDiscount
