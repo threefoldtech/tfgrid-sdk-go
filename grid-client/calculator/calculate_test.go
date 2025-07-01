@@ -61,14 +61,7 @@ func TestSubstrateErrors(t *testing.T) {
 
 	calculator := NewCalculator(sub, identity)
 
-	t.Run("test tft price error", func(t *testing.T) {
-		sub.EXPECT().GetTFTPrice().Return(types.U32(1), errors.New("error")).AnyTimes()
-		_, _, err = calculator.CalculateDiscount(200)
-		assert.Error(t, err)
-	})
-
 	t.Run("test tft pricing policy error", func(t *testing.T) {
-		sub.EXPECT().GetTFTPrice().Return(types.U32(1), nil).AnyTimes()
 		sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{}, errors.New("error")).AnyTimes()
 
 		_, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
@@ -79,7 +72,6 @@ func TestSubstrateErrors(t *testing.T) {
 	})
 
 	t.Run("test tft balance error", func(t *testing.T) {
-		sub.EXPECT().GetTFTPrice().Return(types.U32(1), nil).AnyTimes()
 		sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{}, nil).AnyTimes()
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{}, errors.New("error")).AnyTimes()
 
@@ -187,4 +179,30 @@ func TestGetApplicableDiscount(t *testing.T) {
 			assert.Equal(t, tc.expectedSharedDiscount, sharedDiscount, "Shared discount percentage mismatch")
 		})
 	}
+}
+
+func TestTFTtoUSD(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sub := mocks.NewMockSubstrateExt(ctrl)
+	identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+	assert.NoError(t, err)
+
+	calculator := NewCalculator(sub, identity)
+
+	t.Run("success case", func(t *testing.T) {
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+
+		result, err := calculator.TFTtoUSD(10)
+		assert.NoError(t, err)
+		assert.Equal(t, 0.05, result)
+	})
+
+	t.Run("error case", func(t *testing.T) {
+		sub.EXPECT().GetTFTPrice().Return(types.U32(0), errors.New("failed to get TFT price"))
+
+		_, err := calculator.TFTtoUSD(100)
+		assert.Error(t, err)
+	})
 }

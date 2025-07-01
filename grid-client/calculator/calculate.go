@@ -3,6 +3,7 @@ package calculator
 import (
 	"math"
 
+	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 )
@@ -128,4 +129,13 @@ func calculateCU(cru, mru int64) float64 {
 	cu = math.Min(cu, cu3)
 
 	return cu
+}
+
+// TFTtoUSD converts TFT amount to USD based on the current price
+func (c *Calculator) TFTtoUSD(tft float64) (float64, error) {
+	tftPrice, err := c.substrateConn.GetTFTPrice()
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get TFT price")
+	}
+	return tft * (float64(tftPrice) / mUSDToUSD), nil
 }
