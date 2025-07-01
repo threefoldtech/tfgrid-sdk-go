@@ -146,6 +146,17 @@ func calculateCU(cru, mru int64) float64 {
 
 	return cu
 }
+
+func (c *Calculator) calculateIPV4() (float64, error) {
+	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
+	if err != nil {
+		return 0, err
+	}
+	// cost in unit-USD
+	monthlyCost := pricingPolicy.IPU.Value * 24 * 30
+
+	return float64(monthlyCost) / UnitFactor, nil
+}
 func (c *Calculator) CalculateUniqueNameCost() (float64, error) {
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {

@@ -133,3 +133,48 @@ func TestCalculateUniqueNameCost(t *testing.T) {
 	})
 
 }
+
+func TestCalculateIPV4(t *testing.T) {
+	t.Run("success case", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		sub := mocks.NewMockSubstrateExt(ctrl)
+		sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{
+			ID: 1,
+			IPU: substrate.Policy{
+				Value: 2000,
+			},
+		}, nil)
+
+		identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+		assert.NoError(t, err)
+
+		calculator := NewCalculator(sub, identity)
+
+		// Calculate expected result: Value * 24 * 30 and converted from Unit-USD to USD
+		expectedCost := 0.144 // 2000 * 24 * 30 / 10_000_000
+
+		cost, err := calculator.calculateIPV4()
+
+		assert.NoError(t, err)
+		assert.Equal(t, expectedCost, cost)
+	})
+
+	t.Run("error pricing policy case", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		sub := mocks.NewMockSubstrateExt(ctrl)
+		sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{}, errors.New("error"))
+
+		identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+		assert.NoError(t, err)
+
+		calculator := NewCalculator(sub, identity)
+
+		_, err = calculator.calculateIPV4()
+
+		assert.Error(t, err)
+	})
+}
