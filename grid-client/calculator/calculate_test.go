@@ -22,7 +22,7 @@ func TestCalculator(t *testing.T) {
 
 	calculator := NewCalculator(sub, identity)
 
-	sub.EXPECT().GetTFTPrice().Return(types.U32(1), nil).AnyTimes()
+	sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
 	sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{
 		ID: 1,
 		SU: substrate.Policy{
@@ -63,10 +63,6 @@ func TestSubstrateErrors(t *testing.T) {
 
 	t.Run("test tft price error", func(t *testing.T) {
 		sub.EXPECT().GetTFTPrice().Return(types.U32(1), errors.New("error")).AnyTimes()
-
-		_, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
-		assert.Error(t, err)
-
 		_, _, err = calculator.CalculateDiscount(200)
 		assert.Error(t, err)
 	})

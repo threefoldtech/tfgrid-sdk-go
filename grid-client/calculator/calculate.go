@@ -22,10 +22,6 @@ func NewCalculator(substrateConn subi.SubstrateExt, identity substrate.Identity)
 
 // CalculateCost calculates the cost in $ per month of the given resources without a discount
 func (c *Calculator) CalculateCost(cru, mru, hru, sru int64, publicIP, certified bool) (float64, error) {
-	tftPrice, err := c.substrateConn.GetTFTPrice()
-	if err != nil {
-		return 0, err
-	}
 
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
@@ -44,9 +40,10 @@ func (c *Calculator) CalculateCost(cru, mru, hru, sru int64, publicIP, certified
 	if certified {
 		certifiedFactor = 1.25
 	}
-
+	// cost per month in mUSD
 	costPerMonth := (cu*float64(pricingPolicy.CU.Value) + su*float64(pricingPolicy.SU.Value) + ipv4*float64(pricingPolicy.IPU.Value)) * certifiedFactor * 24 * 30
-	return costPerMonth / float64(tftPrice) / 1000, nil
+	// convert to USD
+	return costPerMonth / 1000, nil
 }
 
 // CalculateDiscount calculates the discount of a given cost
