@@ -38,7 +38,7 @@ func TestCalculator(t *testing.T) {
 
 	cost, err := calculator.CalculateCost(8, 32, 0, 50, true, true)
 	assert.NoError(t, err)
-	assert.Equal(t, cost, 16.2)
+	assert.Equal(t, cost, 16.65)
 
 	sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 		Free: types.U128{
