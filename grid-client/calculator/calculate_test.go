@@ -87,3 +87,104 @@ func TestSubstrateErrors(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestGetApplicableDiscount(t *testing.T) {
+	testCases := []struct {
+		name                      string
+		balance                   float64
+		dedicatedPrice            float64
+		sharedPrice               float64
+		expectedDedicatedDiscount float64
+		expectedSharedDiscount    float64
+	}{
+		{
+			name:                      "No balance",
+			balance:                   0,
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0,
+			expectedSharedDiscount:    0,
+		},
+		{
+			name:                      "Insufficient balance for any package",
+			balance:                   50,
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0,
+			expectedSharedDiscount:    0,
+		},
+		{
+			name:                      "Balance enough for default package only for shared",
+			balance:                   130, // > 80 * 1.5 but < 100 * 1.5
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0,
+			expectedSharedDiscount:    0.2, // Default package discount 20%
+		},
+		{
+			name:                      "Balance enough for default package for both",
+			balance:                   160, // > 100 * 1.5 and > 80 * 1.5
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.2, // Default package discount 20%
+			expectedSharedDiscount:    0.2, // Default package discount 20%
+		},
+		{
+			name:                      "Balance enough for bronze package for shared, default for dedicated",
+			balance:                   250, // > 80 * 3 and < 100 * 1.5
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.2, // Default Package discount 20%
+			expectedSharedDiscount:    0.3, // Bronze package discount 30%
+		},
+		{
+			name:                      "Balance enough for bronze package for both",
+			balance:                   350, // > 100 * 3 and > 80 * 3
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.3, // Bronze package discount 30%
+			expectedSharedDiscount:    0.3, // Bronze package discount 30%
+		},
+		{
+			name:                      "Balance enough for silver package for shared, and bronze for dedicated",
+			balance:                   500, // > 80 * 6 but < 100 * 6
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.3, // Bronze package discount 30%
+			expectedSharedDiscount:    0.4, // Silver package discount 40%
+		},
+		{
+			name:                      "Balance enough for silver package for both",
+			balance:                   650, // > 100 * 6 and > 80 * 6
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.4,
+			expectedSharedDiscount:    0.4,
+		},
+		{
+			name:                      "Balance enough for gold package for shared, and Silver for dedicated",
+			balance:                   1500, // > 80 * 18 but < 100 * 18
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.4, // Silver package discount 40%
+			expectedSharedDiscount:    0.6, // Gold package discount 60%
+		},
+		{
+			name:                      "Balance enough for gold package for both",
+			balance:                   2000, // > 100 * 18 and > 80 * 18
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.6,
+			expectedSharedDiscount:    0.6,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			sharedDiscount, dedicatedDiscount := getApplicableDiscount(tc.balance, tc.dedicatedPrice, tc.sharedPrice)
+
+			assert.Equal(t, tc.expectedDedicatedDiscount, dedicatedDiscount, "Dedicated discount percentage mismatch")
+			assert.Equal(t, tc.expectedSharedDiscount, sharedDiscount, "Shared discount percentage mismatch")
+		})
+	}
+}

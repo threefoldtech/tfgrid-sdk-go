@@ -75,47 +75,35 @@ func (c *Calculator) CalculateDiscount(cost float64) (dedicatedPrice, sharedPric
 	if err != nil {
 		return
 	}
-	balance := float64(tftPrice) / 1000 * float64(accountBalance.Free.Int64()) * 10000000
-
-	discountPackages := map[string]map[string]float64{
-		"none": {
-			"duration": 0,
-			"discount": 0,
-		},
-		"default": {
-			"duration": 1.5,
-			"discount": 20,
-		},
-		"bronze": {
-			"duration": 3,
-			"discount": 30,
-		},
-		"silver": {
-			"duration": 6,
-			"discount": 40,
-		},
-		"gold": {
-			"duration": 18,
-			"discount": 60,
-		},
+func getApplicableDiscount(balance float64, dedicatedPrice float64, sharedPrice float64) (bestSharedDiscount, bestDedicatedDiscount float64) {
+	packages := []struct {
+		name     string
+		duration float64
+		discount float64
+	}{
+		{name: "none", duration: 0, discount: 0},
+		{name: "default", duration: 1.5, discount: 20},
+		{name: "bronze", duration: 3, discount: 30},
+		{name: "silver", duration: 6, discount: 40},
+		{name: "gold", duration: 18, discount: 60},
 	}
 
-	// check which package will be used according to the balance
-	dedicatedPackage := "none"
-	sharedPackage := "none"
-	for pkg := range discountPackages {
-		if balance > dedicatedPrice*discountPackages[pkg]["duration"] {
-			dedicatedPackage = pkg
+	var bestSharedDiscountValue, bestDedicatedDiscountValue float64 = 0, 0
+
+	for _, pkg := range packages {
+		sharedThreshold := sharedPrice * pkg.duration
+		dedicatedThreshold := dedicatedPrice * pkg.duration
+
+		if balance > sharedThreshold {
+			bestSharedDiscountValue = pkg.discount
 		}
-		if balance > sharedPrice*discountPackages[pkg]["duration"] {
-			sharedPackage = pkg
+
+		if balance > dedicatedThreshold {
+			bestDedicatedDiscountValue = pkg.discount
 		}
 	}
 
-	dedicatedPrice = (dedicatedPrice - dedicatedPrice*(discountPackages[dedicatedPackage]["discount"]/100)) / 1e7
-	sharedPrice = (sharedPrice - sharedPrice*(discountPackages[sharedPackage]["discount"]/100)) / 1e7
-
-	return
+	return bestSharedDiscountValue / 100, bestDedicatedDiscountValue / 100
 }
 
 func calculateSU(hru, sru int64) float64 {
