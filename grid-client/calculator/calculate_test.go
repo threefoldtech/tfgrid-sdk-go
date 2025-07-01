@@ -178,3 +178,44 @@ func TestCalculateIPV4(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestConvertBytesToGB(t *testing.T) {
+	testCases := []struct {
+		name           string
+		inputBytes     uint64
+		expectedGigaBytes int64
+	}{
+		{
+			name:           "zero bytes",
+			inputBytes:     0,
+			expectedGigaBytes: 0,
+		},
+		{
+			name:           "less than 1GB",
+			inputBytes:     500 * 1024 * 1024, // 500 MB
+			expectedGigaBytes: 0,              // Should be 0 since integer division
+		},
+		{
+			name:           "exactly 1GB",
+			inputBytes:     1024 * 1024 * 1024,
+			expectedGigaBytes: 1,
+		},
+		{
+			name:           "multiple GBs",
+			inputBytes:     5 * 1024 * 1024 * 1024,
+			expectedGigaBytes: 5,
+		},
+		{
+			name:           "large number",
+			inputBytes:     1000 * 1024 * 1024 * 1024,
+			expectedGigaBytes: 1000,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := convertBytesToGB(tc.inputBytes)
+			assert.Equal(t, tc.expectedGigaBytes, result, "Conversion from bytes to GB failed")
+		})
+	}
+}

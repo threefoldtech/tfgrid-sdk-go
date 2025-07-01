@@ -167,3 +167,6 @@ func (c *Calculator) CalculateUniqueNameCost() (float64, error) {
 	return float64(monthlyCost) / UnitFactor, nil
 }
 
+func convertBytesToGB(bytes uint64) int64 {
+	return int64(bytes / 1024 / 1024 / 1024)
+}
