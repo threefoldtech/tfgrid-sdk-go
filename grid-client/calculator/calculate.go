@@ -1,8 +1,11 @@
 package calculator
 
 import (
+	"fmt"
 	"math"
 
+	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 )
@@ -165,6 +168,130 @@ func (c *Calculator) CalculateUniqueNameCost() (float64, error) {
 	// cost in unit-USD
 	monthlyCost := float64(pricingPolicy.UniqueName.Value) * 24 * 30
 	return float64(monthlyCost) / UnitFactor, nil
+}
+
+func (c Calculator) CalculateContractTotalOverdraft(id uint64) (types.U128, error) {
+	contract, err := c.substrateConn.GetContract(id)
+	if err != nil {
+		return types.U128{}, errors.Wrap(err, "failed to get contract")
+	}
+
+	if contract.IsDeleted() {
+		return types.U128{}, errors.New("contract is deleted")
+	}
+	// contractCost, err := c.CalculateContractCost(contract.Contract)
+	// if err != nil {
+	// 	return types.U128{}, err
+	// }
+
+	contractPaymentState, err := c.substrateConn.GetContractPaymentState(id)
+	if err != nil {
+		return types.U128{}, errors.Wrap(err, "failed to get contract payment state")
+	}
+
+	if err != nil {
+		return types.U128{}, errors.Wrap(err, "failed to get contract billing info")
+	}
+	// Convert float64 contractCost to big.Int, considering UnitFactor (1e7)
+	return types.U128(contractPaymentState.StandardOverdraft), nil
+}
+
+func (c *Calculator) CalculateContractCost(contract *substrate.Contract) (float64, error) {
+	if contract.ContractType.IsNameContract {
+		return c.CalculateUniqueNameCost()
+	}
+
+	nodeID, err := getNodeID(contract)
+	if err != nil {
+		return 0, err
+	}
+
+	node, err := c.substrateConn.GetNode(nodeID)
+	if err != nil {
+		return 0, err
+	}
+
+	nodeRentContract, err := c.substrateConn.GetNodeRentContract(nodeID)
+	if err != nil && err != substrate.ErrAccountNotFound {
+		return 0, errors.Wrap(err, "failed to get node rent contract")
+	}
+
+	if contract.ContractType.IsNodeContract {
+		return c.CalculateNodeContractCost(contract, node, nodeRentContract > 0)
+	}
+
+	if contract.ContractType.IsRentContract {
+		return c.CalculateRentCost(contract, *node)
+	}
+	return 0, nil
+}
+
+func (c *Calculator) CalculateNodeContractCost(contract *substrate.Contract, node *substrate.Node, isOnRentedNode bool) (float64, error) {
+	if !contract.ContractType.IsNodeContract {
+		return 0, fmt.Errorf("contract id %d is not a node contract", contract.ContractID)
+	}
+	publicIPsCount := contract.ContractType.NodeContract.PublicIPsCount
+
+	isCertified := node.Certification.IsCertified
+
+	/** Node contract on rented node
+	 * If the node contract has IPV4 will return the price of the ipv4 per month
+	 * If not there is no cost, will return zero
+	 */
+	if isOnRentedNode {
+		if publicIPsCount > 0 {
+			cost, err := c.calculateIPV4()
+			if err != nil {
+				return 0, err
+			}
+			totalCost := cost * float64(publicIPsCount)
+			if isCertified {
+				totalCost *= 1.25
+			}
+			return totalCost, nil
+		}
+		return 0, nil
+	}
+
+	// Get the node resources
+	resources, err := c.substrateConn.GetNodeContractResources(uint64(contract.ContractID))
+	if err != nil {
+		return 0, err
+	}
+
+	return c.CalculateCost(int64(resources.Used.CRU), int64(resources.Used.MRU), int64(resources.Used.HRU), int64(resources.Used.SRU), publicIPsCount > 0, isCertified)
+}
+
+func (c *Calculator) CalculateRentCost(contract *substrate.Contract, node substrate.Node) (float64, error) {
+
+	CRU := node.Resources.CRU
+	MRU := convertBytesToGB(uint64(node.Resources.MRU))
+	HRU := convertBytesToGB(uint64(node.Resources.HRU))
+	SRU := convertBytesToGB(uint64(node.Resources.SRU))
+
+	isCertified := node.Certification.IsCertified
+
+	cost, err := c.CalculateCost(int64(CRU), int64(MRU), int64(HRU), int64(SRU), false, isCertified)
+	if err != nil {
+		return 0, err
+	}
+	// GetNodeExtraFee, this will be in Milli USD
+	extraFee, err := c.substrateConn.GetDedicatedNodePrice(uint32(contract.ContractID))
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get dedicated node extra fee")
+	}
+	cost += (float64(extraFee) / 1000)
+	return cost, nil
+}
+
+func getNodeID(contract *substrate.Contract) (uint32, error) {
+	if contract.ContractType.IsNodeContract {
+		return uint32(contract.ContractType.NodeContract.Node), nil
+	}
+	if contract.ContractType.IsRentContract {
+		return uint32(contract.ContractType.RentContract.Node), nil
+	}
+	return 0, fmt.Errorf("contract id %d is not a node contract nor rent contract", contract.ContractID)
 }
 
 func convertBytesToGB(bytes uint64) int64 {

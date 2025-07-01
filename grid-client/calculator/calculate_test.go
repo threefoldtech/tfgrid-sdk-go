@@ -219,3 +219,160 @@ func TestConvertBytesToGB(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateRentCost(t *testing.T) {
+	t.Run("success case", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		// Create mock substrate extension
+		sub := mocks.NewMockSubstrateExt(ctrl)
+		
+		// Setup mock expectations
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
+		sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{
+			ID: 1,
+			SU: substrate.Policy{
+				Value: 2,
+			},
+			CU: substrate.Policy{
+				Value: 2,
+			},
+			IPU: substrate.Policy{
+				Value: 2,
+			},
+		}, nil).AnyTimes()
+		
+		// Setup mock for GetDedicatedNodePrice
+		contractID := uint32(123)
+		extraFee := uint64(5000000) // 0.5 USD in unit factor
+		sub.EXPECT().GetDedicatedNodePrice(contractID).Return(extraFee, nil)
+
+		// Create calculator instance
+		identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+		assert.NoError(t, err)
+		calculator := NewCalculator(sub, identity)
+
+		// Create mock contract and node
+		contract := &substrate.Contract{
+			ContractID: types.U64(contractID),
+			State:      substrate.ContractState{IsCreated: true},
+		}
+		
+		node := substrate.Node{
+			Resources: substrate.Resources{
+				CRU: 8,
+				MRU: 16 * 1024 * 1024 * 1024, // 16GB
+				HRU: 1000 * 1024 * 1024 * 1024, // 1000GB
+				SRU: 500 * 1024 * 1024 * 1024, // 500GB
+			},
+			Certification: substrate.NodeCertification{
+				IsCertified: true,
+			},
+		}
+
+		// Call the function being tested
+		cost, err := calculator.CalculateRentCost(contract, node)
+
+		// Assert the results
+		assert.NoError(t, err)
+		// Expected cost includes the base compute and storage costs plus the extra fee
+		// Base cost from resources calculation + 0.5 USD from dedicated node extra fee
+		expectedCost := 16.65 + 0.5
+		assert.Equal(t, expectedCost, cost)
+	})
+
+	t.Run("error from CalculateCost", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		// Create mock substrate extension
+		sub := mocks.NewMockSubstrateExt(ctrl)
+
+		// Setup mock expectations to return error for pricing policy
+		sub.EXPECT().GetTFTPrice().Return(types.U32(0), nil).AnyTimes()
+		sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{}, errors.New("pricing policy error"))
+
+		// Create calculator instance
+		identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+		assert.NoError(t, err)
+		calculator := NewCalculator(sub, identity)
+
+		// Create mock contract and node
+		contract := &substrate.Contract{
+			ContractID: types.U64(123),
+			State:      substrate.ContractState{IsCreated: true},
+		}
+
+		node := substrate.Node{
+			Resources: substrate.Resources{
+				CRU: 4,
+				MRU: 8 * 1024 * 1024 * 1024,
+				SRU: 250 * 1024 * 1024 * 1024,
+			},
+		}
+
+		// Call the function being tested
+		_, err = calculator.CalculateRentCost(contract, node)
+
+		// Assert an error was returned
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "pricing policy error")
+	})
+
+	t.Run("error from GetDedicatedNodePrice", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		// Create mock substrate extension
+		sub := mocks.NewMockSubstrateExt(ctrl)
+
+		// Setup mock expectations for successful policy retrieval
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
+		sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{
+			ID: 1,
+			SU: substrate.Policy{
+				Value: 2,
+			},
+			CU: substrate.Policy{
+				Value: 2,
+			},
+			IPU: substrate.Policy{
+				Value: 2,
+			},
+		}, nil)
+
+		// Setup mock for GetDedicatedNodePrice to return an error
+		contractID := uint32(123)
+		sub.EXPECT().GetDedicatedNodePrice(contractID).Return(uint64(0), errors.New("dedicated node price error"))
+
+		// Create calculator instance
+		identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+		assert.NoError(t, err)
+		calculator := NewCalculator(sub, identity)
+
+		// Create mock contract and node
+		contract := &substrate.Contract{
+			ContractID: types.U64(contractID),
+			State:      substrate.ContractState{IsCreated: true},
+		}
+
+		node := substrate.Node{
+			Resources: substrate.Resources{
+				CRU: 8,
+				MRU: 16 * 1024 * 1024 * 1024,
+				SRU: 500 * 1024 * 1024 * 1024,
+			},
+			Certification: substrate.NodeCertification{
+				IsCertified: true,
+			},
+		}
+
+		// Call the function being tested
+		_, err = calculator.CalculateRentCost(contract, node)
+
+		// Assert an error was returned
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get dedicated node extra fee")
+	})
+}
