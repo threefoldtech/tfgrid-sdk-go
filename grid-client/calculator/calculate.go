@@ -52,13 +52,8 @@ func (c *Calculator) CalculateCost(cru, mru, hru, sru int64, publicIP, certified
 	return costPerMonth / mUSDToUSD, nil
 }
 
-// CalculateDiscount calculates the discount of a given cost
-func (c *Calculator) CalculateDiscount(cost float64) (dedicatedPrice, sharedPrice float64, err error) {
-	tftPrice, err := c.substrateConn.GetTFTPrice()
-	if err != nil {
-		return
-	}
-
+// CalculatePricesAfterDiscount calculates the prices after discount
+func (c *Calculator) CalculatePricesAfterDiscount(cost float64) (dedicatedPrice, sharedPrice float64, err error) {
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
 		return
@@ -76,6 +71,22 @@ func (c *Calculator) CalculateDiscount(cost float64) (dedicatedPrice, sharedPric
 	if err != nil {
 		return
 	}
+
+	BalanceTFT := float64(accountBalance.Free.Int64()) / 1e7
+
+	balance, err := c.TFTtoUSD(BalanceTFT)
+	if err != nil {
+		return
+	}
+
+	sharedDiscount, dedicatedDiscount := getApplicableDiscount(balance, dedicatedPrice, sharedPrice)
+
+	dedicatedPrice = dedicatedPrice - dedicatedPrice*dedicatedDiscount
+	sharedPrice = sharedPrice - sharedPrice*sharedDiscount
+
+	return
+}
+
 func getApplicableDiscount(balance float64, dedicatedPrice float64, sharedPrice float64) (bestSharedDiscount, bestDedicatedDiscount float64) {
 	packages := []struct {
 		name     string

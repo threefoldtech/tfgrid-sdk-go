@@ -46,7 +46,7 @@ func TestCalculator(t *testing.T) {
 		},
 	}, nil)
 
-	dedicatedPrice, sharedPrice, err := calculator.CalculateDiscount(cost)
+	dedicatedPrice, sharedPrice, err := calculator.CalculatePricesAfterDiscount(cost)
 	assert.NoError(t, err)
 	assert.Equal(t, dedicatedPrice, sharedPrice)
 }
@@ -67,7 +67,7 @@ func TestSubstrateErrors(t *testing.T) {
 		_, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
 		assert.Error(t, err)
 
-		_, _, err = calculator.CalculateDiscount(200)
+		_, _, err = calculator.CalculatePricesAfterDiscount(200)
 		assert.Error(t, err)
 	})
 
@@ -75,7 +75,7 @@ func TestSubstrateErrors(t *testing.T) {
 		sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{}, nil).AnyTimes()
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{}, errors.New("error")).AnyTimes()
 
-		_, _, err = calculator.CalculateDiscount(0)
+		_, _, err = calculator.CalculatePricesAfterDiscount(0)
 		assert.Error(t, err)
 	})
 }
