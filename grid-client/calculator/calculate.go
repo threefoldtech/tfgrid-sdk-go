@@ -178,7 +178,7 @@ func (c *Calculator) calculateIPV4() (float64, error) {
 func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration) (*big.Float, error) {
 	contract, err := c.substrateConn.GetContract(id)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get contract")
+		return nil, errors.Wrapf(err, "failed to get contract ID %d", id)
 	}
 
 	if contract.IsDeleted() {
@@ -188,7 +188,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 
 	contractPaymentState, err := c.substrateConn.GetContractPaymentState(id)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get contract payment state")
+		return nil, errors.Wrapf(err, "failed to get payment state for contract ID %d", id)
 	}
 
 	periodCostTFT, err := c.calculatePeriodCostTFT(time.Unix(int64(contractPaymentState.LastUpdatedSeconds), 0), contractInfo, allowance)
@@ -261,7 +261,7 @@ func (c *Calculator) getUnbilledAmountInTFT(contractID uint64) (*big.Float, erro
 func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowance time.Duration) (*big.Float, error) {
 	contracts, err := c.substrateConn.GetNodeContracts(nodeID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to get contracts for node ID %d", nodeID)
 	}
 	var totalCost *big.Float = big.NewFloat(0)
 	for _, contract := range contracts {
@@ -355,7 +355,7 @@ func (c *Calculator) calculateUniqueNameCost() (float64, error) {
 //  2. Node contract on rented node: the cost of the IPV4 only if the contact includes ipv4, else it will return zero.
 func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, node *substrate.Node, isOnRentedNode bool) (float64, error) {
 	if !contract.ContractType.IsNodeContract {
-		return 0, fmt.Errorf("contract id %d is not a node contract", contract.ContractID)
+		return 0, fmt.Errorf("contract ID %d is not a node contract", contract.ContractID)
 	}
 	publicIPsCount := contract.ContractType.NodeContract.PublicIPsCount
 
