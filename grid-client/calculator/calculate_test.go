@@ -26,19 +26,19 @@ func TestCalculator(t *testing.T) {
 	sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{
 		ID: 1,
 		SU: substrate.Policy{
-			Value: 2,
+			Value: 50000,
 		},
 		CU: substrate.Policy{
-			Value: 2,
+			Value: 100000,
 		},
 		IPU: substrate.Policy{
-			Value: 2,
+			Value: 40000,
 		},
 	}, nil).AnyTimes()
 
 	cost, err := calculator.CalculateCost(8, 32, 0, 50, true, true)
 	assert.NoError(t, err)
-	assert.Equal(t, cost, 16.65)
+	assert.Equal(t, 76.725, cost)
 
 	sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 		Free: types.U128{
