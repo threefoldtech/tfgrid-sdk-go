@@ -57,10 +57,10 @@ func (c *Calculator) CalculateCost(cru, mru, hru, sru int64, publicIP, certified
 	if certified {
 		certifiedFactor = 1.25
 	}
-	// cost per month in mUSD
+	// cost per month in unit-USD
 	costPerMonth := (cu*float64(pricingPolicy.CU.Value) + su*float64(pricingPolicy.SU.Value) + ipv4*float64(pricingPolicy.IPU.Value)) * certifiedFactor * 24 * 30
 	// convert to USD
-	return costPerMonth / mUSDToUSD, nil
+	return costPerMonth / UnitFactor, nil
 }
 
 // CalculatePricesAfterDiscount calculates the prices after discount
