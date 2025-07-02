@@ -3,11 +3,22 @@ package calculator
 import (
 	"math"
 
+	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 )
 
 const defaultPricingPolicyID = uint32(1)
+
+// The price of TFT stored on the TFChain is expressed in mUSD per 1 TFT.
+// To convert this to USD, the formula is:
+// tft_price_units_usd = tft_price / 1000
+const mUSDToUSD = 1000
+
+// UnitFactor represents the smallest unit conversion factor for both USD and TFT
+// 1 USD = 10,000,000 unit-USD
+// 1 TFT = 10,000,000 unit-TFT (TFT's Planck)
+const UnitFactor = 1e7
 
 // Calculator struct for calculating the cost of resources
 type Calculator struct {
@@ -22,10 +33,6 @@ func NewCalculator(substrateConn subi.SubstrateExt, identity substrate.Identity)
 
 // CalculateCost calculates the cost in $ per month of the given resources without a discount
 func (c *Calculator) CalculateCost(cru, mru, hru, sru int64, publicIP, certified bool) (float64, error) {
-	tftPrice, err := c.substrateConn.GetTFTPrice()
-	if err != nil {
-		return 0, err
-	}
 
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
@@ -44,97 +51,103 @@ func (c *Calculator) CalculateCost(cru, mru, hru, sru int64, publicIP, certified
 	if certified {
 		certifiedFactor = 1.25
 	}
-
+	// cost per month in unit-USD
 	costPerMonth := (cu*float64(pricingPolicy.CU.Value) + su*float64(pricingPolicy.SU.Value) + ipv4*float64(pricingPolicy.IPU.Value)) * certifiedFactor * 24 * 30
-	return costPerMonth / float64(tftPrice) / 1000, nil
+	// convert to USD
+	return costPerMonth / UnitFactor, nil
 }
 
-// CalculateDiscount calculates the discount of a given cost
-func (c *Calculator) CalculateDiscount(cost float64) (dedicatedPrice, sharedPrice float64, err error) {
-	tftPrice, err := c.substrateConn.GetTFTPrice()
-	if err != nil {
-		return
-	}
-
+// CalculatePricesAfterDiscount calculates the prices after discount
+func (c *Calculator) CalculatePricesAfterDiscount(cost float64) (dedicatedPrice, sharedPrice float64, err error) {
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
 		return
 	}
 
-	// discount for shared Nodes
 	sharedPrice = cost
-
-	// discount for Dedicated Nodes
 	discount := float64(pricingPolicy.DedicatedNodesDiscount)
 	dedicatedPrice = cost - cost*(discount/100)
 
-	// discount for Twin Balance in TFT
 	accountBalance, err := c.substrateConn.GetBalance(c.identity)
 	if err != nil {
 		return
 	}
-	balance := float64(tftPrice) / 1000 * float64(accountBalance.Free.Int64()) * 10000000
 
-	discountPackages := map[string]map[string]float64{
-		"none": {
-			"duration": 0,
-			"discount": 0,
-		},
-		"default": {
-			"duration": 1.5,
-			"discount": 20,
-		},
-		"bronze": {
-			"duration": 3,
-			"discount": 30,
-		},
-		"silver": {
-			"duration": 6,
-			"discount": 40,
-		},
-		"gold": {
-			"duration": 18,
-			"discount": 60,
-		},
+	balanceTFT := float64(accountBalance.Free.Int64()) / UnitFactor
+
+	balanceUSD, err := c.TFTtoUSD(balanceTFT)
+	if err != nil {
+		return
 	}
 
-	// check which package will be used according to the balance
-	dedicatedPackage := "none"
-	sharedPackage := "none"
-	for pkg := range discountPackages {
-		if balance > dedicatedPrice*discountPackages[pkg]["duration"] {
-			dedicatedPackage = pkg
-		}
-		if balance > sharedPrice*discountPackages[pkg]["duration"] {
-			sharedPackage = pkg
-		}
-	}
+	sharedDiscount, dedicatedDiscount := getApplicableDiscount(balanceUSD, dedicatedPrice, sharedPrice)
 
-	dedicatedPrice = (dedicatedPrice - dedicatedPrice*(discountPackages[dedicatedPackage]["discount"]/100)) / 1e7
-	sharedPrice = (sharedPrice - sharedPrice*(discountPackages[sharedPackage]["discount"]/100)) / 1e7
+	dedicatedPrice = dedicatedPrice - dedicatedPrice*dedicatedDiscount
+	sharedPrice = sharedPrice - sharedPrice*sharedDiscount
 
 	return
 }
 
+func getApplicableDiscount(balance float64, dedicatedPrice float64, sharedPrice float64) (bestSharedDiscount, bestDedicatedDiscount float64) {
+	packages := []struct {
+		name     string
+		duration float64
+		discount float64
+	}{
+		{name: "none", duration: 0, discount: 0},
+		{name: "default", duration: 1.5, discount: 20},
+		{name: "bronze", duration: 3, discount: 30},
+		{name: "silver", duration: 6, discount: 40},
+		{name: "gold", duration: 18, discount: 60},
+	}
+
+	var bestSharedDiscountValue, bestDedicatedDiscountValue float64 = 0, 0
+
+	for _, pkg := range packages {
+		sharedThreshold := sharedPrice * pkg.duration
+		dedicatedThreshold := dedicatedPrice * pkg.duration
+
+		if balance > sharedThreshold {
+			bestSharedDiscountValue = pkg.discount
+		}
+
+		if balance > dedicatedThreshold {
+			bestDedicatedDiscountValue = pkg.discount
+		}
+	}
+
+	return bestSharedDiscountValue / 100, bestDedicatedDiscountValue / 100
+}
+
 func calculateSU(hru, sru int64) float64 {
-	return float64(hru/1200 + sru/200)
+	return float64(hru)/1200 + float64(sru)/200
 }
 
 func calculateCU(cru, mru int64) float64 {
-	MruUsed1 := float64(mru / 4)
-	CruUsed1 := float64(cru / 2)
+
+	MruUsed1 := float64(mru) / 4
+	CruUsed1 := float64(cru) / 2
 	cu1 := math.Max(MruUsed1, CruUsed1)
 
-	MruUsed2 := float64(mru / 8)
+	MruUsed2 := float64(mru) / 8
 	CruUsed2 := float64(cru)
 	cu2 := math.Max(MruUsed2, CruUsed2)
 
-	MruUsed3 := float64(mru / 2)
-	CruUsed3 := float64(cru / 4)
+	MruUsed3 := float64(mru) / 2
+	CruUsed3 := float64(cru) / 4
 	cu3 := math.Max(MruUsed3, CruUsed3)
 
 	cu := math.Min(cu1, cu2)
 	cu = math.Min(cu, cu3)
 
 	return cu
+}
+
+// TFTtoUSD converts TFT amount to USD based on the current price
+func (c *Calculator) TFTtoUSD(tft float64) (float64, error) {
+	tftPrice, err := c.substrateConn.GetTFTPrice()
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get TFT price")
+	}
+	return tft * (float64(tftPrice) / mUSDToUSD), nil
 }

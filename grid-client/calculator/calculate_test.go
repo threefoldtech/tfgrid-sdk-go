@@ -22,23 +22,23 @@ func TestCalculator(t *testing.T) {
 
 	calculator := NewCalculator(sub, identity)
 
-	sub.EXPECT().GetTFTPrice().Return(types.U32(1), nil).AnyTimes()
+	sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
 	sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{
 		ID: 1,
 		SU: substrate.Policy{
-			Value: 2,
+			Value: 50000,
 		},
 		CU: substrate.Policy{
-			Value: 2,
+			Value: 100000,
 		},
 		IPU: substrate.Policy{
-			Value: 2,
+			Value: 40000,
 		},
 	}, nil).AnyTimes()
 
 	cost, err := calculator.CalculateCost(8, 32, 0, 50, true, true)
 	assert.NoError(t, err)
-	assert.Equal(t, cost, 16.2)
+	assert.Equal(t, 76.725, cost)
 
 	sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 		Free: types.U128{
@@ -46,7 +46,7 @@ func TestCalculator(t *testing.T) {
 		},
 	}, nil)
 
-	dedicatedPrice, sharedPrice, err := calculator.CalculateDiscount(cost)
+	dedicatedPrice, sharedPrice, err := calculator.CalculatePricesAfterDiscount(cost)
 	assert.NoError(t, err)
 	assert.Equal(t, dedicatedPrice, sharedPrice)
 }
@@ -61,33 +61,148 @@ func TestSubstrateErrors(t *testing.T) {
 
 	calculator := NewCalculator(sub, identity)
 
-	t.Run("test tft price error", func(t *testing.T) {
-		sub.EXPECT().GetTFTPrice().Return(types.U32(1), errors.New("error")).AnyTimes()
-
-		_, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
-		assert.Error(t, err)
-
-		_, _, err = calculator.CalculateDiscount(200)
-		assert.Error(t, err)
-	})
-
 	t.Run("test tft pricing policy error", func(t *testing.T) {
-		sub.EXPECT().GetTFTPrice().Return(types.U32(1), nil).AnyTimes()
 		sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{}, errors.New("error")).AnyTimes()
 
 		_, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
 		assert.Error(t, err)
 
-		_, _, err = calculator.CalculateDiscount(200)
+		_, _, err = calculator.CalculatePricesAfterDiscount(200)
 		assert.Error(t, err)
 	})
 
 	t.Run("test tft balance error", func(t *testing.T) {
-		sub.EXPECT().GetTFTPrice().Return(types.U32(1), nil).AnyTimes()
 		sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{}, nil).AnyTimes()
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{}, errors.New("error")).AnyTimes()
 
-		_, _, err = calculator.CalculateDiscount(0)
+		_, _, err = calculator.CalculatePricesAfterDiscount(0)
+		assert.Error(t, err)
+	})
+}
+
+func TestGetApplicableDiscount(t *testing.T) {
+	testCases := []struct {
+		name                      string
+		balance                   float64
+		dedicatedPrice            float64
+		sharedPrice               float64
+		expectedDedicatedDiscount float64
+		expectedSharedDiscount    float64
+	}{
+		{
+			name:                      "No balance",
+			balance:                   0,
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0,
+			expectedSharedDiscount:    0,
+		},
+		{
+			name:                      "Insufficient balance for any package",
+			balance:                   50,
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0,
+			expectedSharedDiscount:    0,
+		},
+		{
+			name:                      "Balance enough for default package only for shared",
+			balance:                   130, // > 80 * 1.5 but < 100 * 1.5
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0,
+			expectedSharedDiscount:    0.2, // Default package discount 20%
+		},
+		{
+			name:                      "Balance enough for default package for both",
+			balance:                   160, // > 100 * 1.5 and > 80 * 1.5
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.2, // Default package discount 20%
+			expectedSharedDiscount:    0.2, // Default package discount 20%
+		},
+		{
+			name:                      "Balance enough for bronze package for shared, default for dedicated",
+			balance:                   250, // > 80 * 3 and < 100 * 1.5
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.2, // Default Package discount 20%
+			expectedSharedDiscount:    0.3, // Bronze package discount 30%
+		},
+		{
+			name:                      "Balance enough for bronze package for both",
+			balance:                   350, // > 100 * 3 and > 80 * 3
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.3, // Bronze package discount 30%
+			expectedSharedDiscount:    0.3, // Bronze package discount 30%
+		},
+		{
+			name:                      "Balance enough for silver package for shared, and bronze for dedicated",
+			balance:                   500, // > 80 * 6 but < 100 * 6
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.3, // Bronze package discount 30%
+			expectedSharedDiscount:    0.4, // Silver package discount 40%
+		},
+		{
+			name:                      "Balance enough for silver package for both",
+			balance:                   650, // > 100 * 6 and > 80 * 6
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.4,
+			expectedSharedDiscount:    0.4,
+		},
+		{
+			name:                      "Balance enough for gold package for shared, and Silver for dedicated",
+			balance:                   1500, // > 80 * 18 but < 100 * 18
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.4, // Silver package discount 40%
+			expectedSharedDiscount:    0.6, // Gold package discount 60%
+		},
+		{
+			name:                      "Balance enough for gold package for both",
+			balance:                   2000, // > 100 * 18 and > 80 * 18
+			dedicatedPrice:            100,
+			sharedPrice:               80,
+			expectedDedicatedDiscount: 0.6,
+			expectedSharedDiscount:    0.6,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			sharedDiscount, dedicatedDiscount := getApplicableDiscount(tc.balance, tc.dedicatedPrice, tc.sharedPrice)
+
+			assert.Equal(t, tc.expectedDedicatedDiscount, dedicatedDiscount, "Dedicated discount percentage mismatch")
+			assert.Equal(t, tc.expectedSharedDiscount, sharedDiscount, "Shared discount percentage mismatch")
+		})
+	}
+}
+
+func TestTFTtoUSD(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sub := mocks.NewMockSubstrateExt(ctrl)
+	identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+	assert.NoError(t, err)
+
+	calculator := NewCalculator(sub, identity)
+
+	t.Run("success case", func(t *testing.T) {
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+
+		result, err := calculator.TFTtoUSD(10)
+		assert.NoError(t, err)
+		assert.Equal(t, 0.05, result)
+	})
+
+	t.Run("error case", func(t *testing.T) {
+		sub.EXPECT().GetTFTPrice().Return(types.U32(0), errors.New("failed to get TFT price"))
+
+		_, err := calculator.TFTtoUSD(100)
 		assert.Error(t, err)
 	})
 }
