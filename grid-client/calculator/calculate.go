@@ -230,7 +230,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 
 // GetUnbilledAmountInTFT returns the amount unbilled for a given contract in TFT
 func (c *Calculator) GetUnbilledAmountInTFT(contractID uint64) (*big.Float, error) {
-	billingInfo, err := c.substrateConn.GetContractBillingInfoByID(contractID)
+	billingInfo, err := c.substrateConn.GetContractBillingInfo(contractID)
 	if err != nil && !errors.Is(err, substrate.ErrNotFound) {
 		return nil, err
 	}

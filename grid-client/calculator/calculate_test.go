@@ -278,7 +278,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 	contractID := uint64(42)
 
 	t.Run("Amount is 5 USD in Unit-USD, should return 1000 TFT", func(t *testing.T) {
-		sub.EXPECT().GetContractBillingInfoByID(contractID).Return(substrate.ContractBillingInfo{
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{
 			AmountUnbilled: types.U64(1e7 * 5),
 		}, nil)
 
@@ -292,14 +292,14 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 	})
 
 	t.Run("error in GetContractBillingInfoByID", func(t *testing.T) {
-		sub.EXPECT().GetContractBillingInfoByID(contractID).Return(substrate.ContractBillingInfo{}, errors.New("failed to get billing info"))
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{}, errors.New("failed to get billing info"))
 
 		_, err := calculator.GetUnbilledAmountInTFT(contractID)
 		assert.Error(t, err)
 	})
 
 	t.Run("error in USDtoTFT", func(t *testing.T) {
-		sub.EXPECT().GetContractBillingInfoByID(contractID).Return(substrate.ContractBillingInfo{
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{
 			AmountUnbilled: types.U64(1000),
 		}, nil)
 

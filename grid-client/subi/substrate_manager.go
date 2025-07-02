@@ -64,7 +64,7 @@ type SubstrateExt interface {
 	BatchAllCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, error)
 	BatchCancelContract(identity substrate.Identity, contracts []uint64) error
 	GetContractPaymentState(id uint64) (substrate.ContractPaymentState, error)
-	GetContractBillingInfoByID(id uint64) (substrate.ContractBillingInfo, error)
+	GetContractBillingInfo(id uint64) (substrate.ContractBillingInfo, error)
 	GetNodeContractResources(id uint64) (substrate.NodeContractResources, error)
 	GetNodeRentContract(id uint32) (uint64, error)
 	GetDedicatedNodePrice(nodeID uint32) (uint64, error)
@@ -302,8 +302,8 @@ func (s *SubstrateImpl) GetContractPaymentState(id uint64) (substrate.ContractPa
 }
 
 // Get contract billing info
-func (s *SubstrateImpl) GetContractBillingInfoByID(id uint64) (substrate.ContractBillingInfo, error) {
-	return s.Substrate.GetContractBillingInfoByID(id)
+func (s *SubstrateImpl) GetContractBillingInfo(id uint64) (substrate.ContractBillingInfo, error) {
+	return s.Substrate.GetContractBillingInfo(id)
 }
 
 // Get node contract resources by contract Id

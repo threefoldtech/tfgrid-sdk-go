@@ -280,19 +280,19 @@ func (mr *MockSubstrateExtMockRecorder) GetContract(id interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContract", reflect.TypeOf((*MockSubstrateExt)(nil).GetContract), id)
 }
 
-// GetContractBillingInfoByID mocks base method.
-func (m *MockSubstrateExt) GetContractBillingInfoByID(id uint64) (substrate.ContractBillingInfo, error) {
+// GetContractBillingInfo mocks base method.
+func (m *MockSubstrateExt) GetContractBillingInfo(id uint64) (substrate.ContractBillingInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetContractBillingInfoByID", id)
+	ret := m.ctrl.Call(m, "GetContractBillingInfo", id)
 	ret0, _ := ret[0].(substrate.ContractBillingInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetContractBillingInfoByID indicates an expected call of GetContractBillingInfoByID.
-func (mr *MockSubstrateExtMockRecorder) GetContractBillingInfoByID(id interface{}) *gomock.Call {
+// GetContractBillingInfo indicates an expected call of GetContractBillingInfo.
+func (mr *MockSubstrateExtMockRecorder) GetContractBillingInfo(id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractBillingInfoByID", reflect.TypeOf((*MockSubstrateExt)(nil).GetContractBillingInfoByID), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractBillingInfo", reflect.TypeOf((*MockSubstrateExt)(nil).GetContractBillingInfo), id)
 }
 
 // GetContractIDByNameRegistration mocks base method.
