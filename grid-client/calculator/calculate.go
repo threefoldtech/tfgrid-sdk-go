@@ -164,6 +164,17 @@ func (c *Calculator) calculateIPV4() (float64, error) {
 	return float64(monthlyCost) / UnitFactor, nil
 }
 
+// Calculates the overdue amount in TFT.
+//
+// The overdue amount basically is the sum of three parts:
+//
+//	1- Total over draft: is the sum of additional overdraft and standard overdraft.
+//	2- Unbilled NU: is the unbilled amount of network usage.
+//	3- The estimated cost of the contract for the total period: this part is dependant on the contract type and if the contract is on rented node or not.
+//
+// If the contract is rent contract, will add both of ipv4 cost and the total overdue of all associated contracts.
+// The total period is the time since the last billing added to Allowance period.
+// The resulting overdue amount represents the amount that needs to be addressed.
 func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration) (*big.Float, error) {
 	contract, err := c.substrateConn.GetContract(id)
 	if err != nil {
@@ -217,10 +228,10 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 	totalOverDraftBigFloat.Add(periodCostTFT, totalOverDraftBigFloat)
 
 	if contract.ContractType.IsRentContract {
-		// list all contracts on a node
-		totalContractsCost, err := c.calculateTotalContractsCostOnNode(uint32(contract.ContractType.RentContract.Node), allowance)
+		// add all contracts overdue on a node
+		totalContractsCost, err := c.calculateTotalContractsOverdueOnNode(uint32(contract.ContractType.RentContract.Node), allowance)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to calculate total contracts cost on node")
+			return nil, errors.Wrap(err, "failed to calculate total contracts overdue on node")
 		}
 		totalOverDraftBigFloat.Add(totalContractsCost, totalOverDraftBigFloat)
 	}
@@ -246,8 +257,8 @@ func (c *Calculator) GetUnbilledAmountInTFT(contractID uint64) (*big.Float, erro
 	return c.USDtoTFT(unbilledUSD)
 }
 
-// CalculateTotalContractsCostOnNode calculates the total cost of contracts on a node in USD
-func (c *Calculator) calculateTotalContractsCostOnNode(nodeID uint32, allowance time.Duration) (*big.Float, error) {
+// Calculates the total overdue of contracts on a node in TFT
+func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowance time.Duration) (*big.Float, error) {
 	contracts, err := c.substrateConn.GetNodeContracts(nodeID)
 	if err != nil {
 		return nil, err
@@ -266,11 +277,13 @@ func (c *Calculator) calculateTotalContractsCostOnNode(nodeID uint32, allowance 
 	return totalCost, nil
 }
 
-// calculatePeriodCostTFT calculates the cost of a contract since last updated in seconds with the provided allowance time
+// Calculates the cost with a period in TFT.
+//
+// The period is the time since last updated in seconds with the provided allowance time.
 func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contract *substrate.Contract, allowance time.Duration) (*big.Float, error) {
-	/**Calculate the elapsed seconds since last billing*/
+	// Calculate the elapsed seconds since last billing
 	elapsedSeconds := time.Duration(time.Since(lastUpdatedSeconds)).Seconds()
-	// time since the last billing with allowance time of **one hour**
+	// Time since the last billing with allowance time of **one hour**
 	totalPeriodSeconds := elapsedSeconds + allowance.Seconds()
 
 	contractMonthlyCostUSD, err := c.CalculateContractCost(contract)
@@ -336,6 +349,10 @@ func (c *Calculator) CalculateUniqueNameCost() (float64, error) {
 }
 
 // Calculates the cost of a node contract per month in USD.
+//
+// There are two cases for node contract cost:
+//  1. Node contract on shared node: the cost of the node (shared)
+//  2. Node contract on rented node: the cost of the IPV4 only if the contact includes ipv4, else it will return zero.
 func (c *Calculator) CalculateNodeContractCost(contract *substrate.Contract, node *substrate.Node, isOnRentedNode bool) (float64, error) {
 	if !contract.ContractType.IsNodeContract {
 		return 0, fmt.Errorf("contract id %d is not a node contract", contract.ContractID)
@@ -344,10 +361,7 @@ func (c *Calculator) CalculateNodeContractCost(contract *substrate.Contract, nod
 
 	isCertified := node.Certification.IsCertified
 
-	/** Node contract on rented node
-	 * If the node contract has IPV4 will return the price of the ipv4 per month
-	 * If not there is no cost, will return zero
-	 */
+	// Node contract on rented node
 	if isOnRentedNode {
 		if publicIPsCount > 0 {
 			cost, err := c.calculateIPV4()
@@ -367,6 +381,7 @@ func (c *Calculator) CalculateNodeContractCost(contract *substrate.Contract, nod
 	}
 
 	// Normal node contract on sharedNode
+
 	resources, err := c.substrateConn.GetNodeContractResources(uint64(contract.ContractID))
 	if err != nil {
 		return 0, err
@@ -388,6 +403,8 @@ func (c *Calculator) CalculateNodeContractCost(contract *substrate.Contract, nod
 }
 
 // Calculates the cost of a rent contract per month in USD.
+//
+// Rent contract cost is the cost of the node (dedicated discount applied) + the node extra fee
 func (c *Calculator) CalculateRentCost(contract *substrate.Contract, node substrate.Node) (float64, error) {
 
 	CRU := node.Resources.CRU
@@ -428,6 +445,7 @@ func getNodeID(contract *substrate.Contract) (uint32, error) {
 	return 0, fmt.Errorf("contract id %d is not a node contract nor rent contract", contract.ContractID)
 }
 
+// convertBytesToGB converts bytes to gigabytes by dividing by 1024^3
 func convertBytesToGB(bytes uint64) int64 {
 	return int64(bytes / 1024 / 1024 / 1024)
 }
