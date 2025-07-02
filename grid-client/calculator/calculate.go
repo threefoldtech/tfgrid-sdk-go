@@ -74,6 +74,9 @@ func (c *Calculator) CalculatePricesAfterDiscount(cost float64) (dedicatedPrice,
 	discount := float64(pricingPolicy.DedicatedNodesDiscount)
 	dedicatedPrice = cost - cost*(discount/100)
 
+	if c.identity == nil {
+		return
+	}
 	accountBalance, err := c.substrateConn.GetBalance(c.identity)
 	if err != nil {
 		return
