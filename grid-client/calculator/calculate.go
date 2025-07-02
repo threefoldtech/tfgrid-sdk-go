@@ -218,7 +218,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 
 	if contract.ContractType.IsRentContract {
 		// list all contracts on a node
-		totalContractsCost, err := c.CalculateTotalContractsCostOnNode(uint32(contract.ContractType.NodeContract.Node))
+		totalContractsCost, err := c.CalculateTotalContractsCostOnNode(uint32(contract.ContractType.RentContract.Node))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to calculate total contracts cost on node")
 		}
