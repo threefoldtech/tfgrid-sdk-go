@@ -2,6 +2,8 @@
 package workloads
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -11,8 +13,17 @@ import (
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+)
+
+type NodeType int
+
+const (
+	Worker NodeType = iota // 0
+	Master                 // 1
+	Leader                 // 2
 )
 
 // old: https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist
@@ -26,7 +37,7 @@ type K8sNode struct {
 
 // K8sCluster struct for k8s cluster
 type K8sCluster struct {
-	Master      *K8sNode
+	Masters     []K8sNode
 	Workers     []K8sNode
 	Token       string
 	NetworkName string
@@ -103,19 +114,25 @@ func NewK8sNodeFromWorkload(wl gridtypes.Workload, nodeID uint32, diskSize uint6
 }
 
 // MasterZosWorkload generates a k8s master workload from a k8s node
-func (k *K8sNode) MasterZosWorkload(cluster *K8sCluster) (K8sWorkloads []gridtypes.Workload) {
-	return k.zosWorkload(cluster, false)
+func (k *K8sNode) MasterZosWorkload(cluster *K8sCluster, nodeType NodeType) (K8sWorkloads []gridtypes.Workload) {
+	return k.zosWorkload(cluster, nodeType)
 }
 
 // WorkerZosWorkload generates a k8s worker workload from a k8s node
 func (k *K8sNode) WorkerZosWorkload(cluster *K8sCluster) (K8sWorkloads []gridtypes.Workload) {
-	return k.zosWorkload(cluster, true)
+	return k.zosWorkload(cluster, Worker)
 }
 
 // ZosWorkloads generates k8s workloads from a k8s cluster
 func (k *K8sCluster) ZosWorkloads() ([]gridtypes.Workload, error) {
 	k8sWorkloads := []gridtypes.Workload{}
-	k8sWorkloads = append(k8sWorkloads, k.Master.MasterZosWorkload(k)...)
+	for idx, master := range k.Masters {
+		if idx == 0 {
+			k8sWorkloads = append(k8sWorkloads, master.MasterZosWorkload(k, Leader)...)
+			continue
+		}
+		k8sWorkloads = append(k8sWorkloads, master.MasterZosWorkload(k, Master)...)
+	}
 
 	for _, worker := range k.Workers {
 		k8sWorkloads = append(k8sWorkloads, worker.WorkerZosWorkload(k)...)
@@ -127,12 +144,22 @@ func (k *K8sCluster) ZosWorkloads() ([]gridtypes.Workload, error) {
 // GenerateMetadata generates deployment metadata
 func (k *K8sCluster) GenerateMetadata() (string, error) {
 	if len(k.SolutionType) == 0 {
-		k.SolutionType = fmt.Sprintf("kubernetes/%s", k.Master.Name)
+		if len(k.Masters) > 0 {
+			// TODO: a LEADER flag?
+			k.SolutionType = fmt.Sprintf("kubernetes/%s", k.Masters[0].Name)
+		} else {
+			k.SolutionType = "kubernetes/cluster"
+		}
+	}
+
+	clusterName := "cluster"
+	if len(k.Masters) > 0 {
+		clusterName = k.Masters[0].Name
 	}
 
 	deploymentData := DeploymentData{
 		Version:     int(Version3),
-		Name:        k.Master.Name,
+		Name:        clusterName,
 		Type:        "kubernetes",
 		ProjectName: k.SolutionType,
 	}
@@ -146,12 +173,21 @@ func (k *K8sCluster) GenerateMetadata() (string, error) {
 }
 
 func (k *K8sCluster) Validate() error {
-	if err := k.Master.Validate(); err != nil {
-		return errors.Wrap(err, "master is invalid")
+	if len(k.Masters) == 0 {
+		return errors.New("at least one master node is required")
 	}
 
 	names := make(map[string]bool)
-	names[k.Master.Name] = true
+	for _, master := range k.Masters {
+		if _, ok := names[master.Name]; ok {
+			return errors.Errorf("k8s masters must have unique names: %s occurred more than once", master.Name)
+		}
+		names[master.Name] = true
+
+		if err := master.Validate(); err != nil {
+			return errors.Wrapf(err, "master %s is invalid", master.Name)
+		}
+	}
 
 	for _, w := range k.Workers {
 		if _, ok := names[w.Name]; ok {
@@ -198,10 +234,12 @@ func (k *K8sCluster) ValidateToken() error {
 	return nil
 }
 
-// ValidateIPranges validates NodesIPRange of master && workers of k8s cluster
+// ValidateIPranges validates NodesIPRange of masters && workers of k8s cluster
 func (k *K8sCluster) ValidateIPranges() error {
-	if _, ok := k.NodesIPRange[k.Master.NodeID]; !ok {
-		return errors.Errorf("the master node %d does not exist in the network's ip ranges", k.Master.NodeID)
+	for _, master := range k.Masters {
+		if _, ok := k.NodesIPRange[master.NodeID]; !ok {
+			return errors.Errorf("the master node %d does not exist in the network's ip ranges", master.NodeID)
+		}
 	}
 
 	for _, w := range k.Workers {
@@ -231,13 +269,18 @@ func (k *K8sCluster) InvalidateBrokenAttributes(sub subi.SubstrateExt) error {
 		}
 
 	}
-	if _, ok := validNodes[k.Master.NodeID]; !ok {
-		k.Master = &K8sNode{}
+	// Remove invalid masters
+	validMasters := []K8sNode{}
+	for _, master := range k.Masters {
+		if _, ok := validNodes[master.NodeID]; ok {
+			validMasters = append(validMasters, master)
+		}
 	}
+	k.Masters = validMasters
 	return nil
 }
 
-func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads []gridtypes.Workload) {
+func (k *K8sNode) zosWorkload(cluster *K8sCluster, nodeType NodeType) (K8sWorkloads []gridtypes.Workload) {
 	diskName := fmt.Sprintf("%sdisk", k.Name)
 	diskWorkload := gridtypes.Workload{
 		Name:        gridtypes.Name(diskName),
@@ -255,18 +298,7 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 		publicIPName = fmt.Sprintf("%sip", k.Name)
 		K8sWorkloads = append(K8sWorkloads, ConstructK8sPublicIPWorkload(publicIPName, k.PublicIP, k.PublicIP6))
 	}
-	envVars := map[string]string{
-		"SSH_KEY":           cluster.SSHKey,
-		"K3S_TOKEN":         cluster.Token,
-		"K3S_DATA_DIR":      "/mydisk",
-		"K3S_FLANNEL_IFACE": "eth0",
-		"K3S_NODE_NAME":     k.Name,
-		"K3S_URL":           "",
-	}
-	if isWorker {
-		// K3S_URL marks where to find the master node
-		envVars["K3S_URL"] = fmt.Sprintf("https://%s:6443", cluster.Master.IP)
-	}
+
 	var myceliumIP *zos.MyceliumIP
 	if len(k.MyceliumIPSeed) != 0 {
 		myceliumIP = &zos.MyceliumIP{
@@ -274,6 +306,34 @@ func (k *K8sNode) zosWorkload(cluster *K8sCluster, isWorker bool) (K8sWorkloads 
 			Seed:    k.MyceliumIPSeed,
 		}
 	}
+
+	seed, err := RandomSeed()
+	if err != nil {
+		seed = []byte{} // fallback to empty seed if random generation fails
+	}
+
+	envVars := map[string]string{
+		"SSH_KEY":           cluster.SSHKey,
+		"K3S_TOKEN":         cluster.Token,
+		"K3S_DATA_DIR":      "/mydisk",
+		"K3S_FLANNEL_IFACE": "eth0",
+		"K3S_NODE_NAME":     k.Name,
+
+		// TODO: remove this when we have a better way to handle mycelium seed
+		"NET_SEED":   hex.EncodeToString(seed), // for master/worker nodes
+		"DUAL_STACK": "true",                   // for master/worker nodes
+		"MASTER":     "false",                  // for master nodes
+		"HA":         "false",                  // mandatory for leader, optional for masters
+		"K3S_URL":    "",                       // will be set if not leader
+	}
+	if nodeType == Master || nodeType == Leader {
+		envVars["MASTER"] = "true"
+		envVars["HA"] = "true"
+	}
+	if nodeType != Leader {
+		envVars["K3S_URL"] = fmt.Sprintf("https://%s:6443", cluster.Masters[0].IP)
+	}
+
 	workload := gridtypes.Workload{
 		Version: 0,
 		Name:    gridtypes.Name(k.Name),
@@ -318,4 +378,10 @@ func ConstructK8sPublicIPWorkload(workloadName string, ipv4 bool, ipv6 bool) gri
 			V6: ipv6,
 		}),
 	}
+}
+
+func RandomSeed() ([]byte, error) {
+	key := make([]byte, zosTypes.MyceliumIPSeedLen)
+	_, err := rand.Read(key)
+	return key, err
 }

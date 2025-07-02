@@ -51,7 +51,11 @@ func (d *K8sDeployer) Validate(ctx context.Context, k8sCluster *workloads.K8sClu
 
 	// validate cluster nodes
 	var nodes []uint32
-	nodes = append(nodes, k8sCluster.Master.NodeID)
+	for _, master := range k8sCluster.Masters {
+		if !workloads.Contains(nodes, master.NodeID) {
+			nodes = append(nodes, master.NodeID)
+		}
+	}
 	for _, worker := range k8sCluster.Workers {
 		if !workloads.Contains(nodes, worker.NodeID) {
 			nodes = append(nodes, worker.NodeID)
@@ -69,9 +73,17 @@ func (d *K8sDeployer) generateVersionlessDeployments(k8sCluster *workloads.K8sCl
 	deployments := make(map[uint32]zosTypes.Deployment)
 	nodeWorkloads := make(map[uint32][]zosTypes.Workload)
 
-	masterWorkloads := k8sCluster.Master.MasterZosWorkload(k8sCluster)
-	for _, m := range masterWorkloads {
-		nodeWorkloads[k8sCluster.Master.NodeID] = append(nodeWorkloads[k8sCluster.Master.NodeID], zosTypes.NewWorkloadFromZosWorkload(m))
+	// Generate workloads for all masters
+	for idx, master := range k8sCluster.Masters {
+		masterWorkloads := []gridtypes.Workload{}
+		if idx == 0 {
+			masterWorkloads = master.MasterZosWorkload(k8sCluster, workloads.Leader)
+		} else {
+			masterWorkloads = master.MasterZosWorkload(k8sCluster, workloads.Master)
+		}
+		for _, m := range masterWorkloads {
+			nodeWorkloads[master.NodeID] = append(nodeWorkloads[master.NodeID], zosTypes.NewWorkloadFromZosWorkload(m))
+		}
 	}
 	for _, w := range k8sCluster.Workers {
 		workerWorkloads := w.WorkerZosWorkload(k8sCluster)
@@ -84,7 +96,7 @@ func (d *K8sDeployer) generateVersionlessDeployments(k8sCluster *workloads.K8sCl
 		dl := workloads.NewGridDeployment(d.tfPluginClient.TwinID, 0, ws)
 		dl.Metadata, err = k8sCluster.GenerateMetadata()
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to generate deployment %s metadata", k8sCluster.Master.Name)
+			return nil, errors.Wrap(err, "failed to generate deployment metadata")
 		}
 
 		deployments[node] = dl
@@ -115,16 +127,22 @@ func (d *K8sDeployer) Deploy(ctx context.Context, k8sCluster *workloads.K8sClust
 	}
 
 	newDeploymentsSolutionProvider := make(map[uint32]*uint64)
-	newDeploymentsSolutionProvider[k8sCluster.Master.NodeID] = nil
+	for _, master := range k8sCluster.Masters {
+		newDeploymentsSolutionProvider[master.NodeID] = nil
+	}
 
 	k8sCluster.NodeDeploymentID, err = d.deployer.Deploy(ctx, k8sCluster.NodeDeploymentID, newDeployments, newDeploymentsSolutionProvider)
 
 	// update deployments state
 	// error is not returned immediately before updating state because of untracked failed deployments
-	if contractID, ok := k8sCluster.NodeDeploymentID[k8sCluster.Master.NodeID]; ok && contractID != 0 {
-		d.tfPluginClient.State.StoreContractIDs(k8sCluster.Master.NodeID, contractID)
-		for _, w := range k8sCluster.Workers {
-			d.tfPluginClient.State.StoreContractIDs(w.NodeID, k8sCluster.NodeDeploymentID[w.NodeID])
+	for _, master := range k8sCluster.Masters {
+		if contractID, ok := k8sCluster.NodeDeploymentID[master.NodeID]; ok && contractID != 0 {
+			d.tfPluginClient.State.StoreContractIDs(master.NodeID, contractID)
+		}
+	}
+	for _, w := range k8sCluster.Workers {
+		if contractID, ok := k8sCluster.NodeDeploymentID[w.NodeID]; ok && contractID != 0 {
+			d.tfPluginClient.State.StoreContractIDs(w.NodeID, contractID)
 		}
 	}
 
@@ -175,7 +193,12 @@ func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.
 	// error is not returned immediately before updating state because of untracked failed deployments
 	for _, k8sCluster := range k8sClusters {
 		if err := d.updateStateFromDeployments(k8sCluster, newDls); err != nil {
-			return d.tfPluginClient.sentry.error(errors.Wrapf(err, "failed to update cluster with master name '%s' state", k8sCluster.Master.Name))
+			// TODO: add name for cluster, or pick leader
+			clusterName := "unknown"
+			if len(k8sCluster.Masters) > 0 {
+				clusterName = k8sCluster.Masters[0].Name
+			}
+			return d.tfPluginClient.sentry.error(errors.Wrapf(err, "failed to update cluster '%s' state", clusterName))
 		}
 	}
 
@@ -185,14 +208,16 @@ func (d *K8sDeployer) BatchDeploy(ctx context.Context, k8sClusters []*workloads.
 // Cancel cancels a k8s cluster deployment
 func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sCluster) (err error) {
 	for nodeID, contractID := range k8sCluster.NodeDeploymentID {
-		if k8sCluster.Master.NodeID == nodeID {
-			err = d.deployer.Cancel(ctx, contractID)
-			if err != nil {
-				return d.tfPluginClient.sentry.error(errors.Wrapf(err, "could not cancel master %s, contract %d", k8sCluster.Master.Name, contractID))
+		for _, master := range k8sCluster.Masters {
+			if master.NodeID == nodeID {
+				err = d.deployer.Cancel(ctx, contractID)
+				if err != nil {
+					return d.tfPluginClient.sentry.error(errors.Wrapf(err, "could not cancel master %s, contract %d", master.Name, contractID))
+
+				}
+				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
+				delete(k8sCluster.NodeDeploymentID, nodeID)
 			}
-			d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
-			delete(k8sCluster.NodeDeploymentID, nodeID)
-			continue
 		}
 		for _, worker := range k8sCluster.Workers {
 			if worker.NodeID == nodeID {
@@ -202,7 +227,7 @@ func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sClust
 				}
 				d.tfPluginClient.State.CurrentNodeDeployments[nodeID] = workloads.Delete(d.tfPluginClient.State.CurrentNodeDeployments[nodeID], contractID)
 				delete(k8sCluster.NodeDeploymentID, nodeID)
-				break
+				// break // TODO: multiple k8s nodes on same grid node?
 			}
 		}
 	}
@@ -211,7 +236,10 @@ func (d *K8sDeployer) Cancel(ctx context.Context, k8sCluster *workloads.K8sClust
 }
 
 func (d *K8sDeployer) updateStateFromDeployments(k8sCluster *workloads.K8sCluster, newDl map[uint32][]zosTypes.Deployment) error {
-	k8sNodes := []uint32{k8sCluster.Master.NodeID}
+	var k8sNodes []uint32
+	for _, master := range k8sCluster.Masters {
+		k8sNodes = append(k8sNodes, master.NodeID)
+	}
 	for _, w := range k8sCluster.Workers {
 		k8sNodes = append(k8sNodes, w.NodeID)
 	}
@@ -225,19 +253,30 @@ func (d *K8sDeployer) updateStateFromDeployments(k8sCluster *workloads.K8sCluste
 				return errors.Wrapf(err, "could not get deployment %d data", newDl.ContractID)
 			}
 
-			if dlData.Name == k8sCluster.Master.Name {
-				k8sCluster.NodeDeploymentID[k8sCluster.Master.NodeID] = newDl.ContractID
+			// TODO: indecator for a leader, or save all masters nodeids
+			for _, master := range k8sCluster.Masters {
+				if dlData.Name == master.Name {
+					k8sCluster.NodeDeploymentID[master.NodeID] = newDl.ContractID
+					break
+				}
 			}
 		}
 	}
 
-	if contractID, ok := k8sCluster.NodeDeploymentID[k8sCluster.Master.NodeID]; ok && contractID != 0 {
-		if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.NodeID], contractID) {
-			d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[k8sCluster.Master.NodeID], contractID)
+	// Update current node deployments for all masters
+	for _, master := range k8sCluster.Masters {
+		if contractID, ok := k8sCluster.NodeDeploymentID[master.NodeID]; ok && contractID != 0 {
+			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[master.NodeID], contractID) {
+				d.tfPluginClient.State.CurrentNodeDeployments[master.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[master.NodeID], contractID)
+			}
 		}
-		for _, w := range k8sCluster.Workers {
-			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[w.NodeID], k8sCluster.NodeDeploymentID[w.NodeID]) {
-				d.tfPluginClient.State.CurrentNodeDeployments[w.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[w.NodeID], k8sCluster.NodeDeploymentID[w.NodeID])
+	}
+
+	// Update current node deployments for all workers
+	for _, w := range k8sCluster.Workers {
+		if contractID, ok := k8sCluster.NodeDeploymentID[w.NodeID]; ok && contractID != 0 {
+			if !workloads.Contains(d.tfPluginClient.State.CurrentNodeDeployments[w.NodeID], contractID) {
+				d.tfPluginClient.State.CurrentNodeDeployments[w.NodeID] = append(d.tfPluginClient.State.CurrentNodeDeployments[w.NodeID], contractID)
 			}
 		}
 	}
@@ -308,7 +347,8 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 
 			case zosTypes.PublicIPType:
 				ipResult := zos.PublicIPResult{}
-				if err := json.Unmarshal(w.Result.Data, &d); err != nil {
+				// TODO: right?
+				if err := json.Unmarshal(w.Result.Data, &ipResult); err != nil {
 					return d.tfPluginClient.sentry.error(errors.Wrap(err, "failed to load public ip data"))
 				}
 				publicIPs[w.Name] = ipResult.IP.String()
@@ -334,22 +374,28 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 			}
 		}
 	}
-	// update master
-	masterNodeID, ok := workloadNodeID[k8sCluster.Master.Name]
-	if !ok {
-		k8sCluster.Master = nil
-	} else {
-		masterWorkload := workloadObj[k8sCluster.Master.Name]
-		masterIP := workloadComputedIP[k8sCluster.Master.Name]
-		masterIP6 := workloadComputedIP6[k8sCluster.Master.Name]
-		masterDiskSize := workloadDiskSize[k8sCluster.Master.Name]
+	// update masters
+	updatedMasters := make([]workloads.K8sNode, 0)
+	for _, master := range k8sCluster.Masters {
+		masterNodeID, ok := workloadNodeID[master.Name]
+		if !ok {
+			// master doesn't exist in any deployment, skip it
+			continue
+		}
+		delete(workloadNodeID, master.Name)
+		masterWorkload := workloadObj[master.Name]
+		masterIP := workloadComputedIP[master.Name]
+		masterIP6 := workloadComputedIP6[master.Name]
+		masterDiskSize := workloadDiskSize[master.Name]
 
 		m, err := workloads.NewK8sNodeFromWorkload(masterWorkload, masterNodeID, masterDiskSize, masterIP, masterIP6)
 		if err != nil {
 			return d.tfPluginClient.sentry.error(errors.Wrap(err, "failed to get master node from workload"))
 		}
-		k8sCluster.Master = &m
+		updatedMasters = append(updatedMasters, m)
 	}
+	k8sCluster.Masters = updatedMasters
+
 	// update workers
 	workers := make([]workloads.K8sNode, 0)
 	for _, w := range k8sCluster.Workers {
@@ -370,11 +416,19 @@ func (d *K8sDeployer) UpdateFromRemote(ctx context.Context, k8sCluster *workload
 		}
 		workers = append(workers, w)
 	}
-	// add missing workers (in case of failed deletions)
+	// add missing workers (in case of failed deletions) TODO: why?
 	for name, workerNodeID := range workloadNodeID {
-		if name == k8sCluster.Master.Name {
+		isMaster := false
+		for _, master := range k8sCluster.Masters {
+			if name == master.Name {
+				isMaster = true
+				break
+			}
+		}
+		if isMaster {
 			continue
 		}
+
 		workerWorkload := workloadObj[name]
 		workerIP := workloadComputedIP[name]
 		workerIP6 := workloadComputedIP6[name]
@@ -417,10 +471,12 @@ func (d *K8sDeployer) removeDeletedContracts(k8sCluster *workloads.K8sCluster) e
 func (d *K8sDeployer) getK8sUsedIPs(k8s *workloads.K8sCluster) map[uint32][]byte {
 	usedIPs := make(map[uint32][]byte)
 
-	if k8s.Master.IP != "" {
-		ip := net.ParseIP(k8s.Master.IP).To4()
-		if ip != nil {
-			usedIPs[k8s.Master.NodeID] = append(usedIPs[k8s.Master.NodeID], ip[3])
+	for _, master := range k8s.Masters {
+		if master.IP != "" {
+			ip := net.ParseIP(master.IP).To4()
+			if ip != nil {
+				usedIPs[master.NodeID] = append(usedIPs[master.NodeID], ip[3])
+			}
 		}
 	}
 
@@ -456,22 +512,28 @@ func (d *K8sDeployer) getK8sFreeIP(ipRange gridtypes.IPNet, nodeID uint32, k8s *
 }
 
 func (d *K8sDeployer) assignNodesIPs(k8sCluster *workloads.K8sCluster) error {
-	masterNodeRange := k8sCluster.NodesIPRange[k8sCluster.Master.NodeID]
-	if k8sCluster.Master.IP == "" || !masterNodeRange.Contains(net.ParseIP(k8sCluster.Master.IP)) {
-		ip, err := d.getK8sFreeIP(masterNodeRange, k8sCluster.Master.NodeID, k8sCluster)
-		if err != nil {
-			return errors.Wrap(err, "failed to find free ip for master")
+	for idx, master := range k8sCluster.Masters {
+		masterNodeRange := k8sCluster.NodesIPRange[master.NodeID]
+		if master.IP != "" || masterNodeRange.Contains(net.ParseIP(master.IP)) {
+			continue
 		}
-		k8sCluster.Master.IP = ip
+
+		ip, err := d.getK8sFreeIP(masterNodeRange, master.NodeID, k8sCluster)
+		if err != nil {
+			return errors.Wrapf(err, "failed to find free ip for master %s", master.Name)
+		}
+		k8sCluster.Masters[idx].IP = ip
+
 	}
 	for idx, w := range k8sCluster.Workers {
 		workerNodeRange := k8sCluster.NodesIPRange[w.NodeID]
 		if w.IP != "" && workerNodeRange.Contains(net.ParseIP(w.IP)) {
 			continue
 		}
+
 		ip, err := d.getK8sFreeIP(workerNodeRange, w.NodeID, k8sCluster)
 		if err != nil {
-			return errors.Wrap(err, "failed to find free ip for worker")
+			return errors.Wrapf(err, "failed to find free ip for worker %s", w.Name)
 		}
 		k8sCluster.Workers[idx].IP = ip
 	}
@@ -479,19 +541,22 @@ func (d *K8sDeployer) assignNodesIPs(k8sCluster *workloads.K8sCluster) error {
 }
 
 func assignNodesFlistsAndEntryPoints(k *workloads.K8sCluster) {
-	if k.Flist == "" {
-		k.Flist = k.Master.Flist
+	// TODO: use Leader indecator or require cluster flist
+	if k.Flist == "" && len(k.Masters) > 0 {
+		k.Flist = k.Masters[0].Flist
 	}
 	if k.Entrypoint == "" {
-		if k.Master.Entrypoint != "" {
-			k.Entrypoint = k.Master.Entrypoint
+		if len(k.Masters) > 0 && k.Masters[0].Entrypoint != "" {
+			k.Entrypoint = k.Masters[0].Entrypoint
 		} else {
 			k.Entrypoint = "/sbin/zinit init" // set default value
 		}
 	}
 
-	k.Master.Flist = k.Flist
-	k.Master.Entrypoint = k.Entrypoint
+	for i := range k.Masters {
+		k.Masters[i].Flist = k.Flist
+		k.Masters[i].Entrypoint = k.Entrypoint
+	}
 	for i := range k.Workers {
 		k.Workers[i].Flist = k.Flist
 		k.Workers[i].Entrypoint = k.Entrypoint

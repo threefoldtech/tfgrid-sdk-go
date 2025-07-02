@@ -204,7 +204,7 @@ func (st *State) LoadK8sFromGrid(ctx context.Context, nodeIDs []uint32, deployme
 				return workloads.K8sCluster{}, err
 			}
 			if isMaster {
-				cluster.Master = &node
+				cluster.Masters = append(cluster.Masters, node)
 				deploymentData, err := workloads.ParseDeploymentData(deployment.Metadata)
 				if err != nil {
 					return workloads.K8sCluster{}, errors.Wrapf(err, "could not generate node deployment metadata for %s", workload.Name)
@@ -215,16 +215,18 @@ func (st *State) LoadK8sFromGrid(ctx context.Context, nodeIDs []uint32, deployme
 			cluster.Workers = append(cluster.Workers, node)
 		}
 	}
-	if cluster.Master == nil {
+	if len(cluster.Masters) == 0 {
 		return workloads.K8sCluster{}, errors.Wrapf(ErrNotFound, "failed to get master node for k8s cluster %s", deploymentName)
 	}
+
+	// TODO: any master should have these values
 	cluster.NodeDeploymentID = nodeDeploymentID
-	cluster.NetworkName = cluster.Master.NetworkName
-	cluster.SSHKey = cluster.Master.EnvVars["SSH_KEY"]
-	cluster.Token = cluster.Master.EnvVars["K3S_TOKEN"]
-	cluster.Flist = cluster.Master.Flist
-	cluster.FlistChecksum = cluster.Master.FlistChecksum
-	cluster.Entrypoint = cluster.Master.Entrypoint
+	cluster.NetworkName = cluster.Masters[0].NetworkName
+	cluster.SSHKey = cluster.Masters[0].EnvVars["SSH_KEY"]
+	cluster.Token = cluster.Masters[0].EnvVars["K3S_TOKEN"]
+	cluster.Flist = cluster.Masters[0].Flist
+	cluster.FlistChecksum = cluster.Masters[0].FlistChecksum
+	cluster.Entrypoint = cluster.Masters[0].Entrypoint
 
 	// get cluster IP ranges
 	_, err := st.LoadNetworkFromGrid(ctx, cluster.NetworkName)
@@ -249,7 +251,7 @@ func isMasterNode(workload gridtypes.Workload) (bool, error) {
 	if !ok {
 		return false, errors.Wrapf(err, "could not create vm workload from data %v", dataI)
 	}
-	if data.Env["K3S_URL"] == "" {
+	if data.Env["MASTER"] == "" {
 		return true, nil
 	}
 	return false, nil
@@ -548,10 +550,14 @@ func (st *State) GetWorkloadInDeployment(ctx context.Context, nodeID uint32, nam
 func (st *State) AssignNodesIPRange(k *workloads.K8sCluster) (err error) {
 	network := st.Networks.GetNetwork(k.NetworkName)
 	nodesIPRange := make(map[uint32]gridtypes.IPNet)
-	nodesIPRange[k.Master.NodeID], err = gridtypes.ParseIPNet(network.GetNodeSubnet(k.Master.NodeID))
-	if err != nil {
-		return errors.Wrap(err, "could not parse master node ip range")
+
+	for _, master := range k.Masters {
+		nodesIPRange[master.NodeID], err = gridtypes.ParseIPNet(network.GetNodeSubnet(master.NodeID))
+		if err != nil {
+			return errors.Wrapf(err, "could not parse master node (%d) ip range", master.NodeID)
+		}
 	}
+
 	for _, worker := range k.Workers {
 		nodesIPRange[worker.NodeID], err = gridtypes.ParseIPNet(network.GetNodeSubnet(worker.NodeID))
 		if err != nil {
