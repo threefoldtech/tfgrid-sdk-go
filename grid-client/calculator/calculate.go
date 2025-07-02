@@ -214,7 +214,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 	totalOverDraftBigFloat := new(big.Float).SetInt(totalOverDraftBig)
 	totalOverDraftBigFloat.Quo(totalOverDraftBigFloat, big.NewFloat(UnitFactor))
 
-	unbilledNuTFT, err := c.GetUnbilledAmountInTFT(uint64(contractInfo.ContractID))
+	unbilledNuTFT, err := c.getUnbilledAmountInTFT(uint64(contractInfo.ContractID))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get unbilled amount")
 	}
@@ -240,7 +240,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 }
 
 // GetUnbilledAmountInTFT returns the amount unbilled for a given contract in TFT
-func (c *Calculator) GetUnbilledAmountInTFT(contractID uint64) (*big.Float, error) {
+func (c *Calculator) getUnbilledAmountInTFT(contractID uint64) (*big.Float, error) {
 	billingInfo, err := c.substrateConn.GetContractBillingInfo(contractID)
 	if err != nil && !errors.Is(err, substrate.ErrNotFound) {
 		return nil, err
@@ -286,7 +286,7 @@ func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contra
 	// Time since the last billing with allowance time of **one hour**
 	totalPeriodSeconds := elapsedSeconds + allowance.Seconds()
 
-	contractMonthlyCostUSD, err := c.CalculateContractCost(contract)
+	contractMonthlyCostUSD, err := c.calculateContractCost(contract)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to calculate contract cost")
 	}
@@ -303,9 +303,9 @@ func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contra
 }
 
 // Calculates the cost of a contract per month in USD.
-func (c *Calculator) CalculateContractCost(contract *substrate.Contract) (float64, error) {
+func (c *Calculator) calculateContractCost(contract *substrate.Contract) (float64, error) {
 	if contract.ContractType.IsNameContract {
-		return c.CalculateUniqueNameCost()
+		return c.calculateUniqueNameCost()
 	}
 
 	nodeID, err := getNodeID(contract)
@@ -326,18 +326,18 @@ func (c *Calculator) CalculateContractCost(contract *substrate.Contract) (float6
 	}
 
 	if contract.ContractType.IsNodeContract {
-		return c.CalculateNodeContractCost(contract, node, nodeRentContract > 0)
+		return c.calculateNodeContractCost(contract, node, nodeRentContract > 0)
 	}
 
 	if contract.ContractType.IsRentContract {
 
-		return c.CalculateRentCost(contract, *node)
+		return c.calculateRentCost(contract, *node)
 	}
 	return 0, nil
 }
 
 // Calculates the cost of a unique name per month in USD.
-func (c *Calculator) CalculateUniqueNameCost() (float64, error) {
+func (c *Calculator) calculateUniqueNameCost() (float64, error) {
 	//TODO should we apply stacking discount?
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
@@ -353,7 +353,7 @@ func (c *Calculator) CalculateUniqueNameCost() (float64, error) {
 // There are two cases for node contract cost:
 //  1. Node contract on shared node: the cost of the node (shared)
 //  2. Node contract on rented node: the cost of the IPV4 only if the contact includes ipv4, else it will return zero.
-func (c *Calculator) CalculateNodeContractCost(contract *substrate.Contract, node *substrate.Node, isOnRentedNode bool) (float64, error) {
+func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, node *substrate.Node, isOnRentedNode bool) (float64, error) {
 	if !contract.ContractType.IsNodeContract {
 		return 0, fmt.Errorf("contract id %d is not a node contract", contract.ContractID)
 	}
@@ -405,7 +405,7 @@ func (c *Calculator) CalculateNodeContractCost(contract *substrate.Contract, nod
 // Calculates the cost of a rent contract per month in USD.
 //
 // Rent contract cost is the cost of the node (dedicated discount applied) + the node extra fee
-func (c *Calculator) CalculateRentCost(contract *substrate.Contract, node substrate.Node) (float64, error) {
+func (c *Calculator) calculateRentCost(contract *substrate.Contract, node substrate.Node) (float64, error) {
 
 	CRU := node.Resources.CRU
 	MRU := convertBytesToGB(uint64(node.Resources.MRU))

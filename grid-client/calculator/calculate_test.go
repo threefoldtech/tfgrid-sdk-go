@@ -286,7 +286,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 
 		expected := big.NewFloat(1000)
 
-		result, err := calculator.GetUnbilledAmountInTFT(contractID)
+		result, err := calculator.getUnbilledAmountInTFT(contractID)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, result.Cmp(expected), "Expected %v but got %v", expected, result)
 	})
@@ -294,7 +294,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 	t.Run("error in GetContractBillingInfoByID", func(t *testing.T) {
 		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{}, errors.New("failed to get billing info"))
 
-		_, err := calculator.GetUnbilledAmountInTFT(contractID)
+		_, err := calculator.getUnbilledAmountInTFT(contractID)
 		assert.Error(t, err)
 	})
 
@@ -305,7 +305,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 
 		sub.EXPECT().GetTFTPrice().Return(types.U32(0), errors.New("failed to get TFT price"))
 
-		_, err := calculator.GetUnbilledAmountInTFT(contractID)
+		_, err := calculator.getUnbilledAmountInTFT(contractID)
 		assert.Error(t, err)
 	})
 }
