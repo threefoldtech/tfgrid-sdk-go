@@ -14,7 +14,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-// Monitor struct of parsed configration
+// Monitor struct of parsed configuration
 type Monitor struct {
 	Bot      *tgapi.BotAPI
 	BotToken string
