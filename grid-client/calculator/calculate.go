@@ -210,9 +210,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 		additionalOverdraft.Int = contractPaymentState.AdditionalOverdraft.Int
 	}
 	totalOverDraft.Add(standardOverdraft.Int, additionalOverdraft.Int)
-	totalOverDraftBig := new(big.Int).Set(totalOverDraft.Int)
-	totalOverDraftBigFloat := new(big.Float).SetInt(totalOverDraftBig)
-	totalOverDraftBigFloat.Quo(totalOverDraftBigFloat, big.NewFloat(UnitFactor))
+	totalOverDraftBigFloat := unitToTFT(totalOverDraft.Int)
 
 	unbilledNuTFT, err := c.getUnbilledAmountInTFT(uint64(contractInfo.ContractID))
 	if err != nil {
@@ -237,6 +235,17 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 	}
 
 	return totalOverDraftBigFloat, nil
+}
+
+// unitToUSD converts unit-USD to USD as float64
+func unitToUSD(units uint64) float64 {
+	return float64(units) / UnitFactor
+}
+
+// unitToTFT converts unit-TFT (big.Int) to TFT (big.Float)
+func unitToTFT(units *big.Int) *big.Float {
+	result := new(big.Float).SetInt(units)
+	return result.Quo(result, big.NewFloat(UnitFactor))
 }
 
 // GetUnbilledAmountInTFT returns the amount unbilled for a given contract in TFT
