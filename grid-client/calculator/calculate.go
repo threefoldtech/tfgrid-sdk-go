@@ -218,7 +218,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 
 	if contract.ContractType.IsRentContract {
 		// list all contracts on a node
-		totalContractsCost, err := c.CalculateTotalContractsCostOnNode(uint32(contract.ContractType.RentContract.Node))
+		totalContractsCost, err := c.calculateTotalContractsCostOnNode(uint32(contract.ContractType.RentContract.Node), allowance)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to calculate total contracts cost on node")
 		}
@@ -231,7 +231,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 // GetUnbilledAmountInTFT returns the amount unbilled for a given contract in TFT
 func (c *Calculator) GetUnbilledAmountInTFT(contractID uint64) (*big.Float, error) {
 	billingInfo, err := c.substrateConn.GetContractBillingInfoByID(contractID)
-	if err != nil {
+	if err != nil && !errors.Is(err, substrate.ErrNotFound) {
 		return nil, err
 	}
 	var unbilledBig *big.Float = big.NewFloat(0)
@@ -247,25 +247,21 @@ func (c *Calculator) GetUnbilledAmountInTFT(contractID uint64) (*big.Float, erro
 }
 
 // CalculateTotalContractsCostOnNode calculates the total cost of contracts on a node in USD
-func (c *Calculator) CalculateTotalContractsCostOnNode(nodeID uint32) (*big.Float, error) {
+func (c *Calculator) calculateTotalContractsCostOnNode(nodeID uint32, allowance time.Duration) (*big.Float, error) {
 	contracts, err := c.substrateConn.GetNodeContracts(nodeID)
 	if err != nil {
 		return nil, err
 	}
 	var totalCost *big.Float = big.NewFloat(0)
 	for _, contract := range contracts {
-		contractInfo, err := c.substrateConn.GetContract(uint64(contract))
-		if err != nil {
-			return nil, err
-		}
-		cost, err := c.CalculateContractCost(contractInfo.Contract)
+		cost, err := c.CalculateContractOverdue(uint64(contract), allowance)
 		if err != nil && err != ErrContractDeleted {
 			return nil, err
 		}
 		if err == ErrContractDeleted {
 			continue
 		}
-		totalCost.Add(totalCost, big.NewFloat(cost))
+		totalCost.Add(totalCost, cost)
 	}
 	return totalCost, nil
 }
