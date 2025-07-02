@@ -68,6 +68,7 @@ type SubstrateExt interface {
 	GetNodeContractResources(id uint64) (substrate.NodeContractResources, error)
 	GetNodeRentContract(id uint32) (uint64, error)
 	GetDedicatedNodePrice(nodeID uint32) (uint64, error)
+	GetNodeContracts(nodeID uint32) ([]types.U64, error)
 }
 
 // SubstrateImpl struct to use dev substrate
@@ -316,4 +317,12 @@ func (s *SubstrateImpl) GetNodeRentContract(id uint32) (uint64, error) {
 
 func (s *SubstrateImpl) GetDedicatedNodePrice(nodeID uint32) (uint64, error) {
 	return s.Substrate.GetDedicatedNodePrice(nodeID)
+}
+
+func (s *SubstrateImpl) GetNodeContracts(nodeID uint32) ([]types.U64, error) {
+	contracts, err := s.Substrate.GetNodeContracts(nodeID)
+	if err != nil {
+		return nil, err
+	}
+	return contracts, nil
 }

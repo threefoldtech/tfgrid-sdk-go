@@ -370,6 +370,21 @@ func (mr *MockSubstrateExtMockRecorder) GetNodeContractResources(id interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeContractResources", reflect.TypeOf((*MockSubstrateExt)(nil).GetNodeContractResources), id)
 }
 
+// GetNodeContracts mocks base method.
+func (m *MockSubstrateExt) GetNodeContracts(nodeID uint32) ([]types.U64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNodeContracts", nodeID)
+	ret0, _ := ret[0].([]types.U64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNodeContracts indicates an expected call of GetNodeContracts.
+func (mr *MockSubstrateExtMockRecorder) GetNodeContracts(nodeID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeContracts", reflect.TypeOf((*MockSubstrateExt)(nil).GetNodeContracts), nodeID)
+}
+
 // GetNodeRentContract mocks base method.
 func (m *MockSubstrateExt) GetNodeRentContract(id uint32) (uint64, error) {
 	m.ctrl.T.Helper()
