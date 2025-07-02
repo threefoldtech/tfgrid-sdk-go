@@ -368,8 +368,12 @@ func (c *Calculator) CalculateNodeContractCost(contract *substrate.Contract, nod
 	if err != nil {
 		return 0, err
 	}
+	CRU := node.Resources.CRU
+	MRU := convertBytesToGB(uint64(resources.Used.MRU))
+	HRU := convertBytesToGB(uint64(resources.Used.HRU))
+	SRU := convertBytesToGB(uint64(resources.Used.SRU))
 
-	cost, err := c.CalculateCost(int64(resources.Used.CRU), int64(resources.Used.MRU), int64(resources.Used.HRU), int64(resources.Used.SRU), publicIPsCount > 0, isCertified)
+	cost, err := c.CalculateCost(int64(CRU), int64(MRU), int64(HRU), int64(SRU), publicIPsCount > 0, isCertified)
 	if err != nil {
 		return 0, err
 	}
