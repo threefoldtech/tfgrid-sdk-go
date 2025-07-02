@@ -439,7 +439,7 @@ func (c *Calculator) calculateRentCost(contract *substrate.Contract, node substr
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get dedicated node extra fee")
 	}
-	dedicatedPrice += (float64(extraFee) / 1000)
+	dedicatedPrice += (float64(extraFee) / mUSDToUSD)
 	return dedicatedPrice, nil
 }
 
