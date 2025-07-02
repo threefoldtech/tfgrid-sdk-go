@@ -368,7 +368,7 @@ func (c *Calculator) CalculateNodeContractCost(contract *substrate.Contract, nod
 	if err != nil {
 		return 0, err
 	}
-	CRU := node.Resources.CRU
+	CRU := resources.Used.CRU
 	MRU := convertBytesToGB(uint64(resources.Used.MRU))
 	HRU := convertBytesToGB(uint64(resources.Used.HRU))
 	SRU := convertBytesToGB(uint64(resources.Used.SRU))
