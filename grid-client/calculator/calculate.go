@@ -313,3 +313,17 @@ func (c *Calculator) USDtoTFT(usd float64) (*big.Float, error) {
 	tftAmount := new(big.Float).Quo(usdFloat, tftPriceFloat)
 	return tftAmount, nil
 }
+// GetUnbilledAmountInTFT returns the amount unbilled for a given contract in TFT
+func (c *Calculator) GetUnbilledAmountInTFT(contractID uint64) (*big.Float, error) {
+	billingInfo, err := c.substrateConn.GetContractBillingInfoByID(contractID)
+	if err != nil {
+		return nil, err
+	}
+	unbilledBig := new(big.Float).SetUint64(uint64(billingInfo.AmountUnbilled))
+	divisor := new(big.Float).SetFloat64(UnitFactor)
+
+	//convert from unit-USD to USD
+	unbilledUSDFloat := new(big.Float).Quo(unbilledBig, divisor)
+	unbilledUSD, _ := unbilledUSDFloat.Float64()
+	return c.USDtoTFT(unbilledUSD)
+}
