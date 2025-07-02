@@ -164,60 +164,68 @@ func (c *Calculator) calculateIPV4() (float64, error) {
 	return float64(monthlyCost) / UnitFactor, nil
 }
 
-func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration) (types.U128, error) {
+func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration) (*big.Float, error) {
 	contract, err := c.substrateConn.GetContract(id)
 	if err != nil {
-		return types.U128{}, errors.Wrap(err, "failed to get contract")
+		return nil, errors.Wrap(err, "failed to get contract")
 	}
 
 	if contract.IsDeleted() {
-		return types.U128{}, ErrContractDeleted
+		return nil, ErrContractDeleted
 	}
 	contractInfo := contract.Contract
 
 	contractPaymentState, err := c.substrateConn.GetContractPaymentState(id)
 	if err != nil {
-		return types.U128{}, errors.Wrap(err, "failed to get contract payment state")
+		return nil, errors.Wrap(err, "failed to get contract payment state")
 	}
 
-	periodCostTFT, err := c.calculatePeriodCostTFT(contractPaymentState.LastUpdatedSeconds, contractInfo, allowance)
-
+	periodCostTFT, err := c.calculatePeriodCostTFT(time.Unix(int64(contractPaymentState.LastUpdatedSeconds), 0), contractInfo, allowance)
 	if err != nil {
-		return types.U128{}, errors.Wrap(err, "failed to calculate period cost")
+		return nil, errors.Wrap(err, "failed to calculate period cost")
+	}
+	// totalOverDraft represents the sum of standard and additional overdraft amounts for the contract in unit TFT
+	totalOverDraft := types.U128{Int: big.NewInt(0)}
+
+	var standardOverdraft types.U128
+
+	if contractPaymentState.StandardOverdraft.Int != nil {
+
+		standardOverdraft.Int = contractPaymentState.StandardOverdraft.Int
 	}
 
-	// totalOverDraft represents the sum of standard and additional overdraft amounts for the contract in unit TFT
-	var totalOverDraft types.U128
-	totalOverDraft.Add(contractPaymentState.StandardOverdraft.Int, contractPaymentState.AdditionalOverdraft.Int)
-
-	totalOverDraftTFT := totalOverDraft.Div(totalOverDraft.Int, big.NewInt(UnitFactor))
+	var additionalOverdraft types.U128
+	if contractPaymentState.AdditionalOverdraft.Int != nil {
+		additionalOverdraft.Int = contractPaymentState.AdditionalOverdraft.Int
+	}
+	totalOverDraft.Add(standardOverdraft.Int, additionalOverdraft.Int)
+	totalOverDraftBig := new(big.Int).Set(totalOverDraft.Int)
+	totalOverDraftBigFloat := new(big.Float).SetInt(totalOverDraftBig)
+	totalOverDraftBigFloat.Quo(totalOverDraftBigFloat, big.NewFloat(UnitFactor))
 
 	unbilledNuTFT, err := c.GetUnbilledAmountInTFT(uint64(contractInfo.ContractID))
 	if err != nil {
-		return types.U128{}, errors.Wrap(err, "failed to get unbilled amount")
+		return nil, errors.Wrap(err, "failed to get unbilled amount")
+	}
+	if unbilledNuTFT == nil {
+		unbilledNuTFT = big.NewFloat(0)
 	}
 
-	var overDue big.Int
-	unbilledNuTFT.Int(&overDue)
-
-	overDue.Add(&overDue, totalOverDraftTFT)
+	totalOverDraftBigFloat.Add(unbilledNuTFT, totalOverDraftBigFloat)
 
 	//add period cost
-	overDue.Add(&overDue, &periodCostTFT)
+	totalOverDraftBigFloat.Add(periodCostTFT, totalOverDraftBigFloat)
 
 	if contract.ContractType.IsRentContract {
 		// list all contracts on a node
 		totalContractsCost, err := c.CalculateTotalContractsCostOnNode(uint32(contract.ContractType.NodeContract.Node))
 		if err != nil {
-			return types.U128{}, errors.Wrap(err, "failed to calculate total contracts cost on node")
+			return nil, errors.Wrap(err, "failed to calculate total contracts cost on node")
 		}
-		var totalContractsCostBig big.Int
-		totalContractsCostBig.SetUint64(uint64(totalContractsCost))
-
-		overDue.Add(&overDue, &totalContractsCostBig)
+		totalOverDraftBigFloat.Add(totalContractsCost, totalOverDraftBigFloat)
 	}
 
-	return types.NewU128(overDue), nil
+	return totalOverDraftBigFloat, nil
 }
 
 // GetUnbilledAmountInTFT returns the amount unbilled for a given contract in TFT
@@ -226,65 +234,62 @@ func (c *Calculator) GetUnbilledAmountInTFT(contractID uint64) (*big.Float, erro
 	if err != nil {
 		return nil, err
 	}
-	unbilledBig := new(big.Float).SetUint64(uint64(billingInfo.AmountUnbilled))
-	divisor := new(big.Float).SetFloat64(UnitFactor)
+	var unbilledBig *big.Float = big.NewFloat(0)
+	if billingInfo.AmountUnbilled != types.U64(0) {
+		unbilledBig = big.NewFloat(float64(billingInfo.AmountUnbilled))
+	}
+	divisor := big.NewFloat(UnitFactor)
 
 	//convert from unit-USD to USD
-	unbilledUSDFloat := new(big.Float).Quo(unbilledBig, divisor)
+	unbilledUSDFloat := unbilledBig.Quo(unbilledBig, divisor)
 	unbilledUSD, _ := unbilledUSDFloat.Float64()
 	return c.USDtoTFT(unbilledUSD)
 }
 
 // CalculateTotalContractsCostOnNode calculates the total cost of contracts on a node in USD
-func (c *Calculator) CalculateTotalContractsCostOnNode(nodeID uint32) (float64, error) {
+func (c *Calculator) CalculateTotalContractsCostOnNode(nodeID uint32) (*big.Float, error) {
 	contracts, err := c.substrateConn.GetNodeContracts(nodeID)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	var totalCost float64
+	var totalCost *big.Float = big.NewFloat(0)
 	for _, contract := range contracts {
 		contractInfo, err := c.substrateConn.GetContract(uint64(contract))
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 		cost, err := c.CalculateContractCost(contractInfo.Contract)
 		if err != nil && err != ErrContractDeleted {
-			return 0, err
+			return nil, err
 		}
 		if err == ErrContractDeleted {
 			continue
 		}
-		totalCost += cost
+		totalCost.Add(totalCost, big.NewFloat(cost))
 	}
 	return totalCost, nil
 }
 
 // calculatePeriodCostTFT calculates the cost of a contract since last updated in seconds with the provided allowance time
-func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds types.U64, contract *substrate.Contract, allowance time.Duration) (big.Int, error) {
-
+func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contract *substrate.Contract, allowance time.Duration) (*big.Float, error) {
 	/**Calculate the elapsed seconds since last billing*/
-	elapsedSeconds := time.Duration(time.Since(time.Unix(int64(lastUpdatedSeconds), 0)).Seconds()).Seconds()
-
+	elapsedSeconds := time.Duration(time.Since(lastUpdatedSeconds)).Seconds()
 	// time since the last billing with allowance time of **one hour**
 	totalPeriodSeconds := elapsedSeconds + allowance.Seconds()
 
 	contractMonthlyCostUSD, err := c.CalculateContractCost(contract)
 	if err != nil {
-		return big.Int{}, errors.Wrap(err, "failed to calculate contract cost")
+		return nil, errors.Wrap(err, "failed to calculate contract cost")
 	}
 
 	contractMonthlyCostTFT, err := c.USDtoTFT(contractMonthlyCostUSD)
 	if err != nil {
-		return big.Int{}, errors.Wrap(err, "failed to convert contract cost to TFT")
+		return nil, errors.Wrap(err, "failed to convert contract cost to TFT")
 	}
 	secondsPerMonthBig := big.NewFloat(30 * 24 * 60 * 60) // 30 days * 24 hours * 60 minutes * 60 seconds
 	contractCostPerSecond := new(big.Float).Quo(contractMonthlyCostTFT, secondsPerMonthBig)
-
 	totalPeriodCost := new(big.Float).Mul(contractCostPerSecond, big.NewFloat(totalPeriodSeconds))
-
-	var totalPeriodCostInt big.Int
-	totalPeriodCost.Int(&totalPeriodCostInt)
-	return totalPeriodCostInt, nil
+	return totalPeriodCost, nil
 
 }
 
@@ -304,9 +309,11 @@ func (c *Calculator) CalculateContractCost(contract *substrate.Contract) (float6
 		return 0, err
 	}
 
-	nodeRentContract, err := c.substrateConn.GetNodeRentContract(nodeID)
-	if err != nil && err != substrate.ErrAccountNotFound {
-		return 0, errors.Wrap(err, "failed to get node rent contract")
+	var nodeRentContract uint64
+
+	nodeRentContract, err = c.substrateConn.GetNodeRentContract(nodeID)
+	if err != nil && !errors.Is(err, substrate.ErrNotFound) {
+		return 0, err
 	}
 
 	if contract.ContractType.IsNodeContract {
