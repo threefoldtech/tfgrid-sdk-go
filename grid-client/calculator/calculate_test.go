@@ -206,3 +206,61 @@ func TestTFTtoUSD(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+func TestUSDtoTFT(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sub := mocks.NewMockSubstrateExt(ctrl)
+	// Add mock implementation for GetNodeContracts to fix compiler error
+	sub.EXPECT().GetNodeContracts(gomock.Any()).Return([]types.U64{}, nil).AnyTimes()
+
+	identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+	assert.NoError(t, err)
+
+	calculator := NewCalculator(sub, identity)
+
+	t.Run("error case", func(t *testing.T) {
+		sub.EXPECT().GetTFTPrice().Return(types.U32(0), errors.New("failed to get TFT price"))
+
+		_, err := calculator.USDtoTFT(10)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get TFT price")
+	})
+	t.Run("success case", func(t *testing.T) {
+		// 5 mUSD = 0.005 USD per TFT
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
+
+		// 10 USD / 0.005 USD/TFT = 2000 TFT
+		result, err := calculator.USDtoTFT(10)
+		assert.NoError(t, err)
+
+		expected := big.NewFloat(2000)
+		assert.Equal(t, 0, result.Cmp(expected), "Expected %v but got %v", expected, result)
+	})
+
+	t.Run("large amount case 1 million USD", func(t *testing.T) {
+
+		result, err := calculator.USDtoTFT(1000000.)
+		assert.NoError(t, err)
+
+		expected := big.NewFloat(200000000)
+		assert.Equal(t, 0, result.Cmp(expected), "Expected %v but got %v", expected, result)
+	})
+
+	t.Run("large floating point number", func(t *testing.T) {
+
+		result, err := calculator.USDtoTFT(9876543.21)
+		assert.NoError(t, err)
+
+		expected := new(big.Float).Quo(big.NewFloat(9876543.21), big.NewFloat(0.005))
+		assert.Equal(t, 0, result.Cmp(expected), "Expected %v but got %v", expected, result)
+	})
+
+	t.Run("high precision floating point number", func(t *testing.T) {
+		result, err := calculator.USDtoTFT(9876543.21453)
+		assert.NoError(t, err)
+
+		expected := new(big.Float).Quo(big.NewFloat(9876543.21453), big.NewFloat(0.005))
+		assert.Equal(t, 0, result.Cmp(expected), "Expected %v but got %v", expected, result)
+	})
+}

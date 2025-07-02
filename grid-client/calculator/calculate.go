@@ -3,6 +3,7 @@ package calculator
 import (
 	"fmt"
 	"math"
+	"math/big"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/pkg/errors"
@@ -300,4 +301,15 @@ func (c *Calculator) TFTtoUSD(tft float64) (float64, error) {
 		return 0, errors.Wrap(err, "failed to get TFT price")
 	}
 	return tft * (float64(tftPrice) / mUSDToUSD), nil
+}
+// USDtoTFT converts USD amount to TFT based on the current price
+func (c *Calculator) USDtoTFT(usd float64) (*big.Float, error) {
+	tftPrice, err := c.substrateConn.GetTFTPrice()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get TFT price")
+	}
+	tftPriceFloat := big.NewFloat(float64(tftPrice) / mUSDToUSD)
+	usdFloat := big.NewFloat(usd)
+	tftAmount := new(big.Float).Quo(usdFloat, tftPriceFloat)
+	return tftAmount, nil
 }
