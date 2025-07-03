@@ -60,7 +60,7 @@ func (c *Calculator) CalculateCost(cru, mru, hru, sru int64, publicIP, certified
 	// cost per month in unit-USD
 	costPerMonth := (cu*float64(pricingPolicy.CU.Value) + su*float64(pricingPolicy.SU.Value) + ipv4*float64(pricingPolicy.IPU.Value)) * certifiedFactor * 24 * 30
 	// convert to USD
-	return costPerMonth / UnitFactor, nil
+	return unitToUSD(costPerMonth), nil
 }
 
 // CalculatePricesAfterDiscount calculates the prices after discount
@@ -82,7 +82,7 @@ func (c *Calculator) CalculatePricesAfterDiscount(cost float64) (dedicatedPrice,
 		return
 	}
 
-	balanceTFT := float64(accountBalance.Free.Int64()) / UnitFactor
+	balanceTFT := unitToTFT(accountBalance.Free.Int)
 
 	balanceUSD, err := c.TFTtoUSD(balanceTFT)
 	if err != nil {
@@ -154,14 +154,15 @@ func calculateCU(cru, mru int64) float64 {
 
 // Calculates the cost of a public IP per month in USD.
 func (c *Calculator) calculateIPV4CostPerMonth() (float64, error) {
+	// cost in unit-USD per month
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
 		return 0, err
 	}
-	// cost in unit-USD
-	monthlyCost := pricingPolicy.IPU.Value * 24 * 30
+	// cost in unit-USD per month
+	monthlyCost := float64(pricingPolicy.IPU.Value) * 24 * 30
 
-	return float64(monthlyCost) / UnitFactor, nil
+	return unitToUSD(monthlyCost), nil
 }
 
 // Calculates the overdue amount in TFT.
@@ -236,6 +237,11 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 
 }
 
+// unitToUSD converts unit-USD to USD as float64
+func unitToUSD(units float64) float64 {
+	return units / UnitFactor
+}
+
 // unitToTFT converts unit-TFT (big.Int) to TFT
 func unitToTFT(units *big.Int) float64 {
 	result := new(big.Float).SetInt(units)
@@ -254,7 +260,7 @@ func (c *Calculator) getUnbilledAmountInTFT(contractID uint64) (float64, error) 
 		unbilled = float64(billingInfo.AmountUnbilled)
 	}
 	// amount unbilled is in unit-USD
-	unbilledUSD := unbilled / UnitFactor
+	unbilledUSD := unitToUSD(unbilled)
 
 	return c.USDtoTFT(unbilledUSD)
 }
@@ -345,7 +351,7 @@ func (c *Calculator) calculateUniqueNameCost() (float64, error) {
 	}
 	// cost in unit-USD
 	monthlyCost := float64(pricingPolicy.UniqueName.Value) * 24 * 30
-	return float64(monthlyCost) / UnitFactor, nil
+	return unitToUSD(monthlyCost), nil
 }
 
 // Calculates the cost of a node contract per month in USD.
