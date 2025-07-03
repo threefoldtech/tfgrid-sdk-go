@@ -291,8 +291,7 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 // The period is the time since last updated in seconds with the provided allowance time.
 func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contract *substrate.Contract, allowance time.Duration) (*big.Float, error) {
 	// Calculate the elapsed seconds since last billing
-	elapsedSeconds := time.Duration(time.Since(lastUpdatedSeconds)).Seconds()
-	// Time since the last billing with allowance time of **one hour**
+	elapsedSeconds := math.Ceil(time.Duration(time.Since(lastUpdatedSeconds)).Seconds())
 	totalPeriodSeconds := elapsedSeconds + allowance.Seconds()
 
 	contractMonthlyCostUSD, err := c.calculateContractCost(contract)
