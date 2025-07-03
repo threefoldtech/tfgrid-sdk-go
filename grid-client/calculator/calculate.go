@@ -38,7 +38,7 @@ func NewCalculator(substrateConn subi.SubstrateExt, identity substrate.Identity)
 }
 
 // CalculateCost calculates the cost in $ per month of the given resources without a discount
-func (c *Calculator) CalculateCost(cru, mru, hru, sru types.U64, publicIP, certified bool) (float64, error) {
+func (c *Calculator) CalculateCost(cru, mru, hru, sru uint64, publicIP, certified bool) (float64, error) {
 
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
@@ -128,11 +128,11 @@ func getApplicableDiscount(balance float64, dedicatedPrice float64, sharedPrice 
 	return bestSharedDiscountValue / 100, bestDedicatedDiscountValue / 100
 }
 
-func calculateSU(hru, sru types.U64) float64 {
+func calculateSU(hru, sru uint64) float64 {
 	return float64(hru)/1200 + float64(sru)/200
 }
 
-func calculateCU(cru, mru types.U64) float64 {
+func calculateCU(cru, mru uint64) float64 {
 
 	MruUsed1 := float64(mru) / 4
 	CruUsed1 := float64(cru) / 2
@@ -376,7 +376,7 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 	if err != nil {
 		return 0, err
 	}
-	CRU := resources.Used.CRU
+	CRU := uint64(resources.Used.CRU)
 	MRU := convertBytesToGB(resources.Used.MRU)
 	HRU := convertBytesToGB(resources.Used.HRU)
 	SRU := convertBytesToGB(resources.Used.SRU)
@@ -397,7 +397,7 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 // Rent contract cost is the cost of the node (dedicated discount applied) + the node extra fee
 func (c *Calculator) calculateRentCost(contract *substrate.Contract, node substrate.Node) (float64, error) {
 
-	CRU := node.Resources.CRU
+	CRU := uint64(node.Resources.CRU)
 	MRU := convertBytesToGB(node.Resources.MRU)
 	HRU := convertBytesToGB(node.Resources.HRU)
 	SRU := convertBytesToGB(node.Resources.SRU)
@@ -436,8 +436,8 @@ func getNodeID(contract *substrate.Contract) (uint32, error) {
 }
 
 // convertBytesToGB converts bytes to gigabytes by dividing by 1024^3
-func convertBytesToGB(bytes types.U64) types.U64 {
-	return bytes / 1024 / 1024 / 1024
+func convertBytesToGB(bytes types.U64) uint64 {
+	return uint64(bytes) / 1024 / 1024 / 1024
 }
 
 // TFTtoUSD converts TFT amount to USD based on the current price
