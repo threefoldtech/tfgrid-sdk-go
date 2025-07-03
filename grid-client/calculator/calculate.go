@@ -210,20 +210,18 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 		additionalOverdraft.Int = contractPaymentState.AdditionalOverdraft.Int
 	}
 	totalOverDraft.Add(standardOverdraft.Int, additionalOverdraft.Int)
-	totalOverDraftBigFloat := unitToTFT(totalOverDraft.Int)
+	totalOverDraftTFT := unitToTFT(totalOverDraft.Int)
 
 	unbilledNuTFT, err := c.getUnbilledAmountInTFT(uint64(contractInfo.ContractID))
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get unbilled amount")
 	}
-	if unbilledNuTFT == nil {
-		unbilledNuTFT = big.NewFloat(0)
-	}
 
-	totalOverDraftBigFloat.Add(unbilledNuTFT, totalOverDraftBigFloat)
+	totalOverDraftTFT += unbilledNuTFT
 
 	//add period cost
-	totalOverDraftBigFloat.Add(periodCostTFT, totalOverDraftBigFloat)
+
+	totalOverDraftTFT += periodCostTFT
 
 	if contract.ContractType.IsRentContract {
 		// add all contracts overdue on a node
@@ -231,11 +229,10 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 		if err != nil {
 			return 0, errors.Wrap(err, "failed to calculate total contracts overdue on node")
 		}
-		totalOverDraftBigFloat.Add(totalContractsCost, totalOverDraftBigFloat)
+		totalOverDraftTFT += float64(totalContractsCost)
 	}
 
-	totalOverdraftFloat64, _ := totalOverDraftBigFloat.Float64()
-	return int64(math.Ceil(totalOverdraftFloat64)), nil
+	return int64(math.Ceil(totalOverDraftTFT)), nil
 
 }
 
@@ -244,17 +241,18 @@ func unitToUSD(units uint64) float64 {
 	return float64(units) / UnitFactor
 }
 
-// unitToTFT converts unit-TFT (big.Int) to TFT (big.Float)
-func unitToTFT(units *big.Int) *big.Float {
+// unitToTFT converts unit-TFT (big.Int) to TFT
+func unitToTFT(units *big.Int) float64 {
 	result := new(big.Float).SetInt(units)
-	return result.Quo(result, big.NewFloat(UnitFactor))
+	val, _ := result.Quo(result, big.NewFloat(UnitFactor)).Float64()
+	return val
 }
 
 // GetUnbilledAmountInTFT returns the amount unbilled for a given contract in TFT
-func (c *Calculator) getUnbilledAmountInTFT(contractID uint64) (*big.Float, error) {
+func (c *Calculator) getUnbilledAmountInTFT(contractID uint64) (float64, error) {
 	billingInfo, err := c.substrateConn.GetContractBillingInfo(contractID)
 	if err != nil && !errors.Is(err, substrate.ErrNotFound) {
-		return nil, err
+		return 0, err
 	}
 	var unbilledBig *big.Float = big.NewFloat(0)
 	if billingInfo.AmountUnbilled != types.U64(0) {
@@ -265,25 +263,26 @@ func (c *Calculator) getUnbilledAmountInTFT(contractID uint64) (*big.Float, erro
 	//convert from unit-USD to USD
 	unbilledUSDFloat := unbilledBig.Quo(unbilledBig, divisor)
 	unbilledUSD, _ := unbilledUSDFloat.Float64()
+
 	return c.USDtoTFT(unbilledUSD)
 }
 
 // Calculates the total overdue of contracts on a node in TFT
-func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowance time.Duration) (*big.Float, error) {
+func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowance time.Duration) (int64, error) {
 	contracts, err := c.substrateConn.GetNodeContracts(nodeID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get contracts for node ID %d", nodeID)
+		return 0, errors.Wrapf(err, "failed to get contracts for node ID %d", nodeID)
 	}
-	var totalCost *big.Float = big.NewFloat(0)
+	var totalCost int64 = 0
 	for _, contract := range contracts {
 		cost, err := c.CalculateContractOverdue(uint64(contract), allowance)
 		if err != nil && err != ErrContractDeleted {
-			return nil, err
+			return 0, err
 		}
 		if err == ErrContractDeleted {
 			continue
 		}
-		totalCost.Add(totalCost, big.NewFloat(float64(cost)))
+		totalCost += cost
 	}
 	return totalCost, nil
 }
@@ -291,24 +290,23 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 // Calculates the cost with a period in TFT.
 //
 // The period is the time since last updated in seconds with the provided allowance time.
-func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contract *substrate.Contract, allowance time.Duration) (*big.Float, error) {
+func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contract *substrate.Contract, allowance time.Duration) (float64, error) {
 	// Calculate the elapsed seconds since last billing
 	elapsedSeconds := math.Ceil(time.Duration(time.Since(lastUpdatedSeconds)).Seconds())
 	totalPeriodSeconds := elapsedSeconds + allowance.Seconds()
 
 	contractMonthlyCostUSD, err := c.calculateContractCost(contract)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to calculate contract cost")
+		return 0, errors.Wrap(err, "failed to calculate contract cost")
 	}
 
 	contractMonthlyCostTFT, err := c.USDtoTFT(contractMonthlyCostUSD)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert contract cost to TFT")
+		return 0, errors.Wrap(err, "failed to convert contract cost to TFT")
 	}
-	secondsPerMonthBig := big.NewFloat(30 * 24 * 60 * 60) // 30 days * 24 hours * 60 minutes * 60 seconds
-	contractCostPerSecond := new(big.Float).Quo(contractMonthlyCostTFT, secondsPerMonthBig)
-	totalPeriodCost := new(big.Float).Mul(contractCostPerSecond, big.NewFloat(totalPeriodSeconds))
-	return totalPeriodCost, nil
+	secondsPerMonth := 30 * 24 * 60 * 60 // 30 days * 24 hours * 60 minutes * 60 seconds
+	contractCostPerSecond := contractMonthlyCostTFT / float64(secondsPerMonth)
+	return contractCostPerSecond * totalPeriodSeconds, nil
 
 }
 
@@ -468,13 +466,12 @@ func (c *Calculator) TFTtoUSD(tft float64) (float64, error) {
 }
 
 // USDtoTFT converts USD amount to TFT based on the current price
-func (c *Calculator) USDtoTFT(usd float64) (*big.Float, error) {
+func (c *Calculator) USDtoTFT(usd float64) (float64, error) {
 	tftPrice, err := c.substrateConn.GetTFTPrice()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get TFT price")
+		return 0, errors.Wrap(err, "failed to get TFT price")
 	}
-	tftPriceFloat := big.NewFloat(float64(tftPrice) / mUSDToUSD)
-	usdFloat := big.NewFloat(usd)
-	tftAmount := new(big.Float).Quo(usdFloat, tftPriceFloat)
-	return tftAmount, nil
+	// convert from unit-USD to TFT
+	tftPriceUSD := float64(tftPrice) / mUSDToUSD
+	return usd / tftPriceUSD, nil
 }
