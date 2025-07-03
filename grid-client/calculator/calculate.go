@@ -229,7 +229,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 		// add all contracts overdue on a node
 		totalContractsCost, err := c.calculateTotalContractsOverdueOnNode(uint32(contract.ContractType.RentContract.Node), allowance)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to calculate total contracts overdue on node")
+			return 0, errors.Wrap(err, "failed to calculate total contracts overdue on node")
 		}
 		totalOverDraftBigFloat.Add(totalContractsCost, totalOverDraftBigFloat)
 	}
@@ -336,7 +336,7 @@ func (c *Calculator) calculateContractCost(contract *substrate.Contract) (float6
 	}
 
 	if contract.ContractType.IsNodeContract {
-		return c.calculateNodeContractCost(contract, node, nodeRentContract > 0)
+		return c.calculateNodeContractCost(contract, node.Certification.IsCertified, nodeRentContract > 0)
 	}
 
 	if contract.ContractType.IsRentContract {
@@ -363,7 +363,7 @@ func (c *Calculator) calculateUniqueNameCost() (float64, error) {
 // There are two cases for node contract cost:
 //  1. Node contract on shared node: the cost of the node (shared)
 //  2. Node contract on rented node: the cost of the IPV4 only if the contact includes ipv4, else it will return zero.
-func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, node *substrate.Node, isOnRentedNode bool) (float64, error) {
+func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onCertifiedNode, isOnRentedNode bool) (float64, error) {
 	if !contract.ContractType.IsNodeContract {
 		return 0, fmt.Errorf("contract ID %d is not a node contract", contract.ContractID)
 	}
@@ -382,7 +382,7 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, nod
 
 			//TODO should we apply stacking discount?
 
-			if isCertified {
+			if onCertifiedNode {
 				totalCost *= 1.25
 			}
 			return totalCost, nil
@@ -401,7 +401,7 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, nod
 	HRU := convertBytesToGB(uint64(resources.Used.HRU))
 	SRU := convertBytesToGB(uint64(resources.Used.SRU))
 
-	cost, err := c.CalculateCost(int64(CRU), int64(MRU), int64(HRU), int64(SRU), publicIPsCount > 0, isCertified)
+	cost, err := c.CalculateCost(int64(CRU), int64(MRU), int64(HRU), int64(SRU), publicIPsCount > 0, onCertifiedNode)
 	if err != nil {
 		return 0, err
 	}
