@@ -369,8 +369,6 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 	}
 	publicIPsCount := contract.ContractType.NodeContract.PublicIPsCount
 
-	isCertified := node.Certification.IsCertified
-
 	// Node contract on rented node
 	if isOnRentedNode {
 		if publicIPsCount > 0 {

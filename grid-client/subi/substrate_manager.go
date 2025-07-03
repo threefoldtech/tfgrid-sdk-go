@@ -320,9 +320,5 @@ func (s *SubstrateImpl) GetDedicatedNodePrice(nodeID uint32) (uint64, error) {
 }
 
 func (s *SubstrateImpl) GetNodeContracts(nodeID uint32) ([]types.U64, error) {
-	contracts, err := s.Substrate.GetNodeContracts(nodeID)
-	if err != nil {
-		return nil, err
-	}
-	return contracts, nil
+	return s.Substrate.GetNodeContracts(nodeID)
 }
