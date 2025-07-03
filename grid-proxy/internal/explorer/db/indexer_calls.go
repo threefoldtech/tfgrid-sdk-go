@@ -38,9 +38,15 @@ func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, gpus []types.Node
 }
 
 func (p *PostgresDatabase) UpsertNodeHealth(ctx context.Context, healthReports []types.HealthReport) error {
+	// Calculate uptime scores for each health report
+	for i := range healthReports {
+		uptimeScore := p.calculateUptimeScore(ctx, healthReports[i])
+		healthReports[i].UptimeScore = uptimeScore
+	}
+
 	conflictClause := clause.OnConflict{
 		Columns:   []clause.Column{{Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"healthy", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"healthy", "uptime_score", "updated_at"}),
 	}
 	return p.gormDB.WithContext(ctx).Table("health_report").Clauses(conflictClause).Create(&healthReports).Error
 }
@@ -110,4 +116,53 @@ func (p *PostgresDatabase) UpsertNodeLocation(ctx context.Context, locations []t
 		DoUpdates: clause.AssignmentColumns([]string{"continent", "updated_at"}),
 	}
 	return p.gormDB.WithContext(ctx).Table("node_location").Clauses(conflictClause).Create(&locations).Error
+}
+
+func (p *PostgresDatabase) calculateUptimeScore(ctx context.Context, healthReport types.HealthReport) float64 {
+	const thirtyDaysInSeconds = 30 * 24 * 60
+	const intervalsInThirtyDays = 30 * 24 * 60 / 5 // 30 days in minutes, divided by 5 minutes intervals
+
+	now := healthReport.UpdatedAt
+	thirtyDaysAgo := now - thirtyDaysInSeconds
+
+	newValue := 0.0
+	if healthReport.Healthy {
+		newValue = 1.0
+	}
+	var previousReport types.HealthReport
+	previousTotal := 0.0
+	err := p.gormDB.WithContext(ctx).Table("health_report").
+		Where("node_twin_id = ?", healthReport.NodeTwinId).
+		Last(&previousReport).Error
+
+	// If no previous report exists, we assume the previous total is 0
+	if err != nil {
+		return newValue / intervalsInThirtyDays
+	}
+	previousTotal = previousReport.UptimeScore * intervalsInThirtyDays
+
+	// Get old value from 30 days ago (±1 minute) from history
+	oldValue := 0.0
+	var oldReport types.HealthReport
+	startTime := thirtyDaysAgo - 60
+	endTime := thirtyDaysAgo + 60
+
+	err = p.gormDB.WithContext(ctx).Table("health_report").
+		Where("node_twin_id = ? AND updated_at BETWEEN ? AND ?", healthReport.NodeTwinId, startTime, endTime).
+		Order("updated_at DESC").
+		First(&oldReport).Error
+
+	if err == nil {
+		if oldReport.Healthy {
+			oldValue = 1.0
+		}
+	}
+
+	totalHealthyIntervals := previousTotal + newValue - oldValue
+
+	if totalHealthyIntervals < 0 {
+		totalHealthyIntervals = 0
+	}
+
+	return totalHealthyIntervals / intervalsInThirtyDays
 }

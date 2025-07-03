@@ -38,7 +38,7 @@ type DBData struct {
 	GPUs                map[uint32][]types.NodeGPU
 	Regions             map[string]string
 	Locations           map[string]Location
-	HealthReports       map[uint32]bool
+	HealthReports       map[uint32]types.HealthReport
 	NodeIpv6            map[uint32]bool
 	NodeFeatures        map[uint32][]string
 	DMIs                map[uint32]types.Dmi
@@ -514,6 +514,7 @@ func loadHealthReports(db *sql.DB, data *DBData) error {
 	SELECT
 		COALESCE(node_twin_id, 0),
 		COALESCE(healthy, false),
+		COALESCE(uptime_score, 0.0),
 		COALESCE(updated_at, 0)
 	FROM
 		health_report;`)
@@ -525,11 +526,12 @@ func loadHealthReports(db *sql.DB, data *DBData) error {
 		if err := rows.Scan(
 			&health.NodeTwinId,
 			&health.Healthy,
+			&health.UptimeScore,
 			&health.UpdatedAt,
 		); err != nil {
 			return err
 		}
-		data.HealthReports[health.NodeTwinId] = health.Healthy
+		data.HealthReports[health.NodeTwinId] = health
 	}
 
 	return nil
@@ -796,7 +798,7 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		FarmHasRentedNode:   make(map[uint64]map[uint64]bool),
 		Regions:             make(map[string]string),
 		Locations:           make(map[string]Location),
-		HealthReports:       make(map[uint32]bool),
+		HealthReports:       make(map[uint32]types.HealthReport),
 		DMIs:                make(map[uint32]types.Dmi),
 		Speeds:              make(map[uint32]types.Speed),
 		CpuBenchmarks:       make(map[uint32]types.CpuBenchmark),

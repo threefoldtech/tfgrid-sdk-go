@@ -18,9 +18,10 @@ func (NodeGPU) TableName() string {
 // HealthReport holds the state of node healthiness
 // used as gorm model
 type HealthReport struct {
-	NodeTwinId uint32 `gorm:"unique;not null"`
-	Healthy    bool
-	UpdatedAt  int64
+	NodeTwinId  uint32 `gorm:"unique;not null"`
+	Healthy     bool
+	UptimeScore float64 `gorm:"default:0"` // Uptime score calculated using 30-day sliding window
+	UpdatedAt   int64
 }
 
 func (HealthReport) TableName() string {

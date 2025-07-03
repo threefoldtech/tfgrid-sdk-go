@@ -48,6 +48,7 @@ type Node struct {
 	NumGPU            int          `json:"num_gpu" sort:"num_gpu"`
 	ExtraFee          uint64       `json:"extraFee" sort:"extra_fee"`
 	Healthy           bool         `json:"healthy"`
+	UptimeScore       float64      `json:"uptime_score"`
 	Dmi               Dmi          `json:"dmi"`
 	Speed             Speed        `json:"speed"`
 	CpuBenchmark      CpuBenchmark `json:"cpu_benchmark"`
@@ -94,6 +95,7 @@ type NodeWithNestedCapacity struct {
 	NumGPU            int            `json:"num_gpu"`
 	ExtraFee          uint64         `json:"extraFee"`
 	Healthy           bool           `json:"healthy"`
+	UptimeScore       float64        `json:"uptime_score"`
 	Dmi               Dmi            `json:"dmi"`
 	Speed             Speed          `json:"speed"`
 	CpuBenchmark      CpuBenchmark   `json:"cpu_benchmark"`

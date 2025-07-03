@@ -179,11 +179,12 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 					State:  node.Power.State,
 					Target: node.Power.Target,
 				},
-				NumGPU:   numGPU,
-				GPUs:     getGpus(g.data, uint32(node.TwinID)),
-				ExtraFee: node.ExtraFee,
-				Healthy:  g.data.HealthReports[uint32(node.TwinID)],
-				Dmi:      g.data.DMIs[uint32(node.TwinID)],
+				NumGPU:      numGPU,
+				GPUs:        getGpus(g.data, uint32(node.TwinID)),
+				ExtraFee:    node.ExtraFee,
+				Healthy:     g.data.HealthReports[uint32(node.TwinID)].Healthy,
+				UptimeScore: g.data.HealthReports[uint32(node.TwinID)].UptimeScore,
+				Dmi:         g.data.DMIs[uint32(node.TwinID)],
 				Speed: types.Speed{
 					Upload:          g.data.Speeds[uint32(node.TwinID)].Upload,
 					Download:        g.data.Speeds[uint32(node.TwinID)].Download,
@@ -289,11 +290,12 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 			State:  node.Power.State,
 			Target: node.Power.Target,
 		},
-		NumGPU:   numGPU,
-		GPUs:     getGpus(g.data, uint32(node.TwinID)),
-		ExtraFee: node.ExtraFee,
-		Healthy:  g.data.HealthReports[uint32(node.TwinID)],
-		Dmi:      g.data.DMIs[uint32(node.TwinID)],
+		NumGPU:      numGPU,
+		GPUs:        getGpus(g.data, uint32(node.TwinID)),
+		ExtraFee:    node.ExtraFee,
+		Healthy:     g.data.HealthReports[uint32(node.TwinID)].Healthy,
+		UptimeScore: g.data.HealthReports[uint32(node.TwinID)].UptimeScore,
+		Dmi:         g.data.DMIs[uint32(node.TwinID)],
 		Speed: types.Speed{
 			Upload:          g.data.Speeds[uint32(node.TwinID)].Upload,
 			Download:        g.data.Speeds[uint32(node.TwinID)].Download,
@@ -354,7 +356,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.Healthy != nil && *f.Healthy != data.HealthReports[uint32(n.TwinID)] {
+	if f.Healthy != nil && *f.Healthy != data.HealthReports[uint32(n.TwinID)].Healthy {
 		return false
 	}
 
