@@ -196,22 +196,8 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to calculate period cost")
 	}
-	// totalOverDraft represents the sum of standard and additional overdraft amounts for the contract in unit TFT
-	totalOverDraft := types.U128{Int: big.NewInt(0)}
-
-	var standardOverdraft types.U128
-	standardOverdraft.Int = big.NewInt(0)
-	if contractPaymentState.StandardOverdraft.Int != nil {
-		standardOverdraft.Int = contractPaymentState.StandardOverdraft.Int
-	}
-
-	var additionalOverdraft types.U128
-	additionalOverdraft.Int = big.NewInt(0)
-	if contractPaymentState.AdditionalOverdraft.Int != nil {
-		additionalOverdraft.Int = contractPaymentState.AdditionalOverdraft.Int
-	}
-	totalOverDraft.Add(standardOverdraft.Int, additionalOverdraft.Int)
-	totalOverDraftTFT := unitToTFT(totalOverDraft.Int)
+	// totalOverDraft represents the sum of standard and additional overdraft amounts for the contract in TFT
+	totalOverDraftTFT := calculateTotalOverdraftTFT(&contractPaymentState)
 
 	unbilledNuTFT, err := c.getUnbilledAmountInTFT(uint64(contractInfo.ContractID))
 	if err != nil {
@@ -472,4 +458,18 @@ func (c *Calculator) USDtoTFT(usd float64) (float64, error) {
 	// convert from unit-USD to TFT
 	tftPriceUSD := float64(tftPrice) / mUSDToUSD
 	return usd / tftPriceUSD, nil
+}
+
+// calculateTotalOverdraftTFT calculates the total overdraft from payment state in TFT
+func calculateTotalOverdraftTFT(paymentState *substrate.ContractPaymentState) float64 {
+	totalOverDraft := types.U128{Int: big.NewInt(0)}
+
+	if paymentState.StandardOverdraft.Int != nil {
+		totalOverDraft.Add(paymentState.StandardOverdraft.Int, totalOverDraft.Int)
+	}
+
+	if paymentState.AdditionalOverdraft.Int != nil {
+		totalOverDraft.Add(paymentState.AdditionalOverdraft.Int, totalOverDraft.Int)
+	}
+	return unitToTFT(totalOverDraft.Int)
 }
