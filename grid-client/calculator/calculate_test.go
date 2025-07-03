@@ -264,7 +264,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 		ContractType: substrate.ContractType{
 			IsNodeContract: true,
 			NodeContract: substrate.NodeContract{
-				Node: 1,
+				Node:           1,
 				PublicIPsCount: 1, // Add PublicIPsCount to ensure billing calculations are performed
 			},
 		},
@@ -305,7 +305,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 			ContractType: substrate.ContractType{
 				IsNodeContract: true,
 				NodeContract: substrate.NodeContract{
-					Node: 1,
+					Node:           1,
 					PublicIPsCount: 0,
 				},
 			},
@@ -329,7 +329,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, expected, result, "Expected %v but got %v", expected, result)
 	})
-	
+
 	t.Run("Amount is 5 USD in Unit-USD, should return 1000 TFT, non certified node", func(t *testing.T) {
 		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{
 			AmountUnbilled: types.U64(1e7 * 5),
@@ -434,4 +434,5 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 		_, err := calculator.getUnbilledAmountInTFT(&contract, false)
 		assert.Error(t, err)
 	})
+
 }
