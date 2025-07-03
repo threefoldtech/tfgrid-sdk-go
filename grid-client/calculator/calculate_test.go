@@ -224,7 +224,7 @@ func TestUSDtoTFT(t *testing.T) {
 
 		_, err := calculator.USDtoTFT(10)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get TFT price")
+		assert.ErrorContains(t, err, "failed to get TFT price")
 	})
 	t.Run("success case", func(t *testing.T) {
 		// 5 mUSD = 0.005 USD per TFT
