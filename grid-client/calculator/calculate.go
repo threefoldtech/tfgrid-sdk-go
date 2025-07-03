@@ -306,11 +306,9 @@ func (c *Calculator) calculateContractCost(contract *substrate.Contract) (float6
 		return 0, err
 	}
 
-	var nodeRentContract uint64
-
 	if contract.ContractType.IsNodeContract {
 
-		nodeRentContract, err = c.substrateConn.GetNodeRentContract(nodeID)
+		nodeRentContract, err := c.substrateConn.GetNodeRentContract(nodeID)
 		if err != nil {
 			if errors.Is(err, substrate.ErrNotFound) {
 				return 0, nil
