@@ -236,11 +236,6 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 
 }
 
-// unitToUSD converts unit-USD to USD as float64
-func unitToUSD(units uint64) float64 {
-	return float64(units) / UnitFactor
-}
-
 // unitToTFT converts unit-TFT (big.Int) to TFT
 func unitToTFT(units *big.Int) float64 {
 	result := new(big.Float).SetInt(units)
@@ -254,15 +249,12 @@ func (c *Calculator) getUnbilledAmountInTFT(contractID uint64) (float64, error) 
 	if err != nil && !errors.Is(err, substrate.ErrNotFound) {
 		return 0, err
 	}
-	var unbilledBig *big.Float = big.NewFloat(0)
+	var unbilled float64 = 0
 	if billingInfo.AmountUnbilled != types.U64(0) {
-		unbilledBig = big.NewFloat(float64(billingInfo.AmountUnbilled))
+		unbilled = float64(billingInfo.AmountUnbilled)
 	}
-	divisor := big.NewFloat(UnitFactor)
-
-	//convert from unit-USD to USD
-	unbilledUSDFloat := unbilledBig.Quo(unbilledBig, divisor)
-	unbilledUSD, _ := unbilledUSDFloat.Float64()
+	// amount unbilled is in unit-USD
+	unbilledUSD := unbilled / UnitFactor
 
 	return c.USDtoTFT(unbilledUSD)
 }
