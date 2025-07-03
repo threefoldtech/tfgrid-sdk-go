@@ -199,13 +199,13 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 	totalOverDraft := types.U128{Int: big.NewInt(0)}
 
 	var standardOverdraft types.U128
-
+	standardOverdraft.Int = big.NewInt(0)
 	if contractPaymentState.StandardOverdraft.Int != nil {
-
 		standardOverdraft.Int = contractPaymentState.StandardOverdraft.Int
 	}
 
 	var additionalOverdraft types.U128
+	additionalOverdraft.Int = big.NewInt(0)
 	if contractPaymentState.AdditionalOverdraft.Int != nil {
 		additionalOverdraft.Int = contractPaymentState.AdditionalOverdraft.Int
 	}
