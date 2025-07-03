@@ -290,7 +290,7 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 // The period is the time since last updated in seconds with the provided allowance time.
 func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contract *substrate.Contract, allowance time.Duration) (float64, error) {
 	// Calculate the elapsed seconds since last billing
-	elapsedSeconds := math.Ceil(time.Duration(time.Since(lastUpdatedSeconds)).Seconds())
+	elapsedSeconds := math.Ceil(time.Since(lastUpdatedSeconds).Seconds())
 	totalPeriodSeconds := elapsedSeconds + allowance.Seconds()
 
 	contractMonthlyCostUSD, err := c.calculateContractCost(contract)
@@ -357,7 +357,7 @@ func (c *Calculator) calculateUniqueNameCost() (float64, error) {
 // Calculates the cost of a node contract per month in USD.
 //
 // There are two cases for node contract cost:
-//  1. Node contract on shared node: the cost of the node (shared)
+//  1. Node contract on shared node: the cost of the used resources of (shared)
 //  2. Node contract on rented node: the cost of the IPV4 only if the contact includes ipv4, else it will return zero.
 func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onCertifiedNode, isOnRentedNode bool) (float64, error) {
 	if !contract.ContractType.IsNodeContract {
