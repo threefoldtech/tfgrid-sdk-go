@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -268,16 +269,41 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed to get contracts for node ID %d", nodeID)
 	}
-	var totalCost int64 = 0
+
+	var wg sync.WaitGroup
+	wg.Add(len(contracts))
+
+	type result struct {
+		cost int64
+		err  error
+	}
+
+	resultChain := make(chan result, len(contracts))
+
 	for _, contract := range contracts {
-		cost, err := c.CalculateContractOverdue(uint64(contract), allowance)
-		if err != nil {
-			if errors.Is(err, ErrContractDeleted) {
-				continue
+		go func(contract uint64) {
+			defer wg.Done()
+			cost, err := c.CalculateContractOverdue(contract, allowance)
+			if err != nil {
+				if errors.Is(err, ErrContractDeleted) {
+					return
+				}
+				resultChain <- result{err: err}
+				return
 			}
-			return 0, err
+			resultChain <- result{cost: cost}
+		}(uint64(contract))
+	}
+
+	wg.Wait()
+	close(resultChain)
+
+	var totalCost int64 = 0
+	for res := range resultChain {
+		if res.err != nil {
+			return 0, res.err
 		}
-		totalCost += cost
+		totalCost += res.cost
 	}
 	return totalCost, nil
 }
@@ -433,17 +459,6 @@ func (c *Calculator) calculateRentCost(contract *substrate.Contract, node *subst
 	}
 	dedicatedPrice += (float64(extraFee) / mUSDToUSD)
 	return dedicatedPrice, nil
-}
-
-// getNodeID returns the node ID of a contract
-func getNodeID(contract *substrate.Contract) (uint32, error) {
-	if contract.ContractType.IsNodeContract {
-		return uint32(contract.ContractType.NodeContract.Node), nil
-	}
-	if contract.ContractType.IsRentContract {
-		return uint32(contract.ContractType.RentContract.Node), nil
-	}
-	return 0, fmt.Errorf("contract id %d is not a node contract nor rent contract", contract.ContractID)
 }
 
 // convertBytesToGB converts bytes to gigabytes by dividing by 1024^3
