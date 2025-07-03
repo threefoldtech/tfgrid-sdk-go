@@ -175,25 +175,25 @@ func (c *Calculator) calculateIPV4() (float64, error) {
 // If the contract is rent contract, will add both of ipv4 cost and the total overdue of all associated contracts.
 // The total period is the time since the last billing added to Allowance period.
 // The resulting overdue amount represents the amount that needs to be addressed.
-func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration) (*big.Float, error) {
+func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration) (int64, error) {
 	contract, err := c.substrateConn.GetContract(id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get contract ID %d", id)
+		return 0, errors.Wrapf(err, "failed to get contract ID %d", id)
 	}
 
 	if contract.IsDeleted() {
-		return nil, ErrContractDeleted
+		return 0, ErrContractDeleted
 	}
 	contractInfo := contract.Contract
 
 	contractPaymentState, err := c.substrateConn.GetContractPaymentState(id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get payment state for contract ID %d", id)
+		return 0, errors.Wrapf(err, "failed to get payment state for contract ID %d", id)
 	}
 
 	periodCostTFT, err := c.calculatePeriodCostTFT(time.Unix(int64(contractPaymentState.LastUpdatedSeconds), 0), contractInfo, allowance)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to calculate period cost")
+		return 0, errors.Wrap(err, "failed to calculate period cost")
 	}
 	// totalOverDraft represents the sum of standard and additional overdraft amounts for the contract in unit TFT
 	totalOverDraft := types.U128{Int: big.NewInt(0)}
@@ -214,7 +214,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 
 	unbilledNuTFT, err := c.getUnbilledAmountInTFT(uint64(contractInfo.ContractID))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get unbilled amount")
+		return 0, errors.Wrap(err, "failed to get unbilled amount")
 	}
 	if unbilledNuTFT == nil {
 		unbilledNuTFT = big.NewFloat(0)
@@ -234,7 +234,9 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 		totalOverDraftBigFloat.Add(totalContractsCost, totalOverDraftBigFloat)
 	}
 
-	return totalOverDraftBigFloat, nil
+	totalOverdraftFloat64, _ := totalOverDraftBigFloat.Float64()
+	return int64(math.Ceil(totalOverdraftFloat64)), nil
+
 }
 
 // unitToUSD converts unit-USD to USD as float64
@@ -281,7 +283,7 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 		if err == ErrContractDeleted {
 			continue
 		}
-		totalCost.Add(totalCost, cost)
+		totalCost.Add(totalCost, big.NewFloat(float64(cost)))
 	}
 	return totalCost, nil
 }
