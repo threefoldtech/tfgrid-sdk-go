@@ -153,7 +153,7 @@ func calculateCU(cru, mru int64) float64 {
 }
 
 // Calculates the cost of a public IP per month in USD.
-func (c *Calculator) calculateIPV4() (float64, error) {
+func (c *Calculator) calculateIPV4CostPerMonth() (float64, error) {
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
 		return 0, err
@@ -372,7 +372,7 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 	// Node contract on rented node
 	if isOnRentedNode {
 		if publicIPsCount > 0 {
-			cost, err := c.calculateIPV4()
+			cost, err := c.calculateIPV4CostPerMonth()
 			if err != nil {
 				return 0, err
 			}

@@ -67,3 +67,5 @@ require (
 replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy => ../grid-proxy
 
 replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go => ../rmb-sdk-go
+
+replace github.com/threefoldtech/tfchain/clients/tfchain-client-go => ../../tfchain/clients/tfchain-client-go
