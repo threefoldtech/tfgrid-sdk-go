@@ -367,21 +367,21 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 
 	// Node contract on rented node
 	if isOnRentedNode {
-		if publicIPsCount > 0 {
-			cost, err := c.calculateIPV4CostPerMonth()
-			if err != nil {
-				return 0, err
-			}
-			totalCost := cost * float64(publicIPsCount)
-
-			//TODO should we apply stacking discount?
-
-			if onCertifiedNode {
-				totalCost *= 1.25
-			}
-			return totalCost, nil
+		if publicIPsCount == 0 {
+			return 0, nil
 		}
-		return 0, nil
+		cost, err := c.calculateIPV4CostPerMonth()
+		if err != nil {
+			return 0, err
+		}
+		totalCost := cost * float64(publicIPsCount)
+
+		//TODO should we apply stacking discount?
+
+		if onCertifiedNode {
+			totalCost *= 1.25
+		}
+		return totalCost, nil
 	}
 
 	// Normal node contract on sharedNode
