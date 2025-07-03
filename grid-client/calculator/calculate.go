@@ -202,22 +202,17 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get node")
 	}
-	// totalOverDraft represents the sum of standard and additional overdraft amounts for the contract in TFT
 
 	unbilledNuTFT, err := c.getUnbilledAmountInTFT(contractInfo, node.Certification.IsCertified)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get unbilled amount")
 	}
 
-	totalOverDraftTFT += unbilledNuTFT
-
-	//add period cost
-
 	periodCostTFT, err := c.calculatePeriodCostTFT(lastBillingAt, contractInfo, node, allowance)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to calculate period cost")
 	}
-	totalOverDraftTFT += periodCostTFT
+	totalOverDraftTFT += periodCostTFT + unbilledNuTFT
 
 	if contract.ContractType.IsRentContract {
 		// add all contracts overdue on a node
@@ -276,11 +271,11 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 	var totalCost int64 = 0
 	for _, contract := range contracts {
 		cost, err := c.CalculateContractOverdue(uint64(contract), allowance)
-		if err != nil && err != ErrContractDeleted {
+		if err != nil {
+			if errors.Is(err, ErrContractDeleted) {
+				continue
+			}
 			return 0, err
-		}
-		if err == ErrContractDeleted {
-			continue
 		}
 		totalCost += cost
 	}
@@ -321,14 +316,16 @@ func (c *Calculator) calculateContractCost(contract *substrate.Contract, node *s
 		return 0, errors.New("node is nil")
 	}
 
-	var nodeRentContract uint64
-
-	nodeRentContract, err := c.substrateConn.GetNodeRentContract(uint32(node.ID))
-	if err != nil && !errors.Is(err, substrate.ErrNotFound) {
-		return 0, err
-	}
-
 	if contract.ContractType.IsNodeContract {
+
+		nodeRentContract, err := c.substrateConn.GetNodeRentContract(uint32(node.ID))
+		if err != nil {
+			if errors.Is(err, substrate.ErrNotFound) {
+				return 0, nil
+			}
+			return 0, err
+		}
+
 		return c.calculateNodeContractCost(contract, node.Certification.IsCertified, nodeRentContract > 0)
 	}
 
@@ -407,6 +404,9 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 //
 // Rent contract cost is the cost of the node (dedicated discount applied) + the node extra fee
 func (c *Calculator) calculateRentCost(contract *substrate.Contract, node *substrate.Node) (float64, error) {
+	if !contract.ContractType.IsRentContract {
+		return 0, fmt.Errorf("contract ID %d is not a rent contract", contract.ContractID)
+	}
 
 	CRU := uint64(node.Resources.CRU)
 	MRU := convertBytesToGB(node.Resources.MRU)
