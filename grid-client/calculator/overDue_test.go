@@ -48,6 +48,21 @@ func TestCalculateTotalContractsOverdueOnNode(t *testing.T) {
 		StandardOverdraft:   types.U128{},
 		AdditionalOverdraft: types.U128{},
 	}, nil)
+	sub.EXPECT().GetContractPaymentState(uint64(3)).Return(substrate.ContractPaymentState{
+		LastUpdatedSeconds:  types.U64(time.Now().Add(-30 * time.Minute).Unix()),
+		StandardOverdraft:   types.U128{Int: big.NewInt(1e7)},
+		AdditionalOverdraft: types.U128{},
+	}, nil)
+	sub.EXPECT().GetContractPaymentState(uint64(4)).Return(substrate.ContractPaymentState{
+		LastUpdatedSeconds:  types.U64(time.Now().Add(-30 * time.Minute).Unix()),
+		StandardOverdraft:   types.U128{},
+		AdditionalOverdraft: types.U128{},
+	}, nil)
+	sub.EXPECT().GetContractPaymentState(uint64(5)).Return(substrate.ContractPaymentState{
+		LastUpdatedSeconds:  types.U64(time.Now().Add(-30 * time.Minute).Unix()),
+		StandardOverdraft:   types.U128{Int: big.NewInt(1e7)},
+		AdditionalOverdraft: types.U128{},
+	}, nil)
 	sub.EXPECT().GetNode(nodeID).Return(node, nil).AnyTimes()
 	billingInfoWithUnbilled := substrate.ContractBillingInfo{
 		AmountUnbilled: types.U64(1e7),
@@ -106,17 +121,23 @@ func TestCalculateTotalContractsOverdueOnNode(t *testing.T) {
 	}, nil).AnyTimes()
 	t.Run("success case with multiple contracts", func(t *testing.T) {
 
-		contracts := []types.U64{types.U64(1), types.U64(2)}
+		contracts := []types.U64{types.U64(1), types.U64(2), types.U64(3), types.U64(4), types.U64(5)}
 
 		sub.EXPECT().GetContract(uint64(1)).Return(nodeContractWithPublicIP, nil)
 		sub.EXPECT().GetContract(uint64(2)).Return(nodeContractWithoutPublicIP, nil)
+		sub.EXPECT().GetContract(uint64(3)).Return(nodeContractWithPublicIP, nil)
+		sub.EXPECT().GetContract(uint64(4)).Return(nodeContractWithoutPublicIP, nil)
+		sub.EXPECT().GetContract(uint64(5)).Return(nodeContractWithPublicIP, nil)
 
 		sub.EXPECT().GetNodeContracts(nodeID).Return(contracts, nil)
 
 		sub.EXPECT().GetContractBillingInfo(uint64(1)).Return(billingInfoWithUnbilled, nil).AnyTimes()
 		sub.EXPECT().GetContractBillingInfo(uint64(2)).Return(billingInfoWithoutUnbilled, nil).AnyTimes()
+		sub.EXPECT().GetContractBillingInfo(uint64(3)).Return(billingInfoWithUnbilled, nil).AnyTimes()
+		sub.EXPECT().GetContractBillingInfo(uint64(4)).Return(billingInfoWithoutUnbilled, nil).AnyTimes()
+		sub.EXPECT().GetContractBillingInfo(uint64(5)).Return(billingInfoWithUnbilled, nil).AnyTimes()
 
-		expectedTotal := int64(102)
+		expectedTotal := int64(306)
 
 		// Call the function being tested
 		totalCost, err := calculator.calculateTotalContractsOverdueOnNode(nodeID, allowance)
