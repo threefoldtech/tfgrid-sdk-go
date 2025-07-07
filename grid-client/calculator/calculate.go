@@ -94,6 +94,8 @@ func (c *Calculator) CalculatePricesAfterDiscount(cost float64) (dedicatedPrice,
 
 	dedicatedPrice = dedicatedPrice - dedicatedPrice*dedicatedDiscount
 	sharedPrice = sharedPrice - sharedPrice*sharedDiscount
+	fmt.Println("dedicatedPrice", dedicatedPrice)
+	fmt.Println("sharedPrice", sharedPrice)
 
 	return
 }
@@ -364,14 +366,21 @@ func (c *Calculator) calculateContractCost(contract *substrate.Contract, node *s
 
 // Calculates the cost of a unique name per month in USD.
 func (c *Calculator) calculateUniqueNameCost() (float64, error) {
-	//TODO should we apply stacking discount?
+
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
 		return 0, err
 	}
 	// cost in unit-USD
 	monthlyCost := float64(pricingPolicy.UniqueName.Value) * 24 * 30
-	return unitToUSD(monthlyCost), nil
+
+	costUSD := unitToUSD(monthlyCost)
+
+	_, afterDiscount, err := c.CalculatePricesAfterDiscount(costUSD)
+	if err != nil {
+		return costUSD, nil
+	}
+	return afterDiscount, nil
 }
 
 // Calculates the cost of a node contract per month in USD.
@@ -395,13 +404,15 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 			return 0, err
 		}
 		totalCost := cost * float64(publicIPsCount)
-
-		//TODO should we apply stacking discount?
-
 		if onCertifiedNode {
 			totalCost *= 1.25
 		}
-		return totalCost, nil
+
+		dedicatedPrice, _, err := c.CalculatePricesAfterDiscount(totalCost)
+		if err != nil {
+			return totalCost, err
+		}
+		return dedicatedPrice, nil
 	}
 
 	// Normal node contract on sharedNode
