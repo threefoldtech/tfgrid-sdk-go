@@ -52,6 +52,7 @@ type SubstrateExt interface {
 	) (uint64, error)
 	GetContract(id uint64) (Contract, error)
 	GetNodeTwin(id uint32) (uint32, error)
+	GetNode(id uint32) (*substrate.Node, error)
 	CreateNameContract(identity substrate.Identity, name string) (uint64, error)
 	GetAccount(identity substrate.Identity) (substrate.AccountInfo, error)
 	GetBalance(identity substrate.Identity) (balance substrate.Balance, err error)
@@ -62,6 +63,12 @@ type SubstrateExt interface {
 	BatchCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, *int, error)
 	BatchAllCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, error)
 	BatchCancelContract(identity substrate.Identity, contracts []uint64) error
+	GetContractPaymentState(id uint64) (substrate.ContractPaymentState, error)
+	GetContractBillingInfo(id uint64) (substrate.ContractBillingInfo, error)
+	GetNodeContractResources(id uint64) (substrate.NodeContractResources, error)
+	GetNodeRentContract(id uint32) (uint64, error)
+	GetDedicatedNodePrice(nodeID uint32) (uint64, error)
+	GetNodeContracts(nodeID uint32) ([]types.U64, error)
 }
 
 // SubstrateImpl struct to use dev substrate
@@ -282,4 +289,36 @@ func normalizeNotFoundErrors(err error) error {
 		return substrate.ErrAccountNotFound
 	}
 	return err
+}
+
+// Get node
+func (s *SubstrateImpl) GetNode(id uint32) (*substrate.Node, error) {
+	return s.Substrate.GetNode(id)
+}
+
+// Get contract payment state
+func (s *SubstrateImpl) GetContractPaymentState(id uint64) (substrate.ContractPaymentState, error) {
+	return s.Substrate.GetContractPaymentState(id)
+}
+
+// Get contract billing info
+func (s *SubstrateImpl) GetContractBillingInfo(id uint64) (substrate.ContractBillingInfo, error) {
+	return s.Substrate.GetContractBillingInfo(id)
+}
+
+// Get node contract resources by contract Id
+func (s *SubstrateImpl) GetNodeContractResources(id uint64) (substrate.NodeContractResources, error) {
+	return s.Substrate.GetNodeContractResources(id)
+}
+
+func (s *SubstrateImpl) GetNodeRentContract(id uint32) (uint64, error) {
+	return s.Substrate.GetNodeRentContract(id)
+}
+
+func (s *SubstrateImpl) GetDedicatedNodePrice(nodeID uint32) (uint64, error) {
+	return s.Substrate.GetDedicatedNodePrice(nodeID)
+}
+
+func (s *SubstrateImpl) GetNodeContracts(nodeID uint32) ([]types.U64, error) {
+	return s.Substrate.GetNodeContracts(nodeID)
 }

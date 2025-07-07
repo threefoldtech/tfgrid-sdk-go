@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	types "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	gomock "github.com/golang/mock/gomock"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	subi "github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
@@ -265,36 +265,6 @@ func (mr *MockSubstrateExtMockRecorder) GetBalance(identity interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBalance", reflect.TypeOf((*MockSubstrateExt)(nil).GetBalance), identity)
 }
 
-// GetTFTPrice mocks base method.
-func (m *MockSubstrateExt) GetTFTPrice() (types.U32, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTFTPrice")
-	ret0, _ := ret[0].(types.U32)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetTFTPrice indicates an expected call of GetTFTPrice.
-func (mr *MockSubstrateExtMockRecorder) GetTFTPrice() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTFTPrice", reflect.TypeOf((*MockSubstrateExt)(nil).GetTFTPrice))
-}
-
-// GetPricingPolicy mocks base method.
-func (m *MockSubstrateExt) GetPricingPolicy(policyID uint32) (substrate.PricingPolicy, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPricingPolicy", policyID)
-	ret0, _ := ret[0].(substrate.PricingPolicy)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetPricingPolicy indicates an expected call of GetPricingPolicy.
-func (mr *MockSubstrateExtMockRecorder) GetPricingPolicy(policyID uint32) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPricingPolicy", reflect.TypeOf((*MockSubstrateExt)(nil).GetPricingPolicy), policyID)
-}
-
 // GetContract mocks base method.
 func (m *MockSubstrateExt) GetContract(id uint64) (subi.Contract, error) {
 	m.ctrl.T.Helper()
@@ -308,6 +278,21 @@ func (m *MockSubstrateExt) GetContract(id uint64) (subi.Contract, error) {
 func (mr *MockSubstrateExtMockRecorder) GetContract(id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContract", reflect.TypeOf((*MockSubstrateExt)(nil).GetContract), id)
+}
+
+// GetContractBillingInfo mocks base method.
+func (m *MockSubstrateExt) GetContractBillingInfo(id uint64) (substrate.ContractBillingInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetContractBillingInfo", id)
+	ret0, _ := ret[0].(substrate.ContractBillingInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetContractBillingInfo indicates an expected call of GetContractBillingInfo.
+func (mr *MockSubstrateExtMockRecorder) GetContractBillingInfo(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractBillingInfo", reflect.TypeOf((*MockSubstrateExt)(nil).GetContractBillingInfo), id)
 }
 
 // GetContractIDByNameRegistration mocks base method.
@@ -325,6 +310,96 @@ func (mr *MockSubstrateExtMockRecorder) GetContractIDByNameRegistration(name int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractIDByNameRegistration", reflect.TypeOf((*MockSubstrateExt)(nil).GetContractIDByNameRegistration), name)
 }
 
+// GetContractPaymentState mocks base method.
+func (m *MockSubstrateExt) GetContractPaymentState(id uint64) (substrate.ContractPaymentState, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetContractPaymentState", id)
+	ret0, _ := ret[0].(substrate.ContractPaymentState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetContractPaymentState indicates an expected call of GetContractPaymentState.
+func (mr *MockSubstrateExtMockRecorder) GetContractPaymentState(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractPaymentState", reflect.TypeOf((*MockSubstrateExt)(nil).GetContractPaymentState), id)
+}
+
+// GetDedicatedNodePrice mocks base method.
+func (m *MockSubstrateExt) GetDedicatedNodePrice(nodeID uint32) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDedicatedNodePrice", nodeID)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDedicatedNodePrice indicates an expected call of GetDedicatedNodePrice.
+func (mr *MockSubstrateExtMockRecorder) GetDedicatedNodePrice(nodeID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDedicatedNodePrice", reflect.TypeOf((*MockSubstrateExt)(nil).GetDedicatedNodePrice), nodeID)
+}
+
+// GetNode mocks base method.
+func (m *MockSubstrateExt) GetNode(id uint32) (*substrate.Node, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNode", id)
+	ret0, _ := ret[0].(*substrate.Node)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNode indicates an expected call of GetNode.
+func (mr *MockSubstrateExtMockRecorder) GetNode(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNode", reflect.TypeOf((*MockSubstrateExt)(nil).GetNode), id)
+}
+
+// GetNodeContractResources mocks base method.
+func (m *MockSubstrateExt) GetNodeContractResources(id uint64) (substrate.NodeContractResources, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNodeContractResources", id)
+	ret0, _ := ret[0].(substrate.NodeContractResources)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNodeContractResources indicates an expected call of GetNodeContractResources.
+func (mr *MockSubstrateExtMockRecorder) GetNodeContractResources(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeContractResources", reflect.TypeOf((*MockSubstrateExt)(nil).GetNodeContractResources), id)
+}
+
+// GetNodeContracts mocks base method.
+func (m *MockSubstrateExt) GetNodeContracts(nodeID uint32) ([]types.U64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNodeContracts", nodeID)
+	ret0, _ := ret[0].([]types.U64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNodeContracts indicates an expected call of GetNodeContracts.
+func (mr *MockSubstrateExtMockRecorder) GetNodeContracts(nodeID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeContracts", reflect.TypeOf((*MockSubstrateExt)(nil).GetNodeContracts), nodeID)
+}
+
+// GetNodeRentContract mocks base method.
+func (m *MockSubstrateExt) GetNodeRentContract(id uint32) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNodeRentContract", id)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNodeRentContract indicates an expected call of GetNodeRentContract.
+func (mr *MockSubstrateExtMockRecorder) GetNodeRentContract(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeRentContract", reflect.TypeOf((*MockSubstrateExt)(nil).GetNodeRentContract), id)
+}
+
 // GetNodeTwin mocks base method.
 func (m *MockSubstrateExt) GetNodeTwin(id uint32) (uint32, error) {
 	m.ctrl.T.Helper()
@@ -338,6 +413,36 @@ func (m *MockSubstrateExt) GetNodeTwin(id uint32) (uint32, error) {
 func (mr *MockSubstrateExtMockRecorder) GetNodeTwin(id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeTwin", reflect.TypeOf((*MockSubstrateExt)(nil).GetNodeTwin), id)
+}
+
+// GetPricingPolicy mocks base method.
+func (m *MockSubstrateExt) GetPricingPolicy(policyID uint32) (substrate.PricingPolicy, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPricingPolicy", policyID)
+	ret0, _ := ret[0].(substrate.PricingPolicy)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPricingPolicy indicates an expected call of GetPricingPolicy.
+func (mr *MockSubstrateExtMockRecorder) GetPricingPolicy(policyID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPricingPolicy", reflect.TypeOf((*MockSubstrateExt)(nil).GetPricingPolicy), policyID)
+}
+
+// GetTFTPrice mocks base method.
+func (m *MockSubstrateExt) GetTFTPrice() (types.U32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTFTPrice")
+	ret0, _ := ret[0].(types.U32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTFTPrice indicates an expected call of GetTFTPrice.
+func (mr *MockSubstrateExtMockRecorder) GetTFTPrice() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTFTPrice", reflect.TypeOf((*MockSubstrateExt)(nil).GetTFTPrice))
 }
 
 // GetTwinByPubKey mocks base method.

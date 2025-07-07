@@ -23,7 +23,7 @@ func TestCalculator(t *testing.T) {
 	calculator := NewCalculator(sub, identity)
 
 	sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
-	sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{
+	sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{
 		ID: 1,
 		SU: substrate.Policy{
 			Value: 50000,
@@ -62,7 +62,7 @@ func TestSubstrateErrors(t *testing.T) {
 	calculator := NewCalculator(sub, identity)
 
 	t.Run("test tft pricing policy error", func(t *testing.T) {
-		sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{}, errors.New("error")).AnyTimes()
+		sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{}, errors.New("error")).AnyTimes()
 
 		_, err := calculator.CalculateCost(0, 0, 0, 0, false, false)
 		assert.Error(t, err)
@@ -72,7 +72,7 @@ func TestSubstrateErrors(t *testing.T) {
 	})
 
 	t.Run("test tft balance error", func(t *testing.T) {
-		sub.EXPECT().GetPricingPolicy(1).Return(substrate.PricingPolicy{}, nil).AnyTimes()
+		sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{}, nil).AnyTimes()
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{}, errors.New("error")).AnyTimes()
 
 		_, _, err = calculator.CalculatePricesAfterDiscount(0)
@@ -203,6 +203,165 @@ func TestTFTtoUSD(t *testing.T) {
 		sub.EXPECT().GetTFTPrice().Return(types.U32(0), errors.New("failed to get TFT price"))
 
 		_, err := calculator.TFTtoUSD(100)
+		assert.Error(t, err)
+	})
+}
+func TestUSDtoTFT(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sub := mocks.NewMockSubstrateExt(ctrl)
+	// Add mock implementation for GetNodeContracts to fix compiler error
+	sub.EXPECT().GetNodeContracts(gomock.Any()).Return([]types.U64{}, nil).AnyTimes()
+
+	identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+	assert.NoError(t, err)
+
+	calculator := NewCalculator(sub, identity)
+
+	t.Run("error case", func(t *testing.T) {
+		sub.EXPECT().GetTFTPrice().Return(types.U32(0), errors.New("failed to get TFT price"))
+
+		_, err := calculator.USDtoTFT(10)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get TFT price")
+	})
+	t.Run("success case", func(t *testing.T) {
+		// 5 mUSD = 0.005 USD per TFT
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
+
+		// 10 USD / 0.005 USD/TFT = 2000 TFT
+		result, err := calculator.USDtoTFT(10)
+		assert.NoError(t, err)
+
+		expected := float64(2000)
+		assert.Equal(t, expected, result, "Expected %v but got %v", expected, result)
+	})
+
+	t.Run("large amount case 1 million USD", func(t *testing.T) {
+
+		result, err := calculator.USDtoTFT(1000000.)
+		assert.NoError(t, err)
+
+		expected := float64(200000000)
+		assert.Equal(t, expected, result, "Expected %v but got %v", expected, result)
+	})
+}
+
+func TestGetUnbilledAmountInTFT(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	sub := mocks.NewMockSubstrateExt(ctrl)
+
+	identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+	assert.NoError(t, err)
+
+	calculator := NewCalculator(sub, identity)
+
+	contractID := uint64(42)
+
+	t.Run("Amount is 5 USD in Unit-USD, should return 1000 TFT", func(t *testing.T) {
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{
+			AmountUnbilled: types.U64(1e7 * 5),
+		}, nil)
+
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+
+		expected := 1000.0
+
+		result, err := calculator.getUnbilledAmountInTFT(contractID)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, result, "Expected %v but got %v", expected, result)
+	})
+
+	t.Run("Amount is 0 USD, should return 0 TFT", func(t *testing.T) {
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{
+			AmountUnbilled: types.U64(0),
+		}, nil)
+
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+
+		expected := 0.0
+
+		result, err := calculator.getUnbilledAmountInTFT(contractID)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, result, "Expected %v but got %v", expected, result)
+	})
+
+	t.Run("ErrNotFound in GetContractBillingInfo should return 0 TFT", func(t *testing.T) {
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{}, substrate.ErrNotFound)
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+
+		expected := 0.0
+
+		result, err := calculator.getUnbilledAmountInTFT(contractID)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, result, "Expected %v but got %v", expected, result)
+	})
+
+	t.Run("Small amount test (5000 Unit-USD)", func(t *testing.T) {
+		// 5000 Unit-USD = 0.0005 USD
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{
+			AmountUnbilled: types.U64(5000),
+		}, nil)
+
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+
+		// 0.0005 USD / 0.005 USD per TFT = 0.1 TFT
+		expected := 0.1
+
+		result, err := calculator.getUnbilledAmountInTFT(contractID)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, result, "Expected %v but got %v", expected, result)
+	})
+
+	t.Run("Large amount test (1 million Unit-USD)", func(t *testing.T) {
+		// 1 million Unit-USD = 1 USD
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{
+			AmountUnbilled: types.U64(1e7),
+		}, nil)
+
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+
+		// 1 USD / 0.005 USD per TFT = 200 TFT
+		expected := 200.0
+
+		result, err := calculator.getUnbilledAmountInTFT(contractID)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, result, "Expected %v but got %v", expected, result)
+	})
+
+	t.Run("Very large amount test (10 billion Unit-USD)", func(t *testing.T) {
+		// 10 billion Unit-USD = 1000 USD
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{
+			AmountUnbilled: types.U64(1e10),
+		}, nil)
+
+		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+
+		// 1000 USD / 0.005 USD per TFT = 200,000 TFT
+		expected := 200000.0
+
+		result, err := calculator.getUnbilledAmountInTFT(contractID)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, result, "Expected %v but got %v", expected, result)
+	})
+
+	t.Run("error in GetContractBillingInfoByID", func(t *testing.T) {
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{}, errors.New("failed to get billing info"))
+
+		_, err := calculator.getUnbilledAmountInTFT(contractID)
+		assert.Error(t, err)
+	})
+
+	t.Run("error in USDtoTFT", func(t *testing.T) {
+		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{
+			AmountUnbilled: types.U64(1000),
+		}, nil)
+
+		sub.EXPECT().GetTFTPrice().Return(types.U32(0), errors.New("failed to get TFT price"))
+
+		_, err := calculator.getUnbilledAmountInTFT(contractID)
 		assert.Error(t, err)
 	})
 }
