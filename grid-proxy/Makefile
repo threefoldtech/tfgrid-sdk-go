@@ -58,6 +58,7 @@ server-start: ## Start the proxy server			(Args: `m=<MNEMONICS>`)
 		--postgres-db tfgrid-graphql \
 		--postgres-password postgres \
 		--postgres-user postgres \
+		--rate-limit-rps 1000 \
 		--mnemonics "$(m)" ;
 
 all-start: db-stop db-start sleep db-fill server-start ## Full start of the database and the server (Args: `m=<MNEMONICS>`)

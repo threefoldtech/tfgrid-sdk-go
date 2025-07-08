@@ -629,7 +629,7 @@ func (a *App) getContractBills(r *http.Request) (interface{}, mw.Response) {
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 // @BasePath /
-func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Client, idxIntervals map[string]uint) error {
+func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Client, idxIntervals map[string]uint, rateLimitRPS int) error {
 
 	a := App{
 		cl:             cl,
@@ -638,32 +638,41 @@ func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Cl
 		idxIntervals:   idxIntervals,
 	}
 
-	router.HandleFunc("/farms", mw.AsHandlerFunc(a.listFarms))
-	router.HandleFunc("/stats", mw.AsHandlerFunc(a.getStats))
+	// Create rate limiter middleware if rate limiting is enabled
+	var rateLimiter *mw.RateLimiterMiddleware
+	if rateLimitRPS > 0 {
+		rateLimiter = mw.NewRateLimiterMiddleware(rateLimitRPS)
+		log.Info().Int("rate_limit_rps", rateLimitRPS).Msg("Rate limiting enabled")
+	} else {
+		log.Info().Msg("Rate limiting disabled")
+	}
 
-	router.HandleFunc("/twins", mw.AsHandlerFunc(a.listTwins))
-	router.HandleFunc("/twins/{twin_id:[0-9]+}/consumption", mw.AsHandlerFunc(a.getTwinConsumption))
+	router.HandleFunc("/farms", mw.WithRateLimit(rateLimiter, a.listFarms))
+	router.HandleFunc("/stats", mw.WithRateLimit(rateLimiter, a.getStats))
 
-	router.HandleFunc("/nodes", mw.AsHandlerFunc(a.getNodes))
-	router.HandleFunc("/nodes/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getNode))
-	router.HandleFunc("/nodes/{node_id:[0-9]+}/status", mw.AsHandlerFunc(a.getNodeStatus))
-	router.HandleFunc("/nodes/{node_id:[0-9]+}/statistics", mw.AsHandlerFunc(a.getNodeStatistics))
-	router.HandleFunc("/nodes/{node_id:[0-9]+}/gpu", mw.AsHandlerFunc(a.getNodeGpus))
+	router.HandleFunc("/twins", mw.WithRateLimit(rateLimiter, a.listTwins))
+	router.HandleFunc("/twins/{twin_id:[0-9]+}/consumption", mw.WithRateLimit(rateLimiter, a.getTwinConsumption))
 
-	router.HandleFunc("/gateways", mw.AsHandlerFunc(a.getGateways))
-	router.HandleFunc("/gateways/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getGateway))
-	router.HandleFunc("/gateways/{node_id:[0-9]+}/status", mw.AsHandlerFunc(a.getNodeStatus))
+	router.HandleFunc("/nodes", mw.WithRateLimit(rateLimiter, a.getNodes))
+	router.HandleFunc("/nodes/{node_id:[0-9]+}", mw.WithRateLimit(rateLimiter, a.getNode))
+	router.HandleFunc("/nodes/{node_id:[0-9]+}/status", mw.WithRateLimit(rateLimiter, a.getNodeStatus))
+	router.HandleFunc("/nodes/{node_id:[0-9]+}/statistics", mw.WithRateLimit(rateLimiter, a.getNodeStatistics))
+	router.HandleFunc("/nodes/{node_id:[0-9]+}/gpu", mw.WithRateLimit(rateLimiter, a.getNodeGpus))
 
-	router.HandleFunc("/contracts", mw.AsHandlerFunc(a.listContracts))
-	router.HandleFunc("/contracts/{contract_id:[0-9]+}", mw.AsHandlerFunc(a.getContract))
-	router.HandleFunc("/contracts/{contract_id:[0-9]+}/bills", mw.AsHandlerFunc(a.getContractBills))
+	router.HandleFunc("/gateways", mw.WithRateLimit(rateLimiter, a.getGateways))
+	router.HandleFunc("/gateways/{node_id:[0-9]+}", mw.WithRateLimit(rateLimiter, a.getGateway))
+	router.HandleFunc("/gateways/{node_id:[0-9]+}/status", mw.WithRateLimit(rateLimiter, a.getNodeStatus))
 
-	router.HandleFunc("/public_ips", mw.AsHandlerFunc(a.GetPublicIps))
+	router.HandleFunc("/contracts", mw.WithRateLimit(rateLimiter, a.listContracts))
+	router.HandleFunc("/contracts/{contract_id:[0-9]+}", mw.WithRateLimit(rateLimiter, a.getContract))
+	router.HandleFunc("/contracts/{contract_id:[0-9]+}/bills", mw.WithRateLimit(rateLimiter, a.getContractBills))
 
-	router.HandleFunc("/", mw.AsHandlerFunc(a.indexPage(router)))
-	router.HandleFunc("/ping", mw.AsHandlerFunc(a.ping))
-	router.HandleFunc("/version", mw.AsHandlerFunc(a.version))
-	router.HandleFunc("/health", mw.AsHandlerFunc(a.health))
+	router.HandleFunc("/public_ips", mw.WithRateLimit(rateLimiter, a.GetPublicIps))
+
+	router.HandleFunc("/", mw.WithRateLimit(rateLimiter, a.indexPage(router)))
+	router.HandleFunc("/ping", mw.WithRateLimit(rateLimiter, a.ping))
+	router.HandleFunc("/version", mw.WithRateLimit(rateLimiter, a.version))
+	router.HandleFunc("/health", mw.WithRateLimit(rateLimiter, a.health))
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	return nil
