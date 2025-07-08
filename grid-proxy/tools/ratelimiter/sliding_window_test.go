@@ -57,9 +57,8 @@ func TestGetClientIP(t *testing.T) {
 }
 
 func TestSlidingWindowRateLimiter(t *testing.T) {
-	limiter := NewSlidingWindowRateLimiter(2) // 2 requests per second
+	limiter := NewSlidingWindowRateLimiter(2)
 
-	// Test that we can make 2 requests immediately
 	if !limiter.Allow("192.168.1.1") {
 		t.Error("First request should be allowed")
 	}
@@ -67,7 +66,6 @@ func TestSlidingWindowRateLimiter(t *testing.T) {
 		t.Error("Second request should be allowed")
 	}
 
-	// Third request should be blocked
 	if limiter.Allow("192.168.1.1") {
 		t.Error("Third request should be blocked")
 	}
@@ -78,7 +76,7 @@ func TestSlidingWindowRateLimiter(t *testing.T) {
 	}
 
 	// After waiting, requests should be allowed again
-	time.Sleep(1100 * time.Millisecond) // Wait for window to slide
+	time.Sleep(1100 * time.Millisecond)
 	if !limiter.Allow("192.168.1.1") {
 		t.Error("Request should be allowed after window slide")
 	}
@@ -104,7 +102,7 @@ func TestSlidingWindowRateLimiterStats(t *testing.T) {
 }
 
 func TestGetCurrentRequestCountAndRateLimit(t *testing.T) {
-	limiter := NewSlidingWindowRateLimiter(5) // 5 requests per second
+	limiter := NewSlidingWindowRateLimiter(5)
 
 	// Test rate limit getter
 	if limiter.GetRateLimit() != 5 {

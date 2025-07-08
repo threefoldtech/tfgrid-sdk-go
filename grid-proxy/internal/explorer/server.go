@@ -638,7 +638,6 @@ func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Cl
 		idxIntervals:   idxIntervals,
 	}
 
-	// Create rate limiter middleware if rate limiting is enabled
 	var rateLimiter *mw.RateLimiterMiddleware
 	if rateLimitRPS > 0 {
 		rateLimiter = mw.NewRateLimiterMiddleware(rateLimitRPS)

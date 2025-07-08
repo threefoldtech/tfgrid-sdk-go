@@ -44,10 +44,7 @@ func (rlm *RateLimiterMiddleware) RateLimitAction(action Action) Action {
 // RateLimitProxyAction wraps a ProxyAction with rate limiting
 func (rlm *RateLimiterMiddleware) RateLimitProxyAction(action ProxyAction) ProxyAction {
 	return func(r *http.Request) (*http.Response, Response) {
-		// Get client IP
 		clientIP := ratelimiter.GetClientIP(r)
-
-		// Check rate limit
 		if !rlm.limiter.Allow(clientIP) {
 			log.Warn().
 				Str("ip", clientIP).
@@ -58,7 +55,6 @@ func (rlm *RateLimiterMiddleware) RateLimitProxyAction(action ProxyAction) Proxy
 			return nil, rlm.TooManyRequests(fmt.Errorf("rate limit exceeded for IP: %s", clientIP), clientIP)
 		}
 
-		// Rate limit passed, execute the original action
 		return action(r)
 	}
 }
