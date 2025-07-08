@@ -43,7 +43,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241127100051-77e684bcb1b2 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250703093252-e7500b106618 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.18 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.16.1-0.20241229121208-76ac3fea5e67 // indirect
 	github.com/threefoldtech/zosbase v0.1.7 // indirect
