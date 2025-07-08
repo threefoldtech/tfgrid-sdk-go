@@ -402,9 +402,6 @@ func (g *Clientimpl) newHTTPClient() *http.Client {
 	return &http.Client{
 		Timeout: time.Second * 30,
 		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout: time.Second,
-			}).DialContext,
 			TLSHandshakeTimeout:   time.Second,
 			ResponseHeaderTimeout: 5 * time.Second,
 		},
