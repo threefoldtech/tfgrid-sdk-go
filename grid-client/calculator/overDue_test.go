@@ -1,6 +1,7 @@
 package calculator
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -146,4 +147,29 @@ func TestCalculateTotalContractsOverdueOnNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, expectedTotal, totalCost, "Expected total cost to be %v, got %v", expectedTotal, totalCost)
 	})
+
+	// Test case: multiple errors from different contracts
+	t.Run("multiple errors from different contracts", func(t *testing.T) {
+		contracts := []types.U64{types.U64(1), types.U64(2), types.U64(3)}
+		sub.EXPECT().GetNodeContracts(nodeID).Return(contracts, nil)
+
+		// Setup first and third contracts to cause errors
+		sub.EXPECT().GetContract(uint64(1)).Return(subi.Contract{}, assert.AnError)
+		sub.EXPECT().GetContract(uint64(3)).Return(subi.Contract{}, assert.AnError)
+
+		sub.EXPECT().GetContract(uint64(2)).Return(nodeContractWithoutPublicIP, nil)
+		sub.EXPECT().GetContractBillingInfo(uint64(2)).Return(billingInfoWithoutUnbilled, nil).AnyTimes()
+		sub.EXPECT().GetContractPaymentState(uint64(2)).Return(substrate.ContractPaymentState{
+			LastUpdatedSeconds: types.U64(time.Now().Add(-30 * time.Minute).Unix()),
+		}, nil)
+
+		_, err := calculator.calculateTotalContractsOverdueOnNode(nodeID, allowance)
+
+		assert.Error(t, err)
+		fmt.Println(err)
+		assert.Contains(t, err.Error(), "multiple errors occurred")
+		assert.Contains(t, err.Error(), "error with contract 1")
+		assert.Contains(t, err.Error(), "error with contract 3")
+	})
+
 }

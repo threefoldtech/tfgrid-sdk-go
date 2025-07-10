@@ -272,14 +272,11 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 	}
 
 	var wg sync.WaitGroup
+	var mu sync.Mutex
 	wg.Add(len(contracts))
 
-	type result struct {
-		cost int64
-		err  error
-	}
-
-	resultChain := make(chan result, len(contracts))
+	var totalCost int64 = 0
+	errList := make([]error, 0)
 
 	for _, contract := range contracts {
 		go func(contract uint64) {
@@ -289,22 +286,24 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 				if errors.Is(err, ErrContractDeleted) {
 					return
 				}
-				resultChain <- result{err: err}
+				mu.Lock()
+				errList = append(errList, fmt.Errorf("error with contract %d: %w", contract, err))
+				mu.Unlock()
 				return
 			}
-			resultChain <- result{cost: cost}
+			mu.Lock()
+			totalCost += cost
+			mu.Unlock()
 		}(uint64(contract))
 	}
 
 	wg.Wait()
-	close(resultChain)
 
-	var totalCost int64 = 0
-	for res := range resultChain {
-		if res.err != nil {
-			return 0, res.err
+	if len(errList) > 0 {
+		if len(errList) == 1 {
+			return 0, errList[0]
 		}
-		totalCost += res.cost
+		return 0, fmt.Errorf("multiple errors occurred: %v", errList)
 	}
 	return totalCost, nil
 }
