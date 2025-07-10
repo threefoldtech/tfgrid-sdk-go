@@ -65,6 +65,7 @@ func (c *Calculator) CalculateCost(cru, mru, hru, sru uint64, publicIP, certifie
 }
 
 // CalculatePricesAfterDiscount calculates the prices after discount
+// it takes the cost in USD and returns the prices after discount
 func (c *Calculator) CalculatePricesAfterDiscount(cost float64) (dedicatedPrice, sharedPrice float64, err error) {
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
@@ -208,7 +209,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 		return 0, errors.Wrap(err, "failed to get unbilled amount")
 	}
 
-	periodCostTFT, err := c.calculatePeriodCostTFT(lastBillingAt, contractInfo, node, allowance)
+	periodCostTFT, err := c.calculatePeriodCostTFT(lastBillingAt, *contractInfo, *node, allowance)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to calculate period cost")
 	}
@@ -311,7 +312,7 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 // Calculates the cost with a period in TFT.
 //
 // The period is the time since last updated in seconds with the provided allowance time.
-func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contract *substrate.Contract, node *substrate.Node, allowance time.Duration) (float64, error) {
+func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contract substrate.Contract, node substrate.Node, allowance time.Duration) (float64, error) {
 
 	// Calculate the elapsed seconds since last billing
 	elapsedSeconds := math.Ceil(time.Since(lastUpdatedSeconds).Seconds())
@@ -333,13 +334,13 @@ func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contra
 }
 
 // Calculates the cost of a contract per month in USD.
-func (c *Calculator) calculateContractCost(contract *substrate.Contract, node *substrate.Node) (float64, error) {
+func (c *Calculator) calculateContractCost(contract substrate.Contract, node substrate.Node) (float64, error) {
 	if contract.ContractType.IsNameContract {
 		return c.calculateUniqueNameCost()
 	}
 
-	if node == nil {
-		return 0, errors.New("node is nil")
+	if node.ID == 0 {
+		return 0, errors.New("Invalid node")
 	}
 
 	if contract.ContractType.IsNodeContract {
@@ -386,7 +387,7 @@ func (c *Calculator) calculateUniqueNameCost() (float64, error) {
 // There are two cases for node contract cost:
 //  1. Node contract on shared node: the cost of the used resources of (shared)
 //  2. Node contract on rented node: the cost of the IPV4 only if the contact includes ipv4, else it will return zero.
-func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onCertifiedNode, isOnRentedNode bool) (float64, error) {
+func (c *Calculator) calculateNodeContractCost(contract substrate.Contract, onCertifiedNode, isOnRentedNode bool) (float64, error) {
 	if !contract.ContractType.IsNodeContract {
 		return 0, fmt.Errorf("contract ID %d is not a node contract", contract.ContractID)
 	}
@@ -406,11 +407,11 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 			totalCost *= 1.25
 		}
 
-		dedicatedPrice, _, err := c.CalculatePricesAfterDiscount(totalCost)
+		_, sharedPrice, err := c.CalculatePricesAfterDiscount(totalCost)
 		if err != nil {
 			return totalCost, err
 		}
-		return dedicatedPrice, nil
+		return sharedPrice, nil
 	}
 
 	// Normal node contract on sharedNode
@@ -438,7 +439,7 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 // Calculates the cost of a rent contract per month in USD.
 //
 // Rent contract cost is the cost of the node (dedicated discount applied) + the node extra fee
-func (c *Calculator) calculateRentCost(contract *substrate.Contract, node *substrate.Node) (float64, error) {
+func (c *Calculator) calculateRentCost(contract substrate.Contract, node substrate.Node) (float64, error) {
 	if !contract.ContractType.IsRentContract {
 		return 0, fmt.Errorf("contract ID %d is not a rent contract", contract.ContractID)
 	}

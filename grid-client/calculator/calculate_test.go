@@ -447,6 +447,15 @@ func TestCalculateNodeContractCost(t *testing.T) {
 
 	calculator := NewCalculator(sub, identity)
 
+	sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
+		ID: 1,
+		IPU: substrate.Policy{
+			Value: 15000, // 15000 unit-USD
+		},
+		DedicatedNodesDiscount: 20,
+	}, nil).MaxTimes(10)
+	sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
+
 	t.Run("node contract on rented node with public IPs", func(t *testing.T) {
 		// Create a node contract with 2 public IPs
 		nodeContract := &substrate.Contract{
@@ -459,20 +468,6 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			},
 		}
 
-		// Mock pricing policy for IPV4
-		sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-			ID: 1,
-			IPU: substrate.Policy{
-				Value: 15000, // 15000 unit-USD
-			},
-		}, nil)
-
-		// For discount calculation
-		sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-			ID:                     1,
-			DedicatedNodesDiscount: 20,
-		}, nil)
-
 		// Expect GetBalance and GetTFTPrice to be called
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 			Free: types.U128{
@@ -480,13 +475,10 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			},
 		}, nil)
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil) // 0.005 USD per TFT
-
 		// Calculate the expected cost:
 		// IPV4 cost = 15000 * 24 * 30 / 10^7 = 0.045 USD per month
-		// For 2 IPs without certified with dedicated discount
-		expected := ((15000 * 24 * 30 / 1e7) * 2) * 0.80
-		result, err := calculator.calculateNodeContractCost(nodeContract, false, true) // not certified, is rented
+		expected := ((15000 * 24 * 30 / 1e7) * 2)
+		result, err := calculator.calculateNodeContractCost(*nodeContract, false, true) // not certified, is rented
 		assert.NoError(t, err)
 		assert.Equal(t, expected, result)
 	})
@@ -502,20 +494,6 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			},
 		}
 
-		// Mock pricing policy for IPV4
-		sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-			ID: 1,
-			IPU: substrate.Policy{
-				Value: 15000, // 15000 unit-USD
-			},
-		}, nil)
-
-		// For discount calculation
-		sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-			ID:                     1,
-			DedicatedNodesDiscount: 20,
-		}, nil)
-
 		// Expect GetBalance and GetTFTPrice to be called
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 			Free: types.U128{
@@ -523,15 +501,13 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			},
 		}, nil)
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil) // 0.005 USD per TFT
-
 		// Calculate the expected cost:
 		// IPV4 cost = 15000 * 24 * 30 / 10^7 = 0.045 USD per month
-		// For 2 IPs without certified with dedicated discount
-		expected := ((15000 * 24 * 30 / 1e7) * 2) * 0.80 * 0.4
-		result, err := calculator.calculateNodeContractCost(nodeContract, false, true) // not certified, is rented
+		// For 2 IPs without certified
+		expected := ((15000 * 24 * 30 / 1e7) * 2) * 0.4
+		result, err := calculator.calculateNodeContractCost(*nodeContract, false, true) // not certified, is rented
 		assert.NoError(t, err)
-		assert.Equal(t, expected, result)
+		assert.InDelta(t, expected, result, 0.0001)
 	})
 	t.Run("node contract on rented node with public IPs with gold discount, certified node", func(t *testing.T) {
 		// Create a node contract with 2 public IPs
@@ -545,20 +521,6 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			},
 		}
 
-		// Mock pricing policy for IPV4
-		sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-			ID: 1,
-			IPU: substrate.Policy{
-				Value: 15000, // 15000 unit-USD
-			},
-		}, nil)
-
-		// For discount calculation
-		sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-			ID:                     1,
-			DedicatedNodesDiscount: 20,
-		}, nil)
-
 		// Expect GetBalance and GetTFTPrice to be called
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 			Free: types.U128{
@@ -566,176 +528,113 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			},
 		}, nil)
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil) // 0.005 USD per TFT
-
-		// Calculate the expected cost:
-		// IPV4 cost = 15000 * 24 * 30 / 10^7 = 0.045 USD per month
-		// For 2 IPs without certified with dedicated discount
-		expected := ((15000 * 24 * 30 / 1e7) * 2) * 0.80 * 0.4 * 1.25
-		result, err := calculator.calculateNodeContractCost(nodeContract, true, true) // certified, is rented
+		expected := ((15000 * 24 * 30 / 1e7) * 2) * 0.4 * 1.25
+		result, err := calculator.calculateNodeContractCost(*nodeContract, true, true) // certified, is rented
 		assert.NoError(t, err)
 		assert.InDelta(t, expected, result, 0.0001)
 	})
 
-	// t.Run("node contract on certified rented node with public IPs", func(t *testing.T) {
-	// 	// Create a node contract with 2 public IPs
-	// 	nodeContract := &substrate.Contract{
-	// 		ContractID: 124,
-	// 		ContractType: substrate.ContractType{
-	// 			IsNodeContract: true,
-	// 			NodeContract: substrate.NodeContract{
-	// 				PublicIPsCount: 2,
-	// 			},
-	// 		},
-	// 	}
+	t.Run("node contract on certified rented node with public IPs", func(t *testing.T) {
+		// Create a node contract with 2 public IPs
+		nodeContract := &substrate.Contract{
+			ContractID: 124,
+			ContractType: substrate.ContractType{
+				IsNodeContract: true,
+				NodeContract: substrate.NodeContract{
+					PublicIPsCount: 2,
+				},
+			},
+		}
 
-	// 	// Mock pricing policy for IPV4
-	// 	sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-	// 		ID: 1,
-	// 		IPV4: substrate.Policy{
-	// 			Value: 15000, // 15000 unit-USD
-	// 		},
-	// 	}, nil)
+		// Expect GetBalance and GetTFTPrice to be called
+		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
+			Free: types.U128{
+				Int: big.NewInt(0), // Small balance, no discount
+			},
+		}, nil).MaxTimes(1)
 
-	// 	// For discount calculation
-	// 	sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-	// 		ID:                     1,
-	// 		DedicatedNodesDiscount: 20,
-	// 	}, nil)
+		expected := 2.7
 
-	// 	// Expect GetBalance and GetTFTPrice to be called
-	// 	sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
-	// 		Free: types.U128{
-	// 			Int: big.NewInt(100000), // Small balance, no discount
-	// 		},
-	// 	}, nil)
+		// Execute test
+		result, err := calculator.calculateNodeContractCost(*nodeContract, true, true) // certified, is rented
+		assert.NoError(t, err)
+		assert.InDelta(t, expected, result, 0.0001, "Expected %v but got %v", expected, result)
+	})
 
-	// 	sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil) // 0.005 USD per TFT
+	t.Run("node contract on rented node with public IPs and gold discount", func(t *testing.T) {
 
-	// 	// Calculate the expected cost:
-	// 	// IPV4 cost = 15000 * 30 / 10^7 = 0.045 USD per month
-	// 	// For 2 IPs with certified node multiplier = 0.045 * 1.25 = 0.05625 USD
-	// 	expected := 0.045
+		// Create a node contract with 2 public IPs
+		nodeContract := &substrate.Contract{
+			ContractID: 125,
+			ContractType: substrate.ContractType{
+				IsNodeContract: true,
+				NodeContract: substrate.NodeContract{
+					PublicIPsCount: 2,
+				},
+			},
+		}
 
-	// 	// Execute test
-	// 	result, err := calculator.calculateNodeContractCost(nodeContract, true, true) // certified, is rented
-	// 	assert.NoError(t, err)
-	// 	assert.InDelta(t, expected, result, 0.0001, "Expected %v but got %v", expected, result)
-	// })
+		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
+			Free: types.U128{
+				Int: big.NewInt(200000000000), // More than enough for gold discount
+			},
+		}, nil).MaxTimes(1)
 
-	// t.Run("node contract on rented node with public IPs and gold discount", func(t *testing.T) {
-	// 	// Set up a separate test controller and mock for this test
-	// 	discountCtrl := gomock.NewController(t)
-	// 	defer discountCtrl.Finish()
-	// 	discountSub := mocks.NewMockSubstrateExt(discountCtrl)
+		expected := ((15000 * 24 * 30 / 1e7) * 2) * 0.4
 
-	// 	// Create calculator with the mocked substrate and identity
-	// 	discountCalc := NewCalculator(discountSub, identity)
+		// Execute test
+		result, err := calculator.calculateNodeContractCost(*nodeContract, false, true) // not certified, is rented
+		assert.NoError(t, err)
+		assert.InDelta(t, expected, result, 0.0001, "Expected %v but got %v", expected, result)
+	})
 
-	// 	// Create a node contract with 2 public IPs
-	// 	nodeContract := &substrate.Contract{
-	// 		ContractID: 125,
-	// 		ContractType: substrate.ContractType{
-	// 			IsNodeContract: true,
-	// 			NodeContract: substrate.NodeContract{
-	// 				PublicIPsCount: 2,
-	// 			},
-	// 		},
-	// 	}
+	t.Run("node contract on shared node", func(t *testing.T) {
+		// Create a node contract without public IPs
+		nodeContract := &substrate.Contract{
+			ContractID: 126,
+			ContractType: substrate.ContractType{
+				IsNodeContract: true,
+				NodeContract: substrate.NodeContract{
+					PublicIPsCount: 0,
+				},
+			},
+		}
 
-	// 	// Mock pricing policy for IPV4
-	// 	discountSub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-	// 		ID: 1,
-	// 		IPV4: substrate.Policy{
-	// 			Value: 15000, // 15000 unit-USD
-	// 		},
-	// 	}, nil)
+		// Mock GetNodeContractResources
+		sub.EXPECT().GetNodeContractResources(uint64(126)).Return(substrate.NodeContractResources{
+			Used: substrate.Resources{
+				CRU: 4,                        // 4 vCPU
+				MRU: 8 * 1024 * 1024 * 1024,   // 8 GB RAM in bytes
+				SRU: 100 * 1024 * 1024 * 1024, // 100 GB SSD in bytes
+				HRU: 0,                        // No HDD
+			},
+		}, nil)
 
-	// 	// For discount calculation
-	// 	discountSub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-	// 		ID:                     1,
-	// 		DedicatedNodesDiscount: 20,
-	// 	}, nil)
+		// Mock pricing policy for CU/SU calculation
+		sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
+			ID: 1,
+			CU: substrate.Policy{
+				Value: 100000,
+			},
 
-	// 	// IPV4 cost = 15000 * 30 / 10^7 = 0.045 USD per month
-	// 	ipv4Cost := 0.045
+			SU: substrate.Policy{
+				Value: 50000,
+			},
+			DedicatedNodesDiscount: 20,
+		}, nil).MaxTimes(2)
 
-	// 	// For gold tier (60% discount), need balance > price * 18 months
-	// 	// 0.045 USD * 18 = 0.81 USD
-	// 	// Convert to TFT: 0.81 USD / 0.005 USD/TFT = 162 TFT
-	// 	// Convert to unit-TFT: 162 * 1e7 = 1,620,000,000 units
-	// 	discountSub.EXPECT().GetBalance(identity).Return(substrate.Balance{
-	// 		Free: types.U128{
-	// 			Int: big.NewInt(2000000000), // More than enough for gold discount
-	// 		},
-	// 	}, nil)
+		// Expect GetBalance and GetTFTPrice to be called for discount calculation
+		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
+			Free: types.U128{
+				Int: big.NewInt(100000), // Small balance, no discount
+			},
+		}, nil)
 
-	// 	discountSub.EXPECT().GetTFTPrice().Return(types.U32(5), nil) // 0.005 USD per TFT
-
-	// 	// For gold tier, expect 60% discount
-	// 	// Original cost = 0.045 USD per month
-	// 	// With 60% discount = 0.045 * (1-0.6) = 0.018 USD
-	// 	expected := 0.018
-
-	// 	// Execute test
-	// 	result, err := discountCalc.calculateNodeContractCost(nodeContract, false, true) // not certified, is rented
-	// 	assert.NoError(t, err)
-	// 	assert.InDelta(t, expected, result, 0.0001, "Expected %v but got %v", expected, result)
-	// })
-
-	// t.Run("node contract on shared node", func(t *testing.T) {
-	// 	// Create a node contract without public IPs
-	// 	nodeContract := &substrate.Contract{
-	// 		ContractID: 126,
-	// 		ContractType: substrate.ContractType{
-	// 			IsNodeContract: true,
-	// 			NodeContract: substrate.NodeContract{
-	// 				PublicIPsCount: 0,
-	// 			},
-	// 		},
-	// 	}
-
-	// 	// Mock GetNodeContractResources
-	// 	sub.EXPECT().GetNodeContractResources(uint64(126)).Return(substrate.Resources{
-	// 		Used: substrate.ResourceAmount{
-	// 			CRU: 4,                // 4 vCPU
-	// 			MRU: 8 * 1024 * 1024 * 1024, // 8 GB RAM in bytes
-	// 			SRU: 100 * 1024 * 1024 * 1024, // 100 GB SSD in bytes
-	// 			HRU: 0, // No HDD
-	// 		},
-	// 	}, nil)
-
-	// 	// Mock pricing policy for CU/SU calculation
-	// 	sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-	// 		ID: 1,
-	// 		CU: substrate.Policy{
-	// 			Value: 100000, // 100000 unit-USD
-	// 		},
-	// 		SU: substrate.Policy{
-	// 			Value: 20000, // 20000 unit-USD
-	// 		},
-	// 	}, nil)
-
-	// 	// For discount calculation
-	// 	sub.EXPECT().GetPricingPolicy(defaultPricingPolicyID).Return(substrate.PricingPolicy{
-	// 		ID: 1,
-	// 		DedicatedNodesDiscount: 20,
-	// 	}, nil)
-
-	// 	// Expect GetBalance and GetTFTPrice to be called for discount calculation
-	// 	sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
-	// 		Free: types.U128{
-	// 			Int: big.NewInt(100000), // Small balance, no discount
-	// 		},
-	// 	}, nil)
-
-	// 	sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil) // 0.005 USD per TFT
-
-	// 	// Execute test - we don't need to check the exact result as CalculateCost is tested separately
-	// 	result, err := calculator.calculateNodeContractCost(nodeContract, false, false) // not certified, not rented
-	// 	assert.NoError(t, err)
-	// 	assert.Greater(t, result, 0.0, "Expected cost to be greater than zero")
-	// })
+		// Execute test - we don't need to check the exact result as CalculateCost is tested separately
+		result, err := calculator.calculateNodeContractCost(*nodeContract, false, false) // not certified, not rented
+		assert.NoError(t, err)
+		assert.Equal(t, 16.2, result)
+	})
 }
 
 func TestCalculateUniqueNameCost(t *testing.T) {
@@ -826,4 +725,35 @@ func TestCalculateUniqueNameCost(t *testing.T) {
 		assert.Equal(t, 0.0288, priceWithDiscount)
 	})
 
+}
+
+func TestCalculateContractCost(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sub := mocks.NewMockSubstrateExt(ctrl)
+	identity, err := substrate.NewIdentityFromSr25519Phrase("//Alice")
+	assert.NoError(t, err)
+
+	calculator := NewCalculator(sub, identity)
+
+	t.Run("test node with nil node", func(t *testing.T) {
+		contract := substrate.Contract{
+			ContractID: types.U64(42),
+			ContractType: substrate.ContractType{
+				IsNodeContract: true,
+				NodeContract: substrate.NodeContract{
+					Node:           1,
+					PublicIPsCount: 1,
+				},
+			},
+		}
+
+		node := substrate.Node{}
+
+		res, err := calculator.calculateContractCost(contract, node)
+
+		assert.Error(t, err)
+		assert.Equal(t, 0.0, res)
+	})
 }
