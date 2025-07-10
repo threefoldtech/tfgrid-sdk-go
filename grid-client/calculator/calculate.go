@@ -94,8 +94,6 @@ func (c *Calculator) CalculatePricesAfterDiscount(cost float64) (dedicatedPrice,
 
 	dedicatedPrice = dedicatedPrice - dedicatedPrice*dedicatedDiscount
 	sharedPrice = sharedPrice - sharedPrice*sharedDiscount
-	fmt.Println("dedicatedPrice", dedicatedPrice)
-	fmt.Println("sharedPrice", sharedPrice)
 
 	return
 }
@@ -200,8 +198,7 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 	// totalOverDraft represents the sum of standard and additional overdraft amounts for the contract TFT
 	totalOverDraftTFT := calculateTotalOverdraftTFT(&contractPaymentState)
 
-	var node *substrate.Node
-	node, err = c.getNode(contractInfo.ContractType)
+	node, err := c.getNode(contractInfo.ContractType)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get node")
 	}
@@ -243,6 +240,8 @@ func unitToTFT(units *big.Int) float64 {
 }
 
 // GetUnbilledAmountInTFT returns the amount unbilled for a given contract in TFT
+//
+// The amount unbilled is the amount that is not billed yet for a node contract
 func (c *Calculator) getUnbilledAmountInTFT(contract *substrate.Contract, isCertifiedNode bool) (float64, error) {
 	if contract.ContractType.IsNameContract || contract.ContractType.IsRentContract ||
 		(contract.ContractType.IsNodeContract && contract.ContractType.NodeContract.PublicIPsCount == 0) {
