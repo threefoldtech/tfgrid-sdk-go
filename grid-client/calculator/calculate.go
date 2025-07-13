@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
@@ -277,7 +278,7 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 	wg.Add(len(contracts))
 
 	var totalCost int64 = 0
-	errList := make([]error, 0)
+	var result *multierror.Error
 
 	for _, contract := range contracts {
 		go func(contract uint64) {
@@ -288,7 +289,7 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 					return
 				}
 				mu.Lock()
-				errList = append(errList, fmt.Errorf("error with contract %d: %w", contract, err))
+				result = multierror.Append(result, fmt.Errorf("error with contract %d: %w", contract, err))
 				mu.Unlock()
 				return
 			}
@@ -300,11 +301,8 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 
 	wg.Wait()
 
-	if len(errList) > 0 {
-		if len(errList) == 1 {
-			return 0, errList[0]
-		}
-		return 0, fmt.Errorf("multiple errors occurred: %v", errList)
+	if result != nil {
+		return 0, result.ErrorOrNil()
 	}
 	return totalCost, nil
 }

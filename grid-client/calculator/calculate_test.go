@@ -911,7 +911,6 @@ func TestCalculateTotalContractsOverdueOnNode(t *testing.T) {
 		_, err := calculator.calculateTotalContractsOverdueOnNode(nodeID, allowance)
 
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "multiple errors occurred")
 		assert.Contains(t, err.Error(), "error with contract 1")
 		assert.Contains(t, err.Error(), "error with contract 3")
 	})
