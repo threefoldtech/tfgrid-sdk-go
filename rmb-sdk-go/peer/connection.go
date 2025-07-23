@@ -103,7 +103,7 @@ func (c *InnerConnection) send(ctx context.Context, data []byte) error {
 	case c.writer <- s:
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-time.After(2 * time.Second):
+	case <-time.After(5 * time.Second):
 		return errTimeout
 	}
 
