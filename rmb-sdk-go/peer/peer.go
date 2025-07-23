@@ -331,6 +331,10 @@ func (p *Peer) Encoder() encoder.Encoder {
 }
 
 func (d *Peer) handleIncoming(incoming *types.Envelope) error {
+	if time.Now().Unix() > int64(incoming.Timestamp+incoming.Expiration) {
+		return fmt.Errorf("received an expired envelope")
+	}
+
 	errResp := incoming.GetError()
 	if incoming.Source == nil {
 		// an envelope received that has NO source twin
