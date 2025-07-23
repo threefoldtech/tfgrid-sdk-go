@@ -548,12 +548,7 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 	set := d.relayset
 
 	// Determine message deadline/expiry
-	var expireAt time.Time
-	if deadline, ok := ctx.Deadline(); ok {
-		expireAt = deadline
-	} else {
-		expireAt = time.Now().Add(30 * time.Second) // fallback TTL
-	}
+	expireAt := time.Unix(int64(request.Timestamp+request.Expiration), 0)
 
 	for time.Now().Before(expireAt) {
 		items := set.Sorted(time.Now())
@@ -568,7 +563,6 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 			set.MarkSuccess(con)
 			return nil
 		}
-		// Optional: small sleep to avoid busy loop
 		time.Sleep(100 * time.Millisecond)
 	}
 	return errs
