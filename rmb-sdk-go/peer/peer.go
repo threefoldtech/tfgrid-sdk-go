@@ -40,12 +40,12 @@ type cacheFactory = func(inner TwinDB, chainURL string) (TwinDB, error)
 type peerCfg struct {
 	// Require at least one working relay at startup (default: false, for backward compatibility)
 	RequireFunctionalRelayOnStartup bool
-	relayURLs        []string
-	keyType          string
-	session          string
-	enableEncryption bool
-	encoder          encoder.Encoder
-	cacheFactory     cacheFactory
+	relayURLs                       []string
+	keyType                         string
+	session                         string
+	enableEncryption                bool
+	encoder                         encoder.Encoder
+	cacheFactory                    cacheFactory
 }
 
 type PeerOpt func(*peerCfg)
