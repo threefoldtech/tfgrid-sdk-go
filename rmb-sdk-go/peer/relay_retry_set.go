@@ -11,7 +11,7 @@ import (
 // RelayPenalty tracks relay connection and its penalty (last error timestamp).
 // Relay should be a pointer type for atomic safety.
 type RelayPenalty[T any] struct {
-	Relay      T
+	Relay       T
 	LastErrorAt int64 // UnixNano timestamp of last error, 0 means healthy (must be accessed atomically)
 }
 

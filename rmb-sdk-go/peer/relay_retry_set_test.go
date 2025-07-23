@@ -1,9 +1,7 @@
 package peer
 
 import (
-	"context"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -11,15 +9,7 @@ import (
 )
 
 type dummyRelay struct {
-	id   int
-	fail atomic.Bool
-}
-
-func (d *dummyRelay) send(ctx context.Context, data []byte) error {
-	if d.fail.Load() {
-		return context.DeadlineExceeded
-	}
-	return nil
+	id int
 }
 
 func TestCooldownRelaySet_FairFailoverAndCooldown(t *testing.T) {
