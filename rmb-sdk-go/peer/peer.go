@@ -44,6 +44,15 @@ type peerCfg struct {
 	enableEncryption bool
 	encoder          encoder.Encoder
 	cacheFactory     cacheFactory
+	relayCooldown    time.Duration
+}
+
+// WithRelayCooldown sets the cooldown duration for relay failover and retry logic.
+// If not set, defaults to 10 seconds.
+func WithRelayCooldown(d time.Duration) PeerOpt {
+	return func(cfg *peerCfg) {
+		cfg.relayCooldown = d
+	}
 }
 
 type PeerOpt func(*peerCfg)
@@ -106,18 +115,21 @@ func WithInMemoryExpiration(ttl uint64) PeerOpt {
 	}
 }
 
-// Peer exposes the functionality to talk directly to an rmb relay
+// Peer exposes the functionality to talk directly to an rmb relay.
+//
+// Relay failover and retry is managed by a thread-safe CooldownRelaySet, which tracks relay health and cooldowns.
+// The cooldown duration is configurable via WithRelayCooldown. See documentation for details.
 type Peer struct {
 	source  *types.Address
 	signer  substrate.Identity
 	twinDB  TwinDB
 	privKey *secp256k1.PrivateKey
 	reader  Reader
-	cons    *WeightSlice[InnerConnection]
+	relayset *CooldownRelaySet[InnerConnection] // manages relay selection and cooldown
 	handler Handler
 	encoder encoder.Encoder
 	relays  []string
-}
+} // See WithRelayCooldown for cooldown configuration.
 
 func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, error) {
 	keyPair, err := identity.KeyPair()
@@ -189,6 +201,11 @@ func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 //
 // Make sure the context passed to Call() does not outlive the directClient's context.
 // Call() will panic if called while the directClient's context is canceled.
+// NewPeer creates a new RMB peer client. It connects directly to the RMB-Relay, and tries to reconnect if the connection broke.
+//
+// You can close the connection by canceling the passed context.
+//
+// The relay failover and retry logic uses a cooldown-based approach. See WithRelayCooldown for configuration.
 func NewPeer(
 	ctx context.Context,
 	mnemonics string,
@@ -269,16 +286,17 @@ func NewPeer(
 	}
 
 	reader := make(chan []byte)
-	weightCons := make([]WeightItem[InnerConnection], 0, len(conns))
+	relayPenalties := make([]RelayPenalty[InnerConnection], 0, len(conns))
 	for _, conn := range conns {
 		conn.Start(ctx, reader)
-		weightCons = append(weightCons, WeightItem[InnerConnection]{Item: conn, Weight: 1})
+		relayPenalties = append(relayPenalties, RelayPenalty[InnerConnection]{Relay: conn, LastErrorAt: 0})
 	}
 
-	cons, err := NewWeightSlice(weightCons)
-	if err != nil {
-		return nil, err
+	cooldown := cfg.relayCooldown
+	if cooldown == 0 {
+		cooldown = 10 * time.Second // default
 	}
+	relayset := &CooldownRelaySet[InnerConnection]{Relays: relayPenalties, Cooldown: cooldown}
 
 	var sessionP *string
 	if cfg.session != "" {
@@ -295,7 +313,7 @@ func NewPeer(
 		twinDB:  twinDB,
 		privKey: privKey,
 		reader:  reader,
-		cons:    cons,
+		relayset: relayset,
 		handler: handler,
 		encoder: cfg.encoder,
 		relays:  relayURLs,
@@ -520,26 +538,34 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 	if err != nil {
 		return err
 	}
-
 	var errs error
 
-	for i := 0; i < len(d.cons.data); i++ {
-		index, con := d.cons.Choose()
-		err := con.send(ctx, bytes)
-		if err != nil {
-			errs = multierror.Append(errs, err)
-			if errors.Is(err, errTimeout) && d.cons.data[index].Weight > 0 {
-				d.cons.data[index].Weight--
-			}
-			continue
-		}
+	set := d.relayset
 
-		if d.cons.data[index].Weight < 100 {
-			d.cons.data[index].Weight++
-		}
-		return nil
+	// Determine message deadline/expiry
+	var expireAt time.Time
+	if deadline, ok := ctx.Deadline(); ok {
+		expireAt = deadline
+	} else {
+		expireAt = time.Now().Add(30 * time.Second) // fallback TTL
 	}
 
+	for time.Now().Before(expireAt) {
+		items := set.Sorted(time.Now())
+		for i := range items {
+			con := items[i].Relay
+			err := con.send(ctx, bytes)
+			if err != nil {
+				errs = multierror.Append(errs, err)
+				set.MarkFailure(con, time.Now())
+				continue
+			}
+			set.MarkSuccess(con)
+			return nil
+		}
+		// Optional: small sleep to avoid busy loop
+		time.Sleep(100 * time.Millisecond)
+	}
 	return errs
 }
 
