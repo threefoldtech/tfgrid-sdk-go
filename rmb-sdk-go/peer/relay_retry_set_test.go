@@ -69,7 +69,7 @@ func TestCooldownRelaySet_FailingRelaysOrderedByErrorTime(t *testing.T) {
 			{Relay: relayB},
 			{Relay: relayC},
 		},
-		Cooldown: 1 * time.Second,
+		Cooldown: 10 * time.Second,
 	}
 
 	now := time.Now()

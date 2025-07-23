@@ -120,15 +120,15 @@ func WithInMemoryExpiration(ttl uint64) PeerOpt {
 // Relay failover and retry is managed by a thread-safe CooldownRelaySet, which tracks relay health and cooldowns.
 // The cooldown duration is configurable via WithRelayCooldown. See documentation for details.
 type Peer struct {
-	source  *types.Address
-	signer  substrate.Identity
-	twinDB  TwinDB
-	privKey *secp256k1.PrivateKey
-	reader  Reader
-	relayset *CooldownRelaySet[InnerConnection] // manages relay selection and cooldown
-	handler Handler
-	encoder encoder.Encoder
-	relays  []string
+	source   *types.Address
+	signer   substrate.Identity
+	twinDB   TwinDB
+	privKey  *secp256k1.PrivateKey
+	reader   Reader
+	relayset *CooldownRelaySet[*InnerConnection] // manages relay selection and cooldown
+	handler  Handler
+	encoder  encoder.Encoder
+	relays   []string
 } // See WithRelayCooldown for cooldown configuration.
 
 func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, error) {
@@ -286,17 +286,18 @@ func NewPeer(
 	}
 
 	reader := make(chan []byte)
-	relayPenalties := make([]RelayPenalty[InnerConnection], 0, len(conns))
-	for _, conn := range conns {
+	relayPenalties := make([]RelayPenalty[*InnerConnection], 0, len(conns))
+	for i := range conns {
+		conn := &conns[i]
 		conn.Start(ctx, reader)
-		relayPenalties = append(relayPenalties, RelayPenalty[InnerConnection]{Relay: conn, LastErrorAt: 0})
+		relayPenalties = append(relayPenalties, RelayPenalty[*InnerConnection]{Relay: conn, LastErrorAt: 0})
 	}
 
 	cooldown := cfg.relayCooldown
 	if cooldown == 0 {
 		cooldown = 10 * time.Second // default
 	}
-	relayset := &CooldownRelaySet[InnerConnection]{Relays: relayPenalties, Cooldown: cooldown}
+	relayset := &CooldownRelaySet[*InnerConnection]{Relays: relayPenalties, Cooldown: cooldown}
 
 	var sessionP *string
 	if cfg.session != "" {
@@ -308,15 +309,15 @@ func NewPeer(
 	}
 
 	cl := &Peer{
-		source:  &source,
-		signer:  identity,
-		twinDB:  twinDB,
-		privKey: privKey,
-		reader:  reader,
+		source:   &source,
+		signer:   identity,
+		twinDB:   twinDB,
+		privKey:  privKey,
+		reader:   reader,
 		relayset: relayset,
-		handler: handler,
-		encoder: cfg.encoder,
-		relays:  relayURLs,
+		handler:  handler,
+		encoder:  cfg.encoder,
+		relays:   relayURLs,
 	}
 
 	go cl.process(ctx)
