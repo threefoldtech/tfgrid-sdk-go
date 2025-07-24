@@ -9,6 +9,7 @@ use (
 	./grid-client
 	./grid-proxy
 	./gridify
+	./messenger
 	./monitoring-bot
 	./rmb-sdk-go
 	./tfrobot
