@@ -37,6 +37,13 @@ type Handler func(ctx context.Context, peer *Peer, env *types.Envelope, err erro
 
 type cacheFactory = func(inner TwinDB, chainURL string) (TwinDB, error)
 
+var (
+	// ErrNoValidRelayURLs is returned when no valid relay URLs are provided.
+	ErrNoValidRelayURLs = errors.New("no valid relay URLs provided")
+	// ErrNoFunctionalRelayAtStartup is returned when no relay connections are functional at startup.
+	ErrNoFunctionalRelayAtStartup = errors.New("no relay connections are functional at startup")
+)
+
 type peerCfg struct {
 	// Require at least one working relay at startup (default: false, for backward compatibility)
 	RequireFunctionalRelayOnStartup bool
@@ -157,7 +164,7 @@ func getRelayConnections(relayURLs []string, identity substrate.Identity, sessio
 	}
 
 	if len(connections) == 0 {
-		return nil, nil, errors.New("no valid relay URLs provided")
+		return nil, nil, ErrNoValidRelayURLs
 	}
 
 	sort.Slice(validRelayURLs, func(i, j int) bool {
@@ -266,15 +273,11 @@ func NewPeer(
 
 	// Hybrid approach: if RequireFunctionalRelayOnStartup is true, require at least one working relay at startup
 	if cfg.RequireFunctionalRelayOnStartup {
-		hasWorking := false
-		for _, conn := range conns {
-			if conn.TryConnect() {
-				hasWorking = true
-				break
-			}
-		}
-		if !hasWorking {
-			return nil, errors.New("no relay connections are functional at startup")
+		firstWorking := slices.IndexFunc(conns, func(c InnerConnection) bool {
+			return c.TryConnect()
+		})
+		if firstWorking == -1 {
+			return nil, ErrNoFunctionalRelayAtStartup
 		}
 	}
 
