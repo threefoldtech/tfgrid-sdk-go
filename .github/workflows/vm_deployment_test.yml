@@ -1,0 +1,77 @@
+name: VM Deployment Testing
+
+defaults:
+  run:
+    working-directory: grid-cli
+on:
+  schedule:
+    - cron: "0 8 * * *"  # Run daily at 8 AM UTC
+  workflow_dispatch:
+
+jobs:
+  test-vm-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        network: ["dev", "qa", "test", "main"]
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: CLI build
+        run: make build
+
+      - name: CLI login
+        run: /bin/bash -c  "{ echo ${{ secrets.MNEMONICS }}; echo ${{ matrix.network }}; } | bin/tfcmd login"
+
+      - name: Generate SSH key for VM
+        run: |
+          ssh-keygen -t rsa -b 2048 -f ~/.ssh/test_vm_key -N ""
+          echo "SSH_PUB_KEY=$(cat ~/.ssh/test_vm_key.pub)" >> $GITHUB_ENV
+
+      - name: Deploy VM
+        id: deploy_vm
+        run: |
+          VM_NAME="testvm$(date +%s)"
+          echo "VM_NAME=$VM_NAME" >> $GITHUB_ENV
+          echo "Deploying VM: $VM_NAME"
+          bin/tfcmd deploy vm --name "$VM_NAME" --ssh ~/.ssh/test_vm_key.pub || echo "VM_DEPLOY_FAILED=true" >> $GITHUB_ENV
+
+      - name: Wait for VM deployment
+        run: sleep 30
+
+      - name: Set test results
+        run: |
+          if [ "$VM_DEPLOY_FAILED" == "true" ]; then
+            echo "TEST_STATUS=❌ FAILED" >> $GITHUB_ENV
+            echo "TEST_DETAILS=VM deployment failed on ${{ matrix.network }}" >> $GITHUB_ENV
+          else
+            echo "TEST_STATUS=✅ SUCCESS" >> $GITHUB_ENV
+            echo "TEST_DETAILS=VM deployment completed successfully on ${{ matrix.network }}" >> $GITHUB_ENV
+          fi
+
+      - name: Send Telegram notification
+        if: always()
+        run: |
+          MESSAGE="🤖 *VM Deployment Test Report*
+          
+          🌐 *Network:* ${{ matrix.network }}
+          📊 *Status:* $TEST_STATUS
+          📝 *Details:* $TEST_DETAILS
+          🕐 *Time:* $(date -u)
+          🔗 *Workflow:* [View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.telegramtoken }}/sendMessage" \
+            -d chat_id=${{ secrets.telegramchatid }} \
+            -d parse_mode=Markdown \
+            -d text="$MESSAGE"
+
