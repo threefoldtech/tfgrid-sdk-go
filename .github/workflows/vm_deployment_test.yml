@@ -1,4 +1,6 @@
 name: VM Deployment Testing
+permissions:
+  contents: read
 
 defaults:
   run:
