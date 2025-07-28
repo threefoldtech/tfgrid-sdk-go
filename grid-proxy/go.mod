@@ -18,10 +18,10 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.4
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241127100051-77e684bcb1b2
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250703093252-e7500b106618
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.16.1-0.20241229121208-76ac3fea5e67
-	github.com/threefoldtech/zosbase v0.1.7
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
+	github.com/threefoldtech/zosbase v0.1.10
+	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.10
 
@@ -75,12 +75,12 @@ require (
 	github.com/threefoldtech/zbus v1.0.1 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
-	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/mod v0.23.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
