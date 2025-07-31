@@ -775,6 +775,8 @@ func (c *Crafter) GenerateNodeGPUs() error {
 	var gpus []string
 	vendors := []string{"NVIDIA Corporation", "AMD", "Intel Corporation"}
 	devices := []string{"GeForce RTX 3080", "Radeon RX 6800 XT", "Intel Iris Xe MAX"}
+	// VRAM amounts in MB corresponding to each GPU device
+	vramAmounts := []uint64{10240, 16384, 4096} // RTX 3080: 10GB, RX 6800 XT: 16GB, Intel Iris Xe MAX: 4GB
 
 	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
 	nodeWithGpuNum := 10
@@ -786,6 +788,7 @@ func (c *Crafter) GenerateNodeGPUs() error {
 				node_twin_id: uint64(nodeTwinsStart + uint(i)),
 				vendor:       vendors[j],
 				device:       devices[j],
+				Vram:         vramAmounts[j],
 				contract:     i % 2,
 				id:           fmt.Sprintf("node-gpu-%d-%d", nodeTwinsStart+uint(i), j),
 			}

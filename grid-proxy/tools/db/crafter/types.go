@@ -235,5 +235,6 @@ type node_gpu struct {
 	id           string
 	vendor       string
 	device       string
+	Vram         uint64
 	contract     int
 }

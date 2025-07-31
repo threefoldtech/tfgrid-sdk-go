@@ -7,6 +7,7 @@ type NodeGPU struct {
 	ID         string `gorm:"uniqueIndex:uni_gpu_node_twin_id" json:"id"`
 	Vendor     string `json:"vendor"`
 	Device     string `json:"device"`
+	Vram       uint64 `json:"vram"`
 	Contract   int    `json:"contract"`
 	UpdatedAt  int64  `json:"updated_at,omitempty"`
 }

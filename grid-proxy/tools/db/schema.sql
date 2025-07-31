@@ -1008,6 +1008,9 @@ CREATE TABLE IF NOT EXISTS public.node_gpu (
 );
 
 ALTER TABLE public.node_gpu 
+    ADD COLUMN IF NOT EXISTS vram numeric;
+
+ALTER TABLE public.node_gpu 
     OWNER TO postgres;
 
 ALTER TABLE ONLY public.node_gpu

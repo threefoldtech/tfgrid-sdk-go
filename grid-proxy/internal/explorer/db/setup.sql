@@ -154,7 +154,7 @@ FROM node
         SELECT
             g1.node_twin_id,
             COUNT(g1.id) gpu_count,
-            jsonb_agg(jsonb_build_object('id', g1.id, 'vendor', g1.vendor, 'contract', g1.contract, 'device', g1.device)) as gpus
+            jsonb_agg(jsonb_build_object('id', g1.id, 'vendor', g1.vendor, 'vram', g1.vram, 'contract', g1.contract, 'device', g1.device)) as gpus
         FROM node_gpu AS g1
             LEFT JOIN node_gpu g2 ON g1.id = g2.id
         GROUP BY
@@ -496,6 +496,7 @@ BEGIN
                       'id', id,
                       'vendor', vendor,
                       'device', device,
+                      'vram', vram,
                       'contract', contract
                 )
               ) AS gpus
