@@ -1,3 +1,5 @@
+<!-- TODO: descibe the three components (wrapper/auth/protocol) -->
+
 # Messenger Package
 
 The Messenger package provides a Go SDK for building distributed messaging applications on top of the Mycelium network infrastructure. It offers a topic-based protocol registration system that enables developers to create custom server/client implementations with optional blockchain identity integration.
@@ -156,3 +158,174 @@ const (
     DefaultRetryListenerInterval = 100 * time.Millisecond // Retry interval for message listener
 )
 ```
+
+# Enhanced Signature Verification System
+
+This document describes the enhanced signature verification system for the TFGrid Messenger, which provides cryptographic authentication of messages using twin identities stored on TFChain.
+
+## Overview
+
+The enhanced signature verification system ensures that:
+- **Client** sends payload as `(message, twin_id, signature)` where signature is created using the twin's private key stored on TFChain
+- **Server** verifies messages by loading the twin's public key from TFChain and validating the cryptographic signature
+- **Protocol** maintains the existing JSONRPC logic over Mycelium while adding security
+
+## Key Components
+
+### 1. SignedMessage Structure
+
+```go
+type SignedMessage struct {
+    TwinID    uint32 `json:"twin_id"`    // Twin ID from TFChain
+    Message   string `json:"message"`    // Original message content
+    Signature string `json:"signature"`  // Hex-encoded Ed25519 signature
+    Timestamp int64  `json:"timestamp"`  // Unix timestamp for replay protection
+}
+```
+
+### 2. TwinKeyProvider Interface
+
+```go
+type TwinKeyProvider interface {
+    // GetTwinPublicKey retrieves the Ed25519 public key for a given twin ID
+    GetTwinPublicKey(twinID uint32) ([]byte, error)
+}
+```
+
+### 3. Core Functions
+
+#### Client-Side Functions
+- `CreateSignedMessage(twinID, message, identity)` - Creates a cryptographically signed message
+- `SendSecureMessage()` - Sends a signed message through the messenger
+
+#### Server-Side Functions
+- `VerifyMessageSignature(signedMsg, keyProvider)` - Verifies signature against TFChain
+- `ValidateAndExtractMessage(payload, keyProvider)` - Parses and validates signed messages
+- `ParseSignedMessage(payload)` - Parses JSON payload into SignedMessage struct
+
+## Usage Examples
+
+### Server Setup
+
+```go
+// Connect to TFChain for twin verification
+manager := substrate.NewManager("ws://192.168.1.10:9944")
+sub, err := manager.Substrate()
+if err != nil {
+    log.Fatal("Failed to connect to TFChain")
+}
+
+// Create messenger with TFChain verification
+msgr, err := messenger.NewMessenger(
+    messenger.WithSubstrateConnection(sub),
+)
+
+// Register JSONRPC server
+server := messenger.NewJSONRPCServer(msgr)
+server.RegisterHandler("calculator.add", addHandler)
+server.Start(ctx)
+```
+
+### Client Usage
+
+```go
+// Create identity from mnemonic
+identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonic)
+
+// Get twin ID from TFChain
+twinID, err := sub.GetTwinByPubKey(identity.PublicKey())
+
+// Send secure signed message
+response, err := msgr.SendSecureMessage(
+    destination,
+    jsonPayload,
+    messenger.RPCKey,
+    twinID,
+    identity,
+    true, // wait for reply
+    30,   // timeout
+)
+```
+
+### Message Flow
+
+1. **Client Side:**
+   ```
+   Original Message → Sign with Twin Private Key → Create SignedMessage → Send via Mycelium
+   ```
+
+2. **Server Side:**
+   ```
+   Receive Message → Parse SignedMessage → Fetch Twin Public Key from TFChain → Verify Signature → Process if Valid
+   ```
+
+## Security Features
+
+### Cryptographic Verification
+- Uses **Ed25519** signatures for strong cryptographic security
+- Twin public keys are retrieved from **TFChain blockchain** ensuring authenticity
+- Messages are signed with twin's private key, verified against blockchain-stored public key
+
+### Replay Protection
+- **Timestamp** field in SignedMessage provides basic replay protection
+- Server can implement additional nonce-based protection if needed
+
+### Error Handling
+- Comprehensive error messages for debugging
+- Graceful fallback to unsigned messaging when TFChain is unavailable
+- Clear logging of verification status
+
+## Examples
+
+### 1. Basic Signature Example
+```bash
+cd examples/signature_example
+go run main.go
+```
+
+### 2. Secure JSONRPC Server
+```bash
+cd examples/jsonrpc/server
+go run main.go
+```
+
+### 3. Enhanced Secure Client
+```bash
+export MNEMONIC="your twelve word mnemonic phrase here"
+cd examples/secure_client
+go run main.go
+```
+
+### 4. JSONRPC Client with Signature Support
+```bash
+cd examples/jsonrpc/client
+go run main.go
+```
+
+## Configuration
+
+### Environment Variables
+- `MNEMONIC` - Twin's mnemonic phrase for client authentication
+
+### Constants
+- `chainUrl` - TFChain WebSocket endpoint (default: `ws://192.168.1.10:9944`)
+- `destination` - Target Mycelium public key or IP address
+
+## Benefits
+
+1. **Strong Authentication** - Cryptographic proof of message origin
+2. **Blockchain Integration** - Leverages TFChain for decentralized key management
+3. **Backward Compatibility** - Graceful fallback when verification is unavailable
+4. **Clean Architecture** - Well-organized, minimal, and easy to understand code
+5. **Comprehensive Logging** - Clear visibility into verification process
+
+## Function and Variable Naming
+
+The enhanced system uses clear, descriptive names:
+- `SignedMessage` instead of `SecureSignedRequest`
+- `TwinKeyProvider` instead of `TwinPublicKeyVerifier`
+- `VerifyMessageSignature` instead of `VerifySecureSignature`
+- `CreateSignedMessage` instead of `CreateSecureSignedRequest`
+- `ValidateAndExtractMessage` instead of `ValidateAndExtractSecureMessage`
+
+This naming convention better describes the actual functionality and makes the code more maintainable.

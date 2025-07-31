@@ -39,6 +39,7 @@ type RPCError struct {
 
 type RPCHandlerFunc func(ctx context.Context, params json.RawMessage) (interface{}, error)
 
+// TODO: should be abstracted in an interface demo main functions
 type JSONRPCServer struct {
 	messenger *Messenger
 	handlers  map[string]RPCHandlerFunc
@@ -65,6 +66,7 @@ func (s *JSONRPCServer) Stop() {
 	s.messenger.StopReceiver()
 }
 
+// TODO: can this function be cleaner?
 func (s *JSONRPCServer) handleRPCMessage(ctx context.Context, message *Message) ([]byte, error) {
 	var request JSONRPCRequest
 	if err := json.Unmarshal([]byte(message.Payload), &request); err != nil {
@@ -136,6 +138,8 @@ func (s *JSONRPCServer) handleRPCMessage(ctx context.Context, message *Message) 
 	return responseBytes, nil
 }
 
+// TODO: do we actually need to have client/server or we should only expose on thing
+// TODO: do we need to expose messenger? or should we just expose the jsonrpc client/server
 type JSONRPCClient struct {
 	messenger *Messenger
 }
@@ -160,6 +164,7 @@ func (c *JSONRPCClient) Call(ctx context.Context, destination string, method str
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
+	// TODO: all should be signed
 	msg, err := c.messenger.SendMessage(destination, string(requestBytes), RPCKey, true, 0)
 	if err != nil {
 		return fmt.Errorf("failed to send RPC request: %w", err)

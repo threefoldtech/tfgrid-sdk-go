@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -13,25 +14,28 @@ import (
 )
 
 const (
-	chainUrl = "ws://192.168.1.10:9944"
-
-	// destination is mycelium pk or ip
-	destination = "22b45ca2c6c40650fa4c739942a7c863deeb4a88a6a2cb38b8c9b273f4ad7b0c"
+	chainUrl = "wss://tfchain.dev.grid.tf"
 )
 
 func main() {
-	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04"}).With().Logger()
 	mnemonic := os.Getenv("MNEMONIC")
 
-	man := substrate.NewManager(chainUrl)
+	var dest string
+	flag.StringVar(&dest, "dest", "", "destination public key or IP address")
+	flag.Parse()
 
-	msgr, err := messenger.NewMessenger(
-		messenger.WithSubstrateManager(man),
-		messenger.WithMnemonic(mnemonic),
-		messenger.WithEnableTwinIdentity(true),
-	)
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04"}).With().Timestamp().Logger()
+
+	manager := substrate.NewManager(chainUrl)
+	sub, err := manager.Substrate()
 	if err != nil {
-		fmt.Printf("Failed to create Mycelium client: %v\n", err)
+		log.Warn().Err(err).Msg("Failed to connect to TFChain - will send unsigned messages")
+		sub = nil
+	}
+
+	msgr, err := messenger.NewMessenger(messenger.WithChain(sub))
+	if err != nil {
+		fmt.Printf("Failed to create messenger client: %v\n", err)
 		os.Exit(1)
 	}
 	defer msgr.Close()
@@ -40,12 +44,19 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	var addResult float64
-	// should timeout if no response
-	err = rpcClient.Call(ctx, destination, "calculator.add", []float64{10, 20}, &addResult)
+	// TODO: should send identity to call and it will sign the message
+	id, err := substrate.NewIdentityFromEd25519Phrase(mnemonic)
 	if err != nil {
-		fmt.Printf("Failed to call calculator.add: %v\n", err)
+		log.Error().Err(err).Msg("Failed to create identity from mnemonic")
 		os.Exit(1)
 	}
-	fmt.Printf("10 + 20 = %f\n", addResult)
+
+	var result float64
+	err = rpcClient.Call(ctx, dest, "calculator.add", []float64{10, 20}, &result)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to call calculator.add")
+		os.Exit(1)
+	}
+
+	fmt.Println(result)
 }

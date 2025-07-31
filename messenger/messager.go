@@ -31,6 +31,11 @@ const (
 	DefaultRetryListenerInterval = 100 * time.Millisecond
 )
 
+// Context key for twin ID
+type twinIDCtx struct{}
+
+var TwinIDContextKey = twinIDCtx{}
+
 // Message represents a message structure used in the Mycelium messaging system
 type Message struct {
 	ID      string `json:"id,omitempty"`
@@ -61,13 +66,10 @@ type Messenger struct {
 	BinaryPath string
 	APIAddress string
 	Timeout    int
-	Mnemonic   string
 
-	// EnableTwinIdentity will enfoce the messenger to manage twin identity on chain
-	EnableTwinIdentity bool
-	subCon             *substrate.Substrate
-	identity           substrate.Identity
-	manager            substrate.Manager
+	// Substrate connection for twin verification
+	substrateConn   *substrate.Substrate
+	twinKeyProvider TwinKeyProvider
 
 	receiveHandlers map[string]MessageHandlerFunc
 	stopCh          chan struct{}
@@ -78,30 +80,11 @@ type Messenger struct {
 // MessengerOpt is a function that configures a Client
 type MessengerOpt func(*Messenger)
 
-// WithMnemonic sets the mnemonic phrase for the client,
-func WithMnemonic(mnemonic string) MessengerOpt {
+// WithChain sets the substrate connection for blockchain verification
+func WithChain(sub *substrate.Substrate) MessengerOpt {
 	return func(c *Messenger) {
-		c.Mnemonic = mnemonic
-	}
-}
-
-func WithIdentity(identity substrate.Identity) MessengerOpt {
-	return func(c *Messenger) {
-		c.identity = identity
-	}
-}
-
-// WithEnableTwinIdentity enables or disables twin identity management
-func WithEnableTwinIdentity(enable bool) MessengerOpt {
-	return func(c *Messenger) {
-		c.EnableTwinIdentity = enable
-	}
-}
-
-// WithSubstrateManager sets the substrate manager for the messenger
-func WithSubstrateManager(manager substrate.Manager) MessengerOpt {
-	return func(c *Messenger) {
-		c.manager = manager
+		c.substrateConn = sub
+		c.twinKeyProvider = NewTFChainKeyProvider(sub)
 	}
 }
 
@@ -122,46 +105,15 @@ func WithAPIAddress(apiAddress string) MessengerOpt {
 // NewMessenger creates a new mycelium message subsystem client with the given options
 func NewMessenger(opts ...MessengerOpt) (*Messenger, error) {
 	messenger := &Messenger{
-		BinaryPath:         DefaultMessengerBinary,
-		Timeout:            DefaultTimeout,
-		APIAddress:         DefaultAPIAddress,
-		EnableTwinIdentity: false,
-		receiveHandlers:    make(map[string]MessageHandlerFunc),
-		stopCh:             make(chan struct{}),
+		BinaryPath:      DefaultMessengerBinary,
+		Timeout:         DefaultTimeout,
+		APIAddress:      DefaultAPIAddress,
+		receiveHandlers: make(map[string]MessageHandlerFunc),
+		stopCh:          make(chan struct{}),
 	}
 
 	for _, opt := range opts {
 		opt(messenger)
-	}
-
-	if !messenger.EnableTwinIdentity {
-		return messenger, nil
-	}
-
-	if messenger.manager == nil {
-		return nil, fmt.Errorf("substrate manager is required when EnableTwinIdentity is true")
-	}
-
-	if messenger.identity == nil && messenger.Mnemonic == "" {
-		return nil, fmt.Errorf("either an identity or mnemonic phrase is required when EnableTwinIdentity is true")
-	}
-
-	if messenger.identity == nil {
-		var err error
-		messenger.identity, err = substrate.NewIdentityFromSr25519Phrase(messenger.Mnemonic)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create identity from mnemonic phrase: %w", err)
-		}
-	}
-
-	subCon, err := messenger.manager.Substrate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get substrate connection: %w", err)
-	}
-	messenger.subCon = subCon
-
-	if err := messenger.UpdateMyceliumTwin(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to update twin with Mycelium public key: %w", err)
 	}
 
 	return messenger, nil
@@ -220,6 +172,21 @@ func (c *Messenger) SendMessage(destination, payload string, topic string, waitF
 		Str("msg_id", msg.ID).
 		Msg("received reply")
 	return &msg, nil
+}
+
+// SendSignedMessage sends a message with cryptographic signature verification
+func (c *Messenger) SendSignedMessage(destination, payload string, topic string, twinID uint32, identity substrate.Identity, waitForReply bool, timeout int) (*Message, error) {
+	signedMsg, err := CreateSignedMessage(twinID, payload, identity)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create signed message: %w", err)
+	}
+
+	signedPayload, err := json.Marshal(signedMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal signed message: %w", err)
+	}
+
+	return c.SendMessage(destination, string(signedPayload), topic, waitForReply, timeout)
 }
 
 func (c *Messenger) SendReply(originalMessageID, destination, payload string) error {
@@ -360,6 +327,47 @@ func (c *Messenger) processMessage(ctx context.Context, message *Message) {
 		}
 	}
 
+	// Verify signature against blockchain if key provider is available
+	var twinID uint32
+	var originalMessage string
+	var err error
+
+	if c.twinKeyProvider != nil {
+		// Use secure blockchain-based verification
+		twinID, originalMessage, err = ValidateAndExtractMessage(message.Payload, c.twinKeyProvider)
+		if err != nil {
+			log.Error().Err(err).Str("msg_id", message.ID).
+				Msg("TFChain signature verification failed")
+			sendErrorReply(fmt.Sprintf("signature verification failed: %v", err))
+			return
+		}
+	} else {
+		log.Warn().Str("msg_id", message.ID).
+			Msg("no TFChain connection available - message not verified against blockchain")
+		// For backward compatibility, allow unverified messages with warning
+		originalMessage = message.Payload
+		twinID = 0 // Unknown twin
+
+		return
+	}
+
+	log.Debug().
+		Uint32("twin_id", twinID).
+		Str("msg_id", message.ID).
+		Msg("signature verification successful")
+
+	verifiedMessage := &Message{
+		ID:      message.ID,
+		Topic:   message.Topic,
+		SrcIP:   message.SrcIP,
+		SrcPK:   message.SrcPK,
+		DstIP:   message.DstIP,
+		DstPK:   message.DstPK,
+		Payload: originalMessage,
+	}
+
+	ctx = context.WithValue(ctx, TwinIDContextKey, twinID)
+
 	// decide which handler group to use based on the topic
 	c.mutex.RLock()
 	handler, exists := c.receiveHandlers[message.Topic]
@@ -372,18 +380,7 @@ func (c *Messenger) processMessage(ctx context.Context, message *Message) {
 		return
 	}
 
-	// add twin id to the context for later use
-	if c.EnableTwinIdentity {
-		twin, err := c.subCon.GetMyceliumTwin(message.SrcPK)
-		if err != nil {
-			log.Error().Err(err).Str("key", message.SrcPK).Msg("failed to get twin ID from Mycelium public key")
-			sendErrorReply(fmt.Sprintf("failed to get twin ID: %v", err))
-			return
-		}
-		ctx = context.WithValue(ctx, TwinIdContextKey, twin)
-	}
-
-	response, err := handler(ctx, message)
+	response, err := handler(ctx, verifiedMessage)
 	if err != nil {
 		log.Error().Err(err).Str("msg_id", message.ID).
 			Msg("failed to process message")
@@ -402,9 +399,11 @@ func (c *Messenger) processMessage(ctx context.Context, message *Message) {
 func (c *Messenger) Close() {
 	c.StopReceiver()
 
-	if c.subCon != nil {
-		c.subCon.Close()
-		c.subCon = nil
+	// Close substrate connection if available
+	if c.substrateConn != nil {
+		c.substrateConn.Close()
+		c.substrateConn = nil
+		c.twinKeyProvider = nil
 	}
 }
 
