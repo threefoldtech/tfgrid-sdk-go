@@ -71,7 +71,6 @@ func WithEncryption(enable bool) PeerOpt {
 	}
 }
 
-// WithRelay set up the relay url, default is mainnet relay
 // WithRequireFunctionalRelayOnStartup configures whether the peer should require at least one working relay at startup.
 // If not set, the peer will always self-heal (default, backward compatible).
 func WithRequireFunctionalRelayOnStartup(required bool) PeerOpt {
@@ -80,6 +79,7 @@ func WithRequireFunctionalRelayOnStartup(required bool) PeerOpt {
 	}
 }
 
+// WithRelay set up the relay url, default is mainnet relay
 func WithRelay(urls ...string) PeerOpt {
 	return func(p *peerCfg) {
 		p.relayURLs = urls
