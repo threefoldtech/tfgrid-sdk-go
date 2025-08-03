@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
@@ -104,8 +105,16 @@ func (r *Router) Serve(ctx context.Context, peer *Peer, env *types.Envelope, err
 
 		response, err := r.call(handlerCtx, cmd, payload.Plain)
 
+		age := uint64(time.Now().Unix()) - env.Timestamp
+		ttl := env.Expiration
+		if age >= ttl {
+			log.Warn().Msgf("request %s has expired, dropping response", env.Uid)
+			return
+		}
+
+		remainingTTL := ttl - age
 		// send response
-		if err := peer.SendResponse(ctx, env.Uid, env.Source.Twin, env.Source.Connection, err, response); err != nil {
+		if err := peer.SendResponse(ctx, env.Uid, env.Source.Twin, env.Source.Connection, err, response, remainingTTL); err != nil {
 			log.Error().Err(err).Msgf("failed to send response to twin id '%d'", env.Destination.Twin)
 		}
 	}()

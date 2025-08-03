@@ -31,6 +31,13 @@ const (
 	KeyTypeSr25519 = "sr25519"
 )
 
+const (
+	// DefaultTTL is the default time-to-live for a message in seconds
+	DefaultTTL uint64 = 300 // 5 minutes
+	// MaxTTL is the maximum time-to-live for a message in seconds
+	MaxTTL uint64 = 1800 // 30 minutes
+)
+
 // Handler is a call back that is called with verified and decrypted incoming
 // messages. An error can be non-nil error if verification or decryption failed
 type Handler func(ctx context.Context, peer *Peer, env *types.Envelope, err error)
@@ -550,10 +557,23 @@ func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session 
 		return errors.Wrap(err, "failed to serialize request body")
 	}
 
-	var ttl uint64 = 5 * 60
+	var ttl uint64
 	deadline, ok := ctx.Deadline()
 	if ok {
+		if time.Until(deadline) < 0 {
+			return errors.New("context deadline is in the past")
+		}
 		ttl = uint64(time.Until(deadline).Seconds())
+
+		if ttl == 0 {
+			ttl = DefaultTTL
+		}
+
+		if ttl > MaxTTL {
+			ttl = MaxTTL
+		}
+	} else {
+		ttl = DefaultTTL
 	}
 
 	request, err := d.makeEnvelope(id, twin, session, &fn, nil, payload, ttl)
@@ -569,16 +589,10 @@ func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session 
 }
 
 // SendResponse sends an rmb message to the relay
-func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session *string, responseError error, data interface{}) error {
+func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session *string, responseError error, data interface{}, ttl uint64) error {
 	payload, err := d.encoder.Encode(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize request body")
-	}
-
-	var ttl uint64 = 5 * 60
-	deadline, ok := ctx.Deadline()
-	if ok {
-		ttl = uint64(time.Until(deadline).Seconds())
 	}
 
 	request, err := d.makeEnvelope(id, twin, session, nil, responseError, payload, ttl)
