@@ -8,17 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type dummyRelay struct {
-	id int
-}
-
 func TestCooldownRelaySet_FairFailoverAndCooldown(t *testing.T) {
-	relay1 := &dummyRelay{id: 1}
-	relay2 := &dummyRelay{id: 2}
-	relay3 := &dummyRelay{id: 3}
+	relay1 := &InnerConnection{twinID: 1}
+	relay2 := &InnerConnection{twinID: 2}
+	relay3 := &InnerConnection{twinID: 3}
 
-	set := &CooldownRelaySet[*dummyRelay]{
-		Relays: []RelayPenalty[*dummyRelay]{
+	set := &CooldownRelaySet{
+		Relays: []RelayPenalty{
 			{Relay: relay1},
 			{Relay: relay2},
 			{Relay: relay3},
@@ -34,27 +30,27 @@ func TestCooldownRelaySet_FairFailoverAndCooldown(t *testing.T) {
 	set.MarkFailure(relay1, time.Now())
 	items = set.Sorted(time.Now())
 	// relay1 should be deprioritized
-	require.Equal(t, relay1.id, items[2].Relay.id)
-	ids := []int{items[0].Relay.id, items[1].Relay.id}
-	require.Contains(t, ids, 2)
-	require.Contains(t, ids, 3)
+	require.Equal(t, relay1.twinID, items[2].Relay.twinID)
+	ids := []uint32{items[0].Relay.twinID, items[1].Relay.twinID}
+	require.Contains(t, ids, uint32(2))
+	require.Contains(t, ids, uint32(3))
 
 	// After cooldown expires, relay1 should be healthy again
 	time.Sleep(210 * time.Millisecond)
 	items = set.Sorted(time.Now())
 	// All relays should be shuffled fairly
-	ids = []int{items[0].Relay.id, items[1].Relay.id, items[2].Relay.id}
-	require.Contains(t, ids, 1)
-	require.Contains(t, ids, 2)
-	require.Contains(t, ids, 3)
+	ids = []uint32{items[0].Relay.twinID, items[1].Relay.twinID, items[2].Relay.twinID}
+	require.Contains(t, ids, uint32(1))
+	require.Contains(t, ids, uint32(2))
+	require.Contains(t, ids, uint32(3))
 }
 
 func TestCooldownRelaySet_FailingRelaysOrderedByErrorTime(t *testing.T) {
-	relayA := &dummyRelay{id: 1}
-	relayB := &dummyRelay{id: 2}
-	relayC := &dummyRelay{id: 3}
-	set := &CooldownRelaySet[*dummyRelay]{
-		Relays: []RelayPenalty[*dummyRelay]{
+	relayA := &InnerConnection{twinID: 1}
+	relayB := &InnerConnection{twinID: 2}
+	relayC := &InnerConnection{twinID: 3}
+	set := &CooldownRelaySet{
+		Relays: []RelayPenalty{
 			{Relay: relayA},
 			{Relay: relayB},
 			{Relay: relayC},
@@ -69,14 +65,14 @@ func TestCooldownRelaySet_FailingRelaysOrderedByErrorTime(t *testing.T) {
 	items := set.Sorted(now)
 
 	// Only error time matters for ordering, so we expect relayB, relayC, relayA (oldest to newest)
-	ids := []int{items[0].Relay.id, items[1].Relay.id, items[2].Relay.id}
-	require.Equal(t, []int{2, 3, 1}, ids, "Relays should be ordered by error time (oldest first)")
+	ids := []uint32{items[0].Relay.twinID, items[1].Relay.twinID, items[2].Relay.twinID}
+	require.Equal(t, []uint32{2, 3, 1}, ids, "Relays should be ordered by error time (oldest first)")
 }
 
 func TestCooldownRelaySet_ThreadSafePenalty(t *testing.T) {
-	relay := &dummyRelay{id: 1}
-	set := &CooldownRelaySet[*dummyRelay]{
-		Relays: []RelayPenalty[*dummyRelay]{
+	relay := &InnerConnection{twinID: 1}
+	set := &CooldownRelaySet{
+		Relays: []RelayPenalty{
 			{Relay: relay},
 		},
 		Cooldown: 50 * time.Millisecond,
@@ -87,13 +83,13 @@ func TestCooldownRelaySet_ThreadSafePenalty(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 1000; i++ {
+		for range 1000 {
 			set.MarkFailure(relay, time.Now())
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 1000; i++ {
+		for range 1000 {
 			set.MarkSuccess(relay)
 		}
 	}()

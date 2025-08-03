@@ -2,7 +2,6 @@ package peer
 
 import (
 	"math/rand"
-	"reflect"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -10,8 +9,8 @@ import (
 
 // RelayPenalty tracks relay connection and its penalty (last error timestamp).
 // Relay should be a pointer type for atomic safety.
-type RelayPenalty[T any] struct {
-	Relay       T
+type RelayPenalty struct {
+	Relay       *InnerConnection
 	LastErrorAt int64 // UnixNano timestamp of last error, 0 means healthy (must be accessed atomically)
 }
 
@@ -19,17 +18,15 @@ type RelayPenalty[T any] struct {
 //
 // This structure is used as the main relay manager in Peer for fair failover and retry.
 // It is thread-safe for penalty updates using atomic operations, but not for concurrent mutation of the relay set itself.
-//
-// T MUST be a pointer type (e.g., *InnerConnection). Pointer value comparison is used for relay matching.
-type CooldownRelaySet[T any] struct {
-	Relays   []RelayPenalty[T] // slice of relay+penalty state, must not be mutated concurrently
-	Cooldown time.Duration     // cooldown period for penalized relays
+type CooldownRelaySet struct {
+	Relays   []RelayPenalty // slice of relay+penalty state, must not be mutated concurrently
+	Cooldown time.Duration  // cooldown period for penalized relays
 }
 
 // Sorted returns relays sorted by penalty (lowest/oldest error first), shuffling among equals.
-func (s *CooldownRelaySet[T]) Sorted(now time.Time) []RelayPenalty[T] {
+func (s *CooldownRelaySet) Sorted(now time.Time) []RelayPenalty {
 	type sortableRelay struct {
-		RelayPenalty[T]
+		RelayPenalty
 		effectiveError int64
 	}
 
@@ -61,7 +58,7 @@ func (s *CooldownRelaySet[T]) Sorted(now time.Time) []RelayPenalty[T] {
 	}
 
 	// Unwrap the sorted relays
-	result := make([]RelayPenalty[T], len(items))
+	result := make([]RelayPenalty, len(items))
 	for i, item := range items {
 		result[i] = item.RelayPenalty
 	}
@@ -70,10 +67,9 @@ func (s *CooldownRelaySet[T]) Sorted(now time.Time) []RelayPenalty[T] {
 }
 
 // MarkFailure updates the penalty for the given relay.
-// T must be a pointer type. Pointer value comparison is used.
-func (s *CooldownRelaySet[T]) MarkFailure(relay T, now time.Time) {
+func (s *CooldownRelaySet) MarkFailure(relay *InnerConnection, now time.Time) {
 	for i := range s.Relays {
-		if reflect.ValueOf(s.Relays[i].Relay).Pointer() == reflect.ValueOf(relay).Pointer() {
+		if s.Relays[i].Relay == relay {
 			atomic.StoreInt64(&s.Relays[i].LastErrorAt, now.UnixNano())
 			return
 		}
@@ -81,10 +77,9 @@ func (s *CooldownRelaySet[T]) MarkFailure(relay T, now time.Time) {
 }
 
 // MarkSuccess resets the penalty for the given relay.
-// T must be a pointer type. Pointer value comparison is used.
-func (s *CooldownRelaySet[T]) MarkSuccess(relay T) {
+func (s *CooldownRelaySet) MarkSuccess(relay *InnerConnection) {
 	for i := range s.Relays {
-		if reflect.ValueOf(s.Relays[i].Relay).Pointer() == reflect.ValueOf(relay).Pointer() {
+		if s.Relays[i].Relay == relay {
 			atomic.StoreInt64(&s.Relays[i].LastErrorAt, 0)
 			return
 		}
@@ -92,7 +87,7 @@ func (s *CooldownRelaySet[T]) MarkSuccess(relay T) {
 }
 
 // effectiveError returns zero if cooldown expired, otherwise returns LastErrorAt.
-func (s *CooldownRelaySet[T]) effectiveError(r RelayPenalty[T], now time.Time) int64 {
+func (s *CooldownRelaySet) effectiveError(r RelayPenalty, now time.Time) int64 {
 	lastErr := atomic.LoadInt64(&r.LastErrorAt)
 	if lastErr == 0 {
 		return 0

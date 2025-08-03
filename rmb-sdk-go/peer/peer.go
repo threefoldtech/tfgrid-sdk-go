@@ -125,7 +125,7 @@ type Peer struct {
 	twinDB   TwinDB
 	privKey  *secp256k1.PrivateKey
 	reader   Reader
-	relayset *CooldownRelaySet[*InnerConnection] // manages relay selection and cooldown
+	relayset *CooldownRelaySet // manages relay selection and cooldown
 	handler  Handler
 	encoder  encoder.Encoder
 	relays   []string
@@ -286,18 +286,18 @@ func NewPeer(
 	}
 
 	reader := make(chan []byte)
-	relayPenalties := make([]RelayPenalty[*InnerConnection], 0, len(conns))
+	relayPenalties := make([]RelayPenalty, 0, len(conns))
 	for i := range conns {
 		conn := &conns[i]
 		conn.Start(ctx, reader)
-		relayPenalties = append(relayPenalties, RelayPenalty[*InnerConnection]{Relay: conn, LastErrorAt: 0})
+		relayPenalties = append(relayPenalties, RelayPenalty{Relay: conn, LastErrorAt: 0})
 	}
 
 	cooldown := cfg.relayCooldown
 	if cooldown == 0 {
 		cooldown = 10 * time.Second // default
 	}
-	relayset := &CooldownRelaySet[*InnerConnection]{Relays: relayPenalties, Cooldown: cooldown}
+	relayset := &CooldownRelaySet{Relays: relayPenalties, Cooldown: cooldown}
 
 	var sessionP *string
 	if cfg.session != "" {
