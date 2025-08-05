@@ -33,6 +33,7 @@ func main() {
 		sub = nil
 	}
 
+	// TODO: no need to expose messenger, just use the client directly
 	msgr, err := messenger.NewMessenger(messenger.WithChain(sub))
 	if err != nil {
 		fmt.Printf("Failed to create messenger client: %v\n", err)
@@ -40,19 +41,24 @@ func main() {
 	}
 	defer msgr.Close()
 
+	// TODO: abstracted clean api
 	rpcClient := messenger.NewJSONRPCClient(msgr)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// TODO: should send identity to call and it will sign the message
-	id, err := substrate.NewIdentityFromEd25519Phrase(mnemonic)
+	// TODO: should be part of the call? maybe in the client itself?
+	id, err := substrate.NewIdentityFromSr25519Phrase(mnemonic)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create identity from mnemonic")
 		os.Exit(1)
 	}
-
+	twinID, err := sub.GetTwinByPubKey(id.PublicKey())
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get twin ID")
+		os.Exit(1)
+	}
 	var result float64
-	err = rpcClient.Call(ctx, dest, "calculator.add", []float64{10, 20}, &result)
+	err = rpcClient.Call(ctx, dest, twinID, id, "calculator.add", []float64{10, 20}, &result)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to call calculator.add")
 		os.Exit(1)

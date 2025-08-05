@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
 const (
@@ -151,7 +153,8 @@ func NewJSONRPCClient(messenger *Messenger) *JSONRPCClient {
 	}
 }
 
-func (c *JSONRPCClient) Call(ctx context.Context, destination string, method string, params interface{}, result interface{}) error {
+func (c *JSONRPCClient) Call(ctx context.Context, destination string, twinID uint32, identity substrate.Identity, method string, params interface{}, result interface{}) error {
+	// TODO: this encode/decode should be separated
 	request := JSONRPCRequest{
 		JSONRPC: "2.0",
 		Method:  method,
@@ -165,7 +168,7 @@ func (c *JSONRPCClient) Call(ctx context.Context, destination string, method str
 	}
 
 	// TODO: all should be signed
-	msg, err := c.messenger.SendMessage(destination, string(requestBytes), RPCKey, true, 0)
+	msg, err := c.messenger.SendSignedMessage(destination, string(requestBytes), RPCKey, twinID, identity, true, 0)
 	if err != nil {
 		return fmt.Errorf("failed to send RPC request: %w", err)
 	}

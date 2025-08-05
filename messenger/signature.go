@@ -1,28 +1,34 @@
 package messenger
 
 import (
-	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
 
+	sr25519 "github.com/ChainSafe/go-schnorrkel"
+	"github.com/gtank/merlin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
 // SignedMessage represents a cryptographically signed message with twin verification
-// This structure ensures that messages are authenticated against the TFChain
+// This structure ensures that messages are authenticated against the TFChain using SR25519
 type SignedMessage struct {
 	TwinID    uint32 `json:"twin_id"`   // Twin ID from TFChain
 	Message   string `json:"message"`   // Original message content
-	Signature string `json:"signature"` // Hex-encoded Ed25519 signature
+	Signature string `json:"signature"` // Hex-encoded SR25519 signature
 	Timestamp int64  `json:"timestamp"` // Unix timestamp for replay protection
 }
 
 // TwinKeyProvider defines the interface for retrieving twin public keys from blockchain
 type TwinKeyProvider interface {
-	// GetTwinPublicKey retrieves the Ed25519 public key for a given twin ID
+	// GetTwinPublicKey retrieves the SR25519 public key for a given twin ID
 	GetTwinPublicKey(twinID uint32) ([]byte, error)
+}
+
+// signingContext creates the signing context used by SR25519
+func signingContext(msg []byte) *merlin.Transcript {
+	return sr25519.NewSigningContext([]byte("substrate"), msg)
 }
 
 // TFChainKeyProvider implements TwinKeyProvider using TFChain substrate connection
@@ -35,7 +41,7 @@ func NewTFChainKeyProvider(sub *substrate.Substrate) *TFChainKeyProvider {
 	return &TFChainKeyProvider{substrate: sub}
 }
 
-// GetTwinPublicKey retrieves the Ed25519 public key for a twin from TFChain
+// GetTwinPublicKey retrieves the SR25519 public key for a twin from TFChain
 func (p *TFChainKeyProvider) GetTwinPublicKey(twinID uint32) ([]byte, error) {
 	twin, err := p.substrate.GetTwin(twinID)
 	if err != nil {
@@ -44,12 +50,12 @@ func (p *TFChainKeyProvider) GetTwinPublicKey(twinID uint32) ([]byte, error) {
 
 	//TODO: is this right?
 	accountBytes := twin.Account[:]
-	if len(accountBytes) < ed25519.PublicKeySize {
+	if len(accountBytes) < 32 { // SR25519 public key size
 		return nil, fmt.Errorf("invalid account ID length for twin %d: expected at least %d bytes, got %d",
-			twinID, ed25519.PublicKeySize, len(accountBytes))
+			twinID, 32, len(accountBytes))
 	}
 
-	return accountBytes[:ed25519.PublicKeySize], nil
+	return accountBytes[:32], nil
 }
 
 // VerifyMessageSignature verifies a signed message against the twin's public key from TFChain
@@ -59,9 +65,9 @@ func VerifyMessageSignature(signedMsg *SignedMessage, keyProvider TwinKeyProvide
 		return fmt.Errorf("failed to retrieve twin public key: %w", err)
 	}
 
-	if len(publicKeyBytes) != ed25519.PublicKeySize {
+	if len(publicKeyBytes) != 32 { // SR25519 public key size
 		return fmt.Errorf("invalid public key length for twin %d: expected %d bytes, got %d",
-			signedMsg.TwinID, ed25519.PublicKeySize, len(publicKeyBytes))
+			signedMsg.TwinID, 32, len(publicKeyBytes))
 	}
 
 	signatureBytes, err := hex.DecodeString(signedMsg.Signature)
@@ -69,15 +75,36 @@ func VerifyMessageSignature(signedMsg *SignedMessage, keyProvider TwinKeyProvide
 		return fmt.Errorf("invalid signature encoding: %w", err)
 	}
 
-	if len(signatureBytes) != ed25519.SignatureSize {
+	if len(signatureBytes) != 64 { // SR25519 signature size
 		return fmt.Errorf("invalid signature length: expected %d bytes, got %d",
-			ed25519.SignatureSize, len(signatureBytes))
+			64, len(signatureBytes))
 	}
 
-	publicKey := ed25519.PublicKey(publicKeyBytes)
+	// Convert public key bytes to SR25519 public key
+	var pubKeyArray [32]byte
+	copy(pubKeyArray[:], publicKeyBytes)
+	publicKey := new(sr25519.PublicKey)
+	if err := publicKey.Decode(pubKeyArray); err != nil {
+		return fmt.Errorf("failed to decode SR25519 public key: %w", err)
+	}
+
+	// Convert signature bytes to SR25519 signature
+	var sigArray [64]byte
+	copy(sigArray[:], signatureBytes)
+	signature := new(sr25519.Signature)
+	if err := signature.Decode(sigArray); err != nil {
+		return fmt.Errorf("failed to decode SR25519 signature: %w", err)
+	}
+
 	messageBytes := []byte(signedMsg.Message)
 
-	if !ed25519.Verify(publicKey, messageBytes, signatureBytes) {
+	// Verify the signature using SR25519
+	valid, err := publicKey.Verify(signature, signingContext(messageBytes))
+	if err != nil {
+		return fmt.Errorf("SR25519 signature verification error: %w", err)
+	}
+
+	if !valid {
 		return fmt.Errorf("cryptographic signature verification failed for twin %d", signedMsg.TwinID)
 	}
 

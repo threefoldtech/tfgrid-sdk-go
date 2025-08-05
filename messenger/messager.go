@@ -204,6 +204,7 @@ func (c *Messenger) SendReply(originalMessageID, destination, payload string) er
 		Payload: encodedPayload,
 	}
 
+	// TODO: both client/server should use full signed msgs, client sign before send, server verify, server sign before reply, client verify
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return fmt.Errorf("failed to marshal request body: %w", err)
@@ -321,6 +322,7 @@ func (c *Messenger) receiveLoop(ctx context.Context) {
 // TODO: each reply with error, should follow the same pattern
 func (c *Messenger) processMessage(ctx context.Context, message *Message) {
 	sendErrorReply := func(errorMsg string) {
+		// TODO: should be part of SEND
 		if err := c.SendReply(message.ID, message.SrcPK, errorMsg); err != nil {
 			log.Error().Err(err).Str("msg_id", message.ID).
 				Msg("failed to send error reply")

@@ -1,0 +1,99 @@
+#!/usr/bin/bash
+
+set -e
+
+NATNET=172.16.0.0/16
+NUMOFNS=2
+BRIDGE=br0
+BRIDGE_ADDR=172.16.0.1/16
+EXT_IF="wlp3s0" # change if your outbound interface differs
+
+function up() {
+  echo "[+] Creating bridge ${BRIDGE}"
+  sudo ip link add ${BRIDGE} type bridge || true
+  sudo ip addr add ${BRIDGE_ADDR} dev ${BRIDGE} 2>/dev/null || true
+  sudo ip link set ${BRIDGE} up
+
+  echo "[+] Enabling IP forwarding"
+  sudo sysctl -w net.ipv4.ip_forward=1
+
+  echo "[+] Configuring NAT"
+  sudo nft add table ip nat 2>/dev/null || true
+  sudo nft add chain ip nat postrouting '{ type nat hook postrouting priority 100; }' 2>/dev/null || true
+  sudo nft add rule ip nat postrouting oifname "${EXT_IF}" masquerade 2>/dev/null || true
+
+  echo "[+] Starting mycelium on host"
+  nohup sudo mycelium --key-file host.bin >host.out &
+
+  for i in $(seq 1 $NUMOFNS); do
+    local name=n-${i}
+    local veth_host=out_${i}
+    local veth_ns=in_${i}
+
+    echo "[+] Setting up namespace ${name}"
+    sudo ip netns add ${name}
+    sudo ip link add ${veth_ns} type veth peer name ${veth_host}
+    sudo ip link set ${veth_ns} netns ${name}
+
+    sudo ip netns exec ${name} ip link set lo up
+    sudo ip netns exec ${name} ip link set ${veth_ns} up
+    sudo ip netns exec ${name} ip addr add 172.16.${i}.2/16 dev ${veth_ns}
+    sudo ip netns exec ${name} ip route add default via 172.16.0.1
+
+    sudo ip link set ${veth_host} master ${BRIDGE}
+    sudo ip link set ${veth_host} up
+
+    echo "[+] Configuring DNS resolvers for ${name}"
+    sudo mkdir -p /etc/netns/${name}
+    echo "nameserver 8.8.8.8" | sudo tee /etc/netns/${name}/resolv.conf > /dev/null
+    echo "nameserver 1.1.1.1" | sudo tee -a /etc/netns/${name}/resolv.conf > /dev/null
+
+    echo "[+] Starting mycelium in ${name}"
+    nohup sudo ip netns exec ${name} mycelium --key-file ${name}.bin --peers tcp://172.16.${i}.1:9651 >${i}.out &
+  done
+
+  echo "[+] Setup complete"
+}
+
+function down() {
+  echo "[+] Killing mycelium"
+  sudo pkill -9 mycelium || true
+
+  for i in $(seq 1 $NUMOFNS); do
+    sudo ip link del out_${i} 2>/dev/null || true
+    sudo ip netns del n-${i} 2>/dev/null || true
+    sudo rm -rf /etc/netns/n-${i} 2>/dev/null || true
+  done
+
+  echo "[+] Removing bridge ${BRIDGE}"
+  sudo ip link set ${BRIDGE} down 2>/dev/null || true
+  sudo ip link del ${BRIDGE} 2>/dev/null || true
+}
+
+function show_help() {
+  echo "Usage: $0 [OPTION]"
+  echo "Manage mycelium network setup with network namespaces"
+  echo ""
+  echo "Options:"
+  echo "  -u, --up      Set up the mycelium network and namespaces"
+  echo "  -d, --down    Tear down the mycelium network and namespaces"
+  echo "  -h, --help    Show this help message"
+}
+
+case "${1:-}" in
+  -u|--up)
+    up
+    ;;
+  -d|--down)
+    down
+    ;;
+  -h|--help)
+    show_help
+    ;;
+  *)
+    echo "Error: Unknown option '$1'"
+    show_help
+    exit 1
+    ;;
+esac
+

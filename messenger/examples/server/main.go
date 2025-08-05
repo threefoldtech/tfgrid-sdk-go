@@ -31,6 +31,7 @@ func addHandler(ctx context.Context, calc *Calculator, params json.RawMessage) (
 		return nil, fmt.Errorf("expected 2 parameters, got %d", len(args))
 	}
 
+	// TODO: where this is coming from?
 	twinID, ok := ctx.Value(messenger.TwinIDContextKey).(uint32)
 	if !ok {
 		log.Warn().Msg("can't find twin id")
