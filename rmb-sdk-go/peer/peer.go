@@ -37,13 +37,22 @@ type Handler func(ctx context.Context, peer *Peer, env *types.Envelope, err erro
 
 type cacheFactory = func(inner TwinDB, chainURL string) (TwinDB, error)
 
+var (
+	// ErrNoValidRelayURLs is returned when no valid relay URLs are provided.
+	ErrNoValidRelayURLs = errors.New("no valid relay URLs provided")
+	// ErrNoFunctionalRelayAtStartup is returned when no relay connections are functional at startup.
+	ErrNoFunctionalRelayAtStartup = errors.New("no relay connections are functional at startup")
+)
+
 type peerCfg struct {
-	relayURLs        []string
-	keyType          string
-	session          string
-	enableEncryption bool
-	encoder          encoder.Encoder
-	cacheFactory     cacheFactory
+	// Require at least one working relay at startup (default: false, for backward compatibility)
+	RequireFunctionalRelayOnStartup bool
+	relayURLs                       []string
+	keyType                         string
+	session                         string
+	enableEncryption                bool
+	encoder                         encoder.Encoder
+	cacheFactory                    cacheFactory
 }
 
 type PeerOpt func(*peerCfg)
@@ -59,6 +68,14 @@ func WithSession(session string) PeerOpt {
 func WithEncryption(enable bool) PeerOpt {
 	return func(p *peerCfg) {
 		p.enableEncryption = enable
+	}
+}
+
+// WithRequireFunctionalRelayOnStartup configures whether the peer should require at least one working relay at startup.
+// If not set, the peer will always self-heal (default, backward compatible).
+func WithRequireFunctionalRelayOnStartup(required bool) PeerOpt {
+	return func(p *peerCfg) {
+		p.RequireFunctionalRelayOnStartup = required
 	}
 }
 
@@ -130,38 +147,32 @@ func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, erro
 }
 
 // getRelayConnections tries to connect to all relays and returns only the successful ones
+// getRelayConnections returns InnerConnections for all valid relay URLs
 func getRelayConnections(relayURLs []string, identity substrate.Identity, session string, twinID uint32) ([]string, []InnerConnection, error) {
-	var successfulRelayURLs []string
-	var successfulConnections []InnerConnection
+	var validRelayURLs []string
+	var connections []InnerConnection
 
 	for _, relayURL := range relayURLs {
 		parsedURL, err := url.Parse(relayURL)
 		if err != nil {
-			log.Warn().Err(err).Str("url", relayURL).Msg("failed to parse relay URL")
+			log.Warn().Err(err).Str("url", relayURL).Msg("failed to parse relay URL, skipping")
 			continue
 		}
-
+		validRelayURLs = append(validRelayURLs, parsedURL.Host)
 		conn := NewConnection(identity, relayURL, session, twinID)
-		if conn.TryConnect() {
-			log.Info().Str("url", relayURL).Msg("connected")
-			successfulRelayURLs = append(successfulRelayURLs, parsedURL.Host)
-			successfulConnections = append(successfulConnections, conn)
-			continue
-		}
-
-		log.Warn().Str("url", relayURL).Msg("failed to connect")
+		connections = append(connections, conn)
 	}
 
-	if len(successfulRelayURLs) == 0 {
-		return nil, nil, errors.New("failed to connect to any relay")
+	if len(connections) == 0 {
+		return nil, nil, ErrNoValidRelayURLs
 	}
 
-	sort.Slice(successfulRelayURLs, func(i, j int) bool {
-		return strings.ToLower(successfulRelayURLs[i]) < strings.ToLower(successfulRelayURLs[j])
+	sort.Slice(validRelayURLs, func(i, j int) bool {
+		return strings.ToLower(validRelayURLs[i]) < strings.ToLower(validRelayURLs[j])
 	})
-	successfulRelayURLs = slices.Compact(successfulRelayURLs)
+	validRelayURLs = slices.Compact(validRelayURLs)
 
-	return successfulRelayURLs, successfulConnections, nil
+	return validRelayURLs, connections, nil
 }
 
 func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
@@ -260,6 +271,16 @@ func NewPeer(
 		return nil, err
 	}
 
+	// Hybrid approach: if RequireFunctionalRelayOnStartup is true, require at least one working relay at startup
+	if cfg.RequireFunctionalRelayOnStartup {
+		firstWorking := slices.IndexFunc(conns, func(c InnerConnection) bool {
+			return c.TryConnect()
+		})
+		if firstWorking == -1 {
+			return nil, ErrNoFunctionalRelayAtStartup
+		}
+	}
+
 	joinURLs := strings.Join(relayURLs, "_")
 	if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || joinURLs != *twin.Relay {
 		log.Info().Str("Relay url/s", joinURLs).Msg("twin relay/public key didn't match, updating on chain ...")
@@ -271,6 +292,7 @@ func NewPeer(
 	reader := make(chan []byte)
 	weightCons := make([]WeightItem[InnerConnection], 0, len(conns))
 	for _, conn := range conns {
+		// Always start reconnection goroutine for all valid relays
 		conn.Start(ctx, reader)
 		weightCons = append(weightCons, WeightItem[InnerConnection]{Item: conn, Weight: 1})
 	}
