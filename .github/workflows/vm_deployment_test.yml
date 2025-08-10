@@ -1,0 +1,124 @@
+name: VM Deployment Testing
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: grid-cli
+on:
+  schedule:
+    - cron: "0 8 * * *"  # Run daily at 8 AM UTC
+  workflow_dispatch:
+
+jobs:
+  test-vm-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        network: ["dev", "qa", "test", "main"]
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: CLI build
+        run: make build
+
+      - name: install ping
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iputils-ping
+          sudo apt-get install -y iproute2
+          
+      - name: CLI login
+        run: /bin/bash -c  "{ echo ${{ secrets.MNEMONICS }}; echo ${{ matrix.network }}; } | bin/tfcmd login"
+        
+      - name: Generate SSH key for VM
+        run: |
+          ssh-keygen -t rsa -b 2048 -f ~/.ssh/test_vm_key -N ""
+          echo "SSH_PUB_KEY=$(cat ~/.ssh/test_vm_key.pub)" >> $GITHUB_ENV
+
+      - name: Deploy VM
+        id: deploy_vm
+        run: |
+          VM_NAME="testvm$(date +%s)"
+          echo "VM_NAME=$VM_NAME" >> $GITHUB_ENV
+          echo "Deploying VM: $VM_NAME"
+          DEPLOY_OUTPUT=$(bin/tfcmd deploy vm --name "$VM_NAME" --ipv4 --ssh ~/.ssh/test_vm_key.pub 2>&1)
+          echo "$DEPLOY_OUTPUT"
+          if [ $? -eq 0 ]; then
+            IPV4_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -i "vm ipv4:" | awk '{print $NF}' | cut -d'/' -f1)
+            
+            if [ -n "$IPV4_ADDRESS" ]; then
+              echo "VM_IP=$IPV4_ADDRESS" >> $GITHUB_ENV
+              echo "Extracted VM IP: $IPV4_ADDRESS"
+            else
+              echo "Could not extract IPv4 address from deployment output"
+              echo "Deployment output:"
+              echo "$DEPLOY_OUTPUT"
+            fi
+          else
+            echo "VM_DEPLOY_FAILED=true" >> $GITHUB_ENV
+            echo "VM deployment failed with exit code $?"
+            echo "Error output:"
+            echo "$DEPLOY_OUTPUT"
+          fi
+
+      - name: Wait for VM deployment
+        run: sleep 30
+
+      - name: Test VM connectivity
+        if: env.VM_DEPLOY_FAILED != 'true' && env.VM_IP != ''
+        run: |
+          echo "Testing connectivity to VM with IPv4: $VM_IP"
+          echo "Attempting ping to IPv4 address..."
+          
+          if ping -c 3 "$VM_IP"; then
+            echo "CONNECTIVITY_STATUS=✅ Connected" >> $GITHUB_ENV
+            echo "Successfully pinged VM at $VM_IP"
+          else
+            echo "CONNECTIVITY_STATUS=❌ Failed" >> $GITHUB_ENV
+            echo "CONNECTIVITY_FAILED=true" >> $GITHUB_ENV
+            echo "Failed to ping VM at $VM_IP"
+          fi
+
+      - name: Set test results
+        run: |
+          if [ "$VM_DEPLOY_FAILED" == "true" ]; then
+            echo "TEST_STATUS=❌ DEPLOY FAILED" >> $GITHUB_ENV
+            echo "TEST_DETAILS=VM deployment failed on ${{ matrix.network }}" >> $GITHUB_ENV
+          elif [ "$CONNECTIVITY_FAILED" == "true" ]; then
+            echo "TEST_STATUS=⚠️ CONNECTIVITY FAILED" >> $GITHUB_ENV
+            echo "TEST_DETAILS=VM deployed on ${{ matrix.network }} but ping to IPv4 failed" >> $GITHUB_ENV
+          elif [ -z "$VM_IP" ]; then
+            echo "TEST_STATUS=⚠️ NO IP" >> $GITHUB_ENV
+            echo "TEST_DETAILS=VM deployed on ${{ matrix.network }} but could not extract IPv4 address" >> $GITHUB_ENV
+          else
+            echo "TEST_STATUS=✅ SUCCESS" >> $GITHUB_ENV
+            echo "TEST_DETAILS=VM deployment and connectivity test completed successfully on ${{ matrix.network }}" >> $GITHUB_ENV
+          fi
+
+      - name: Send Telegram notification
+        if: always()
+        run: |
+          MESSAGE="🤖 *VM Deployment Test Report*
+          
+          🌐 *Network:* ${{ matrix.network }}
+          📊 *Status:* $TEST_STATUS
+          📝 *Details:* $TEST_DETAILS
+          🕐 *Time:* $(date -u)
+          🔗 *Workflow:* [View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.telegramtoken }}/sendMessage" \
+            -d chat_id=${{ secrets.telegramchatid }} \
+            -d parse_mode=Markdown \
+            -d text="$MESSAGE"
+
