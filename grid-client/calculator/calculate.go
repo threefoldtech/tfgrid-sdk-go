@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
@@ -64,6 +66,7 @@ func (c *Calculator) CalculateCost(cru, mru, hru, sru uint64, publicIP, certifie
 }
 
 // CalculatePricesAfterDiscount calculates the prices after discount
+// it takes the cost in USD and returns the prices after discount
 func (c *Calculator) CalculatePricesAfterDiscount(cost float64) (dedicatedPrice, sharedPrice float64, err error) {
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
@@ -192,18 +195,33 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 		return 0, errors.Wrapf(err, "failed to get payment state for contract ID %d", id)
 	}
 
-	periodCostTFT, err := c.calculatePeriodCostTFT(time.Unix(int64(contractPaymentState.LastUpdatedSeconds), 0), contractInfo, allowance)
-	if err != nil {
-		return 0, errors.Wrap(err, "failed to calculate period cost")
-	}
-	// totalOverDraft represents the sum of standard and additional overdraft amounts for the contract in TFT
+	lastBillingAt := time.Unix(int64(contractPaymentState.LastUpdatedSeconds), 0)
+
+	// totalOverDraft represents the sum of standard and additional overdraft amounts for the contract TFT
 	totalOverDraftTFT := calculateTotalOverdraftTFT(&contractPaymentState)
 
-	unbilledNuTFT, err := c.getUnbilledAmountInTFT(uint64(contractInfo.ContractID))
+	node, err := c.getNode(contractInfo.ContractType)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get node")
+	}
+
+	var isCertifiedNode bool
+	if node != nil {
+		isCertifiedNode = node.Certification.IsCertified
+	}
+
+	unbilledNuTFT, err := c.getUnbilledAmountInTFT(contractInfo, isCertifiedNode)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get unbilled amount")
 	}
-
+	var nodeInfo substrate.Node
+	if node != nil {
+		nodeInfo = *node
+	}
+	periodCostTFT, err := c.calculatePeriodCostTFT(lastBillingAt, *contractInfo, nodeInfo, allowance)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to calculate period cost")
+	}
 	totalOverDraftTFT += periodCostTFT + unbilledNuTFT
 
 	if contract.ContractType.IsRentContract {
@@ -232,18 +250,27 @@ func unitToTFT(units *big.Int) float64 {
 }
 
 // GetUnbilledAmountInTFT returns the amount unbilled for a given contract in TFT
-func (c *Calculator) getUnbilledAmountInTFT(contractID uint64) (float64, error) {
-	billingInfo, err := c.substrateConn.GetContractBillingInfo(contractID)
+//
+// The amount unbilled is the amount that is not billed yet for a node contract
+func (c *Calculator) getUnbilledAmountInTFT(contract *substrate.Contract, isCertifiedNode bool) (float64, error) {
+	if contract.ContractType.IsNameContract || contract.ContractType.IsRentContract ||
+		(contract.ContractType.IsNodeContract && contract.ContractType.NodeContract.PublicIPsCount == 0) {
+		return 0, nil
+	}
+	billingInfo, err := c.substrateConn.GetContractBillingInfo(uint64(contract.ContractID))
 	if err != nil && !errors.Is(err, substrate.ErrNotFound) {
 		return 0, err
 	}
+
 	var unbilled float64 = 0
 	if billingInfo.AmountUnbilled != types.U64(0) {
 		unbilled = float64(billingInfo.AmountUnbilled)
 	}
 	// amount unbilled is in unit-USD
 	unbilledUSD := unitToUSD(unbilled)
-
+	if isCertifiedNode {
+		unbilledUSD *= 1.25
+	}
 	return c.USDtoTFT(unbilledUSD)
 }
 
@@ -253,16 +280,37 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed to get contracts for node ID %d", nodeID)
 	}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	wg.Add(len(contracts))
+
 	var totalCost int64 = 0
+	var result *multierror.Error
+
 	for _, contract := range contracts {
-		cost, err := c.CalculateContractOverdue(uint64(contract), allowance)
-		if err != nil {
-			if errors.Is(err, ErrContractDeleted) {
-				continue
+		go func(contract uint64) {
+			defer wg.Done()
+			cost, err := c.CalculateContractOverdue(contract, allowance)
+			if err != nil {
+				if errors.Is(err, ErrContractDeleted) {
+					return
+				}
+				mu.Lock()
+				result = multierror.Append(result, fmt.Errorf("error with contract %d: %w", contract, err))
+				mu.Unlock()
+				return
 			}
-			return 0, err
-		}
-		totalCost += cost
+			mu.Lock()
+			totalCost += cost
+			mu.Unlock()
+		}(uint64(contract))
+	}
+
+	wg.Wait()
+
+	if result != nil {
+		return 0, result.ErrorOrNil()
 	}
 	return totalCost, nil
 }
@@ -270,12 +318,13 @@ func (c *Calculator) calculateTotalContractsOverdueOnNode(nodeID uint32, allowan
 // Calculates the cost with a period in TFT.
 //
 // The period is the time since last updated in seconds with the provided allowance time.
-func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contract *substrate.Contract, allowance time.Duration) (float64, error) {
+func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contract substrate.Contract, node substrate.Node, allowance time.Duration) (float64, error) {
+
 	// Calculate the elapsed seconds since last billing
 	elapsedSeconds := math.Ceil(time.Since(lastUpdatedSeconds).Seconds())
 	totalPeriodSeconds := elapsedSeconds + allowance.Seconds()
 
-	contractMonthlyCostUSD, err := c.calculateContractCost(contract)
+	contractMonthlyCostUSD, err := c.calculateContractCost(contract, node)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to calculate contract cost")
 	}
@@ -291,24 +340,18 @@ func (c *Calculator) calculatePeriodCostTFT(lastUpdatedSeconds time.Time, contra
 }
 
 // Calculates the cost of a contract per month in USD.
-func (c *Calculator) calculateContractCost(contract *substrate.Contract) (float64, error) {
+func (c *Calculator) calculateContractCost(contract substrate.Contract, node substrate.Node) (float64, error) {
 	if contract.ContractType.IsNameContract {
 		return c.calculateUniqueNameCost()
 	}
 
-	nodeID, err := getNodeID(contract)
-	if err != nil {
-		return 0, err
-	}
-
-	node, err := c.substrateConn.GetNode(nodeID)
-	if err != nil {
-		return 0, err
+	if node.ID == 0 {
+		return 0, errors.New("Invalid node")
 	}
 
 	if contract.ContractType.IsNodeContract {
 
-		nodeRentContract, err := c.substrateConn.GetNodeRentContract(nodeID)
+		nodeRentContract, err := c.substrateConn.GetNodeRentContract(uint32(node.ID))
 		if err != nil {
 			if errors.Is(err, substrate.ErrNotFound) {
 				return 0, nil
@@ -321,21 +364,28 @@ func (c *Calculator) calculateContractCost(contract *substrate.Contract) (float6
 
 	if contract.ContractType.IsRentContract {
 
-		return c.calculateRentCost(contract, *node)
+		return c.calculateRentCost(contract, node)
 	}
 	return 0, nil
 }
 
 // Calculates the cost of a unique name per month in USD.
 func (c *Calculator) calculateUniqueNameCost() (float64, error) {
-	//TODO should we apply stacking discount?
+
 	pricingPolicy, err := c.substrateConn.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
 		return 0, err
 	}
 	// cost in unit-USD
 	monthlyCost := float64(pricingPolicy.UniqueName.Value) * 24 * 30
-	return unitToUSD(monthlyCost), nil
+
+	costUSD := unitToUSD(monthlyCost)
+
+	_, afterDiscount, err := c.CalculatePricesAfterDiscount(costUSD)
+	if err != nil {
+		return costUSD, nil
+	}
+	return afterDiscount, nil
 }
 
 // Calculates the cost of a node contract per month in USD.
@@ -343,7 +393,7 @@ func (c *Calculator) calculateUniqueNameCost() (float64, error) {
 // There are two cases for node contract cost:
 //  1. Node contract on shared node: the cost of the used resources of (shared)
 //  2. Node contract on rented node: the cost of the IPV4 only if the contact includes ipv4, else it will return zero.
-func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onCertifiedNode, isOnRentedNode bool) (float64, error) {
+func (c *Calculator) calculateNodeContractCost(contract substrate.Contract, onCertifiedNode, isOnRentedNode bool) (float64, error) {
 	if !contract.ContractType.IsNodeContract {
 		return 0, fmt.Errorf("contract ID %d is not a node contract", contract.ContractID)
 	}
@@ -359,13 +409,15 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 			return 0, err
 		}
 		totalCost := cost * float64(publicIPsCount)
-
-		//TODO should we apply stacking discount?
-
 		if onCertifiedNode {
 			totalCost *= 1.25
 		}
-		return totalCost, nil
+
+		_, sharedPrice, err := c.CalculatePricesAfterDiscount(totalCost)
+		if err != nil {
+			return totalCost, err
+		}
+		return sharedPrice, nil
 	}
 
 	// Normal node contract on sharedNode
@@ -393,7 +445,7 @@ func (c *Calculator) calculateNodeContractCost(contract *substrate.Contract, onC
 // Calculates the cost of a rent contract per month in USD.
 //
 // Rent contract cost is the cost of the node (dedicated discount applied) + the node extra fee
-func (c *Calculator) calculateRentCost(contract *substrate.Contract, node substrate.Node) (float64, error) {
+func (c *Calculator) calculateRentCost(contract substrate.Contract, node substrate.Node) (float64, error) {
 	if !contract.ContractType.IsRentContract {
 		return 0, fmt.Errorf("contract ID %d is not a rent contract", contract.ContractID)
 	}
@@ -423,17 +475,6 @@ func (c *Calculator) calculateRentCost(contract *substrate.Contract, node substr
 	}
 	dedicatedPrice += (float64(extraFee) / mUSDToUSD)
 	return dedicatedPrice, nil
-}
-
-// getNodeID returns the node ID of a contract
-func getNodeID(contract *substrate.Contract) (uint32, error) {
-	if contract.ContractType.IsNodeContract {
-		return uint32(contract.ContractType.NodeContract.Node), nil
-	}
-	if contract.ContractType.IsRentContract {
-		return uint32(contract.ContractType.RentContract.Node), nil
-	}
-	return 0, fmt.Errorf("contract id %d is not a node contract nor rent contract", contract.ContractID)
 }
 
 // convertBytesToGB converts bytes to gigabytes by dividing by 1024^3
@@ -473,4 +514,16 @@ func calculateTotalOverdraftTFT(paymentState *substrate.ContractPaymentState) fl
 		totalOverDraft.Add(paymentState.AdditionalOverdraft.Int, totalOverDraft.Int)
 	}
 	return unitToTFT(totalOverDraft.Int)
+}
+
+func (c Calculator) getNode(contractType substrate.ContractType) (node *substrate.Node, err error) {
+	if contractType.IsNodeContract {
+		return c.substrateConn.GetNode(uint32(contractType.NodeContract.Node))
+	}
+	if contractType.IsRentContract {
+		return c.substrateConn.GetNode(uint32(contractType.RentContract.Node))
+	}
+
+	// contract type is not a node contract nor rent contract, and that is fine as the node will not be used in name contract
+	return nil, nil
 }
