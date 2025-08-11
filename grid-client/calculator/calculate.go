@@ -205,12 +205,20 @@ func (c Calculator) CalculateContractOverdue(id uint64, allowance time.Duration)
 		return 0, errors.Wrap(err, "failed to get node")
 	}
 
-	unbilledNuTFT, err := c.getUnbilledAmountInTFT(contractInfo, node.Certification.IsCertified)
+	var isCertifiedNode bool
+	if node != nil {
+		isCertifiedNode = node.Certification.IsCertified
+	}
+
+	unbilledNuTFT, err := c.getUnbilledAmountInTFT(contractInfo, isCertifiedNode)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get unbilled amount")
 	}
-
-	periodCostTFT, err := c.calculatePeriodCostTFT(lastBillingAt, *contractInfo, *node, allowance)
+	var nodeInfo substrate.Node
+	if node != nil {
+		nodeInfo = *node
+	}
+	periodCostTFT, err := c.calculatePeriodCostTFT(lastBillingAt, *contractInfo, nodeInfo, allowance)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to calculate period cost")
 	}
