@@ -148,7 +148,7 @@ func validateRelayURLs(relayURLs []string) ([]*url.URL, error) {
 	var validRelayURLs []*url.URL
 
 	for _, relayURL := range relayURLs {
-		parsedURL, err := url.Parse(relayURL)
+		parsedURL, err := url.Parse(strings.ToLower(relayURL))
 		if err != nil {
 			log.Warn().Err(err).Str("url", relayURL).Msg("failed to parse relay URL, skipping")
 			continue
@@ -158,6 +158,11 @@ func validateRelayURLs(relayURLs []string) ([]*url.URL, error) {
 			log.Warn().Str("url", relayURL).Msg("relay URL must be ws or wss, skipping")
 			continue
 		}
+		// make sure Hostname is not empty
+		if parsedURL.Hostname() == "" {
+			log.Warn().Str("url", relayURL).Msg("relay URL must have a hostname, skipping")
+			continue
+		}
 		validRelayURLs = append(validRelayURLs, parsedURL)
 	}
 
@@ -165,13 +170,13 @@ func validateRelayURLs(relayURLs []string) ([]*url.URL, error) {
 		return nil, ErrNoValidRelayURLs
 	}
 
-	slices.SortFunc(validRelayURLs, func(a, b *url.URL) int {
-		return strings.Compare(a.Host, b.Host)
-	})
 	validRelayURLs = slices.CompactFunc(validRelayURLs, func(a, b *url.URL) bool {
-		return a.Host == b.Host
+		return a.Hostname() == b.Hostname()
 	})
 
+	slices.SortFunc(validRelayURLs, func(a, b *url.URL) int {
+		return strings.Compare(a.Hostname(), b.Hostname())
+	})
 	return validRelayURLs, nil
 }
 
@@ -188,7 +193,7 @@ func getRelayConnections(relayURLs []string, identity substrate.Identity, sessio
 	for _, relayURL := range validRelayURLs {
 		conn := NewConnection(identity, relayURL.String(), session, twinID)
 		connections = append(connections, conn)
-		host := strings.ToLower(relayURL.Host)
+		host := relayURL.Hostname()
 		hosts = append(hosts, host)
 	}
 
