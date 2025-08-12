@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -20,6 +21,14 @@ const (
 )
 
 var errTimeout = fmt.Errorf("connection timeout")
+
+// Explicit errors for common exit reasons to avoid hardcoded strings.
+var (
+	ErrConnectionStalling = errors.New("connection stalling")
+	ErrLocalCanceled      = errors.New("local canceled (reader/transport error)")
+	ErrContextCanceled    = errors.New("context canceled")
+	ErrInvalidMessageType = errors.New("invalid message type")
+)
 
 // InnerConnection holds the required state to create a self healing websocket connection to the rmb relay.
 type InnerConnection struct {
@@ -70,21 +79,42 @@ func NewConnection(identity substrate.Identity, url string, session string, twin
 }
 
 func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc, con *websocket.Conn, reader chan []byte) {
+	var exitReason string
+	var exitErr error
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error().Str("url", c.url).Interface("panic", r).Bytes("stack", debug.Stack()).Msg("relay reader panic recovered")
+		} else {
+			log.Debug().Str("url", c.url).Str("reason", exitReason).Err(exitErr).Msg("relay reader exited")
+		}
+	}()
+
 	for {
 		typ, data, err := con.ReadMessage()
 		if err != nil {
+			if websocket.IsCloseError(err) || websocket.IsUnexpectedCloseError(err) || err == io.EOF {
+				exitReason = "close"
+				exitErr = err
+			} else {
+				exitReason = "read error"
+				exitErr = err
+			}
 			cancel()
 			return
 		}
 
 		if typ != websocket.BinaryMessage {
-			log.Error().Msg("invalid message type received")
+			exitReason = "invalid message type"
+			exitErr = ErrInvalidMessageType
+			// signal the supervisor loop() to tear down
 			cancel()
 			return
 		}
 
 		select {
 		case <-ctx.Done():
+			exitReason = ErrContextCanceled.Error()
+			exitErr = ctx.Err()
 			return
 		case reader <- data:
 		}
@@ -117,7 +147,28 @@ func (c *InnerConnection) send(ctx context.Context, data []byte) error {
 }
 
 func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output chan []byte) error {
-	defer con.Close()
+	var exitReason string
+	var exitErr error
+
+	// Attempt a graceful close handshake on exit; log either panic or normal exit, not both.
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error().Str("url", c.url).Interface("panic", r).Bytes("stack", debug.Stack()).Msg("relay loop panic recovered")
+		} else {
+			log.Debug().Str("url", c.url).Str("reason", exitReason).Err(exitErr).Msg("relay loop exited")
+		}
+
+		deadline := time.Now().Add(1 * time.Second)
+		_ = con.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), deadline)
+		// give the server a moment to respond and drain
+		_ = con.SetReadDeadline(deadline)
+		for {
+			if _, _, err := con.ReadMessage(); err != nil {
+				break
+			}
+		}
+		_ = con.Close()
+	}()
 
 	local, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -142,26 +193,44 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 	for {
 		select {
 		case <-ctx.Done():
+			exitReason = ErrContextCanceled.Error()
+			exitErr = ctx.Err()
 			return ctx.Err()
 		case <-local.Done():
+			exitReason = ErrLocalCanceled.Error()
+			exitErr = ErrLocalCanceled
 			return nil // error happened with the connection, return nil to try again
 		case data := <-outputCh:
+			// TODO: can we protect the loop from stalling by using a short timeout with logging
 			output <- data
 			lastPong = time.Now()
 		case sent := <-c.writer:
-			err := con.WriteMessage(websocket.BinaryMessage, sent.data) // TODO: check the error and ensures we do tear down on real write failures to trigger reconnection.
+			// Write the message to the websocket transport.
+			err := con.WriteMessage(websocket.BinaryMessage, sent.data)
+			// Try to notify the sender about the write result. If notification fails,
+			// log and continue; it's not a transport failure.
 			if replyErr := sent.reply(ctx, err); replyErr != nil {
-				return err // TODO: log it and continue? The inability to notify is not a transport failure.
+				log.Warn().Err(replyErr).Msg("failed to deliver write result to sender")
+			}
+			// On actual write error, tear down to trigger reconnect.
+			if err != nil {
+				exitReason = "write error"
+				exitErr = err
+				return err
 			}
 		case <-pong:
 			lastPong = time.Now()
 		case <-time.After(pingInterval):
 			if err := con.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
+				exitReason = "ping write error"
+				exitErr = err
 				return err
 			}
 
 			if time.Since(lastPong) > pongWait {
-				return fmt.Errorf("connection stalling")
+				exitReason = ErrConnectionStalling.Error()
+				exitErr = ErrConnectionStalling
+				return ErrConnectionStalling
 			}
 		}
 	}
@@ -170,17 +239,34 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 // Start initiates the websocket connection
 func (c *InnerConnection) Start(ctx context.Context, output chan []byte) {
 	go func() {
-		defer close(output)   // TODO: This looks wrong, It shouldn't be closed here, it should be closed by the peer
-		defer close(c.writer) // TODO: This also not safe it may create a race with send producer
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error().Str("url", c.url).Interface("panic", r).Bytes("stack", debug.Stack()).Msg("relay start worker panic recovered")
+			}
+		}()
+		// Do not close output or c.writer here:
+		// - output is owned by the Peer and may be shared among connections.
+		// - c.writer may still be used by senders racing with shutdown.
 		for {
+			if ctx.Err() != nil {
+				log.Debug().Str("url", c.url).Err(ctx.Err()).Msg("relay worker stopping: context canceled")
+				break
+			}
 			err := c.listenAndServe(ctx, output)
 			if err == context.Canceled {
+				log.Debug().Str("url", c.url).Msg("relay worker stopping: context canceled")
 				break
 			} else if err != nil {
 				log.Error().Err(err).Str("url", c.url).Msg("relay connection error")
 			}
 
-			<-time.After(2 * time.Second)
+			// Backoff or exit promptly on cancellation
+			select {
+			case <-ctx.Done():
+				log.Debug().Str("url", c.url).Err(ctx.Err()).Msg("relay worker stopping: context canceled")
+				return
+			case <-time.After(2 * time.Second):
+			}
 		}
 	}()
 }
@@ -221,7 +307,12 @@ func (c *InnerConnection) connect() (*websocket.Conn, error) {
 	relayURL := fmt.Sprintf("%s?%s", c.url, token)
 	log.Debug().Str("url", c.url).Msg("connecting")
 
-	con, resp, err := websocket.DefaultDialer.Dial(relayURL, nil)
+	dialer := websocket.Dialer{
+		HandshakeTimeout: 5 * time.Second,
+		Proxy:            http.ProxyFromEnvironment,
+	}
+
+	con, resp, err := dialer.Dial(relayURL, nil)
 	if err != nil {
 		var body []byte
 		var status string

@@ -35,15 +35,26 @@ Please check the [examples](examples/) directory
 
 ### Peer initialization
 
-```
-peer, err := peer.NewPeer(
+```go
+ctx, cancel := context.WithCancel(context.Background())
+defer cancel() // shutdown the peer by canceling the context
+
+p, err := peer.NewPeer(
     ctx,
     mnemonics,
     subManager,
     relayCallback,
     peer.WithRelay("wss://relay.dev.grid.tf"),
     peer.WithSession("test-client"),
-  )
+)
+if err != nil {
+    // handle error
+}
+
+// ... use p ...
+
+// When done, shutdown is triggered by canceling the context:
+cancel()
 ```
 
 1- After creating a peer like this at first it will try to get the identity from the provided `mnemonics`
@@ -74,31 +85,31 @@ peer, err := peer.NewPeer(
 - To reply for requests you will need the following
   1- Your peer needs to create `Router`
 
-```
-	router := peer.NewRouter()
+```go
+ router := peer.NewRouter()
 ```
 
 2- Then you need to create a Route for example if you are providing a calculator service
 
-```
+```go
 app := router.SubRoute("calculator")
 ```
 
 3- Then you need to register your handlers for this `subRoute` like the following
 
-```
+```go
 app.WithHandler("sub", func(ctx context.Context, payload []byte) (interface{}, error) {
-		var numbers []float64
+  var numbers []float64
 
-		if err := json.Unmarshal(payload, &numbers); err != nil {
-			return nil, fmt.Errorf("failed to load request payload was expecting list of float: %w", err)
-		}
+  if err := json.Unmarshal(payload, &numbers); err != nil {
+   return nil, fmt.Errorf("failed to load request payload was expecting list of float: %w", err)
+  }
 
-		var result float64
-		for _, v := range numbers {
-			result -= v
-		}
+  var result float64
+  for _, v := range numbers {
+   result -= v
+  }
 
-		return result, nil
-	})
+  return result, nil
+ })
 ```

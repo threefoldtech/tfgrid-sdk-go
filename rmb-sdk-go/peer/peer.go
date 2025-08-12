@@ -10,9 +10,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net/url"
+	"runtime/debug"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -42,6 +44,9 @@ var (
 	ErrNoValidRelayURLs = errors.New("no valid relay URLs provided")
 	// ErrNoFunctionalRelayAtStartup is returned when no relay connections are functional at startup.
 	ErrNoFunctionalRelayAtStartup = errors.New("no relay connections are functional at startup")
+	// Peer process exit reasons
+	ErrPeerContextCanceled = errors.New("peer context canceled")
+	ErrPeerReaderClosed    = errors.New("peer reader channel closed")
 )
 
 type peerCfg struct {
@@ -146,6 +151,11 @@ type Peer struct {
 	handler  Handler
 	encoder  encoder.Encoder
 	relays   []string
+	// internal shutdown management
+	subConn *substrate.Substrate
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 } // See WithRelayCooldown for cooldown configuration.
 
 func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, error) {
@@ -306,11 +316,15 @@ func NewPeer(
 		}
 	}
 
+	// Create an internal context for the peer; Close() will cancel this.
+	peerCtx, cancel := context.WithCancel(ctx)
+
 	reader := make(chan []byte) // TODO: buffer incoming frames to keep the connection loop responsive under bursty loads (1024)
 	relayPenalties := make([]RelayPenalty, 0, len(conns))
 	for i := range conns {
 		conn := &conns[i]
-		conn.Start(ctx, reader)
+		// Start connections with the peer's internal context so Close() shuts them down.
+		conn.Start(peerCtx, reader)
 		relayPenalties = append(relayPenalties, RelayPenalty{Relay: conn, LastErrorAt: 0})
 	}
 
@@ -339,9 +353,25 @@ func NewPeer(
 		handler:  handler,
 		encoder:  cfg.encoder,
 		relays:   relayURLs,
+		subConn:  subConn,
+		ctx:      peerCtx,
+		cancel:   cancel,
 	}
 
-	go cl.process(ctx)
+	cl.wg.Add(1)
+	go func() {
+		defer cl.wg.Done()
+		cl.process(peerCtx)
+	}()
+
+	// Auto-close the peer when the parent context passed to NewPeer is canceled.
+	// This makes shutdown automatic for applications that manage lifecycles via context
+	// without requiring an explicit Close() call. Close() remains safe and idempotent.
+	go func(parent context.Context, p *Peer) {
+		<-parent.Done()
+		log.Debug().Err(parent.Err()).Msg("peer parent context canceled; closing peer")
+		p.Close()
+	}(ctx, cl)
 
 	return cl, nil
 }
@@ -405,26 +435,58 @@ func (d *Peer) handleIncoming(incoming *types.Envelope) error {
 }
 
 func (d *Peer) process(ctx context.Context) {
+	var exitReason string
+	var exitErr error
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error().Interface("panic", r).Bytes("stack", debug.Stack()).Msg("peer.process panic recovered")
+		} else {
+			log.Debug().Str("reason", exitReason).Err(exitErr).Msg("peer.process exited")
+		}
+	}()
+
 	for {
 		select {
 		case incoming, ok := <-d.reader:
 			if !ok {
+				exitReason = ErrPeerReaderClosed.Error()
+				exitErr = ErrPeerReaderClosed
 				log.Error().Msg("reader channel closed")
 				return
 			}
 			var env types.Envelope
 			if err := proto.Unmarshal(incoming, &env); err != nil {
-				log.Error().Err(err).Msg("invalid message payload")
-				return // TODO: instead of ending peer process loop, continue/skip, otherwise one malformed envelope can terminate the processing loop.
+				log.Error().Err(err).Msg("invalid message payload; skipping")
+				continue
 			}
 			// verify and decoding!
 			err := d.handleIncoming(&env)
 			// TODO: If the handler does slow or blocking work, burst loads can stall the peer processing loop.
-			// TODO: Decouple with goroutines or a worker pool
+			// TODO: Decouple with goroutines or a worker pool and use a semaphore to limit in-flight work
+			// to a safe number, preventing sustained backpressure.
 			d.handler(ctx, d, &env, err)
 		case <-ctx.Done():
+			exitReason = ErrPeerContextCanceled.Error()
+			exitErr = ctx.Err()
 			return
 		}
+	}
+}
+
+// Close gracefully shuts down the peer by canceling its internal context and waiting
+// for internal goroutines to exit. Connections spawned by the peer observe the same
+// context and will stop on cancellation.
+func (p *Peer) Close() {
+	if p == nil {
+		return
+	}
+	if p.cancel != nil {
+		p.cancel()
+	}
+	p.wg.Wait()
+	if p.subConn != nil {
+		log.Debug().Msg("closing substrate connection")
+		p.subConn.Close()
 	}
 }
 
