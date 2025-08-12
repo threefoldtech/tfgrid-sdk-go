@@ -306,11 +306,10 @@ func NewPeer(
 		}
 	}
 
-	reader := make(chan []byte)
+	reader := make(chan []byte) // TODO: buffer incoming frames to keep the connection loop responsive under bursty loads (1024)
 	relayPenalties := make([]RelayPenalty, 0, len(conns))
 	for i := range conns {
 		conn := &conns[i]
-		// Always start reconnection goroutine for all valid relays
 		conn.Start(ctx, reader)
 		relayPenalties = append(relayPenalties, RelayPenalty{Relay: conn, LastErrorAt: 0})
 	}
@@ -408,14 +407,20 @@ func (d *Peer) handleIncoming(incoming *types.Envelope) error {
 func (d *Peer) process(ctx context.Context) {
 	for {
 		select {
-		case incoming := <-d.reader:
+		case incoming, ok := <-d.reader:
+			if !ok {
+				log.Error().Msg("reader channel closed")
+				return
+			}
 			var env types.Envelope
 			if err := proto.Unmarshal(incoming, &env); err != nil {
 				log.Error().Err(err).Msg("invalid message payload")
-				return
+				return // TODO: instead of ending peer process loop, continue/skip, otherwise one malformed envelope can terminate the processing loop.
 			}
 			// verify and decoding!
 			err := d.handleIncoming(&env)
+			// TODO: If the handler does slow or blocking work, burst loads can stall the peer processing loop.
+			// TODO: Decouple with goroutines or a worker pool
 			d.handler(ctx, d, &env, err)
 		case <-ctx.Done():
 			return
@@ -573,13 +578,21 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 	expireAt := time.Unix(int64(request.Timestamp+request.Expiration), 0)
 
 	for time.Now().Before(expireAt) {
-		items := set.Sorted(time.Now())
+		now := time.Now()
+		items := set.Sorted(now)
+
 		for i := range items {
 			con := items[i].Relay
+
+			// Skip relays that are not currently connected to avoid blocking on send wait
+			if !con.IsConnected() {
+				continue
+			}
+
 			err := con.send(ctx, bytes)
 			if err != nil {
 				errs = multierror.Append(errs, err)
-				set.MarkFailure(con, time.Now())
+				set.MarkFailure(con, now)
 				continue
 			}
 			set.MarkSuccess(con)

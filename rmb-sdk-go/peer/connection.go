@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -22,11 +23,12 @@ var errTimeout = fmt.Errorf("connection timeout")
 
 // InnerConnection holds the required state to create a self healing websocket connection to the rmb relay.
 type InnerConnection struct {
-	twinID   uint32
-	session  string
-	identity substrate.Identity
-	url      string
-	writer   chan send
+	twinID    uint32
+	session   string
+	identity  substrate.Identity
+	url       string
+	writer    chan send
+	connected int32 // 1 when loop is active with an open websocket
 }
 
 type send struct {
@@ -63,7 +65,7 @@ func NewConnection(identity substrate.Identity, url string, session string, twin
 		identity: identity,
 		url:      url,
 		session:  session,
-		writer:   make(chan send),
+		writer:   make(chan send), // TODO: it should be buffered
 	}
 }
 
@@ -71,7 +73,6 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 	for {
 		typ, data, err := con.ReadMessage()
 		if err != nil {
-			log.Debug().Err(err).Msg("failed to read message")
 			cancel()
 			return
 		}
@@ -120,6 +121,8 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 
 	local, cancel := context.WithCancel(ctx)
 	defer cancel()
+	atomic.StoreInt32(&c.connected, 1)
+	defer atomic.StoreInt32(&c.connected, 0)
 
 	pong := make(chan byte)
 	con.SetPongHandler(func(appData string) error {
@@ -130,7 +133,7 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 		return nil
 	})
 
-	outputCh := make(chan []byte)
+	outputCh := make(chan []byte) // TODO: it should be buffered
 	defer close(outputCh)
 
 	go c.reader(local, cancel, con, outputCh)
@@ -146,9 +149,9 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 			output <- data
 			lastPong = time.Now()
 		case sent := <-c.writer:
-			err := con.WriteMessage(websocket.BinaryMessage, sent.data)
+			err := con.WriteMessage(websocket.BinaryMessage, sent.data) // TODO: check the error and ensures we do tear down on real write failures to trigger reconnection.
 			if replyErr := sent.reply(ctx, err); replyErr != nil {
-				return err
+				return err // TODO: log it and continue? The inability to notify is not a transport failure.
 			}
 		case <-pong:
 			lastPong = time.Now()
@@ -167,8 +170,8 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 // Start initiates the websocket connection
 func (c *InnerConnection) Start(ctx context.Context, output chan []byte) {
 	go func() {
-		defer close(output)
-		defer close(c.writer)
+		defer close(output)   // TODO: This looks wrong, It shouldn't be closed here, it should be closed by the peer
+		defer close(c.writer) // TODO: This also not safe it may create a race with send producer
 		for {
 			err := c.listenAndServe(ctx, output)
 			if err == context.Canceled {
@@ -190,6 +193,11 @@ func (c *InnerConnection) listenAndServe(ctx context.Context, output chan []byte
 	}
 
 	return c.loop(ctx, con, output)
+}
+
+// IsConnected reports whether the websocket loop is currently active.
+func (c *InnerConnection) IsConnected() bool {
+	return atomic.LoadInt32(&c.connected) == 1
 }
 
 // TryConnect attempts to establish a connection and returns true if successful, false otherwise
@@ -228,6 +236,7 @@ func (c *InnerConnection) connect() (*websocket.Conn, error) {
 	if resp.StatusCode != http.StatusSwitchingProtocols {
 		return nil, fmt.Errorf("invalid response %s", resp.Status)
 	}
+	log.Debug().Str("url", c.url).Msg("connected")
 
 	return con, nil
 }
