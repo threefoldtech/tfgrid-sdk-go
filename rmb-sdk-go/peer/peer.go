@@ -366,11 +366,11 @@ func NewPeer(
 
 	// Auto-close the peer when the parent context passed to NewPeer is canceled.
 	// This makes shutdown automatic for applications that manage lifecycles via context
-	// without requiring an explicit Close() call. Close() remains safe and idempotent.
+	// without requiring an explicit Close() call.
 	go func(parent context.Context, p *Peer) {
 		<-parent.Done()
 		log.Debug().Err(parent.Err()).Msg("peer parent context canceled; closing peer")
-		p.Close()
+		p.close()
 	}(ctx, cl)
 
 	return cl, nil
@@ -473,10 +473,13 @@ func (d *Peer) process(ctx context.Context) {
 	}
 }
 
-// Close gracefully shuts down the peer by canceling its internal context and waiting
+// close gracefully shuts down the peer by canceling its internal context and waiting
 // for internal goroutines to exit. Connections spawned by the peer observe the same
 // context and will stop on cancellation.
-func (p *Peer) Close() {
+//
+// Note: This method is intentionally unexported. Consumers should shut down the peer
+// by canceling the parent context passed to NewPeer (or by reaching its deadline).
+func (p *Peer) close() {
 	if p == nil {
 		return
 	}
