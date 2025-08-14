@@ -33,12 +33,14 @@ var (
 
 // InnerConnection holds the required state to create a self healing websocket connection to the rmb relay.
 type InnerConnection struct {
-	twinID    uint32
-	session   string
-	identity  substrate.Identity
-	url       string
-	writer    chan send
-	connected int32 // 1 when loop is active with an open websocket
+	twinID           uint32
+	session          string
+	identity         substrate.Identity
+	url              string
+	writer           chan send
+	connected        int32 // 1 when loop is active with an open websocket
+	connectionsTotal int64 // total successful connections (initial + reconnects)
+	observer         ConnObserver
 }
 
 type send struct {
@@ -71,11 +73,13 @@ func (r Reader) Read() []byte {
 // NewConnection creates a new InnerConnection instance
 func NewConnection(identity substrate.Identity, url string, session string, twinID uint32) InnerConnection {
 	return InnerConnection{
-		twinID:   twinID,
-		identity: identity,
-		url:      url,
-		session:  session,
-		writer:   make(chan send), // TODO: it should be buffered
+		twinID:           twinID,
+		identity:         identity,
+		url:              url,
+		session:          session,
+		writer:           make(chan send, 64), // buffered to smooth short spikes from concurrent senders (bounded for backpressure)
+		observer:         NewLogObserver(url),
+		connectionsTotal: 0,
 	}
 }
 
@@ -93,7 +97,11 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 	for {
 		typ, data, err := con.ReadMessage()
 		if err != nil {
-			if websocket.IsCloseError(err) || websocket.IsUnexpectedCloseError(err) || err == io.EOF {
+			// If we're shutting down, prefer a clean context-canceled reason over transport error noise
+			if ctx.Err() != nil {
+				exitReason = ErrContextCanceled.Error()
+				exitErr = ctx.Err()
+			} else if websocket.IsCloseError(err) || websocket.IsUnexpectedCloseError(err) || err == io.EOF {
 				exitReason = "close"
 				exitErr = err
 			} else {
@@ -112,12 +120,22 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 			return
 		}
 
-		select {
-		case <-ctx.Done():
-			exitReason = ErrContextCanceled.Error()
-			exitErr = ctx.Err()
-			return
-		case reader <- data:
+		// Backpressure-aware send into reader channel: never drop.
+		{
+			delivered := false
+			for !delivered {
+				select {
+				case <-ctx.Done():
+					exitReason = ErrContextCanceled.Error()
+					exitErr = ctx.Err()
+					return
+				case reader <- data:
+					// delivered
+					delivered = true
+				case <-time.After(100 * time.Millisecond):
+					c.observer.ReaderBackpressure(c.url, len(reader), cap(reader))
+				}
+			}
 		}
 	}
 }
@@ -150,6 +168,7 @@ func (c *InnerConnection) send(ctx context.Context, data []byte) error {
 func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output chan []byte) error {
 	var exitReason string
 	var exitErr error
+	var stats ConnStats
 
 	// Attempt a graceful close handshake on exit
 	defer func() {
@@ -158,7 +177,9 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 		} else {
 			log.Debug().Str("url", c.url).Str("reason", exitReason).Err(exitErr).Msg("relay loop exited")
 		}
-
+		recons := c.reconnections()
+		stats.Exit(c.observer, c.url, exitReason, exitErr, recons)
+		// Gracefully close the websocket: send a normal close frame, then close the connection.
 		deadline := time.Now().Add(1 * time.Second)
 		_ = con.WriteControl(
 			websocket.CloseMessage,
@@ -185,14 +206,22 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 		return nil
 	})
 
-	outputCh := make(chan []byte) // TODO: it should be buffered
-	defer close(outputCh)
+	outputCh := make(chan []byte, 1024)
+
+	atomic.AddInt64(&c.connectionsTotal, 1)
 
 	go c.reader(local, cancel, con, outputCh)
 
 	lastPong := time.Now()
+	summaryTicker := time.NewTicker(time.Minute)
+	defer summaryTicker.Stop()
+	logSummary := func() {
+		stats.Summary(c.observer, c.url, c.reconnections())
+	}
 	for {
 		select {
+		case <-summaryTicker.C:
+			logSummary()
 		case <-ctx.Done():
 			exitReason = ErrContextCanceled.Error()
 			exitErr = ctx.Err()
@@ -200,16 +229,40 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 		case <-local.Done():
 			exitReason = ErrLocalCanceled.Error()
 			exitErr = ErrLocalCanceled
-			return nil // error happened with the connection, return nil to try again
-		case data := <-outputCh:
-			// TODO: can we protect the loop from stalling by using a short timeout with logging
-			output <- data
+			return nil
+		case data, ok := <-outputCh:
+			if !ok {
+				exitReason = ErrLocalCanceled.Error()
+				exitErr = ErrLocalCanceled
+				return nil
+			}
+			delivered := false
+			for !delivered {
+				select {
+				case output <- data:
+					stats.OnDelivered()
+					delivered = true
+				case <-time.After(100 * time.Millisecond):
+					c.observer.OutputBackpressure(c.url, len(output), cap(output), len(outputCh), cap(outputCh), len(c.writer), cap(c.writer))
+				case <-ctx.Done():
+					exitReason = ErrContextCanceled.Error()
+					exitErr = ctx.Err()
+					return ctx.Err()
+				}
+			}
 			lastPong = time.Now()
+		case <-ctx.Done():
+			exitReason = ErrContextCanceled.Error()
+			exitErr = ctx.Err()
+			return ctx.Err()
 		case sent := <-c.writer:
-			// Write the message to the websocket transport.
+			writeStart := time.Now()
 			err := con.WriteMessage(websocket.BinaryMessage, sent.data)
+			writeDur := time.Since(writeStart)
+			stats.OnWriteResult(writeDur, err)
+			// Spike diagnostics: warn (sampled) if write is slow or writer queue is saturated
+			c.observer.MaybeWriteSpike(c.url, writeDur, len(c.writer), cap(c.writer), len(output), cap(output), len(outputCh), cap(outputCh))
 			// Try to notify the sender about the write result. If notification fails,
-			// log and continue; it's not a transport failure.
 			if replyErr := sent.reply(ctx, err); replyErr != nil {
 				log.Warn().Err(replyErr).Msg("failed to deliver write result to sender")
 			}
@@ -237,11 +290,23 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 	}
 }
 
+// reconnections returns the number of reconnections that happened after the initial successful connection.
+// It is computed as max(connectionsTotal-1, 0).
+func (c *InnerConnection) reconnections() int64 {
+	total := atomic.LoadInt64(&c.connectionsTotal)
+	if total <= 1 {
+		return 0
+	}
+	return total - 1
+}
+
 // Start initiates the websocket connection
 func (c *InnerConnection) Start(ctx context.Context, output chan []byte, wg *sync.WaitGroup) {
 	if wg != nil {
 		wg.Add(1)
 	}
+
+	// Start initiates the websocket connection.
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -315,7 +380,7 @@ func (c *InnerConnection) connect() (*websocket.Conn, error) {
 	log.Debug().Str("url", c.url).Msg("connecting")
 
 	dialer := websocket.Dialer{
-		HandshakeTimeout: 5 * time.Second,
+		HandshakeTimeout: 10 * time.Second,
 		Proxy:            http.ProxyFromEnvironment,
 	}
 

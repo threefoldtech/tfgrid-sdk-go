@@ -309,7 +309,7 @@ func NewPeer(
 		}
 	}
 
-	reader := make(chan []byte) // TODO: buffer incoming frames to keep the connection loop responsive under bursty loads (1024)
+	reader := make(chan []byte, 1024) // buffer incoming frames to keep the connection loop responsive under bursty loads
 	relayPenalties := make([]RelayPenalty, 0, len(conns))
 	for i := range conns {
 		conn := &conns[i]
@@ -594,7 +594,7 @@ func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string
 		}
 	}
 
-	env.Federation = destTwin.Relay
+	env.Federation = destTwin.Relay // this field is deprecated and no longer used by the relay
 
 	toSign, err := Challenge(&env)
 	if err != nil {
