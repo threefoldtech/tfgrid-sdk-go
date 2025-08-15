@@ -21,7 +21,7 @@ func NewLogObserver(url string) ConnObserver {
 	spikeLog := log.With().Str("url", url).Logger().Sample(&spikeSampler)
 
 	return &logObserver{
-		url:        url,
+		url:         url,
 		bpReaderLog: bpReaderLog,
 		bpOutLog:    bpOutLog,
 		spikeLog:    spikeLog,
