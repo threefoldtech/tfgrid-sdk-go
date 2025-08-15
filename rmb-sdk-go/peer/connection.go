@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"runtime/debug"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -150,7 +151,7 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 	var exitReason string
 	var exitErr error
 
-	// Attempt a graceful close handshake on exit; log either panic or normal exit, not both.
+	// Attempt a graceful close handshake on exit
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error().Str("url", c.url).Interface("panic", r).Bytes("stack", debug.Stack()).Msg("relay loop panic recovered")
@@ -159,17 +160,17 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 		}
 
 		deadline := time.Now().Add(1 * time.Second)
-		_ = con.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), deadline)
-		// give the server a moment to respond and drain
+		_ = con.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
+			deadline,
+		)
+		// Set a read deadline to unblock the reader goroutine and avoid hangs.
 		_ = con.SetReadDeadline(deadline)
-		for {
-			if _, _, err := con.ReadMessage(); err != nil {
-				break
-			}
-		}
+		// Do NOT read here to drain frames; the dedicated reader goroutine owns all reads.
+		// Concurrent reads on the same *websocket.Conn cause data races.
 		_ = con.Close()
 	}()
-
 	local, cancel := context.WithCancel(ctx)
 	defer cancel()
 	atomic.StoreInt32(&c.connected, 1)
@@ -237,11 +238,17 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 }
 
 // Start initiates the websocket connection
-func (c *InnerConnection) Start(ctx context.Context, output chan []byte) {
+func (c *InnerConnection) Start(ctx context.Context, output chan []byte, wg *sync.WaitGroup) {
+	if wg != nil {
+		wg.Add(1)
+	}
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
 				log.Error().Str("url", c.url).Interface("panic", r).Bytes("stack", debug.Stack()).Msg("relay start worker panic recovered")
+			}
+			if wg != nil {
+				wg.Done()
 			}
 		}()
 		// Do not close output or c.writer here:

@@ -37,7 +37,6 @@ Please check the [examples](examples/) directory
 
 ```go
 ctx, cancel := context.WithCancel(context.Background())
-defer cancel() // shutdown the peer by canceling the context
 
 p, err := peer.NewPeer(
     ctx,
@@ -53,8 +52,9 @@ if err != nil {
 
 // ... use p ...
 
-// When done, shutdown is triggered by canceling the context:
+// When done, initiate shutdown then wait for clean exit:
 cancel()
+p.Wait()
 ```
 
 1- After creating a peer like this at first it will try to get the identity from the provided `mnemonics`
@@ -113,3 +113,8 @@ app.WithHandler("sub", func(ctx context.Context, payload []byte) (interface{}, e
   return result, nil
  })
 ```
+
+### Shutdown
+
+  - Cancel the parent context you passed to `NewPeer(...)` (or `NewRpcClient(...)`) to request shutdown.
+  - Then call `p.Wait()` (or `rpc.Wait()`) to block until all goroutines have exited (including connection workers).

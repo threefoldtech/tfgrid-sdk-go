@@ -153,10 +153,9 @@ type Peer struct {
 	relays   []string
 	// internal shutdown management
 	subConn *substrate.Substrate
-	ctx     context.Context
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
-} // See WithRelayCooldown for cooldown configuration.
+	wg      sync.WaitGroup // tracks peer.process
+	connWG  sync.WaitGroup // tracks all connection workers
+}
 
 func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, error) {
 	keyPair, err := identity.KeyPair()
@@ -216,12 +215,6 @@ func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 	return identity, nil
 }
 
-// NewPeer creates a new RMB peer client. It connects directly to the RMB-Relay, and tries to reconnect if the connection broke.
-//
-// You can close the connection by canceling the passed context.
-//
-// Make sure the context passed to Call() does not outlive the directClient's context.
-// Call() will panic if called while the directClient's context is canceled.
 // NewPeer creates a new RMB peer client. It connects directly to the RMB-Relay, and tries to reconnect if the connection broke.
 //
 // You can close the connection by canceling the passed context.
@@ -316,15 +309,10 @@ func NewPeer(
 		}
 	}
 
-	// Create an internal context for the peer; Close() will cancel this.
-	peerCtx, cancel := context.WithCancel(ctx)
-
 	reader := make(chan []byte) // TODO: buffer incoming frames to keep the connection loop responsive under bursty loads (1024)
 	relayPenalties := make([]RelayPenalty, 0, len(conns))
 	for i := range conns {
 		conn := &conns[i]
-		// Start connections with the peer's internal context so Close() shuts them down.
-		conn.Start(peerCtx, reader)
 		relayPenalties = append(relayPenalties, RelayPenalty{Relay: conn, LastErrorAt: 0})
 	}
 
@@ -354,24 +342,19 @@ func NewPeer(
 		encoder:  cfg.encoder,
 		relays:   relayURLs,
 		subConn:  subConn,
-		ctx:      peerCtx,
-		cancel:   cancel,
 	}
 
 	cl.wg.Add(1)
 	go func() {
 		defer cl.wg.Done()
-		cl.process(peerCtx)
+		cl.process(ctx)
 	}()
 
-	// Auto-close the peer when the parent context passed to NewPeer is canceled.
-	// This makes shutdown automatic for applications that manage lifecycles via context
-	// without requiring an explicit Close() call.
-	go func(parent context.Context, p *Peer) {
-		<-parent.Done()
-		log.Debug().Err(parent.Err()).Msg("peer parent context canceled; closing peer")
-		p.close()
-	}(ctx, cl)
+	// Start connections using the caller's context and track them with connWG.
+	for i := range conns {
+		conn := &conns[i]
+		conn.Start(ctx, reader, &cl.connWG)
+	}
 
 	return cl, nil
 }
@@ -473,19 +456,15 @@ func (d *Peer) process(ctx context.Context) {
 	}
 }
 
-// close gracefully shuts down the peer by canceling its internal context and waiting
-// for internal goroutines to exit. Connections spawned by the peer observe the same
-// context and will stop on cancellation.
-//
-// Note: This method is intentionally unexported. Consumers should shut down the peer
-// by canceling the parent context passed to NewPeer (or by reaching its deadline).
-func (p *Peer) close() {
+// Shutdown requests peer shutdown and waits up to ctx.Deadline for completion.
+// Returns ctx.Err() if the deadline elapses before shutdown completes.
+// Wait blocks until all peer goroutines (process + connections) have exited.
+// Caller should cancel the context passed to NewPeer() to initiate shutdown.
+func (p *Peer) Wait() {
 	if p == nil {
 		return
 	}
-	if p.cancel != nil {
-		p.cancel()
-	}
+	p.connWG.Wait()
 	p.wg.Wait()
 	if p.subConn != nil {
 		log.Debug().Msg("closing substrate connection")

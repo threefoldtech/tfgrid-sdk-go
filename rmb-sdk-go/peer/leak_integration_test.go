@@ -33,8 +33,7 @@ func TestPeerShutdownNoLeak(t *testing.T) {
 		t.Skip("integration test skipped: set RMB_RELAY_URL, TFCHAIN_WS_URL, RMB_MNEMONICS to run")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
-	defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// Build substrate manager with the provided TFChain URL
 	mgr := substrate.NewManager(substrateURL)
@@ -43,12 +42,13 @@ func TestPeerShutdownNoLeak(t *testing.T) {
 		// no-op handler for test
 	}
 
-	_, err := NewPeer(ctx, mnemonics, mgr, h, WithRelay(relayURL))
+	peer, err := NewPeer(ctx, mnemonics, mgr, h, WithRelay(relayURL))
 	if err != nil {
 		t.Fatalf("NewPeer failed: %v", err)
 	}
 
-	// Wait for context timeout/cancel to trigger auto-close
-	<-ctx.Done()
+	time.Sleep(5 * time.Second)
 
+	cancel()
+	peer.Wait()
 }
