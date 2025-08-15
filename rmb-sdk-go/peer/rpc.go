@@ -25,10 +25,10 @@ type incomingEnv struct {
 // Wait blocks until the underlying peer has fully shut down.
 // Caller should cancel the context passed to NewRpcClient/NewPeer() to initiate shutdown.
 func (d *RpcClient) Wait() {
-    if d == nil || d.base == nil {
-        return
-    }
-    d.base.Wait()
+	if d == nil || d.base == nil {
+		return
+	}
+	d.base.Wait()
 }
 
 // RpcClient is a peer connection that makes it easy to make rpc calls
