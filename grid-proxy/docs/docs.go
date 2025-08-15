@@ -1732,6 +1732,29 @@ const docTemplate = `{
                 }
             }
         },
+        "types.CpuBenchmark": {
+            "type": "object",
+            "properties": {
+                "multi": {
+                    "type": "number"
+                },
+                "node_twin_id": {
+                    "type": "integer"
+                },
+                "single": {
+                    "type": "number"
+                },
+                "threads": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "workloads": {
+                    "type": "integer"
+                }
+            }
+        },
         "types.Dmi": {
             "type": "object",
             "properties": {
@@ -1802,14 +1825,14 @@ const docTemplate = `{
                 "country": {
                     "type": "string"
                 },
-                "region": {
-                    "type": "string"
-                },
                 "latitude": {
                     "type": "number"
                 },
                 "longitude": {
                     "type": "number"
+                },
+                "region": {
+                    "type": "string"
                 }
             }
         },
@@ -1835,6 +1858,9 @@ const docTemplate = `{
                 },
                 "country": {
                     "type": "string"
+                },
+                "cpu_benchmark": {
+                    "$ref": "#/definitions/types.CpuBenchmark"
                 },
                 "created": {
                     "type": "integer"
@@ -1960,6 +1986,9 @@ const docTemplate = `{
                 },
                 "vendor": {
                     "type": "string"
+                },
+                "vram": {
+                    "type": "integer"
                 }
             }
         },
@@ -2042,6 +2071,9 @@ const docTemplate = `{
                 },
                 "country": {
                     "type": "string"
+                },
+                "cpu_benchmark": {
+                    "$ref": "#/definitions/types.CpuBenchmark"
                 },
                 "created": {
                     "type": "integer"
