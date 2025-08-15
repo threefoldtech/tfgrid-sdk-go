@@ -116,5 +116,5 @@ app.WithHandler("sub", func(ctx context.Context, payload []byte) (interface{}, e
 
 ### Shutdown
 
-  - Cancel the parent context you passed to `NewPeer(...)` (or `NewRpcClient(...)`) to request shutdown.
-  - Then call `p.Wait()` (or `rpc.Wait()`) to block until all goroutines have exited (including connection workers).
+- Cancel the parent context you passed to `NewPeer(...)` (or `NewRpcClient(...)`) to request shutdown.
+- Then call `p.Wait()` (or `rpc.Wait()`) to block until all goroutines have exited (including connection workers).
