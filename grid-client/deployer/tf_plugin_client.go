@@ -167,6 +167,11 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 		return cfg, errors.Errorf("network must be one of %s, %s, %s, and %s not %s", DevNetwork, QaNetwork, TestNetwork, MainNetwork, cfg.network)
 	}
 
+	remoteConfigs, err := FetchRemoteConfig(cfg.network)
+	if err != nil {
+		return cfg, errors.Wrapf(err, "could not fetch remote config")
+	}
+
 	if len(cfg.proxyURLs) == 0 {
 		cfg.proxyURLs = ProxyURLs[cfg.network]
 	}
@@ -177,7 +182,7 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 	}
 
 	if len(cfg.graphqlURLs) == 0 {
-		cfg.graphqlURLs = GraphQlURLs[cfg.network]
+		cfg.graphqlURLs = remoteConfigs.GraphqlURLs
 	}
 	for _, url := range cfg.graphqlURLs {
 		if err := validateGraphQlURL(url); err != nil {
@@ -186,7 +191,7 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 	}
 
 	if len(cfg.relayURLs) == 0 {
-		cfg.relayURLs = RelayURLs[cfg.network]
+		cfg.relayURLs = remoteConfigs.RelaysURLs
 	}
 	for _, url := range cfg.relayURLs {
 		if err := validateWssURL(url); err != nil {
@@ -195,7 +200,7 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 	}
 
 	if len(cfg.substrateURLs) == 0 {
-		cfg.substrateURLs = SubstrateURLs[cfg.network]
+		cfg.substrateURLs = remoteConfigs.SubstrateURLs
 	}
 	for _, url := range cfg.substrateURLs {
 		if err := validateWssURL(url); err != nil {
@@ -385,7 +390,18 @@ func generateSessionID() string {
 func isTwinVerified(twinID uint32, net string) (verified bool, err error) {
 	const verifiedStatus = "VERIFIED"
 
-	verificationServiceURL, err := url.JoinPath(KycURLs[net], "/api/v1/status")
+	// Get KYC URL from remote config for this network
+	cfg, err := FetchRemoteConfig(net)
+	if err != nil {
+		return false, err
+	}
+
+	kycURL := cfg.KYCURL
+	if kycURL == "" {
+		return false, fmt.Errorf("no KYC URL configured for network %s", net)
+	}
+
+	verificationServiceURL, err := url.JoinPath(kycURL, "/api/v1/status")
 	if err != nil {
 		return
 	}
