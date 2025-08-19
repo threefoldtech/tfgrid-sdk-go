@@ -50,6 +50,12 @@ const (
 func main() {
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04"}).With().Timestamp().Logger()
 
+	// Get server mnemonic for signing replies
+	serverMnemonic := os.Getenv("SERVER_MNEMONIC")
+	if serverMnemonic == "" {
+		log.Warn().Msg("SERVER_MNEMONIC not set - server will send unsigned replies")
+	}
+
 	manager := substrate.NewManager(chainUrl)
 	sub, err := manager.Substrate()
 	if err != nil {
@@ -57,7 +63,29 @@ func main() {
 		sub = nil
 	}
 
-	msgr, err := messenger.NewMessenger(messenger.WithChain(sub))
+	// Configure messenger with optional server identity
+	var opts []messenger.MessengerOpt
+	opts = append(opts, messenger.WithChain(sub))
+
+	// Add server identity if mnemonic is provided
+	if serverMnemonic != "" && sub != nil {
+		serverIdentity, err := substrate.NewIdentityFromSr25519Phrase(serverMnemonic)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create server identity from mnemonic")
+			os.Exit(1)
+		}
+
+		serverTwinID, err := sub.GetTwinByPubKey(serverIdentity.PublicKey())
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get server twin ID")
+			os.Exit(1)
+		}
+
+		opts = append(opts, messenger.WithServerIdentity(serverTwinID, serverIdentity))
+		log.Info().Uint32("server_twin_id", serverTwinID).Msg("Server identity configured - replies will be signed")
+	}
+
+	msgr, err := messenger.NewMessenger(opts...)
 	if err != nil {
 		fmt.Printf("Failed to create messenger: %v\n", err)
 		os.Exit(1)

@@ -1,13 +1,9 @@
 package messenger
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os/exec"
 	"strings"
 	"sync"
@@ -47,19 +43,6 @@ type Message struct {
 	Payload string `json:"payload,omitempty"`
 }
 
-// MessageDestination represents the destination for API messages
-type MessageDestination struct {
-	PK string `json:"pk,omitempty"`
-	IP string `json:"ip,omitempty"`
-}
-
-// PushMessageBody represents the request body for API message sending
-type PushMessageBody struct {
-	Dst     MessageDestination `json:"dst"`
-	Topic   string             `json:"topic,omitempty"`
-	Payload string             `json:"payload"`
-}
-
 type MessageHandlerFunc func(ctx context.Context, message *Message) ([]byte, error)
 
 type Messenger struct {
@@ -70,6 +53,10 @@ type Messenger struct {
 	// Substrate connection for twin verification
 	substrateConn   *substrate.Substrate
 	twinKeyProvider TwinKeyProvider
+
+	// Server identity for signing replies
+	serverTwinID   uint32
+	serverIdentity substrate.Identity
 
 	receiveHandlers map[string]MessageHandlerFunc
 	stopCh          chan struct{}
@@ -99,6 +86,14 @@ func WithBinaryPath(binaryPath string) MessengerOpt {
 func WithAPIAddress(apiAddress string) MessengerOpt {
 	return func(c *Messenger) {
 		c.APIAddress = apiAddress
+	}
+}
+
+// WithServerIdentity sets the server identity for signing replies
+func WithServerIdentity(twinID uint32, identity substrate.Identity) MessengerOpt {
+	return func(c *Messenger) {
+		c.serverTwinID = twinID
+		c.serverIdentity = identity
 	}
 }
 
@@ -170,6 +165,7 @@ func (c *Messenger) SendMessage(destination, payload string, topic string, waitF
 	log.Debug().
 		Str("source", msg.SrcPK).
 		Str("msg_id", msg.ID).
+		Any("msg", msg).
 		Msg("received reply")
 	return &msg, nil
 }
@@ -189,52 +185,70 @@ func (c *Messenger) SendSignedMessage(destination, payload string, topic string,
 	return c.SendMessage(destination, string(signedPayload), topic, waitForReply, timeout)
 }
 
+// SendReply sends a reply message to the original sender
+// TODO: this should be part of the SEND
+// TODO: should sign/verify as well
 func (c *Messenger) SendReply(originalMessageID, destination, payload string) error {
 	log.Debug().
 		Str("destination", destination).
 		Str("msg_id", originalMessageID).
+		Str("payload", payload).
 		Msg("replying to message")
 
-	encodedPayload := base64.StdEncoding.EncodeToString([]byte(payload))
-	// TODO: better error handling
-	requestBody := PushMessageBody{
-		Dst: MessageDestination{
-			PK: destination,
-		},
-		Payload: encodedPayload,
+	// Build command args - removed problematic single quote wrapping
+	args := []string{"message", "send", destination, payload, "--reply-to", originalMessageID}
+
+	if c.Timeout > 0 {
+		args = append(args, "--timeout", fmt.Sprintf("%d", c.Timeout))
 	}
 
-	// TODO: both client/server should use full signed msgs, client sign before send, server verify, server sign before reply, client verify
-	jsonData, err := json.Marshal(requestBody)
+	cmd := exec.Command(c.BinaryPath, args...)
+	log.Debug().Str("command", cmd.String()).Msg("executing command to send reply")
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to marshal request body: %w", err)
+		return fmt.Errorf("failed to send reply: %s: %w", string(output), err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/messages/reply/%s", c.APIAddress, originalMessageID)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	log.Debug().Str("output", string(output)).Msg("reply sent successfully")
+	return nil
+}
+
+// SendSignedReply sends a cryptographically signed reply message
+func (c *Messenger) SendSignedReply(originalMessageID, destination, payload string, twinID uint32, identity substrate.Identity) error {
+	log.Debug().
+		Str("destination", destination).
+		Str("msg_id", originalMessageID).
+		Uint32("twin_id", twinID).
+		Str("payload", payload).
+		Msg("sending signed reply")
+
+	// Create signed payload
+	signedPayload, err := CreateSignedMessage(twinID, payload, identity)
 	if err != nil {
-		return fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{
-		Timeout: time.Duration(c.Timeout) * time.Second,
+		return fmt.Errorf("failed to create signed reply: %w", err)
 	}
 
-	resp, err := client.Do(req)
+	// Convert signed message to JSON
+	signedPayloadBytes, err := json.Marshal(signedPayload)
 	if err != nil {
-		return fmt.Errorf("failed to send HTTP request: %w", err)
+		return fmt.Errorf("failed to marshal signed reply: %w", err)
 	}
-	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	// Build command args for signed reply
+	args := []string{"message", "send", destination, string(signedPayloadBytes), "--reply-to", originalMessageID}
+
+	if c.Timeout > 0 {
+		args = append(args, "--timeout", fmt.Sprintf("%d", c.Timeout))
+	}
+
+	cmd := exec.Command(c.BinaryPath, args...)
+	log.Debug().Str("command", cmd.String()).Msg("executing command to send signed reply")
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
+		return fmt.Errorf("failed to send signed reply: %s: %w", string(output), err)
 	}
 
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("API returned non-success status: %d - %s", resp.StatusCode, string(body))
-	}
-
+	log.Debug().Str("output", string(output)).Msg("signed reply sent successfully")
 	return nil
 }
 
@@ -322,10 +336,18 @@ func (c *Messenger) receiveLoop(ctx context.Context) {
 // TODO: each reply with error, should follow the same pattern
 func (c *Messenger) processMessage(ctx context.Context, message *Message) {
 	sendErrorReply := func(errorMsg string) {
-		// TODO: should be part of SEND
-		if err := c.SendReply(message.ID, message.SrcPK, errorMsg); err != nil {
-			log.Error().Err(err).Str("msg_id", message.ID).
-				Msg("failed to send error reply")
+		// Use signed reply if server identity is configured
+		if c.serverIdentity != nil && c.serverTwinID != 0 {
+			if err := c.SendSignedReply(message.ID, message.SrcPK, errorMsg, c.serverTwinID, c.serverIdentity); err != nil {
+				log.Error().Err(err).Str("msg_id", message.ID).
+					Msg("failed to send signed error reply")
+			}
+		} else {
+			log.Warn().Str("msg_id", message.ID).Msg("sending unsigned error reply - server identity not configured")
+			if err := c.SendReply(message.ID, message.SrcPK, errorMsg); err != nil {
+				log.Error().Err(err).Str("msg_id", message.ID).
+					Msg("failed to send error reply")
+			}
 		}
 	}
 
@@ -343,6 +365,11 @@ func (c *Messenger) processMessage(ctx context.Context, message *Message) {
 			sendErrorReply(fmt.Sprintf("signature verification failed: %v", err))
 			return
 		}
+
+		log.Debug().
+			Uint32("twin_id", twinID).
+			Str("msg_id", message.ID).
+			Msg("signature verification successful")
 	} else {
 		log.Warn().Str("msg_id", message.ID).
 			Msg("no TFChain connection available - message not verified against blockchain")
@@ -350,13 +377,8 @@ func (c *Messenger) processMessage(ctx context.Context, message *Message) {
 		originalMessage = message.Payload
 		twinID = 0 // Unknown twin
 
-		return
+		// return
 	}
-
-	log.Debug().
-		Uint32("twin_id", twinID).
-		Str("msg_id", message.ID).
-		Msg("signature verification successful")
 
 	verifiedMessage := &Message{
 		ID:      message.ID,
@@ -391,11 +413,22 @@ func (c *Messenger) processMessage(ctx context.Context, message *Message) {
 	}
 
 	if response != nil {
-		if err := c.SendReply(message.ID, message.SrcPK, string(response)); err != nil {
-			log.Error().Err(err).Str("msg_id", message.ID).
-				Msg("failed to send reply")
+		// Use signed reply if server identity is configured
+		if c.serverIdentity != nil && c.serverTwinID != 0 {
+			if err := c.SendSignedReply(message.ID, message.SrcPK, string(response), c.serverTwinID, c.serverIdentity); err != nil {
+				log.Error().Err(err).Str("msg_id", message.ID).
+					Msg("failed to send signed reply")
+			}
+		} else {
+			log.Warn().Str("msg_id", message.ID).Msg("sending unsigned reply - server identity not configured")
+			if err := c.SendReply(message.ID, message.SrcPK, string(response)); err != nil {
+				log.Error().Err(err).Str("msg_id", message.ID).
+					Msg("failed to send reply")
+			}
 		}
 	}
+
+	log.Debug().Msg("message processed successfully")
 }
 
 func (c *Messenger) Close() {
