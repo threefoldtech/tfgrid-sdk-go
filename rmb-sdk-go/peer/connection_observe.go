@@ -26,6 +26,7 @@ type ConnObserver interface {
 	Exit(url, reason string, err error, reads, writes, writeErrors int64, avg, max time.Duration, reconnections int64)
 }
 
+// A no-op implementation
 type noopObserver struct{}
 
 func (noopObserver) ReaderBackpressure(string, int, int)                                      {}
@@ -34,3 +35,7 @@ func (noopObserver) MaybeWriteSpike(string, time.Duration, int, int, int, int, i
 func (noopObserver) Summary(string, int64, int64, int64, time.Duration, time.Duration, int64) {}
 func (noopObserver) Exit(string, string, error, int64, int64, int64, time.Duration, time.Duration, int64) {
 }
+
+// Ensure noopObserver satisfies ConnObserver to avoid unused warnings
+// TODO: Currently NewLogObserver() is what NewConnection() currently sets by default; We meed to support swap implementations.
+var _ ConnObserver = (*noopObserver)(nil)
