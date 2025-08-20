@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"runtime/debug"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -173,34 +172,60 @@ func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, erro
 	priv := secp256k1.PrivKeyFromBytes(keyPair.Seed())
 	return priv, nil
 }
-
-// getRelayConnections tries to connect to all relays and returns only the successful ones
-// getRelayConnections returns InnerConnections for all valid relay URLs
-func getRelayConnections(relayURLs []string, identity substrate.Identity, session string, twinID uint32) ([]string, []InnerConnection, error) {
-	var validRelayURLs []string
-	var connections []InnerConnection
+func validateRelayURLs(relayURLs []string) ([]*url.URL, error) {
+	var validRelayURLs []*url.URL
 
 	for _, relayURL := range relayURLs {
-		parsedURL, err := url.Parse(relayURL)
+		parsedURL, err := url.Parse(strings.ToLower(relayURL))
 		if err != nil {
 			log.Warn().Err(err).Str("url", relayURL).Msg("failed to parse relay URL, skipping")
 			continue
 		}
-		validRelayURLs = append(validRelayURLs, parsedURL.Host)
-		conn := NewConnection(identity, relayURL, session, twinID)
-		connections = append(connections, conn)
+		// make sure it is ws or wss
+		if parsedURL.Scheme != "ws" && parsedURL.Scheme != "wss" {
+			log.Warn().Str("url", relayURL).Msg("relay URL must be ws or wss, skipping")
+			continue
+		}
+		// make sure Hostname is not empty
+		if parsedURL.Hostname() == "" {
+			log.Warn().Str("url", relayURL).Msg("relay URL must have a hostname, skipping")
+			continue
+		}
+		validRelayURLs = append(validRelayURLs, parsedURL)
 	}
 
-	if len(connections) == 0 {
-		return nil, nil, ErrNoValidRelayURLs
+	if len(validRelayURLs) == 0 {
+		return nil, ErrNoValidRelayURLs
 	}
 
-	sort.Slice(validRelayURLs, func(i, j int) bool {
-		return strings.ToLower(validRelayURLs[i]) < strings.ToLower(validRelayURLs[j])
+	validRelayURLs = slices.CompactFunc(validRelayURLs, func(a, b *url.URL) bool {
+		return a.Hostname() == b.Hostname()
 	})
-	validRelayURLs = slices.Compact(validRelayURLs)
 
-	return validRelayURLs, connections, nil
+	slices.SortFunc(validRelayURLs, func(a, b *url.URL) int {
+		return strings.Compare(a.Hostname(), b.Hostname())
+	})
+	return validRelayURLs, nil
+}
+
+// getRelayConnections tries to connect to all relays and returns only the successful ones
+// getRelayConnections returns InnerConnections for all valid relay URLs
+func getRelayConnections(relayURLs []string, identity substrate.Identity, session string, twinID uint32) ([]string, []InnerConnection, error) {
+	validRelayURLs, err := validateRelayURLs(relayURLs)
+	if err != nil {
+		return nil, nil, err
+	}
+	connections := make([]InnerConnection, 0, len(validRelayURLs))
+	hosts := make([]string, 0, len(validRelayURLs))
+
+	for _, relayURL := range validRelayURLs {
+		conn := NewConnection(identity, relayURL.String(), session, twinID)
+		connections = append(connections, conn)
+		host := relayURL.Hostname()
+		hosts = append(hosts, host)
+	}
+
+	return hosts, connections, nil
 }
 
 func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
@@ -293,7 +318,7 @@ func NewPeer(
 		publicKey = privKey.PubKey().SerializeCompressed()
 	}
 
-	relayURLs, conns, err := getRelayConnections(cfg.relayURLs, identity, cfg.session, twin.ID)
+	hosts, conns, err := getRelayConnections(cfg.relayURLs, identity, cfg.session, twin.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +333,7 @@ func NewPeer(
 		}
 	}
 
-	joinURLs := strings.Join(relayURLs, "_")
+	joinURLs := strings.Join(hosts, "_")
 	if !bytes.Equal(twin.E2EKey, publicKey) || twin.Relay == nil || joinURLs != *twin.Relay {
 		log.Info().Str("Relay url/s", joinURLs).Msg("twin relay/public key didn't match, updating on chain ...")
 		if _, err = subConn.UpdateTwin(identity, joinURLs, publicKey); err != nil {
@@ -347,7 +372,7 @@ func NewPeer(
 		relayset: relayset,
 		handler:  handler,
 		encoder:  cfg.encoder,
-		relays:   relayURLs,
+		relays:   hosts,
 		subConn:  subConn,
 	}
 
