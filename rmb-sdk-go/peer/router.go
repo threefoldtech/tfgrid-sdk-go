@@ -105,7 +105,15 @@ func (r *Router) Serve(ctx context.Context, peer *Peer, env *types.Envelope, err
 
 		response, err := r.call(handlerCtx, cmd, payload.Plain)
 
-		age := uint64(time.Now().Unix()) - env.Timestamp
+		// Compute age robustly: avoid unsigned underflow if sender’s clock is slightly ahead (or the envelope’s timestamp is marginally in the future)
+		var age uint64
+		{
+			now := time.Now().Unix()
+			delta := now - int64(env.Timestamp)
+			age = uint64(max(0, delta))
+			log.Debug().Uint64("calculated age", age).Uint64("remaining ttl", env.Expiration-age).Uint64("message ttl", env.Expiration).Uint64("message timestamp", env.Timestamp).Int64("receiver timestamp", now).Msg("request age")
+		}
+
 		ttl := env.Expiration
 		if age >= ttl {
 			log.Warn().Msgf("request %s has expired, dropping response", env.Uid)
