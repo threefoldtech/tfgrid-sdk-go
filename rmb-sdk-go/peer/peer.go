@@ -198,12 +198,11 @@ func validateRelayURLs(relayURLs []string) ([]*url.URL, error) {
 		return nil, ErrNoValidRelayURLs
 	}
 
-	validRelayURLs = slices.CompactFunc(validRelayURLs, func(a, b *url.URL) bool {
-		return a.Hostname() == b.Hostname()
-	})
-
 	slices.SortFunc(validRelayURLs, func(a, b *url.URL) int {
 		return strings.Compare(a.Hostname(), b.Hostname())
+	})
+	validRelayURLs = slices.CompactFunc(validRelayURLs, func(a, b *url.URL) bool {
+		return a.Hostname() == b.Hostname()
 	})
 	return validRelayURLs, nil
 }
