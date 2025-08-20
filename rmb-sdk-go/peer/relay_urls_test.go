@@ -36,6 +36,37 @@ func TestValidateRelayURLs_DedupSort(t *testing.T) {
 	}
 }
 
+func TestValidateRelayURLs_DedupSort_NonAdjacent(t *testing.T) {
+	inputs := []string{
+		"ws://Relay.Grid.tf",           // same host different case, ws
+		"wss://beta.grid.tf",           // distinct host
+		"http://not-allowed.example",   // invalid scheme
+		"://bad://url",                 // unparsable
+		"wss://relay.dev.grid.tf:443",  // another host
+		"wss://relay.grid.tf",          // same host wss
+		"ws://relay.dev.grid.tf",       // duplicate host, ws should be ignored in favor of wss entry
+		"wss://relay.grid.tf:443",      // same host with default port -> ignored for dedup
+		"ws://relay.grid.tf/some/path", // same host path -> ignored for dedup
+	}
+
+	urls, err := validateRelayURLs(inputs)
+	if err != nil {
+		// should not error; we have valid entries
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Expect unique hostnames (lowercased) sorted: [beta.grid.tf relay.dev.grid.tf relay.grid.tf]
+	if len(urls) != 3 {
+		t.Fatalf("expected 3 unique hosts, got %d", len(urls))
+	}
+
+	expectedHosts := []string{"beta.grid.tf", "relay.dev.grid.tf", "relay.grid.tf"}
+	gotHosts := []string{urls[0].Hostname(), urls[1].Hostname(), urls[2].Hostname()}
+	if !reflect.DeepEqual(expectedHosts, gotHosts) {
+		t.Fatalf("hosts mismatch\nexpected: %v\n     got: %v", expectedHosts, gotHosts)
+	}
+}
+
 func TestValidateRelayURLs_AllInvalid(t *testing.T) {
 	inputs := []string{"http://a", "ftp://b", "::::"}
 	_, err := validateRelayURLs(inputs)
