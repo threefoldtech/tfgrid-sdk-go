@@ -10,9 +10,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net/url"
+	"runtime/debug"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -42,6 +44,9 @@ var (
 	ErrNoValidRelayURLs = errors.New("no valid relay URLs provided")
 	// ErrNoFunctionalRelayAtStartup is returned when no relay connections are functional at startup.
 	ErrNoFunctionalRelayAtStartup = errors.New("no relay connections are functional at startup")
+	// Peer process exit reasons
+	ErrPeerContextCanceled = errors.New("peer context canceled")
+	ErrPeerReaderClosed    = errors.New("peer reader channel closed")
 )
 
 type peerCfg struct {
@@ -53,6 +58,15 @@ type peerCfg struct {
 	enableEncryption                bool
 	encoder                         encoder.Encoder
 	cacheFactory                    cacheFactory
+	relayCooldown                   time.Duration
+}
+
+// WithRelayCooldown sets the cooldown duration for relay failover and retry logic.
+// If not set, defaults to 10 seconds.
+func WithRelayCooldown(d time.Duration) PeerOpt {
+	return func(cfg *peerCfg) {
+		cfg.relayCooldown = d
+	}
 }
 
 type PeerOpt func(*peerCfg)
@@ -123,17 +137,24 @@ func WithInMemoryExpiration(ttl uint64) PeerOpt {
 	}
 }
 
-// Peer exposes the functionality to talk directly to an rmb relay
+// Peer exposes the functionality to talk directly to an rmb relay.
+//
+// Relay failover and retry is managed by a thread-safe CooldownRelaySet, which tracks relay health and cooldowns.
+// The cooldown duration is configurable via WithRelayCooldown. See documentation for details.
 type Peer struct {
-	source  *types.Address
-	signer  substrate.Identity
-	twinDB  TwinDB
-	privKey *secp256k1.PrivateKey
-	reader  Reader
-	cons    *WeightSlice[InnerConnection]
-	handler Handler
-	encoder encoder.Encoder
-	relays  []string
+	source   *types.Address
+	signer   substrate.Identity
+	twinDB   TwinDB
+	privKey  *secp256k1.PrivateKey
+	reader   Reader
+	relayset *CooldownRelaySet // manages relay selection and cooldown
+	handler  Handler
+	encoder  encoder.Encoder
+	relays   []string
+	// internal shutdown management
+	subConn *substrate.Substrate
+	wg      sync.WaitGroup // tracks peer.process
+	connWG  sync.WaitGroup // tracks all connection workers
 }
 
 func generateSecureKey(identity substrate.Identity) (*secp256k1.PrivateKey, error) {
@@ -198,8 +219,7 @@ func getIdentity(keytype string, mnemonics string) (substrate.Identity, error) {
 //
 // You can close the connection by canceling the passed context.
 //
-// Make sure the context passed to Call() does not outlive the directClient's context.
-// Call() will panic if called while the directClient's context is canceled.
+// The relay failover and retry logic uses a cooldown-based approach. See WithRelayCooldown for configuration.
 func NewPeer(
 	ctx context.Context,
 	mnemonics string,
@@ -289,18 +309,18 @@ func NewPeer(
 		}
 	}
 
-	reader := make(chan []byte)
-	weightCons := make([]WeightItem[InnerConnection], 0, len(conns))
-	for _, conn := range conns {
-		// Always start reconnection goroutine for all valid relays
-		conn.Start(ctx, reader)
-		weightCons = append(weightCons, WeightItem[InnerConnection]{Item: conn, Weight: 1})
+	reader := make(chan []byte, 1024) // buffer incoming frames to keep the connection loop responsive under bursty loads
+	relayPenalties := make([]RelayPenalty, 0, len(conns))
+	for i := range conns {
+		conn := &conns[i]
+		relayPenalties = append(relayPenalties, RelayPenalty{Relay: conn, LastErrorAt: 0})
 	}
 
-	cons, err := NewWeightSlice(weightCons)
-	if err != nil {
-		return nil, err
+	cooldown := cfg.relayCooldown
+	if cooldown == 0 {
+		cooldown = 10 * time.Second // default
 	}
+	relayset := &CooldownRelaySet{Relays: relayPenalties, Cooldown: cooldown}
 
 	var sessionP *string
 	if cfg.session != "" {
@@ -312,18 +332,29 @@ func NewPeer(
 	}
 
 	cl := &Peer{
-		source:  &source,
-		signer:  identity,
-		twinDB:  twinDB,
-		privKey: privKey,
-		reader:  reader,
-		cons:    cons,
-		handler: handler,
-		encoder: cfg.encoder,
-		relays:  relayURLs,
+		source:   &source,
+		signer:   identity,
+		twinDB:   twinDB,
+		privKey:  privKey,
+		reader:   reader,
+		relayset: relayset,
+		handler:  handler,
+		encoder:  cfg.encoder,
+		relays:   relayURLs,
+		subConn:  subConn,
 	}
 
-	go cl.process(ctx)
+	cl.wg.Add(1)
+	go func() {
+		defer cl.wg.Done()
+		cl.process(ctx)
+	}()
+
+	// Start connections using the caller's context and track them with connWG.
+	for i := range conns {
+		conn := &conns[i]
+		conn.Start(ctx, reader, &cl.connWG)
+	}
 
 	return cl, nil
 }
@@ -334,6 +365,10 @@ func (p *Peer) Encoder() encoder.Encoder {
 }
 
 func (d *Peer) handleIncoming(incoming *types.Envelope) error {
+	if time.Now().Unix() > int64(incoming.Timestamp+incoming.Expiration) {
+		return fmt.Errorf("received an expired envelope")
+	}
+
 	errResp := incoming.GetError()
 	if incoming.Source == nil {
 		// an envelope received that has NO source twin
@@ -383,20 +418,57 @@ func (d *Peer) handleIncoming(incoming *types.Envelope) error {
 }
 
 func (d *Peer) process(ctx context.Context) {
+	var exitReason string
+	var exitErr error
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error().Interface("panic", r).Bytes("stack", debug.Stack()).Msg("peer.process panic recovered")
+		} else {
+			log.Debug().Str("reason", exitReason).Err(exitErr).Msg("peer.process exited")
+		}
+	}()
+
 	for {
 		select {
-		case incoming := <-d.reader:
+		case incoming, ok := <-d.reader:
+			if !ok {
+				exitReason = ErrPeerReaderClosed.Error()
+				exitErr = ErrPeerReaderClosed
+				log.Error().Msg("reader channel closed")
+				return
+			}
 			var env types.Envelope
 			if err := proto.Unmarshal(incoming, &env); err != nil {
-				log.Error().Err(err).Msg("invalid message payload")
-				return
+				log.Error().Err(err).Msg("invalid message payload; skipping")
+				continue
 			}
 			// verify and decoding!
 			err := d.handleIncoming(&env)
+			// TODO: If the handler does slow or blocking work, burst loads can stall the peer processing loop.
+			// TODO: Decouple with goroutines or a worker pool and use a semaphore to limit in-flight work
+			// to a safe number, preventing sustained backpressure.
 			d.handler(ctx, d, &env, err)
 		case <-ctx.Done():
+			exitReason = ErrPeerContextCanceled.Error()
+			exitErr = ctx.Err()
 			return
 		}
+	}
+}
+
+// Shutdown requests peer shutdown and waits up to ctx.Deadline for completion.
+// Returns ctx.Err() if the deadline elapses before shutdown completes.
+// Wait blocks until all peer goroutines (process + connections) have exited.
+// Caller should cancel the context passed to NewPeer() to initiate shutdown.
+func (p *Peer) Wait() {
+	if p == nil {
+		return
+	}
+	p.connWG.Wait()
+	p.wg.Wait()
+	if p.subConn != nil {
+		log.Debug().Msg("closing substrate connection")
+		p.subConn.Close()
 	}
 }
 
@@ -522,7 +594,7 @@ func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string
 		}
 	}
 
-	env.Federation = destTwin.Relay
+	env.Federation = destTwin.Relay // this field is deprecated and no longer used by the relay
 
 	toSign, err := Challenge(&env)
 	if err != nil {
@@ -542,26 +614,36 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 	if err != nil {
 		return err
 	}
-
 	var errs error
 
-	for i := 0; i < len(d.cons.data); i++ {
-		index, con := d.cons.Choose()
-		err := con.send(ctx, bytes)
-		if err != nil {
-			errs = multierror.Append(errs, err)
-			if errors.Is(err, errTimeout) && d.cons.data[index].Weight > 0 {
-				d.cons.data[index].Weight--
+	set := d.relayset
+
+	// Determine message deadline/expiry
+	expireAt := time.Unix(int64(request.Timestamp+request.Expiration), 0)
+
+	for time.Now().Before(expireAt) {
+		now := time.Now()
+		items := set.Sorted(now)
+
+		for i := range items {
+			con := items[i].Relay
+
+			// Skip relays that are not currently connected to avoid blocking on send wait
+			if !con.IsConnected() {
+				continue
 			}
-			continue
-		}
 
-		if d.cons.data[index].Weight < 100 {
-			d.cons.data[index].Weight++
+			err := con.send(ctx, bytes)
+			if err != nil {
+				errs = multierror.Append(errs, err)
+				set.MarkFailure(con, now)
+				continue
+			}
+			set.MarkSuccess(con)
+			return nil
 		}
-		return nil
+		time.Sleep(100 * time.Millisecond)
 	}
-
 	return errs
 }
 
