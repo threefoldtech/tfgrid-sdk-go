@@ -11,7 +11,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.9.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.18
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.15.18
 )
