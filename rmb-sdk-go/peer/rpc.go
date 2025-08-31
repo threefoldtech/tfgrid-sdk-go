@@ -3,11 +3,11 @@ package peer
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
@@ -82,11 +82,23 @@ func (d *RpcClient) router(ctx context.Context, peer *Peer, env *types.Envelope,
 		// client is not waiting anymore! just return then
 	}
 }
+
 func (d *RpcClient) Call(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}) error {
 	return d.CallWithSession(ctx, twin, nil, fn, data, result)
 }
 
+// CallWithTags is like Call but allows specifying request tags (e.g., fail-fast)
+func (d *RpcClient) CallWithTags(ctx context.Context, twin uint32, fn string, data interface{}, result interface{}, tags []Tag) error {
+	return d.CallWithSessionWithTags(ctx, twin, nil, fn, data, result, tags)
+}
+
 func (d *RpcClient) CallWithSession(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}) error {
+	return d.CallWithSessionWithTags(ctx, twin, session, fn, data, result, nil)
+}
+
+// CallWithSessionWithTags is like CallWithSession but allows specifying request tags (e.g., fail-fast)
+// Tags are normalized and serialized by the underlying peer before being set on the envelope.
+func (d *RpcClient) CallWithSessionWithTags(ctx context.Context, twin uint32, session *string, fn string, data interface{}, result interface{}, tags []Tag) error {
 	id := uuid.NewString()
 
 	ch := make(chan incomingEnv, 1)
@@ -102,19 +114,30 @@ func (d *RpcClient) CallWithSession(ctx context.Context, twin uint32, session *s
 	d.responses[id] = ch
 	d.m.Unlock()
 
-	if err := d.base.SendRequest(ctx, id, twin, session, fn, data); err != nil {
-		return err
+	if err := d.base.SendRequestWithTags(ctx, id, twin, session, fn, data, tags); err != nil {
+		return fmt.Errorf("failed to send request (twin=%d, fn=%s): %w", twin, fn, err)
 	}
 
 	var incoming incomingEnv
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("rpc call canceled/timeout (twin=%d, fn=%s): %w", twin, fn, ctx.Err())
 	case incoming = <-ch:
 	}
 
 	if incoming.err != nil {
-		return incoming.err
+		// Error envelope from a destination twin
+		if incoming.env != nil && incoming.env.Source != nil {
+			return fmt.Errorf(
+				"remote error from twin %d (fn=%s, uid=%s): %w",
+				incoming.env.Source.Twin, fn, id, incoming.err,
+			)
+		}
+		// Relay-origin or transport error; envelope may be nil
+		return fmt.Errorf(
+			"relay/transport error (twin=%d, fn=%s, uid=%s): %w",
+			twin, fn, id, incoming.err,
+		)
 	}
 
 	response := incoming.env

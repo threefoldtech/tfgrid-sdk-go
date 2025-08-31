@@ -39,6 +39,15 @@ const (
 	MaxTTL uint64 = 1800 // 30 minutes
 )
 
+// Tag represents a well-known request tag to be sent with envelopes.
+type Tag string
+
+// TagFailFast is a well-known tag that asks the relay to fail immediately
+// (return an error) if the destination is offline, instead of queuing the
+// message until the destination comes online or the message expires.
+// Multiple tags can be sent using a comma-separated list in Envelope.Tags.
+const TagFailFast Tag = "fail-fast"
+
 // Handler is a call back that is called with verified and decrypted incoming
 // messages. An error can be non-nil error if verification or decryption failed
 type Handler func(ctx context.Context, peer *Peer, env *types.Envelope, err error)
@@ -570,7 +579,7 @@ func (d *Peer) decrypt(data []byte, pubKey []byte) ([]byte, error) {
 	return decrypted, nil
 }
 
-func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string, err error, data []byte, ttl uint64) (*types.Envelope, error) {
+func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string, err error, data []byte, ttl uint64, tags string) (*types.Envelope, error) {
 	schema := d.encoder.Schema()
 
 	env := types.Envelope{
@@ -584,6 +593,10 @@ func (d *Peer) makeEnvelope(id string, dest uint32, session *string, cmd *string
 		},
 		Schema: &schema,
 		Relays: d.relays,
+	}
+
+	if tags != "" {
+		env.Tags = &tags
 	}
 
 	if err != nil {
@@ -680,40 +693,34 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 
 // SendRequest sends an rmb message to the relay
 func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session *string, fn string, data interface{}) error {
-	payload, err := d.encoder.Encode(data)
-	if err != nil {
-		return errors.Wrap(err, "failed to serialize request body")
-	}
+    return d.SendRequestWithTags(ctx, id, twin, session, fn, data, nil)
+}
 
-	var ttl uint64
-	deadline, ok := ctx.Deadline()
-	if ok {
-		if time.Until(deadline) < 0 {
-			return errors.New("context deadline is in the past")
-		}
-		ttl = uint64(time.Until(deadline).Seconds())
+// SendRequestWithTags sends a request with custom tags.
+// Tags are a slice of Tag that will be serialized as a comma-separated string in Envelope.Tags.
+func (d *Peer) SendRequestWithTags(ctx context.Context, id string, twin uint32, session *string, fn string, data interface{}, tags []Tag) error {
+    payload, err := d.encoder.Encode(data)
+    if err != nil {
+        return errors.Wrap(err, "failed to serialize request body")
+    }
 
-		if ttl == 0 {
-			ttl = DefaultTTL
-		}
+    ttl, err := ttlFromContext(ctx)
+    if err != nil {
+        return err
+    }
 
-		if ttl > MaxTTL {
-			ttl = MaxTTL
-		}
-	} else {
-		ttl = DefaultTTL
-	}
+    tagsStr := serializeTags(tags)
 
-	request, err := d.makeEnvelope(id, twin, session, &fn, nil, payload, ttl)
-	if err != nil {
-		return errors.Wrap(err, "failed to build request")
-	}
+    request, err := d.makeEnvelope(id, twin, session, &fn, nil, payload, ttl, tagsStr)
+    if err != nil {
+        return errors.Wrap(err, "failed to build request")
+    }
 
-	if err := d.send(ctx, request); err != nil {
-		return err
-	}
+    if err := d.send(ctx, request); err != nil {
+        return err
+    }
 
-	return nil
+    return nil
 }
 
 // SendResponse sends an rmb message to the relay
@@ -723,7 +730,7 @@ func (d *Peer) SendResponse(ctx context.Context, id string, twin uint32, session
 		return errors.Wrap(err, "failed to serialize request body")
 	}
 
-	request, err := d.makeEnvelope(id, twin, session, nil, responseError, payload, ttl)
+	request, err := d.makeEnvelope(id, twin, session, nil, responseError, payload, ttl, "")
 	if err != nil {
 		return errors.Wrap(err, "failed to build request")
 	}
@@ -757,4 +764,39 @@ func Json(response *types.Envelope, callBackErr error) ([]byte, error) {
 
 	output := response.Payload.(*types.Envelope_Plain).Plain
 	return output, nil
+}
+
+// ttlFromContext computes the TTL (in seconds) from the context deadline, applying
+// defaulting and clamping rules. Returns an error if the deadline is in the past.
+func ttlFromContext(ctx context.Context) (uint64, error) {
+	var ttl uint64
+	deadline, ok := ctx.Deadline()
+	if ok {
+		if time.Until(deadline) < 0 {
+			return 0, errors.New("context deadline is in the past")
+		}
+		ttl = uint64(time.Until(deadline).Seconds())
+		if ttl == 0 {
+			ttl = DefaultTTL
+		}
+		if ttl > MaxTTL {
+			ttl = MaxTTL
+		}
+	} else {
+		ttl = DefaultTTL
+	}
+	return ttl, nil
+}
+
+// serializeTags normalizes a slice of tags (trim spaces, drop empties) and
+// returns a single comma-separated string suitable for Envelope.Tags.
+func serializeTags(tags []Tag) string {
+	norm := make([]string, 0, len(tags))
+	for _, t := range tags {
+		tt := strings.ToLower(strings.TrimSpace(string(t)))
+		if tt != "" {
+			norm = append(norm, tt)
+		}
+	}
+	return strings.Join(norm, ",")
 }
