@@ -57,6 +57,7 @@ type SubstrateExt interface {
 	GetAccount(identity substrate.Identity) (substrate.AccountInfo, error)
 	GetBalance(identity substrate.Identity) (balance substrate.Balance, err error)
 	GetTFTPrice() (balance types.U32, err error)
+	GetTFTBillingRate() (rate types.U32, err error)
 	GetPricingPolicy(policyID uint32) (pricingPolicy substrate.PricingPolicy, err error)
 	GetTwinPK(twinID uint32) ([]byte, error)
 	GetContractIDByNameRegistration(name string) (uint64, error)
@@ -98,6 +99,11 @@ func (s *SubstrateImpl) GetBalance(identity substrate.Identity) (balance substra
 func (s *SubstrateImpl) GetTFTPrice() (balance types.U32, err error) {
 	price, err := s.Substrate.GetTFTPrice()
 	return price, normalizeNotFoundErrors(err)
+}
+
+func (s *SubstrateImpl) GetTFTBillingRate() (rate types.U32, err error) {
+	billingRate, err := s.Substrate.GetTFTBillingRate()
+	return billingRate, normalizeNotFoundErrors(err)
 }
 
 // GetPricingPolicy returns a pricing policy
