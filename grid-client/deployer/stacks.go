@@ -10,35 +10,23 @@ var (
 	SubstrateURLs = map[string][]string{
 		DevNetwork: {
 			"wss://tfchain.dev.grid.tf/ws",
-			"wss://tfchain.dev.grid.tf:443",
 			"wss://tfchain.dev.threefold.me/ws",
-			"wss://tfchain.dev.threefold.me:443",
 		},
 		QaNetwork: {
 			"wss://tfchain.qa.grid.tf/ws",
-			"wss://tfchain.qa.grid.tf:443",
 			"wss://tfchain.qa.threefold.me/ws",
-			"wss://tfchain.qa.threefold.me:443",
 		},
 		TestNetwork: {
 			"wss://tfchain.test.grid.tf/ws",
-			"wss://tfchain.test.grid.tf:443",
 			"wss://tfchain.test.threefold.me/ws",
-			"wss://tfchain.test.threefold.me:443",
 		},
 		MainNetwork: {
 			"wss://tfchain.grid.tf/ws",
-			"wss://tfchain.grid.tf:443",
 			"wss://tfchain.be.grid.tf/ws",
-			"wss://tfchain.be.grid.tf:443",
 			"wss://tfchain.grid.threefold.me/ws",
-			"wss://tfchain.grid.threefold.me:443",
 			"wss://tfchain.sg.grid.tf/ws",
-			"wss://tfchain.sg.grid.tf:443",
 			"wss://tfchain.us.grid.tf/ws",
-			"wss://tfchain.us.grid.tf:443",
 			"wss://tfchain.grid.threefold.io/ws",
-			"wss://tfchain.grid.threefold.io:443",
 		},
 	}
 
