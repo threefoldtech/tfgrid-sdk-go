@@ -125,6 +125,9 @@ func (d *NetworkDeployer) Deploy(ctx context.Context, znet workloads.Network) er
 		nodesUsed = append(nodesUsed, znet.GetPublicNodeID())
 	}
 
+	// update nodes to include the calculated public node if any
+	znet.SetNodes(nodesUsed)
+
 	for _, nodeID := range nodesUsed {
 		if contractID, ok := znet.GetNodeDeploymentID()[nodeID]; ok && contractID != 0 {
 			d.tfPluginClient.State.Networks.UpdateNetworkSubnets(znet.GetName(), znet.GetNodesIPRange())
