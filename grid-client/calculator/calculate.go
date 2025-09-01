@@ -484,7 +484,7 @@ func convertBytesToGB(bytes types.U64) uint64 {
 
 // TFTtoUSD converts TFT amount to USD based on the current price
 func (c *Calculator) TFTtoUSD(tft float64) (float64, error) {
-	tftPrice, err := c.substrateConn.GetTFTPrice()
+	tftPrice, err := c.substrateConn.GetTFTBillingRate()
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get TFT price")
 	}
@@ -493,7 +493,7 @@ func (c *Calculator) TFTtoUSD(tft float64) (float64, error) {
 
 // USDtoTFT converts USD amount to TFT based on the current price
 func (c *Calculator) USDtoTFT(usd float64) (float64, error) {
-	tftPrice, err := c.substrateConn.GetTFTPrice()
+	tftPrice, err := c.substrateConn.GetTFTBillingRate()
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get TFT price")
 	}

@@ -24,7 +24,7 @@ func TestCalculator(t *testing.T) {
 
 	calculator := NewCalculator(sub, identity)
 
-	sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
+	sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil).AnyTimes()
 	sub.EXPECT().GetPricingPolicy(uint32(1)).Return(substrate.PricingPolicy{
 		ID: 1,
 		SU: substrate.Policy{
@@ -194,7 +194,7 @@ func TestTFTtoUSD(t *testing.T) {
 	calculator := NewCalculator(sub, identity)
 
 	t.Run("success case", func(t *testing.T) {
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil)
 
 		result, err := calculator.TFTtoUSD(10)
 		assert.NoError(t, err)
@@ -202,7 +202,7 @@ func TestTFTtoUSD(t *testing.T) {
 	})
 
 	t.Run("error case", func(t *testing.T) {
-		sub.EXPECT().GetTFTPrice().Return(types.U32(0), errors.New("failed to get TFT price"))
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(0), errors.New("failed to get TFT price"))
 
 		_, err := calculator.TFTtoUSD(100)
 		assert.Error(t, err)
@@ -222,7 +222,7 @@ func TestUSDtoTFT(t *testing.T) {
 	calculator := NewCalculator(sub, identity)
 
 	t.Run("error case", func(t *testing.T) {
-		sub.EXPECT().GetTFTPrice().Return(types.U32(0), errors.New("failed to get TFT price"))
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(0), errors.New("failed to get TFT price"))
 
 		_, err := calculator.USDtoTFT(10)
 		assert.Error(t, err)
@@ -230,7 +230,7 @@ func TestUSDtoTFT(t *testing.T) {
 	})
 	t.Run("success case", func(t *testing.T) {
 		// 5 mUSD = 0.005 USD per TFT
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil).AnyTimes()
 
 		// 10 USD / 0.005 USD/TFT = 2000 TFT
 		result, err := calculator.USDtoTFT(10)
@@ -323,7 +323,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 			AmountUnbilled: types.U64(1e7 * 5),
 		}, nil)
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil)
 
 		expected := 1000.0 * 1.25
 
@@ -337,7 +337,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 			AmountUnbilled: types.U64(1e7 * 5),
 		}, nil)
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil)
 
 		expected := 1000.0
 
@@ -351,7 +351,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 			AmountUnbilled: types.U64(0),
 		}, nil)
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil)
 
 		expected := 0.0
 
@@ -362,7 +362,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 
 	t.Run("ErrNotFound in GetContractBillingInfo should return 0 TFT", func(t *testing.T) {
 		sub.EXPECT().GetContractBillingInfo(contractID).Return(substrate.ContractBillingInfo{}, substrate.ErrNotFound)
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil)
 
 		expected := 0.0
 
@@ -377,7 +377,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 			AmountUnbilled: types.U64(5000),
 		}, nil)
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil)
 
 		// 0.0005 USD / 0.005 USD per TFT = 0.1 TFT
 		expected := 0.1
@@ -393,7 +393,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 			AmountUnbilled: types.U64(1e7),
 		}, nil)
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil)
 
 		// 1 USD / 0.005 USD per TFT = 200 TFT
 		expected := 200.0 * 1.25
@@ -409,7 +409,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 			AmountUnbilled: types.U64(1e10),
 		}, nil)
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil)
 
 		// 1000 USD / 0.005 USD per TFT = 200,000 TFT
 		expected := 200000.0
@@ -431,7 +431,7 @@ func TestGetUnbilledAmountInTFT(t *testing.T) {
 			AmountUnbilled: types.U64(1000),
 		}, nil)
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(0), errors.New("failed to get TFT price"))
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(0), errors.New("failed to get TFT price"))
 
 		_, err := calculator.getUnbilledAmountInTFT(&contract, false)
 		assert.Error(t, err)
@@ -456,7 +456,7 @@ func TestCalculateNodeContractCost(t *testing.T) {
 		},
 		DedicatedNodesDiscount: 20,
 	}, nil).MaxTimes(10)
-	sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
+	sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil).AnyTimes()
 
 	t.Run("node contract on rented node with public IPs", func(t *testing.T) {
 		// Create a node contract with 2 public IPs
@@ -470,7 +470,7 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			},
 		}
 
-		// Expect GetBalance and GetTFTPrice to be called
+		// Expect GetBalance and GetTFTBillingRate to be called
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 			Free: types.U128{
 				Int: big.NewInt(100000), // Small balance, no discount
@@ -496,7 +496,7 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			},
 		}
 
-		// Expect GetBalance and GetTFTPrice to be called
+		// Expect GetBalance and GetTFTBillingRate to be called
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 			Free: types.U128{
 				Int: big.NewInt(100000000000), // Big balance, gold discount
@@ -523,7 +523,7 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			},
 		}
 
-		// Expect GetBalance and GetTFTPrice to be called
+		// Expect GetBalance and GetTFTBillingRate to be called
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 			Free: types.U128{
 				Int: big.NewInt(100000000000), // Big balance, gold discount
@@ -548,7 +548,7 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			},
 		}
 
-		// Expect GetBalance and GetTFTPrice to be called
+		// Expect GetBalance and GetTFTBillingRate to be called
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 			Free: types.U128{
 				Int: big.NewInt(0), // Small balance, no discount
@@ -625,7 +625,7 @@ func TestCalculateNodeContractCost(t *testing.T) {
 			DedicatedNodesDiscount: 20,
 		}, nil).MaxTimes(2)
 
-		// Expect GetBalance and GetTFTPrice to be called for discount calculation
+		// Expect GetBalance and GetTFTBillingRate to be called for discount calculation
 		sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 			Free: types.U128{
 				Int: big.NewInt(100000), // Small balance, no discount
@@ -671,8 +671,8 @@ func TestCalculateUniqueNameCost(t *testing.T) {
 			},
 		}, nil)
 
-		// Expect GetTFTPrice to be called for the conversion in USDtoTFT
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil)
+		// Expect GetTFTBillingRate to be called for the conversion in USDtoTFT
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil)
 
 		// Calculate expected result: 1000 * 24 * 30 / 10^7 = 0.072 USD per month
 		expected := 0.072
@@ -717,7 +717,7 @@ func TestCalculateUniqueNameCost(t *testing.T) {
 			},
 		}, nil).AnyTimes()
 
-		sub.EXPECT().GetTFTPrice().Return(types.U32(5), nil).AnyTimes()
+		sub.EXPECT().GetTFTBillingRate().Return(types.U32(5), nil).AnyTimes()
 
 		// Run both calculations
 		priceWithDiscount, err := calcWithIdentity.calculateUniqueNameCost()
@@ -779,7 +779,7 @@ func TestCalculateTotalContractsOverdueOnNode(t *testing.T) {
 	sub.EXPECT().GetBalance(identity).Return(substrate.Balance{
 		Free: types.U128{Int: big.NewInt(0)},
 	}, nil).AnyTimes()
-	sub.EXPECT().GetTFTPrice().Return(types.U32(10), nil).AnyTimes()
+	sub.EXPECT().GetTFTBillingRate().Return(types.U32(10), nil).AnyTimes()
 
 	node := &substrate.Node{
 		ID: types.U32(nodeID),
