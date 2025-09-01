@@ -693,34 +693,34 @@ func (d *Peer) send(ctx context.Context, request *types.Envelope) error {
 
 // SendRequest sends an rmb message to the relay
 func (d *Peer) SendRequest(ctx context.Context, id string, twin uint32, session *string, fn string, data interface{}) error {
-    return d.SendRequestWithTags(ctx, id, twin, session, fn, data, nil)
+	return d.SendRequestWithTags(ctx, id, twin, session, fn, data, nil)
 }
 
 // SendRequestWithTags sends a request with custom tags.
 // Tags are a slice of Tag that will be serialized as a comma-separated string in Envelope.Tags.
 func (d *Peer) SendRequestWithTags(ctx context.Context, id string, twin uint32, session *string, fn string, data interface{}, tags []Tag) error {
-    payload, err := d.encoder.Encode(data)
-    if err != nil {
-        return errors.Wrap(err, "failed to serialize request body")
-    }
+	payload, err := d.encoder.Encode(data)
+	if err != nil {
+		return errors.Wrap(err, "failed to serialize request body")
+	}
 
-    ttl, err := ttlFromContext(ctx)
-    if err != nil {
-        return err
-    }
+	ttl, err := ttlFromContext(ctx)
+	if err != nil {
+		return err
+	}
 
-    tagsStr := serializeTags(tags)
+	tagsStr := serializeTags(tags)
 
-    request, err := d.makeEnvelope(id, twin, session, &fn, nil, payload, ttl, tagsStr)
-    if err != nil {
-        return errors.Wrap(err, "failed to build request")
-    }
+	request, err := d.makeEnvelope(id, twin, session, &fn, nil, payload, ttl, tagsStr)
+	if err != nil {
+		return errors.Wrap(err, "failed to build request")
+	}
 
-    if err := d.send(ctx, request); err != nil {
-        return err
-    }
+	if err := d.send(ctx, request); err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }
 
 // SendResponse sends an rmb message to the relay
