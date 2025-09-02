@@ -430,6 +430,21 @@ func (mr *MockSubstrateExtMockRecorder) GetPricingPolicy(policyID interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPricingPolicy", reflect.TypeOf((*MockSubstrateExt)(nil).GetPricingPolicy), policyID)
 }
 
+// GetTFTBillingRate mocks base method.
+func (m *MockSubstrateExt) GetTFTBillingRate() (types.U32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTFTBillingRate")
+	ret0, _ := ret[0].(types.U32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTFTBillingRate indicates an expected call of GetTFTBillingRate.
+func (mr *MockSubstrateExtMockRecorder) GetTFTBillingRate() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTFTBillingRate", reflect.TypeOf((*MockSubstrateExt)(nil).GetTFTBillingRate))
+}
+
 // GetTFTPrice mocks base method.
 func (m *MockSubstrateExt) GetTFTPrice() (types.U32, error) {
 	m.ctrl.T.Helper()
