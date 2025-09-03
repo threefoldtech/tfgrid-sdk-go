@@ -84,24 +84,24 @@ var (
 	RelayURLs = map[string][]string{
 		DevNetwork: {
 			"wss://relay.dev.grid.tf",
-			"wss://relay.dev.threefold.me",
+			// "wss://relay.dev.threefold.me",
 		},
 		TestNetwork: {
 			"wss://relay.test.grid.tf",
-			"wss://relay.test.threefold.me",
+			// "wss://relay.test.threefold.me",
 		},
 		QaNetwork: {
 			"wss://relay.qa.grid.tf",
-			"wss://relay.qa.threefold.me",
-			"wss://relay.qa.ninja.tf",
+			// "wss://relay.qa.threefold.me",
+			// "wss://relay.qa.ninja.tf",
 		},
 		MainNetwork: {
 			"wss://relay.grid.tf",
-			"wss://relay.be.grid.tf",
-			"wss://relay.grid.threefold.me",
-			"wss://relay.sg.grid.tf",
-			"wss://relay.us.grid.tf",
-			"wss://relay.grid.threefold.io",
+			// "wss://relay.be.grid.tf",
+			// "wss://relay.grid.threefold.me",
+			// "wss://relay.sg.grid.tf",
+			// "wss://relay.us.grid.tf",
+			// "wss://relay.grid.threefold.io",
 		},
 	}
 
