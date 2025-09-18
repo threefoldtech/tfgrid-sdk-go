@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"sync"
@@ -101,6 +102,10 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 			if ctx.Err() != nil {
 				exitReason = ErrContextCanceled.Error()
 				exitErr = ctx.Err()
+			} else if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+				// Map read deadline timeouts to stalling for clearer diagnostics
+				exitReason = ErrConnectionStalling.Error()
+				exitErr = ErrConnectionStalling
 			} else if websocket.IsCloseError(err) || websocket.IsUnexpectedCloseError(err) || err == io.EOF {
 				exitReason = "close"
 				exitErr = err
@@ -119,6 +124,9 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 			cancel()
 			return
 		}
+
+		// Refresh the read deadline on every successfully read frame to keep the connection alive.
+		_ = con.SetReadDeadline(time.Now().Add(pongWait))
 
 		// Backpressure-aware send into reader channel: never drop.
 		{
@@ -197,12 +205,11 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 	atomic.StoreInt32(&c.connected, 1)
 	defer atomic.StoreInt32(&c.connected, 0)
 
-	pong := make(chan byte)
+	// Set initial read deadline and extend it on every pong to detect stalled connections.
+	_ = con.SetReadDeadline(time.Now().Add(pongWait))
 	con.SetPongHandler(func(appData string) error {
-		select {
-		case pong <- 1:
-		default:
-		}
+		// Extend read deadline on pong; the reader goroutine will time out if no frames arrive.
+		_ = con.SetReadDeadline(time.Now().Add(pongWait))
 		return nil
 	})
 
@@ -212,9 +219,11 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 
 	go c.reader(local, cancel, con, outputCh)
 
-	lastPong := time.Now()
 	summaryTicker := time.NewTicker(time.Minute)
 	defer summaryTicker.Stop()
+	// Use a ticker for ping cadence (avoids repeated allocations and jitter of time.After)
+	pingTicker := time.NewTicker(pingInterval)
+	defer pingTicker.Stop()
 	logSummary := func() {
 		stats.Summary(c.observer, c.url, c.reconnections())
 	}
@@ -250,11 +259,6 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 					return ctx.Err()
 				}
 			}
-			lastPong = time.Now()
-		case <-ctx.Done():
-			exitReason = ErrContextCanceled.Error()
-			exitErr = ctx.Err()
-			return ctx.Err()
 		case sent := <-c.writer:
 			writeStart := time.Now()
 			err := con.WriteMessage(websocket.BinaryMessage, sent.data)
@@ -272,19 +276,11 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 				exitErr = err
 				return err
 			}
-		case <-pong:
-			lastPong = time.Now()
-		case <-time.After(pingInterval):
+		case <-pingTicker.C:
 			if err := con.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
 				exitReason = "ping write error"
 				exitErr = err
 				return err
-			}
-
-			if time.Since(lastPong) > pongWait {
-				exitReason = ErrConnectionStalling.Error()
-				exitErr = ErrConnectionStalling
-				return ErrConnectionStalling
 			}
 		}
 	}
