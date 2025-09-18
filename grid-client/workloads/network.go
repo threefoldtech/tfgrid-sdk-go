@@ -756,7 +756,7 @@ func (znet *ZNet) generateDeployments(endpointIPs map[uint32]net.IP, usedPorts m
 		if znet.PublicNodeID != 0 {
 			peers = append(peers, zos.Peer{
 				WGPublicKey: znet.Keys[znet.PublicNodeID].PublicKey().String(),
-				Subnet:      znet.NodesIPRange[nodeID],
+				Subnet:      znet.NodesIPRange[znet.PublicNodeID],
 				AllowedIPs: []zos.IPNet{
 					znet.IPRange,
 					IPNet(100, 64, 0, 0, 16),
