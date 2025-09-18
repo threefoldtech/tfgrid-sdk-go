@@ -118,6 +118,10 @@ var deployVMCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		disableSentry, err := cmd.Parent().Flags().GetBool("disable-sentry")
+		if err != nil {
+			return err
+		}
 
 		var seed []byte
 		if mycelium {
@@ -140,6 +144,9 @@ var deployVMCmd = &cobra.Command{
 			opts = append(opts, deployer.WithNoColorLogs())
 		}
 
+		if disableSentry {
+			opts = append(opts, deployer.WithDisableSentry())
+		}
 		t, err := deployer.NewTFPluginClient(cfg.Mnemonics, opts...)
 		if err != nil {
 			log.Fatal().Err(err).Send()

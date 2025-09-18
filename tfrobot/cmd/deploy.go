@@ -34,6 +34,10 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		disableSentry, err := cmd.Flags().GetBool("disable-sentry")
+		if err != nil {
+			return err
+		}
 
 		if err = checkOutputFile(outputPath); err != nil {
 			return err
@@ -44,7 +48,7 @@ var deployCmd = &cobra.Command{
 			return err
 		}
 
-		tfPluginClient, err := setup(cfg, debug, noColor)
+		tfPluginClient, err := setup(cfg, debug, noColor, disableSentry)
 		if err != nil {
 			return err
 		}
@@ -68,4 +72,5 @@ func init() {
 	deployCmd.Flags().StringP("config", "c", "", "path to config file")
 	deployCmd.Flags().StringP("output", "o", "output.yaml", "path to output file")
 	deployCmd.Flags().Bool("no-color", false, "disable output styling")
+	deployCmd.Flags().Bool("disable-sentry", false, "disable sentry")
 }

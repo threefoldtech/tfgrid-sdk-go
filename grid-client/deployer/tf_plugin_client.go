@@ -81,6 +81,7 @@ type pluginCfg struct {
 	showLogs      bool
 	noColorLogs   bool
 	rmbInMemCache bool
+	disableSentry bool
 }
 
 type PluginOpt func(*pluginCfg)
@@ -133,6 +134,12 @@ func WithNoColorLogs() PluginOpt {
 	}
 }
 
+func WithDisableSentry() PluginOpt {
+	return func(p *pluginCfg) {
+		p.disableSentry = true
+	}
+}
+
 func WithTwinCache() PluginOpt {
 	return func(p *pluginCfg) {
 		p.rmbInMemCache = false
@@ -157,6 +164,7 @@ func parsePluginOpts(opts ...PluginOpt) (pluginCfg, error) {
 		showLogs:      false,
 		noColorLogs:   false,
 		rmbInMemCache: true,
+		disableSentry: false,
 	}
 
 	for _, o := range opts {
@@ -299,11 +307,13 @@ func NewTFPluginClient(
 		return TFPluginClient{}, errors.Wrapf(err, "only verified users can deploy, please visit https://dashboard.grid.tf/ to verify your account")
 	}
 
-	gridSentry, err := initSentry(twinID, cfg.network)
-	if err != nil {
-		return TFPluginClient{}, errors.Wrap(err, "sentry init failed")
+	if !cfg.disableSentry {
+		gridSentry, err := initSentry(twinID, cfg.network)
+		if err != nil {
+			return TFPluginClient{}, errors.Wrap(err, "sentry init failed")
+		}
+		tfPluginClient.sentry = gridSentry
 	}
-	tfPluginClient.sentry = gridSentry
 
 	tfPluginClient.useRmbProxy = true
 	// if tfPluginClient.useRmbProxy
