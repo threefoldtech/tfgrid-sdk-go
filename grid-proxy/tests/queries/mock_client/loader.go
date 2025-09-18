@@ -487,6 +487,7 @@ func loadNodeGPUs(db *sql.DB, data *DBData) error {
 		COALESCE(contract, 0),
 		COALESCE(node_twin_id, 0),
 		COALESCE(vendor, ''),
+		COALESCE(vram, 0),
 		COALESCE(device, '')
 	FROM
 		node_gpu;`)
@@ -500,6 +501,7 @@ func loadNodeGPUs(db *sql.DB, data *DBData) error {
 			&gpu.Contract,
 			&gpu.NodeTwinID,
 			&gpu.Vendor,
+			&gpu.Vram,
 			&gpu.Device,
 		); err != nil {
 			return err

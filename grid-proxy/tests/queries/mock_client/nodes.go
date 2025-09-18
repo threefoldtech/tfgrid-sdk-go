@@ -103,6 +103,7 @@ func getGpus(data DBData, twinId uint32) []types.NodeGPU {
 			ID:       card.ID,
 			Device:   card.Device,
 			Vendor:   card.Vendor,
+			Vram:     card.Vram,
 			Contract: card.Contract,
 		})
 	}

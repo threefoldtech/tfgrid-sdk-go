@@ -28,5 +28,6 @@ type GPU struct {
 	ID       string `json:"id"`
 	Vendor   string `json:"vendor"`
 	Device   string `json:"device"`
+	Vram     uint64 `json:"vram"`
 	Contract uint64 `json:"contract"`
 }

@@ -32,7 +32,7 @@ func (p *PostgresDatabase) GetHealthyNodeTwinIds(ctx context.Context) ([]uint32,
 func (p *PostgresDatabase) UpsertNodesGPU(ctx context.Context, gpus []types.NodeGPU) error {
 	conflictClause := clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}, {Name: "node_twin_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"vendor", "device", "contract", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"vendor", "device", "vram", "contract", "updated_at"}),
 	}
 	return p.gormDB.WithContext(ctx).Table("node_gpu").Clauses(conflictClause).Create(&gpus).Error
 }
