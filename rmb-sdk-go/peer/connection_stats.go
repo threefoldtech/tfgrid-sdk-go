@@ -19,14 +19,14 @@ func (s *ConnStats) OnDelivered() {
 }
 
 func (s *ConnStats) OnWriteResult(dur time.Duration, err error) {
-	if err == nil {
-		s.writeCount++
-		s.writeSum += dur
-		if dur > s.writeMax {
-			s.writeMax = dur
-		}
-	} else {
+	if err != nil {
 		s.writeErrCount++
+		return
+	}
+	s.writeCount++
+	s.writeSum += dur
+	if dur > s.writeMax {
+		s.writeMax = dur
 	}
 }
 

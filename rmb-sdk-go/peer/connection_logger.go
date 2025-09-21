@@ -7,17 +7,26 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	// WarnSamplePeriod controls burst sampling window for warn-level logs.
+	WarnSamplePeriod = 5 * time.Second
+	// WriteSpikeWarnThreshold defines the write duration threshold to warn for spikes.
+	WriteSpikeWarnThreshold = 100 * time.Millisecond
+	// WriterQueueWarnPercent defines when to warn on writer queue usage percentage.
+	WriterQueueWarnPercent = 75
+)
+
 // NewLogObserver builds a zerolog-based observer with the approved sampling.
 func NewLogObserver(url string) ConnObserver {
 	// reader/output backpressure: 5s after first
-	readerSampler := zerolog.LevelSampler{WarnSampler: &zerolog.BurstSampler{Burst: 1, Period: 5 * time.Second}}
+	readerSampler := zerolog.LevelSampler{WarnSampler: &zerolog.BurstSampler{Burst: 1, Period: WarnSamplePeriod}}
 	bpReaderLog := log.With().Str("url", url).Logger().Sample(&readerSampler)
 
-	outputSampler := zerolog.LevelSampler{WarnSampler: &zerolog.BurstSampler{Burst: 1, Period: 5 * time.Second}}
+	outputSampler := zerolog.LevelSampler{WarnSampler: &zerolog.BurstSampler{Burst: 1, Period: WarnSamplePeriod}}
 	bpOutLog := log.With().Str("url", url).Logger().Sample(&outputSampler)
 
 	// write spike: 5s after first
-	spikeSampler := zerolog.LevelSampler{WarnSampler: &zerolog.BurstSampler{Burst: 1, Period: 5 * time.Second}}
+	spikeSampler := zerolog.LevelSampler{WarnSampler: &zerolog.BurstSampler{Burst: 1, Period: WarnSamplePeriod}}
 	spikeLog := log.With().Str("url", url).Logger().Sample(&spikeSampler)
 
 	return &logObserver{
@@ -51,7 +60,7 @@ func (o *logObserver) OutputBackpressure(_ string, outputLen, outputCap, outputC
 
 func (o *logObserver) MaybeWriteSpike(_ string, writeDur time.Duration, writerLen, writerCap, outputLen, outputCap, outputChLen, outputChCap int) {
 	// Thresholds preserved from previous behavior: duration > 100ms or writer queue > 75% full.
-	if writeDur > 100*time.Millisecond || (writerCap > 0 && writerLen > (writerCap*3)/4) {
+	if writeDur > WriteSpikeWarnThreshold || (writerCap > 0 && writerLen*100 > writerCap*WriterQueueWarnPercent) {
 		o.spikeLog.Warn().
 			Dur("write_dur", writeDur).
 			Int("writer_len", writerLen).Int("writer_cap", writerCap).
