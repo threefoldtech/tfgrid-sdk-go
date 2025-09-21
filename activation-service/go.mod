@@ -11,7 +11,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.11.1
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250703093252-e7500b106618
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250901133903-8d32a808fb79
 	gopkg.in/validator.v2 v2.0.1
 )
 
