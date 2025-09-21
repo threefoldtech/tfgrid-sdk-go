@@ -35,15 +35,26 @@ Please check the [examples](examples/) directory
 
 ### Peer initialization
 
-```
-peer, err := peer.NewPeer(
+```go
+ctx, cancel := context.WithCancel(context.Background())
+
+p, err := peer.NewPeer(
     ctx,
     mnemonics,
     subManager,
     relayCallback,
     peer.WithRelay("wss://relay.dev.grid.tf"),
     peer.WithSession("test-client"),
-  )
+)
+if err != nil {
+    // handle error
+}
+
+// ... use p ...
+
+// When done, initiate shutdown then wait for clean exit:
+cancel()
+p.Wait()
 ```
 
 1- After creating a peer like this at first it will try to get the identity from the provided `mnemonics`
@@ -74,31 +85,66 @@ peer, err := peer.NewPeer(
 - To reply for requests you will need the following
   1- Your peer needs to create `Router`
 
-```
-	router := peer.NewRouter()
+```go
+ router := peer.NewRouter()
 ```
 
 2- Then you need to create a Route for example if you are providing a calculator service
 
-```
+```go
 app := router.SubRoute("calculator")
 ```
 
 3- Then you need to register your handlers for this `subRoute` like the following
 
-```
+```go
 app.WithHandler("sub", func(ctx context.Context, payload []byte) (interface{}, error) {
-		var numbers []float64
+  var numbers []float64
 
-		if err := json.Unmarshal(payload, &numbers); err != nil {
-			return nil, fmt.Errorf("failed to load request payload was expecting list of float: %w", err)
-		}
+  if err := json.Unmarshal(payload, &numbers); err != nil {
+   return nil, fmt.Errorf("failed to load request payload was expecting list of float: %w", err)
+  }
 
-		var result float64
-		for _, v := range numbers {
-			result -= v
-		}
+  var result float64
+  for _, v := range numbers {
+   result -= v
+  }
 
-		return result, nil
-	})
+  return result, nil
+ })
 ```
+
+### Handler expectations and recommended patterns
+
+- __Handler callback semantics__
+  - The `Peer` calls the configured handler synchronously from its processing loop: `handler(ctx, peer, env, err)`.
+  - If you do heavy or blocking work inside your handler, you should offload it to a goroutine or a bounded worker pool to avoid stalling the peer loop.
+
+- __Server-side: use `Router.Serve`__
+  - `Router.Serve` is designed for servers. It immediately spawns a goroutine per incoming request and runs middlewares/handlers there, then replies via `peer.SendResponse(...)`.
+  - This decouples heavy handler work from the peer loop. Register handlers with `router.SubRoute(...).WithHandler(...)`.
+
+- __Client-side: use `RpcClient`__
+  - `RpcClient` wraps a `Peer` and correlates responses to callers via `uid`. Its internal handler is fast and non-blocking.
+  - Prefer `RpcClient.Call(ctx, twin, fn, data, &result)` over wiring your own response handler. Always pass a context with timeout/deadline.
+
+- __Concurrency and ordering__
+  - With `Router.Serve`, each request is processed concurrently in its own goroutine. Requests to the same or different commands run concurrently; there are no ordering guarantees across requests.
+  - `RpcClient` handles responses without blocking the peer loop; each call blocks only the caller goroutine until its response arrives or `ctx` cancels.
+
+- __Backpressure__
+  - Sending a response uses `peer.SendResponse(...)` which ultimately writes to a relay connection. Under sustained load, the write path applies backpressure; only the handler goroutine sending that response will block. Other requests continue.
+  - The peer employs bounded channel buffering on ingress and per-connection IO to improve burst tolerance while preserving backpressure.
+
+### Shutdown
+
+- Cancel the parent context you passed to `NewPeer(...)` (or `NewRpcClient(...)`) to request shutdown.
+- Then call `p.Wait()` (or `rpc.Wait()`) to block until all goroutines have exited (including connection workers).
+
+### Quick reference
+
+- __Server__
+  - Build routes with `router := peer.NewRouter()` and `router.SubRoute(...).WithHandler(...)`.
+
+- __Client__
+  - Use `rpc, _ := peer.NewRpcClient(ctx, mnemonics, subManager, opts...)` and call `rpc.Call(...)` with a timeout.
