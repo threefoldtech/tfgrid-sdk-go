@@ -20,6 +20,10 @@ import (
 const (
 	pongWait     = 40 * time.Second
 	pingInterval = 20 * time.Second
+	// SummaryInterval controls how often the per-connection summary is logged.
+	SummaryInterval = time.Minute
+	// BackpressureProbeInterval is used for periodic diagnostics while blocked on channel sends.
+	BackpressureProbeInterval = 100 * time.Millisecond
 )
 
 var errTimeout = fmt.Errorf("connection timeout")
@@ -140,7 +144,7 @@ func (c *InnerConnection) reader(ctx context.Context, cancel context.CancelFunc,
 				case reader <- data:
 					// delivered
 					delivered = true
-				case <-time.After(100 * time.Millisecond):
+				case <-time.After(BackpressureProbeInterval):
 					c.observer.ReaderBackpressure(c.url, len(reader), cap(reader))
 				}
 			}
@@ -219,7 +223,7 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 
 	go c.reader(local, cancel, con, outputCh)
 
-	summaryTicker := time.NewTicker(time.Minute)
+	summaryTicker := time.NewTicker(SummaryInterval)
 	defer summaryTicker.Stop()
 	// Use a ticker for ping cadence (avoids repeated allocations and jitter of time.After)
 	pingTicker := time.NewTicker(pingInterval)
@@ -251,7 +255,7 @@ func (c *InnerConnection) loop(ctx context.Context, con *websocket.Conn, output 
 				case output <- data:
 					stats.OnDelivered()
 					delivered = true
-				case <-time.After(100 * time.Millisecond):
+				case <-time.After(BackpressureProbeInterval):
 					c.observer.OutputBackpressure(c.url, len(output), cap(output), len(outputCh), cap(outputCh), len(c.writer), cap(c.writer))
 				case <-ctx.Done():
 					exitReason = ErrContextCanceled.Error()
