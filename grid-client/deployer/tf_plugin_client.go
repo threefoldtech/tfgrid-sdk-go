@@ -82,6 +82,7 @@ type pluginCfg struct {
 	noColorLogs   bool
 	rmbInMemCache bool
 	disableSentry bool
+	rmbSessionId  string
 }
 
 type PluginOpt func(*pluginCfg)
@@ -149,6 +150,12 @@ func WithTwinCache() PluginOpt {
 func WithGraphQlURL(graphqlURLs ...string) PluginOpt {
 	return func(p *pluginCfg) {
 		p.graphqlURLs = graphqlURLs
+	}
+}
+
+func WithSessionId(rmbSessionId string) PluginOpt {
+	return func(p *pluginCfg) {
+		p.rmbSessionId = rmbSessionId
 	}
 }
 
@@ -317,7 +324,10 @@ func NewTFPluginClient(
 
 	tfPluginClient.useRmbProxy = true
 	// if tfPluginClient.useRmbProxy
-	sessionID := generateSessionID()
+	sessionID := cfg.rmbSessionId
+	if sessionID == "" {
+		sessionID = generateSessionID()
+	}
 
 	// default rmbTimeout is 60
 	if cfg.rmbTimeout == 0 {
