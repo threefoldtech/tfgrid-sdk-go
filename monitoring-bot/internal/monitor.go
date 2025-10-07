@@ -11,11 +11,13 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/cosmos/go-bip39"
 	"github.com/rs/zerolog/log"
+	"github.com/stellar/go/clients/horizonclient"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
@@ -236,6 +238,33 @@ func (m *Monitor) getBalance(manager substrate.Manager, address address) (float6
 	}
 
 	return float64(balance.Free.Int64()) / math.Pow(10, 7), nil
+}
+
+// getStellarBalance gets the balance in TFT for the address given
+func (m *Monitor) getStellarBalance(net network) (float64, error) {
+	strClient := horizonclient.DefaultTestNetClient
+	strAddress := m.env.testStellarAddress
+	stellarTFTIssuerAddress := tftIssuerStellarTest
+	if net == mainNetwork || net == testNetwork {
+		strClient = horizonclient.DefaultPublicNetClient
+		strAddress = m.env.publicStellarAddress
+		stellarTFTIssuerAddress = tftIssuerStellarPublic
+	}
+
+	accountRequest := horizonclient.AccountRequest{AccountID: strAddress}
+	account, err := strClient.AccountDetail(accountRequest)
+	if err != nil {
+		errMsg := getHorizonError(err)
+		return 0, fmt.Errorf("failed to get stellar account: %s", errMsg)
+	}
+
+	for _, balance := range account.Balances {
+		if balance.Asset.Code == "TFT" && balance.Asset.Issuer == stellarTFTIssuerAddress {
+			return strconv.ParseFloat(balance.Balance, 64)
+		}
+	}
+
+	return 0, fmt.Errorf("TFT not found in stellar account balances")
 }
 
 // monitorBalance sends a message with the balance to a telegram bot

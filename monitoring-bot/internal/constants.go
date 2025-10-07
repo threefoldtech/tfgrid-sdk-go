@@ -9,9 +9,9 @@ const (
 
 	tftIssuerStellarTest       = "GA47YZA3PKFUZMPLQ3B5F2E3CJIB57TGGU7SPCQT2WAEYKN766PWIMB3"
 	tftIssuerStellarPublic     = "GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47"
-	bridgeTestTFTAmount        = 2
+	bridgeTestTFTAmount        = 3
 	txnTimeoutSeconds          = 60
-	balanceWaitIntervalSeconds = 30
+	balanceWaitIntervalSeconds = 60
 
 	telegramBotURL = "https://api.telegram.org/bot"
 )
