@@ -60,6 +60,7 @@ type NodeFilterOption struct {
 	NumGPU        uint8    `json:"num_gpu,omitempty"`
 	GPUVendors    []string `json:"gpu_vendors,omitempty"`
 	GPUDevices    []string `json:"gpu_devices,omitempty"`
+	GPUVram       uint64   `json:"gpu_vram,omitempty"`
 	Certified     bool     `json:"certified,omitempty"`
 	Dedicated     bool     `json:"dedicated,omitempty"`
 	PublicConfig  bool     `json:"public_config,omitempty"`

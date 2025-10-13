@@ -21,7 +21,9 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 		mru: convertGBToBytes(nodeOptions.MRU),
 	}
 
-	if (len(nodeOptions.GPUVendors) > 0 || len(nodeOptions.GPUDevices) > 0) && nodeOptions.NumGPU == 0 {
+	gpuVram := convertGBToBytes(nodeOptions.GPUVram)
+
+	if (len(nodeOptions.GPUVendors) > 0 || len(nodeOptions.GPUDevices) > 0 || gpuVram > 0) && nodeOptions.NumGPU == 0 {
 		// at least one gpu in case the user didn't provide the amount
 		nodeOptions.NumGPU = 1
 	}
@@ -43,13 +45,7 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 	for _, node := range f.nodes {
 		gpus := node.gpus
 		if nodeOptions.NumGPU > 0 {
-			if len(nodeOptions.GPUVendors) > 0 {
-				gpus = filterGPUsByVendors(gpus, nodeOptions.GPUVendors)
-			}
-
-			if len(nodeOptions.GPUDevices) > 0 {
-				gpus = filterGPUsByDevices(gpus, nodeOptions.GPUDevices)
-			}
+			gpus = filterGPUs(gpus, nodeOptions.GPUVendors, nodeOptions.GPUDevices, gpuVram)
 
 			if len(gpus) < int(nodeOptions.NumGPU) {
 				continue
@@ -133,25 +129,23 @@ func (f *FarmerBot) findNode(sub Substrate, nodeOptions NodeFilterOption) (uint3
 	return uint32(nodeFound.ID), nil
 }
 
-func filterGPUsByVendors(gpus []pkg.GPU, vendorsOrDevices []string) (filtered []pkg.GPU) {
+func filterGPUs(gpus []pkg.GPU, vendors []string, devices []string, vram uint64) (filtered []pkg.GPU) {
 	for _, gpu := range gpus {
-		for _, filter := range vendorsOrDevices {
-			if gpu.Vendor == filter {
-				filtered = append(filtered, gpu)
-			}
+		vendorMatch := len(vendors) == 0
+		if len(vendors) > 0 {
+			vendorMatch = slices.Contains(vendors, gpu.Vendor)
 		}
-	}
-	return
-}
 
-func filterGPUsByDevices(gpus []pkg.GPU, vendorsOrDevices []string) (filtered []pkg.GPU) {
-	for _, gpu := range gpus {
-		for _, filter := range vendorsOrDevices {
-			if gpu.Device == filter {
-				filtered = append(filtered, gpu)
-			}
+		deviceMatch := len(devices) == 0
+		if len(devices) > 0 {
+			deviceMatch = slices.Contains(devices, gpu.Device)
+		}
+
+		if vendorMatch && deviceMatch && (vram == 0 || gpu.Vram >= vram) {
+			filtered = append(filtered, gpu)
 		}
 	}
+
 	return
 }
 
