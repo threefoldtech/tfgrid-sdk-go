@@ -259,7 +259,7 @@ func (m *Monitor) getStellarBalance(net network) (float64, error) {
 	}
 
 	for _, balance := range account.Balances {
-		if balance.Asset.Code == "TFT" && balance.Asset.Issuer == stellarTFTIssuerAddress {
+		if balance.Code == "TFT" && balance.Issuer == stellarTFTIssuerAddress {
 			return strconv.ParseFloat(balance.Balance, 64)
 		}
 	}

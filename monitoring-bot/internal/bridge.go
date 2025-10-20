@@ -81,7 +81,7 @@ func (m *Monitor) monitorBridge(net network) (balanceReport, error) {
 	}
 	originalStellarBalance, err := m.getStellarBalance(net)
 	if err != nil {
-		return balanceReport{}, fmt.Errorf("failed to get Stellar balance for account: %w", err)
+		return balanceReport{}, fmt.Errorf("failed to get stellar balance for account: %w", err)
 	}
 
 	// Deposit: send TFT from Stellar to TFChain
@@ -139,7 +139,7 @@ func (m *Monitor) bridgeTXWrapper(
 		// Check Stellar balance
 		stellarNew, err := m.getStellarBalance(net)
 		if err != nil {
-			return 0, 0, fmt.Errorf("failed to get Stellar balance after transaction: %w", err)
+			return 0, 0, fmt.Errorf("failed to get stellar balance after transaction: %w", err)
 		}
 
 		if tfchainIncrease {
@@ -148,7 +148,7 @@ func (m *Monitor) bridgeTXWrapper(
 			}
 		} else {
 			if stellarNew <= initialStellar {
-				return 0, 0, fmt.Errorf("Stellar balance did not increase: before=%f, after=%f", initialStellar, stellarNew)
+				return 0, 0, fmt.Errorf("stellar balance did not increase: before=%f, after=%f", initialStellar, stellarNew)
 			}
 		}
 		return tfchainNew, stellarNew, nil

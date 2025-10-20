@@ -28,6 +28,7 @@ type FarmerBot struct {
 	keyType          string
 	identity         substrate.Identity
 	twinID           uint32
+	findNodeLimiter  *RateLimiter
 }
 
 // NewFarmerBot generates a new farmer bot
@@ -43,6 +44,7 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, k
 		mnemonicOrSeed:   mnemonicOrSeed,
 		keyType:          keyType,
 		identity:         identity,
+		findNodeLimiter:  NewRateLimiter(getRateLimitDuration(config.FindNodeRateLimitInSeconds)),
 	}
 
 	farmerbot.gridProxyClient = proxy.NewRetryingClient(proxy.NewClient(proxyURLs[network]))
@@ -153,6 +155,11 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 	})
 
 	nodeRouter.WithHandler("findnode", func(ctx context.Context, payload []byte) (interface{}, error) {
+		allowed, waitTime := f.findNodeLimiter.Allowed()
+		if !allowed {
+			return nil, fmt.Errorf("rate limit exceeded: please wait %v seconds before trying again", waitTime.Round(time.Second))
+		}
+
 		var options NodeFilterOption
 
 		if err := json.Unmarshal(payload, &options); err != nil {
