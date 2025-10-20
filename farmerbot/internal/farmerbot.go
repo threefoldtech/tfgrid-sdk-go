@@ -17,6 +17,8 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 )
 
+const defaultMaxGPUItemsToFind = uint32(10)
+
 // FarmerBot for managing farms
 type FarmerBot struct {
 	*state
@@ -164,6 +166,18 @@ func (f *FarmerBot) serve(ctx context.Context) error {
 
 		if err := json.Unmarshal(payload, &options); err != nil {
 			return nil, fmt.Errorf("failed to load request payload: %w", err)
+		}
+
+		maxGPUItemsToFind := defaultMaxGPUItemsToFind
+		if f.config.MaxGPUsToFind > 0 {
+			maxGPUItemsToFind = f.config.MaxGPUsToFind
+		}
+
+		if len(options.GPUVendors) > int(maxGPUItemsToFind) {
+			return nil, fmt.Errorf("too many GPU vendors specified (max %d): %d", maxGPUItemsToFind, len(options.GPUVendors))
+		}
+		if len(options.GPUDevices) > int(maxGPUItemsToFind) {
+			return nil, fmt.Errorf("too many GPU devices specified (max %d): %d", maxGPUItemsToFind, len(options.GPUDevices))
 		}
 
 		nodeID, err := f.findNode(subConn, options)

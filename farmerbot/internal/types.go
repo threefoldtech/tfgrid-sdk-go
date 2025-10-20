@@ -22,7 +22,8 @@ type Config struct {
 	NeverShutDownNodes         []uint32 `yaml:"never_shutdown_nodes"`
 	Power                      power    `yaml:"power"`
 	ContinueOnPoweringOnErr    bool
-	FindNodeRateLimitInSeconds int `yaml:"find_node_rate_limit_in_seconds,omitempty"`
+	FindNodeRateLimitInSeconds int    `yaml:"find_node_rate_limit_in_seconds,omitempty"`
+	MaxGPUsToFind              uint32 `yaml:"max_gpus_to_find,omitempty"`
 }
 
 type powerState uint8
