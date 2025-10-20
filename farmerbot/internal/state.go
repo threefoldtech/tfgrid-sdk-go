@@ -122,10 +122,6 @@ func getNode(
 		return node{}, fmt.Errorf("failed to get node %d dedicated price from substrate with error: %w", nodeID, err)
 	}
 
-	if price != 0 || dedicatedFarm {
-		configNode.dedicated = true
-	}
-
 	rentContract, err := sub.GetNodeRentContract(nodeID)
 	if errors.Is(err, substrate.ErrNotFound) {
 		configNode.hasActiveRentContract = false
@@ -141,6 +137,10 @@ func getNode(
 	}
 
 	configNode.hasActiveContracts = len(activeContracts) > 0
+
+	if price != 0 || dedicatedFarm || configNode.hasActiveRentContract || !configNode.hasActiveContracts {
+		configNode.dedicated = true
+	}
 
 	powerTarget, err := sub.GetPowerTarget(nodeID)
 	if err != nil {
