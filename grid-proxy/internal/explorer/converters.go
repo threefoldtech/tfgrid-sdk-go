@@ -38,6 +38,12 @@ func nodeFromDBNode(info db.Node) types.Node {
 			HRU: gridtypes.Unit(info.UsedHru),
 			MRU: gridtypes.Unit(info.UsedMru),
 		},
+		SystemResources: types.Capacity{
+			CRU: uint64(info.SystemCru),
+			SRU: gridtypes.Unit(info.SystemSru),
+			HRU: gridtypes.Unit(info.SystemHru),
+			MRU: gridtypes.Unit(info.SystemMru),
+		},
 		Location: types.Location{
 			Country:   info.Country,
 			City:      info.City,
@@ -142,6 +148,12 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 				SRU: gridtypes.Unit(info.UsedSru),
 				HRU: gridtypes.Unit(info.UsedHru),
 				MRU: gridtypes.Unit(info.UsedMru),
+			},
+			System: types.Capacity{
+				CRU: uint64(info.SystemCru),
+				SRU: gridtypes.Unit(info.SystemSru),
+				HRU: gridtypes.Unit(info.SystemHru),
+				MRU: gridtypes.Unit(info.SystemMru),
 			},
 		},
 		Location: types.Location{

@@ -992,6 +992,32 @@ func (c *Crafter) GenerateNodeWorkloads() error {
 	return nil
 }
 
+func (c *Crafter) GenerateSystemOverheadResources() error {
+	start := c.NodeStart
+	end := c.NodeStart + c.NodeCount
+	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
+
+	var reports []types.SystemOverheadUsage
+	for i := start; i < end; i++ {
+		report := types.SystemOverheadUsage{
+			NodeTwinID: uint32(nodeTwinsStart + i),
+			SystemCRU:  uint64(rand.Intn(4) + 1),                   // 1-4 cores
+			SystemHRU:  uint64(rand.Intn(10) * 1024 * 1024 * 1024), // 0-10 GB
+			SystemMRU:  uint64(rand.Intn(10) * 1024 * 1024 * 1024), // 0-10 GB
+			SystemSRU:  uint64(rand.Intn(50) * 1024 * 1024 * 1024), // 0-50 GB
+			UpdatedAt:  time.Now().Unix(),
+		}
+		reports = append(reports, report)
+	}
+
+	if err := c.gormDB.Create(reports).Error; err != nil {
+		return fmt.Errorf("failed to insert system overhead resources: %w", err)
+	}
+	fmt.Println("system overhead resources generated")
+
+	return nil
+}
+
 func (c *Crafter) GenerateNodeFeatures() error {
 	start := c.NodeStart
 	end := c.NodeStart + c.NodeCount

@@ -42,6 +42,7 @@ type Database interface {
 	UpsertCpuBenchmark(ctx context.Context, cpuBenchmarks []types.CpuBenchmark) error
 	UpsertNodeIpv6Report(ctx context.Context, ips []types.HasIpv6) error
 	UpsertNodeWorkloads(ctx context.Context, workloads []types.NodesWorkloads) error
+	UpsertNodeSystemResources(ctx context.Context, systemResources []types.SystemOverheadUsage) error
 	UpsertNodeFeatures(ctx context.Context, features []types.NodeFeatures) error
 	UpsertNodeLocation(ctx context.Context, locations []types.NodeLocation) error
 }
@@ -87,6 +88,10 @@ type Node struct {
 	UsedMru            int64
 	UsedSru            int64
 	UsedHru            int64
+	SystemCru          int64
+	SystemMru          int64
+	SystemSru          int64
+	SystemHru          int64
 	Domain             string
 	Gw4                string
 	Gw6                string

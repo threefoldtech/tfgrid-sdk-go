@@ -139,6 +139,9 @@ func (d *PostgresDatabase) GetLastUpsertsTimestamp() (types.IndexersState, error
 	if res := d.gormDB.Table("node_features").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Features.UpdatedAt); res.Error != nil {
 		return report, errors.Wrap(res.Error, "couldn't get features last updated_at")
 	}
+	if res := d.gormDB.Table("node_system_overhead_resources").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.SystemOverhead.UpdatedAt); res.Error != nil {
+		return report, errors.Wrap(res.Error, "couldn't get system overhead last updated_at")
+	}
 	if res := d.gormDB.Table("node_location").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Features.UpdatedAt); res.Error != nil {
 		return report, errors.Wrap(res.Error, "couldn't get features last updated_at")
 	}
@@ -356,6 +359,10 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.used_sru",
 			"resources_cache.used_hru",
 			"resources_cache.used_mru",
+			"resources_cache.system_cru",
+			"resources_cache.system_sru",
+			"resources_cache.system_hru",
+			"resources_cache.system_mru",
 			"public_config.domain",
 			"public_config.gw4",
 			"public_config.gw6",

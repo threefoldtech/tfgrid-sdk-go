@@ -33,6 +33,7 @@ type Node struct {
 	UpdatedAt         int64        `json:"updatedAt" sort:"updated_at"`
 	TotalResources    Capacity     `json:"total_resources" sort:"total_"`
 	UsedResources     Capacity     `json:"used_resources" sort:"used_"`
+	SystemResources   Capacity     `json:"system_resources" sort:"system_"`
 	Location          Location     `json:"location"`
 	PublicConfig      PublicConfig `json:"publicConfig"`
 	Status            string       `json:"status" sort:"status"`
@@ -60,8 +61,9 @@ type Node struct {
 
 // CapacityResult is the NodeData capacity results to unmarshal json in it
 type CapacityResult struct {
-	Total Capacity `json:"total_resources"`
-	Used  Capacity `json:"used_resources"`
+	Total  Capacity `json:"total_resources"`
+	Used   Capacity `json:"used_resources"`
+	System Capacity `json:"system_resources"`
 }
 
 // Node to be compatible with old view

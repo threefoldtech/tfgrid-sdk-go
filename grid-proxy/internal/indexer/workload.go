@@ -7,6 +7,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 const (
@@ -29,26 +30,60 @@ func (w *WorkloadWork) Finders() map[string]time.Duration {
 	return w.findersInterval
 }
 
-func (w *WorkloadWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.NodesWorkloads, error) {
-	var response struct {
-		Users struct {
-			Workloads uint32 `json:"workloads"`
-		} `json:"users"`
-	}
+type NodeStatisticsResult struct {
+	NodeTwinID     uint32
+	Workload       types.NodesWorkloads
+	SystemCapacity types.Capacity
+}
+
+func (w *WorkloadWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]NodeStatisticsResult, error) {
+	var response types.NodeStatistics
 
 	if err := callNode(ctx, rmb, statsCall, nil, twinId, &response); err != nil {
-		return []types.NodesWorkloads{}, err
+		return []NodeStatisticsResult{}, err
 	}
 
-	return []types.NodesWorkloads{
+	now := time.Now().Unix()
+
+	return []NodeStatisticsResult{
 		{
-			NodeTwinId:      twinId,
-			WorkloadsNumber: response.Users.Workloads,
-			UpdatedAt:       time.Now().Unix(),
+			NodeTwinID: twinId,
+			Workload: types.NodesWorkloads{
+				NodeTwinId:      twinId,
+				WorkloadsNumber: uint32(response.Users.Workloads),
+				UpdatedAt:       now,
+			},
+			SystemCapacity: types.Capacity{
+				CRU: uint64(response.System.CRU),
+				HRU: gridtypes.Unit(response.System.HRU),
+				MRU: gridtypes.Unit(response.System.MRU),
+				SRU: gridtypes.Unit(response.System.SRU),
+			},
 		},
 	}, nil
 }
 
-func (w *WorkloadWork) Upsert(ctx context.Context, db db.Database, batch []types.NodesWorkloads) error {
-	return db.UpsertNodeWorkloads(ctx, batch)
+func (w *WorkloadWork) Upsert(ctx context.Context, db db.Database, batch []NodeStatisticsResult) error {
+	// Extract workloads and system overhead usage into separate slices
+	workloads := make([]types.NodesWorkloads, len(batch))
+	systemOverheads := make([]types.SystemOverheadUsage, len(batch))
+
+	for i, data := range batch {
+		workloads[i] = data.Workload
+		systemOverheads[i] = types.SystemOverheadUsage{
+			NodeTwinID: data.NodeTwinID,
+			SystemCRU:  data.SystemCapacity.CRU,
+			SystemHRU:  uint64(data.SystemCapacity.HRU),
+			SystemMRU:  uint64(data.SystemCapacity.MRU),
+			SystemSRU:  uint64(data.SystemCapacity.SRU),
+			UpdatedAt:  data.Workload.UpdatedAt,
+		}
+	}
+
+	// Upsert both workloads and system overhead usage
+	if err := db.UpsertNodeWorkloads(ctx, workloads); err != nil {
+		return err
+	}
+
+	return db.UpsertNodeSystemResources(ctx, systemOverheads)
 }

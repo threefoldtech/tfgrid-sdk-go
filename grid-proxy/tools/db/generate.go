@@ -141,6 +141,10 @@ func generateData(db *sql.DB, gormDB *gorm.DB, seed int) error {
 		return fmt.Errorf("failed to generate node workloads reports: %w", err)
 	}
 
+	if err := generator.GenerateSystemOverheadResources(); err != nil {
+		return fmt.Errorf("failed to generate system overhead resources: %w", err)
+	}
+
 	if err := generator.GeneratePricingPolicies(); err != nil {
 		return fmt.Errorf("failed to generate PricingPolicies: %w", err)
 	}

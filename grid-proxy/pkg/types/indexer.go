@@ -139,3 +139,17 @@ type NodeLocation struct {
 func (NodeLocation) TableName() string {
 	return "node_location"
 }
+
+// SystemOverheadUsage represents the system resources consumed/used by ZOS itself
+type SystemOverheadUsage struct {
+	NodeTwinID uint32 `gorm:"column:node_twin_id;primaryKey"`
+	SystemCRU  uint64 `gorm:"column:system_cru"`
+	SystemHRU  uint64 `gorm:"column:system_hru"`
+	SystemMRU  uint64 `gorm:"column:system_mru"`
+	SystemSRU  uint64 `gorm:"column:system_sru"`
+	UpdatedAt  int64  `gorm:"column:updated_at"`
+}
+
+func (SystemOverheadUsage) TableName() string {
+	return "node_system_overhead_resources"
+}

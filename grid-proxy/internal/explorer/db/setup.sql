@@ -139,7 +139,11 @@ SELECT
     CASE WHEN farm.pricing_policy_id = 0 THEN 1 ELSE farm.pricing_policy_id END as policy_id,
     COALESCE(node.extra_fee, 0) as extra_fee,
     COALESCE(node_gpu_agg.gpus, '[]'),
-    COALESCE(node_gpu_agg.gpu_count, 0) as node_gpu_count
+    COALESCE(node_gpu_agg.gpu_count, 0) as node_gpu_count,
+    COALESCE(node_system_overhead_resources.system_cru, 0) as system_cru,
+    COALESCE(node_system_overhead_resources.system_hru, 0) as system_hru,
+    COALESCE(node_system_overhead_resources.system_mru, 0) as system_mru,
+    COALESCE(node_system_overhead_resources.system_sru, 0) as system_sru
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id 
@@ -148,6 +152,7 @@ FROM node
     LEFT JOIN speed ON node.twin_id = speed.node_twin_id
     LEFT JOIN cpu_benchmark ON node.twin_id = cpu_benchmark.node_twin_id
     LEFT JOIN dmi ON node.twin_id = dmi.node_twin_id
+    LEFT JOIN node_system_overhead_resources ON node.twin_id = node_system_overhead_resources.node_twin_id
     LEFT JOIN farm ON farm.farm_id = node.farm_id
     -- join aggregated gpus table
     LEFT JOIN(
@@ -190,7 +195,11 @@ GROUP BY
     COALESCE(cpu_benchmark.workloads, 0),
     node.certification,
     node.extra_fee,
-    farm.pricing_policy_id;
+    farm.pricing_policy_id,
+    COALESCE(node_system_overhead_resources.system_cru, 0),
+    COALESCE(node_system_overhead_resources.system_hru, 0),
+    COALESCE(node_system_overhead_resources.system_mru, 0),
+    COALESCE(node_system_overhead_resources.system_sru, 0);
 
 DROP TABLE IF EXISTS resources_cache;
 CREATE TABLE IF NOT EXISTS resources_cache(
@@ -207,6 +216,10 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     used_mru NUMERIC NOT NULL,
     used_sru NUMERIC NOT NULL,
     used_cru NUMERIC NOT NULL,
+    system_cru NUMERIC NOT NULL,
+    system_hru NUMERIC NOT NULL,
+    system_mru NUMERIC NOT NULL,
+    system_sru NUMERIC NOT NULL,
     renter INTEGER,
     rent_contract_id INTEGER,
     node_contracts_count INTEGER NOT NULL,
@@ -250,6 +263,18 @@ SELECT *
 FROM resources_cache_view;
 
 
+----
+-- Node System Overhead Resources table
+----
+DROP TABLE IF EXISTS node_system_overhead_resources;
+CREATE TABLE node_system_overhead_resources(
+    node_twin_id INTEGER PRIMARY KEY,
+    system_cru NUMERIC NOT NULL,
+    system_hru NUMERIC NOT NULL,
+    system_mru NUMERIC NOT NULL,
+    system_sru NUMERIC NOT NULL,
+    updated_at BIGINT NOT NULL
+);
 ----
 -- PublicIpsCache table
 ----
@@ -646,6 +671,34 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER tg_cpu_benchmark
     AFTER INSERT OR UPDATE ON cpu_benchmark FOR EACH ROW
     EXECUTE PROCEDURE reflect_cpu_benchmark_changes();
+
+/*
+ node_system_overhead_resources trigger
+    - Insert new record/Update > update resources_cache
+*/
+CREATE OR REPLACE FUNCTION reflect_system_overhead_changes() RETURNS TRIGGER AS 
+$$ 
+BEGIN
+    BEGIN
+        UPDATE resources_cache
+        SET system_cru = NEW.system_cru,
+            system_hru = NEW.system_hru,
+            system_mru = NEW.system_mru,
+            system_sru = NEW.system_sru
+        WHERE resources_cache.node_id = (
+            SELECT node_id from node where node.twin_id = NEW.node_twin_id
+        );
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating resources_cache system overhead fields %', SQLERRM;
+    END; 
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER tg_system_overhead
+    AFTER INSERT OR UPDATE ON node_system_overhead_resources FOR EACH ROW
+    EXECUTE PROCEDURE reflect_system_overhead_changes();
 
 /*
  Public ips trigger
