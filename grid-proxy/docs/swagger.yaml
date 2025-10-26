@@ -45,6 +45,8 @@ definitions:
     type: object
   types.CapacityResult:
     properties:
+      system_resources:
+        $ref: '#/definitions/types.Capacity'
       total_resources:
         $ref: '#/definitions/types.Capacity'
       used_resources:
@@ -218,6 +220,8 @@ definitions:
         $ref: '#/definitions/types.Speed'
       status:
         type: string
+      system_resources:
+        $ref: '#/definitions/types.Capacity'
       total_resources:
         $ref: '#/definitions/types.Capacity'
       twinId:

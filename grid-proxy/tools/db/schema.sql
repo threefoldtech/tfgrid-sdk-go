@@ -360,6 +360,20 @@ CREATE TABLE public.node_resources_used (
 ALTER TABLE public.node_resources_used OWNER TO postgres;
 
 --
+-- Name: node_system_resources; Type: TABLE; Schema: public; Owner: postgres
+--
+CREATE TABLE public.node_system_resources (
+    node_twin_id integer PRIMARY KEY,
+    system_cru bigint NOT NULL,
+    system_hru bigint NOT NULL,
+    system_mru bigint NOT NULL,
+    system_sru bigint NOT NULL,
+    updated_at bigint NOT NULL
+);
+
+ALTER TABLE public.node_system_resources OWNER TO postgres;
+
+--
 -- Name: nru_consumption; Type: TABLE; Schema: public; Owner: postgres
 --
 

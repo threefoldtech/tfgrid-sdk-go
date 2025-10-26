@@ -112,7 +112,7 @@ func (p *PostgresDatabase) UpsertNodeLocation(ctx context.Context, locations []t
 	return p.gormDB.WithContext(ctx).Table("node_location").Clauses(conflictClause).Create(&locations).Error
 }
 
-func (p *PostgresDatabase) UpsertNodeSystemResources(ctx context.Context, systemResources []types.SystemOverheadUsage) error {
+func (p *PostgresDatabase) UpsertNodeSystemResources(ctx context.Context, systemResources []types.NodeSystemUsage) error {
 	conflictClause := clause.OnConflict{
 		Columns:   []clause.Column{{Name: "node_twin_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"system_cru", "system_hru", "system_mru", "system_sru", "updated_at"}),

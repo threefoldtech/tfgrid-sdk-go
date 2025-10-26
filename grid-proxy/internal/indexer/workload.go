@@ -66,11 +66,11 @@ func (w *WorkloadWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint
 func (w *WorkloadWork) Upsert(ctx context.Context, db db.Database, batch []NodeStatisticsResult) error {
 	// Extract workloads and system overhead usage into separate slices
 	workloads := make([]types.NodesWorkloads, len(batch))
-	systemOverheads := make([]types.SystemOverheadUsage, len(batch))
+	systemOverheads := make([]types.NodeSystemUsage, len(batch))
 
 	for i, data := range batch {
 		workloads[i] = data.Workload
-		systemOverheads[i] = types.SystemOverheadUsage{
+		systemOverheads[i] = types.NodeSystemUsage{
 			NodeTwinID: data.NodeTwinID,
 			SystemCRU:  data.SystemCapacity.CRU,
 			SystemHRU:  uint64(data.SystemCapacity.HRU),

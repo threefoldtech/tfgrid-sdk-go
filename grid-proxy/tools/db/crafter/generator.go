@@ -992,14 +992,14 @@ func (c *Crafter) GenerateNodeWorkloads() error {
 	return nil
 }
 
-func (c *Crafter) GenerateSystemOverheadResources() error {
+func (c *Crafter) GenerateNodeSystemResources() error {
 	start := c.NodeStart
 	end := c.NodeStart + c.NodeCount
 	nodeTwinsStart := c.TwinStart + (c.FarmStart + c.FarmCount)
 
-	var reports []types.SystemOverheadUsage
+	var reports []types.NodeSystemUsage
 	for i := start; i < end; i++ {
-		report := types.SystemOverheadUsage{
+		report := types.NodeSystemUsage{
 			NodeTwinID: uint32(nodeTwinsStart + i),
 			SystemCRU:  uint64(rand.Intn(4) + 1),                   // 1-4 cores
 			SystemHRU:  uint64(rand.Intn(10) * 1024 * 1024 * 1024), // 0-10 GB

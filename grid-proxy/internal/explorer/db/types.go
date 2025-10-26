@@ -42,7 +42,7 @@ type Database interface {
 	UpsertCpuBenchmark(ctx context.Context, cpuBenchmarks []types.CpuBenchmark) error
 	UpsertNodeIpv6Report(ctx context.Context, ips []types.HasIpv6) error
 	UpsertNodeWorkloads(ctx context.Context, workloads []types.NodesWorkloads) error
-	UpsertNodeSystemResources(ctx context.Context, systemResources []types.SystemOverheadUsage) error
+	UpsertNodeSystemResources(ctx context.Context, systemResources []types.NodeSystemUsage) error
 	UpsertNodeFeatures(ctx context.Context, features []types.NodeFeatures) error
 	UpsertNodeLocation(ctx context.Context, locations []types.NodeLocation) error
 }

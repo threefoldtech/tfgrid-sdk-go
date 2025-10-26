@@ -1686,6 +1686,9 @@ const docTemplate = `{
         "types.CapacityResult": {
             "type": "object",
             "properties": {
+                "system_resources": {
+                    "$ref": "#/definitions/types.Capacity"
+                },
                 "total_resources": {
                     "$ref": "#/definitions/types.Capacity"
                 },
@@ -1948,6 +1951,9 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                },
+                "system_resources": {
+                    "$ref": "#/definitions/types.Capacity"
                 },
                 "total_resources": {
                     "$ref": "#/definitions/types.Capacity"

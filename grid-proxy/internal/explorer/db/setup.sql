@@ -115,6 +115,10 @@ SELECT
     COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST( (node_resources_total.mru / 10) AS bigint), 2147483648 ) as used_mru,
     COALESCE(sum(contract_resources.sru), 0) + 21474836480 as used_sru,
     COALESCE(sum(contract_resources.cru), 0) as used_cru,
+    COALESCE(node_system_resources.system_cru, 0) as system_cru,
+    COALESCE(node_system_resources.system_hru, 0) as system_hru,
+    COALESCE(node_system_resources.system_mru, 0) as system_mru,
+    COALESCE(node_system_resources.system_sru, 0) as system_sru,
     rent_contract.twin_id as renter,
     rent_contract.contract_id as rent_contract_id,
     count(node_contract.contract_id) as node_contracts_count,
@@ -139,11 +143,7 @@ SELECT
     CASE WHEN farm.pricing_policy_id = 0 THEN 1 ELSE farm.pricing_policy_id END as policy_id,
     COALESCE(node.extra_fee, 0) as extra_fee,
     COALESCE(node_gpu_agg.gpus, '[]'),
-    COALESCE(node_gpu_agg.gpu_count, 0) as node_gpu_count,
-    COALESCE(node_system_overhead_resources.system_cru, 0) as system_cru,
-    COALESCE(node_system_overhead_resources.system_hru, 0) as system_hru,
-    COALESCE(node_system_overhead_resources.system_mru, 0) as system_mru,
-    COALESCE(node_system_overhead_resources.system_sru, 0) as system_sru
+    COALESCE(node_gpu_agg.gpu_count, 0) as node_gpu_count
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id 
@@ -152,7 +152,7 @@ FROM node
     LEFT JOIN speed ON node.twin_id = speed.node_twin_id
     LEFT JOIN cpu_benchmark ON node.twin_id = cpu_benchmark.node_twin_id
     LEFT JOIN dmi ON node.twin_id = dmi.node_twin_id
-    LEFT JOIN node_system_overhead_resources ON node.twin_id = node_system_overhead_resources.node_twin_id
+    LEFT JOIN node_system_resources ON node.twin_id = node_system_resources.node_twin_id
     LEFT JOIN farm ON farm.farm_id = node.farm_id
     -- join aggregated gpus table
     LEFT JOIN(
@@ -196,10 +196,10 @@ GROUP BY
     node.certification,
     node.extra_fee,
     farm.pricing_policy_id,
-    COALESCE(node_system_overhead_resources.system_cru, 0),
-    COALESCE(node_system_overhead_resources.system_hru, 0),
-    COALESCE(node_system_overhead_resources.system_mru, 0),
-    COALESCE(node_system_overhead_resources.system_sru, 0);
+    node_system_resources.system_cru,
+    node_system_resources.system_hru,
+    node_system_resources.system_mru,
+    node_system_resources.system_sru;
 
 DROP TABLE IF EXISTS resources_cache;
 CREATE TABLE IF NOT EXISTS resources_cache(
@@ -216,10 +216,10 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     used_mru NUMERIC NOT NULL,
     used_sru NUMERIC NOT NULL,
     used_cru NUMERIC NOT NULL,
-    system_cru NUMERIC NOT NULL,
-    system_hru NUMERIC NOT NULL,
-    system_mru NUMERIC NOT NULL,
-    system_sru NUMERIC NOT NULL,
+    system_cru BIGINT NOT NULL,
+    system_hru BIGINT NOT NULL,
+    system_mru BIGINT NOT NULL,
+    system_sru BIGINT NOT NULL,
     renter INTEGER,
     rent_contract_id INTEGER,
     node_contracts_count INTEGER NOT NULL,
@@ -262,19 +262,6 @@ INSERT INTO resources_cache
 SELECT * 
 FROM resources_cache_view;
 
-
-----
--- Node System Overhead Resources table
-----
-DROP TABLE IF EXISTS node_system_overhead_resources;
-CREATE TABLE node_system_overhead_resources(
-    node_twin_id INTEGER PRIMARY KEY,
-    system_cru NUMERIC NOT NULL,
-    system_hru NUMERIC NOT NULL,
-    system_mru NUMERIC NOT NULL,
-    system_sru NUMERIC NOT NULL,
-    updated_at BIGINT NOT NULL
-);
 ----
 -- PublicIpsCache table
 ----
@@ -673,7 +660,7 @@ CREATE OR REPLACE TRIGGER tg_cpu_benchmark
     EXECUTE PROCEDURE reflect_cpu_benchmark_changes();
 
 /*
- node_system_overhead_resources trigger
+ node_system_resources trigger
     - Insert new record/Update > update resources_cache
 */
 CREATE OR REPLACE FUNCTION reflect_system_overhead_changes() RETURNS TRIGGER AS 
@@ -697,7 +684,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER tg_system_overhead
-    AFTER INSERT OR UPDATE ON node_system_overhead_resources FOR EACH ROW
+    AFTER INSERT OR UPDATE ON node_system_resources FOR EACH ROW
     EXECUTE PROCEDURE reflect_system_overhead_changes();
 
 /*

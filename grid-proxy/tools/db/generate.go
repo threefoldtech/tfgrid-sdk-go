@@ -55,6 +55,7 @@ func reset(db *sql.DB) error {
 		DROP TABLE IF EXISTS uptime_event CASCADE;
 		DROP SCHEMA IF EXISTS substrate_threefold_status CASCADE;
 		DROP TABLE IF EXISTS node_gpu CASCADE;
+	
 		
 	`)
 	return err
@@ -141,8 +142,8 @@ func generateData(db *sql.DB, gormDB *gorm.DB, seed int) error {
 		return fmt.Errorf("failed to generate node workloads reports: %w", err)
 	}
 
-	if err := generator.GenerateSystemOverheadResources(); err != nil {
-		return fmt.Errorf("failed to generate system overhead resources: %w", err)
+	if err := generator.GenerateNodeSystemResources(); err != nil {
+		return fmt.Errorf("failed to generate node system resources: %w", err)
 	}
 
 	if err := generator.GeneratePricingPolicies(); err != nil {

@@ -139,7 +139,7 @@ func (d *PostgresDatabase) GetLastUpsertsTimestamp() (types.IndexersState, error
 	if res := d.gormDB.Table("node_features").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Features.UpdatedAt); res.Error != nil {
 		return report, errors.Wrap(res.Error, "couldn't get features last updated_at")
 	}
-	if res := d.gormDB.Table("node_system_overhead_resources").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.SystemOverhead.UpdatedAt); res.Error != nil {
+	if res := d.gormDB.Table("node_system_resources").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.SystemOverhead.UpdatedAt); res.Error != nil {
 		return report, errors.Wrap(res.Error, "couldn't get system overhead last updated_at")
 	}
 	if res := d.gormDB.Table("node_location").Select("updated_at").Where("updated_at IS NOT NULL").Order("updated_at DESC").Limit(1).Scan(&report.Features.UpdatedAt); res.Error != nil {
@@ -159,6 +159,7 @@ func (d *PostgresDatabase) Initialize() error {
 		&types.NodesWorkloads{},
 		&types.NodeFeatures{},
 		&types.NodeLocation{},
+		&types.NodeSystemUsage{},
 	); err != nil {
 		return errors.Wrap(err, "failed to migrate indexer tables")
 	}
