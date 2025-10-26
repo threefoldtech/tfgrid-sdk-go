@@ -152,6 +152,12 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 					MRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].MRU),
 					SRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].SRU),
 				},
+				SystemResources: types.Capacity{
+					CRU: g.data.SystemResources[uint32(node.TwinID)].CRU,
+					HRU: gridtypes.Unit(g.data.SystemResources[uint32(node.TwinID)].HRU),
+					MRU: gridtypes.Unit(g.data.SystemResources[uint32(node.TwinID)].MRU),
+					SRU: gridtypes.Unit(g.data.SystemResources[uint32(node.TwinID)].SRU),
+				},
 				Location: types.Location{
 					Country:   node.Country,
 					City:      node.City,
@@ -260,6 +266,12 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 				HRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].HRU),
 				MRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].MRU),
 				SRU: gridtypes.Unit(g.data.NodeUsedResources[node.NodeID].SRU),
+			},
+			System: types.Capacity{
+				CRU: g.data.SystemResources[uint32(node.TwinID)].CRU,
+				HRU: gridtypes.Unit(g.data.SystemResources[uint32(node.TwinID)].HRU),
+				MRU: gridtypes.Unit(g.data.SystemResources[uint32(node.TwinID)].MRU),
+				SRU: gridtypes.Unit(g.data.SystemResources[uint32(node.TwinID)].SRU),
 			},
 		},
 		Location: types.Location{

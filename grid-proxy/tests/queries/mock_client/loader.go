@@ -46,6 +46,7 @@ type DBData struct {
 	CpuBenchmarks       map[uint32]types.CpuBenchmark
 	PricingPolicies     map[uint]PricingPolicy
 	WorkloadsNumbers    map[uint32]uint32
+	SystemResources     map[uint32]NodeResourcesTotal
 
 	DB *sql.DB
 }
@@ -766,6 +767,39 @@ func loadNodeLocation(db *sql.DB, data *DBData) error {
 	return nil
 }
 
+func loadSystemResources(db *sql.DB, data *DBData) error {
+	rows, err := db.Query(`
+	SELECT
+		node_twin_id,
+		COALESCE(system_cru, 0),
+		COALESCE(system_hru, 0),
+		COALESCE(system_mru, 0),
+		COALESCE(system_sru, 0)
+	FROM
+		node_system_resources;`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var nodeTwinId uint32
+		var resources NodeResourcesTotal
+		if err := rows.Scan(
+			&nodeTwinId,
+			&resources.CRU,
+			&resources.HRU,
+			&resources.MRU,
+			&resources.SRU,
+		); err != nil {
+			return err
+		}
+		data.SystemResources[nodeTwinId] = resources
+	}
+
+	return nil
+}
+
 func parseUnit(unitString string) Unit {
 	var unit Unit
 	_ = json.Unmarshal([]byte(unitString), &unit)
@@ -806,6 +840,7 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		NodeFeatures:        make(map[uint32][]string),
 		PricingPolicies:     make(map[uint]PricingPolicy),
 		WorkloadsNumbers:    make(map[uint32]uint32),
+		SystemResources:     make(map[uint32]NodeResourcesTotal),
 		DB:                  db,
 	}
 	if err := loadNodes(gormDB, &data); err != nil {
@@ -872,6 +907,9 @@ func Load(db *sql.DB, gormDB *gorm.DB) (DBData, error) {
 		return data, err
 	}
 	if err := loadWorkloadsNumber(db, &data); err != nil {
+		return data, err
+	}
+	if err := loadSystemResources(db, &data); err != nil {
 		return data, err
 	}
 	if err := calcNodesUsedResources(&data); err != nil {
