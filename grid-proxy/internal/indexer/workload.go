@@ -72,10 +72,10 @@ func (w *WorkloadWork) Upsert(ctx context.Context, db db.Database, batch []NodeS
 		workloads[i] = data.Workload
 		systemOverheads[i] = types.NodeSystemUsage{
 			NodeTwinID: data.NodeTwinID,
-			SystemCRU:  data.SystemCapacity.CRU,
-			SystemHRU:  uint64(data.SystemCapacity.HRU),
-			SystemMRU:  uint64(data.SystemCapacity.MRU),
-			SystemSRU:  uint64(data.SystemCapacity.SRU),
+			SystemCRU:  data.SystemCapacity.CRU + (data.SystemCapacity.CRU / 10),
+			SystemHRU:  uint64(data.SystemCapacity.HRU) + uint64(data.SystemCapacity.HRU)/10,
+			SystemMRU:  uint64(data.SystemCapacity.MRU) + uint64(data.SystemCapacity.MRU)/10,
+			SystemSRU:  uint64(data.SystemCapacity.SRU) + uint64(data.SystemCapacity.SRU)/10,
 			UpdatedAt:  data.Workload.UpdatedAt,
 		}
 	}
