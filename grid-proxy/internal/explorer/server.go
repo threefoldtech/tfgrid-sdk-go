@@ -56,7 +56,7 @@ const (
 // @Param node_certified query bool false "True for farms who have at least one certified node"
 // @Param node_features query string false "filter farms with list of supported features on its nods"
 // @Param country query string false "farm country"
-// @Param region query string false "farm region"
+// @Param region query string false "Node continent (america, europe, africa, asia, ...)"
 // @Success 200 {object} []types.Farm
 // @Failure 400 {object} string
 // @Failure 500 {object} string
@@ -140,7 +140,7 @@ func (a *App) getStats(r *http.Request) (interface{}, mw.Response) {
 // @Param has_ipv6 query bool false "Set to true to filter nodes with ipv6 available"
 // @Param city query string false "Node city filter"
 // @Param country query string false "Node country filter"
-// @Param region query string false "Node region"
+// @Param region query string false "Node continent (america, europe, africa, asia, ...)"
 // @Param farm_name query string false "Get nodes for specific farm"
 // @Param ipv4 query bool false "Set to true to filter access nodes with ipv4"
 // @Param ipv6 query bool false "Set to true to filter access nodes with ipv6"
@@ -191,7 +191,7 @@ func (a *App) getNodes(r *http.Request) (interface{}, mw.Response) {
 // @Param status query string false "Node status filter, 'up': for only up nodes, 'down': for only down nodes & 'standby' for powered-off nodes by farmerbot."
 // @Param city query string false "Node city filter"
 // @Param country query string false "Node country filter"
-// @Param region query string false "node region"
+// @Param region query string false "Node continent (america, europe, africa, asia, ...)"
 // @Param farm_name query string false "Get nodes for specific farm"
 // @Param ipv4 query bool false "Set to true to filter access nodes with ipv4"
 // @Param ipv6 query bool false "Set to true to filter access nodes with ipv6"
