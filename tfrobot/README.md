@@ -36,7 +36,7 @@ node_groups:
     public_ip4: false # should the nodes have free ip v4
     public_ip6: false # should the nodes have free ip v6
     certified: false # should the nodes be certified(if false the nodes could be certified of diy) 
-    region: europe # region could be the name of the continents the nodes are located in (africa, americas, antarctic, antarctic ocean, asia, europe, oceania, polar)
+    region: europe # region could be the name of the continents the nodes are located in (africa, america, antarctic, antarctic ocean, asia, europe, oceania, polar)
 vms:
   - name: example1
     vms_count: 1 # amount of vms with the same configurations
@@ -106,7 +106,7 @@ tfrobot deploy -c path/to/your/config.yaml
 | public_ip4 | should the nodes have free ip v4 | `true` or `false` |
 | public_ip6 | should the nodes have free ip v6 | `true` or `false` |
 | certified | should the nodes be certified(if false the nodes could be certified or DIY)  | `true` or `false` |
-| region | region could be the name of the continents the nodes are located in | africa, americas, antarctic, antarctic ocean, asia, europe, oceania, polar |
+| region | region could be the name of the continents the nodes are located in | africa, america, antarctic, antarctic ocean, asia, europe, oceania, polar |
 
 ### Vms Groups
 
