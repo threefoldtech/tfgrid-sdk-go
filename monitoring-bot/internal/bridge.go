@@ -144,11 +144,11 @@ func (m *Monitor) bridgeTXWrapper(
 
 		if tfchainIncrease {
 			if tfchainNew <= initialTFChain {
-				return 0, 0, fmt.Errorf("TFChain balance did not increase: before=%f, after=%f", initialTFChain, tfchainNew)
+				return 0, 0, fmt.Errorf("tfchain balance did not increase: before=%f, after=%f", initialTFChain, tfchainNew)
 			}
 		} else {
 			if stellarNew <= initialStellar {
-				return 0, 0, fmt.Errorf("Stellar balance did not increase: before=%f, after=%f", initialStellar, stellarNew)
+				return 0, 0, fmt.Errorf("stellar balance did not increase: before=%f, after=%f", initialStellar, stellarNew)
 			}
 		}
 		return tfchainNew, stellarNew, nil

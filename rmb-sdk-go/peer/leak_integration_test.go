@@ -1,5 +1,3 @@
-//go:build goleak
-
 package peer
 
 import (
