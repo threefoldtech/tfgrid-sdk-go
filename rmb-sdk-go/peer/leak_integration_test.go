@@ -1,5 +1,4 @@
 //go:build goleak
-// +build goleak
 
 package peer
 
