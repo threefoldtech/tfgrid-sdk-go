@@ -11,7 +11,6 @@ fi
 echo $VERSION
 
 goreleaser check
-goreleaser release --snapshot --clean
 
 tag_and_push() {
     local component="$1"
@@ -26,3 +25,5 @@ tag_and_push "grid-proxy"
 # # main
 git tag -a $VERSION -m "release $VERSION"
 git push origin $VERSION
+
+goreleaser release --snapshot --clean

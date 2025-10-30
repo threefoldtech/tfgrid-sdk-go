@@ -7,13 +7,9 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
-      - darwin
     binary: farmerbot
     id: farmerbot
 
-    ignore:
-      - goos: windows
     ldflags:
       - -X github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version.Version={{.Tag}}
 
@@ -22,13 +18,9 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
-      - darwin
     binary: tfcmd
     id: tfcmd
 
-    ignore:
-      - goos: windows
     ldflags:
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit={{.Commit}}
@@ -38,13 +30,9 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
-      - darwin
     binary: tf-grid-cli
     id: tf-grid-cli
 
-    ignore:
-      - goos: windows
     ldflags:
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit={{.Commit}}
@@ -54,13 +42,9 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
-      - darwin
     binary: tfrobot
     id: tfrobot
 
-    ignore:
-      - goos: windows
     ldflags:
       - -X github.com/threefoldtech/tfgrid-sdk-go/tfrobot/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/tfrobot/cmd.commit={{.Commit}}
@@ -70,13 +54,9 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
-      - darwin
     binary: tfgridproxy
     id: tfgridproxy
 
-    ignore:
-      - goos: windows
     ldflags:
       - -w -s -X github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/cmd.version={{.Tag}} -extldflags '-static'
       - -X github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/cmd.commit={{.Commit}}
@@ -86,13 +66,9 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
-      - darwin
     binary: gridify
     id: gridify
 
-    ignore:
-      - goos: windows
     ldflags:
       - -X github.com/threefoldtech/tfgrid-sdk-go/gridify/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/gridify/cmd.commit={{.Commit}}
@@ -102,13 +78,9 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
-      - darwin
     binary: monitoring-bot
     id: monitoring-bot
 
-    ignore:
-      - goos: windows
     ldflags:
       - -X github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.version={{.Tag}}
       - -X github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.commit={{.Commit}}

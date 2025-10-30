@@ -28,7 +28,7 @@ func main() {
 
 	myceliumKey, err := workloads.RandomMyceliumKey()
 	if err != nil {
-		log.Debug().Err(err).Send()
+		log.Fatal().Err(err).Send()
 	}
 
 	network := workloads.ZNetLight{
@@ -49,15 +49,15 @@ func main() {
 
 	myceliumSeed, err := workloads.RandomMyceliumIPSeed()
 	if err != nil {
-		log.Debug().Err(err).Send()
+		log.Fatal().Err(err).Send()
 	}
 
 	vm := workloads.VMLight{
-		Name:           "vm",
+		Name:           "vm_with_mycelium",
 		NodeID:         nodeID,
 		NetworkName:    network.Name,
 		CPU:            1,
-		MemoryMB:       256,
+		MemoryMB:       1024,
 		RootfsSizeMB:   10 * 1024,
 		Flist:          "https://hub.grid.tf/tf-official-apps/base:latest.flist",
 		Entrypoint:     "/sbin/zinit init",
@@ -68,7 +68,7 @@ func main() {
 		},
 	}
 
-	dl := workloads.NewDeployment("vm_with_mycelium", nodeID, "", nil, network.Name, nil, nil, nil, []workloads.VMLight{vm}, nil, nil)
+	dl := workloads.NewDeployment(vm.Name, vm.NodeID, "", nil, network.Name, nil, nil, nil, []workloads.VMLight{vm}, nil, nil)
 	err = tf.DeploymentDeployer.Deploy(context.Background(), &dl)
 	if err != nil {
 		log.Fatal().Err(err).Send()
@@ -101,7 +101,10 @@ func setup() (deployer.TFPluginClient, string, error) {
 		return deployer.TFPluginClient{}, "", err
 	}
 
-	tf, err := deployer.NewTFPluginClient(mnemonic, deployer.WithNetwork(n))
+	tf, err := deployer.NewTFPluginClient(
+		mnemonic,
+		deployer.WithNetwork(n),
+	)
 	if err != nil {
 		return deployer.TFPluginClient{}, "", err
 	}
