@@ -54,7 +54,7 @@ func main() {
 	}
 
 	vm := workloads.VM{
-		Name:           "vm",
+		Name:           "vm_with_mycelium",
 		NodeID:         nodeID,
 		NetworkName:    network.Name,
 		CPU:            2,
@@ -69,7 +69,7 @@ func main() {
 		},
 	}
 
-	dl := workloads.NewDeployment("vm_with_mycelium", nodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil, nil)
+	dl := workloads.NewDeployment(vm.Name, vm.NodeID, "", nil, network.Name, nil, nil, []workloads.VM{vm}, nil, nil, nil)
 	err = tf.DeploymentDeployer.Deploy(context.Background(), &dl)
 	if err != nil {
 		log.Fatal().Err(err).Send()
