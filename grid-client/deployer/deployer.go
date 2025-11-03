@@ -16,6 +16,7 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -126,6 +127,21 @@ func (d *Deployer) deploy(
 	// creations
 	for node, dl := range newDeployments {
 		if _, ok := oldDeployments[node]; !ok {
+			// ensure idempotent deployment creation process against chain
+			// if a matching contract already exists on-chain, reuse it instead of creating/sending again
+			foundExisting := false
+			if cid, ok := d.findExistingOnChainContract(node, dl.Metadata); ok {
+				currentDeployments[node] = cid
+				foundExisting = true
+				log.Debug().
+					Uint32("node", node).
+					Uint64("contractID", cid).
+					Msg("found existing matching contract on-chain for deployment, reusing it")
+			}
+			if foundExisting {
+				continue
+			}
+
 			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
@@ -258,6 +274,47 @@ func (d *Deployer) deploy(
 	return currentDeployments, nil
 }
 
+// findExistingOnChainContract tries to find an existing active contract on-chain for a given node
+// that matches the provided deployment metadata and is owned by the current twin.
+func (d *Deployer) findExistingOnChainContract(node uint32, metadata string) (uint64, bool) {
+	if strings.TrimSpace(metadata) == "" {
+		return 0, false
+	}
+
+	newMeta, err := workloads.ParseDeploymentData(metadata)
+	if err != nil {
+		return 0, false
+	}
+
+	ids, err := d.substrateConn.GetNodeContracts(node)
+	if err != nil {
+		return 0, false
+	}
+
+	for _, id := range ids {
+		cid := uint64(id)
+		contract, err := d.substrateConn.GetContract(cid)
+		if err != nil {
+			continue
+		}
+		if !contract.IsCreated() || contract.TwinID() != d.twinID {
+			continue
+		}
+		meta := contract.ContractType.NodeContract.DeploymentData
+		exMeta, err := workloads.ParseDeploymentData(meta)
+		if err != nil {
+			continue
+		}
+		if exMeta.ProjectName == newMeta.ProjectName &&
+			exMeta.Type == newMeta.Type &&
+			exMeta.Name == newMeta.Name {
+			return cid, true
+		}
+	}
+
+	return 0, false
+}
+
 // Cancel cancels an old deployment not given in the new deployments
 func (d *Deployer) Cancel(ctx context.Context,
 	contractID uint64,
@@ -372,6 +429,8 @@ func (d *Deployer) BatchDeploy(
 ) (map[uint32][]zos.Deployment, error) {
 	deploymentsSlice := make([]zos.Deployment, 0)
 	contractsData := make([]substrate.BatchCreateContractData, 0)
+	// deployments that were already on chain and will be reused
+	reusedDeployments := make(map[uint32][]zos.Deployment)
 
 	mu := sync.Mutex{}
 
@@ -392,6 +451,18 @@ func (d *Deployer) BatchDeploy(
 				case <-ctx2.Done():
 					return nil
 				default:
+				}
+				// Check if an existing on-chain contract matches; if so, reuse and skip creation
+				if cid, ok := d.findExistingOnChainContract(node, dl.Metadata); ok {
+					dl.ContractID = cid
+					mu.Lock()
+					reusedDeployments[node] = append(reusedDeployments[node], dl)
+					mu.Unlock()
+					log.Debug().
+						Uint32("node", node).
+						Uint64("contractID", cid).
+						Msg("found existing matching contract on-chain for deployment, reusing it")
+					return nil
 				}
 
 				if err := dl.Sign(d.twinID, d.identity); err != nil {
@@ -498,6 +569,10 @@ func (d *Deployer) BatchDeploy(
 	wg.Wait()
 
 	resDeployments := make(map[uint32][]zos.Deployment, len(deployments))
+	// seed with reused deployments
+	for node, dls := range reusedDeployments {
+		resDeployments[node] = append(resDeployments[node], dls...)
+	}
 	for i, dl := range deploymentsSlice {
 		resDeployments[contractsData[i].Node] = append(resDeployments[contractsData[i].Node], dl)
 	}
