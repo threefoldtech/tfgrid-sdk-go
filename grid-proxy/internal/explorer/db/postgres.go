@@ -32,8 +32,35 @@ var (
 	ErrContractNotFound = errors.New("contract not found")
 )
 
-//go:embed setup.sql
-var setupFile string
+//go:embed setup/01_functions.sql
+var setupFunctions string
+
+//go:embed setup/02_views.sql
+var setupViews string
+
+//go:embed setup/03_cache_tables.sql
+var setupCacheTables string
+
+//go:embed setup/04_indexes.sql
+var setupIndexes string
+
+//go:embed setup/05_triggers.sql
+var setupTriggers string
+
+//go:embed setup/06_cache_management.sql
+var setupCacheManagement string
+
+// setupFile combines all setup modules in order
+var setupFile = func() string {
+	return "BEGIN;\n\n" +
+		setupFunctions + "\n\n" +
+		setupViews + "\n\n" +
+		setupCacheTables + "\n\n" +
+		setupIndexes + "\n\n" +
+		setupTriggers + "\n\n" +
+		setupCacheManagement + "\n\n" +
+		"COMMIT;"
+}()
 
 // PostgresDatabase postgres db client
 type PostgresDatabase struct {
