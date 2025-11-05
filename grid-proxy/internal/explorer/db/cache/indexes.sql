@@ -17,9 +17,9 @@ CREATE INDEX IF NOT EXISTS idx_name_contract_id ON public.name_contract USING gi
 CREATE INDEX IF NOT EXISTS idx_rent_contract_id ON public.rent_contract USING gin(id);
 
 -- Indexes on cache tables (for fast queries)
-CREATE INDEX IF NOT EXISTS idx_resources_cache_farm_id ON resources_cache(farm_id);
-CREATE INDEX IF NOT EXISTS idx_resources_cache_node_id ON resources_cache(node_id);
-CREATE INDEX IF NOT EXISTS idx_public_ips_cache_farm_id ON public_ips_cache(farm_id);
+CREATE INDEX IF NOT EXISTS idx_nodex_farm_id ON nodex(farm_id);
+CREATE INDEX IF NOT EXISTS idx_nodex_node_id ON nodex(node_id);
+CREATE INDEX IF NOT EXISTS idx_farmx_farm_id ON farmx(farm_id);
 
 -- Additional indexes for indexer tables
 CREATE INDEX IF NOT EXISTS idx_location_id ON location USING gin(id);

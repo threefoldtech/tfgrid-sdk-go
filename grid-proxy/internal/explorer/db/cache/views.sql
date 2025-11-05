@@ -6,10 +6,10 @@
 
 -- Clean up legacy triggers
 DROP TRIGGER IF EXISTS node_added ON node;
-DROP VIEW IF EXISTS resources_cache_view;
+DROP VIEW IF EXISTS nodex_view;
 
 /*
- * resources_cache_view
+ * nodex_view
  * 
  * Comprehensive view aggregating all node resource information for caching.
  * 
@@ -22,7 +22,7 @@ DROP VIEW IF EXISTS resources_cache_view;
  *   - Contract counts: active contracts (Created, GracePeriod states only)
  *   - Rent info: current renter and rent contract ID
  */
-CREATE OR REPLACE VIEW resources_cache_view AS
+CREATE OR REPLACE VIEW nodex_view AS
 SELECT
     node.node_id as node_id,
     node.farm_id as farm_id,

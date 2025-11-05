@@ -7,7 +7,7 @@
 /*
  * reflect_node_changes
  * 
- * Maintains resources_cache when nodes are inserted or deleted.
+ * Maintains nodex when nodes are inserted or deleted.
  *   - INSERT: Populates cache from view for new node
  *   - DELETE: Removes node from cache
  */
@@ -16,10 +16,10 @@ $$
 BEGIN
     IF (TG_OP = 'INSERT') THEN
         BEGIN
-            INSERT INTO resources_cache
+            INSERT INTO nodex
             SELECT *
-            FROM resources_cache_view 
-            WHERE resources_cache_view.node_id = NEW.node_id;
+            FROM nodex_view 
+            WHERE nodex_view.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
                 PERFORM log_cache_error(
@@ -30,12 +30,12 @@ BEGIN
                     SQLERRM,
                     jsonb_build_object('node_id', NEW.node_id, 'farm_id', NEW.farm_id)
                 );
-                RAISE WARNING 'Error inserting resources_cache: %', SQLERRM;
+                RAISE WARNING 'Error inserting nodex: %', SQLERRM;
         END;
     
     ELSIF (TG_OP = 'DELETE') THEN
         BEGIN
-            DELETE FROM resources_cache WHERE node_id = OLD.node_id;
+            DELETE FROM nodex WHERE node_id = OLD.node_id;
         EXCEPTION
             WHEN OTHERS THEN
                 PERFORM log_cache_error(
@@ -46,7 +46,7 @@ BEGIN
                     SQLERRM,
                     jsonb_build_object('node_id', OLD.node_id)
                 );
-                RAISE WARNING 'Error deleting node from resources_cache: %', SQLERRM;
+                RAISE WARNING 'Error deleting node from nodex: %', SQLERRM;
         END;
     END IF;
 
@@ -75,7 +75,7 @@ CREATE OR REPLACE FUNCTION reflect_total_resources_changes() RETURNS TRIGGER AS
 $$ 
 BEGIN
     BEGIN
-        UPDATE resources_cache
+        UPDATE nodex
         SET
             -- Update total resources
             total_cru = NEW.cru,
@@ -94,8 +94,8 @@ BEGIN
             -- MRU used: Adjust reserved amount (used includes reserved)
             used_mru = used_mru - GREATEST(CAST((OLD.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) +
                                     GREATEST(CAST((NEW.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes())
-        WHERE
-            resources_cache.node_id = (
+            WHERE
+            nodex.node_id = (
                 SELECT node.node_id FROM node WHERE node.id = NEW.node_id
             );
     EXCEPTION
@@ -142,7 +142,7 @@ BEGIN
     IF (TG_OP = 'DELETE') THEN
         BEGIN
             -- Handle DELETE: decrement used resources and increment free resources
-            UPDATE resources_cache
+            UPDATE nodex
             SET used_cru = used_cru - OLD.cru,
                 used_mru = used_mru - OLD.mru,
                 used_sru = used_sru - OLD.sru,
@@ -151,7 +151,7 @@ BEGIN
                 free_hru = free_hru + OLD.hru,
                 free_sru = free_sru + OLD.sru
             WHERE
-                resources_cache.node_id = (
+            nodex.node_id = (
                     SELECT node_id FROM node_contract 
                     WHERE node_contract.id = OLD.contract_id 
                     AND node_contract.state IN ('Created', 'GracePeriod')
@@ -171,7 +171,7 @@ BEGIN
     ELSE
         -- Handle INSERT and UPDATE
         BEGIN
-            UPDATE resources_cache
+            UPDATE nodex
             SET used_cru = used_cru + (NEW.cru - COALESCE(OLD.cru, 0)),
                 used_mru = used_mru + (NEW.mru - COALESCE(OLD.mru, 0)),
                 used_sru = used_sru + (NEW.sru - COALESCE(OLD.sru, 0)),
@@ -180,7 +180,7 @@ BEGIN
                 free_hru = free_hru - (NEW.hru - COALESCE(OLD.hru, 0)),
                 free_sru = free_sru - (NEW.sru - COALESCE(OLD.sru, 0))
             WHERE
-                resources_cache.node_id = (
+            nodex.node_id = (
                     SELECT node_id FROM node_contract 
                     WHERE node_contract.id = NEW.contract_id 
                     AND node_contract.state IN ('Created', 'GracePeriod')
@@ -222,19 +222,19 @@ BEGIN
         BEGIN
             -- Lock cache row to prevent concurrent updates during resource release
             PERFORM 1
-            FROM resources_cache 
+            FROM nodex 
             WHERE node_id = NEW.node_id
             FOR UPDATE;
 
-            UPDATE resources_cache
+            UPDATE nodex
             SET 
-                used_cru = resources_cache.used_cru - contract_resources.cru,
-                used_mru = resources_cache.used_mru - contract_resources.mru,
-                used_sru = resources_cache.used_sru - contract_resources.sru,
-                used_hru = resources_cache.used_hru - contract_resources.hru,
-                free_mru = resources_cache.free_mru + contract_resources.mru,
-                free_sru = resources_cache.free_sru + contract_resources.sru,
-                free_hru = resources_cache.free_hru + contract_resources.hru,
+                used_cru = nodex.used_cru - contract_resources.cru,
+                used_mru = nodex.used_mru - contract_resources.mru,
+                used_sru = nodex.used_sru - contract_resources.sru,
+                used_hru = nodex.used_hru - contract_resources.hru,
+                free_mru = nodex.free_mru + contract_resources.mru,
+                free_sru = nodex.free_sru + contract_resources.sru,
+                free_hru = nodex.free_hru + contract_resources.hru,
                 node_contracts_count = COALESCE(ncc.count, 0)
             FROM contract_resources
             LEFT JOIN
@@ -245,7 +245,7 @@ BEGIN
                 ON ncc.node_id = NEW.node_id
             WHERE 
                 contract_resources.contract_id = NEW.id 
-                AND resources_cache.node_id = NEW.node_id;
+                AND nodex.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
                 PERFORM log_cache_error(
@@ -261,14 +261,14 @@ BEGIN
 
     ELSIF (TG_OP = 'INSERT') THEN
         BEGIN
-            UPDATE resources_cache 
+            UPDATE nodex 
             SET node_contracts_count = (
                 SELECT COALESCE(COUNT(contract_id), 0)
                 FROM node_contract
                 WHERE node_id = NEW.node_id
                     AND state IN ('Created', 'GracePeriod')
             )
-            WHERE resources_cache.node_id = NEW.node_id;
+            WHERE nodex.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
                 PERFORM log_cache_error(
@@ -302,7 +302,7 @@ CREATE OR REPLACE FUNCTION reflect_node_gpu_count_change() RETURNS TRIGGER AS
 $$
 BEGIN
     BEGIN
-        UPDATE resources_cache
+        UPDATE nodex
             SET node_gpu_count = gpu.count, gpus = gpu.gpus
             FROM (
               SELECT COUNT(*) AS count,
@@ -318,7 +318,7 @@ BEGIN
               FROM node_gpu 
               WHERE node_twin_id = COALESCE(NEW.node_twin_id, OLD.node_twin_id)
             ) AS gpu
-        WHERE resources_cache.node_id = (
+        WHERE nodex.node_id = (
             SELECT node_id from node where node.twin_id = COALESCE(NEW.node_twin_id, OLD.node_twin_id)
         );
     EXCEPTION
@@ -331,7 +331,7 @@ BEGIN
                 SQLERRM,
                 jsonb_build_object('node_twin_id', COALESCE(NEW.node_twin_id, OLD.node_twin_id))
             );
-            RAISE WARNING 'Error updating resources_cache gpu fields: %', SQLERRM;
+                RAISE WARNING 'Error updating nodex gpu fields: %', SQLERRM;
     END;
 RETURN NULL;
 END;
@@ -354,11 +354,11 @@ $$
 BEGIN
     IF (TG_OP = 'UPDATE' AND NEW.state = 'Deleted') THEN
         BEGIN
-            UPDATE resources_cache
+            UPDATE nodex
             SET renter = NULL,
                 rent_contract_id = NULL
             WHERE
-                resources_cache.node_id = NEW.node_id;
+                nodex.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
                 PERFORM log_cache_error(
@@ -369,15 +369,15 @@ BEGIN
                     SQLERRM,
                     jsonb_build_object('contract_id', NEW.contract_id, 'node_id', NEW.node_id, 'state', NEW.state)
                 );
-                RAISE WARNING 'Error removing resources_cache rent fields: %', SQLERRM;
+                RAISE WARNING 'Error removing nodex rent fields: %', SQLERRM;
         END; 
     ELSIF (TG_OP = 'INSERT') THEN
         BEGIN
-            UPDATE resources_cache 
+            UPDATE nodex 
             SET renter = NEW.twin_id,
                 rent_contract_id = NEW.contract_id
             WHERE
-                resources_cache.node_id = NEW.node_id;
+                nodex.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
                 PERFORM log_cache_error(
@@ -410,12 +410,12 @@ CREATE OR REPLACE FUNCTION reflect_dmi_changes() RETURNS TRIGGER AS
 $$ 
 BEGIN
     BEGIN
-        UPDATE resources_cache
+        UPDATE nodex
         SET bios = NEW.bios,
             baseboard = NEW.baseboard,
             processor = NEW.processor,
             memory = NEW.memory
-        WHERE resources_cache.node_id = (
+        WHERE nodex.node_id = (
             SELECT node_id from node where node.twin_id = NEW.node_twin_id
         );
     EXCEPTION
@@ -428,7 +428,7 @@ BEGIN
                 SQLERRM,
                 jsonb_build_object('node_twin_id', NEW.node_twin_id)
             );
-            RAISE WARNING 'Error updating resources_cache dmi fields: %', SQLERRM;
+                RAISE WARNING 'Error updating nodex dmi fields: %', SQLERRM;
     END; 
 RETURN NULL;
 END;
@@ -450,7 +450,7 @@ CREATE OR REPLACE FUNCTION reflect_speed_changes() RETURNS TRIGGER AS
 $$ 
 BEGIN
     BEGIN
-        UPDATE resources_cache
+        UPDATE nodex
         SET upload_speed = NEW.upload,
             download_speed = NEW.download,
             udp_download_ipv4 = NEW.udp_download_ipv4,
@@ -459,7 +459,7 @@ BEGIN
             tcp_upload_ipv6 = NEW.tcp_upload_ipv6,
             udp_download_ipv6 = NEW.udp_download_ipv6,
             udp_upload_ipv6 = NEW.udp_upload_ipv6
-        WHERE resources_cache.node_id = (
+        WHERE nodex.node_id = (
             SELECT node_id from node where node.twin_id = NEW.node_twin_id
         );
     EXCEPTION
@@ -472,7 +472,7 @@ BEGIN
                 SQLERRM,
                 jsonb_build_object('node_twin_id', NEW.node_twin_id)
             );
-            RAISE WARNING 'Error updating resources_cache speed fields: %', SQLERRM;
+                RAISE WARNING 'Error updating nodex speed fields: %', SQLERRM;
     END; 
 RETURN NULL;
 END;
@@ -493,12 +493,12 @@ CREATE OR REPLACE FUNCTION reflect_cpu_benchmark_changes() RETURNS TRIGGER AS
 $$ 
 BEGIN
     BEGIN
-        UPDATE resources_cache
+        UPDATE nodex
         SET single_threaded_cpu = NEW.single_threaded,
             multi_threaded_cpu = NEW.multi_threaded,
             threads_cpu = NEW.threads,
             workloads_cpu = NEW.workloads
-        WHERE resources_cache.node_id = (
+        WHERE nodex.node_id = (
             SELECT node_id from node where node.twin_id = NEW.node_twin_id
         );
     EXCEPTION
@@ -511,7 +511,7 @@ BEGIN
                 SQLERRM,
                 jsonb_build_object('node_twin_id', NEW.node_twin_id)
             );
-            RAISE WARNING 'Error updating resources_cache cpu_benchmark fields: %', SQLERRM;
+                RAISE WARNING 'Error updating nodex cpu_benchmark fields: %', SQLERRM;
     END; 
 RETURN NULL;
 END;
@@ -524,7 +524,7 @@ CREATE OR REPLACE TRIGGER tg_cpu_benchmark
 /*
  * reflect_public_ip_changes
  * 
- * Updates public_ips_cache when public_ip changes.
+ * Updates farmx when public_ip changes.
  * Tracks free_ips (contract_id = 0) and total_ips, re-aggregates IP JSON.
  * 
  * Logic:
@@ -539,7 +539,7 @@ $$
 BEGIN
 
     BEGIN 
-        UPDATE public_ips_cache
+        UPDATE farmx
         SET free_ips = free_ips + (
                 CASE 
                 -- handles insertion/update by freeing ip
@@ -582,7 +582,7 @@ BEGIN
                 from public_ip where farm_id = COALESCE(NEW.farm_id, OLD.farm_id)
             )
         WHERE
-            public_ips_cache.farm_id = (
+            farmx.farm_id = (
                 SELECT farm_id FROM farm WHERE farm.id = COALESCE(NEW.farm_id, OLD.farm_id)
             );
     EXCEPTION
@@ -614,7 +614,7 @@ CREATE OR REPLACE TRIGGER tg_public_ip
 /*
  * reflect_farm_changes
  * 
- * Maintains public_ips_cache when farms are inserted or deleted.
+ * Maintains farmx when farms are inserted or deleted.
  * 
  *   - INSERT: Creates empty cache entry (0 IPs)
  *   - DELETE: Removes farm from cache
@@ -624,7 +624,7 @@ $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         BEGIN
-            INSERT INTO public_ips_cache VALUES(
+            INSERT INTO farmx VALUES(
                 NEW.farm_id,
                 0,
                 0,
@@ -640,12 +640,12 @@ BEGIN
                     SQLERRM,
                     jsonb_build_object('farm_id', NEW.farm_id)
                 );
-                RAISE WARNING 'Error inserting public_ips_cache record: %', SQLERRM;
+                RAISE WARNING 'Error inserting farmx record: %', SQLERRM;
         END;
 
     ELSIF (TG_OP = 'DELETE') THEN
         BEGIN
-            DELETE FROM public_ips_cache WHERE public_ips_cache.farm_id = OLD.farm_id;
+            DELETE FROM farmx WHERE farmx.farm_id = OLD.farm_id;
         EXCEPTION
             WHEN OTHERS THEN
                 PERFORM log_cache_error(
@@ -656,7 +656,7 @@ BEGIN
                     SQLERRM,
                     jsonb_build_object('farm_id', OLD.farm_id)
                 );
-                RAISE WARNING 'Error deleting public_ips_cache record: %', SQLERRM;
+                RAISE WARNING 'Error deleting farmx record: %', SQLERRM;
         END; 
     END IF;
 

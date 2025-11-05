@@ -5,7 +5,7 @@
 -- These tables are automatically maintained by triggers.
 
 /*
- * resources_cache
+ * nodex
  * 
  * Materialized cache table storing pre-computed node resource information.
  * This table is automatically maintained by triggers when source data changes.
@@ -16,8 +16,8 @@
  *   - GPU information stored as JSONB array
  *   - Indexed on node_id (primary key) and farm_id for fast lookups
  */
-DROP TABLE IF EXISTS resources_cache;
-CREATE TABLE IF NOT EXISTS resources_cache(
+DROP TABLE IF EXISTS nodex;
+CREATE TABLE IF NOT EXISTS nodex(
     node_id INTEGER PRIMARY KEY,
     farm_id INTEGER NOT NULL,
     total_hru NUMERIC NOT NULL,
@@ -72,20 +72,20 @@ CREATE TABLE IF NOT EXISTS resources_cache(
 );
 
 -- Populate cache table from view
-INSERT INTO resources_cache 
+INSERT INTO nodex 
 SELECT * 
-FROM resources_cache_view;
+FROM nodex_view;
 
 /*
- * public_ips_cache
+ * farmx
  * 
  * Materialized cache table storing aggregated public IP information per farm.
  * Tracks total IPs, free IPs (contract_id = 0), and IP details as JSONB.
  * 
  * Automatically maintained by triggers when public_ip table changes.
  */
-DROP TABLE IF EXISTS public_ips_cache;
-CREATE TABLE public_ips_cache(
+DROP TABLE IF EXISTS farmx;
+CREATE TABLE farmx(
     farm_id INTEGER PRIMARY KEY,
     free_ips INTEGER NOT NULL,      -- Count of IPs with contract_id = 0
     total_ips INTEGER NOT NULL,    -- Total IPs assigned to farm
@@ -93,7 +93,7 @@ CREATE TABLE public_ips_cache(
 );
 
 -- Populate cache table with aggregated IP data
-INSERT INTO public_ips_cache
+INSERT INTO farmx
     SELECT
         farm.farm_id,
         COALESCE(public_ip_agg.free_ips, 0),

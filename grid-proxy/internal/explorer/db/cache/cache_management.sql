@@ -15,29 +15,29 @@
 CREATE OR REPLACE FUNCTION refresh_resources_cache_node(p_node_id INTEGER) RETURNS VOID AS
 $$
 BEGIN
-    DELETE FROM resources_cache WHERE node_id = p_node_id;
+    DELETE FROM nodex WHERE node_id = p_node_id;
     
-    INSERT INTO resources_cache
+    INSERT INTO nodex
     SELECT *
-    FROM resources_cache_view
-    WHERE resources_cache_view.node_id = p_node_id;
+    FROM nodex_view
+    WHERE nodex_view.node_id = p_node_id;
 END;
 $$ LANGUAGE plpgsql;
 
 /*
  * refresh_resources_cache
  * 
- * Refreshes entire resources_cache table from the view.
+ * Refreshes entire nodex table from the view.
  * Use after bulk operations or when cache inconsistencies are detected.
  * WARNING: This truncates the table and recalculates all rows.
  */
 CREATE OR REPLACE FUNCTION refresh_resources_cache() RETURNS VOID AS
 $$
 BEGIN
-    TRUNCATE resources_cache;
-    INSERT INTO resources_cache
+    TRUNCATE nodex;
+    INSERT INTO nodex
     SELECT *
-    FROM resources_cache_view;
+    FROM nodex_view;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -51,9 +51,9 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION refresh_public_ips_cache_farm(p_farm_id INTEGER) RETURNS VOID AS
 $$
 BEGIN
-    DELETE FROM public_ips_cache WHERE farm_id = p_farm_id;
+    DELETE FROM farmx WHERE farm_id = p_farm_id;
     
-    INSERT INTO public_ips_cache
+    INSERT INTO farmx
     SELECT
         farm.farm_id,
         COALESCE(public_ip_agg.free_ips, 0),
@@ -77,16 +77,16 @@ $$ LANGUAGE plpgsql;
 /*
  * refresh_public_ips_cache
  * 
- * Refreshes entire public_ips_cache table from source.
+ * Refreshes entire farmx table from source.
  * Use after bulk IP operations or when cache inconsistencies are detected.
  * WARNING: This truncates the table and recalculates all rows.
  */
 CREATE OR REPLACE FUNCTION refresh_public_ips_cache() RETURNS VOID AS
 $$
 BEGIN
-    TRUNCATE public_ips_cache;
+    TRUNCATE farmx;
     
-    INSERT INTO public_ips_cache
+    INSERT INTO farmx
     SELECT
         farm.farm_id,
         COALESCE(public_ip_agg.free_ips, 0),
@@ -121,8 +121,8 @@ DECLARE
 BEGIN
     SELECT COUNT(*)
     INTO mismatch_count
-    FROM resources_cache rc
-    FULL OUTER JOIN resources_cache_view rcv ON rc.node_id = rcv.node_id
+    FROM nodex rc
+    FULL OUTER JOIN nodex_view rcv ON rc.node_id = rcv.node_id
     WHERE rc.node_id IS NULL OR rcv.node_id IS NULL
        OR rc.total_hru != rcv.total_hru
        OR rc.total_mru != rcv.total_mru
