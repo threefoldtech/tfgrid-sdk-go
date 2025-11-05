@@ -32,41 +32,45 @@ var (
 	ErrContractNotFound = errors.New("contract not found")
 )
 
-//go:embed setup/00_constants.sql
-var setupConstants string
+//go:embed cache/constants.sql
+var cacheConstants string
 
-//go:embed setup/00_error_logging.sql
-var setupErrorLogging string
+//go:embed cache/error_logging.sql
+var cacheErrorLogging string
 
-//go:embed setup/01_functions.sql
-var setupFunctions string
+//go:embed cache/functions.sql
+var cacheFunctions string
 
-//go:embed setup/02_views.sql
-var setupViews string
+//go:embed cache/views.sql
+var cacheViews string
 
-//go:embed setup/03_cache_tables.sql
-var setupCacheTables string
+//go:embed cache/cache_tables.sql
+var cacheCacheTables string
 
-//go:embed setup/04_indexes.sql
-var setupIndexes string
+//go:embed cache/indexes.sql
+var cacheIndexes string
 
-//go:embed setup/05_triggers.sql
-var setupTriggers string
+//go:embed cache/triggers.sql
+var cacheTriggers string
 
-//go:embed setup/06_cache_management.sql
-var setupCacheManagement string
+//go:embed cache/cache_management.sql
+var cacheCacheManagement string
 
-// setupFile combines all setup modules in order
-var setupFile = func() string {
+//go:embed cache/helpers.sql
+var cacheHelpers string
+
+// cacheFile combines all cache modules in order
+var cacheFile = func() string {
 	return "BEGIN;\n\n" +
-		setupConstants + "\n\n" +
-		setupErrorLogging + "\n\n" +
-		setupFunctions + "\n\n" +
-		setupViews + "\n\n" +
-		setupCacheTables + "\n\n" +
-		setupIndexes + "\n\n" +
-		setupTriggers + "\n\n" +
-		setupCacheManagement + "\n\n" +
+		cacheConstants + "\n\n" +
+		cacheErrorLogging + "\n\n" +
+		cacheFunctions + "\n\n" +
+		cacheViews + "\n\n" +
+		cacheCacheTables + "\n\n" +
+		cacheIndexes + "\n\n" +
+		cacheTriggers + "\n\n" +
+		cacheCacheManagement + "\n\n" +
+		cacheHelpers + "\n\n" +
 		"COMMIT;"
 }()
 
@@ -195,8 +199,8 @@ func (d *PostgresDatabase) Initialize() error {
 		return errors.Wrap(err, "failed to migrate indexer tables")
 	}
 
-	if err := d.gormDB.Exec(setupFile).Error; err != nil {
-		return errors.Wrap(err, "failed to setup cache tables")
+	if err := d.gormDB.Exec(cacheFile).Error; err != nil {
+		return errors.Wrap(err, "failed to setup cache")
 	}
 
 	if err := d.gormDB.Exec(`ALTER TABLE node_gpu DROP CONSTRAINT IF EXISTS node_gpu_pkey;`).Error; err != nil {
