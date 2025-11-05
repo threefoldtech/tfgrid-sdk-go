@@ -61,9 +61,9 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     price_usd NUMERIC GENERATED ALWAYS AS (
         calc_price(
             total_cru,
-            total_sru / (1024 * 1024 * 1024),  -- Convert bytes to GB
-            total_hru / (1024 * 1024 * 1024),  -- Convert bytes to GB
-            total_mru / (1024 * 1024 * 1024),  -- Convert bytes to GB
+            total_sru / get_bytes_per_gb(),  -- Convert bytes to GB
+            total_hru / get_bytes_per_gb(),  -- Convert bytes to GB
+            total_mru / get_bytes_per_gb(),  -- Convert bytes to GB
             certified,
             policy_id,
             extra_fee

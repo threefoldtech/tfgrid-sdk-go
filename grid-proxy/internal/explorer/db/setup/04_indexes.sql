@@ -25,3 +25,9 @@ CREATE INDEX IF NOT EXISTS idx_public_ips_cache_farm_id ON public_ips_cache(farm
 CREATE INDEX IF NOT EXISTS idx_location_id ON location USING gin(id);
 CREATE INDEX IF NOT EXISTS idx_public_config_node_id ON public_config USING gin(node_id);
 
+-- Indexes for error logging table
+CREATE INDEX IF NOT EXISTS idx_cache_errors_timestamp ON cache_errors(error_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_cache_errors_type ON cache_errors(error_type);
+CREATE INDEX IF NOT EXISTS idx_cache_errors_resolved ON cache_errors(resolved) WHERE resolved = FALSE;
+CREATE INDEX IF NOT EXISTS idx_cache_errors_table ON cache_errors(table_name);
+

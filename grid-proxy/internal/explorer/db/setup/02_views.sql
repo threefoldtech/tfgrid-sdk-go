@@ -33,16 +33,16 @@ SELECT
     -- Free resources = Total - Used - Reserved
     -- HRU: No reserved amount
     COALESCE(node_resources_total.hru, 0) - COALESCE(sum(contract_resources.hru), 0) as free_hru,
-    -- MRU: Reserved amount is MRU/10, minimum 2GB (2147483648 bytes)
-    COALESCE(node_resources_total.mru, 0) - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as free_mru,
-    -- SRU: Fixed reservation of 20GB (21474836480 bytes)
-    COALESCE(node_resources_total.sru, 0) - COALESCE(sum(contract_resources.sru), 0) - 21474836480 as free_sru,
+    -- MRU: Reserved amount is MRU/get_mru_reserved_fraction(), minimum get_mru_reserved_min_bytes()
+    COALESCE(node_resources_total.mru, 0) - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) as free_mru,
+    -- SRU: Fixed reservation of get_sru_reserved_bytes()
+    COALESCE(node_resources_total.sru, 0) - COALESCE(sum(contract_resources.sru), 0) - get_sru_reserved_bytes() as free_sru,
     -- Used resources from active contracts
     COALESCE(sum(contract_resources.hru), 0) as used_hru,
     -- MRU used includes reserved amount
-    COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / 10) AS bigint), 2147483648) as used_mru,
+    COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) as used_mru,
     -- SRU used includes fixed reservation
-    COALESCE(sum(contract_resources.sru), 0) + 21474836480 as used_sru,
+    COALESCE(sum(contract_resources.sru), 0) + get_sru_reserved_bytes() as used_sru,
     COALESCE(sum(contract_resources.cru), 0) as used_cru,
     rent_contract.twin_id as renter,
     rent_contract.contract_id as rent_contract_id,

@@ -22,6 +22,14 @@ BEGIN
             WHERE resources_cache_view.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
+                PERFORM log_cache_error(
+                    'reflect_node_changes',
+                    'INSERT',
+                    'node',
+                    NEW.node_id::TEXT,
+                    SQLERRM,
+                    jsonb_build_object('node_id', NEW.node_id, 'farm_id', NEW.farm_id)
+                );
                 RAISE WARNING 'Error inserting resources_cache: %', SQLERRM;
         END;
     
@@ -30,6 +38,14 @@ BEGIN
             DELETE FROM resources_cache WHERE node_id = OLD.node_id;
         EXCEPTION
             WHEN OTHERS THEN
+                PERFORM log_cache_error(
+                    'reflect_node_changes',
+                    'DELETE',
+                    'node',
+                    OLD.node_id::TEXT,
+                    SQLERRM,
+                    jsonb_build_object('node_id', OLD.node_id)
+                );
                 RAISE WARNING 'Error deleting node from resources_cache: %', SQLERRM;
         END;
     END IF;
@@ -66,24 +82,39 @@ BEGIN
             total_mru = NEW.mru,
             total_sru = NEW.sru,
             total_hru = NEW.hru,
-            -- MRU: Adjust for reserved amount change (MRU/10, min 2GB) + total change
-            -- Reserved amount: GREATEST(MRU/10, 2147483648) = max(MRU/10, 2GB)
-            free_mru = free_mru + GREATEST(CAST((OLD.mru / 10) AS bigint), 2147483648) -
-                                    GREATEST(CAST((NEW.mru / 10) AS bigint), 2147483648) + 
+            -- MRU: Adjust for reserved amount change + total change
+            -- Reserved amount: GREATEST(MRU/get_mru_reserved_fraction(), get_mru_reserved_min_bytes())
+            free_mru = free_mru + GREATEST(CAST((OLD.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) -
+                                    GREATEST(CAST((NEW.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) + 
                                     (NEW.mru - COALESCE(OLD.mru, 0)),
             -- HRU: Simple incremental update
             free_hru = free_hru + (NEW.hru - COALESCE(OLD.hru, 0)),
             -- SRU: Simple incremental update
             free_sru = free_sru + (NEW.sru - COALESCE(OLD.sru, 0)),
             -- MRU used: Adjust reserved amount (used includes reserved)
-            used_mru = used_mru - GREATEST(CAST((OLD.mru / 10) AS bigint), 2147483648) +
-                                    GREATEST(CAST((NEW.mru / 10) AS bigint), 2147483648)
+            used_mru = used_mru - GREATEST(CAST((OLD.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) +
+                                    GREATEST(CAST((NEW.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes())
         WHERE
             resources_cache.node_id = (
                 SELECT node.node_id FROM node WHERE node.id = NEW.node_id
             );
     EXCEPTION
         WHEN OTHERS THEN
+            PERFORM log_cache_error(
+                'reflect_total_resources_changes',
+                TG_OP,
+                'node_resources_total',
+                COALESCE(NEW.node_id, OLD.node_id)::TEXT,
+                SQLERRM,
+                jsonb_build_object(
+                    'old_mru', OLD.mru,
+                    'new_mru', NEW.mru,
+                    'old_hru', OLD.hru,
+                    'new_hru', NEW.hru,
+                    'old_sru', OLD.sru,
+                    'new_sru', NEW.sru
+                )
+            );
             RAISE WARNING 'Error reflecting total_resources changes: %', SQLERRM;
     END;    
     RETURN NULL;
@@ -127,6 +158,14 @@ BEGIN
                 );
         EXCEPTION
             WHEN OTHERS THEN
+                PERFORM log_cache_error(
+                    'reflect_contract_resources_changes',
+                    'DELETE',
+                    'contract_resources',
+                    OLD.contract_id::TEXT,
+                    SQLERRM,
+                    jsonb_build_object('contract_id', OLD.contract_id, 'cru', OLD.cru, 'mru', OLD.mru, 'sru', OLD.sru, 'hru', OLD.hru)
+                );
                 RAISE WARNING 'Error reflecting contract_resources DELETE: %', SQLERRM;
         END;
     ELSE
@@ -148,6 +187,14 @@ BEGIN
                 );
         EXCEPTION
             WHEN OTHERS THEN
+                PERFORM log_cache_error(
+                    'reflect_contract_resources_changes',
+                    TG_OP,
+                    'contract_resources',
+                    NEW.contract_id::TEXT,
+                    SQLERRM,
+                    jsonb_build_object('contract_id', NEW.contract_id, 'cru', NEW.cru, 'mru', NEW.mru, 'sru', NEW.sru, 'hru', NEW.hru)
+                );
                 RAISE WARNING 'Error reflecting contract_resources changes: %', SQLERRM;
         END;
     END IF;
@@ -201,6 +248,14 @@ BEGIN
                 AND resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
+                PERFORM log_cache_error(
+                    'reflect_node_contract_changes',
+                    'UPDATE',
+                    'node_contract',
+                    NEW.id::TEXT,
+                    SQLERRM,
+                    jsonb_build_object('contract_id', NEW.id, 'node_id', NEW.node_id, 'state', NEW.state)
+                );
                 RAISE WARNING 'Error reflecting node_contract updates: %', SQLERRM;
         END;
 
@@ -216,6 +271,14 @@ BEGIN
             WHERE resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
+                PERFORM log_cache_error(
+                    'reflect_node_contract_changes',
+                    'INSERT',
+                    'node_contract',
+                    NEW.id::TEXT,
+                    SQLERRM,
+                    jsonb_build_object('contract_id', NEW.id, 'node_id', NEW.node_id)
+                );
                 RAISE WARNING 'Error calculating node_contracts_count: %', SQLERRM;
         END; 
     END IF;
@@ -260,6 +323,14 @@ BEGIN
         );
     EXCEPTION
         WHEN OTHERS THEN
+            PERFORM log_cache_error(
+                'reflect_node_gpu_count_change',
+                TG_OP,
+                'node_gpu',
+                COALESCE(NEW.id, OLD.id)::TEXT,
+                SQLERRM,
+                jsonb_build_object('node_twin_id', COALESCE(NEW.node_twin_id, OLD.node_twin_id))
+            );
             RAISE WARNING 'Error updating resources_cache gpu fields: %', SQLERRM;
     END;
 RETURN NULL;
@@ -290,6 +361,14 @@ BEGIN
                 resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
+                PERFORM log_cache_error(
+                    'reflect_rent_contract_changes',
+                    'UPDATE',
+                    'rent_contract',
+                    NEW.contract_id::TEXT,
+                    SQLERRM,
+                    jsonb_build_object('contract_id', NEW.contract_id, 'node_id', NEW.node_id, 'state', NEW.state)
+                );
                 RAISE WARNING 'Error removing resources_cache rent fields: %', SQLERRM;
         END; 
     ELSIF (TG_OP = 'INSERT') THEN
@@ -301,6 +380,14 @@ BEGIN
                 resources_cache.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
+                PERFORM log_cache_error(
+                    'reflect_rent_contract_changes',
+                    'INSERT',
+                    'rent_contract',
+                    NEW.contract_id::TEXT,
+                    SQLERRM,
+                    jsonb_build_object('contract_id', NEW.contract_id, 'node_id', NEW.node_id, 'twin_id', NEW.twin_id)
+                );
                 RAISE WARNING 'Error reflecting rent_contract changes: %', SQLERRM;
         END; 
     END IF;
@@ -333,6 +420,14 @@ BEGIN
         );
     EXCEPTION
         WHEN OTHERS THEN
+            PERFORM log_cache_error(
+                'reflect_dmi_changes',
+                TG_OP,
+                'dmi',
+                NULL,
+                SQLERRM,
+                jsonb_build_object('node_twin_id', NEW.node_twin_id)
+            );
             RAISE WARNING 'Error updating resources_cache dmi fields: %', SQLERRM;
     END; 
 RETURN NULL;
@@ -369,6 +464,14 @@ BEGIN
         );
     EXCEPTION
         WHEN OTHERS THEN
+            PERFORM log_cache_error(
+                'reflect_speed_changes',
+                TG_OP,
+                'speed',
+                NULL,
+                SQLERRM,
+                jsonb_build_object('node_twin_id', NEW.node_twin_id)
+            );
             RAISE WARNING 'Error updating resources_cache speed fields: %', SQLERRM;
     END; 
 RETURN NULL;
@@ -400,6 +503,14 @@ BEGIN
         );
     EXCEPTION
         WHEN OTHERS THEN
+            PERFORM log_cache_error(
+                'reflect_cpu_benchmark_changes',
+                TG_OP,
+                'cpu_benchmark',
+                NULL,
+                SQLERRM,
+                jsonb_build_object('node_twin_id', NEW.node_twin_id)
+            );
             RAISE WARNING 'Error updating resources_cache cpu_benchmark fields: %', SQLERRM;
     END; 
 RETURN NULL;
@@ -476,6 +587,18 @@ BEGIN
             );
     EXCEPTION
         WHEN OTHERS THEN
+            PERFORM log_cache_error(
+                'reflect_public_ip_changes',
+                TG_OP,
+                'public_ip',
+                COALESCE(NEW.id, OLD.id)::TEXT,
+                SQLERRM,
+                jsonb_build_object(
+                    'farm_id', COALESCE(NEW.farm_id, OLD.farm_id),
+                    'contract_id_old', OLD.contract_id,
+                    'contract_id_new', NEW.contract_id
+                )
+            );
             RAISE WARNING 'Error reflecting public_ips changes: %', SQLERRM;
     END;
 
@@ -509,6 +632,14 @@ BEGIN
             );
         EXCEPTION
             WHEN OTHERS THEN
+                PERFORM log_cache_error(
+                    'reflect_farm_changes',
+                    'INSERT',
+                    'farm',
+                    NEW.farm_id::TEXT,
+                    SQLERRM,
+                    jsonb_build_object('farm_id', NEW.farm_id)
+                );
                 RAISE WARNING 'Error inserting public_ips_cache record: %', SQLERRM;
         END;
 
@@ -517,6 +648,14 @@ BEGIN
             DELETE FROM public_ips_cache WHERE public_ips_cache.farm_id = OLD.farm_id;
         EXCEPTION
             WHEN OTHERS THEN
+                PERFORM log_cache_error(
+                    'reflect_farm_changes',
+                    'DELETE',
+                    'farm',
+                    OLD.farm_id::TEXT,
+                    SQLERRM,
+                    jsonb_build_object('farm_id', OLD.farm_id)
+                );
                 RAISE WARNING 'Error deleting public_ips_cache record: %', SQLERRM;
         END; 
     END IF;

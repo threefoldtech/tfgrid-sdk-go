@@ -156,3 +156,42 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ============================================================================
+-- AUTOMATED CACHE REFRESH SCHEDULING
+-- ============================================================================
+-- Schedule automatic cache refresh using pg_cron extension.
+-- The cache will be refreshed daily at midnight (00:00:00).
+
+-- Install pg_cron extension if not already installed
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+-- Schedule nightly cache refresh at midnight (00:00:00)
+-- Cron expression: '0 0 * * *' = every day at 00:00:00 (midnight)
+-- This will call refresh_all_caches() every night
+DO $$
+DECLARE
+    job_id INTEGER;
+BEGIN
+    -- Check if job already exists and unschedule it (idempotent)
+    SELECT jobid INTO job_id
+    FROM cron.job
+    WHERE jobname = 'refresh-cache-nightly';
+    
+    IF job_id IS NOT NULL THEN
+        PERFORM cron.unschedule(job_id);
+        RAISE NOTICE 'Removed existing cache refresh schedule';
+    END IF;
+    
+    -- Schedule the nightly refresh
+    PERFORM cron.schedule(
+        'refresh-cache-nightly',           -- Job name
+        '0 0 * * *',                       -- Cron: Every day at midnight (00:00:00)
+        $$SELECT refresh_all_caches()$$    -- SQL to execute
+    );
+    
+    RAISE NOTICE 'Scheduled cache refresh: Daily at midnight (00:00:00)';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE WARNING 'Failed to schedule cache refresh: %. pg_cron extension may not be available or may require superuser privileges.', SQLERRM;
+END $$;
+

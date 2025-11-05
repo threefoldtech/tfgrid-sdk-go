@@ -53,13 +53,23 @@ CREATE OR REPLACE FUNCTION calc_discount(
 ) RETURNS NUMERIC AS $$
 DECLARE
     discount NUMERIC;
+    -- Discount tier multipliers
+    discount_tier_18x CONSTANT NUMERIC := 18;
+    discount_tier_6x CONSTANT NUMERIC := 6;
+    discount_tier_3x CONSTANT NUMERIC := 3;
+    discount_tier_1_5x CONSTANT NUMERIC := 1.5;
+    -- Discount percentages
+    discount_60_pct CONSTANT NUMERIC := 0.6;
+    discount_40_pct CONSTANT NUMERIC := 0.4;
+    discount_30_pct CONSTANT NUMERIC := 0.3;
+    discount_20_pct CONSTANT NUMERIC := 0.2;
 BEGIN
     discount := (
         CASE 
-            WHEN balance >= cost * 18 THEN 0.6
-            WHEN balance >= cost * 6 THEN 0.4
-            WHEN balance >= cost * 3 THEN 0.3
-            WHEN balance >= cost * 1.5 THEN 0.2
+            WHEN balance >= cost * discount_tier_18x THEN discount_60_pct
+            WHEN balance >= cost * discount_tier_6x THEN discount_40_pct
+            WHEN balance >= cost * discount_tier_3x THEN discount_30_pct
+            WHEN balance >= cost * discount_tier_1_5x THEN discount_20_pct
             ELSE 0
         END
     );
@@ -122,19 +132,17 @@ BEGIN
         GREATEST(mru / 2, cru / 4)
     );
 
-    -- Compute SU: Storage Unit = HRU/1200 + SRU/200
-    -- Conversion factors: HRU uses 1200, SRU uses 200
-    su := (hru / 1200 + sru / 200);
+    -- Compute SU: Storage Unit = HRU/HRU_TO_SU_FACTOR + SRU/SRU_TO_SU_FACTOR
+    su := (hru / get_hru_to_su_factor() + sru / get_sru_to_su_factor());
 
     -- Calculate monthly cost:
-    --   (CU * CU_price + SU * SU_price + extra_fee) * certified_multiplier * days_per_month
-    --   Certified nodes have 25% premium (multiplier = 1.25)
+    --   (CU * CU_price + SU * SU_price + extra_fee) * certified_multiplier * hours_per_month
     cost_per_month := (cu * cu_value + su * su_value + extra_fee) *
-        (CASE certified WHEN true THEN 1.25 ELSE 1 END) *
-        (24 * 30);  -- 24 hours * 30 days
+        (CASE certified WHEN true THEN get_certified_multiplier() ELSE 1 END) *
+        get_hours_per_month();
 
-    -- Convert to USD (divide by 1e7)
-    RETURN cost_per_month / 10000000;
+    -- Convert to USD (divide by conversion factor)
+    RETURN cost_per_month / get_usd_conversion_factor();
 END;
 $$ LANGUAGE plpgsql STABLE;
 

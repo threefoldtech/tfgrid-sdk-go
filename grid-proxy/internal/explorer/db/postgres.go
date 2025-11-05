@@ -32,6 +32,12 @@ var (
 	ErrContractNotFound = errors.New("contract not found")
 )
 
+//go:embed setup/00_constants.sql
+var setupConstants string
+
+//go:embed setup/00_error_logging.sql
+var setupErrorLogging string
+
 //go:embed setup/01_functions.sql
 var setupFunctions string
 
@@ -53,6 +59,8 @@ var setupCacheManagement string
 // setupFile combines all setup modules in order
 var setupFile = func() string {
 	return "BEGIN;\n\n" +
+		setupConstants + "\n\n" +
+		setupErrorLogging + "\n\n" +
 		setupFunctions + "\n\n" +
 		setupViews + "\n\n" +
 		setupCacheTables + "\n\n" +
