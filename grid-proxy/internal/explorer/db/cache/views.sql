@@ -1,27 +1,8 @@
--- ============================================================================
--- VIEWS
--- ============================================================================
--- Base views that define the structure of cached data.
--- These views are used to populate and validate cache tables.
+-- Base views for cache table structure
 
--- Clean up legacy triggers
 DROP TRIGGER IF EXISTS node_added ON node;
 DROP VIEW IF EXISTS nodex_view;
 
-/*
- * nodex_view
- * 
- * Comprehensive view aggregating all node resource information for caching.
- * 
- * Calculates:
- *   - Total resources: from node_resources_total
- *   - Used resources: sum of contract_resources for active contracts
- *   - Free resources: total - used - reserved amounts
- *   - Reserved amounts: MRU/10 (min 2GB), SRU has fixed 20GB reservation
- *   - Node metadata: country, DMI info, speed tests, CPU benchmarks, GPUs
- *   - Contract counts: active contracts (Created, GracePeriod states only)
- *   - Rent info: current renter and rent contract ID
- */
 CREATE OR REPLACE VIEW nodex_view AS
 SELECT
     node.node_id as node_id,
@@ -30,18 +11,11 @@ SELECT
     COALESCE(node_resources_total.mru, 0) as total_mru,
     COALESCE(node_resources_total.sru, 0) as total_sru,
     COALESCE(node_resources_total.cru, 0) as total_cru,
-    -- Free resources = Total - Used - Reserved
-    -- HRU: No reserved amount
     COALESCE(node_resources_total.hru, 0) - COALESCE(sum(contract_resources.hru), 0) as free_hru,
-    -- MRU: Reserved amount is MRU/get_mru_reserved_fraction(), minimum get_mru_reserved_min_bytes()
     COALESCE(node_resources_total.mru, 0) - COALESCE(sum(contract_resources.mru), 0) - GREATEST(CAST((node_resources_total.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) as free_mru,
-    -- SRU: Fixed reservation of get_sru_reserved_bytes()
     COALESCE(node_resources_total.sru, 0) - COALESCE(sum(contract_resources.sru), 0) - get_sru_reserved_bytes() as free_sru,
-    -- Used resources from active contracts
     COALESCE(sum(contract_resources.hru), 0) as used_hru,
-    -- MRU used includes reserved amount
     COALESCE(sum(contract_resources.mru), 0) + GREATEST(CAST((node_resources_total.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) as used_mru,
-    -- SRU used includes fixed reservation
     COALESCE(sum(contract_resources.sru), 0) + get_sru_reserved_bytes() as used_sru,
     COALESCE(sum(contract_resources.cru), 0) as used_cru,
     rent_contract.twin_id as renter,
@@ -78,7 +52,6 @@ FROM node
     LEFT JOIN cpu_benchmark ON node.twin_id = cpu_benchmark.node_twin_id
     LEFT JOIN dmi ON node.twin_id = dmi.node_twin_id
     LEFT JOIN farm ON farm.farm_id = node.farm_id
-    -- Aggregate GPU information per node
     LEFT JOIN(
         SELECT
             g1.node_twin_id,

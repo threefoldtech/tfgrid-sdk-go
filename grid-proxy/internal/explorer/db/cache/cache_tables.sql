@@ -1,21 +1,5 @@
--- ============================================================================
--- CACHE TABLES
--- ============================================================================
--- Materialized cache tables that store pre-computed data for fast queries.
--- These tables are automatically maintained by triggers.
+-- Cache tables for pre-computed data
 
-/*
- * nodex
- * 
- * Materialized cache table storing pre-computed node resource information.
- * This table is automatically maintained by triggers when source data changes.
- * 
- * Key features:
- *   - price_usd is a generated column using calc_price() function
- *   - All resource amounts are stored in bytes
- *   - GPU information stored as JSONB array
- *   - Indexed on node_id (primary key) and farm_id for fast lookups
- */
 DROP TABLE IF EXISTS nodex;
 CREATE TABLE IF NOT EXISTS nodex(
     node_id INTEGER PRIMARY KEY,
@@ -56,14 +40,12 @@ CREATE TABLE IF NOT EXISTS nodex(
     extra_fee NUMERIC,
     gpus jsonb,
     node_gpu_count INTEGER NOT NULL,
-    -- Generated column: automatically calculates price in USD
-    -- Converts resource amounts from bytes to GB for calc_price function
     price_usd NUMERIC GENERATED ALWAYS AS (
         calc_price(
             total_cru,
-            total_sru / get_bytes_per_gb(),  -- Convert bytes to GB
-            total_hru / get_bytes_per_gb(),  -- Convert bytes to GB
-            total_mru / get_bytes_per_gb(),  -- Convert bytes to GB
+            total_sru / get_bytes_per_gb(),
+            total_hru / get_bytes_per_gb(),
+            total_mru / get_bytes_per_gb(),
             certified,
             policy_id,
             extra_fee
@@ -71,28 +53,18 @@ CREATE TABLE IF NOT EXISTS nodex(
     ) STORED
 );
 
--- Populate cache table from view
 INSERT INTO nodex 
 SELECT * 
 FROM nodex_view;
 
-/*
- * farmx
- * 
- * Materialized cache table storing aggregated public IP information per farm.
- * Tracks total IPs, free IPs (contract_id = 0), and IP details as JSONB.
- * 
- * Automatically maintained by triggers when public_ip table changes.
- */
 DROP TABLE IF EXISTS farmx;
 CREATE TABLE farmx(
     farm_id INTEGER PRIMARY KEY,
-    free_ips INTEGER NOT NULL,      -- Count of IPs with contract_id = 0
-    total_ips INTEGER NOT NULL,    -- Total IPs assigned to farm
-    ips jsonb                       -- JSON array of all IPs with details
+    free_ips INTEGER NOT NULL,
+    total_ips INTEGER NOT NULL,
+    ips jsonb
 );
 
--- Populate cache table with aggregated IP data
 INSERT INTO farmx
     SELECT
         farm.farm_id,

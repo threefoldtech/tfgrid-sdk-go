@@ -1,17 +1,5 @@
--- ============================================================================
--- CACHE MANAGEMENT FUNCTIONS
--- ============================================================================
--- Functions for manual cache refresh and validation.
--- Use these to fix inconsistencies or refresh after bulk operations.
+-- Cache management functions for manual refresh and validation
 
-/*
- * refresh_resources_cache_node
- * 
- * Refreshes cache for a single node by recalculating from the view.
- * Useful when cache becomes inconsistent for a specific node.
- * 
- * @param p_node_id - Node ID to refresh
- */
 CREATE OR REPLACE FUNCTION refresh_resources_cache_node(p_node_id INTEGER) RETURNS VOID AS
 $$
 BEGIN
@@ -24,13 +12,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-/*
- * refresh_resources_cache
- * 
- * Refreshes entire nodex table from the view.
- * Use after bulk operations or when cache inconsistencies are detected.
- * WARNING: This truncates the table and recalculates all rows.
- */
 CREATE OR REPLACE FUNCTION refresh_resources_cache() RETURNS VOID AS
 $$
 BEGIN
@@ -41,13 +22,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-/*
- * refresh_public_ips_cache_farm
- * 
- * Refreshes cache for a single farm by recalculating IP aggregations.
- * 
- * @param p_farm_id - Farm ID to refresh
- */
 CREATE OR REPLACE FUNCTION refresh_public_ips_cache_farm(p_farm_id INTEGER) RETURNS VOID AS
 $$
 BEGIN
@@ -74,13 +48,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-/*
- * refresh_public_ips_cache
- * 
- * Refreshes entire farmx table from source.
- * Use after bulk IP operations or when cache inconsistencies are detected.
- * WARNING: This truncates the table and recalculates all rows.
- */
 CREATE OR REPLACE FUNCTION refresh_public_ips_cache() RETURNS VOID AS
 $$
 BEGIN
@@ -106,14 +73,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-/*
- * validate_resources_cache
- * 
- * Validates cache consistency by comparing cache table with view.
- * Checks all resource fields for mismatches.
- * 
- * @returns INTEGER - Count of mismatched records (0 = cache is consistent)
- */
 CREATE OR REPLACE FUNCTION validate_resources_cache() RETURNS INTEGER AS
 $$
 DECLARE
@@ -141,13 +100,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-/*
- * refresh_all_caches
- * 
- * Convenience function to refresh all cache tables.
- * Calls refresh_resources_cache() and refresh_public_ips_cache().
- * WARNING: This truncates and recalculates all cache tables.
- */
 CREATE OR REPLACE FUNCTION refresh_all_caches() RETURNS VOID AS
 $$
 BEGIN
@@ -156,23 +108,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ============================================================================
--- AUTOMATED CACHE REFRESH SCHEDULING
--- ============================================================================
--- Schedule automatic cache refresh using pg_cron extension.
--- The cache will be refreshed daily at midnight (00:00:00).
-
--- Install pg_cron extension if not already installed
+-- Automated cache refresh scheduling with pg_cron
 CREATE EXTENSION IF NOT EXISTS pg_cron;
-
--- Schedule nightly cache refresh at midnight (00:00:00)
--- Cron expression: '0 0 * * *' = every day at 00:00:00 (midnight)
--- This will call refresh_all_caches() every night
 DO $$
 DECLARE
     job_id INTEGER;
 BEGIN
-    -- Check if job already exists and unschedule it (idempotent)
     SELECT jobid INTO job_id
     FROM cron.job
     WHERE jobname = 'refresh-cache-nightly';
@@ -182,11 +123,10 @@ BEGIN
         RAISE NOTICE 'Removed existing cache refresh schedule';
     END IF;
     
-    -- Schedule the nightly refresh
     PERFORM cron.schedule(
-        'refresh-cache-nightly',           -- Job name
-        '0 0 * * *',                       -- Cron: Every day at midnight (00:00:00)
-        $$SELECT refresh_all_caches()$$    -- SQL to execute
+        'refresh-cache-nightly',
+        '0 0 * * *',
+        $$SELECT refresh_all_caches()$$
     );
     
     RAISE NOTICE 'Scheduled cache refresh: Daily at midnight (00:00:00)';

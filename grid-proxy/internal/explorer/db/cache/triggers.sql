@@ -1,16 +1,5 @@
--- ============================================================================
--- TRIGGERS
--- ============================================================================
--- Trigger functions and triggers that automatically maintain cache tables
--- when source data changes. Each trigger handles a specific data type.
+-- Trigger functions for automatic cache maintenance
 
-/*
- * reflect_node_changes
- * 
- * Maintains nodex when nodes are inserted or deleted.
- *   - INSERT: Populates cache from view for new node
- *   - DELETE: Removes node from cache
- */
 CREATE OR REPLACE FUNCTION reflect_node_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
@@ -59,39 +48,21 @@ CREATE OR REPLACE TRIGGER tg_node
     ON node
     FOR EACH ROW EXECUTE PROCEDURE reflect_node_changes();
 
-/*
- * reflect_total_resources_changes
- * 
- * Updates cache when node_resources_total changes.
- * 
- * For MRU: Adjusts both the reserved amount (MRU/10, min 2GB) and the total change.
- *   - Reserved amount change: OLD.reserved - NEW.reserved
- *   - Total change: NEW.mru - OLD.mru
- *   - Combined: free_mru = free_mru + (OLD.reserved - NEW.reserved) + (NEW.mru - OLD.mru)
- * 
- * For HRU/SRU: Simple incremental update based on total change.
- */
 CREATE OR REPLACE FUNCTION reflect_total_resources_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
     BEGIN
         UPDATE nodex
         SET
-            -- Update total resources
             total_cru = NEW.cru,
             total_mru = NEW.mru,
             total_sru = NEW.sru,
             total_hru = NEW.hru,
-            -- MRU: Adjust for reserved amount change + total change
-            -- Reserved amount: GREATEST(MRU/get_mru_reserved_fraction(), get_mru_reserved_min_bytes())
             free_mru = free_mru + GREATEST(CAST((OLD.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) -
                                     GREATEST(CAST((NEW.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) + 
                                     (NEW.mru - COALESCE(OLD.mru, 0)),
-            -- HRU: Simple incremental update
             free_hru = free_hru + (NEW.hru - COALESCE(OLD.hru, 0)),
-            -- SRU: Simple incremental update
             free_sru = free_sru + (NEW.sru - COALESCE(OLD.sru, 0)),
-            -- MRU used: Adjust reserved amount (used includes reserved)
             used_mru = used_mru - GREATEST(CAST((OLD.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) +
                                     GREATEST(CAST((NEW.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes())
             WHERE
@@ -127,21 +98,11 @@ CREATE OR REPLACE TRIGGER tg_node_resources_total
 	EXECUTE PROCEDURE reflect_total_resources_changes();
 
 
-/*
- * reflect_contract_resources_changes
- * 
- * Updates cache when contract_resources change.
- * Only processes contracts in 'Created' or 'GracePeriod' states.
- * 
- *   - INSERT/UPDATE: Increments used, decrements free
- *   - DELETE: Decrements used, increments free
- */
 CREATE OR REPLACE FUNCTION reflect_contract_resources_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
     IF (TG_OP = 'DELETE') THEN
         BEGIN
-            -- Handle DELETE: decrement used resources and increment free resources
             UPDATE nodex
             SET used_cru = used_cru - OLD.cru,
                 used_mru = used_mru - OLD.mru,
@@ -169,7 +130,6 @@ BEGIN
                 RAISE WARNING 'Error reflecting contract_resources DELETE: %', SQLERRM;
         END;
     ELSE
-        -- Handle INSERT and UPDATE
         BEGIN
             UPDATE nodex
             SET used_cru = used_cru + (NEW.cru - COALESCE(OLD.cru, 0)),
@@ -206,21 +166,11 @@ CREATE OR REPLACE TRIGGER tg_contract_resources
     AFTER INSERT OR UPDATE OR DELETE ON contract_resources FOR EACH ROW 
     EXECUTE PROCEDURE reflect_contract_resources_changes();
 
-/*
- * reflect_node_contract_changes
- * 
- * Updates cache when node_contract state changes.
- * 
- *   - INSERT: Recalculates node_contracts_count (active contracts only)
- *   - UPDATE to 'Deleted': Releases contract resources and updates count
- *     Uses row locking to prevent concurrent update conflicts
- */
 CREATE OR REPLACE FUNCTION reflect_node_contract_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
     IF (TG_OP = 'UPDATE' AND NEW.state = 'Deleted') THEN
         BEGIN
-            -- Lock cache row to prevent concurrent updates during resource release
             PERFORM 1
             FROM nodex 
             WHERE node_id = NEW.node_id
@@ -290,14 +240,6 @@ CREATE OR REPLACE TRIGGER tg_node_contract
     AFTER INSERT OR UPDATE OF state ON node_contract FOR EACH ROW 
     EXECUTE PROCEDURE reflect_node_contract_changes();
 
-/*
- * reflect_node_gpu_count_change
- * 
- * Updates GPU information in cache when node_gpu changes.
- * Re-aggregates all GPUs for the node and updates count + JSON array.
- * 
- *   - INSERT/DELETE/UPDATE: Recalculates GPU count and JSON array
- */
 CREATE OR REPLACE FUNCTION reflect_node_gpu_count_change() RETURNS TRIGGER AS
 $$
 BEGIN
@@ -341,14 +283,6 @@ CREATE OR REPLACE TRIGGER tg_node_gpu_count
     AFTER INSERT OR DELETE OR UPDATE ON node_gpu FOR EACH ROW
     EXECUTE PROCEDURE reflect_node_gpu_count_change();
 
-/*
- * reflect_rent_contract_changes
- * 
- * Updates rental information in cache when rent_contract changes.
- * 
- *   - INSERT: Sets renter and rent_contract_id
- *   - UPDATE to 'Deleted': Clears renter and rent_contract_id
- */
 CREATE OR REPLACE FUNCTION reflect_rent_contract_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
@@ -399,13 +333,6 @@ CREATE OR REPLACE TRIGGER tg_rent_contract
     AFTER INSERT OR UPDATE OF state ON rent_contract FOR EACH ROW
     EXECUTE PROCEDURE reflect_rent_contract_changes();
 
-/*
- * reflect_dmi_changes
- * 
- * Updates DMI (hardware information) in cache when dmi table changes.
- * 
- *   - INSERT/UPDATE: Updates bios, baseboard, processor, memory fields
- */
 CREATE OR REPLACE FUNCTION reflect_dmi_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
@@ -439,13 +366,6 @@ CREATE OR REPLACE TRIGGER tg_dmi
     EXECUTE PROCEDURE reflect_dmi_changes();
 
 
-/*
- * reflect_speed_changes
- * 
- * Updates network speed test results in cache when speed table changes.
- * 
- *   - INSERT/UPDATE: Updates all speed metrics (upload, download, IPv4/IPv6, TCP/UDP)
- */
 CREATE OR REPLACE FUNCTION reflect_speed_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
@@ -482,13 +402,6 @@ CREATE OR REPLACE TRIGGER tg_speed
     AFTER INSERT OR UPDATE ON speed FOR EACH ROW
     EXECUTE PROCEDURE reflect_speed_changes();
 
-/*
- * reflect_cpu_benchmark_changes
- * 
- * Updates CPU benchmark results in cache when cpu_benchmark table changes.
- * 
- *   - INSERT/UPDATE: Updates single-threaded, multi-threaded, threads, workloads
- */
 CREATE OR REPLACE FUNCTION reflect_cpu_benchmark_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
@@ -521,19 +434,6 @@ CREATE OR REPLACE TRIGGER tg_cpu_benchmark
     AFTER INSERT OR UPDATE ON cpu_benchmark FOR EACH ROW
     EXECUTE PROCEDURE reflect_cpu_benchmark_changes();
 
-/*
- * reflect_public_ip_changes
- * 
- * Updates farmx when public_ip changes.
- * Tracks free_ips (contract_id = 0) and total_ips, re-aggregates IP JSON.
- * 
- * Logic:
- *   - INSERT with contract_id=0: free_ips++, total_ips++
- *   - DELETE with contract_id=0: free_ips--, total_ips--
- *   - DELETE with contract_id!=0: free_ips unchanged, total_ips--
- *   - UPDATE: free/reserved: free_ips--, reserved/free: free_ips++
- *   - Always re-aggregates entire IP JSON array for the farm
- */
 CREATE OR REPLACE FUNCTION reflect_public_ip_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
@@ -542,44 +442,32 @@ BEGIN
         UPDATE farmx
         SET free_ips = free_ips + (
                 CASE 
-                -- handles insertion/update by freeing ip
                 WHEN (TG_OP = 'INSERT' AND NEW.contract_id = 0) OR 
                      (TG_OP = 'UPDATE' AND NEW.contract_id = 0 AND OLD.contract_id != 0)
                     THEN 1 
-                -- handles deletion/update by reserving ip
                 WHEN (TG_OP = 'DELETE' AND OLD.contract_id = 0) OR
                      (TG_OP = 'UPDATE' AND OLD.contract_id = 0 AND NEW.contract_id != 0)
                     THEN -1
-                -- handles delete reserved ips (no change to free_ips)
                 ELSE 0
                 END
             ),
-
             total_ips = total_ips + (
                 CASE 
-                WHEN TG_OP = 'INSERT'
-                    THEN 1 
-                WHEN TG_OP = 'DELETE'
-                    THEN -1
+                WHEN TG_OP = 'INSERT' THEN 1 
+                WHEN TG_OP = 'DELETE' THEN -1
                 ELSE 0
                 END
             ),
-
             ips = (
                 SELECT jsonb_agg(
                     jsonb_build_object(
-                        'id',
-                        public_ip.id,
-                        'ip',
-                        public_ip.ip,
-                        'contract_id',
-                        public_ip.contract_id,
-                        'gateway',
-                        public_ip.gateway
+                        'id', public_ip.id,
+                        'ip', public_ip.ip,
+                        'contract_id', public_ip.contract_id,
+                        'gateway', public_ip.gateway
                     )
                 )
-                -- old/new farm_id are the same
-                from public_ip where farm_id = COALESCE(NEW.farm_id, OLD.farm_id)
+                FROM public_ip WHERE farm_id = COALESCE(NEW.farm_id, OLD.farm_id)
             )
         WHERE
             farmx.farm_id = (
@@ -611,14 +499,6 @@ CREATE OR REPLACE TRIGGER tg_public_ip
     EXECUTE PROCEDURE reflect_public_ip_changes();
 
 
-/*
- * reflect_farm_changes
- * 
- * Maintains farmx when farms are inserted or deleted.
- * 
- *   - INSERT: Creates empty cache entry (0 IPs)
- *   - DELETE: Removes farm from cache
- */
 CREATE OR REPLACE FUNCTION reflect_farm_changes() RETURNS TRIGGER AS 
 $$ 
 BEGIN
