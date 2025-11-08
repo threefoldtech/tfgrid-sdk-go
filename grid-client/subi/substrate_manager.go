@@ -156,9 +156,6 @@ func (s *SubstrateImpl) CreateNodeContract(identity substrate.Identity, node uin
 
 // GetContractWithHash gets a contract by hash
 func (s *SubstrateImpl) GetContractWithHash(identity substrate.Identity, node uint32, hash []byte) (uint64, error) {
-	s.m.Lock()
-	defer s.m.Unlock()
-
 	res, err := s.Substrate.GetContractWithHash(node, substrate.HexHash(hash))
 	return res, normalizeNotFoundErrors(err)
 }

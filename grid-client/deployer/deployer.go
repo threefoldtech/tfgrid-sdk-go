@@ -20,6 +20,7 @@ import (
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/provision"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -156,39 +157,33 @@ func (d *Deployer) deploy(
 
 			contractID, err := d.substrateConn.CreateNodeContract(d.identity, node, dl.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[node])
 			log.Debug().Uint64("CreateNodeContract returned id", contractID)
-			if err != nil && !strings.Contains(err.Error(), "ContractIsNotUnique") {
+			if strings.Contains(err.Error(), "ContractIsNotUnique") {
+				contractID, err = d.substrateConn.GetContractWithHash(d.identity, node, hash)
+				if err != nil {
+					return currentDeployments, errors.Wrapf(err, "failed to find existing contract on node %d", node)
+				}
+			} else if err != nil {
 				return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d", node)
 			}
-
 			dl.ContractID = contractID
-			if err != nil && strings.Contains(err.Error(), "ContractIsNotUnique") {
-				// Contract not unique: find existing contract using hash
-				existingContractID, found := d.findExistingOnChainContract(node, hash)
-				if !found {
-					return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d and could not find existing contract", node)
-				}
-				dl.ContractID = existingContractID
-			}
 
 			// Update deployment with contract ID and send to node
 			err = client.DeploymentDeploy(ctx, dl)
 			if err != nil {
 				// If deployment exists, continue as already deployed
-				if strings.Contains(err.Error(), "ErrDeploymentExists") || strings.Contains(err.Error(), "deployment exists") {
-					currentDeployments[node] = dl.ContractID
-					log.Debug().
-						Uint32("node", node).
-						Uint64("contractID", dl.ContractID).
-						Msg("deployment exists, continuing as already deployed")
-					continue
+				if !errors.Is(err, provision.ErrDeploymentExists) {
+					// Other deployment error: cancel contract
+					rerr := d.substrateConn.EnsureContractCanceled(d.identity, dl.ContractID)
+					if rerr != nil {
+						return currentDeployments, errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, dl.ContractID)
+					}
+					return currentDeployments, errors.Wrapf(err, "error sending deployment to node %d", node)
 				}
 
-				// Other deployment error: cancel contract
-				rerr := d.substrateConn.EnsureContractCanceled(d.identity, dl.ContractID)
-				if rerr != nil {
-					return currentDeployments, errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, dl.ContractID)
-				}
-				return currentDeployments, errors.Wrapf(err, "error sending deployment to node %d", node)
+				log.Debug().
+					Uint32("node", node).
+					Uint64("contractID", dl.ContractID).
+					Msg("deployment exists, continuing as already deployed")
 			}
 
 			// Deployment sent successfully, wait for it
@@ -277,30 +272,6 @@ func (d *Deployer) deploy(
 	}
 
 	return currentDeployments, nil
-}
-
-// findExistingOnChainContract tries to find an existing active contract on-chain for a given node
-// that matches the provided deployment hash and is owned by the current twin.
-func (d *Deployer) findExistingOnChainContract(node uint32, hash []byte) (uint64, bool) {
-	if len(hash) == 0 {
-		return 0, false
-	}
-
-	contractID, err := d.substrateConn.GetContractWithHash(d.identity, node, hash)
-	if err != nil {
-		return 0, false
-	}
-
-	// Verify the contract is valid and owned by current twin
-	contract, err := d.substrateConn.GetContract(contractID)
-	if err != nil {
-		return 0, false
-	}
-	if !contract.IsCreated() || contract.TwinID() != d.twinID {
-		return 0, false
-	}
-
-	return contractID, true
 }
 
 // Cancel cancels an old deployment not given in the new deployments
