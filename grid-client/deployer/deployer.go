@@ -156,15 +156,21 @@ func (d *Deployer) deploy(
 			log.Debug().Uint32("Number of public ips", publicIPCount)
 
 			contractID, err := d.substrateConn.CreateNodeContract(d.identity, node, dl.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[node])
-			log.Debug().Uint64("CreateNodeContract returned id", contractID)
-			if strings.Contains(err.Error(), "ContractIsNotUnique") {
-				contractID, err = d.substrateConn.GetContractWithHash(d.identity, node, hash)
-				if err != nil {
-					return currentDeployments, errors.Wrapf(err, "failed to find existing contract on node %d", node)
+			if err != nil {
+				if strings.Contains(err.Error(), "ContractIsNotUnique") {
+					contractID, err = d.substrateConn.GetContractWithHash(d.identity, node, hash)
+					if err != nil {
+						return currentDeployments, errors.Wrapf(err, "failed to find existing contract on node %d", node)
+					}
+					log.Info().
+						Uint32("node", node).
+						Uint64("contractID", contractID).
+						Msg("reusing existing contract")
+				} else {
+					return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d", node)
 				}
-			} else if err != nil {
-				return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d", node)
 			}
+			log.Debug().Uint64("returned contract ID", contractID)
 			dl.ContractID = contractID
 
 			// Update deployment with contract ID and send to node
