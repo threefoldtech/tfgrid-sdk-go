@@ -24,7 +24,6 @@ require (
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.10
-
 )
 
 require (

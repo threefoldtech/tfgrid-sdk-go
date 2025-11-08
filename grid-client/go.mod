@@ -29,6 +29,30 @@ require (
 )
 
 require (
+	github.com/blang/semver v3.5.1+incompatible // indirect
+	github.com/dave/jennifer v1.3.0 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/gofrs/flock v0.12.1 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
+	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
+	github.com/joncrlsn/dque v0.0.0-20200702023911-3e80e3146ce5 // indirect
+	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/threefoldtech/zbus v1.0.1 // indirect
+	github.com/tklauser/go-sysconf v0.3.12 // indirect
+	github.com/tklauser/numcpus v0.6.1 // indirect
+	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852 // indirect
+	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
+	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
+	golang.org/x/net v0.39.0 // indirect
+	google.golang.org/appengine v1.6.7 // indirect
+)
+
+require (
 	github.com/ChainSafe/go-schnorrkel v1.1.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
