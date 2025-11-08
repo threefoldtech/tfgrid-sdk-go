@@ -325,6 +325,21 @@ func (mr *MockSubstrateExtMockRecorder) GetContractPaymentState(id interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractPaymentState", reflect.TypeOf((*MockSubstrateExt)(nil).GetContractPaymentState), id)
 }
 
+// GetContractWithHash mocks base method.
+func (m *MockSubstrateExt) GetContractWithHash(identity substrate.Identity, node uint32, hash []byte) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetContractWithHash", identity, node, hash)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetContractWithHash indicates an expected call of GetContractWithHash.
+func (mr *MockSubstrateExtMockRecorder) GetContractWithHash(identity, node, hash interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractWithHash", reflect.TypeOf((*MockSubstrateExt)(nil).GetContractWithHash), identity, node, hash)
+}
+
 // GetDedicatedNodePrice mocks base method.
 func (m *MockSubstrateExt) GetDedicatedNodePrice(nodeID uint32) (uint64, error) {
 	m.ctrl.T.Helper()
