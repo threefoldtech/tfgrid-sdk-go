@@ -482,7 +482,7 @@ func (n *NodeClient) GetNodeFreeWGPort(ctx context.Context, nodeID uint32, usedP
 	// from 1024 to 32767 (the lower limit for ephemeral ports)
 	p := uint(rand.Intn(32768-1024) + 1024)
 
-	for contains(nodeUsedPorts, uint16(p)) || slices.Contains(usedPorts, uint16(p)) {
+	for slices.Contains(nodeUsedPorts, uint16(p)) || slices.Contains(usedPorts, uint16(p)) {
 		p = uint(rand.Intn(32768-1024) + 1024)
 	}
 	log.Debug().Msgf("Selected port for node %d is %d", nodeID, p)
@@ -600,13 +600,4 @@ func (n *NodeClient) NetworkGetPublicExitDevice(ctx context.Context) (exit ExitD
 	const cmd = "zos.network.admin.get_public_nic"
 	err = n.bus.Call(ctx, n.nodeTwin, cmd, nil, &exit)
 	return
-}
-
-func contains[T comparable](elements []T, element T) bool {
-	for _, e := range elements {
-		if element == e {
-			return true
-		}
-	}
-	return false
 }

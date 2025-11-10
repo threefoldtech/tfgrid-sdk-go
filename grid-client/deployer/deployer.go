@@ -20,7 +20,6 @@ import (
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
-	"github.com/threefoldtech/zosbase/pkg/provision"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -127,7 +126,7 @@ func (d *Deployer) deploy(
 	// creations
 	for node, dl := range newDeployments {
 		if _, ok := oldDeployments[node]; !ok {
-			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
+			nodeClient, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
@@ -155,29 +154,37 @@ func (d *Deployer) deploy(
 			}
 			log.Debug().Uint32("Number of public ips", publicIPCount)
 
+			contractRused := false
 			contractID, err := d.substrateConn.CreateNodeContract(d.identity, node, dl.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[node])
 			if err != nil {
-				if strings.Contains(err.Error(), "ContractIsNotUnique") {
-					contractID, err = d.substrateConn.GetContractWithHash(d.identity, node, hash)
-					if err != nil {
-						return currentDeployments, errors.Wrapf(err, "failed to find existing contract on node %d", node)
-					}
-					log.Info().
-						Uint32("node", node).
-						Uint64("contractID", contractID).
-						Msg("reusing existing contract")
-				} else {
+				if !strings.Contains(err.Error(), "ContractIsNotUnique") {
 					return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d", node)
 				}
+				contractID, err = d.substrateConn.GetContractWithHash(d.identity, node, []byte(hashHex))
+				if err != nil {
+					return currentDeployments, errors.Wrapf(err, "failed to find existing contract on node %d", node)
+				}
+				contract, err := d.substrateConn.GetContract(contractID)
+				if err != nil {
+					return currentDeployments, errors.Wrapf(err, "failed to get existing contract on node %d", node)
+				}
+				if contract.State.IsDeleted {
+					return currentDeployments, errors.Errorf("contract %d is not active", contractID)
+				}
+				log.Info().
+					Uint32("node", node).
+					Uint64("contractID", contractID).
+					Msg("reusing existing contract")
+				contractRused = true
 			}
 			log.Debug().Uint64("returned contract ID", contractID)
 			dl.ContractID = contractID
 
 			// Update deployment with contract ID and send to node
-			err = client.DeploymentDeploy(ctx, dl)
+			err = nodeClient.DeploymentDeploy(ctx, dl)
 			if err != nil {
 				// If deployment exists, continue as already deployed
-				if !errors.Is(err, provision.ErrDeploymentExists) {
+				if !contractRused || !strings.Contains(err.Error(), "exists") {
 					// Other deployment error: cancel contract
 					rerr := d.substrateConn.EnsureContractCanceled(d.identity, dl.ContractID)
 					if rerr != nil {
@@ -198,7 +205,7 @@ func (d *Deployer) deploy(
 			for _, w := range dl.Workloads {
 				newWorkloadVersions[w.Name] = 0
 			}
-			if err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions); err != nil {
+			if err = d.Wait(ctx, nodeClient, dl.ContractID, newWorkloadVersions); err != nil {
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
 		}
