@@ -61,6 +61,7 @@ type SubstrateExt interface {
 	GetPricingPolicy(policyID uint32) (pricingPolicy substrate.PricingPolicy, err error)
 	GetTwinPK(twinID uint32) ([]byte, error)
 	GetContractIDByNameRegistration(name string) (uint64, error)
+	GetContractWithHash(identity substrate.Identity, node uint32, hash []byte) (uint64, error)
 	BatchCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, *int, error)
 	BatchAllCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, error)
 	BatchCancelContract(identity substrate.Identity, contracts []uint64) error
@@ -150,6 +151,12 @@ func (s *SubstrateImpl) CreateNodeContract(identity substrate.Identity, node uin
 	defer s.m.Unlock()
 
 	res, err := s.Substrate.CreateNodeContract(identity, node, body, hash, publicIPs, solutionProviderID)
+	return res, normalizeNotFoundErrors(err)
+}
+
+// GetContractWithHash gets a contract by hash
+func (s *SubstrateImpl) GetContractWithHash(identity substrate.Identity, node uint32, hash []byte) (uint64, error) {
+	res, err := s.Substrate.GetContractWithHash(node, substrate.HexHash(hash))
 	return res, normalizeNotFoundErrors(err)
 }
 

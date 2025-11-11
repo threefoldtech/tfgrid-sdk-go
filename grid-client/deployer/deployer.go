@@ -126,7 +126,7 @@ func (d *Deployer) deploy(
 	// creations
 	for node, dl := range newDeployments {
 		if _, ok := oldDeployments[node]; !ok {
-			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
+			nodeClient, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 			if err != nil {
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
@@ -154,29 +154,58 @@ func (d *Deployer) deploy(
 			}
 			log.Debug().Uint32("Number of public ips", publicIPCount)
 
+			contractRused := false
 			contractID, err := d.substrateConn.CreateNodeContract(d.identity, node, dl.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[node])
-			log.Debug().Uint64("CreateNodeContract returned id", contractID)
 			if err != nil {
-				return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d", node)
-			}
-
-			dl.ContractID = contractID
-			err = client.DeploymentDeploy(ctx, dl)
-			if err != nil {
-				rerr := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
-				if rerr != nil {
-					return currentDeployments, errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, contractID)
+				if !strings.Contains(err.Error(), "ContractIsNotUnique") {
+					return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d", node)
 				}
-				return currentDeployments, errors.Wrapf(err, "error sending deployment to node %d", node)
-
+				contractID, err = d.substrateConn.GetContractWithHash(d.identity, node, []byte(hashHex))
+				if err != nil {
+					return currentDeployments, errors.Wrapf(err, "failed to find existing contract on node %d", node)
+				}
+				contract, err := d.substrateConn.GetContract(contractID)
+				if err != nil {
+					return currentDeployments, errors.Wrapf(err, "failed to get existing contract on node %d", node)
+				}
+				if contract.State.IsDeleted {
+					return currentDeployments, errors.Errorf("contract %d is not active", contractID)
+				}
+				log.Info().
+					Uint32("node", node).
+					Uint64("contractID", contractID).
+					Msg("reusing existing contract")
+				contractRused = true
 			}
+			log.Debug().Uint64("returned contract ID", contractID)
+			dl.ContractID = contractID
+
+			// Update deployment with contract ID and send to node
+			err = nodeClient.DeploymentDeploy(ctx, dl)
+			if err != nil {
+				// If deployment exists, continue as already deployed
+				if !contractRused || !strings.Contains(err.Error(), "exists") {
+					// Other deployment error: cancel contract
+					rerr := d.substrateConn.EnsureContractCanceled(d.identity, dl.ContractID)
+					if rerr != nil {
+						return currentDeployments, errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, dl.ContractID)
+					}
+					return currentDeployments, errors.Wrapf(err, "error sending deployment to node %d", node)
+				}
+
+				log.Debug().
+					Uint32("node", node).
+					Uint64("contractID", dl.ContractID).
+					Msg("deployment exists, continuing as already deployed")
+			}
+
+			// Deployment sent successfully, wait for it
 			currentDeployments[node] = dl.ContractID
 			newWorkloadVersions := make(map[string]uint32)
 			for _, w := range dl.Workloads {
 				newWorkloadVersions[w.Name] = 0
 			}
-			err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
-			if err != nil {
+			if err = d.Wait(ctx, nodeClient, dl.ContractID, newWorkloadVersions); err != nil {
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
 		}
