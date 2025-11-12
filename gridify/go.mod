@@ -21,14 +21,12 @@ require (
 	github.com/ChainSafe/go-schnorrkel v1.1.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
-	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
-	github.com/dave/jennifer v1.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/base58 v1.0.5 // indirect
@@ -39,29 +37,21 @@ require (
 	github.com/getsentry/sentry-go v0.29.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
-	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/gofrs/flock v0.12.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
-	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/schema v1.4.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
-	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
-	github.com/joncrlsn/dque v0.0.0-20200702023911-3e80e3146ce5 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -71,22 +61,13 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
-	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30 // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.0 // indirect
-	github.com/threefoldtech/zbus v1.0.1 // indirect
-	github.com/threefoldtech/zosbase v1.0.0 // indirect
-	github.com/tklauser/go-sysconf v0.3.12 // indirect
-	github.com/tklauser/numcpus v0.6.1 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.3 // indirect
+	github.com/threefoldtech/zosbase v1.0.3 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
-	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852 // indirect
-	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
-	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/net v0.39.0 // indirect
@@ -95,7 +76,6 @@ require (
 	golang.org/x/text v0.24.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
-	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
