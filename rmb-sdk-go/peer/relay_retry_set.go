@@ -31,7 +31,13 @@ func (s *CooldownRelaySet) Sorted(now time.Time) []RelayPenalty {
 	}
 
 	items := make([]sortableRelay, len(s.Relays))
-	for i, r := range s.Relays {
+	for i := range s.Relays {
+		// Must atomically load LastErrorAt to avoid racing with MarkSuccess/MarkFailure
+		lastErr := atomic.LoadInt64(&s.Relays[i].LastErrorAt)
+		r := RelayPenalty{
+			Relay:       s.Relays[i].Relay,
+			LastErrorAt: lastErr,
+		}
 		items[i] = sortableRelay{
 			RelayPenalty:   r,
 			effectiveError: s.effectiveError(r, now),
