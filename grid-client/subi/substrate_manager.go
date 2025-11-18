@@ -3,6 +3,7 @@ package subi
 
 import (
 	"context"
+	"math"
 	"sync"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -35,6 +36,21 @@ func (m *Manager) SubstrateExt() (*SubstrateImpl, error) {
 
 // SubstrateExt interface for substrate client
 type SubstrateExt interface {
+
+	// SetupUserOnTFChain() (mnemonic string, twinID uint32, err error)
+	NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error)
+	TransferTFTsFromSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
+	TransferTFTsToSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
+
+	GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error)
+	GetUserBalanceUSD(userMnemonic string) (float64, error)
+	GetUserTFTBalance(userMnemonic string) (uint64, error)
+
+	FromTFTtoUSDMillicent(amount uint64) (uint64, error)
+	FromUSDMillicentToTFT(amountMillicent uint64) (uint64, error)
+
+	CreateRentContract(mnemonic string, nodeID uint32, solutionProviderID *uint64) (uint64, error)
+
 	CancelContract(identity substrate.Identity, contractID uint64) error
 	CreateNodeContract(identity substrate.Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error)
 	UpdateNodeContract(identity substrate.Identity, contract uint64, body string, hash string) (uint64, error)
@@ -77,6 +93,129 @@ type SubstrateExt interface {
 type SubstrateImpl struct {
 	*substrate.Substrate
 	m sync.Mutex
+}
+
+var _ SubstrateExt = (*SubstrateImpl)(nil)
+
+// NewIdentityFromSr25519Phrase returns the identity from
+func (s *SubstrateImpl) NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error) {
+	return substrate.NewIdentityFromSr25519Phrase(mnemonic)
+}
+
+// CreateRentContract creates a rent contract
+func (s *SubstrateImpl) CreateRentContract(mnemonic string, nodeID uint32, solutionProviderID *uint64) (uint64, error) {
+	identity, err := s.NewIdentityFromSr25519Phrase(mnemonic)
+	if err != nil {
+		return 0, err
+	}
+
+	return s.Substrate.CreateRentContract(identity, nodeID, solutionProviderID)
+}
+
+// TransferTFTsFromSystem transfer balance to users' account
+func (s *SubstrateImpl) TransferTFTsFromSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error {
+	// Create identity of user from mnemonic
+	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
+	if err != nil {
+		return err
+	}
+
+	// Create identity of system from mnemonic
+	systemIdentity, err := substrate.NewIdentityFromSr25519Phrase(systemMnemonic)
+	if err != nil {
+		return err
+	}
+
+	return s.Substrate.Transfer(systemIdentity, tftBalance, substrate.AccountID(userIdentity.PublicKey()))
+}
+
+// TransferTFTsToSystem transfer balance to system account
+func (s *SubstrateImpl) TransferTFTsToSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error {
+	// Create identity of user from mnemonic
+	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
+	if err != nil {
+		return err
+	}
+
+	// Create identity of system from mnemonic
+	systemIdentity, err := substrate.NewIdentityFromSr25519Phrase(systemMnemonic)
+	if err != nil {
+		return err
+	}
+
+	return s.Substrate.Transfer(userIdentity, tftBalance, substrate.AccountID(systemIdentity.PublicKey()))
+}
+
+// GetUserBalanceUSD gets balance of user in TFT
+func (s *SubstrateImpl) GetUserTFTBalance(userMnemonic string) (uint64, error) {
+	// Create identity of user from mnemonic
+	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
+	if err != nil {
+		return 0, err
+	}
+
+	account, err := substrate.FromAddress(userIdentity.Address())
+	if err != nil {
+		return 0, err
+	}
+
+	// get balance in TFT
+	tftBalance, err := s.Substrate.GetBalance(account)
+	if err != nil {
+		return 0, err
+	}
+
+	return tftBalance.Free.Uint64(), nil
+}
+
+// FromTFTtoUSDMillicent converts TFT amount to USD Millicent (1/1000 of a dollar)
+func (s *SubstrateImpl) FromTFTtoUSDMillicent(amount uint64) (uint64, error) {
+	price, err := s.GetTFTPrice()
+	if err != nil {
+		return 0, err
+	}
+
+	usdMillicentBalance := uint64(math.Round((float64(amount) / 1e7) * float64(price)))
+	return usdMillicentBalance, nil
+}
+
+// FromUSDMillicentToTFT converts USD Millicent to TFT amount
+// This avoids floating point precision issues by accepting an integer value
+func (s *SubstrateImpl) FromUSDMillicentToTFT(amountMillicent uint64) (uint64, error) {
+	price, err := s.GetTFTPrice()
+	if err != nil {
+		return 0, err
+	}
+
+	// Convert Millicent to dollars for the calculation
+	amountUSD := fromUSDMilliCentToUSD(amountMillicent)
+	tft := (amountUSD * 1e7) / (float64(price) / 1000)
+	return uint64(tft), nil
+}
+
+func fromUSDMilliCentToUSD(amountMillicent uint64) float64 {
+	return float64(amountMillicent) / 1000
+}
+
+// GetUserBalanceUSDMillicent gets balance of user in USD Millicent
+// This avoids floating point precision issues by returning an integer value
+func (s *SubstrateImpl) GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error) {
+	tftBalance, err := s.GetUserTFTBalance(userMnemonic)
+	if err != nil {
+		return 0, err
+	}
+
+	return s.FromTFTtoUSDMillicent(tftBalance)
+}
+
+// GetUserBalanceUSD gets balance of user in USD
+func (s *SubstrateImpl) GetUserBalanceUSD(userMnemonic string) (float64, error) {
+	usdMillicentBalance, err := s.GetUserBalanceUSDMillicent(userMnemonic)
+	if err != nil {
+		return 0, err
+	}
+
+	return fromUSDMilliCentToUSD(usdMillicentBalance), nil
 }
 
 // GetAccount returns the user's account
