@@ -36,8 +36,8 @@ func (m *Manager) SubstrateExt() (*SubstrateImpl, error) {
 
 // SubstrateExt interface for substrate client
 type SubstrateExt interface {
-
-	// SetupUserOnTFChain() (mnemonic string, twinID uint32, err error)
+	AcceptTermsAndConditions(identity substrate.Identity, docLink string, docHash string) error
+	CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error)
 	NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error)
 	TransferTFTsFromSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
 	TransferTFTsToSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
@@ -97,9 +97,19 @@ type SubstrateImpl struct {
 
 var _ SubstrateExt = (*SubstrateImpl)(nil)
 
-// NewIdentityFromSr25519Phrase returns the identity from
+// NewIdentityFromSr25519Phrase returns the identity from mnemonic
 func (s *SubstrateImpl) NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error) {
 	return substrate.NewIdentityFromSr25519Phrase(mnemonic)
+}
+
+// AcceptTermsAndConditions accepts terms and conditions
+func (s *SubstrateImpl) AcceptTermsAndConditions(identity substrate.Identity, docLink string, docHash string) error {
+	return s.Substrate.AcceptTermsAndConditions(identity, docLink, docHash)
+}
+
+// CreateTwin creates a twin and returns its twin ID
+func (s *SubstrateImpl) CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error) {
+	return s.Substrate.CreateTwin(identity, relay, pk)
 }
 
 // CreateRentContract creates a rent contract
