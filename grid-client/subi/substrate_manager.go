@@ -136,7 +136,7 @@ func (s *SubstrateImpl) TransferTFTsFromSystem(tftBalance uint64, userMnemonic s
 		return err
 	}
 
-	return s.Substrate.Transfer(systemIdentity, tftBalance, substrate.AccountID(userIdentity.PublicKey()))
+	return s.Transfer(systemIdentity, tftBalance, substrate.AccountID(userIdentity.PublicKey()))
 }
 
 // TransferTFTsToSystem transfer balance to system account
@@ -153,7 +153,7 @@ func (s *SubstrateImpl) TransferTFTsToSystem(tftBalance uint64, userMnemonic str
 		return err
 	}
 
-	return s.Substrate.Transfer(userIdentity, tftBalance, substrate.AccountID(systemIdentity.PublicKey()))
+	return s.Transfer(userIdentity, tftBalance, substrate.AccountID(systemIdentity.PublicKey()))
 }
 
 // GetUserBalanceUSD gets balance of user in TFT
