@@ -609,21 +609,6 @@ func (mr *MockSubstrateExtMockRecorder) GetUserBalanceUSDMillicent(userMnemonic 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserBalanceUSDMillicent", reflect.TypeOf((*MockSubstrateExt)(nil).GetUserBalanceUSDMillicent), userMnemonic)
 }
 
-// GetUserTFTBalance mocks base method.
-func (m *MockSubstrateExt) GetUserTFTBalance(userMnemonic string) (uint64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserTFTBalance", userMnemonic)
-	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetUserTFTBalance indicates an expected call of GetUserTFTBalance.
-func (mr *MockSubstrateExtMockRecorder) GetUserTFTBalance(userMnemonic interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserTFTBalance", reflect.TypeOf((*MockSubstrateExt)(nil).GetUserTFTBalance), userMnemonic)
-}
-
 // InvalidateNameContract mocks base method.
 func (m *MockSubstrateExt) InvalidateNameContract(ctx context.Context, identity substrate.Identity, contractID uint64, name string) (uint64, error) {
 	m.ctrl.T.Helper()

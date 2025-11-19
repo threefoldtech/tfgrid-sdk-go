@@ -44,7 +44,6 @@ type SubstrateExt interface {
 
 	GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error)
 	GetUserBalanceUSD(userMnemonic string) (float64, error)
-	GetUserTFTBalance(userMnemonic string) (uint64, error)
 
 	FromTFTtoUSDMillicent(amount uint64) (uint64, error)
 	FromUSDMillicentToTFT(amountMillicent uint64) (uint64, error)
@@ -156,28 +155,6 @@ func (s *SubstrateImpl) TransferTFTsToSystem(tftBalance uint64, userMnemonic str
 	return s.Transfer(userIdentity, tftBalance, substrate.AccountID(systemIdentity.PublicKey()))
 }
 
-// GetUserBalanceUSD gets balance of user in TFT
-func (s *SubstrateImpl) GetUserTFTBalance(userMnemonic string) (uint64, error) {
-	// Create identity of user from mnemonic
-	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
-	if err != nil {
-		return 0, err
-	}
-
-	account, err := substrate.FromAddress(userIdentity.Address())
-	if err != nil {
-		return 0, err
-	}
-
-	// get balance in TFT
-	tftBalance, err := s.Substrate.GetBalance(account)
-	if err != nil {
-		return 0, err
-	}
-
-	return tftBalance.Free.Uint64(), nil
-}
-
 // FromTFTtoUSDMillicent converts TFT amount to USD Millicent (1/1000 of a dollar)
 func (s *SubstrateImpl) FromTFTtoUSDMillicent(amount uint64) (uint64, error) {
 	price, err := s.GetTFTPrice()
@@ -210,12 +187,18 @@ func fromUSDMilliCentToUSD(amountMillicent uint64) float64 {
 // GetUserBalanceUSDMillicent gets balance of user in USD Millicent
 // This avoids floating point precision issues by returning an integer value
 func (s *SubstrateImpl) GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error) {
-	tftBalance, err := s.GetUserTFTBalance(userMnemonic)
+	// Create identity of user from mnemonic
+	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
 	if err != nil {
 		return 0, err
 	}
 
-	return s.FromTFTtoUSDMillicent(tftBalance)
+	tftBalance, err := s.GetBalance(userIdentity)
+	if err != nil {
+		return 0, err
+	}
+
+	return s.FromTFTtoUSDMillicent(tftBalance.Free.Uint64())
 }
 
 // GetUserBalanceUSD gets balance of user in USD
