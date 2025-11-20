@@ -3,7 +3,6 @@ package subi
 
 import (
 	"context"
-	"math"
 	"sync"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -41,12 +40,6 @@ type SubstrateExt interface {
 	NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error)
 	TransferTFTsFromSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
 	TransferTFTsToSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
-
-	GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error)
-	GetUserBalanceUSD(userMnemonic string) (float64, error)
-
-	FromTFTtoUSDMillicent(amount uint64) (uint64, error)
-	FromUSDMillicentToTFT(amountMillicent uint64) (uint64, error)
 
 	CreateRentContract(mnemonic string, nodeID uint32, solutionProviderID *uint64) (uint64, error)
 
@@ -153,62 +146,6 @@ func (s *SubstrateImpl) TransferTFTsToSystem(tftBalance uint64, userMnemonic str
 	}
 
 	return s.Transfer(userIdentity, tftBalance, substrate.AccountID(systemIdentity.PublicKey()))
-}
-
-// FromTFTtoUSDMillicent converts TFT amount to USD Millicent (1/1000 of a dollar)
-func (s *SubstrateImpl) FromTFTtoUSDMillicent(amount uint64) (uint64, error) {
-	price, err := s.GetTFTPrice()
-	if err != nil {
-		return 0, err
-	}
-
-	usdMillicentBalance := uint64(math.Round((float64(amount) / 1e7) * float64(price)))
-	return usdMillicentBalance, nil
-}
-
-// FromUSDMillicentToTFT converts USD Millicent to TFT amount
-// This avoids floating point precision issues by accepting an integer value
-func (s *SubstrateImpl) FromUSDMillicentToTFT(amountMillicent uint64) (uint64, error) {
-	price, err := s.GetTFTPrice()
-	if err != nil {
-		return 0, err
-	}
-
-	// Convert Millicent to dollars for the calculation
-	amountUSD := fromUSDMilliCentToUSD(amountMillicent)
-	tft := (amountUSD * 1e7) / (float64(price) / 1000)
-	return uint64(tft), nil
-}
-
-func fromUSDMilliCentToUSD(amountMillicent uint64) float64 {
-	return float64(amountMillicent) / 1000
-}
-
-// GetUserBalanceUSDMillicent gets balance of user in USD Millicent
-// This avoids floating point precision issues by returning an integer value
-func (s *SubstrateImpl) GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error) {
-	// Create identity of user from mnemonic
-	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
-	if err != nil {
-		return 0, err
-	}
-
-	tftBalance, err := s.GetBalance(userIdentity)
-	if err != nil {
-		return 0, err
-	}
-
-	return s.FromTFTtoUSDMillicent(tftBalance.Free.Uint64())
-}
-
-// GetUserBalanceUSD gets balance of user in USD
-func (s *SubstrateImpl) GetUserBalanceUSD(userMnemonic string) (float64, error) {
-	usdMillicentBalance, err := s.GetUserBalanceUSDMillicent(userMnemonic)
-	if err != nil {
-		return 0, err
-	}
-
-	return fromUSDMilliCentToUSD(usdMillicentBalance), nil
 }
 
 // GetAccount returns the user's account
