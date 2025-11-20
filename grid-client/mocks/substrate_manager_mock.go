@@ -279,36 +279,6 @@ func (mr *MockSubstrateExtMockRecorder) EnsureContractCanceled(identity, contrac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureContractCanceled", reflect.TypeOf((*MockSubstrateExt)(nil).EnsureContractCanceled), identity, contractID)
 }
 
-// FromTFTtoUSDMillicent mocks base method.
-func (m *MockSubstrateExt) FromTFTtoUSDMillicent(amount uint64) (uint64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FromTFTtoUSDMillicent", amount)
-	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FromTFTtoUSDMillicent indicates an expected call of FromTFTtoUSDMillicent.
-func (mr *MockSubstrateExtMockRecorder) FromTFTtoUSDMillicent(amount interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FromTFTtoUSDMillicent", reflect.TypeOf((*MockSubstrateExt)(nil).FromTFTtoUSDMillicent), amount)
-}
-
-// FromUSDMillicentToTFT mocks base method.
-func (m *MockSubstrateExt) FromUSDMillicentToTFT(amountMillicent uint64) (uint64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FromUSDMillicentToTFT", amountMillicent)
-	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FromUSDMillicentToTFT indicates an expected call of FromUSDMillicentToTFT.
-func (mr *MockSubstrateExtMockRecorder) FromUSDMillicentToTFT(amountMillicent interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FromUSDMillicentToTFT", reflect.TypeOf((*MockSubstrateExt)(nil).FromUSDMillicentToTFT), amountMillicent)
-}
-
 // GetAccount mocks base method.
 func (m *MockSubstrateExt) GetAccount(identity substrate.Identity) (substrate.AccountInfo, error) {
 	m.ctrl.T.Helper()
@@ -577,36 +547,6 @@ func (m *MockSubstrateExt) GetTwinPK(twinID uint32) ([]byte, error) {
 func (mr *MockSubstrateExtMockRecorder) GetTwinPK(twinID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwinPK", reflect.TypeOf((*MockSubstrateExt)(nil).GetTwinPK), twinID)
-}
-
-// GetUserBalanceUSD mocks base method.
-func (m *MockSubstrateExt) GetUserBalanceUSD(userMnemonic string) (float64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserBalanceUSD", userMnemonic)
-	ret0, _ := ret[0].(float64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetUserBalanceUSD indicates an expected call of GetUserBalanceUSD.
-func (mr *MockSubstrateExtMockRecorder) GetUserBalanceUSD(userMnemonic interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserBalanceUSD", reflect.TypeOf((*MockSubstrateExt)(nil).GetUserBalanceUSD), userMnemonic)
-}
-
-// GetUserBalanceUSDMillicent mocks base method.
-func (m *MockSubstrateExt) GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserBalanceUSDMillicent", userMnemonic)
-	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetUserBalanceUSDMillicent indicates an expected call of GetUserBalanceUSDMillicent.
-func (mr *MockSubstrateExtMockRecorder) GetUserBalanceUSDMillicent(userMnemonic interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserBalanceUSDMillicent", reflect.TypeOf((*MockSubstrateExt)(nil).GetUserBalanceUSDMillicent), userMnemonic)
 }
 
 // InvalidateNameContract mocks base method.
