@@ -35,13 +35,12 @@ func (m *Manager) SubstrateExt() (*SubstrateImpl, error) {
 
 // SubstrateExt interface for substrate client
 type SubstrateExt interface {
+	NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error)
 	AcceptTermsAndConditions(identity substrate.Identity, docLink string, docHash string) error
 	CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error)
-	NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error)
-	TransferTFTsFromSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
-	TransferTFTsToSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
-
 	CreateRentContract(mnemonic string, nodeID uint32, solutionProviderID *uint64) (uint64, error)
+	TransferTFTsToSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
+	TransferTFTsFromSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
 
 	CancelContract(identity substrate.Identity, contractID uint64) error
 	CreateNodeContract(identity substrate.Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error)
@@ -96,12 +95,17 @@ func (s *SubstrateImpl) NewIdentityFromSr25519Phrase(mnemonic string) (substrate
 
 // AcceptTermsAndConditions accepts terms and conditions
 func (s *SubstrateImpl) AcceptTermsAndConditions(identity substrate.Identity, docLink string, docHash string) error {
+	s.m.Lock()
+	defer s.m.Unlock()
 	return s.Substrate.AcceptTermsAndConditions(identity, docLink, docHash)
 }
 
 // CreateTwin creates a twin and returns its twin ID
 func (s *SubstrateImpl) CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error) {
-	return s.Substrate.CreateTwin(identity, relay, pk)
+	s.m.Lock()
+	defer s.m.Unlock()
+	twin, err := s.Substrate.CreateTwin(identity, relay, pk)
+	return twin, normalizeNotFoundErrors(err)
 }
 
 // CreateRentContract creates a rent contract
@@ -110,41 +114,48 @@ func (s *SubstrateImpl) CreateRentContract(mnemonic string, nodeID uint32, solut
 	if err != nil {
 		return 0, err
 	}
+	s.m.Lock()
+	defer s.m.Unlock()
 
-	return s.Substrate.CreateRentContract(identity, nodeID, solutionProviderID)
+	contract, err := s.Substrate.CreateRentContract(identity, nodeID, solutionProviderID)
+	return contract, normalizeNotFoundErrors(err)
 }
 
 // TransferTFTsFromSystem transfer balance to users' account
 func (s *SubstrateImpl) TransferTFTsFromSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error {
 	// Create identity of user from mnemonic
-	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
+	userIdentity, err := s.NewIdentityFromSr25519Phrase(userMnemonic)
 	if err != nil {
 		return err
 	}
 
 	// Create identity of system from mnemonic
-	systemIdentity, err := substrate.NewIdentityFromSr25519Phrase(systemMnemonic)
+	systemIdentity, err := s.NewIdentityFromSr25519Phrase(systemMnemonic)
 	if err != nil {
 		return err
 	}
 
+	s.m.Lock()
+	defer s.m.Unlock()
 	return s.Transfer(systemIdentity, tftBalance, substrate.AccountID(userIdentity.PublicKey()))
 }
 
 // TransferTFTsToSystem transfer balance to system account
 func (s *SubstrateImpl) TransferTFTsToSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error {
 	// Create identity of user from mnemonic
-	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
+	userIdentity, err := s.NewIdentityFromSr25519Phrase(userMnemonic)
 	if err != nil {
 		return err
 	}
 
 	// Create identity of system from mnemonic
-	systemIdentity, err := substrate.NewIdentityFromSr25519Phrase(systemMnemonic)
+	systemIdentity, err := s.NewIdentityFromSr25519Phrase(systemMnemonic)
 	if err != nil {
 		return err
 	}
 
+	s.m.Lock()
+	defer s.m.Unlock()
 	return s.Transfer(userIdentity, tftBalance, substrate.AccountID(systemIdentity.PublicKey()))
 }
 
