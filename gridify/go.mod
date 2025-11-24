@@ -6,7 +6,7 @@ toolchain go1.24.2
 
 require (
 	github.com/cosmos/go-bip39 v1.0.0
-	github.com/go-git/go-git/v5 v5.16.3
+	github.com/go-git/go-git/v5 v5.16.4
 	github.com/golang/mock v1.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.34.0
