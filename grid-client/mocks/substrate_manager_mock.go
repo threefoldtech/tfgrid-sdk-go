@@ -595,17 +595,17 @@ func (mr *MockSubstrateExtMockRecorder) NewIdentityFromSr25519Phrase(mnemonic in
 }
 
 // Transfer mocks base method.
-func (m *MockSubstrateExt) Transfer(amount uint64, source, destination substrate.Identity) error {
+func (m *MockSubstrateExt) Transfer(amount uint64, source substrate.Identity, destinationPk []byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Transfer", amount, source, destination)
+	ret := m.ctrl.Call(m, "Transfer", amount, source, destinationPk)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Transfer indicates an expected call of Transfer.
-func (mr *MockSubstrateExtMockRecorder) Transfer(amount, source, destination interface{}) *gomock.Call {
+func (mr *MockSubstrateExtMockRecorder) Transfer(amount, source, destinationPk interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockSubstrateExt)(nil).Transfer), amount, source, destination)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockSubstrateExt)(nil).Transfer), amount, source, destinationPk)
 }
 
 // UpdateNodeContract mocks base method.

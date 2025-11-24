@@ -39,7 +39,7 @@ type SubstrateExt interface {
 	AcceptTermsAndConditions(identity substrate.Identity, docLink string, docHash string) error
 	CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error)
 	CreateRentContract(identity substrate.Identity, nodeID uint32, solutionProviderID *uint64) (uint64, error)
-	Transfer(amount uint64, source substrate.Identity, destination substrate.Identity) error
+	Transfer(amount uint64, source substrate.Identity, destinationPk []byte) error
 
 	CancelContract(identity substrate.Identity, contractID uint64) error
 	CreateNodeContract(identity substrate.Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error)
@@ -117,11 +117,11 @@ func (s *SubstrateImpl) CreateRentContract(identity substrate.Identity, nodeID u
 }
 
 // Transfer transfers an amount from source to destination
-func (s *SubstrateImpl) Transfer(amount uint64, source substrate.Identity, destination substrate.Identity) error {
+func (s *SubstrateImpl) Transfer(amount uint64, source substrate.Identity, destinationPk []byte) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	return s.Substrate.Transfer(source, amount, substrate.AccountID(destination.PublicKey()))
+	return s.Substrate.Transfer(source, amount, substrate.AccountID(destinationPk))
 }
 
 // GetAccount returns the user's account
