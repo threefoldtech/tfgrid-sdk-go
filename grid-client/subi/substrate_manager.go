@@ -35,6 +35,12 @@ func (m *Manager) SubstrateExt() (*SubstrateImpl, error) {
 
 // SubstrateExt interface for substrate client
 type SubstrateExt interface {
+	NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error)
+	AcceptTermsAndConditions(identity substrate.Identity, docLink string, docHash string) error
+	CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error)
+	CreateRentContract(identity substrate.Identity, nodeID uint32, solutionProviderID *uint64) (uint64, error)
+	Transfer(amount uint64, source substrate.Identity, destinationPk []byte) error
+
 	CancelContract(identity substrate.Identity, contractID uint64) error
 	CreateNodeContract(identity substrate.Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error)
 	UpdateNodeContract(identity substrate.Identity, contract uint64, body string, hash string) (uint64, error)
@@ -77,6 +83,45 @@ type SubstrateExt interface {
 type SubstrateImpl struct {
 	*substrate.Substrate
 	m sync.Mutex
+}
+
+var _ SubstrateExt = (*SubstrateImpl)(nil)
+
+// NewIdentityFromSr25519Phrase returns the identity from mnemonic
+func (s *SubstrateImpl) NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error) {
+	return substrate.NewIdentityFromSr25519Phrase(mnemonic)
+}
+
+// AcceptTermsAndConditions accepts terms and conditions
+func (s *SubstrateImpl) AcceptTermsAndConditions(identity substrate.Identity, docLink string, docHash string) error {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return s.Substrate.AcceptTermsAndConditions(identity, docLink, docHash)
+}
+
+// CreateTwin creates a twin and returns its twin ID
+func (s *SubstrateImpl) CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+	twin, err := s.Substrate.CreateTwin(identity, relay, pk)
+	return twin, normalizeNotFoundErrors(err)
+}
+
+// CreateRentContract creates a rent contract
+func (s *SubstrateImpl) CreateRentContract(identity substrate.Identity, nodeID uint32, solutionProviderID *uint64) (uint64, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	contract, err := s.Substrate.CreateRentContract(identity, nodeID, solutionProviderID)
+	return contract, normalizeNotFoundErrors(err)
+}
+
+// Transfer transfers an amount from source to destination
+func (s *SubstrateImpl) Transfer(amount uint64, source substrate.Identity, destinationPk []byte) error {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	return s.Substrate.Transfer(source, amount, substrate.AccountID(destinationPk))
 }
 
 // GetAccount returns the user's account

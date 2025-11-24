@@ -106,6 +106,20 @@ func (m *MockSubstrateExt) EXPECT() *MockSubstrateExtMockRecorder {
 	return m.recorder
 }
 
+// AcceptTermsAndConditions mocks base method.
+func (m *MockSubstrateExt) AcceptTermsAndConditions(identity substrate.Identity, docLink, docHash string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AcceptTermsAndConditions", identity, docLink, docHash)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AcceptTermsAndConditions indicates an expected call of AcceptTermsAndConditions.
+func (mr *MockSubstrateExtMockRecorder) AcceptTermsAndConditions(identity, docLink, docHash interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcceptTermsAndConditions", reflect.TypeOf((*MockSubstrateExt)(nil).AcceptTermsAndConditions), identity, docLink, docHash)
+}
+
 // BatchAllCreateContract mocks base method.
 func (m *MockSubstrateExt) BatchAllCreateContract(identity substrate.Identity, contractsData []substrate.BatchCreateContractData) ([]uint64, error) {
 	m.ctrl.T.Helper()
@@ -205,6 +219,36 @@ func (m *MockSubstrateExt) CreateNodeContract(identity substrate.Identity, node 
 func (mr *MockSubstrateExtMockRecorder) CreateNodeContract(identity, node, body, hash, publicIPs, solutionProviderID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNodeContract", reflect.TypeOf((*MockSubstrateExt)(nil).CreateNodeContract), identity, node, body, hash, publicIPs, solutionProviderID)
+}
+
+// CreateRentContract mocks base method.
+func (m *MockSubstrateExt) CreateRentContract(identity substrate.Identity, nodeID uint32, solutionProviderID *uint64) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateRentContract", identity, nodeID, solutionProviderID)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateRentContract indicates an expected call of CreateRentContract.
+func (mr *MockSubstrateExtMockRecorder) CreateRentContract(identity, nodeID, solutionProviderID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRentContract", reflect.TypeOf((*MockSubstrateExt)(nil).CreateRentContract), identity, nodeID, solutionProviderID)
+}
+
+// CreateTwin mocks base method.
+func (m *MockSubstrateExt) CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateTwin", identity, relay, pk)
+	ret0, _ := ret[0].(uint32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateTwin indicates an expected call of CreateTwin.
+func (mr *MockSubstrateExtMockRecorder) CreateTwin(identity, relay, pk interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTwin", reflect.TypeOf((*MockSubstrateExt)(nil).CreateTwin), identity, relay, pk)
 }
 
 // DeleteInvalidContracts mocks base method.
@@ -533,6 +577,35 @@ func (m *MockSubstrateExt) IsValidContract(contractID uint64) (bool, error) {
 func (mr *MockSubstrateExtMockRecorder) IsValidContract(contractID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsValidContract", reflect.TypeOf((*MockSubstrateExt)(nil).IsValidContract), contractID)
+}
+
+// NewIdentityFromSr25519Phrase mocks base method.
+func (m *MockSubstrateExt) NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewIdentityFromSr25519Phrase", mnemonic)
+	ret0, _ := ret[0].(substrate.Identity)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NewIdentityFromSr25519Phrase indicates an expected call of NewIdentityFromSr25519Phrase.
+func (mr *MockSubstrateExtMockRecorder) NewIdentityFromSr25519Phrase(mnemonic interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewIdentityFromSr25519Phrase", reflect.TypeOf((*MockSubstrateExt)(nil).NewIdentityFromSr25519Phrase), mnemonic)
+}
+
+// Transfer mocks base method.
+func (m *MockSubstrateExt) Transfer(amount uint64, source substrate.Identity, destinationPk []byte) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Transfer", amount, source, destinationPk)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Transfer indicates an expected call of Transfer.
+func (mr *MockSubstrateExtMockRecorder) Transfer(amount, source, destinationPk interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockSubstrateExt)(nil).Transfer), amount, source, destinationPk)
 }
 
 // UpdateNodeContract mocks base method.
