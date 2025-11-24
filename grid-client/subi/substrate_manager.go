@@ -38,9 +38,8 @@ type SubstrateExt interface {
 	NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error)
 	AcceptTermsAndConditions(identity substrate.Identity, docLink string, docHash string) error
 	CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error)
-	CreateRentContract(mnemonic string, nodeID uint32, solutionProviderID *uint64) (uint64, error)
-	TransferTFTsToSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
-	TransferTFTsFromSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error
+	CreateRentContract(identity substrate.Identity, nodeID uint32, solutionProviderID *uint64) (uint64, error)
+	Transfer(amount uint64, source substrate.Identity, destination substrate.Identity) error
 
 	CancelContract(identity substrate.Identity, contractID uint64) error
 	CreateNodeContract(identity substrate.Identity, node uint32, body string, hash string, publicIPs uint32, solutionProviderID *uint64) (uint64, error)
@@ -109,11 +108,7 @@ func (s *SubstrateImpl) CreateTwin(identity substrate.Identity, relay string, pk
 }
 
 // CreateRentContract creates a rent contract
-func (s *SubstrateImpl) CreateRentContract(mnemonic string, nodeID uint32, solutionProviderID *uint64) (uint64, error) {
-	identity, err := s.NewIdentityFromSr25519Phrase(mnemonic)
-	if err != nil {
-		return 0, err
-	}
+func (s *SubstrateImpl) CreateRentContract(identity substrate.Identity, nodeID uint32, solutionProviderID *uint64) (uint64, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
@@ -121,42 +116,12 @@ func (s *SubstrateImpl) CreateRentContract(mnemonic string, nodeID uint32, solut
 	return contract, normalizeNotFoundErrors(err)
 }
 
-// TransferTFTsFromSystem transfer balance to users' account
-func (s *SubstrateImpl) TransferTFTsFromSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error {
-	// Create identity of user from mnemonic
-	userIdentity, err := s.NewIdentityFromSr25519Phrase(userMnemonic)
-	if err != nil {
-		return err
-	}
-
-	// Create identity of system from mnemonic
-	systemIdentity, err := s.NewIdentityFromSr25519Phrase(systemMnemonic)
-	if err != nil {
-		return err
-	}
-
+// Transfer transfers an amount from source to destination
+func (s *SubstrateImpl) Transfer(amount uint64, source substrate.Identity, destination substrate.Identity) error {
 	s.m.Lock()
 	defer s.m.Unlock()
-	return s.Transfer(systemIdentity, tftBalance, substrate.AccountID(userIdentity.PublicKey()))
-}
 
-// TransferTFTsToSystem transfer balance to system account
-func (s *SubstrateImpl) TransferTFTsToSystem(tftBalance uint64, userMnemonic string, systemMnemonic string) error {
-	// Create identity of user from mnemonic
-	userIdentity, err := s.NewIdentityFromSr25519Phrase(userMnemonic)
-	if err != nil {
-		return err
-	}
-
-	// Create identity of system from mnemonic
-	systemIdentity, err := s.NewIdentityFromSr25519Phrase(systemMnemonic)
-	if err != nil {
-		return err
-	}
-
-	s.m.Lock()
-	defer s.m.Unlock()
-	return s.Transfer(userIdentity, tftBalance, substrate.AccountID(systemIdentity.PublicKey()))
+	return s.Substrate.Transfer(source, amount, substrate.AccountID(destination.PublicKey()))
 }
 
 // GetAccount returns the user's account

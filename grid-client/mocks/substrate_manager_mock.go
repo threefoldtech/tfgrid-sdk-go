@@ -222,18 +222,18 @@ func (mr *MockSubstrateExtMockRecorder) CreateNodeContract(identity, node, body,
 }
 
 // CreateRentContract mocks base method.
-func (m *MockSubstrateExt) CreateRentContract(mnemonic string, nodeID uint32, solutionProviderID *uint64) (uint64, error) {
+func (m *MockSubstrateExt) CreateRentContract(identity substrate.Identity, nodeID uint32, solutionProviderID *uint64) (uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateRentContract", mnemonic, nodeID, solutionProviderID)
+	ret := m.ctrl.Call(m, "CreateRentContract", identity, nodeID, solutionProviderID)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateRentContract indicates an expected call of CreateRentContract.
-func (mr *MockSubstrateExtMockRecorder) CreateRentContract(mnemonic, nodeID, solutionProviderID interface{}) *gomock.Call {
+func (mr *MockSubstrateExtMockRecorder) CreateRentContract(identity, nodeID, solutionProviderID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRentContract", reflect.TypeOf((*MockSubstrateExt)(nil).CreateRentContract), mnemonic, nodeID, solutionProviderID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRentContract", reflect.TypeOf((*MockSubstrateExt)(nil).CreateRentContract), identity, nodeID, solutionProviderID)
 }
 
 // CreateTwin mocks base method.
@@ -594,32 +594,18 @@ func (mr *MockSubstrateExtMockRecorder) NewIdentityFromSr25519Phrase(mnemonic in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewIdentityFromSr25519Phrase", reflect.TypeOf((*MockSubstrateExt)(nil).NewIdentityFromSr25519Phrase), mnemonic)
 }
 
-// TransferTFTsFromSystem mocks base method.
-func (m *MockSubstrateExt) TransferTFTsFromSystem(tftBalance uint64, userMnemonic, systemMnemonic string) error {
+// Transfer mocks base method.
+func (m *MockSubstrateExt) Transfer(amount uint64, source, destination substrate.Identity) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TransferTFTsFromSystem", tftBalance, userMnemonic, systemMnemonic)
+	ret := m.ctrl.Call(m, "Transfer", amount, source, destination)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// TransferTFTsFromSystem indicates an expected call of TransferTFTsFromSystem.
-func (mr *MockSubstrateExtMockRecorder) TransferTFTsFromSystem(tftBalance, userMnemonic, systemMnemonic interface{}) *gomock.Call {
+// Transfer indicates an expected call of Transfer.
+func (mr *MockSubstrateExtMockRecorder) Transfer(amount, source, destination interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransferTFTsFromSystem", reflect.TypeOf((*MockSubstrateExt)(nil).TransferTFTsFromSystem), tftBalance, userMnemonic, systemMnemonic)
-}
-
-// TransferTFTsToSystem mocks base method.
-func (m *MockSubstrateExt) TransferTFTsToSystem(tftBalance uint64, userMnemonic, systemMnemonic string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TransferTFTsToSystem", tftBalance, userMnemonic, systemMnemonic)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// TransferTFTsToSystem indicates an expected call of TransferTFTsToSystem.
-func (mr *MockSubstrateExtMockRecorder) TransferTFTsToSystem(tftBalance, userMnemonic, systemMnemonic interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransferTFTsToSystem", reflect.TypeOf((*MockSubstrateExt)(nil).TransferTFTsToSystem), tftBalance, userMnemonic, systemMnemonic)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transfer", reflect.TypeOf((*MockSubstrateExt)(nil).Transfer), amount, source, destination)
 }
 
 // UpdateNodeContract mocks base method.
