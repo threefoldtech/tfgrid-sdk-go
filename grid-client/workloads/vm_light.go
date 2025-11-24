@@ -175,8 +175,8 @@ func (vm *VMLight) Validate() error {
 		return errors.Wrap(err, "flist is invalid")
 	}
 
-	if vm.CPU < 1 || vm.CPU > 32 {
-		return errors.New("CPUs must be more than or equal to 1 and less than or equal to 32")
+	if vm.CPU < 1 {
+		return errors.New("CPUs must be more than or equal to 1")
 	}
 
 	if gridtypes.Unit(vm.MemoryMB) < 250 {
