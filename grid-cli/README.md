@@ -23,6 +23,7 @@ For examples and description of tfcmd commands check out:
 - [gateway-name](docs/gateway-name.md)
 - [kubernetes](docs/kubernetes.md)
 - [ZDB](docs/zdb.md)
+- [chat](docs/chat.md)
 
 ## Download
 
