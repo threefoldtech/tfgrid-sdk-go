@@ -30,7 +30,7 @@ func Login() error {
 		return errors.New("failed to validate mnemonics")
 	}
 
-	fmt.Print("Please enter grid network (main,test): ")
+	fmt.Print("Please enter grid network (main,test,dev,qa): ")
 	network, err := scanner.ReadString('\n')
 	if err != nil {
 		return errors.Wrap(err, "failed to read grid network")
