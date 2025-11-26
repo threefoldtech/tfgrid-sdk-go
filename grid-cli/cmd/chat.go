@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/google/generative-ai-go/genai"
 	"github.com/rs/zerolog/log"
@@ -81,6 +82,17 @@ IMPORTANT VALIDATION RULES:
    - To disable: --flag=false (MUST use = sign)
    - WRONG: --mycelium false
    - CORRECT: --mycelium=false
+
+7. HANDLING SSH KEYS IN ENVIRONMENT VARIABLES:
+   - Some application flists require an SSH key passed as an ENV VAR (e.g., SSH_KEY, pub_key, public_key)
+   - This is DIFFERENT from the --ssh flag (which takes a file path)
+   - If an ENV VAR requires an SSH key:
+     a) You CANNOT pass the file path (e.g., /home/user/.ssh/id_rsa.pub) as the value
+     b) You MUST pass the actual CONTENT of the key (e.g., "ssh-rsa AAA...")
+     c) If you only have the file path:
+        1. First, run: cat /path/to/key.pub
+        2. Read the output (the key content)
+        3. Then construct the deploy command using the content: --env SSH_KEY="ssh-rsa AAA..."
 
 CONSULTATIVE APPROACH FOR DEPLOYMENTS:
 When a user wants to deploy a resource (VM, Kubernetes, Gateway, ZDB):
@@ -186,13 +198,44 @@ Be consultative and educational - help users understand their options.
 `, string(schemaJSON))
 
 		model.SystemInstruction = genai.NewUserContent(genai.Text(systemPrompt))
-		cs := model.StartChat()
+
+		// Retry StartChat with exponential backoff (in case of rate limits or transient failures)
+		var cs *genai.ChatSession
+		maxRetries := 3
+		for i := 0; i < maxRetries; i++ {
+			cs = model.StartChat()
+			if cs != nil {
+				break
+			}
+			if i < maxRetries-1 {
+				waitTime := time.Duration(1<<uint(i)) * time.Second // 1s, 2s, 4s
+				log.Warn().Msgf("Failed to start chat session, retrying in %v... (attempt %d/%d)", waitTime, i+1, maxRetries)
+				time.Sleep(waitTime)
+			}
+		}
+
+		if cs == nil {
+			return fmt.Errorf("failed to start chat session with Gemini after %d attempts", maxRetries)
+		}
+
+		// ANSI color codes
+		const (
+			ColorReset  = "\033[0m"
+			ColorRed    = "\033[31m"
+			ColorGreen  = "\033[32m"
+			ColorYellow = "\033[33m"
+			ColorBlue   = "\033[34m"
+			ColorPurple = "\033[35m"
+			ColorCyan   = "\033[36m"
+			ColorGray   = "\033[90m"
+			ColorBold   = "\033[1m"
+		)
 
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Println("Welcome to Grid Agent! (type 'exit' to quit)")
+		fmt.Println(ColorGreen + "Welcome to ThreefoldGrid Agent! (type 'exit' to quit)" + ColorReset)
 
 		for {
-			fmt.Print("> ")
+			fmt.Print(ColorBold + "> " + ColorReset)
 			input, _ := reader.ReadString('\n')
 			input = strings.TrimSpace(input)
 
@@ -224,7 +267,7 @@ Be consultative and educational - help users understand their options.
 
 			// Process the response in a loop to handle retries/chains
 			for {
-				var response struct {
+				type Response struct {
 					Command     []string `json:"command,omitempty"`
 					Question    string   `json:"question,omitempty"`
 					Answer      string   `json:"answer,omitempty"`
@@ -233,113 +276,148 @@ Be consultative and educational - help users understand their options.
 					Reason      string   `json:"reason,omitempty"`
 				}
 
-				if err := json.Unmarshal([]byte(txt), &response); err != nil {
-					log.Error().Err(err).Msg("Error parsing response")
-					fmt.Println("Agent:", string(txt))
-					break
+				var responses []Response
+
+				// Try to unmarshal as a list first
+				if err := json.Unmarshal([]byte(txt), &responses); err != nil {
+					// If that fails, try as a single object
+					var singleResponse Response
+					if err := json.Unmarshal([]byte(txt), &singleResponse); err != nil {
+						log.Error().Err(err).Msg("Error parsing response")
+						fmt.Println(ColorCyan + "Agent: " + string(txt) + ColorReset)
+						break
+					}
+					responses = []Response{singleResponse}
 				}
 
-				if response.Question != "" {
-					fmt.Println("Agent:", response.Question)
-					break
-				} else if response.Answer != "" {
-					fmt.Println("Agent:", response.Answer)
-					break
-				} else if response.FetchURL != "" {
-					// Handle URL fetching
-					fmt.Println("Agent:", response.Reason)
-					fmt.Printf("Fetching: %s\n", response.FetchURL)
+				// Process all responses
+				for _, response := range responses {
+					if response.Question != "" {
+						fmt.Println(ColorCyan + "Agent: " + response.Question + ColorReset)
+						// For questions, we break to get user input
+						// But if there are multiple items, this might be tricky.
+						// Usually questions come alone.
+						goto EndProcessing
+					} else if response.Answer != "" {
+						fmt.Println(ColorCyan + "Agent: " + response.Answer + ColorReset)
+					} else if response.FetchURL != "" {
+						// Handle URL fetching
+						fmt.Println(ColorCyan + "Agent: " + response.Reason + ColorReset)
+						fmt.Printf(ColorYellow+"Fetching: %s"+ColorReset+"\n", response.FetchURL)
 
-					// Use a simple HTTP GET to fetch the content
-					// Note: In production, you might want to use the read_url_content tool
-					// For now, we'll use Go's http package
-					httpResp, err := http.Get(response.FetchURL)
-					if err != nil {
-						log.Error().Err(err).Msg("Failed to fetch URL")
-						feedback := fmt.Sprintf("Failed to fetch URL: %v", err)
+						// Use a simple HTTP GET to fetch the content
+						// Note: In production, you might want to use the read_url_content tool
+						// For now, we'll use Go's http package
+						httpResp, err := http.Get(response.FetchURL)
+						if err != nil {
+							log.Error().Err(err).Msg("Failed to fetch URL")
+							feedback := fmt.Sprintf("Failed to fetch URL: %v", err)
+							resp, err := cs.SendMessage(ctx, genai.Text(feedback))
+							if err != nil {
+								log.Error().Err(err).Msg("Error sending feedback to Gemini")
+								break
+							}
+							if len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
+								if t, ok := resp.Candidates[0].Content.Parts[0].(genai.Text); ok {
+									txt = t
+									continue
+								}
+							}
+							break
+						}
+						defer httpResp.Body.Close()
+
+						body, err := io.ReadAll(httpResp.Body)
+						if err != nil {
+							log.Error().Err(err).Msg("Failed to read response body")
+							break
+						}
+
+						// Send the fetched content back to the agent
+						feedback := fmt.Sprintf("Fetched content from %s:\n\n%s", response.FetchURL, string(body))
+						fmt.Println(ColorGray + "Agent is processing the fetched content..." + ColorReset)
 						resp, err := cs.SendMessage(ctx, genai.Text(feedback))
 						if err != nil {
 							log.Error().Err(err).Msg("Error sending feedback to Gemini")
-							break
+							goto EndProcessing
 						}
+
 						if len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
-							if t, ok := resp.Candidates[0].Content.Parts[0].(genai.Text); ok {
+							part := resp.Candidates[0].Content.Parts[0]
+							if t, ok := part.(genai.Text); ok {
 								txt = t
-								continue
+								// Loop continues with new response
+								// We need to break out of the range loop and continue the outer "process response" loop
+								// But wait, the outer loop IS the process response loop.
+								// We actually need to restart the outer loop with new 'txt'.
+								// Since we are inside a range loop, we can't just 'continue' the outer loop easily.
+								// Let's use a flag or goto.
+								goto ProcessNewResponse
 							}
 						}
-						break
-					}
-					defer httpResp.Body.Close()
+						goto EndProcessing
+					} else if len(response.Command) > 0 {
+						fmt.Println(ColorCyan + "Agent: " + response.Explanation + ColorReset)
+						fmt.Printf(ColorYellow+"Running: %s"+ColorReset+"\n", strings.Join(response.Command, " "))
 
-					body, err := io.ReadAll(httpResp.Body)
-					if err != nil {
-						log.Error().Err(err).Msg("Failed to read response body")
-						break
-					}
-
-					// Send the fetched content back to the agent
-					feedback := fmt.Sprintf("Fetched content from %s:\n\n%s", response.FetchURL, string(body))
-					fmt.Println("Agent is processing the fetched content...")
-					resp, err := cs.SendMessage(ctx, genai.Text(feedback))
-					if err != nil {
-						log.Error().Err(err).Msg("Error sending feedback to Gemini")
-						break
-					}
-
-					if len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
-						part := resp.Candidates[0].Content.Parts[0]
-						if t, ok := part.(genai.Text); ok {
-							txt = t
-							// Loop continues with new response
-							continue
+						// Execute the command
+						var cmd *exec.Cmd
+						if response.Command[0] == "tfcmd" {
+							cmdArgs := response.Command[1:]
+							exe, err := os.Executable()
+							if err != nil {
+								log.Error().Err(err).Msg("Failed to get executable path")
+								goto EndProcessing
+							}
+							cmd = exec.Command(exe, cmdArgs...)
+						} else {
+							cmd = exec.Command(response.Command[0], response.Command[1:]...)
 						}
-					}
-					break
-				} else if len(response.Command) > 0 {
-					fmt.Println("Agent:", response.Explanation)
-					fmt.Printf("Running: %s\n", strings.Join(response.Command, " "))
 
-					// Execute the command
-					cmdArgs := response.Command[1:]
-					exe, err := os.Executable()
-					if err != nil {
-						log.Error().Err(err).Msg("Failed to get executable path")
-						break
-					}
+						// Use rolling output helper
+						output, err := executeWithRollingOutput(cmd)
 
-					cmd := exec.Command(exe, cmdArgs...)
-					output, err := cmd.CombinedOutput()
+						// Print output to user (it was already printed by rolling output, but we might want to keep it?
+						// User said: "completely disappear and agent start to talk"
+						// executeWithRollingOutput clears the output at the end.
+						// So we don't need to print it again.
+						// But we need to capture it for the agent feedback.
 
-					// Print output to user
-					fmt.Print(string(output))
-
-					// Prepare feedback for the agent
-					feedback := fmt.Sprintf("Command executed.\nOutput:\n%s", string(output))
-					if err != nil {
-						feedback += fmt.Sprintf("\nError: %v", err)
-					}
-
-					fmt.Println("Agent is analyzing the output...")
-					resp, err := cs.SendMessage(ctx, genai.Text(feedback))
-					if err != nil {
-						log.Error().Err(err).Msg("Error sending feedback to Gemini")
-						break
-					}
-
-					if len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
-						part := resp.Candidates[0].Content.Parts[0]
-						if t, ok := part.(genai.Text); ok {
-							txt = t
-							// Loop continues with new response
-							continue
+						// Prepare feedback for the agent
+						feedback := fmt.Sprintf("Command executed.\nOutput:\n%s", output)
+						if err != nil {
+							feedback += fmt.Sprintf("\nError: %v", err)
 						}
+
+						fmt.Println(ColorGray + "Agent is analyzing the output..." + ColorReset)
+						resp, err := cs.SendMessage(ctx, genai.Text(feedback))
+						if err != nil {
+							log.Error().Err(err).Msg("Error sending feedback to Gemini")
+							goto EndProcessing
+						}
+
+						if len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
+							part := resp.Candidates[0].Content.Parts[0]
+							if t, ok := part.(genai.Text); ok {
+								txt = t
+								// Same here, restart processing with new response
+								goto ProcessNewResponse
+							}
+						}
+						goto EndProcessing
+					} else {
+						// No command, question, or answer?
+						// Just continue to next item
 					}
-					break
-				} else {
-					// No command, question, or answer?
-					break
 				}
+				// If we finished the range loop without jumping, we are done
+				break
+
+			ProcessNewResponse:
+				continue
+
+			EndProcessing:
+				break
 			}
 		}
 
