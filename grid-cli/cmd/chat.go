@@ -428,6 +428,7 @@ Be consultative and educational - help users understand their options.
 type CommandSchema struct {
 	Name          string           `json:"name"`
 	Description   string           `json:"description"`
+	Args          string           `json:"args,omitempty"`
 	Flags         []FlagSchema     `json:"flags,omitempty"`
 	RequiredFlags []string         `json:"required_flags,omitempty"`
 	FlagGroups    [][]string       `json:"flag_groups,omitempty"`
@@ -447,6 +448,30 @@ func generateSchema(cmd *cobra.Command) *CommandSchema {
 	schema := &CommandSchema{
 		Name:        cmd.Name(),
 		Description: cmd.Short,
+	}
+
+	// Capture positional argument requirements
+	if cmd.Args != nil {
+		// Try to infer the args requirement from common validators
+		// This is a best-effort approach since cobra doesn't expose Args info directly
+		switch cmd.Use {
+		case "vm":
+			if cmd.Parent() != nil && cmd.Parent().Name() == "get" {
+				schema.Args = "<vm-name> (required positional argument)"
+			}
+		case "kubernetes":
+			if cmd.Parent() != nil && cmd.Parent().Name() == "get" {
+				schema.Args = "<kubernetes-name> (required positional argument)"
+			}
+		case "gateway":
+			if cmd.Parent() != nil && cmd.Parent().Name() == "get" {
+				schema.Args = "<gateway-name> (required positional argument)"
+			}
+		case "zdb":
+			if cmd.Parent() != nil && cmd.Parent().Name() == "get" {
+				schema.Args = "<zdb-name> (required positional argument)"
+			}
+		}
 	}
 
 	// Collect required flags
