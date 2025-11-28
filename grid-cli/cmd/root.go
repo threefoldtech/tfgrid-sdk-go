@@ -24,6 +24,11 @@ func Execute() {
 	}
 }
 
+// GetRootCmd returns the root command for external use (e.g., schema generation)
+func GetRootCmd() *cobra.Command {
+	return rootCmd
+}
+
 func init() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
