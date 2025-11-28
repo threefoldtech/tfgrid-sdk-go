@@ -63,7 +63,7 @@ func ExecuteWithRollingOutput(cmd *exec.Cmd, ui *ui.UI) (string, error) {
 	return output.String(), nil
 }
 
-// ExpandTilde expands the tilde in a path
+// ExpandTilde expands the tilde in a path and normalizes path separators
 func ExpandTilde(path string) string {
 	if path == "~" {
 		home, err := os.UserHomeDir()
@@ -73,7 +73,10 @@ func ExpandTilde(path string) string {
 	} else if strings.HasPrefix(path, "~/") {
 		home, err := os.UserHomeDir()
 		if err == nil {
-			return strings.Replace(path, "~", home, 1)
+			// Replace ~ with home directory
+			expanded := strings.Replace(path, "~", home, 1)
+			// Normalize path separators for the OS
+			return filepath.FromSlash(expanded)
 		}
 	}
 	return path
