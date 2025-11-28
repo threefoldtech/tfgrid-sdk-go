@@ -255,7 +255,7 @@ func (p *ResponseProcessor) processResponseWithCollectorAndRetries(ctx context.C
 		// Command execution - execute and continue
 		if len(response.Command) > 0 {
 			output, err := p.executor.Execute(response.Command)
-			
+
 			collector.CollectCommand(response.Command, output, err)
 
 			feedback := fmt.Sprintf("Command executed.\nOutput:\n%s", output)

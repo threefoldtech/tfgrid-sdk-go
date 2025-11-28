@@ -27,11 +27,11 @@ type Response struct {
 
 // Service handles chat interactions with Gemini
 type Service struct {
-	client *genai.Client
-	cs     *genai.ChatSession
+	client  *genai.Client
+	cs      *genai.ChatSession
 	History []*genai.Content
-	cfg    config.Config
-	model  *genai.GenerativeModel
+	cfg     config.Config
+	model   *genai.GenerativeModel
 }
 
 // NewServiceWithSchema creates a new chat service with dynamic schema generation from a root command
@@ -47,7 +47,7 @@ func NewServiceWithSchema(apiKey string, rootCmd *cobra.Command) (*Service, erro
 
 	// Load config with schema
 	cfg := config.LoadConfig(string(schemaJSON))
-	
+
 	return NewService(apiKey, cfg)
 }
 
@@ -155,4 +155,3 @@ func (s *Service) GetConfig() config.Config {
 func (s *Service) Close() {
 	s.client.Close()
 }
-

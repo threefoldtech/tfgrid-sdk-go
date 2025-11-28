@@ -5,6 +5,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const getCommandName = "get"
+
 // CommandSchema struct for command schema
 type CommandSchema struct {
 	Name          string           `json:"name"`
@@ -36,19 +38,19 @@ func GenerateSchema(cmd *cobra.Command) *CommandSchema {
 	if cmd.Args != nil {
 		switch cmd.Use {
 		case "vm":
-			if cmd.Parent() != nil && cmd.Parent().Name() == "get" {
+			if cmd.Parent() != nil && cmd.Parent().Name() == getCommandName {
 				schema.Args = "<vm-name> (required positional argument)"
 			}
 		case "kubernetes":
-			if cmd.Parent() != nil && cmd.Parent().Name() == "get" {
+			if cmd.Parent() != nil && cmd.Parent().Name() == getCommandName {
 				schema.Args = "<kubernetes-name> (required positional argument)"
 			}
 		case "gateway":
-			if cmd.Parent() != nil && cmd.Parent().Name() == "get" {
+			if cmd.Parent() != nil && cmd.Parent().Name() == getCommandName {
 				schema.Args = "<gateway-name> (required positional argument)"
 			}
 		case "zdb":
-			if cmd.Parent() != nil && cmd.Parent().Name() == "get" {
+			if cmd.Parent() != nil && cmd.Parent().Name() == getCommandName {
 				schema.Args = "<zdb-name> (required positional argument)"
 			}
 		}

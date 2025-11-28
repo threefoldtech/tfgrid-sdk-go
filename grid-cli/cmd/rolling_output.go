@@ -13,7 +13,8 @@ func executeWithRollingOutput(cmd *exec.Cmd) (string, error) {
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
-	if err := cmd.Start(); err != nil {
+	var err error
+	if err = cmd.Start(); err != nil {
 		return "", err
 	}
 
@@ -87,8 +88,7 @@ func executeWithRollingOutput(cmd *exec.Cmd) (string, error) {
 		printedLines = len(visibleLines)
 	}
 
-	cmd.Wait()
-
+	err = cmd.Wait()
 	// "Completely disappear"
 	if printedLines > 0 {
 		for i := 0; i < printedLines; i++ {
@@ -96,5 +96,5 @@ func executeWithRollingOutput(cmd *exec.Cmd) (string, error) {
 		}
 	}
 
-	return fullOutput.String(), nil
+	return fullOutput.String(), err
 }
