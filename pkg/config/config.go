@@ -24,15 +24,15 @@ const (
 )
 
 type Config struct {
-	IntervalStr    string      `mapstructure:"interval"`
-	Workers        int         `mapstructure:"workers"`
-	TimeoutStr     string      `mapstructure:"timeout"`
-	LogLevel       string      `mapstructure:"log_level"`
-	Grid           GridConfig  `mapstructure:"grid"`
-	Nodes          NodesConfig `mapstructure:"nodes"`
-	Workload       string      `mapstructure:"workload"`
-	ScoreWindowStr string      `mapstructure:"score_window"`
-	TimescaleDB    TimescaleDB `mapstructure:"timescaledb"`
+	IntervalStr      string      `mapstructure:"interval"`
+	ConcurrencyLimit int         `mapstructure:"concurrency_limit"`
+	TimeoutStr       string      `mapstructure:"timeout"`
+	LogLevel         string      `mapstructure:"log_level"`
+	Grid             GridConfig  `mapstructure:"grid"`
+	Nodes            NodesConfig `mapstructure:"nodes"`
+	Workload         string      `mapstructure:"workload"`
+	ScoreWindowStr   string      `mapstructure:"score_window"`
+	TimescaleDB      TimescaleDB `mapstructure:"timescaledb"`
 
 	interval    time.Duration
 	timeout     time.Duration
@@ -146,8 +146,8 @@ func (c *Config) validate() error {
 	if c.interval <= 0 {
 		return fmt.Errorf("interval must be positive")
 	}
-	if c.Workers <= 0 {
-		return fmt.Errorf("workers must be positive")
+	if c.ConcurrencyLimit <= 0 {
+		return fmt.Errorf("concurrency_limit must be positive")
 	}
 	if c.timeout <= 0 {
 		return fmt.Errorf("timeout must be positive")

@@ -1,5 +1,5 @@
 interval: "6h"
-workers: 10
+concurrency_limit: 10
 timeout: "10m"
 log_level: "info"
 workload: "light"
