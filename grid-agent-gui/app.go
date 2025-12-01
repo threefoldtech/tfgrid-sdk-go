@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/agent/pkg/core"
@@ -25,9 +26,11 @@ import (
 
 // App struct
 type App struct {
-	ctx      context.Context
-	agent    *core.Agent
-	settings *Settings
+	ctx             context.Context
+	agent           *core.Agent
+	settings        *Settings
+	activeWorkflows map[string]context.CancelFunc
+	workflowsMutex  sync.RWMutex
 }
 
 // Settings holds user configuration
@@ -67,6 +70,7 @@ func NewApp() *App {
 		settings: &Settings{
 			Theme: "dark",
 		},
+		activeWorkflows: make(map[string]context.CancelFunc),
 	}
 }
 
@@ -323,11 +327,36 @@ func (a *App) SendMessage(message string, requestID string) (*Message, error) {
 		return nil, fmt.Errorf("agent not initialized")
 	}
 
+	// Create cancellable context for this workflow
+	ctx, cancel := context.WithCancel(a.ctx)
+
+	// Store cancel function
+	a.workflowsMutex.Lock()
+	a.activeWorkflows[requestID] = cancel
+	a.workflowsMutex.Unlock()
+
+	// Clean up after workflow completes
+	defer func() {
+		a.workflowsMutex.Lock()
+		delete(a.activeWorkflows, requestID)
+		a.workflowsMutex.Unlock()
+	}()
+
 	collector := &GUIMessageCollector{ctx: a.ctx, requestID: requestID}
 	processor := workflow.NewProcessor(a.agent, collector, requestID)
 
-	err := processor.ProcessMessage(a.ctx, message)
+	err := processor.ProcessMessage(ctx, message)
 	if err != nil {
+		// Check if error is due to cancellation
+		if ctx.Err() == context.Canceled {
+			return &Message{
+				Role:      "agent",
+				Content:   "I have interrupted the workflow per your request.",
+				Timestamp: time.Now().Format(time.RFC3339),
+				RequestID: requestID,
+				Steps:     collector.steps,
+			}, nil
+		}
 		return nil, fmt.Errorf("failed to process message: %w", err)
 	}
 
@@ -338,6 +367,20 @@ func (a *App) SendMessage(message string, requestID string) (*Message, error) {
 		RequestID: requestID,
 		Steps:     collector.steps,
 	}, nil
+}
+
+// AbortWorkflow cancels a running workflow by requestID
+func (a *App) AbortWorkflow(requestID string) error {
+	a.workflowsMutex.Lock()
+	defer a.workflowsMutex.Unlock()
+
+	if cancel, exists := a.activeWorkflows[requestID]; exists {
+		cancel()
+		delete(a.activeWorkflows, requestID)
+		log.Printf("Workflow %s aborted by user", requestID)
+		return nil
+	}
+	return fmt.Errorf("workflow %s not found or already completed", requestID)
 }
 
 // SetTheme updates the theme

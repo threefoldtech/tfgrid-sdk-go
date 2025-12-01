@@ -10,6 +10,7 @@
     role: string;
     content: string;
     timestamp: string;
+    requestID?: string;
     steps?: Array<{
       type: string;
       content: string;
@@ -267,27 +268,58 @@
 
   /* Steps styling */
   .steps-container {
-    margin-top: 0.5rem;
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
   }
 
-  .steps-toggle {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 0.875rem;
+  .steps-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    transition: all 0.2s;
-    width: 100%;
+    justify-content: space-between;
+  }
+
+  .steps-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0.25rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s;
   }
 
   .steps-toggle:hover {
-    background: var(--bg-secondary);
     color: var(--text-primary);
+  }
+
+  .abort-btn {
+    background: var(--error);
+    color: white;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .abort-btn:hover:not(:disabled) {
+    background: #dc2626;
+    transform: translateY(-1px);
+  }
+
+  .abort-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .toggle-icon {

@@ -1,6 +1,10 @@
 <script lang="ts">
   import { onMount, afterUpdate } from "svelte";
-  import { SendMessage, Logout } from "../../wailsjs/go/main/App.js";
+  import {
+    SendMessage,
+    Logout,
+    AbortWorkflow,
+  } from "../../wailsjs/go/main/App.js";
   import { EventsOn } from "../../wailsjs/runtime/runtime.js";
   import { messagesStore } from "../stores/stores";
   import ChatMessage from "./ChatMessage.svelte";
@@ -14,6 +18,7 @@
   let input = "";
   let chatContainer: HTMLElement;
   let isSending = false;
+  let currentRequestID = "";
   let showLogoutModal = false;
   let showErrorModal = false;
   let errorMessage = "";
@@ -73,6 +78,7 @@
     const messageToSend = input;
     input = "";
     isSending = true;
+    currentRequestID = requestID; // Track current request
 
     try {
       const response = await SendMessage(messageToSend, requestID);
@@ -110,6 +116,18 @@
       });
     } finally {
       isSending = false;
+      currentRequestID = ""; // Clear current request
+    }
+  }
+
+  async function handleAbort() {
+    if (!currentRequestID || !isSending) return;
+
+    try {
+      await AbortWorkflow(currentRequestID);
+      console.log("Workflow aborted:", currentRequestID);
+    } catch (error) {
+      console.error("Failed to abort workflow:", error);
     }
   }
 
@@ -311,13 +329,23 @@
         placeholder="Type a message..."
         rows="1"
       ></textarea>
-      <button
-        class="send-btn"
-        on:click={handleSubmit}
-        disabled={!input.trim() || isSending}
-      >
-        Send
-      </button>
+      {#if isSending}
+        <button
+          class="abort-btn-input"
+          on:click={handleAbort}
+          title="Abort workflow"
+        >
+          ⏹ Abort
+        </button>
+      {:else}
+        <button
+          class="send-btn"
+          on:click={handleSubmit}
+          disabled={!input.trim() || isSending}
+        >
+          Send
+        </button>
+      {/if}
     </div>
   </div>
 </div>
@@ -490,6 +518,25 @@
   .send-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .abort-btn-input {
+    background: var(--error);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .abort-btn-input:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
   }
 
   /* Logout Modal */
