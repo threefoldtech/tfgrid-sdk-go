@@ -25,6 +25,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"github.com/vedhavyas/go-subkey"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 // TFPluginClient is a Threefold plugin client
@@ -68,6 +69,8 @@ type TFPluginClient struct {
 	cancelRelayContext context.CancelFunc
 
 	sentry gridSentry
+
+	traceProvider *sdktrace.TracerProvider
 }
 
 type pluginCfg struct {
@@ -83,6 +86,7 @@ type pluginCfg struct {
 	rmbInMemCache bool
 	disableSentry bool
 	rmbSessionId  string
+	traceProvider *sdktrace.TracerProvider
 }
 
 type PluginOpt func(*pluginCfg)
@@ -156,6 +160,12 @@ func WithGraphQlURL(graphqlURLs ...string) PluginOpt {
 func WithSessionId(rmbSessionId string) PluginOpt {
 	return func(p *pluginCfg) {
 		p.rmbSessionId = rmbSessionId
+	}
+}
+
+func WithTraceProvider(tp *sdktrace.TracerProvider) PluginOpt {
+	return func(p *pluginCfg) {
+		p.traceProvider = tp
 	}
 }
 
@@ -274,6 +284,7 @@ func NewTFPluginClient(
 	tfPluginClient.proxyURLs = cfg.proxyURLs
 	tfPluginClient.graphqlURLs = cfg.graphqlURLs
 	tfPluginClient.relayURLs = cfg.relayURLs
+	tfPluginClient.traceProvider = cfg.traceProvider
 
 	manager := subi.NewManager(tfPluginClient.substrateURLs...)
 	sub, err := manager.SubstrateExt()
