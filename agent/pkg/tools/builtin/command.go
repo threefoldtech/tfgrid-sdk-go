@@ -14,6 +14,15 @@ import (
 // StreamCallback is called for each line of output during command execution
 type StreamCallback func(requestID, commandID, line string)
 
+type contextKey string
+
+const (
+	// RequestIDKey is the context key for the request ID
+	RequestIDKey contextKey = "requestID"
+	// CommandIDKey is the context key for the command ID
+	CommandIDKey contextKey = "commandID"
+)
+
 // CommandTool executes shell commands with optional real-time streaming
 type CommandTool struct {
 	streamCallback StreamCallback
@@ -42,8 +51,8 @@ func (t *CommandTool) Description() string {
 }
 
 func (t *CommandTool) Execute(ctx context.Context, args map[string]any) (map[string]any, error) {
-	requestID, _ := ctx.Value("requestID").(string)
-	commandID, _ := ctx.Value("commandID").(string)
+	requestID, _ := ctx.Value(RequestIDKey).(string)
+	commandID, _ := ctx.Value(CommandIDKey).(string)
 	cmdStr, ok := args["command"].(string)
 	if !ok {
 		return nil, fmt.Errorf("missing 'command' argument")

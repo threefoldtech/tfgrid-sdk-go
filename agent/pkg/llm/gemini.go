@@ -33,7 +33,7 @@ func NewGeminiProvider(apiKey string, modelName string) (*GeminiProvider, error)
 	}
 
 	if modelName == "" {
-		config.ModelName = "gemini-1.5-flash"
+		config.ModelName = "gemini-2.5-flash"
 	}
 
 	return NewGeminiProviderWithConfig(apiKey, config)
@@ -48,11 +48,10 @@ func NewGeminiProviderWithConfig(apiKey string, config Config) (*GeminiProvider,
 	}
 
 	if config.ModelName == "" {
-		config.ModelName = "gemini-1.5-flash"
+		config.ModelName = "gemini-2.5-flash"
 	}
 
 	model := client.GenerativeModel(config.ModelName)
-	model.ResponseMIMEType = config.ResponseMIMEType
 	model.ResponseMIMEType = config.ResponseMIMEType
 	// Automatically append the mandatory JSON format instructions
 	fullPrompt := config.SystemPrompt + "\n" + JSONFormatInstructions
@@ -164,13 +163,18 @@ func (p *GeminiProvider) parseResponse(resp *genai.GenerateContentResponse) (*Re
 	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
 		return nil, fmt.Errorf("empty response from Gemini")
 	}
-
+	// debug log check response1.UsageMetadata for "cached_content_token_count" to see cache hits
+	log.Printf("UsageMetadata: %v", resp.UsageMetadata)
 	var text string
 	for _, part := range resp.Candidates[0].Content.Parts {
 		if t, ok := part.(genai.Text); ok {
 			text += string(t)
 		}
 	}
+
+	// Sanitize JSON string: escape control characters that might be unescaped
+	// This handles cases where the LLM returns literal newlines inside JSON strings
+	text = sanitizeJSON(text)
 
 	// Try to parse JSON
 	// Handle case where model returns list of responses
@@ -180,8 +184,10 @@ func (p *GeminiProvider) parseResponse(resp *genai.GenerateContentResponse) (*Re
 		var single geminiResponse
 		if err2 := json.Unmarshal([]byte(text), &single); err2 != nil {
 			// Not JSON, return raw text
+			log.Printf("[DEBUG] Failed to parse JSON response. Error: %v. Raw text (first 200 chars): %s", err2, text[:min(200, len(text))])
 			return &Response{Text: text}, nil
 		}
+		log.Printf("[DEBUG] Successfully parsed single JSON object: answer=%d chars, explanation=%d chars", len(single.Answer), len(single.Explanation))
 		responses = []geminiResponse{single}
 	}
 
@@ -226,10 +232,53 @@ func (p *GeminiProvider) parseResponse(resp *genai.GenerateContentResponse) (*Re
 
 	genericResp.Text = strings.TrimSpace(finalAnswer.String())
 
-	// If no structured answer was found AND no tools were called, fall back to raw text
-	if genericResp.Text == "" && len(genericResp.ToolCalls) == 0 {
-		genericResp.Text = text
-	}
+	// Only fall back to raw text if JSON parsing completely failed
+	// (responses array would be empty in that case, but we already handled that above)
 
 	return genericResp, nil
+}
+
+// sanitizeJSON attempts to fix common JSON formatting issues from LLMs
+func sanitizeJSON(s string) string {
+	// If the string contains unescaped newlines within quotes, we need to escape them
+	// This is a naive implementation but handles the most common case
+	var result strings.Builder
+	inString := false
+	escaped := false
+
+	for _, r := range s {
+		if escaped {
+			result.WriteRune(r)
+			escaped = false
+			continue
+		}
+
+		if r == '\\' {
+			escaped = true
+			result.WriteRune(r)
+			continue
+		}
+
+		if r == '"' {
+			inString = !inString
+		}
+
+		if inString {
+			if r == '\n' {
+				result.WriteString("\\n")
+				continue
+			}
+			if r == '\t' {
+				result.WriteString("\\t")
+				continue
+			}
+			if r == '\r' {
+				continue // skip carriage returns
+			}
+		}
+
+		result.WriteRune(r)
+	}
+
+	return result.String()
 }

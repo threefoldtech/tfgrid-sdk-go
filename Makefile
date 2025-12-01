@@ -32,8 +32,8 @@ endif
 # Build directories
 BUILD_DIR := build
 DIST_DIR := dist
-CLI_BUILD_DIR := $(BUILD_DIR)/cli
-GUI_BUILD_DIR := $(BUILD_DIR)/gui
+CLI_BUILD_DIR := $(BUILD_DIR)/grid-cli
+GUI_BUILD_DIR := $(BUILD_DIR)/grid-agent
 
 # Install directories
 ifeq ($(GOOS),darwin)
@@ -61,7 +61,7 @@ LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main
 all: build-grid-agent-with-grid-cli
 
 # ============================================================================
-# CLI Build Targets
+# GRID-CLI Build Targets
 # ============================================================================
 
 build-grid-cli:
@@ -83,7 +83,7 @@ build-grid-cli-windows:
 	@$(MAKE) build-grid-cli GOOS=windows GOARCH=amd64
 
 # ============================================================================
-# GUI Build Targets
+# GRID-AGENT-GUI Build Targets
 # ============================================================================
 
 build-grid-agent-gui:
@@ -157,13 +157,17 @@ else ifeq ($(GOOS),linux)
 	@cp $(GUI_BUILD_DIR)/$(GOOS)-$(GOARCH)/$(GUI_BINARY) $(GUI_INSTALL_DIR)/$(GUI_BINARY)
 	@chmod +x $(GUI_INSTALL_DIR)/$(GUI_BINARY)
 	@echo "✅ Installed: $(GUI_INSTALL_DIR)/$(GUI_BINARY)"
+	@echo "📝 Installing icon..."
+	@mkdir -p $(HOME)/.local/share/icons/hicolor/512x512/apps
+	@cp grid-agent-gui/build/appicon.png $(HOME)/.local/share/icons/hicolor/512x512/apps/grid-agent-gui.png
+	@echo "✅ Icon installed"
 	@echo "📝 Creating desktop entry..."
 	@mkdir -p $(HOME)/.local/share/applications
 	@echo "[Desktop Entry]" > $(HOME)/.local/share/applications/grid-agent-gui.desktop
 	@echo "Name=ThreeFold Grid Agent" >> $(HOME)/.local/share/applications/grid-agent-gui.desktop
 	@echo "Comment=AI-powered ThreeFold Grid management" >> $(HOME)/.local/share/applications/grid-agent-gui.desktop
-	@echo "Exec=$(GUI_INSTALL_DIR)/$(GUI_BINARY)" >> $(HOME)/.local/share/applications/grid-agent-gui.desktop
-	@echo "Icon=grid-agent" >> $(HOME)/.local/share/applications/grid-agent-gui.desktop
+	@echo "Exec=env PATH=$(INSTALL_DIR):/usr/local/bin:/usr/bin:/bin $(GUI_INSTALL_DIR)/$(GUI_BINARY)" >> $(HOME)/.local/share/applications/grid-agent-gui.desktop
+	@echo "Icon=$(HOME)/.local/share/icons/hicolor/512x512/apps/grid-agent-gui.png" >> $(HOME)/.local/share/applications/grid-agent-gui.desktop
 	@echo "Terminal=false" >> $(HOME)/.local/share/applications/grid-agent-gui.desktop
 	@echo "Type=Application" >> $(HOME)/.local/share/applications/grid-agent-gui.desktop
 	@echo "Categories=Utility;Development;" >> $(HOME)/.local/share/applications/grid-agent-gui.desktop
@@ -195,7 +199,7 @@ clean:
 	@echo "✅ Clean complete"
 
 # ============================================================================
-# Existing targets
+# Release targets
 # ============================================================================
 
 mainnet-release:
@@ -212,6 +216,10 @@ release:
 	@echo "Running release script..." 
 	chmod +x release.sh 
 	./release.sh
+
+# ============================================================================
+# Other targets
+# ============================================================================
 
 lint:
 	for DIR in ${DIRS} ; do \

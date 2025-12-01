@@ -13,8 +13,6 @@ import (
 var commandCounter uint64
 
 const (
-	requestIDKey    = "requestID"
-	commandIDKey    = "commandID"
 	commandToolName = "command"
 )
 
@@ -130,10 +128,10 @@ func (p *Processor) processResponseLoop(ctx context.Context, resp *llm.Response)
 					continue
 				}
 
-				ctxWithID := context.WithValue(ctx, requestIDKey, p.requestID)
+				ctxWithID := context.WithValue(ctx, builtin.RequestIDKey, p.requestID)
 				// Also add commandID to context for streaming callback
 				if commandID != "" {
-					ctxWithID = context.WithValue(ctxWithID, commandIDKey, commandID)
+					ctxWithID = context.WithValue(ctxWithID, builtin.CommandIDKey, commandID)
 				}
 				output, err := tool.Execute(ctxWithID, toolCall.Arguments)
 
