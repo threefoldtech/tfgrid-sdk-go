@@ -1,0 +1,20 @@
+interval: "6h"
+workers: 10
+timeout: "10m"
+log_level: "info"
+workload: "light"
+
+grid:
+  network: "dev"
+  mnemonic: ""
+
+nodes:
+  status: ["up"]
+  farms: [1]
+  nodes: [11]
+  exclude: []
+
+score_window: "90d"
+
+timescaledb:
+  url: "postgresql://postgres:postgres@localhost:5432/provision_probe"
