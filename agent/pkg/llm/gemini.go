@@ -163,8 +163,6 @@ func (p *GeminiProvider) parseResponse(resp *genai.GenerateContentResponse) (*Re
 	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
 		return nil, fmt.Errorf("empty response from Gemini")
 	}
-	// debug log check response1.UsageMetadata for "cached_content_token_count" to see cache hits
-	log.Printf("UsageMetadata: %v", resp.UsageMetadata)
 	var text string
 	for _, part := range resp.Candidates[0].Content.Parts {
 		if t, ok := part.(genai.Text); ok {
@@ -187,7 +185,6 @@ func (p *GeminiProvider) parseResponse(resp *genai.GenerateContentResponse) (*Re
 			log.Printf("[DEBUG] Failed to parse JSON response. Error: %v. Raw text (first 200 chars): %s", err2, text[:min(200, len(text))])
 			return &Response{Text: text}, nil
 		}
-		log.Printf("[DEBUG] Successfully parsed single JSON object: answer=%d chars, explanation=%d chars", len(single.Answer), len(single.Explanation))
 		responses = []geminiResponse{single}
 	}
 
