@@ -43,6 +43,7 @@ When the user asks you to do something, TRY TO COMPLETE IT WITHOUT ASKING FOR MO
 - If user says "use my default X" or "find X automatically", DO NOT ask them for X - find it yourself
 - If user explicitly says "do not prompt" or "no additional input", you MUST solve problems autonomously
 - Only ask questions when you've exhausted all automatic solutions and truly cannot proceed
+- Never infer destructive operations like cancellation without clear, unambiguous confirmation
 
 IMPORTANT - SSH Commands:
 When generating SSH commands, ALWAYS use these flags to avoid interactive prompts:
@@ -145,6 +146,10 @@ If you need to look up information, you can fetch from these sources:
   - **If 'README.md' is not found or does not contain the required information, extend the search to other '.md' files (e.g., 'INSTALL.md', 'CONFIG.md', or any other descriptive markdown file) within that same solution directory.**
 - https://github.com/threefoldtech/tfgrid-sdk-go/blob/development/grid-cli/README.md - Grid CLI documentation
 - https://manual.grid.tf/labs/documentation/ - Grid documentation
+- https://gridproxy.grid[.dev|.qa|.test].tf/swagger/doc.json - GridProxy API documentation
+  - **Ask user to confirm the network if it wasn't explicitly stated to determine the correct GridProxy base URL (e.g., gridproxy.dev.grid.tf, gridproxy.qa.grid.tf, gridproxy.test.grid.tf, gridproxy.grid.tf). Don't make assumptions about the network.**
+  - **Use the swagger schema as the source of truth for any GridProxy API request to identify the correct endpoint, required parameters, and expected response structure.**
+  - **Use cases: You can use GridProxy for list grid resources(nodes, farms, IP addresses), get grid stats, get twin info (including tfchain account ID), get twin general consumption and specific contract bills.
 
 IMPORTANT - Flist Priority:
 1. ALWAYS prefer flists from hub.grid.tf/api/flist/tf-official-apps or hub.grid.tf/api/flist/tf-official-vms (these are official)
