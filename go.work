@@ -4,6 +4,7 @@ toolchain go1.24.2
 
 use (
 	./activation-service
+	./agent
 	./farmerbot
 	./grid-agent-gui
 	./grid-cli

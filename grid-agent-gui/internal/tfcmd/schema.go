@@ -1,4 +1,4 @@
-package schema
+package tfcmd
 
 import (
 	"github.com/spf13/cobra"

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { slide } from 'svelte/transition';
-  import AnsiToHtml from 'ansi-to-html';
+  import { slide } from "svelte/transition";
+  import AnsiToHtml from "ansi-to-html";
 
   export let output: string;
   export let error: string;
@@ -11,26 +11,28 @@
   function toggle() {
     isExpanded = !isExpanded;
   }
-  
+
   // ANSI to HTML converter
   const ansiConverter = new AnsiToHtml({
-    fg: '#d4d4d4',
-    bg: '#1e1e1e',
+    fg: "#d4d4d4",
+    bg: "#1e1e1e",
     newline: true,
     escapeXML: true,
   });
-  
+
   // Convert ANSI codes to HTML
   function renderAnsi(text: string): string {
-    if (!text) return '';
+    if (!text) return "";
     return ansiConverter.toHtml(text);
   }
 </script>
 
 <div class="command-output" class:error={hasError}>
   <button class="header" on:click={toggle}>
-    <span class="status-icon">{hasError ? '❌' : '✅'}</span>
-    <span class="title">Command Execution {hasError ? 'Failed' : 'Success'}</span>
+    <span class="status-icon">{hasError ? "❌" : "✅"}</span>
+    <span class="title"
+      >Command Execution {hasError ? "Failed" : "Success"}</span
+    >
     <span class="chevron" class:expanded={isExpanded}>▼</span>
   </button>
 
@@ -42,7 +44,7 @@
           <pre class="ansi-output"><code>{@html renderAnsi(output)}</code></pre>
         </div>
       {/if}
-      
+
       {#if error}
         <div class="section error-section">
           <div class="label">Error:</div>
@@ -125,11 +127,12 @@
     padding: 0.75rem;
     border-radius: 0.25rem;
     overflow-x: auto;
-    font-family: 'Fira Code', monospace;
+    font-family: "Fira Code", monospace;
     font-size: 0.85rem;
     color: var(--text-primary);
     white-space: pre-wrap;
     word-break: break-all;
+    overflow-wrap: anywhere;
     text-align: left;
   }
 
@@ -140,7 +143,7 @@
 
   /* ANSI output styling */
   .ansi-output {
-    font-family: 'Courier New', Consolas, Monaco, monospace;
+    font-family: "Courier New", Consolas, Monaco, monospace;
     line-height: 1.4;
   }
 

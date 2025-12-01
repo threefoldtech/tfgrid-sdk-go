@@ -1,11 +1,13 @@
-module grid-agent-gui
+module github.com/threefoldtech/tfgrid-sdk-go/grid-agent-gui
 
 go 1.23.0
 
 toolchain go1.24.2
 
 require (
-	github.com/google/generative-ai-go v0.20.1
+	github.com/spf13/cobra v1.9.1
+	github.com/spf13/pflag v1.0.6
+	github.com/threefoldtech/tfgrid-sdk-go/agent v0.0.0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-cli v0.0.0-00010101000000-000000000000
 	github.com/wailsapp/wails/v2 v2.11.0
 )
@@ -38,6 +40,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
+	github.com/google/generative-ai-go v0.20.1 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
@@ -68,8 +71,6 @@ require (
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/samber/lo v1.49.1 // indirect
-	github.com/spf13/cobra v1.9.1 // indirect
-	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.4 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.0 // indirect
@@ -108,3 +109,5 @@ require (
 // replace github.com/wailsapp/wails/v2 v2.11.0 => /home/sameh/go/pkg/mod
 
 replace github.com/threefoldtech/tfgrid-sdk-go/grid-cli => ../grid-cli
+
+replace github.com/threefoldtech/tfgrid-sdk-go/agent => ../agent

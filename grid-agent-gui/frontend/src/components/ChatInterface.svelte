@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, afterUpdate } from "svelte";
   import { SendMessage, Logout } from "../../wailsjs/go/main/App.js";
+  import { EventsOn } from "../../wailsjs/runtime/runtime.js";
   import { messagesStore } from "../stores/stores";
   import ChatMessage from "./ChatMessage.svelte";
   import { fade } from "svelte/transition";
@@ -19,14 +20,14 @@
 
   // ANSI to HTML converter
   const ansiConverter = new AnsiToHtml({
-    fg: '#d4d4d4',
-    bg: '#1e1e1e',
+    fg: "#d4d4d4",
+    bg: "#1e1e1e",
     newline: true,
     escapeXML: true,
   });
 
   function renderAnsi(text: string): string {
-    if (!text) return '';
+    if (!text) return "";
     return ansiConverter.toHtml(text);
   }
 
@@ -41,6 +42,23 @@
   async function handleSubmit() {
     if (!input.trim() || isSending) return;
 
+    const requestID = `req_${Date.now()}_${Math.random()}`;
+
+    const placeholderMsg = {
+      role: "agent",
+      content: "",
+      timestamp: new Date().toISOString(),
+      requestID: requestID,
+      steps: [
+        {
+          type: "thinking",
+          content: "Processing your request...",
+          output: "",
+          error: "",
+        },
+      ],
+    };
+
     const userMsg = {
       role: "user",
       content: input,
@@ -50,27 +68,46 @@
       error: "",
     };
 
-    messagesStore.update((msgs) => [...msgs, userMsg]);
+    messagesStore.update((msgs) => [...msgs, userMsg, placeholderMsg]);
+
     const messageToSend = input;
     input = "";
     isSending = true;
 
     try {
-      const response = await SendMessage(messageToSend);
-      messagesStore.update((msgs) => [...msgs, response]);
+      const response = await SendMessage(messageToSend, requestID);
+      messagesStore.update((msgs) => {
+        const index = msgs.findIndex((m) => m.requestID === response.requestID);
+        if (index !== -1) {
+          const newMsgs = [...msgs];
+          newMsgs[index] = response;
+          return newMsgs;
+        }
+        return [...msgs, response]; // Fallback
+      });
     } catch (error) {
       console.error("Failed to send message:", error);
-      messagesStore.update((msgs) => [
-        ...msgs,
-        {
-          role: "agent",
-          content: "Error: " + error,
-          timestamp: new Date().toISOString(),
-          isCommand: false,
-          output: "",
-          error: error.toString(),
-        },
-      ]);
+      const errorMsg = {
+        role: "agent",
+        content: "Error: " + error,
+        timestamp: new Date().toISOString(),
+        isCommand: false,
+        output: "",
+        error: error.toString(),
+        steps: [],
+      };
+      const finalErrorMsg = { ...errorMsg, requestID: requestID };
+      messagesStore.update((msgs) => {
+        const index = msgs.findIndex(
+          (m) => m.requestID === finalErrorMsg.requestID,
+        );
+        if (index !== -1) {
+          const newMsgs = [...msgs];
+          newMsgs[index] = finalErrorMsg;
+          return newMsgs;
+        }
+        return [...msgs, finalErrorMsg]; // Fallback
+      });
     } finally {
       isSending = false;
     }
@@ -110,6 +147,123 @@
     showErrorModal = false;
     errorMessage = "";
   }
+
+  // Set up real-time event listeners
+  onMount(() => {
+    console.log("[DEBUG] Setting up event listeners");
+
+    // Listen for real-time command output
+    EventsOn(
+      "command-output",
+      (data: {
+        requestID: string;
+        commandID: string;
+        line: string;
+        type: string;
+      }) => {
+        console.log("[DEBUG] Received command-output event:", data);
+
+        // Update the store by accessing current value
+        messagesStore.update((messages) => {
+          console.log("[DEBUG] Updating messages store with command output");
+
+          // Find the specific agent message by requestID
+          const targetAgentMessage = messages.find(
+            (m) => m.requestID === data.requestID,
+          );
+
+          if (!targetAgentMessage) {
+            console.log(
+              `[DEBUG] No agent message found for requestID ${data.requestID} - skipping real-time update`,
+            );
+            return messages; // Don't update if no matching message found
+          }
+
+          // Ensure steps array exists
+          if (!targetAgentMessage.steps) {
+            targetAgentMessage.steps = [];
+          }
+
+          // Find the command step by commandID (precise matching)
+          let commandStep = targetAgentMessage.steps.find(
+            (s) => s.type === "command" && s.commandID === data.commandID,
+          );
+
+          if (!commandStep) {
+            console.log(
+              `[DEBUG] No command step found for commandID ${data.commandID} - skipping`,
+            );
+            return messages;
+          }
+
+          // Clear any placeholder like 'thinking'
+          targetAgentMessage.steps = targetAgentMessage.steps.filter(
+            (s) => s.type !== "thinking",
+          );
+
+          const lastCommandStep = commandStep;
+          if (!lastCommandStep) {
+            console.log(
+              "[DEBUG] No agent message with command steps found - skipping real-time update",
+            );
+            return messages; // Don't update if no matching message found
+          }
+
+          // Update the existing command step's output in real-time
+          if (!lastCommandStep.output) {
+            lastCommandStep.output = "";
+          }
+          lastCommandStep.output += data.line + "\n";
+          console.log(
+            "[DEBUG] Updated command step output:",
+            lastCommandStep.output,
+          );
+
+          // Return updated messages array
+          return [...messages];
+        });
+      },
+    );
+
+    // Listen for agent progress events
+    EventsOn("agent-progress", (event: { requestID: string; step: any }) => {
+      const { requestID, step } = event;
+      console.log("[DEBUG] Received agent-progress event:", event);
+
+      messagesStore.update((messages) => {
+        const targetAgentMessage = messages.find(
+          (m) => m.requestID === requestID,
+        );
+
+        if (targetAgentMessage) {
+          // Clear any placeholder like 'thinking'
+          targetAgentMessage.steps = targetAgentMessage.steps.filter(
+            (s) => s.type !== "thinking",
+          );
+          if (!targetAgentMessage.steps) {
+            targetAgentMessage.steps = [];
+          }
+
+          // Update existing step or add new one
+          const existingStepIndex = targetAgentMessage.steps.findIndex(
+            (s) => s.type === step.type && s.content === step.content,
+          );
+
+          if (existingStepIndex >= 0) {
+            // Update existing step
+            targetAgentMessage.steps[existingStepIndex] = step;
+          } else {
+            // Add new step
+            targetAgentMessage.steps.push(step);
+          }
+        }
+
+        return [...messages];
+      });
+    });
+
+    console.log("[DEBUG] Event listeners set up complete");
+  });
 </script>
 
 <div class="chat-interface" in:fade>
@@ -126,7 +280,11 @@
           ☀️
         {/if}
       </button>
-      <button class="icon-btn logout-btn" on:click={handleLogout} title="Logout">
+      <button
+        class="icon-btn logout-btn"
+        on:click={handleLogout}
+        title="Logout"
+      >
         ⎋
       </button>
     </div>
@@ -143,14 +301,6 @@
     {#each $messagesStore as msg}
       <ChatMessage message={msg} />
     {/each}
-
-    {#if isSending}
-      <div class="typing-indicator">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-    {/if}
   </div>
 
   <div class="input-area">
@@ -178,7 +328,9 @@
     <div class="modal" on:click|stopPropagation transition:fade>
       <h2>Confirm Logout</h2>
       <p>Are you sure you want to logout?</p>
-      <p class="warning">This will clear your credentials and return to the setup screen.</p>
+      <p class="warning">
+        This will clear your credentials and return to the setup screen.
+      </p>
       <div class="modal-actions">
         <button class="btn secondary" on:click={cancelLogout}>Cancel</button>
         <button class="btn danger" on:click={confirmLogout}>Logout</button>
@@ -340,42 +492,6 @@
     cursor: not-allowed;
   }
 
-  .typing-indicator {
-    display: flex;
-    gap: 0.25rem;
-    padding: 1rem;
-    background: var(--bg-secondary);
-    border-radius: 1rem;
-    width: fit-content;
-    margin-left: 0;
-  }
-
-  .typing-indicator span {
-    width: 8px;
-    height: 8px;
-    background: var(--text-secondary);
-    border-radius: 50%;
-    animation: bounce 1.4s infinite ease-in-out both;
-  }
-
-  .typing-indicator span:nth-child(1) {
-    animation-delay: -0.32s;
-  }
-  .typing-indicator span:nth-child(2) {
-    animation-delay: -0.16s;
-  }
-
-  @keyframes bounce {
-    0%,
-    80%,
-    100% {
-      transform: scale(0);
-    }
-    40% {
-      transform: scale(1);
-    }
-  }
-
   /* Logout Modal */
   .modal-overlay {
     position: fixed;
@@ -465,7 +581,7 @@
   }
 
   .error-text {
-    font-family: 'Courier New', Consolas, Monaco, monospace;
+    font-family: "Courier New", Consolas, Monaco, monospace;
     font-size: 0.875rem;
     text-align: left;
     background: var(--bg-primary);

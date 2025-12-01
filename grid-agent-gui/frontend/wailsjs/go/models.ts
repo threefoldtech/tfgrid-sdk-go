@@ -2,6 +2,7 @@ export namespace main {
 	
 	export class Step {
 	    type: string;
+	    commandID: string;
 	    content: string;
 	    output: string;
 	    error: string;
@@ -13,6 +14,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.type = source["type"];
+	        this.commandID = source["commandID"];
 	        this.content = source["content"];
 	        this.output = source["output"];
 	        this.error = source["error"];
@@ -22,6 +24,7 @@ export namespace main {
 	    role: string;
 	    content: string;
 	    timestamp: string;
+	    requestID: string;
 	    steps: Step[];
 	    isCommand: boolean;
 	    output: string;
@@ -36,6 +39,7 @@ export namespace main {
 	        this.role = source["role"];
 	        this.content = source["content"];
 	        this.timestamp = source["timestamp"];
+	        this.requestID = source["requestID"];
 	        this.steps = this.convertValues(source["steps"], Step);
 	        this.isCommand = source["isCommand"];
 	        this.output = source["output"];
