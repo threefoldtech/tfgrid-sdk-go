@@ -3,10 +3,12 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/threefoldtech/provision-probe/pkg/api"
 	"github.com/threefoldtech/provision-probe/pkg/config"
 	"github.com/threefoldtech/provision-probe/pkg/db"
 	"github.com/threefoldtech/provision-probe/pkg/grid"
@@ -18,6 +20,7 @@ type App struct {
 	cfg        *config.Config
 	database   *db.DB
 	gridClient *grid.Client
+	apiServer  *api.Server
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -32,10 +35,13 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to create grid client: %w", err)
 	}
 
+	apiServer := api.NewServer(database, cfg)
+
 	return &App{
 		cfg:        cfg,
 		database:   database,
 		gridClient: gridClient,
+		apiServer:  apiServer,
 	}, nil
 }
 
@@ -48,6 +54,13 @@ func (a *App) Run(ctx context.Context) error {
 		Str("network", a.cfg.Grid.Network).
 		Msg("Starting provision probe service")
 
+	apiErrChan := make(chan error, 1)
+	go func() {
+		if err := a.apiServer.Start(); err != nil && err != http.ErrServerClosed {
+			apiErrChan <- err
+		}
+	}()
+
 	if err := a.runCycle(ctx); err != nil {
 		log.Error().Err(err).Msg("Initial cycle failed")
 	}
@@ -55,7 +68,14 @@ func (a *App) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := a.apiServer.Shutdown(shutdownCtx); err != nil {
+				log.Error().Err(err).Msg("Error shutting down API server")
+			}
 			return nil
+		case err := <-apiErrChan:
+			return fmt.Errorf("API server error: %w", err)
 		case <-ticker.C:
 			if err := a.runCycle(ctx); err != nil {
 				log.Error().Err(err).Msg("Cycle failed")
@@ -66,14 +86,14 @@ func (a *App) Run(ctx context.Context) error {
 
 func (a *App) Close() {
 	a.database.Close()
+	a.gridClient.Close()
 }
 
 func (a *App) runCycle(ctx context.Context) error {
 	log.Info().Msg("Starting deployment cycle")
 
-	filters := a.buildFilters()
 	proxyClient := a.gridClient.GetProxyClient()
-	nodes, err := grid.GetNodes(ctx, proxyClient, filters)
+	nodes, err := grid.GetNodes(ctx, proxyClient, a.cfg.Nodes)
 	if err != nil {
 		return fmt.Errorf("failed to get nodes: %w", err)
 	}
@@ -85,11 +105,11 @@ func (a *App) runCycle(ctx context.Context) error {
 
 	log.Info().
 		Int("nodes", len(nodes)).
-		Int("max_concurrent", a.cfg.ConcurrencyLimit).
-		Str("workload", a.cfg.Workload).
+		Int("max_concurrent", a.cfg.Probe.ConcurrencyLimit).
+		Str("workload", a.cfg.Probe.WorkloadSize).
 		Msg("Deployment cycle started")
 
-	sem := semaphore.NewWeighted(int64(a.cfg.ConcurrencyLimit))
+	sem := semaphore.NewWeighted(int64(a.cfg.Probe.ConcurrencyLimit))
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var cycleErrors []error
@@ -114,7 +134,7 @@ func (a *App) runCycle(ctx context.Context) error {
 				Int("total_nodes", len(nodes)).
 				Int("node_id", n.NodeID).
 				Int("farm_id", n.FarmID).
-				Str("workload", a.cfg.Workload).
+				Str("workload", a.cfg.Probe.WorkloadSize).
 				Msg("Deploying VM to node")
 
 			timeoutCtx, cancel := context.WithTimeout(ctx, a.cfg.Timeout())
@@ -122,18 +142,16 @@ func (a *App) runCycle(ctx context.Context) error {
 			cancel()
 
 			attempt := db.Attempt{
-				Time:         time.Now().Unix(),
-				NodeID:       int64(int(n.NodeID)),
-				FarmID:       int64(int(n.FarmID)),
-				WorkloadType: a.cfg.Workload,
-				Status:       "failed",
+				Time:   time.Now().Unix(),
+				NodeID: int64(int(n.NodeID)),
+				FarmID: int64(int(n.FarmID)),
+				Status: "failed",
 			}
 
 			if err != nil {
 				errorCode := "unknown_error"
 				if result != nil && result.ErrorCode != "" {
 					errorCode = result.ErrorCode
-					attempt.DeployDurationMs = &result.DeployDurationMs
 					attempt.TotalDurationMs = &result.TotalDurationMs
 				}
 				attempt.ErrorCode = &errorCode
@@ -144,8 +162,6 @@ func (a *App) runCycle(ctx context.Context) error {
 					Msg("Deployment failed")
 			} else if result != nil {
 				attempt.Status = "success"
-				attempt.DeployDurationMs = &result.DeployDurationMs
-				attempt.StartDurationMs = &result.StartDurationMs
 				attempt.TotalDurationMs = &result.TotalDurationMs
 				log.Debug().
 					Int("node_id", n.NodeID).
@@ -171,29 +187,4 @@ func (a *App) runCycle(ctx context.Context) error {
 		Int("errors", len(cycleErrors)).
 		Msg("Deployment cycle completed")
 	return nil
-}
-
-func (a *App) buildFilters() grid.NodeFilters {
-	var status *string
-	if len(a.cfg.Nodes.Status) > 0 {
-		s := a.cfg.Nodes.Status[0]
-		status = &s
-	}
-
-	var farmIDs []uint64
-	for _, id := range a.cfg.Nodes.Farms {
-		farmIDs = append(farmIDs, uint64(id))
-	}
-
-	var nodeIDs []uint64
-	for _, id := range a.cfg.Nodes.Nodes {
-		nodeIDs = append(nodeIDs, uint64(id))
-	}
-
-	return grid.NodeFilters{
-		Status:  status,
-		FarmIDs: farmIDs,
-		NodeIDs: nodeIDs,
-		Exclude: a.cfg.Nodes.Exclude,
-	}
 }

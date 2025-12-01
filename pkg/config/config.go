@@ -2,8 +2,8 @@ package config
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -24,19 +24,29 @@ const (
 )
 
 type Config struct {
-	IntervalStr      string      `mapstructure:"interval"`
-	ConcurrencyLimit int         `mapstructure:"concurrency_limit"`
-	TimeoutStr       string      `mapstructure:"timeout"`
-	LogLevel         string      `mapstructure:"log_level"`
-	Grid             GridConfig  `mapstructure:"grid"`
-	Nodes            NodesConfig `mapstructure:"nodes"`
-	Workload         string      `mapstructure:"workload"`
-	ScoreWindowStr   string      `mapstructure:"score_window"`
-	TimescaleDB      TimescaleDB `mapstructure:"timescaledb"`
+	LogLevel    string        `mapstructure:"log_level"`
+	Probe       ProbeConfig   `mapstructure:"probe"`
+	Scoring     ScoringConfig `mapstructure:"scoring"`
+	Grid        GridConfig    `mapstructure:"grid"`
+	Nodes       NodesConfig   `mapstructure:"nodes"`
+	TimescaleDB TimescaleDB   `mapstructure:"timescaledb"`
+	API         APIConfig     `mapstructure:"api"`
 
+	// viper does not parse duration directly
 	interval    time.Duration
 	timeout     time.Duration
 	scoreWindow time.Duration
+}
+
+type ProbeConfig struct {
+	IntervalStr      string `mapstructure:"interval"`
+	ConcurrencyLimit int    `mapstructure:"concurrency_limit"`
+	TimeoutStr       string `mapstructure:"timeout"`
+	WorkloadSize     string `mapstructure:"workload_size"`
+}
+
+type ScoringConfig struct {
+	WindowStr string `mapstructure:"window"`
 }
 
 type GridConfig struct {
@@ -45,14 +55,19 @@ type GridConfig struct {
 }
 
 type NodesConfig struct {
-	Status  []string `mapstructure:"status"`
-	Farms   []int    `mapstructure:"farms"`
-	Nodes   []int    `mapstructure:"nodes"`
-	Exclude []int    `mapstructure:"exclude"`
+	Status  string   `mapstructure:"status"`
+	Farms   []uint64 `mapstructure:"farms"`
+	Nodes   []uint64 `mapstructure:"nodes"`
+	Exclude []uint64 `mapstructure:"exclude"`
 }
 
 type TimescaleDB struct {
 	URL string `mapstructure:"url"`
+}
+
+type APIConfig struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
 }
 
 func Load(configPath string) (*Config, error) {
@@ -68,32 +83,44 @@ func Load(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	if cfg.IntervalStr != "" {
-		d, err := parseDuration(cfg.IntervalStr)
+	// manually parse durations
+
+	if cfg.Probe.IntervalStr != "" {
+		d, err := ParseDuration(cfg.Probe.IntervalStr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid interval format: %w", err)
 		}
 		cfg.interval = d
 	}
 
-	if cfg.TimeoutStr != "" {
-		d, err := parseDuration(cfg.TimeoutStr)
+	if cfg.Probe.TimeoutStr != "" {
+		d, err := ParseDuration(cfg.Probe.TimeoutStr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid timeout format: %w", err)
 		}
 		cfg.timeout = d
 	}
 
-	if cfg.ScoreWindowStr != "" {
-		d, err := parseDuration(cfg.ScoreWindowStr)
+	if cfg.Scoring.WindowStr != "" {
+		d, err := ParseDuration(cfg.Scoring.WindowStr)
 		if err != nil {
-			return nil, fmt.Errorf("invalid score_window format: %w", err)
+			return nil, fmt.Errorf("invalid scoring window format: %w", err)
 		}
 		cfg.scoreWindow = d
 	}
 
-	if cfg.Workload == "" {
-		cfg.Workload = "light"
+	// add default values
+
+	if cfg.Probe.WorkloadSize == "" {
+		cfg.Probe.WorkloadSize = "light"
+	}
+
+	if cfg.API.Host == "" {
+		cfg.API.Host = "0.0.0.0"
+	}
+
+	if cfg.API.Port == 0 {
+		cfg.API.Port = 8080
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -103,24 +130,20 @@ func Load(configPath string) (*Config, error) {
 	return &cfg, nil
 }
 
-func parseDuration(s string) (time.Duration, error) {
-	re := regexp.MustCompile(`(\d+)d`)
-	if re.MatchString(s) {
-		matches := re.FindStringSubmatch(s)
-		if len(matches) == 2 {
-			days, err := strconv.Atoi(matches[1])
-			if err != nil {
-				return 0, fmt.Errorf("invalid days value: %s", matches[1])
-			}
-			hours := days * 24
-			s = re.ReplaceAllString(s, fmt.Sprintf("%dh", hours))
+func ParseDuration(s string) (time.Duration, error) {
+	if strings.HasSuffix(s, "d") {
+		days, err := strconv.Atoi(strings.TrimSuffix(s, "d"))
+		if err != nil {
+			return 0, fmt.Errorf("invalid days value: %s", strings.TrimSuffix(s, "d"))
 		}
+		d := time.Duration(days) * 24 * time.Hour
+		return d, nil
 	}
 	return time.ParseDuration(s)
 }
 
 func (c *Config) GetWorkload() (cpu uint8, memoryMB uint64, diskMB uint64) {
-	switch c.Workload {
+	switch c.Probe.WorkloadSize {
 	case "medium":
 		return WorkloadMediumCPU, uint64(WorkloadMediumMemory * 1024), uint64(WorkloadMediumDisk * 1024)
 	case "heavy":
@@ -144,25 +167,34 @@ func (c *Config) ScoreWindow() time.Duration {
 
 func (c *Config) validate() error {
 	if c.interval <= 0 {
-		return fmt.Errorf("interval must be positive")
+		return fmt.Errorf("probe.interval must be positive")
 	}
-	if c.ConcurrencyLimit <= 0 {
-		return fmt.Errorf("concurrency_limit must be positive")
+	if c.Probe.ConcurrencyLimit <= 0 {
+		return fmt.Errorf("probe.concurrency_limit must be positive")
 	}
 	if c.timeout <= 0 {
-		return fmt.Errorf("timeout must be positive")
+		return fmt.Errorf("probe.timeout must be positive")
 	}
-	if c.Grid.Network == "" {
-		return fmt.Errorf("grid.network is required")
+
+	validNetworks := map[string]struct{}{"dev": {}, "qa": {}, "test": {}, "main": {}}
+	if _, ok := validNetworks[c.Grid.Network]; !ok {
+		return fmt.Errorf("grid.network must be dev, qa, test, or main")
 	}
+
 	if c.Grid.Mnemonic == "" {
 		return fmt.Errorf("grid.mnemonic is required")
 	}
 	if c.TimescaleDB.URL == "" {
 		return fmt.Errorf("timescaledb.url is required")
 	}
-	if c.Workload != "light" && c.Workload != "medium" && c.Workload != "heavy" {
-		return fmt.Errorf("workload must be light, medium, or heavy")
+
+	validWorkloads := map[string]struct{}{"light": {}, "medium": {}, "heavy": {}}
+	if _, ok := validWorkloads[c.Probe.WorkloadSize]; !ok {
+		return fmt.Errorf("probe.workload_size must be light, medium, or heavy")
+	}
+	validStatuses := map[string]struct{}{"up": {}, "healthy": {}}
+	if _, ok := validStatuses[c.Nodes.Status]; !ok {
+		return fmt.Errorf("nodes.status must be up or healthy")
 	}
 	return nil
 }

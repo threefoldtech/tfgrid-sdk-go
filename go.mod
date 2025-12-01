@@ -28,6 +28,7 @@ require (
 	github.com/ethereum/go-ethereum v1.11.6 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/getsentry/sentry-go v0.29.1 // indirect
+	github.com/go-chi/chi/v5 v5.2.3 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
