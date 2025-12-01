@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -62,7 +63,7 @@ func (d *DB) RecordAttempt(ctx context.Context, attempt Attempt) error {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	_, err := d.pool.Exec(ctx, query,
-		attempt.Time,
+		time.Unix(attempt.Time, 0),
 		attempt.NodeID,
 		attempt.FarmID,
 		attempt.WorkloadType,
@@ -81,14 +82,13 @@ func (d *DB) Close() {
 }
 
 type Attempt struct {
-	Time              int64
-	NodeID            int64
-	FarmID            int64
-	WorkloadType      string
-	Status            string
-	DeployDurationMs  *int
-	StartDurationMs   *int
-	TotalDurationMs   *int
-	ErrorCode         *string
+	Time             int64
+	NodeID           int64
+	FarmID           int64
+	WorkloadType     string
+	Status           string
+	DeployDurationMs *int
+	StartDurationMs  *int
+	TotalDurationMs  *int
+	ErrorCode        *string
 }
-

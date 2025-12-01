@@ -87,7 +87,7 @@ func (a *App) runCycle(ctx context.Context) error {
 		Int("nodes", len(nodes)).
 		Int("max_concurrent", a.cfg.ConcurrencyLimit).
 		Str("workload", a.cfg.Workload).
-		Msg("Starting deployment cycle")
+		Msg("Deployment cycle started")
 
 	sem := semaphore.NewWeighted(int64(a.cfg.ConcurrencyLimit))
 	var wg sync.WaitGroup
@@ -109,7 +109,7 @@ func (a *App) runCycle(ctx context.Context) error {
 			}
 			defer sem.Release(1)
 
-			log.Info().
+			log.Debug().
 				Int("node_index", idx+1).
 				Int("total_nodes", len(nodes)).
 				Int("node_id", n.NodeID).
@@ -137,7 +137,7 @@ func (a *App) runCycle(ctx context.Context) error {
 					attempt.TotalDurationMs = &result.TotalDurationMs
 				}
 				attempt.ErrorCode = &errorCode
-				log.Error().
+				log.Debug().
 					Err(err).
 					Int("node_id", n.NodeID).
 					Str("error_code", errorCode).
@@ -147,7 +147,7 @@ func (a *App) runCycle(ctx context.Context) error {
 				attempt.DeployDurationMs = &result.DeployDurationMs
 				attempt.StartDurationMs = &result.StartDurationMs
 				attempt.TotalDurationMs = &result.TotalDurationMs
-				log.Info().
+				log.Debug().
 					Int("node_id", n.NodeID).
 					Msg("Deployment succeeded")
 			}
