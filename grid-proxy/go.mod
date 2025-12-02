@@ -19,8 +19,8 @@ require (
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.3
-	github.com/threefoldtech/zosbase v1.0.3
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.5
+	github.com/threefoldtech/zosbase v1.0.4
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.10

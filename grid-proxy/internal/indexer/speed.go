@@ -79,7 +79,11 @@ func (w *SpeedWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32)
 }
 
 func (w *SpeedWork) Upsert(ctx context.Context, db db.Database, batch []types.Speed) error {
-	return db.UpsertNetworkSpeed(ctx, batch)
+	// to prevent having multiple data for the same twin from different finders
+	unique := removeDuplicates(batch, func(n types.Speed) uint32 {
+		return n.NodeTwinId
+	})
+	return db.UpsertNetworkSpeed(ctx, unique)
 }
 
 func updateWithFirstNonZero(current, newValue float64) float64 {

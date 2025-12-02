@@ -59,8 +59,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.3 // indirect
-	github.com/threefoldtech/zosbase v1.0.3 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.5 // indirect
+	github.com/threefoldtech/zosbase v1.0.4 // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
