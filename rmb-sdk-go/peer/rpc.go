@@ -103,8 +103,6 @@ func (d *RpcClient) CallWithSessionWithTags(ctx context.Context, twin uint32, se
 
 	ch := make(chan incomingEnv, 1)
 	defer func() {
-		close(ch)
-
 		d.m.Lock()
 		delete(d.responses, id)
 		d.m.Unlock()
