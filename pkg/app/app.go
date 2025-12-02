@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -17,10 +18,12 @@ import (
 )
 
 type App struct {
-	cfg        *config.Config
-	database   *db.DB
-	gridClient *grid.Client
-	apiServer  *api.Server
+	cfg          *config.Config
+	database     *db.DB
+	gridClient   *grid.Client
+	apiServer    *api.Server
+	cycleWg      sync.WaitGroup
+	shuttingDown atomic.Bool
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -29,7 +32,7 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	gridClient, err := grid.NewClient(cfg.Grid.Network, cfg.Grid.Mnemonic, cfg.LogLevel)
+	gridClient, err := grid.NewClient(cfg)
 	if err != nil {
 		database.Close()
 		return nil, fmt.Errorf("failed to create grid client: %w", err)
@@ -68,15 +71,14 @@ func (a *App) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			if err := a.apiServer.Shutdown(shutdownCtx); err != nil {
-				log.Error().Err(err).Msg("Error shutting down API server")
-			}
-			return nil
+			return a.shutdown()
 		case err := <-apiErrChan:
 			return fmt.Errorf("API server error: %w", err)
 		case <-ticker.C:
+			if a.shuttingDown.Load() {
+				continue // do not start new cycle if shutting down
+			}
+
 			if err := a.runCycle(ctx); err != nil {
 				log.Error().Err(err).Msg("Cycle failed")
 			}
@@ -84,9 +86,43 @@ func (a *App) Run(ctx context.Context) error {
 	}
 }
 
+func (a *App) shutdown() error {
+	log.Info().Msg("Initiating graceful shutdown")
+
+	a.shuttingDown.Store(true) // do not start new cycle/routine if shutting down
+
+	log.Info().Msg("Waiting for current deployments to finish...")
+	done := make(chan struct{})
+	go func() {
+		a.cycleWg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Info().Msg("All deployments completed") // shutdown went well
+	case <-time.After(a.cfg.ShutdownTimeout()):
+		log.Warn().
+			Dur("timeout", a.cfg.ShutdownTimeout()).
+			Msg("Shutdown timeout reached, some deployments may not have completed")
+		// continue shutdown anyway
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := a.apiServer.Shutdown(shutdownCtx); err != nil {
+		log.Error().Err(err).Msg("Error shutting down API server")
+	} else {
+		log.Info().Msg("API server shut down successfully")
+	}
+
+	return nil
+}
+
 func (a *App) Close() {
 	a.database.Close()
-	a.gridClient.Close()
+	// a.gridClient.Close()
 }
 
 func (a *App) runCycle(ctx context.Context) error {
@@ -110,16 +146,16 @@ func (a *App) runCycle(ctx context.Context) error {
 		Msg("Deployment cycle started")
 
 	sem := semaphore.NewWeighted(int64(a.cfg.Probe.ConcurrencyLimit))
-	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var cycleErrors []error
 
 	cpu, memoryMB, diskMB := a.cfg.GetWorkload()
 
 	for i, node := range nodes {
-		wg.Add(1)
+
+		a.cycleWg.Add(1)
 		go func(idx int, n types.Node) {
-			defer wg.Done()
+			defer a.cycleWg.Done()
 
 			if err := sem.Acquire(ctx, 1); err != nil { // blocks if at capacity
 				mu.Lock()
@@ -128,6 +164,13 @@ func (a *App) runCycle(ctx context.Context) error {
 				return
 			}
 			defer sem.Release(1)
+
+			if a.shuttingDown.Load() {
+				log.Debug().
+					Int("node_id", n.NodeID).
+					Msg("Shutdown requested, skipping deployment")
+				return // do not start new job if shutting down
+			}
 
 			log.Debug().
 				Int("node_index", idx+1).
@@ -180,7 +223,9 @@ func (a *App) runCycle(ctx context.Context) error {
 		}(i, node)
 	}
 
-	wg.Wait()
+	a.cycleWg.Wait()
+
+	metrics.GetMetrics().SetActiveDeployments(0)
 
 	log.Info().
 		Int("total_nodes", len(nodes)).

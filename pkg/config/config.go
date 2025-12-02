@@ -33,16 +33,21 @@ type Config struct {
 	API         APIConfig     `mapstructure:"api"`
 
 	// viper does not parse duration directly
-	interval    time.Duration
-	timeout     time.Duration
-	scoreWindow time.Duration
+	interval        time.Duration
+	timeout         time.Duration
+	scoreWindow     time.Duration
+	shutdownTimeout time.Duration
+	initialBackoff  time.Duration
+	maxBackoff      time.Duration
 }
 
 type ProbeConfig struct {
-	IntervalStr      string `mapstructure:"interval"`
-	ConcurrencyLimit int    `mapstructure:"concurrency_limit"`
-	TimeoutStr       string `mapstructure:"timeout"`
-	WorkloadSize     string `mapstructure:"workload_size"`
+	IntervalStr        string      `mapstructure:"interval"`
+	ConcurrencyLimit   int         `mapstructure:"concurrency_limit"`
+	TimeoutStr         string      `mapstructure:"timeout"`
+	WorkloadSize       string      `mapstructure:"workload_size"`
+	Retry              RetryConfig `mapstructure:"retry"`
+	ShutdownTimeoutStr string      `mapstructure:"shutdown_timeout"`
 }
 
 type ScoringConfig struct {
@@ -68,6 +73,13 @@ type TimescaleDB struct {
 type APIConfig struct {
 	Host string `mapstructure:"host"`
 	Port int    `mapstructure:"port"`
+}
+
+type RetryConfig struct {
+	MaxRetries        int     `mapstructure:"max_retries"`
+	InitialBackoffStr string  `mapstructure:"initial_backoff"`
+	MaxBackoffStr     string  `mapstructure:"max_backoff"`
+	Multiplier        float64 `mapstructure:"multiplier"`
 }
 
 func Load(configPath string) (*Config, error) {
@@ -109,6 +121,30 @@ func Load(configPath string) (*Config, error) {
 		cfg.scoreWindow = d
 	}
 
+	if cfg.Probe.ShutdownTimeoutStr != "" {
+		d, err := ParseDuration(cfg.Probe.ShutdownTimeoutStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid shutdown_timeout format: %w", err)
+		}
+		cfg.shutdownTimeout = d
+	}
+
+	if cfg.Probe.Retry.InitialBackoffStr != "" {
+		d, err := ParseDuration(cfg.Probe.Retry.InitialBackoffStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid retry.initial_backoff format: %w", err)
+		}
+		cfg.initialBackoff = d
+	}
+
+	if cfg.Probe.Retry.MaxBackoffStr != "" {
+		d, err := ParseDuration(cfg.Probe.Retry.MaxBackoffStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid retry.max_backoff format: %w", err)
+		}
+		cfg.maxBackoff = d
+	}
+
 	// add default values
 
 	if cfg.Probe.WorkloadSize == "" {
@@ -121,6 +157,26 @@ func Load(configPath string) (*Config, error) {
 
 	if cfg.API.Port == 0 {
 		cfg.API.Port = 8080
+	}
+
+	if cfg.Probe.Retry.MaxRetries == 0 {
+		cfg.Probe.Retry.MaxRetries = 3
+	}
+
+	if cfg.Probe.Retry.Multiplier == 0 {
+		cfg.Probe.Retry.Multiplier = 2.0
+	}
+
+	if cfg.initialBackoff == 0 {
+		cfg.initialBackoff = 1 * time.Second
+	}
+
+	if cfg.maxBackoff == 0 {
+		cfg.maxBackoff = 30 * time.Second
+	}
+
+	if cfg.shutdownTimeout == 0 {
+		cfg.shutdownTimeout = 30 * time.Second
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -163,6 +219,22 @@ func (c *Config) Timeout() time.Duration {
 
 func (c *Config) ScoreWindow() time.Duration {
 	return c.scoreWindow
+}
+
+func (c *Config) ShutdownTimeout() time.Duration {
+	return c.shutdownTimeout
+}
+
+func (c *Config) RetryConfig() RetryConfig {
+	return c.Probe.Retry
+}
+
+func (c *Config) InitialBackoff() time.Duration {
+	return c.initialBackoff
+}
+
+func (c *Config) MaxBackoff() time.Duration {
+	return c.maxBackoff
 }
 
 func (c *Config) validate() error {

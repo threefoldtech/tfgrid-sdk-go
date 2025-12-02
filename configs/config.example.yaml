@@ -10,7 +10,13 @@ probe:
   interval: "6h" # interval for the deployment cycle
   concurrency_limit: 10 # concurrency limit for the deployment cycle
   timeout: "10m" # timeout for the deployment cycle
-  workload_size: "light" # light, medium, heavy 
+  workload_size: "light" # light, medium, heavy
+  shutdown_timeout: "30s" # timeout for graceful shutdown
+  retry:
+    max_retries: 3 # maximum number of retries for transient failures
+    initial_backoff: "1s" # initial backoff duration between retries
+    max_backoff: "30s" # maximum backoff duration
+    multiplier: 2.0 # exponential backoff multiplier 
 
 scoring: 
   window: "90d" # default window for the scoring (overwritten by the window query parameter)

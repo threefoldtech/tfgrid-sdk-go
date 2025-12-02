@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/threefoldtech/provision-probe/pkg/config"
+	"github.com/threefoldtech/provision-probe/pkg/retry"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
@@ -15,24 +17,35 @@ import (
 
 type Client struct {
 	tfPlugin deployer.TFPluginClient
+	retryCfg retry.BackoffConfig
 }
 
-func NewClient(network, mnemonic string, logLevel string) (*Client, error) {
+func NewClient(cfg *config.Config) (*Client, error) {
 	opts := []deployer.PluginOpt{
-		deployer.WithNetwork(network),
+		deployer.WithNetwork(cfg.Grid.Network),
 		deployer.WithDisableSentry(),
 	}
 
-	if logLevel == "debug" {
+	if cfg.LogLevel == "debug" {
 		opts = append(opts, deployer.WithLogs())
 	}
 
-	tfPlugin, err := deployer.NewTFPluginClient(mnemonic, opts...)
+	tfPlugin, err := deployer.NewTFPluginClient(cfg.Grid.Mnemonic, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create grid client: %w", err)
 	}
 
-	return &Client{tfPlugin: tfPlugin}, nil
+	retryCfg := retry.BackoffConfig{
+		MaxRetries:     cfg.RetryConfig().MaxRetries,
+		InitialBackoff: cfg.InitialBackoff(),
+		MaxBackoff:     cfg.MaxBackoff(),
+		Multiplier:     cfg.RetryConfig().Multiplier,
+	}
+
+	return &Client{
+		tfPlugin: tfPlugin,
+		retryCfg: retryCfg,
+	}, nil
 }
 
 func (c *Client) Close() {
@@ -77,7 +90,9 @@ func (c *Client) DeployVM(ctx context.Context, nodeID uint32, cpu uint8, memoryM
 	dl := workloads.NewDeployment(vmName, nodeID, projectName, nil, networkName, nil, nil, []workloads.VM{vm}, nil, nil, nil)
 
 	log.Debug().Str("network", networkName).Uint32("node_id", nodeID).Msg("Deploying network")
-	err = c.tfPlugin.NetworkDeployer.Deploy(ctx, &network)
+	err = retry.DoWithBackoff(ctx, c.retryCfg, func() error {
+		return c.tfPlugin.NetworkDeployer.Deploy(ctx, &network)
+	})
 	if err != nil {
 		return &DeploymentResult{
 			Success:         false,
@@ -87,7 +102,9 @@ func (c *Client) DeployVM(ctx context.Context, nodeID uint32, cpu uint8, memoryM
 	}
 
 	log.Debug().Str("vm", vmName).Uint32("node_id", nodeID).Msg("Deploying VM")
-	err = c.tfPlugin.DeploymentDeployer.Deploy(ctx, &dl)
+	err = retry.DoWithBackoff(ctx, c.retryCfg, func() error {
+		return c.tfPlugin.DeploymentDeployer.Deploy(ctx, &dl)
+	})
 	if err != nil {
 		revertDeployment(ctx, c.tfPlugin, &dl, &network, false)
 		return &DeploymentResult{
@@ -97,7 +114,10 @@ func (c *Client) DeployVM(ctx context.Context, nodeID uint32, cpu uint8, memoryM
 		}, fmt.Errorf("failed to deploy VM on node %d: %w", nodeID, err)
 	}
 
-	_, err = c.tfPlugin.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
+	err = retry.DoWithBackoff(ctx, c.retryCfg, func() error {
+		_, err := c.tfPlugin.State.LoadVMFromGrid(ctx, nodeID, vm.Name, dl.Name)
+		return err
+	})
 	if err != nil {
 		revertDeployment(ctx, c.tfPlugin, &dl, &network, true)
 		return &DeploymentResult{

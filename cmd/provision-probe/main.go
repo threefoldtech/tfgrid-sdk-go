@@ -40,8 +40,12 @@ func main() {
 
 	go func() {
 		<-sigChan
-		log.Info().Msg("Shutting down...")
+		log.Info().Msg("Shutdown signal received, finishing current work...")
 		cancel()
+
+		<-sigChan
+		log.Warn().Msg("Second shutdown signal received, forcing exit")
+		os.Exit(1)
 	}()
 
 	if err := application.Run(ctx); err != nil {
