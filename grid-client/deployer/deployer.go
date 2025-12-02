@@ -90,7 +90,7 @@ func (d *Deployer) Deploy(ctx context.Context,
 
 	var span trace.Span
 	if d.tracer != nil {
-		ctx, span = d.tracer.Start(ctx, "deployer.Deploy",
+		_, span = d.tracer.Start(ctx, "deployer.Deploy",
 			trace.WithAttributes(
 				attribute.Int("old_deployments_count", len(oldDeploymentIDs)),
 				attribute.Int("new_deployments_count", len(newDeployments)),
@@ -162,8 +162,9 @@ func (d *Deployer) deploy(
 ) (currentDeployments map[uint32]uint64, err error) {
 
 	var span trace.Span
+	var spanCtx context.Context
 	if d.tracer != nil {
-		ctx, span = d.tracer.Start(ctx, "Deployer.deploy")
+		spanCtx, span = d.tracer.Start(ctx, "Deployer.deploy")
 		defer span.End()
 	}
 
@@ -197,7 +198,7 @@ func (d *Deployer) deploy(
 		if _, ok := oldDeployments[node]; !ok {
 			var nodeSpan trace.Span
 			if d.tracer != nil {
-				ctx, nodeSpan = d.tracer.Start(ctx, "Deployer.create_deployment",
+				_, nodeSpan = d.tracer.Start(spanCtx, "Deployer.create_deployment",
 					trace.WithAttributes(attribute.Int("node", int(node)),
 						attribute.String("action", "creation")))
 			}
@@ -333,7 +334,7 @@ func (d *Deployer) deploy(
 		if oldDeploymentID, ok := oldDeployments[node]; ok {
 			var nodeSpan trace.Span
 			if d.tracer != nil {
-				ctx, nodeSpan = d.tracer.Start(ctx, "Deployer.update_deployment",
+				_, nodeSpan = d.tracer.Start(spanCtx, "Deployer.update_deployment",
 					trace.WithAttributes(attribute.Int("node", int(node)),
 						attribute.Int("old_contract_id", int(oldDeploymentID)),
 						attribute.String("action", "update")))
@@ -484,7 +485,7 @@ func (d *Deployer) Cancel(ctx context.Context,
 func (d *Deployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]zos.Deployment, error) {
 	var span trace.Span
 	if d.tracer != nil {
-		ctx, span = d.tracer.Start(ctx, "Deployer.GetDeployments",
+		_, span = d.tracer.Start(ctx, "Deployer.GetDeployments",
 			trace.WithAttributes(
 				attribute.Int("deployments_count", len(dls)),
 			))
@@ -552,7 +553,7 @@ func (d *Deployer) Wait(
 ) error {
 	var span trace.Span
 	if d.tracer != nil {
-		ctx, span = d.tracer.Start(ctx, "Deployer.Wait",
+		_, span = d.tracer.Start(ctx, "Deployer.Wait",
 			trace.WithAttributes(
 				attribute.Int("deployment_id", int(deploymentID)),
 				attribute.Int("workload_count", len(workloadVersions)),
@@ -645,8 +646,9 @@ func (d *Deployer) BatchDeploy(
 	deploymentsSolutionProvider map[uint32][]*uint64,
 ) (map[uint32][]zos.Deployment, error) {
 	var span trace.Span
+	var spanCtx context.Context
 	if d.tracer != nil {
-		ctx, span = d.tracer.Start(ctx, "Deployer.BatchDeploy",
+		spanCtx, span = d.tracer.Start(ctx, "Deployer.BatchDeploy",
 			trace.WithAttributes(
 				attribute.Int("node_count", len(deployments)),
 			))
@@ -682,7 +684,7 @@ func (d *Deployer) BatchDeploy(
 
 				var workloadSpan trace.Span
 				if d.tracer != nil {
-					_, workloadSpan = d.tracer.Start(ctx, "Deployer.prepare_deployment",
+					_, workloadSpan = d.tracer.Start(spanCtx, "Deployer.prepare_deployment",
 						trace.WithAttributes(
 							attribute.Int("node", int(node)),
 							attribute.Int("contract_id", int(dl.ContractID)),
@@ -788,7 +790,7 @@ func (d *Deployer) BatchDeploy(
 
 			var deploySpan trace.Span
 			if d.tracer != nil {
-				_, deploySpan = d.tracer.Start(ctx, "Deployer.deploy_single_from_batch",
+				_, deploySpan = d.tracer.Start(spanCtx, "Deployer.deploy_single_from_batch",
 					trace.WithAttributes(
 						attribute.Int("node", int(node)),
 					))
@@ -941,8 +943,9 @@ func assignVersions(oldDl *zos.Deployment, newDl *zos.Deployment) (map[string]ui
 // if a real error dodges the validation, it'll be fail anyway in the deploying phase
 func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.Deployment, newDeployments map[uint32]zos.Deployment) error {
 	var span trace.Span
+	var spanCtx context.Context
 	if d.tracer != nil {
-		ctx, span = d.tracer.Start(ctx, "Deployer.Validate",
+		spanCtx, span = d.tracer.Start(ctx, "Deployer.Validate",
 			trace.WithAttributes(
 				attribute.Int("old_deployments_count", len(oldDeployments)),
 				attribute.Int("new_deployments_count", len(newDeployments)),
@@ -1030,7 +1033,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 	for node, dl := range newDeployments {
 		var nodeSpan trace.Span
 		if d.tracer != nil {
-			_, nodeSpan = d.tracer.Start(ctx, "Deployer.validate_node_deployment",
+			_, nodeSpan = d.tracer.Start(spanCtx, "Deployer.validate_node_deployment",
 				trace.WithAttributes(
 					attribute.Int("node", int(node)),
 				))
