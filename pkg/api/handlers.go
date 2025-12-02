@@ -1,3 +1,13 @@
+// Package api provides HTTP handlers for the provision-probe API
+// @title Provision Probe API
+// @version 1.0
+// @description API for querying node provision scores and health status
+// @termsOfService http://swagger.io/terms/
+// @contact.name API Support
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+// @host localhost:8080
+// @BasePath /api/v1
 package api
 
 import (
@@ -19,6 +29,44 @@ type Handlers struct {
 	defaultWindow time.Duration
 }
 
+// Response types
+
+// HealthCheck represents a single health check result
+type HealthCheck struct {
+	Status  string `json:"status" example:"healthy"` // healthy or unhealthy
+	Message string `json:"message,omitempty" example:"connection failed"`
+}
+
+// HealthResponse represents the health endpoint response
+// @Description Health check response
+type HealthResponse struct {
+	Status string                 `json:"status" example:"healthy"` // Overall health status: healthy or unhealthy
+	Checks map[string]HealthCheck `json:"checks"`                   // Individual health checks
+}
+
+// TopScoresResponse represents the response for GET /api/v1/scores
+// @Description Top node scores response
+type TopScoresResponse struct {
+	Window      string      `json:"window" example:"90d"`     // Time window used for scoring
+	Limit       int         `json:"limit" example:"10"`       // Maximum number of results returned
+	MinAttempts int         `json:"min_attempts" example:"1"` // Minimum attempts required
+	Scores      []NodeScore `json:"scores"`                   // List of node scores
+}
+
+// NodeScoreResponse represents the response for GET /api/v1/scores/node/:node_id
+// @Description Single node score response
+type NodeScoreResponse struct {
+	Window      string    `json:"window" example:"90d"`     // Time window used for scoring
+	MinAttempts int       `json:"min_attempts" example:"1"` // Minimum attempts required
+	Score       NodeScore `json:"score"`                    // Node score details
+}
+
+// ErrorResponse represents an error response
+// @Description Error response
+type ErrorResponse struct {
+	Error string `json:"error" example:"invalid node_id parameter"`
+}
+
 func NewHandlers(database *db.DB, cfg *config.Config) *Handlers {
 	return &Handlers{
 		database:      database,
@@ -28,7 +76,18 @@ func NewHandlers(database *db.DB, cfg *config.Config) *Handlers {
 }
 
 // GetTopScores handles GET /api/v1/scores
-// Query params: window (duration, defaults to config value), limit (int, default 10), min_attempts (int, default 1)
+// @Summary Get top node scores
+// @Description Returns the top performing nodes based on success rate within a time window
+// @Tags scores
+// @Accept json
+// @Produce json
+// @Param window query string false "Time window for scoring (e.g., '90d', '30d', '7d')" default to the config value
+// @Param limit query int false "Maximum number of results to return" default(10) minimum(1)
+// @Param min_attempts query int false "Minimum number of attempts required" default(1) minimum(1)
+// @Success 200 {object} TopScoresResponse "Successfully retrieved top scores"
+// @Failure 400 {object} ErrorResponse "Invalid request parameters"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/scores [get]
 func (h *Handlers) GetTopScores(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -78,16 +137,28 @@ func (h *Handlers) GetTopScores(w http.ResponseWriter, r *http.Request) {
 		scores = append(scores, *score)
 	}
 
-	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"window":       window.String(),
-		"limit":        limit,
-		"min_attempts": minAttempts,
-		"scores":       scores,
+	respondJSON(w, http.StatusOK, TopScoresResponse{
+		Window:      window.String(),
+		Limit:       limit,
+		MinAttempts: minAttempts,
+		Scores:      scores,
 	})
 }
 
 // GetNodeScore handles GET /api/v1/scores/node/:node_id
-// Query params: window (duration string, defaults to config value), min_attempts (int, default 1)
+// @Summary Get score for a specific node
+// @Description Returns the score and performance metrics for a specific node within a time window
+// @Tags scores
+// @Accept json
+// @Produce json
+// @Param node_id path int true "Node ID" example(123)
+// @Param window query string false "Time window for scoring (e.g., '90d', '30d', '7d')" default("90d")
+// @Param min_attempts query int false "Minimum number of attempts required" default(1) minimum(1)
+// @Success 200 {object} NodeScoreResponse "Successfully retrieved node score"
+// @Failure 400 {object} ErrorResponse "Invalid request parameters"
+// @Failure 404 {object} ErrorResponse "Node not found or insufficient attempts"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /api/v1/scores/node/{node_id} [get]
 func (h *Handlers) GetNodeScore(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -139,28 +210,48 @@ func (h *Handlers) GetNodeScore(w http.ResponseWriter, r *http.Request) {
 
 	score := CalculateScore(scoreData)
 
-	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"window":       window.String(),
-		"min_attempts": minAttempts,
-		"score":        score,
+	respondJSON(w, http.StatusOK, NodeScoreResponse{
+		Window:      window.String(),
+		MinAttempts: minAttempts,
+		Score:       *score,
 	})
 }
 
 // GetHealth handles GET /api/v1/health
+// @Summary Health check endpoint
+// @Description Returns the health status of the service and its dependencies
+// @Tags health
+// @Accept json
+// @Produce json
+// @Success 200 {object} HealthResponse "Service is healthy"
+// @Success 503 {object} HealthResponse "Service is unhealthy"
+// @Router /api/v1/health [get]
 func (h *Handlers) GetHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	if err := h.database.Ping(ctx); err != nil {
-		respondJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
-			"status":  "unhealthy",
-			"message": "database connection failed",
-		})
-		return
+	health := HealthResponse{
+		Status: "healthy",
+		Checks: make(map[string]HealthCheck),
 	}
 
-	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"status": "healthy",
-	})
+	if err := h.database.Ping(ctx); err != nil {
+		health.Checks["database"] = HealthCheck{
+			Status:  "unhealthy",
+			Message: err.Error(),
+		}
+		health.Status = "unhealthy"
+	} else {
+		health.Checks["database"] = HealthCheck{
+			Status: "healthy",
+		}
+	}
+
+	statusCode := http.StatusOK
+	if health.Status == "unhealthy" {
+		statusCode = http.StatusServiceUnavailable
+	}
+
+	respondJSON(w, statusCode, health)
 }
 
 // Helper functions
@@ -174,7 +265,7 @@ func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 }
 
 func respondError(w http.ResponseWriter, status int, message string) {
-	respondJSON(w, status, map[string]interface{}{
-		"error": message,
+	respondJSON(w, status, ErrorResponse{
+		Error: message,
 	})
 }

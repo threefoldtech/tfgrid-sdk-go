@@ -9,6 +9,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog/log"
+	httpSwagger "github.com/swaggo/http-swagger"
+	"github.com/threefoldtech/provision-probe/docs/swagger"
 	"github.com/threefoldtech/provision-probe/pkg/config"
 	"github.com/threefoldtech/provision-probe/pkg/db"
 )
@@ -27,6 +29,11 @@ func NewServer(database *db.DB, cfg *config.Config) *Server {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(60 * time.Second))
 
+	// Swagger documentation routes
+	router.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"), // Relative URL works better
+	))
+
 	router.Route("/api/v1", func(r chi.Router) {
 		r.Get("/scores", handlers.GetTopScores)
 		r.Route("/scores/node", func(r chi.Router) {
@@ -34,6 +41,11 @@ func NewServer(database *db.DB, cfg *config.Config) *Server {
 		})
 		r.Get("/health", handlers.GetHealth)
 	})
+
+	// Initialize swagger info
+	swagger.SwaggerInfo.Host = fmt.Sprintf("%s:%d", cfg.API.Host, cfg.API.Port)
+	swagger.SwaggerInfo.BasePath = "/api/v1"
+	swagger.SwaggerInfo.Schemes = []string{"http", "https"}
 
 	addr := fmt.Sprintf("%s:%d", cfg.API.Host, cfg.API.Port)
 	server := &http.Server{

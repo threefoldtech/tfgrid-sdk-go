@@ -225,8 +225,6 @@ func (a *App) runCycle(ctx context.Context) error {
 
 	a.cycleWg.Wait()
 
-	metrics.GetMetrics().SetActiveDeployments(0)
-
 	log.Info().
 		Int("total_nodes", len(nodes)).
 		Int("errors", len(cycleErrors)).
