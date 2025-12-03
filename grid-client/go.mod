@@ -22,6 +22,9 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.3
 	github.com/threefoldtech/zosbase v1.0.3
 	github.com/vedhavyas/go-subkey v1.0.3
+	go.opentelemetry.io/otel v1.38.0
+	go.opentelemetry.io/otel/sdk v1.38.0
+	go.opentelemetry.io/otel/trace v1.38.0
 	golang.org/x/crypto v0.37.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	golang.org/x/sync v0.13.0
@@ -32,10 +35,7 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/otel v1.38.0 // indirect
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.38.0 // indirect
-	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 )
 
 require (
