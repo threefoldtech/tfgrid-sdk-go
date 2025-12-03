@@ -1,0 +1,294 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/api/v1/health": {
+            "get": {
+                "description": "Returns the health status of the service and its dependencies",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check endpoint",
+                "responses": {
+                    "200": {
+                        "description": "Service is healthy",
+                        "schema": {
+                            "$ref": "#/definitions/api.HealthResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service is unhealthy",
+                        "schema": {
+                            "$ref": "#/definitions/api.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/scores": {
+            "get": {
+                "description": "Returns the top performing nodes based on success rate within a time window",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scores"
+                ],
+                "summary": "Get top node scores",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Time window for scoring (e.g., '90d', '30d', '7d')",
+                        "name": "window",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Maximum number of results to return",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Minimum number of attempts required",
+                        "name": "min_attempts",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved top scores",
+                        "schema": {
+                            "$ref": "#/definitions/api.TopScoresResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/scores/node/{node_id}": {
+            "get": {
+                "description": "Returns the score and performance metrics for a specific node within a time window",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scores"
+                ],
+                "summary": "Get score for a specific node",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 123,
+                        "description": "Node ID",
+                        "name": "node_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"90d\"",
+                        "description": "Time window for scoring (e.g., '90d', '30d', '7d')",
+                        "name": "window",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Minimum number of attempts required",
+                        "name": "min_attempts",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved node score",
+                        "schema": {
+                            "$ref": "#/definitions/api.NodeScoreResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Node not found or insufficient attempts",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.ErrorResponse": {
+            "description": "Error response",
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "invalid node_id parameter"
+                }
+            }
+        },
+        "api.HealthCheck": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "connection failed"
+                },
+                "status": {
+                    "description": "healthy or unhealthy",
+                    "type": "string",
+                    "example": "healthy"
+                }
+            }
+        },
+        "api.HealthResponse": {
+            "description": "Health check response",
+            "type": "object",
+            "properties": {
+                "checks": {
+                    "description": "Individual health checks",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/api.HealthCheck"
+                    }
+                },
+                "status": {
+                    "description": "Overall health status: healthy or unhealthy",
+                    "type": "string",
+                    "example": "healthy"
+                }
+            }
+        },
+        "api.NodeScore": {
+            "description": "Node performance score and metrics",
+            "type": "object",
+            "properties": {
+                "avg_duration_ms": {
+                    "description": "Average deployment duration in milliseconds",
+                    "type": "number",
+                    "example": 2500
+                },
+                "farm_id": {
+                    "description": "Farm ID",
+                    "type": "integer",
+                    "example": 1
+                },
+                "node_id": {
+                    "description": "Node ID",
+                    "type": "integer",
+                    "example": 123
+                },
+                "score": {
+                    "description": "Calculated score (currently same as success rate)",
+                    "type": "number",
+                    "example": 0.95
+                },
+                "success_rate": {
+                    "description": "Success rate (0.0 to 1.0)",
+                    "type": "number",
+                    "example": 0.95
+                },
+                "total_attempts": {
+                    "description": "Total number of deployment attempts",
+                    "type": "integer",
+                    "example": 100
+                }
+            }
+        },
+        "api.NodeScoreResponse": {
+            "description": "Single node score response",
+            "type": "object",
+            "properties": {
+                "min_attempts": {
+                    "description": "Minimum attempts required",
+                    "type": "integer",
+                    "example": 1
+                },
+                "score": {
+                    "description": "Node score details",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/api.NodeScore"
+                        }
+                    ]
+                },
+                "window": {
+                    "description": "Time window used for scoring",
+                    "type": "string",
+                    "example": "90d"
+                }
+            }
+        },
+        "api.TopScoresResponse": {
+            "description": "Top node scores response",
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "description": "Maximum number of results returned",
+                    "type": "integer",
+                    "example": 10
+                },
+                "min_attempts": {
+                    "description": "Minimum attempts required",
+                    "type": "integer",
+                    "example": 1
+                },
+                "scores": {
+                    "description": "List of node scores",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.NodeScore"
+                    }
+                },
+                "window": {
+                    "description": "Time window used for scoring",
+                    "type": "string",
+                    "example": "90d"
+                }
+            }
+        }
+    }
+}
