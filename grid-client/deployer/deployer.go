@@ -90,7 +90,7 @@ func (d *Deployer) Deploy(ctx context.Context,
 
 	var span trace.Span
 	if d.tracer != nil {
-		_, span = d.tracer.Start(ctx, "deployer.Deploy",
+		ctx, span = d.tracer.Start(ctx, "deployer.Deploy",
 			trace.WithAttributes(
 				attribute.Int("old_deployments_count", len(oldDeploymentIDs)),
 				attribute.Int("new_deployments_count", len(newDeployments)),
@@ -162,9 +162,8 @@ func (d *Deployer) deploy(
 ) (currentDeployments map[uint32]uint64, err error) {
 
 	var span trace.Span
-	var spanCtx context.Context
 	if d.tracer != nil {
-		spanCtx, span = d.tracer.Start(ctx, "Deployer.deploy")
+		ctx, span = d.tracer.Start(ctx, "Deployer.deploy")
 		defer span.End()
 	}
 
@@ -197,8 +196,9 @@ func (d *Deployer) deploy(
 	for node, dl := range newDeployments {
 		if _, ok := oldDeployments[node]; !ok {
 			var nodeSpan trace.Span
+			var nodeCtx = ctx
 			if d.tracer != nil {
-				_, nodeSpan = d.tracer.Start(spanCtx, "Deployer.create_deployment",
+				nodeCtx, nodeSpan = d.tracer.Start(ctx, "Deployer.create_deployment",
 					trace.WithAttributes(attribute.Int("node", int(node)),
 						attribute.String("action", "creation")))
 			}
@@ -286,7 +286,7 @@ func (d *Deployer) deploy(
 
 			// Update deployment with contract ID and send to node
 			nodeSpan.AddEvent("sending_deployment_to_node")
-			err = nodeClient.DeploymentDeploy(ctx, dl)
+			err = nodeClient.DeploymentDeploy(nodeCtx, dl)
 			if err != nil {
 				// If deployment exists, continue as already deployed
 				if !contractReused || !strings.Contains(err.Error(), "exists") {
@@ -316,7 +316,7 @@ func (d *Deployer) deploy(
 			}
 
 			nodeSpan.AddEvent("waiting for deployment")
-			if err = d.Wait(ctx, nodeClient, dl.ContractID, newWorkloadVersions); err != nil {
+			if err = d.Wait(nodeCtx, nodeClient, dl.ContractID, newWorkloadVersions); err != nil {
 				spanErrorAndEnd(nodeSpan, "waiting for deployment failed", err)
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
@@ -333,8 +333,9 @@ func (d *Deployer) deploy(
 	for node, dl := range newDeployments {
 		if oldDeploymentID, ok := oldDeployments[node]; ok {
 			var nodeSpan trace.Span
+			var nodeCtx = ctx
 			if d.tracer != nil {
-				_, nodeSpan = d.tracer.Start(spanCtx, "Deployer.update_deployment",
+				nodeCtx, nodeSpan = d.tracer.Start(ctx, "Deployer.update_deployment",
 					trace.WithAttributes(attribute.Int("node", int(node)),
 						attribute.Int("old_contract_id", int(oldDeploymentID)),
 						attribute.String("action", "update")))
@@ -347,7 +348,7 @@ func (d *Deployer) deploy(
 			}
 
 			nodeSpan.AddEvent("fetching old deployment")
-			oldDl, err := client.DeploymentGet(ctx, oldDeploymentID)
+			oldDl, err := client.DeploymentGet(nodeCtx, oldDeploymentID)
 			if err != nil {
 				spanErrorAndEnd(nodeSpan, "failed to get old deployment", err)
 				return currentDeployments, errors.Wrap(err, "failed to get old deployment to update it")
@@ -425,7 +426,7 @@ func (d *Deployer) deploy(
 			}
 
 			nodeSpan.AddEvent("sending update to node")
-			err = client.DeploymentUpdate(ctx, dl)
+			err = client.DeploymentUpdate(nodeCtx, dl)
 			if err != nil {
 				spanErrorAndEnd(nodeSpan, "failed to send update to node", err)
 				// cancel previous contract
@@ -435,7 +436,7 @@ func (d *Deployer) deploy(
 			currentDeployments[node] = dl.ContractID
 
 			nodeSpan.AddEvent("waiting_for_update_completion")
-			err = d.Wait(ctx, client, dl.ContractID, newWorkloadsVersions)
+			err = d.Wait(nodeCtx, client, dl.ContractID, newWorkloadsVersions)
 			if err != nil {
 				spanErrorAndEnd(nodeSpan, "waiting for update failed", err)
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
@@ -485,7 +486,7 @@ func (d *Deployer) Cancel(ctx context.Context,
 func (d *Deployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]zos.Deployment, error) {
 	var span trace.Span
 	if d.tracer != nil {
-		_, span = d.tracer.Start(ctx, "Deployer.GetDeployments",
+		ctx, span = d.tracer.Start(ctx, "Deployer.GetDeployments",
 			trace.WithAttributes(
 				attribute.Int("deployments_count", len(dls)),
 			))
@@ -553,7 +554,7 @@ func (d *Deployer) Wait(
 ) error {
 	var span trace.Span
 	if d.tracer != nil {
-		_, span = d.tracer.Start(ctx, "Deployer.Wait",
+		ctx, span = d.tracer.Start(ctx, "Deployer.Wait",
 			trace.WithAttributes(
 				attribute.Int("deployment_id", int(deploymentID)),
 				attribute.Int("workload_count", len(workloadVersions)),
@@ -645,10 +646,10 @@ func (d *Deployer) BatchDeploy(
 	deployments map[uint32][]zos.Deployment,
 	deploymentsSolutionProvider map[uint32][]*uint64,
 ) (map[uint32][]zos.Deployment, error) {
+
 	var span trace.Span
-	var spanCtx context.Context
 	if d.tracer != nil {
-		spanCtx, span = d.tracer.Start(ctx, "Deployer.BatchDeploy",
+		ctx, span = d.tracer.Start(ctx, "Deployer.BatchDeploy",
 			trace.WithAttributes(
 				attribute.Int("node_count", len(deployments)),
 			))
@@ -684,7 +685,7 @@ func (d *Deployer) BatchDeploy(
 
 				var workloadSpan trace.Span
 				if d.tracer != nil {
-					_, workloadSpan = d.tracer.Start(spanCtx, "Deployer.prepare_deployment",
+					_, workloadSpan = d.tracer.Start(ctx, "Deployer.prepare_deployment",
 						trace.WithAttributes(
 							attribute.Int("node", int(node)),
 							attribute.Int("contract_id", int(dl.ContractID)),
@@ -789,8 +790,9 @@ func (d *Deployer) BatchDeploy(
 			defer wg.Done()
 
 			var deploySpan trace.Span
+			var deployCtx = ctx
 			if d.tracer != nil {
-				_, deploySpan = d.tracer.Start(spanCtx, "Deployer.deploy_single_from_batch",
+				deployCtx, deploySpan = d.tracer.Start(ctx, "Deployer.deploy_single_from_batch",
 					trace.WithAttributes(
 						attribute.Int("node", int(node)),
 					))
@@ -816,7 +818,7 @@ func (d *Deployer) BatchDeploy(
 			}
 
 			deploySpan.AddEvent("sending_deployment_to_node")
-			err = client.DeploymentDeploy(ctx, dl)
+			err = client.DeploymentDeploy(deployCtx, dl)
 			if err != nil {
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error sending deployment with contract id %d to node %d", dl.ContractID, node))
@@ -833,7 +835,7 @@ func (d *Deployer) BatchDeploy(
 			}
 
 			deploySpan.AddEvent("waiting_for_deployment")
-			err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
+			err = d.Wait(deployCtx, client, dl.ContractID, newWorkloadVersions)
 
 			mu.Lock()
 			defer mu.Unlock()
@@ -943,9 +945,8 @@ func assignVersions(oldDl *zos.Deployment, newDl *zos.Deployment) (map[string]ui
 // if a real error dodges the validation, it'll be fail anyway in the deploying phase
 func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.Deployment, newDeployments map[uint32]zos.Deployment) error {
 	var span trace.Span
-	var spanCtx context.Context
 	if d.tracer != nil {
-		spanCtx, span = d.tracer.Start(ctx, "Deployer.Validate",
+		ctx, span = d.tracer.Start(ctx, "Deployer.Validate",
 			trace.WithAttributes(
 				attribute.Int("old_deployments_count", len(oldDeployments)),
 				attribute.Int("new_deployments_count", len(newDeployments)),
@@ -1033,7 +1034,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 	for node, dl := range newDeployments {
 		var nodeSpan trace.Span
 		if d.tracer != nil {
-			_, nodeSpan = d.tracer.Start(spanCtx, "Deployer.validate_node_deployment",
+			_, nodeSpan = d.tracer.Start(ctx, "Deployer.validate_node_deployment",
 				trace.WithAttributes(
 					attribute.Int("node", int(node)),
 				))
