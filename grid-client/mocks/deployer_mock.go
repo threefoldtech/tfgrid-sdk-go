@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
+	zos "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 // MockDeployer is a mock of MockDeployer interface.
@@ -36,10 +36,10 @@ func (m *MockDeployer) EXPECT() *MockDeployerMockRecorder {
 }
 
 // BatchDeploy mocks base method.
-func (m *MockDeployer) BatchDeploy(ctx context.Context, deployments map[uint32][]zosTypes.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]zosTypes.Deployment, error) {
+func (m *MockDeployer) BatchDeploy(ctx context.Context, deployments map[uint32][]zos.Deployment, deploymentsSolutionProvider map[uint32][]*uint64) (map[uint32][]zos.Deployment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BatchDeploy", ctx, deployments, deploymentsSolutionProvider)
-	ret0, _ := ret[0].(map[uint32][]zosTypes.Deployment)
+	ret0, _ := ret[0].(map[uint32][]zos.Deployment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -64,8 +64,22 @@ func (mr *MockDeployerMockRecorder) Cancel(ctx, contractID interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockDeployer)(nil).Cancel), ctx, contractID)
 }
 
+// DebugTracing mocks base method.
+func (m *MockDeployer) DebugTracing(ctx context.Context) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DebugTracing", ctx)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// DebugTracing indicates an expected call of DebugTracing.
+func (mr *MockDeployerMockRecorder) DebugTracing(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DebugTracing", reflect.TypeOf((*MockDeployer)(nil).DebugTracing), ctx)
+}
+
 // Deploy mocks base method.
-func (m *MockDeployer) Deploy(ctx context.Context, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]zosTypes.Deployment, newDeploymentSolutionProvider map[uint32]*uint64) (map[uint32]uint64, error) {
+func (m *MockDeployer) Deploy(ctx context.Context, oldDeploymentIDs map[uint32]uint64, newDeployments map[uint32]zos.Deployment, newDeploymentSolutionProvider map[uint32]*uint64) (map[uint32]uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider)
 	ret0, _ := ret[0].(map[uint32]uint64)
@@ -80,10 +94,10 @@ func (mr *MockDeployerMockRecorder) Deploy(ctx, oldDeploymentIDs, newDeployments
 }
 
 // GetDeployments mocks base method.
-func (m *MockDeployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]zosTypes.Deployment, error) {
+func (m *MockDeployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]zos.Deployment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDeployments", ctx, dls)
-	ret0, _ := ret[0].(map[uint32]zosTypes.Deployment)
+	ret0, _ := ret[0].(map[uint32]zos.Deployment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

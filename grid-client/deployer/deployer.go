@@ -20,6 +20,7 @@ import (
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -45,6 +46,8 @@ type MockDeployer interface { // TODO: Change Name && separate them
 		deployments map[uint32][]zos.Deployment,
 		deploymentsSolutionProvider map[uint32][]*uint64,
 	) (map[uint32][]zos.Deployment, error)
+
+	DebugTracing(ctx context.Context) string
 }
 
 // Deployer to be used for any deployer
@@ -80,6 +83,35 @@ func NewDeployer(
 	}
 
 	return deployer
+}
+
+func (d *Deployer) DebugTracing(ctx context.Context) string {
+	var result strings.Builder
+
+	result.WriteString("=== Deployer Tracing Debug ===\n")
+	result.WriteString(fmt.Sprintf("TraceProvider is nil: %v\n", d.traceProvider == nil))
+	result.WriteString(fmt.Sprintf("Tracer is nil: %v\n", d.tracer == nil))
+
+	// Create a test span
+	_, testSpan := d.tracer.Start(ctx, "debug-test")
+	defer testSpan.End()
+
+	// Get span context
+	sc := testSpan.SpanContext()
+	result.WriteString(fmt.Sprintf("Test span TraceID: %s\n", sc.TraceID()))
+	result.WriteString(fmt.Sprintf("Test span IsValid: %v\n", sc.IsValid()))
+	result.WriteString(fmt.Sprintf("Test span IsSampled: %v\n", sc.IsSampled()))
+
+	// Also check global provider
+	globalTp := otel.GetTracerProvider()
+	result.WriteString(fmt.Sprintf("Global TracerProvider type: %T\n", globalTp))
+
+	// Check if global provider is the same as ours
+	if d.traceProvider != nil {
+		result.WriteString(fmt.Sprintf("Same as our provider? %v\n", d.traceProvider == globalTp))
+	}
+
+	return result.String()
 }
 
 // Deploy deploys or updates a new deployment given the old deployments' IDs
