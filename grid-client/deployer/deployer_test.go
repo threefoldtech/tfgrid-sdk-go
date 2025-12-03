@@ -115,8 +115,9 @@ func mockDeployerValidator(d *Deployer, ctrl *gomock.Controller, nodes []uint32)
 	d.gridProxyClient = proxyCl
 
 	for _, nodeID := range nodes {
+		// expect any context because it's no longer background context after adding the spans
 		proxyCl.EXPECT().
-			Node(context.Background(), nodeID).
+			Node(gomock.Any(), nodeID).
 			Return(proxyTypes.NodeWithNestedCapacity{
 				FarmID: 1,
 				PublicConfig: proxyTypes.PublicConfig{
@@ -125,7 +126,7 @@ func mockDeployerValidator(d *Deployer, ctrl *gomock.Controller, nodes []uint32)
 				},
 			}, nil)
 
-		proxyCl.EXPECT().Farms(context.Background(), gomock.Any(), gomock.Any()).Return([]proxyTypes.Farm{{FarmID: 1}}, 1, nil).AnyTimes()
+		proxyCl.EXPECT().Farms(gomock.Any(), gomock.Any(), gomock.Any()).Return([]proxyTypes.Farm{{FarmID: 1}}, 1, nil).AnyTimes()
 	}
 }
 
