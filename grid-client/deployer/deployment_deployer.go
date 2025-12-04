@@ -137,10 +137,6 @@ func (d *DeploymentDeployer) Deploy(ctx context.Context, dl *workloads.Deploymen
 	return d.tfPluginClient.sentry.error(err)
 }
 
-func (d *DeploymentDeployer) Debug(ctx context.Context) string {
-	return d.deployer.DebugTracing(ctx)
-}
-
 // BatchDeploy deploys multiple deployments using the deployer
 func (d *DeploymentDeployer) BatchDeploy(ctx context.Context, dls []*workloads.Deployment) error {
 	newDeploymentsSolutionProvider := make(map[uint32][]*uint64)
