@@ -191,8 +191,7 @@ func (d *Deployer) deploy(
 		if _, ok := oldDeployments[node]; !ok {
 
 			nodeCtx, nodeSpan := d.tracer.Start(ctx, "Deployer.create_deployment",
-				trace.WithAttributes(attribute.Int("node", int(node)),
-					attribute.String("action", "creation")))
+				trace.WithAttributes(attribute.Int("node", int(node))))
 
 			nodeClient, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 			if err != nil {
@@ -272,7 +271,7 @@ func (d *Deployer) deploy(
 			nodeSpan.SetAttributes(attribute.Int("contract_id", int(contractID)))
 
 			// Update deployment with contract ID and send to node
-			nodeSpan.AddEvent("sending_deployment_to_node")
+			nodeSpan.AddEvent("sending deployment to node")
 			err = nodeClient.DeploymentDeploy(nodeCtx, dl)
 			if err != nil {
 				// If deployment exists, continue as already deployed
@@ -322,7 +321,7 @@ func (d *Deployer) deploy(
 			nodeCtx, nodeSpan := d.tracer.Start(ctx, "Deployer.update_deployment",
 				trace.WithAttributes(attribute.Int("node", int(node)),
 					attribute.Int("old_contract_id", int(oldDeploymentID)),
-					attribute.String("action", "update")))
+				))
 
 			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 			if err != nil {
