@@ -143,11 +143,9 @@ func (d *Deployer) Deploy(ctx context.Context,
 }
 
 func spanErrorAndEnd(span trace.Span, description string, err error) {
-	if span != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, description)
-		span.End()
-	}
+	span.RecordError(err)
+	span.SetStatus(codes.Error, description)
+	span.End()
 }
 
 func (d *Deployer) deploy(
@@ -652,7 +650,6 @@ func (d *Deployer) BatchDeploy(
 				_, workloadSpan := d.tracer.Start(ctx, "Deployer.prepare_deployment",
 					trace.WithAttributes(
 						attribute.Int("node", int(node)),
-						attribute.Int("contract_id", int(dl.ContractID)),
 						attribute.Int("twin_id", int(dl.TwinID)),
 					))
 
