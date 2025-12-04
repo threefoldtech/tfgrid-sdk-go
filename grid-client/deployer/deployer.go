@@ -23,7 +23,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 	"golang.org/x/sync/errgroup"
@@ -58,7 +57,7 @@ type Deployer struct {
 	ncPool          client.NodeClientGetter
 	revertOnFailure bool
 	substrateConn   subi.SubstrateExt
-	traceProvider   *sdktrace.TracerProvider
+	traceProvider   trace.TracerProvider
 	tracer          trace.Tracer
 }
 

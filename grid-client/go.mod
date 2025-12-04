@@ -23,7 +23,6 @@ require (
 	github.com/threefoldtech/zosbase v1.0.3
 	github.com/vedhavyas/go-subkey v1.0.3
 	go.opentelemetry.io/otel v1.38.0
-	go.opentelemetry.io/otel/sdk v1.38.0
 	go.opentelemetry.io/otel/trace v1.38.0
 	golang.org/x/crypto v0.37.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c

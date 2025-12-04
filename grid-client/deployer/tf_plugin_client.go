@@ -25,7 +25,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
 	"github.com/vedhavyas/go-subkey"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // TFPluginClient is a Threefold plugin client
@@ -70,7 +70,7 @@ type TFPluginClient struct {
 
 	sentry gridSentry
 
-	traceProvider *sdktrace.TracerProvider
+	traceProvider trace.TracerProvider
 }
 
 type pluginCfg struct {
@@ -86,7 +86,7 @@ type pluginCfg struct {
 	rmbInMemCache bool
 	disableSentry bool
 	rmbSessionId  string
-	traceProvider *sdktrace.TracerProvider
+	traceProvider trace.TracerProvider
 }
 
 type PluginOpt func(*pluginCfg)
@@ -163,7 +163,7 @@ func WithSessionId(rmbSessionId string) PluginOpt {
 	}
 }
 
-func WithTraceProvider(tp *sdktrace.TracerProvider) PluginOpt {
+func WithTraceProvider(tp trace.TracerProvider) PluginOpt {
 	return func(p *pluginCfg) {
 		p.traceProvider = tp
 	}
