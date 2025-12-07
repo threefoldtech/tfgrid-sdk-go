@@ -54,6 +54,8 @@ require (
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/threefoldtech/zosbase v1.0.4 // indirect
+	go.opentelemetry.io/otel v1.38.0 // indirect
+	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
@@ -62,3 +64,5 @@ require (
 )
 
 replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go => ../rmb-sdk-go
+
+replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy => ../grid-proxy
