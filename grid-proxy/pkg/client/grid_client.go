@@ -18,6 +18,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
@@ -159,138 +161,231 @@ func (g *Clientimpl) Ping() error {
 
 // Nodes returns nodes with the given filters and pagination parameters
 func (g *Clientimpl) Nodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) (nodes []types.Node, totalCount int, err error) {
+
+	_, span := g.tracer.Start(ctx, "Proxy.Nodes")
+	defer span.End()
+
+	span.AddEvent("sending request to fetch nodes")
 	res, err := g.httpGet("nodes", filter, limit)
 	if res != nil {
 		defer res.Body.Close()
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to connect to /nodes")
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
+
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get nodes")
 		return
 	}
 
 	if err := json.NewDecoder(res.Body).Decode(&nodes); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to decode data to Nodes")
 		return nodes, 0, err
 	}
+
 	totalCount, err = requestCounters(res)
+	span.SetAttributes(attribute.Int("nodes_count", totalCount))
 	return
 }
 
 // Farms returns farms with the given filters and pagination parameters
 func (g *Clientimpl) Farms(ctx context.Context, filter types.FarmFilter, limit types.Limit) (farms []types.Farm, totalCount int, err error) {
+
+	_, span := g.tracer.Start(ctx, "Proxy.Farms")
+	defer span.End()
+
+	span.AddEvent("sending request to fetch farms")
 	res, err := g.httpGet("farms", filter, limit)
 	if res != nil {
 		defer res.Body.Close()
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to connect to /farms")
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
+
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get farms")
 		return
 	}
+
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to read response body")
 		return
 	}
 	err = json.Unmarshal(data, &farms)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to unmarshal data to Farms")
 		return
 	}
+
 	totalCount, err = requestCounters(res)
+	span.SetAttributes(attribute.Int("farms_count", totalCount))
 	return
 }
 
 // Twins returns twins with the given filters and pagination parameters
 func (g *Clientimpl) Twins(ctx context.Context, filter types.TwinFilter, limit types.Limit) (twins []types.Twin, totalCount int, err error) {
+
+	_, span := g.tracer.Start(ctx, "Proxy.Twins")
+	defer span.End()
+
+	span.AddEvent("sending request to fetch twins")
 	res, err := g.httpGet("twins", filter, limit)
 	if res != nil {
 		defer res.Body.Close()
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to connect to /twins")
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
+
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get twins")
 		return
 	}
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to read response body")
 		return
 	}
 	err = json.Unmarshal(data, &twins)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to unmarshal data to Twins")
 		return
 	}
+
 	totalCount, err = requestCounters(res)
+	span.SetAttributes(attribute.Int("twins_count", totalCount))
 	return
 }
 
 // Contracts returns contracts with the given filters and pagination parameters
 func (g *Clientimpl) Contracts(ctx context.Context, filter types.ContractFilter, limit types.Limit) (contracts []types.Contract, totalCount int, err error) {
+
+	_, span := g.tracer.Start(ctx, "Proxy.Contracts")
+	defer span.End()
+
+	span.AddEvent("sending request to fetch contracts")
 	res, err := g.httpGet("contracts", filter, limit)
 	if res != nil {
 		defer res.Body.Close()
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to connect to /contracts")
 		return
 	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to read response body")
 		return
 	}
 
 	contracts, err = decodeMultipleContracts(data)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to unmarshal data to Contracts")
 		return
 	}
+
 	totalCount, err = requestCounters(res)
+	span.SetAttributes(attribute.Int("contracts_count", totalCount))
 	return
 }
 
 // Node returns the node with the give id
 func (g *Clientimpl) Node(ctx context.Context, nodeID uint32) (node types.NodeWithNestedCapacity, err error) {
+
+	_, span := g.tracer.Start(ctx, "Proxy.Node",
+		trace.WithAttributes(attribute.Int("node_id", int(nodeID))))
+
+	defer span.End()
+
+	span.AddEvent("sending request to fetch node by ID")
 	res, err := g.httpGet(fmt.Sprintf("nodes/%d", nodeID))
 	if res != nil {
 		defer res.Body.Close()
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to connect to /nodes/node_id")
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
+
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get node by ID")
 		return
 	}
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to read response body")
 		return
 	}
 	err = json.Unmarshal(data, &node)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to unmarshal data to NodeWithNestedCapacity")
+		return
+	}
 	return
 }
 
 // NodeStatus returns the node status up/down
 func (g *Clientimpl) NodeStatus(ctx context.Context, nodeID uint32) (status types.NodeStatus, err error) {
+
+	_, span := g.tracer.Start(ctx, "Proxy.NodeStatus",
+		trace.WithAttributes(attribute.Int("node_id", int(nodeID))))
+
+	defer span.End()
+
+	span.AddEvent("sending request to fetch node status")
 	res, err := g.httpGet(fmt.Sprintf("nodes/%d/status", nodeID))
 	if res != nil {
 		defer res.Body.Close()
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to connect to /nodes/node_id/status")
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
+
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get node status")
 		return
 	}
 	if err := json.NewDecoder(res.Body).Decode(&status); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to decode data to NodeStatus")
 		return status, err
 	}
 	return
@@ -298,19 +393,32 @@ func (g *Clientimpl) NodeStatus(ctx context.Context, nodeID uint32) (status type
 
 // Stats return statistics about the grid
 func (g *Clientimpl) Stats(ctx context.Context, filter types.StatsFilter) (stats types.Stats, err error) {
+
+	_, span := g.tracer.Start(ctx, "Proxy.Stats")
+	defer span.End()
+
+	span.AddEvent("sending request to fetch stats")
 	res, err := g.httpGet("stats", filter)
 	if res != nil {
 		defer res.Body.Close()
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to connect to /stats")
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
+
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get stats")
 		return
 	}
 	if err := json.NewDecoder(res.Body).Decode(&stats); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to decode data to Stats")
+
 		return stats, err
 	}
 	return
@@ -318,26 +426,42 @@ func (g *Clientimpl) Stats(ctx context.Context, filter types.StatsFilter) (stats
 
 // Contract returns a single contract based on the contractID
 func (g *Clientimpl) Contract(ctx context.Context, contractID uint32) (types.Contract, error) {
+
+	_, span := g.tracer.Start(ctx, "Proxy.Contract",
+		trace.WithAttributes(attribute.Int("contract_id", int(contractID))))
+
+	defer span.End()
+
+	span.AddEvent("sending request to fetch contract by ID")
 	res, err := g.httpGet(fmt.Sprintf("contracts/%d", contractID))
 	if res != nil {
 		defer res.Body.Close()
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to connect to /contracts/contract_id")
 		return types.Contract{}, err
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
+
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get contract by ID")
 		return types.Contract{}, err
 	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to read response body")
 		return types.Contract{}, err
 	}
 
 	contract, err := decodeSingleContract(data)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to decode data to Contract")
 		return types.Contract{}, err
 	}
 
@@ -346,70 +470,106 @@ func (g *Clientimpl) Contract(ctx context.Context, contractID uint32) (types.Con
 
 // ContractBills returns all bills for a single contract based on contractID and pagination params
 func (g *Clientimpl) ContractBills(ctx context.Context, contractID uint32, limit types.Limit) ([]types.ContractBilling, uint, error) {
+
+	_, span := g.tracer.Start(ctx, "Proxy.ContractBills",
+		trace.WithAttributes(attribute.Int("contract_id", int(contractID))))
+
+	defer span.End()
+
+	span.AddEvent("sending request to fetch Contract bills by contract ID")
 	res, err := g.httpGet(fmt.Sprintf("contracts/%d/bills", contractID), limit)
 	if res != nil {
 		defer res.Body.Close()
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to connect to /contracts/contract_id/bills")
 		return nil, 0, err
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
+
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get contract bills by contract ID")
 		return nil, 0, err
 	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to read response body")
 		return nil, 0, err
 	}
 
 	count, err := requestCounters(res)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get contract bills count")
 		return nil, 0, err
 	}
 
 	contractBills := []types.ContractBilling{}
 	if err := json.Unmarshal(data, &contractBills); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to unmarshal data to ContractBilling")
 		return nil, 0, err
 	}
 
 	totalCount := uint(count)
+	span.SetAttributes(attribute.Int("bills_count", int(totalCount)))
 
 	return contractBills, totalCount, nil
 }
 
 // PublicIps returns all public ips on the chain based on filters and pagination params
 func (g *Clientimpl) PublicIps(ctx context.Context, filter types.PublicIpFilter, limit types.Limit) ([]types.PublicIP, uint, error) {
+
+	_, span := g.tracer.Start(ctx, "Proxy.PublicIps")
+	defer span.End()
+
+	span.AddEvent("sending request to fetch public IPs")
 	res, err := g.httpGet("public_ips", filter, limit)
 	if res != nil {
 		defer res.Body.Close()
 	}
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to connect to /public_ips")
 		return nil, 0, err
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
+
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get public IPs")
 		return nil, 0, err
 	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to read response body")
 		return nil, 0, err
 	}
 
 	count, err := requestCounters(res)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get public IPs count")
 		return nil, 0, err
 	}
 
 	ips := []types.PublicIP{}
 	if err := json.Unmarshal(data, &ips); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to unmarshal data to PublicIP")
 		return nil, 0, err
 	}
 
 	totalCount := uint(count)
+	span.SetAttributes(attribute.Int("public_ips_count", int(totalCount)))
 
 	return ips, totalCount, nil
 }
