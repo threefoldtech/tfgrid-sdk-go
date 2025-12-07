@@ -82,7 +82,7 @@ func TestMain(m *testing.M) {
 	}()
 
 	// proxy client
-	gridProxyClient = proxyclient.NewClient(ENDPOINT)
+	gridProxyClient = proxyclient.NewClient(proxyclient.WithEndpoints([]string{ENDPOINT}))
 
 	// mock client
 	dbClient, err := proxyDB.NewPostgresDatabase(POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSSWORD, POSTGRES_DB, 80, logger.Error)

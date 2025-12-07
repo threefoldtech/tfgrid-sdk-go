@@ -18,6 +18,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 var encoder *schema.Encoder
@@ -57,22 +59,47 @@ type Client interface {
 type Clientimpl struct {
 	endpoints      []string
 	activeStackIdx int
+	traceProvider  trace.TracerProvider
+	tracer         trace.Tracer
+}
+
+type ClientOption func(*Clientimpl)
+
+func WithTraceProvider(tp trace.TracerProvider) ClientOption {
+	return func(cl *Clientimpl) {
+		cl.traceProvider = tp
+	}
+}
+
+func WithEndpoints(endpoints []string) ClientOption {
+	return func(cl *Clientimpl) {
+		for i, endpoint := range endpoints {
+			if endpoint[len(endpoint)-1] != '/' {
+				endpoints[i] += "/"
+			}
+		}
+
+		cl.endpoints = endpoints
+	}
 }
 
 // NewClient grid proxy client constructor
-func NewClient(endpoints ...string) Client {
-	for i, endpoint := range endpoints {
-		if endpoint[len(endpoint)-1] != '/' {
-			endpoints[i] += "/"
-		}
-	}
+func NewClient(options ...ClientOption) Client {
 
-	proxy := Clientimpl{
-		endpoints:      endpoints,
+	proxy := &Clientimpl{
 		activeStackIdx: 0,
+		tracer:         noop.NewTracerProvider().Tracer("no-op"),
 	}
 
-	return &proxy
+	for _, option := range options {
+		option(proxy)
+	}
+
+	if proxy.traceProvider != nil {
+		proxy.tracer = proxy.traceProvider.Tracer("grid-proxy")
+	}
+
+	return proxy
 }
 
 func parseError(body io.ReadCloser) error {

@@ -365,7 +365,8 @@ func NewTFPluginClient(
 
 	tfPluginClient.RMB = rmbClient
 
-	gridProxyClient := proxy.NewClient(tfPluginClient.proxyURLs...)
+	gridProxyClient := proxy.NewClient(proxy.WithTraceProvider(tfPluginClient.traceProvider), proxy.WithEndpoints(tfPluginClient.proxyURLs))
+
 	if err := validateRMBProxyServer(gridProxyClient); err != nil {
 		return TFPluginClient{}, errors.Wrap(err, "could not validate rmb proxy server")
 	}
