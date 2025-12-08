@@ -31,7 +31,7 @@ jobs:
           - tfrobot
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -71,7 +71,7 @@ jobs:
 
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Build Docker image
         uses: docker/build-push-action@v6
