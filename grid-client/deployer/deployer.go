@@ -194,7 +194,7 @@ func (d *Deployer) deploy(
 			nodeClient, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 			if err != nil {
 				spanErrorAndEnd(nodeSpan, "failed to get node client", err)
-				span.RecordError(err)
+				recordSpanError(span, "failed to get node client", err)
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
 
@@ -957,7 +957,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 
 		if err := dl.Valid(); err != nil {
 			spanErrorAndEnd(nodeSpan, "invalid deployment", err)
-			span.RecordError(err)
+			recordSpanError(span, "invalid deployment", err)
 			return errors.Wrap(err, "invalid deployment")
 		}
 
@@ -966,14 +966,14 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 		needed, err := Capacity(dl)
 		if err != nil {
 			spanErrorAndEnd(nodeSpan, "failed to calculate capacity", err)
-			span.RecordError(err)
+			recordSpanError(span, "failed to calculate capacity", err)
 			return err
 		}
 
 		publicIPCount, err := CountDeploymentPublicIPs(dl)
 		if err != nil {
 			spanErrorAndEnd(nodeSpan, "failed to count public IPs", err)
-			span.RecordError(err)
+			recordSpanError(span, "failed to count public IPs", err)
 			return errors.Wrap(err, "failed to count deployment public IPs")
 		}
 		requiredIPs := int(publicIPCount)
@@ -988,7 +988,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 			oldCap, err := Capacity(oldDl)
 			if err != nil {
 				spanErrorAndEnd(nodeSpan, "failed to calculate old capacity", err)
-				span.RecordError(err)
+				recordSpanError(span, "failed to calculate old capacity", err)
 				return errors.Wrapf(err, "could not read old deployment %d of node %d capacity", oldDl.ContractID, node)
 			}
 
@@ -996,7 +996,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 			contract, err := d.substrateConn.GetContract(oldDl.ContractID)
 			if err != nil {
 				spanErrorAndEnd(nodeSpan, "failed to get contract", err)
-				span.RecordError(err)
+				recordSpanError(span, "failed to get contract", err)
 				return errors.Wrapf(err, "could not get node contract %d", oldDl.ContractID)
 			}
 			current := int(contract.PublicIPCount())
@@ -1008,7 +1008,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 					requiredIPs,
 				)
 				spanErrorAndEnd(nodeSpan, "cannot increase public IPs", err)
-				span.RecordError(err)
+				recordSpanError(span, "cannot increase public IPs", err)
 				return err
 			}
 		}
@@ -1017,21 +1017,21 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 		if farmIPs[nodeInfo.FarmID] < 0 {
 			err := errors.Errorf("farm %d does not have enough public ips", nodeInfo.FarmID)
 			spanErrorAndEnd(nodeSpan, "insufficient public IPs in farm", err)
-			span.RecordError(err)
+			recordSpanError(span, "insufficient public IPs in farm", err)
 			return err
 		}
 
 		if HasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeInfo.PublicConfig.Ipv4 == "" {
 			err := errors.Errorf("node %d cannot deploy a fqdn workload as it does not have a public ipv4 configured", node)
 			spanErrorAndEnd(nodeSpan, "IPv4 is missing from fqdn workload", err)
-			span.RecordError(err)
+			recordSpanError(span, "IPv4 is missing from fqdn workload", err)
 			return err
 		}
 
 		if HasWorkload(&dl, zos.GatewayNameProxyType) && nodeInfo.PublicConfig.Domain == "" {
 			err := errors.Errorf("node %d cannot deploy a gateway name workload as it does not have a domain configured", node)
 			spanErrorAndEnd(nodeSpan, "domain is missing for gateway name workload", err)
-			span.RecordError(err)
+			recordSpanError(span, "domain is missing for gateway name workload", err)
 			return err
 		}
 
@@ -1058,7 +1058,7 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 			}
 			err := errors.Errorf("node %d does not have enough resources. needed: %v, free: %v", node, capacityPrettyPrint(needed), capacityPrettyPrint(free))
 			spanErrorAndEnd(nodeSpan, "insufficient resources", err)
-			span.RecordError(err)
+			recordSpanError(span, "insufficient resources", err)
 			return err
 		}
 		nodeSpan.End()
