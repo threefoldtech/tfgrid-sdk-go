@@ -54,7 +54,6 @@ type Deployer struct {
 	ncPool          client.NodeClientGetter
 	revertOnFailure bool
 	substrateConn   subi.SubstrateExt
-	traceProvider   trace.TracerProvider
 	tracer          trace.Tracer
 }
 
@@ -70,12 +69,11 @@ func NewDeployer(
 		tfPluginClient.NcPool,
 		revertOnFailure,
 		tfPluginClient.SubstrateConn,
-		tfPluginClient.traceProvider,
 		noop.NewTracerProvider().Tracer("no-op"),
 	}
 
-	if deployer.traceProvider != nil {
-		deployer.tracer = deployer.traceProvider.Tracer("grid-deployer")
+	if tfPluginClient.traceProvider != nil {
+		deployer.tracer = tfPluginClient.traceProvider.Tracer("grid-deployer")
 	}
 
 	return deployer
@@ -136,7 +134,6 @@ func (d *Deployer) Deploy(ctx context.Context,
 	if err == nil {
 		span.AddEvent("deployment successful",
 			trace.WithAttributes(attribute.Int("deployments_count", len(currentDeployments))))
-		span.SetStatus(codes.Ok, "deployment successful")
 	}
 
 	return currentDeployments, err
@@ -304,8 +301,6 @@ func (d *Deployer) deploy(
 				spanErrorAndEnd(nodeSpan, "waiting for deployment failed", err)
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
-
-			nodeSpan.SetStatus(codes.Ok, "deployment created successfully")
 			nodeSpan.End()
 
 		}
@@ -417,13 +412,10 @@ func (d *Deployer) deploy(
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
 
-			nodeSpan.SetStatus(codes.Ok, "deployment updated successfully")
 			nodeSpan.End()
-
 		}
 	}
 
-	span.SetStatus(codes.Ok, "deployment operations completed")
 	span.SetAttributes(
 		attribute.Int("final_deployments_count", len(currentDeployments)),
 	)
@@ -450,7 +442,6 @@ func (d *Deployer) Cancel(ctx context.Context,
 		return errors.Wrapf(err, "failed to delete deployment: %d", contractID)
 	}
 
-	span.SetStatus(codes.Ok, "contract canceled successfully")
 	return nil
 }
 
@@ -488,12 +479,8 @@ func (d *Deployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (m
 
 		res[nodeID] = dl
 
-		span.SetStatus(codes.Ok, "deployment fetched successfully")
-		span.End()
-
 	}
 
-	span.SetStatus(codes.Ok, "all deployments fetched")
 	span.SetAttributes(attribute.Int("fetched_count", len(res)))
 
 	return res, nil
@@ -600,8 +587,6 @@ func (d *Deployer) Wait(
 	if deploymentError != nil {
 		span.RecordError(deploymentError)
 		span.SetStatus(codes.Error, "waiting for deployment failed")
-	} else {
-		span.SetStatus(codes.Ok, "deployment completed successfully")
 	}
 
 	return deploymentError
@@ -799,7 +784,6 @@ func (d *Deployer) BatchDeploy(
 
 			deploymentsSlice[i].ContractID = contracts[i]
 
-			deploySpan.SetStatus(codes.Ok, "deployment completed successfully")
 			deploySpan.End()
 
 		}()
@@ -832,7 +816,6 @@ func (d *Deployer) BatchDeploy(
 			attribute.Int("successful_deployments", len(deploymentsSlice)-len(failedContracts)),
 		)
 	} else {
-		span.SetStatus(codes.Ok, "batch deploy completed successfully")
 		span.SetAttributes(
 			attribute.Int("total_deployments", len(deploymentsSlice)),
 		)
@@ -1091,13 +1074,9 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 			span.RecordError(err)
 			return err
 		}
-
-		nodeSpan.SetStatus(codes.Ok, "node validation passed")
 		nodeSpan.End()
-
 	}
 
-	span.SetStatus(codes.Ok, "validation completed successfully")
 	return nil
 }
 
