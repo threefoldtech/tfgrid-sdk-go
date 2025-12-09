@@ -104,6 +104,14 @@ func NewClient(options ...ClientOption) Client {
 	return proxy
 }
 
+func recordSpanError(span trace.Span, description string, err error) {
+	if err == nil {
+		return
+	}
+	span.RecordError(err)
+	span.SetStatus(codes.Error, description)
+}
+
 func parseError(body io.ReadCloser) error {
 	text, err := io.ReadAll(body)
 	if err != nil {
@@ -171,22 +179,18 @@ func (g *Clientimpl) Nodes(ctx context.Context, filter types.NodeFilter, limit t
 		defer res.Body.Close()
 	}
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to connect to /nodes")
+		recordSpanError(span, "failed to connect to /nodes", err)
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
-
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get nodes")
+		recordSpanError(span, "failed to get nodes", err)
 		return
 	}
 
 	if err := json.NewDecoder(res.Body).Decode(&nodes); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to decode data to Nodes")
+		recordSpanError(span, "failed to decode data to Nodes", err)
 		return nodes, 0, err
 	}
 
@@ -207,29 +211,24 @@ func (g *Clientimpl) Farms(ctx context.Context, filter types.FarmFilter, limit t
 		defer res.Body.Close()
 	}
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to connect to /farms")
+		recordSpanError(span, "failed to connect to /farms", err)
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
-
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get farms")
+		recordSpanError(span, "failed to get farms", err)
 		return
 	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to read response body")
+		recordSpanError(span, "failed to read response body", err)
 		return
 	}
 	err = json.Unmarshal(data, &farms)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to unmarshal data to Farms")
+		recordSpanError(span, "failed to unmarshal data to Farms", err)
 		return
 	}
 
@@ -250,28 +249,23 @@ func (g *Clientimpl) Twins(ctx context.Context, filter types.TwinFilter, limit t
 		defer res.Body.Close()
 	}
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to connect to /twins")
+		recordSpanError(span, "failed to connect to /twins", err)
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
-
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get twins")
+		recordSpanError(span, "failed to get twins", err)
 		return
 	}
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to read response body")
+		recordSpanError(span, "failed to read response body", err)
 		return
 	}
 	err = json.Unmarshal(data, &twins)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to unmarshal data to Twins")
+		recordSpanError(span, "failed to unmarshal data to Twins", err)
 		return
 	}
 
@@ -292,22 +286,19 @@ func (g *Clientimpl) Contracts(ctx context.Context, filter types.ContractFilter,
 		defer res.Body.Close()
 	}
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to connect to /contracts")
+		recordSpanError(span, "failed to connect to /contracts", err)
 		return
 	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to read response body")
+		recordSpanError(span, "failed to read response body", err)
 		return
 	}
 
 	contracts, err = decodeMultipleContracts(data)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to unmarshal data to Contracts")
+		recordSpanError(span, "failed to unmarshal data to Contracts", err)
 		return
 	}
 
@@ -330,28 +321,23 @@ func (g *Clientimpl) Node(ctx context.Context, nodeID uint32) (node types.NodeWi
 		defer res.Body.Close()
 	}
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to connect to /nodes/node_id")
+		recordSpanError(span, "failed to connect to /nodes/node_id", err)
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
-
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get node by ID")
+		recordSpanError(span, "failed to get node by ID", err)
 		return
 	}
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to read response body")
+		recordSpanError(span, "failed to read response body", err)
 		return
 	}
 	err = json.Unmarshal(data, &node)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to unmarshal data to NodeWithNestedCapacity")
+		recordSpanError(span, "failed to unmarshal data to NodeWithNestedCapacity", err)
 		return
 	}
 	return
@@ -371,21 +357,17 @@ func (g *Clientimpl) NodeStatus(ctx context.Context, nodeID uint32) (status type
 		defer res.Body.Close()
 	}
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to connect to /nodes/node_id/status")
+		recordSpanError(span, "failed to connect to /nodes/node_id/status", err)
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
-
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get node status")
+		recordSpanError(span, "failed to get node status", err)
 		return
 	}
 	if err := json.NewDecoder(res.Body).Decode(&status); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to decode data to NodeStatus")
+		recordSpanError(span, "failed to decode data to NodeStatus", err)
 		return status, err
 	}
 	return
@@ -403,22 +385,17 @@ func (g *Clientimpl) Stats(ctx context.Context, filter types.StatsFilter) (stats
 		defer res.Body.Close()
 	}
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to connect to /stats")
+		recordSpanError(span, "failed to connect to /stats", err)
 		return
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
-
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get stats")
+		recordSpanError(span, "failed to get stats", err)
 		return
 	}
 	if err := json.NewDecoder(res.Body).Decode(&stats); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to decode data to Stats")
-
+		recordSpanError(span, "failed to decode data to Stats", err)
 		return stats, err
 	}
 	return
@@ -438,30 +415,25 @@ func (g *Clientimpl) Contract(ctx context.Context, contractID uint32) (types.Con
 		defer res.Body.Close()
 	}
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to connect to /contracts/contract_id")
+		recordSpanError(span, "failed to connect to /contracts/contract_id", err)
 		return types.Contract{}, err
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
-
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get contract by ID")
+		recordSpanError(span, "failed to get contract by ID", err)
 		return types.Contract{}, err
 	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to read response body")
+		recordSpanError(span, "failed to read response body", err)
 		return types.Contract{}, err
 	}
 
 	contract, err := decodeSingleContract(data)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to decode data to Contract")
+		recordSpanError(span, "failed to decode data to Contract", err)
 		return types.Contract{}, err
 	}
 
@@ -482,37 +454,31 @@ func (g *Clientimpl) ContractBills(ctx context.Context, contractID uint32, limit
 		defer res.Body.Close()
 	}
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to connect to /contracts/contract_id/bills")
+		recordSpanError(span, "failed to connect to /contracts/contract_id/bills", err)
 		return nil, 0, err
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
-
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get contract bills by contract ID")
+		recordSpanError(span, "failed to get contract bills by contract ID", err)
 		return nil, 0, err
 	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to read response body")
+		recordSpanError(span, "failed to read response body", err)
 		return nil, 0, err
 	}
 
 	count, err := requestCounters(res)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get contract bills count")
+		recordSpanError(span, "failed to get contract bills count", err)
 		return nil, 0, err
 	}
 
 	contractBills := []types.ContractBilling{}
 	if err := json.Unmarshal(data, &contractBills); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to unmarshal data to ContractBilling")
+		recordSpanError(span, "failed to unmarshal data to ContractBilling", err)
 		return nil, 0, err
 	}
 
@@ -534,37 +500,31 @@ func (g *Clientimpl) PublicIps(ctx context.Context, filter types.PublicIpFilter,
 		defer res.Body.Close()
 	}
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to connect to /public_ips")
+		recordSpanError(span, "failed to connect to /public_ips", err)
 		return nil, 0, err
 	}
 
 	if res.StatusCode != http.StatusOK {
 		err = parseError(res.Body)
-
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get public IPs")
+		recordSpanError(span, "failed to get public IPs", err)
 		return nil, 0, err
 	}
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to read response body")
+		recordSpanError(span, "failed to read response body", err)
 		return nil, 0, err
 	}
 
 	count, err := requestCounters(res)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to get public IPs count")
+		recordSpanError(span, "failed to get public IPs count", err)
 		return nil, 0, err
 	}
 
 	ips := []types.PublicIP{}
 	if err := json.Unmarshal(data, &ips); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to unmarshal data to PublicIP")
+		recordSpanError(span, "failed to unmarshal data to PublicIP", err)
 		return nil, 0, err
 	}
 
