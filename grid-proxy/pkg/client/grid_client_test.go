@@ -117,14 +117,15 @@ func MarshalNodeStatus(data []byte) (info types.NodeStatus) {
 	return
 }
 
-type ProxyFunc func(urls ...string) Client
+type ProxyFunc func(...ClientOption) Client
 
 func TestConnectionFailures(t *testing.T) {
 	testConnectionFailures(t, NewClient)
 }
 
 func testConnectionFailures(t *testing.T, f ProxyFunc) {
-	proxy := f("http://127.0.0.1:57854")
+	proxy := f(WithEndpoints([]string{"http://127.0.0.1:57854"}))
+
 	endpoints := map[string]func() error{
 		"ping": func() error {
 			return proxy.Ping()
@@ -168,7 +169,7 @@ func testPingFailure(t *testing.T, f ProxyFunc) {
 	}))
 	defer ts.Close()
 
-	proxy := f(ts.URL)
+	proxy := f(WithEndpoints([]string{ts.URL}))
 	err := proxy.Ping()
 	if err == nil {
 		t.Fatal("ping didn't fail for a status code error")
@@ -189,7 +190,7 @@ func testStatusCodeFailures(t *testing.T, f ProxyFunc) {
 		`))
 	}))
 	defer ts.Close()
-	proxy := f(ts.URL)
+	proxy := f(WithEndpoints([]string{ts.URL}))
 	endpoints := map[string]func() error{
 		"nodes": func() error {
 			_, _, err := proxy.Nodes(context.Background(), types.NodeFilter{}, types.Limit{})
@@ -249,7 +250,7 @@ func AssertHTTPRequest(
 		}
 	}))
 	defer ts.Close()
-	proxy := f(ts.URL)
+	proxy := f(WithEndpoints([]string{ts.URL}))
 	err := call(proxy)
 	if err != nil {
 		log.Printf(

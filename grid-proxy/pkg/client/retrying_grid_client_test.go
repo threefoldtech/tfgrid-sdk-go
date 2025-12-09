@@ -66,8 +66,8 @@ func (r *requestCounter) PublicIps(ctx context.Context, filter types.PublicIpFil
 	return nil, 0, errors.New("error")
 }
 
-func retryingConstructor(u ...string) Client {
-	return NewRetryingClientWithTimeout(NewClient(u...), 1*time.Millisecond)
+func retryingConstructor(opts ...ClientOption) Client {
+	return NewRetryingClientWithTimeout(NewClient(opts...), 1*time.Millisecond)
 }
 
 func TestRetryingConnectionFailures(t *testing.T) {

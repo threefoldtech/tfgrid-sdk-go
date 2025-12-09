@@ -45,7 +45,7 @@ func NewFarmerBot(ctx context.Context, config Config, network, mnemonicOrSeed, k
 		identity:         identity,
 	}
 
-	farmerbot.gridProxyClient = proxy.NewRetryingClient(proxy.NewClient(proxyURLs[network]))
+	farmerbot.gridProxyClient = proxy.NewRetryingClient(proxy.NewClient(proxy.WithEndpoints([]string{proxyURLs[network]})))
 
 	rmb, err := peer.NewRpcClient(ctx,
 		farmerbot.mnemonicOrSeed,
