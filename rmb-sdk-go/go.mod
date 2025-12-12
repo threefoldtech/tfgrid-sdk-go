@@ -20,7 +20,7 @@ require (
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30
 	go.uber.org/goleak v1.3.0
 	gonum.org/v1/gonum v0.16.0
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -33,7 +33,6 @@ require (
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 	github.com/ethereum/go-ethereum v1.11.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/holiman/uint256 v1.2.3 // indirect
