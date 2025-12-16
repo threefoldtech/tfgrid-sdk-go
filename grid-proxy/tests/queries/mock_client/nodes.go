@@ -262,7 +262,6 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 	status := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
 
 	total := g.data.NodeTotalResources[node.NodeID]
-
 	const sliceMruSize uint64 = 1073741824 // 1GB in bytes
 	sliceCru := uint64(0)
 	sliceMru := uint64(0)
@@ -278,6 +277,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		sliceSru = total.SRU / sliceCount
 		sliceHru = total.HRU / sliceCount
 	}
+
 	res = types.NodeWithNestedCapacity{
 		ID:              node.ID,
 		NodeID:          int(node.NodeID),
@@ -390,17 +390,43 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	used := data.NodeUsedResources[n.NodeID]
 	free := CalcFreeResources(total, used)
 
+	const sliceMruSize uint64 = 1073741824 // 1GB
+	var sliceMru, sliceSru, sliceHru uint64
+	if total.MRU > 0 {
+		sliceMru = sliceMruSize
+		sliceCount := total.MRU / sliceMruSize
+		if sliceCount == 0 {
+			sliceCount = 1
+		}
+		sliceSru = total.SRU / sliceCount
+		sliceHru = total.HRU / sliceCount
+	}
+
 	nodeStatus := nodestatus.DecideNodeStatus(nodePower, int64(n.UpdatedAt))
 	if len(f.Status) != 0 && !slices.Contains(f.Status, nodeStatus) {
 		return false
 	}
 
-	if f.FreeMRU != nil && int64(*f.FreeMRU) > int64(free.MRU) {
-		return false
+	if f.FreeMRU != nil {
+		// Require enough whole slices of MRU
+		if sliceMru == 0 {
+			return false
+		}
+		requiredSlices := (*f.FreeMRU + sliceMru - 1) / sliceMru
+		if free.MRU < sliceMru*requiredSlices {
+			return false
+		}
 	}
 
-	if f.FreeHRU != nil && int64(*f.FreeHRU) > int64(free.HRU) {
-		return false
+	if f.FreeHRU != nil {
+		// Require enough whole slices of HRU
+		if sliceHru == 0 {
+			return false
+		}
+		requiredSlices := (*f.FreeHRU + sliceHru - 1) / sliceHru
+		if free.HRU < sliceHru*requiredSlices {
+			return false
+		}
 	}
 
 	if f.Healthy != nil && *f.Healthy != data.HealthReports[uint32(n.TwinID)] {
@@ -415,8 +441,15 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.FreeSRU != nil && int64(*f.FreeSRU) > int64(free.SRU) {
-		return false
+	if f.FreeSRU != nil {
+		// Require enough whole slices of SRU
+		if sliceSru == 0 {
+			return false
+		}
+		requiredSlices := (*f.FreeSRU + sliceSru - 1) / sliceSru
+		if free.SRU < sliceSru*requiredSlices {
+			return false
+		}
 	}
 
 	if f.TotalCRU != nil && *f.TotalCRU > total.CRU {

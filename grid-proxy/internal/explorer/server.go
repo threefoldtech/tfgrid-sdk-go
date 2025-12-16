@@ -535,11 +535,6 @@ func (a *App) updateNodeSlice(r *http.Request) (interface{}, mw.Response) {
 		return nil, mw.Error(err)
 	}
 
-	// Verify that the node belongs to the specified farm
-	if uint64(node.FarmID) != req.FarmID {
-		return nil, mw.Forbidden(errors.New("node does not belong to the specified farm"))
-	}
-
 	// Validate slice resources don't exceed node's total capacity
 	if err := req.ValidateAgainstNodeCapacity(
 		node.TotalMru,
@@ -551,7 +546,7 @@ func (a *App) updateNodeSlice(r *http.Request) (interface{}, mw.Response) {
 	}
 
 	// Get farm to verify ownership
-	farm, err := a.cl.GetFarm(r.Context(), uint32(req.FarmID))
+	farm, err := a.cl.GetFarm(r.Context(), uint32(node.FarmID))
 	if err != nil {
 		return nil, errorReply(err)
 	}

@@ -60,7 +60,6 @@ type Node struct {
 	FarmFreeIps       uint         `json:"farm_free_ips"`
 	Features          []string     `json:"features"`
 	Slice             Capacity     `json:"slice"`
-	AvailableSlices   uint64       `json:"available_slices" sort:"available_slices"`
 	_                 string       `sort:"free_cru"`
 }
 
@@ -108,7 +107,6 @@ type NodeWithNestedCapacity struct {
 	FarmFreeIps       uint           `json:"farm_free_ips"`
 	Features          []string       `json:"features"`
 	Slice             Capacity       `json:"slice"`
-	AvailableSlices   uint64         `json:"available_slices"`
 }
 
 // PublicConfig node public config
@@ -189,8 +187,7 @@ func (f NodeFilter) IsGpuFilterRequested() bool {
 
 // UpdateNodeSliceRequest represents a request to update a node's slice configuration
 type UpdateNodeSliceRequest struct {
-	Slice  Capacity `json:"slice" binding:"required"`
-	FarmID uint64   `json:"farm_id" binding:"required,min=1"` // To check the farmer twin if it really owns the farm which has the node
+	Slice Capacity `json:"slice" binding:"required"` // slice configuration
 }
 
 // Validate validates the UpdateNodeSliceRequest basic constraints

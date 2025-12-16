@@ -128,16 +128,49 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 		total := data.NodeTotalResources[node.NodeID]
 		used := data.NodeUsedResources[node.NodeID]
 		free := CalcFreeResources(total, used)
-		if filter.NodeFreeHRU != nil && int64(free.HRU) < int64(*filter.NodeFreeHRU) {
-			continue
+
+		// Derive default slice sizes (must match server resources_cache slice_* logic)
+		const sliceMruSize uint64 = 1073741824 // 1GB
+		var sliceMru, sliceSru, sliceHru uint64
+		if total.MRU > 0 {
+			sliceMru = sliceMruSize
+			sliceCount := total.MRU / sliceMruSize
+			if sliceCount == 0 {
+				sliceCount = 1
+			}
+			sliceSru = total.SRU / sliceCount
+			sliceHru = total.HRU / sliceCount
 		}
 
-		if filter.NodeFreeMRU != nil && int64(free.MRU) < int64(*filter.NodeFreeMRU) {
-			continue
+		// Apply slice-aligned node free filters
+		if filter.NodeFreeMRU != nil {
+			if sliceMru == 0 {
+				continue
+			}
+			requiredSlices := (*filter.NodeFreeMRU + sliceMru - 1) / sliceMru
+			if free.MRU < sliceMru*requiredSlices {
+				continue
+			}
 		}
 
-		if filter.NodeFreeSRU != nil && int64(free.SRU) < int64(*filter.NodeFreeSRU) {
-			continue
+		if filter.NodeFreeSRU != nil {
+			if sliceSru == 0 {
+				continue
+			}
+			requiredSlices := (*filter.NodeFreeSRU + sliceSru - 1) / sliceSru
+			if free.SRU < sliceSru*requiredSlices {
+				continue
+			}
+		}
+
+		if filter.NodeFreeHRU != nil {
+			if sliceHru == 0 {
+				continue
+			}
+			requiredSlices := (*filter.NodeFreeHRU + sliceHru - 1) / sliceHru
+			if free.HRU < sliceHru*requiredSlices {
+				continue
+			}
 		}
 
 		if filter.NodeTotalCRU != nil && total.CRU < *filter.NodeTotalCRU {

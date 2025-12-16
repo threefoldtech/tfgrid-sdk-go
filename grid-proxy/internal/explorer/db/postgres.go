@@ -471,32 +471,23 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		Group(`resources_cache.farm_id, renter, resources_cache.extra_fee`)
 
 	// Validate resource requests align with slice boundaries for farm node filtering
-	if filter.NodeFreeMRU != nil || filter.NodeFreeSRU != nil || filter.NodeFreeHRU != nil {
-		sliceMruSize := int64(1073741824) // 1GB in bytes
-
-		// Calculate required number of slices based on MRU request (default to 1 if no MRU specified)
-		requiredSlices := int64(1)
-		if filter.NodeFreeMRU != nil {
-			requiredSlices = (int64(*filter.NodeFreeMRU) + sliceMruSize - 1) / sliceMruSize // ceil division
-			if requiredSlices == 0 {
-				requiredSlices = 1
-			}
-		}
-
-		// Check if node can provide the required number of complete slices
+	if filter.NodeFreeMRU != nil {
 		nodeQuery = nodeQuery.Where(`
-			(resources_cache.slice_mru > 0) AND
-			(resources_cache.free_mru >= resources_cache.slice_mru * ?)
-		`, requiredSlices)
-
-		if filter.NodeFreeSRU != nil {
-			nodeQuery = nodeQuery.Where(`(resources_cache.slice_sru = 0 OR resources_cache.free_sru >= resources_cache.slice_sru * ?)`, requiredSlices)
-		}
-		if filter.NodeFreeHRU != nil {
-			nodeQuery = nodeQuery.Where(`(resources_cache.slice_hru = 0 OR resources_cache.free_hru >= resources_cache.slice_hru * ?)`, requiredSlices)
-		}
-		// CRU is implicitly checked since it scales with slices
-		nodeQuery = nodeQuery.Where(`(resources_cache.slice_cru = 0 OR resources_cache.free_cru >= resources_cache.slice_cru * ?)`, requiredSlices)
+			resources_cache.slice_mru > 0 AND
+			resources_cache.free_mru >= resources_cache.slice_mru * CEIL(?::numeric / resources_cache.slice_mru::numeric)
+		`, *filter.NodeFreeMRU)
+	}
+	if filter.NodeFreeSRU != nil {
+		nodeQuery = nodeQuery.Where(`
+			resources_cache.slice_sru > 0 AND
+			resources_cache.free_sru >= resources_cache.slice_sru * CEIL(?::numeric / resources_cache.slice_sru::numeric)
+		`, *filter.NodeFreeSRU)
+	}
+	if filter.NodeFreeHRU != nil {
+		nodeQuery = nodeQuery.Where(`
+			resources_cache.slice_hru > 0 AND
+			resources_cache.free_hru >= resources_cache.slice_hru * CEIL(?::numeric / resources_cache.slice_hru::numeric)
+		`, *filter.NodeFreeHRU)
 	}
 	if filter.NodeTotalCRU != nil {
 		nodeQuery = nodeQuery.Where("resources_cache.total_cru >= ?", *filter.NodeTotalCRU)
@@ -685,34 +676,23 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.HasIpv6 != nil {
 		q = q.Where("COALESCE(node_ipv6.has_ipv6, false) = ? ", *filter.HasIpv6)
 	}
-	// Validate resource requests align with slice boundaries
-	if filter.FreeMRU != nil || filter.FreeSRU != nil || filter.FreeHRU != nil {
-		sliceMruSize := int64(1073741824) // 1GB in bytes
-
-		// Calculate required number of slices based on MRU request (default to 1 if no MRU specified)
-		requiredSlices := int64(1)
-		if filter.FreeMRU != nil {
-			requiredSlices = (int64(*filter.FreeMRU) + sliceMruSize - 1) / sliceMruSize // ceil division
-			if requiredSlices == 0 {
-				requiredSlices = 1
-			}
-		}
-
-		// Check if node can provide the required number of complete slices
-		// Each resource must have enough capacity for N slices
+	if filter.FreeMRU != nil {
 		q = q.Where(`
-			(resources_cache.slice_mru > 0) AND
-			(resources_cache.free_mru >= resources_cache.slice_mru * ?)
-		`, requiredSlices)
-
-		if filter.FreeSRU != nil {
-			q = q.Where(`(resources_cache.slice_sru = 0 OR resources_cache.free_sru >= resources_cache.slice_sru * ?)`, requiredSlices)
-		}
-		if filter.FreeHRU != nil {
-			q = q.Where(`(resources_cache.slice_hru = 0 OR resources_cache.free_hru >= resources_cache.slice_hru * ?)`, requiredSlices)
-		}
-		// CRU is implicitly checked since it scales with slices
-		q = q.Where(`(resources_cache.slice_cru = 0 OR resources_cache.free_cru >= resources_cache.slice_cru * ?)`, requiredSlices)
+			resources_cache.slice_mru > 0 AND
+			resources_cache.free_mru >= resources_cache.slice_mru * CEIL(?::numeric / resources_cache.slice_mru::numeric)
+		`, *filter.FreeMRU)
+	}
+	if filter.FreeSRU != nil {
+		q = q.Where(`
+			resources_cache.slice_sru > 0 AND
+			resources_cache.free_sru >= resources_cache.slice_sru * CEIL(?::numeric / resources_cache.slice_sru::numeric)
+		`, *filter.FreeSRU)
+	}
+	if filter.FreeHRU != nil {
+		q = q.Where(`
+			resources_cache.slice_hru > 0 AND
+			resources_cache.free_hru >= resources_cache.slice_hru * CEIL(?::numeric / resources_cache.slice_hru::numeric)
+		`, *filter.FreeHRU)
 	}
 	if filter.TotalCRU != nil {
 		q = q.Where("resources_cache.total_cru >= ?", *filter.TotalCRU)
