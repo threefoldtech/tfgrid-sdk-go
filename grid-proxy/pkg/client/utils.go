@@ -1,9 +1,13 @@
 package client
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
@@ -72,4 +76,21 @@ func newContractFromRawContract(rContract types.RawContract) (types.Contract, er
 	default:
 		return types.Contract{}, errors.Errorf("Unknown contract type: %s", rContract.Type)
 	}
+}
+
+func createAuthHeaderFromMnemonic(mnemonic string, twinID uint32) (string, error) {
+	identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonic)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to create identity from mnemonic")
+	}
+	timestamp := time.Now().Unix()
+	challenge := fmt.Sprintf("%d:%d", timestamp, twinID)
+
+	sig, err := identity.Sign([]byte(challenge))
+	if err != nil {
+		return "", errors.Wrap(err, "failed to sign challenge")
+	}
+
+	sigB64 := base64.StdEncoding.EncodeToString(sig)
+	return fmt.Sprintf("%d:%d:%s", timestamp, twinID, sigB64), nil
 }

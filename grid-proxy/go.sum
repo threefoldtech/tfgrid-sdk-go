@@ -201,6 +201,8 @@ github.com/tklauser/numcpus v0.6.1 h1:ng9scYS7az0Bk4OZLvrNXNSAO2Pxr1XXRAPyjhIx+F
 github.com/tklauser/numcpus v0.6.1/go.mod h1:1XfjsgE2zo8GVw7POkMbHENHzVg3GzmoZ9fESEdAacY=
 github.com/vedhavyas/go-subkey v1.0.3 h1:iKR33BB/akKmcR2PMlXPBeeODjWLM90EL98OrOGs8CA=
 github.com/vedhavyas/go-subkey v1.0.3/go.mod h1:CloUaFQSSTdWnINfBRFjVMkWXZANW+nd8+TI5jYcl6Y=
+github.com/vedhavyas/go-subkey/v2 v2.0.0 h1:LemDIsrVtRSOkp0FA8HxP6ynfKjeOj3BY2U9UNfeDMA=
+github.com/vedhavyas/go-subkey/v2 v2.0.0/go.mod h1:95aZ+XDCWAUUynjlmi7BtPExjXgXxByE0WfBwbmIRH4=
 github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852 h1:cPXZWzzG0NllBLdjWoD1nDfaqu98YMv+OneaKc8sPOA=
 github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852/go.mod h1:twkDnbuQxJYemMlGd4JFIcuhgX83tXhKS2B/PRMpOho=
 github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae/go.mod h1:DD4vA1DwXk04H54A1oHXtwZmA0grkVMdPxx/VGLCah0=

@@ -12,7 +12,47 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
+func calculateAvailableSlices(freeMru, freeSru, freeHru, freeCru int64, sliceMru, sliceSru, sliceHru, sliceCru int64) uint64 {
+	if sliceMru == 0 {
+		return 0
+	}
+
+	// Calculate how many complete slices each resource can provide
+	slicesByMru := uint64(freeMru / sliceMru)
+	var slicesBySru, slicesByHru, slicesByCru uint64
+
+	if sliceSru > 0 && freeSru > 0 {
+		slicesBySru = uint64(freeSru / sliceSru)
+	}
+	if sliceHru > 0 && freeHru > 0 {
+		slicesByHru = uint64(freeHru / sliceHru)
+	}
+	if sliceCru > 0 && freeCru > 0 {
+		slicesByCru = uint64(freeCru / sliceCru)
+	}
+
+	// Return the minimum (bottleneck resource)
+	minSlices := slicesByMru
+	if slicesBySru < minSlices {
+		minSlices = slicesBySru
+	}
+	if slicesByHru < minSlices {
+		minSlices = slicesByHru
+	}
+	if slicesByCru < minSlices {
+		minSlices = slicesByCru
+	}
+
+	return minSlices
+}
+
 func nodeFromDBNode(info db.Node) types.Node {
+	// Calculate free resources
+	freeMru := info.TotalMru - info.UsedMru
+	freeSru := info.TotalSru - info.UsedSru
+	freeHru := info.TotalHru - info.UsedHru
+	freeCru := info.TotalCru - info.UsedCru
+
 	node := types.Node{
 		ID:              info.ID,
 		NodeID:          int(info.NodeID),
@@ -89,6 +129,13 @@ func nodeFromDBNode(info db.Node) types.Node {
 		PriceUsd:    math.Round(info.PriceUsd*1000) / 1000,
 		FarmFreeIps: info.FarmFreeIps,
 		Features:    info.Features,
+		Slice: types.Capacity{
+			CRU: uint64(info.SliceCru),
+			SRU: gridtypes.Unit(info.SliceSru),
+			HRU: gridtypes.Unit(info.SliceHru),
+			MRU: gridtypes.Unit(info.SliceMru),
+		},
+		AvailableSlices: calculateAvailableSlices(freeMru, freeSru, freeHru, freeCru, info.SliceMru, info.SliceSru, info.SliceHru, info.SliceCru),
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0 || info.ExtraFee > 0
@@ -116,6 +163,12 @@ func farmFromDBFarm(info db.Farm) (types.Farm, error) {
 }
 
 func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity {
+	// Calculate free resources
+	freeMru := info.TotalMru - info.UsedMru
+	freeSru := info.TotalSru - info.UsedSru
+	freeHru := info.TotalHru - info.UsedHru
+	freeCru := info.TotalCru - info.UsedCru
+
 	node := types.NodeWithNestedCapacity{
 		ID:              info.ID,
 		NodeID:          int(info.NodeID),
@@ -195,6 +248,13 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		PriceUsd:    math.Round(info.PriceUsd*1000) / 1000,
 		FarmFreeIps: info.FarmFreeIps,
 		Features:    info.Features,
+		Slice: types.Capacity{
+			CRU: uint64(info.SliceCru),
+			SRU: gridtypes.Unit(info.SliceSru),
+			HRU: gridtypes.Unit(info.SliceHru),
+			MRU: gridtypes.Unit(info.SliceMru),
+		},
+		AvailableSlices: calculateAvailableSlices(freeMru, freeSru, freeHru, freeCru, info.SliceMru, info.SliceSru, info.SliceHru, info.SliceCru),
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0 || info.ExtraFee > 0

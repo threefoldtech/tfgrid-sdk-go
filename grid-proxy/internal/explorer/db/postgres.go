@@ -395,6 +395,10 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.threads_cpu as threads",
 			"resources_cache.workloads_cpu as workloads",
 			"public_ips_cache.free_ips as farm_free_ips",
+			"resources_cache.slice_mru",
+			"resources_cache.slice_sru",
+			"resources_cache.slice_hru",
+			"resources_cache.slice_cru",
 			calculatedDiscountColumn,
 		).
 		Joins(`
@@ -466,14 +470,33 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		`).
 		Group(`resources_cache.farm_id, renter, resources_cache.extra_fee`)
 
-	if filter.NodeFreeMRU != nil {
-		nodeQuery = nodeQuery.Where("resources_cache.free_mru >= ?", *filter.NodeFreeMRU)
-	}
-	if filter.NodeFreeHRU != nil {
-		nodeQuery = nodeQuery.Where("resources_cache.free_hru >= ?", *filter.NodeFreeHRU)
-	}
-	if filter.NodeFreeSRU != nil {
-		nodeQuery = nodeQuery.Where("resources_cache.free_sru >= ?", *filter.NodeFreeSRU)
+	// Validate resource requests align with slice boundaries for farm node filtering
+	if filter.NodeFreeMRU != nil || filter.NodeFreeSRU != nil || filter.NodeFreeHRU != nil {
+		sliceMruSize := int64(1073741824) // 1GB in bytes
+
+		// Calculate required number of slices based on MRU request (default to 1 if no MRU specified)
+		requiredSlices := int64(1)
+		if filter.NodeFreeMRU != nil {
+			requiredSlices = (int64(*filter.NodeFreeMRU) + sliceMruSize - 1) / sliceMruSize // ceil division
+			if requiredSlices == 0 {
+				requiredSlices = 1
+			}
+		}
+
+		// Check if node can provide the required number of complete slices
+		nodeQuery = nodeQuery.Where(`
+			(resources_cache.slice_mru > 0) AND
+			(resources_cache.free_mru >= resources_cache.slice_mru * ?)
+		`, requiredSlices)
+
+		if filter.NodeFreeSRU != nil {
+			nodeQuery = nodeQuery.Where(`(resources_cache.slice_sru = 0 OR resources_cache.free_sru >= resources_cache.slice_sru * ?)`, requiredSlices)
+		}
+		if filter.NodeFreeHRU != nil {
+			nodeQuery = nodeQuery.Where(`(resources_cache.slice_hru = 0 OR resources_cache.free_hru >= resources_cache.slice_hru * ?)`, requiredSlices)
+		}
+		// CRU is implicitly checked since it scales with slices
+		nodeQuery = nodeQuery.Where(`(resources_cache.slice_cru = 0 OR resources_cache.free_cru >= resources_cache.slice_cru * ?)`, requiredSlices)
 	}
 	if filter.NodeTotalCRU != nil {
 		nodeQuery = nodeQuery.Where("resources_cache.total_cru >= ?", *filter.NodeTotalCRU)
@@ -662,14 +685,34 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.HasIpv6 != nil {
 		q = q.Where("COALESCE(node_ipv6.has_ipv6, false) = ? ", *filter.HasIpv6)
 	}
-	if filter.FreeMRU != nil {
-		q = q.Where("resources_cache.free_mru >= ?", *filter.FreeMRU)
-	}
-	if filter.FreeHRU != nil {
-		q = q.Where("resources_cache.free_hru >= ?", *filter.FreeHRU)
-	}
-	if filter.FreeSRU != nil {
-		q = q.Where("resources_cache.free_sru >= ?", *filter.FreeSRU)
+	// Validate resource requests align with slice boundaries
+	if filter.FreeMRU != nil || filter.FreeSRU != nil || filter.FreeHRU != nil {
+		sliceMruSize := int64(1073741824) // 1GB in bytes
+
+		// Calculate required number of slices based on MRU request (default to 1 if no MRU specified)
+		requiredSlices := int64(1)
+		if filter.FreeMRU != nil {
+			requiredSlices = (int64(*filter.FreeMRU) + sliceMruSize - 1) / sliceMruSize // ceil division
+			if requiredSlices == 0 {
+				requiredSlices = 1
+			}
+		}
+
+		// Check if node can provide the required number of complete slices
+		// Each resource must have enough capacity for N slices
+		q = q.Where(`
+			(resources_cache.slice_mru > 0) AND
+			(resources_cache.free_mru >= resources_cache.slice_mru * ?)
+		`, requiredSlices)
+
+		if filter.FreeSRU != nil {
+			q = q.Where(`(resources_cache.slice_sru = 0 OR resources_cache.free_sru >= resources_cache.slice_sru * ?)`, requiredSlices)
+		}
+		if filter.FreeHRU != nil {
+			q = q.Where(`(resources_cache.slice_hru = 0 OR resources_cache.free_hru >= resources_cache.slice_hru * ?)`, requiredSlices)
+		}
+		// CRU is implicitly checked since it scales with slices
+		q = q.Where(`(resources_cache.slice_cru = 0 OR resources_cache.free_cru >= resources_cache.slice_cru * ?)`, requiredSlices)
 	}
 	if filter.TotalCRU != nil {
 		q = q.Where("resources_cache.total_cru >= ?", *filter.TotalCRU)
@@ -1127,4 +1170,27 @@ func (d *PostgresDatabase) GetPublicIps(ctx context.Context, filter types.Public
 		return ips, uint(count), errors.Wrap(res.Error, "failed to scan returned ips from database")
 	}
 	return ips, uint(count), nil
+}
+
+// UpdateNodeSlice updates the slice configuration for a specific node
+func (d *PostgresDatabase) UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceMru, sliceSru, sliceHru, sliceCru uint64) error {
+	result := d.gormDB.WithContext(ctx).
+		Table("resources_cache").
+		Where("node_id = ?", nodeID).
+		Updates(map[string]interface{}{
+			"slice_mru": sliceMru,
+			"slice_sru": sliceSru,
+			"slice_hru": sliceHru,
+			"slice_cru": sliceCru,
+		})
+
+	if result.Error != nil {
+		return errors.Wrap(result.Error, "failed to update node slice")
+	}
+
+	if result.RowsAffected == 0 {
+		return ErrNodeNotFound
+	}
+
+	return nil
 }

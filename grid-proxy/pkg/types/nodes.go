@@ -1,6 +1,10 @@
 package types
 
-import "github.com/threefoldtech/zosbase/pkg/gridtypes"
+import (
+	"fmt"
+
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+)
 
 // Location represent the geographic info about the node
 type Location struct {
@@ -55,6 +59,8 @@ type Node struct {
 	PriceUsd          float64      `json:"price_usd" sort:"price_usd"`
 	FarmFreeIps       uint         `json:"farm_free_ips"`
 	Features          []string     `json:"features"`
+	Slice             Capacity     `json:"slice"`
+	AvailableSlices   uint64       `json:"available_slices" sort:"available_slices"`
 	_                 string       `sort:"free_cru"`
 }
 
@@ -101,6 +107,8 @@ type NodeWithNestedCapacity struct {
 	PriceUsd          float64        `json:"price_usd"`
 	FarmFreeIps       uint           `json:"farm_free_ips"`
 	Features          []string       `json:"features"`
+	Slice             Capacity       `json:"slice"`
+	AvailableSlices   uint64         `json:"available_slices"`
 }
 
 // PublicConfig node public config
@@ -177,4 +185,43 @@ func (f NodeFilter) IsGpuFilterRequested() bool {
 	return f.HasGPU != nil || f.GpuDeviceName != nil ||
 		f.GpuVendorName != nil || f.GpuVendorID != nil ||
 		f.GpuDeviceID != nil || f.GpuAvailable != nil
+}
+
+// UpdateNodeSliceRequest represents a request to update a node's slice configuration
+type UpdateNodeSliceRequest struct {
+	Slice  Capacity `json:"slice" binding:"required"`
+	FarmID uint64   `json:"farm_id" binding:"required,min=1"` // To check the farmer twin if it really owns the farm which has the node
+}
+
+// Validate validates the UpdateNodeSliceRequest basic constraints
+func (r UpdateNodeSliceRequest) Validate() error {
+	if r.Slice.MRU < 1073741824 {
+		return fmt.Errorf("slice.mru must be at least 1GB (1073741824 bytes), got %d", r.Slice.MRU)
+	}
+	if r.Slice.CRU == 0 {
+		return fmt.Errorf("slice.cru must be at least 1")
+	}
+
+	return nil
+}
+
+// ValidateAgainstNodeCapacity validates that slice resources don't exceed node's total resources
+func (r UpdateNodeSliceRequest) ValidateAgainstNodeCapacity(totalMRU, totalSRU, totalHRU int64, totalCRU uint64) error {
+	if uint64(r.Slice.MRU) > uint64(totalMRU) {
+		return fmt.Errorf("slice.mru (%d) cannot exceed node's total MRU (%d)", r.Slice.MRU, totalMRU)
+	}
+
+	if uint64(r.Slice.SRU) > uint64(totalSRU) {
+		return fmt.Errorf("slice.sru (%d) cannot exceed node's total SRU (%d)", r.Slice.SRU, totalSRU)
+	}
+
+	if uint64(r.Slice.HRU) > uint64(totalHRU) {
+		return fmt.Errorf("slice.hru (%d) cannot exceed node's total HRU (%d)", r.Slice.HRU, totalHRU)
+	}
+
+	if r.Slice.CRU > totalCRU {
+		return fmt.Errorf("slice.cru (%d) cannot exceed node's total CRU (%d)", r.Slice.CRU, totalCRU)
+	}
+
+	return nil
 }

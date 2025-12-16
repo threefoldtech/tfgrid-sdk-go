@@ -128,6 +128,24 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				Target: node.Power.Target,
 			}
 			status := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
+
+			total := g.data.NodeTotalResources[node.NodeID]
+
+			const sliceMruSize uint64 = 1073741824 // 1GB in bytes
+			sliceCru := uint64(0)
+			sliceMru := uint64(0)
+			sliceSru := uint64(0)
+			sliceHru := uint64(0)
+			if total.MRU > 0 {
+				sliceMru = sliceMruSize
+				sliceCount := total.MRU / sliceMruSize
+				if sliceCount == 0 {
+					sliceCount = 1
+				}
+				sliceCru = total.CRU / sliceCount
+				sliceSru = total.SRU / sliceCount
+				sliceHru = total.HRU / sliceCount
+			}
 			res = append(res, types.Node{
 				ID:              node.ID,
 				NodeID:          int(node.NodeID),
@@ -204,6 +222,12 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				PriceUsd:    calcDiscount(calcNodePrice(g.data, node), limit.Balance),
 				FarmFreeIps: uint(g.data.FreeIPs[node.FarmID]),
 				Features:    g.data.NodeFeatures[uint32(node.TwinID)],
+				Slice: types.Capacity{
+					CRU: sliceCru,
+					SRU: gridtypes.Unit(sliceSru),
+					HRU: gridtypes.Unit(sliceHru),
+					MRU: gridtypes.Unit(sliceMru),
+				},
 			})
 		}
 	}
@@ -236,6 +260,24 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		Target: node.Power.Target,
 	}
 	status := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
+
+	total := g.data.NodeTotalResources[node.NodeID]
+
+	const sliceMruSize uint64 = 1073741824 // 1GB in bytes
+	sliceCru := uint64(0)
+	sliceMru := uint64(0)
+	sliceSru := uint64(0)
+	sliceHru := uint64(0)
+	if total.MRU > 0 {
+		sliceMru = sliceMruSize
+		sliceCount := total.MRU / sliceMruSize
+		if sliceCount == 0 {
+			sliceCount = 1
+		}
+		sliceCru = total.CRU / sliceCount
+		sliceSru = total.SRU / sliceCount
+		sliceHru = total.HRU / sliceCount
+	}
 	res = types.NodeWithNestedCapacity{
 		ID:              node.ID,
 		NodeID:          int(node.NodeID),
@@ -314,6 +356,12 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		PriceUsd:    calcNodePrice(g.data, node),
 		FarmFreeIps: uint(g.data.FreeIPs[node.FarmID]),
 		Features:    g.data.NodeFeatures[uint32(node.TwinID)],
+		Slice: types.Capacity{
+			CRU: sliceCru,
+			SRU: gridtypes.Unit(sliceSru),
+			HRU: gridtypes.Unit(sliceHru),
+			MRU: gridtypes.Unit(sliceMru),
+		},
 	}
 	return
 }

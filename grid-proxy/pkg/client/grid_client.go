@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -618,4 +619,75 @@ func (g *Clientimpl) httpGet(path string, params ...interface{}) (resp *http.Res
 	}
 
 	return
+}
+
+func (g *Clientimpl) httpRequest(ctx context.Context, method, path string, body []byte, headers http.Header, params ...interface{}) (*http.Response, error) {
+	client := g.newHTTPClient()
+
+	url, err := g.prepareURL(path, params...)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to prepare url")
+	}
+
+	var reader io.Reader
+	if body != nil {
+		reader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, reader)
+	if err != nil {
+		return nil, err
+	}
+
+	for k, vals := range headers {
+		for _, v := range vals {
+			req.Header.Add(k, v)
+		}
+	}
+
+	return client.Do(req)
+}
+
+// UpdateNodeSlice updates the slice configuration for a specific node
+func (g *Clientimpl) UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceReq types.UpdateNodeSliceRequest, twinID uint32, mnemonic string) error {
+	_, span := g.tracer.Start(ctx, "Proxy.UpdateNodeSlice")
+	defer span.End()
+
+	path := fmt.Sprintf("nodes/%d/slice", nodeID)
+
+	body, err := json.Marshal(sliceReq)
+	if err != nil {
+		err = errors.Wrap(err, "failed to marshal UpdateNodeSlice request body")
+		recordSpanError(span, "failed to marshal UpdateNodeSlice request body", err)
+		return err
+	}
+
+	headers := http.Header{}
+	headers.Set("Content-Type", "application/json")
+
+	if mnemonic != "" {
+		authHeader, err := createAuthHeaderFromMnemonic(mnemonic, twinID)
+		if err != nil {
+			recordSpanError(span, "failed to create X-Auth header", err)
+			return err
+		}
+		headers.Set("X-Auth", authHeader)
+	}
+
+	resp, err := g.httpRequest(ctx, http.MethodPatch, path, body, headers)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		recordSpanError(span, "failed to call UpdateNodeSlice endpoint", err)
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		err = parseError(resp.Body)
+		recordSpanError(span, "UpdateNodeSlice returned non-OK status", err)
+		return err
+	}
+
+	return nil
 }
