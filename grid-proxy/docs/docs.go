@@ -482,7 +482,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "farm region",
+                        "description": "Node continent (america, europe, africa, asia, ...)",
                         "name": "region",
                         "in": "query"
                     }
@@ -632,7 +632,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "node region",
+                        "description": "Node continent (america, europe, africa, asia, ...)",
                         "name": "region",
                         "in": "query"
                     },
@@ -956,7 +956,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Node region",
+                        "description": "Node continent (america, europe, africa, asia, ...)",
                         "name": "region",
                         "in": "query"
                     },
@@ -1210,6 +1210,84 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/nodes/{node_id}/slice": {
+            "patch": {
+                "description": "Update the slice capacity configuration for a specific node (farm owner only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "NodeSlice"
+                ],
+                "summary": "Update node slice configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authentication format: Base64(\u003cunix_timestamp\u003e:\u003ctwin_id\u003e):Base64(signature)",
+                        "name": "X-Auth",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Node ID",
+                        "name": "node_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Slice configuration and farm ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/types.UpdateNodeSliceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.UpdateNodeSliceRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "string"
                         }
@@ -1943,6 +2021,9 @@ const docTemplate = `{
                 "serialNumber": {
                     "type": "string"
                 },
+                "slice": {
+                    "$ref": "#/definitions/types.Capacity"
+                },
                 "speed": {
                     "$ref": "#/definitions/types.Speed"
                 },
@@ -2156,6 +2237,9 @@ const docTemplate = `{
                 "serialNumber": {
                     "type": "string"
                 },
+                "slice": {
+                    "$ref": "#/definitions/types.Capacity"
+                },
                 "speed": {
                     "$ref": "#/definitions/types.Speed"
                 },
@@ -2349,6 +2433,22 @@ const docTemplate = `{
                 },
                 "overall_consumption": {
                     "type": "number"
+                }
+            }
+        },
+        "types.UpdateNodeSliceRequest": {
+            "type": "object",
+            "required": [
+                "slice"
+            ],
+            "properties": {
+                "slice": {
+                    "description": "slice configuration",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.Capacity"
+                        }
+                    ]
                 }
             }
         }
