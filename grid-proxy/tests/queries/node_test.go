@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -12,9 +13,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
+	gridtypes "github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 type NodesAggregate struct {
@@ -471,6 +474,102 @@ func TestNode(t *testing.T) {
 		assert.NoError(t, err)
 
 		require.True(t, reflect.DeepEqual(want, got), "failed on testing staking discount", fmt.Sprintf("Difference:\n%s", cmp.Diff(want, got)))
+	})
+
+	t.Run("update node slice", func(t *testing.T) {
+		require.NotEmpty(t, data.Farms, "expected at least one farm in test data")
+
+		var (
+			farmID uint64
+			farm   mock.Farm
+		)
+		for id, f := range data.Farms {
+			farmID, farm = id, f
+			break
+		}
+
+		var nodeID uint64
+		for id, n := range data.Nodes {
+			if n.FarmID == farmID {
+				nodeID = id
+				break
+			}
+		}
+		require.NotZero(t, nodeID, "expected at least one node for selected farm")
+
+		twinID := farm.TwinID
+		require.NotZero(t, twinID, "farm must have a twin owner")
+
+		const testMnemonic = "//Alice"
+
+		var originalPubKey string
+		err := data.DB.QueryRow(`SELECT public_key FROM twin WHERE twin_id = $1`, twinID).Scan(&originalPubKey)
+		require.NoError(t, err)
+
+		identity, err := substrate.NewIdentityFromSr25519Phrase(testMnemonic)
+		require.NoError(t, err)
+
+		pubKey := identity.PublicKey()
+		pubKeyB64 := base64.StdEncoding.EncodeToString(pubKey)
+
+		_, err = data.DB.Exec(`UPDATE twin SET public_key = $1 WHERE twin_id = $2`, pubKeyB64, twinID)
+		require.NoError(t, err)
+
+		// read current slice and total resources
+		before, err := gridProxyClient.Node(context.Background(), uint32(nodeID))
+		require.NoError(t, err)
+
+		newSlice := before.Slice
+
+		// adjust MRU within total bounds, ensure >= 1 GiB and changed if possible
+		const oneGiB = 1_073_741_824
+		total := before.Capacity.Total
+
+		if uint64(newSlice.MRU)+oneGiB <= uint64(total.MRU) {
+			newSlice.MRU = newSlice.MRU + gridtypes.Unit(oneGiB)
+		} else if uint64(newSlice.MRU) >= 2*oneGiB {
+			newSlice.MRU = newSlice.MRU - gridtypes.Unit(oneGiB)
+		}
+
+		// adjust CRU within total bounds, ensure >=1 and changed if possible
+		if newSlice.CRU < total.CRU {
+			newSlice.CRU++
+		} else if newSlice.CRU > 1 {
+			newSlice.CRU--
+		}
+
+		// ensure we actually changed something; if not, skip test
+		if newSlice == before.Slice {
+			t.Skip("could not find a safe slice mutation within total resources")
+		}
+
+		sliceReq := types.UpdateNodeSliceRequest{
+			Slice: newSlice,
+		}
+
+		err = gridProxyClient.UpdateNodeSlice(context.Background(), uint32(nodeID), sliceReq, uint32(twinID), testMnemonic)
+		require.NoError(t, err)
+
+		got, err := gridProxyClient.Node(context.Background(), uint32(nodeID))
+		require.NoError(t, err)
+
+		require.Equal(t, newSlice, got.Slice)
+		require.NotEqual(t, before.Slice, got.Slice)
+
+		// restore original slice so other tests comparing with the mock remain valid
+		restoreErr := DBClient.UpdateNodeSlice(
+			context.Background(),
+			uint32(nodeID),
+			uint64(before.Slice.MRU),
+			uint64(before.Slice.SRU),
+			uint64(before.Slice.HRU),
+			before.Slice.CRU,
+		)
+		require.NoError(t, restoreErr)
+
+		// restore original twin public key so twin-related tests stay in sync with mock data
+		_, err = data.DB.Exec(`UPDATE twin SET public_key = $1 WHERE twin_id = $2`, originalPubKey, twinID)
+		require.NoError(t, err)
 	})
 }
 

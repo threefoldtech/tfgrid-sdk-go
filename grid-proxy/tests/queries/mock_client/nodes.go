@@ -647,3 +647,7 @@ func gpuSatisfied(gpu types.NodeGPU, f types.NodeFilter) bool {
 func contains(s string, sub string) bool {
 	return strings.Contains(strings.ToLower(s), sub)
 }
+
+func (g *GridProxyMockClient) UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceReq types.UpdateNodeSliceRequest, twinID uint32, mnemonic string) error {
+	return nil
+}

@@ -56,6 +56,7 @@ type DBClient interface {
 type Client interface {
 	Ping() error
 	DBClient
+	UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceReq types.UpdateNodeSliceRequest, twinID uint32, mnemonic string) error
 }
 
 // Clientimpl concrete implementation of the client to communicate with the grid proxy

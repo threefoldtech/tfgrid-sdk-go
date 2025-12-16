@@ -147,3 +147,13 @@ func (g *RetryingClient) PublicIps(ctx context.Context, filter types.PublicIpFil
 	err = backoff.RetryNotify(f, bf(g.timeout), notify("public_ips"))
 	return
 }
+
+// UpdateNodeSlice updates the slice configuration for a specific node
+func (g *RetryingClient) UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceReq types.UpdateNodeSliceRequest, twinID uint32, mnemonic string) (err error) {
+	f := func() error {
+		err = g.cl.UpdateNodeSlice(ctx, nodeID, sliceReq, twinID, mnemonic)
+		return err
+	}
+	err = backoff.RetryNotify(f, bf(g.timeout), notify("update_node_slice"))
+	return err
+}

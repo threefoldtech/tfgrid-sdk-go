@@ -66,6 +66,11 @@ func (r *requestCounter) PublicIps(ctx context.Context, filter types.PublicIpFil
 	return nil, 0, errors.New("error")
 }
 
+func (r *requestCounter) UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceReq types.UpdateNodeSliceRequest, twinID uint32, mnemonic string) error {
+	r.Counter++
+	return errors.New("error")
+}
+
 func retryingConstructor(opts ...ClientOption) Client {
 	return NewRetryingClientWithTimeout(NewClient(opts...), 1*time.Millisecond)
 }
@@ -101,6 +106,9 @@ func TestCalledMultipleTimes(t *testing.T) {
 		},
 		"node_status": func() {
 			_, _ = proxy.NodeStatus(context.Background(), 1)
+		},
+		"update_node_slice": func() {
+			_ = proxy.UpdateNodeSlice(context.Background(), 1, types.UpdateNodeSliceRequest{}, 1, "//Alice")
 		},
 	}
 	for endpoint, f := range methods {
