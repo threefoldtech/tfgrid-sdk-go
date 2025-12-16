@@ -70,7 +70,11 @@ BEGIN
     slice_mru := slice_mru_size;
     
     -- Divide other resources proportionally by slice_count
-    slice_cru := FLOOR(total_cru / slice_count);
+    IF total_cru > 0 THEN
+        slice_cru := GREATEST(1, FLOOR((total_cru * 2) / slice_count));
+    ELSE
+        slice_cru := 0;
+    END IF;
     slice_sru := FLOOR(total_sru / slice_count);
     slice_hru := FLOOR(total_hru / slice_count);
 END;

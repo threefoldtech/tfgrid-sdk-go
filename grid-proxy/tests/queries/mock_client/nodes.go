@@ -142,7 +142,12 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				if sliceCount == 0 {
 					sliceCount = 1
 				}
-				sliceCru = total.CRU / sliceCount
+				if total.CRU > 0 {
+					sliceCru = (total.CRU * 2) / sliceCount
+					if sliceCru == 0 {
+						sliceCru = 1
+					}
+				}
 				sliceSru = total.SRU / sliceCount
 				sliceHru = total.HRU / sliceCount
 			}
@@ -273,7 +278,12 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		if sliceCount == 0 {
 			sliceCount = 1
 		}
-		sliceCru = total.CRU / sliceCount
+		if total.CRU > 0 {
+			sliceCru = (total.CRU * 2) / sliceCount
+			if sliceCru == 0 {
+				sliceCru = 1
+			}
+		}
 		sliceSru = total.SRU / sliceCount
 		sliceHru = total.HRU / sliceCount
 	}
