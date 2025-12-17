@@ -1174,3 +1174,68 @@ func (d *PostgresDatabase) UpdateNodeSlice(ctx context.Context, nodeID uint32, s
 
 	return nil
 }
+
+func (d *PostgresDatabase) GetNodesTest(ctx context.Context, capacity types.Capacity) ([]NodeWithSlices, error) {
+	var nodes []NodeWithSlices
+
+	rawQuery := `
+WITH node_slices AS (
+    SELECT
+        rc.node_id,
+        rc.slice_mru,
+        rc.slice_sru,
+        rc.slice_hru,
+		rc.slice_cru,
+        CEIL(
+            GREATEST(
+                COALESCE($1::numeric / NULLIF(rc.slice_mru, 0), 0),
+                COALESCE($2::numeric / NULLIF(rc.slice_sru, 0), 0),
+                COALESCE($3::numeric / NULLIF(rc.slice_hru, 0), 0)
+            )
+        ) AS slices_needed,
+
+        LEAST(
+            COALESCE(rc.free_mru / NULLIF(rc.slice_mru, 0), 1e18),
+            COALESCE(rc.free_sru / NULLIF(rc.slice_sru, 0), 1e18),
+            COALESCE(rc.free_hru / NULLIF(rc.slice_hru, 0), 1e18)
+        ) AS slices_available
+
+    FROM resources_cache rc
+
+    WHERE
+        NOT (
+            ($1 > 0 AND rc.slice_mru = 0) OR
+            ($2 > 0 AND rc.slice_sru = 0) OR
+            ($3 > 0 AND rc.slice_hru = 0)
+        )
+)
+
+SELECT
+    node_id,
+    slice_mru,
+    slice_sru,
+    slice_hru,
+	slice_cru,
+    slices_needed
+FROM node_slices
+WHERE
+    slices_needed > 0
+    AND slices_needed <= slices_available
+ORDER BY
+    slices_needed ASC,
+    slices_available DESC;
+`
+
+	res := d.gormDB.WithContext(ctx).Raw(
+		rawQuery,
+		capacity.MRU,
+		capacity.SRU,
+		capacity.HRU,
+	).Scan(&nodes)
+
+	if res.Error != nil {
+		return nil, res.Error
+	}
+
+	return nodes, nil
+}

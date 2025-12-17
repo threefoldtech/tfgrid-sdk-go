@@ -17,6 +17,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/mw"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	rmb "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 const (
@@ -642,6 +643,46 @@ func (a *App) getNodeGpus(r *http.Request) (interface{}, mw.Response) {
 	return res, mw.Ok()
 }
 
+// getNodesTest godoc
+// @Summary Test node selection by capacity slices
+// @Description Test-only endpoint that returns nodes capable of serving the requested capacity, along with how many slices are needed and the slice resources.
+// @Tags GridProxy
+// @Accept  json
+// @Produce  json
+// @Param cru query int false "Requested CRU (cores)"
+// @Param sru query int false "Requested SRU in bytes"
+// @Param hru query int false "Requested HRU in bytes"
+// @Param mru query int false "Requested MRU in bytes"
+// @Success 200 {object} []types.NodeWithSlicesResult
+// @Failure 400 {object} string
+// @Failure 500 {object} string
+// @Router /nodes_test [get]
+func (a *App) getNodesTest(r *http.Request) (interface{}, mw.Response) {
+	filter := types.NodeFilter{}
+	limit := types.DefaultLimit()
+	if err := parseQueryParams(r, &filter, &limit); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+
+	var capacity types.Capacity
+	if filter.FreeSRU != nil {
+		capacity.SRU = gridtypes.Unit(*filter.FreeSRU)
+	}
+	if filter.FreeHRU != nil {
+		capacity.HRU = gridtypes.Unit(*filter.FreeHRU)
+	}
+	if filter.FreeMRU != nil {
+		capacity.MRU = gridtypes.Unit(*filter.FreeMRU)
+	}
+
+	dbNodes, err := a.cl.NodesTest(r.Context(), capacity)
+	if err != nil {
+		return nil, mw.Error(err)
+	}
+
+	return dbNodes, mw.Ok()
+}
+
 // getContract godoc
 // @Summary Show single contract info
 // @Description Get data about a single contract with its id
@@ -720,6 +761,7 @@ func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Cl
 	router.HandleFunc("/twins/{twin_id:[0-9]+}/consumption", mw.AsHandlerFunc(a.getTwinConsumption))
 
 	router.HandleFunc("/nodes", mw.AsHandlerFunc(a.getNodes))
+	router.HandleFunc("/nodes_test", mw.AsHandlerFunc(a.getNodesTest))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getNode))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/status", mw.AsHandlerFunc(a.getNodeStatus))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/statistics", mw.AsHandlerFunc(a.getNodeStatistics))

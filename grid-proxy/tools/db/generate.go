@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	NodeCount         = 6000
+	NodeCount         = 10000
 	FarmCount         = 600
 	TwinCount         = 6000 + 600 + 6000 // nodes + farms + normal users
 	PublicIPCount     = 1000

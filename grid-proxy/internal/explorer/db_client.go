@@ -205,3 +205,24 @@ func (c *DBClient) PublicIps(ctx context.Context, filter types.PublicIpFilter, l
 
 	return dbIps, count, nil
 }
+
+func (c *DBClient) NodesTest(ctx context.Context, capacity types.Capacity) ([]types.NodeWithSlicesResult, error) {
+	nodes, err := c.DB.GetNodesTest(ctx, capacity)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]types.NodeWithSlicesResult, len(nodes))
+	for i, n := range nodes {
+		results[i] = types.NodeWithSlicesResult{
+			NodeID:       uint64(n.NodeID),
+			SlicesNeeded: uint64(n.SlicesNeeded),
+			SliceMRU:     uint64(n.SliceMru),
+			SliceSRU:     uint64(n.SliceSru),
+			SliceHRU:     uint64(n.SliceHru),
+			SliceCRU:     uint64(n.SliceCru),
+		}
+	}
+
+	return results, nil
+}

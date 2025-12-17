@@ -19,6 +19,7 @@ type Database interface {
 	GetNode(ctx context.Context, nodeID uint32) (Node, error)
 	GetFarm(ctx context.Context, farmID uint32) (Farm, error)
 	GetNodes(ctx context.Context, filter types.NodeFilter, limit types.Limit) ([]Node, uint, error)
+	GetNodesTest(ctx context.Context, capacity types.Capacity) ([]NodeWithSlices, error)
 	GetFarms(ctx context.Context, filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error)
 	GetTwins(ctx context.Context, filter types.TwinFilter, limit types.Limit) ([]types.Twin, uint, error)
 	GetContracts(ctx context.Context, filter types.ContractFilter, limit types.Limit) ([]DBContract, uint, error)
@@ -133,6 +134,15 @@ type Node struct {
 	SliceSru           int64    `gorm:"slice_sru"`
 	SliceHru           int64    `gorm:"slice_hru"`
 	SliceCru           int64    `gorm:"slice_cru"`
+}
+
+type NodeWithSlices struct {
+	NodeID       int64 `gorm:"column:node_id"`
+	SlicesNeeded int64 `gorm:"column:slices_needed"`
+	SliceMru     int64 `gorm:"column:slice_mru"`
+	SliceSru     int64 `gorm:"column:slice_sru"`
+	SliceHru     int64 `gorm:"column:slice_hru"`
+	SliceCru     int64 `gorm:"column:slice_cru"`
 }
 
 // NodePower struct is the farmerbot report for node status

@@ -129,6 +129,15 @@ type Capacity struct {
 	MRU gridtypes.Unit `json:"mru"`
 }
 
+type NodeWithSlicesResult struct {
+	NodeID       uint64 `json:"node_id"`
+	SlicesNeeded uint64 `json:"slices_needed"`
+	SliceMRU     uint64 `json:"slice_mru"`
+	SliceSRU     uint64 `json:"slice_sru"`
+	SliceHRU     uint64 `json:"slice_hru"`
+	SliceCRU     uint64 `json:"slice_cru"`
+}
+
 // NodeFilter node filters
 type NodeFilter struct {
 	Status             []string `schema:"status,omitempty"`
