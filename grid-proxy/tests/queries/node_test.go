@@ -515,6 +515,11 @@ func TestNode(t *testing.T) {
 		_, err = data.DB.Exec(`UPDATE twin SET public_key = $1 WHERE twin_id = $2`, pubKeyB64, twinID)
 		require.NoError(t, err)
 
+		defer func() {
+			_, err := data.DB.Exec(`UPDATE twin SET public_key = $1 WHERE twin_id = $2`, originalPubKey, twinID)
+			require.NoError(t, err)
+		}()
+
 		// read current slice and total resources
 		before, err := gridProxyClient.Node(context.Background(), uint32(nodeID))
 		require.NoError(t, err)
@@ -566,10 +571,6 @@ func TestNode(t *testing.T) {
 			before.Slice.CRU,
 		)
 		require.NoError(t, restoreErr)
-
-		// restore original twin public key so twin-related tests stay in sync with mock data
-		_, err = data.DB.Exec(`UPDATE twin SET public_key = $1 WHERE twin_id = $2`, originalPubKey, twinID)
-		require.NoError(t, err)
 	})
 }
 

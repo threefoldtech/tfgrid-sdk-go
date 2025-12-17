@@ -133,6 +133,7 @@ type Node struct {
 	SliceSru           int64    `gorm:"slice_sru"`
 	SliceHru           int64    `gorm:"slice_hru"`
 	SliceCru           int64    `gorm:"slice_cru"`
+	SlicesNeeded       int64    `gorm:"slices_needed"`
 }
 
 // NodePower struct is the farmerbot report for node status

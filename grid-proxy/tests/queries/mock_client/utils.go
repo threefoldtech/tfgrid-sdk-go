@@ -65,3 +65,49 @@ func sliceContains(set []string, subset []string) bool {
 
 	return true
 }
+
+func satisfiesFreeCapacityFilter(mruVal, sruVal, hruVal uint64, sliceMru, sliceSru, sliceHru uint64, free NodeResourcesTotal) bool {
+	if (mruVal > 0 && sliceMru == 0) || (sruVal > 0 && sliceSru == 0) || (hruVal > 0 && sliceHru == 0) {
+		return false
+	}
+
+	var slicesNeededMRU, slicesNeededSRU, slicesNeededHRU uint64
+	if sliceMru > 0 {
+		slicesNeededMRU = (mruVal + sliceMru - 1) / sliceMru
+	}
+	if sliceSru > 0 {
+		slicesNeededSRU = (sruVal + sliceSru - 1) / sliceSru
+	}
+	if sliceHru > 0 {
+		slicesNeededHRU = (hruVal + sliceHru - 1) / sliceHru
+	}
+
+	slicesNeeded := slicesNeededMRU
+	if slicesNeededSRU > slicesNeeded {
+		slicesNeeded = slicesNeededSRU
+	}
+	if slicesNeededHRU > slicesNeeded {
+		slicesNeeded = slicesNeededHRU
+	}
+
+	var slicesAvailableMRU, slicesAvailableSRU, slicesAvailableHRU uint64 = 1e18, 1e18, 1e18
+	if sliceMru > 0 {
+		slicesAvailableMRU = free.MRU / sliceMru
+	}
+	if sliceSru > 0 {
+		slicesAvailableSRU = free.SRU / sliceSru
+	}
+	if sliceHru > 0 {
+		slicesAvailableHRU = free.HRU / sliceHru
+	}
+
+	slicesAvailable := slicesAvailableMRU
+	if slicesAvailableSRU < slicesAvailable {
+		slicesAvailable = slicesAvailableSRU
+	}
+	if slicesAvailableHRU < slicesAvailable {
+		slicesAvailable = slicesAvailableHRU
+	}
+
+	return slicesNeeded > 0 && slicesNeeded <= slicesAvailable
+}

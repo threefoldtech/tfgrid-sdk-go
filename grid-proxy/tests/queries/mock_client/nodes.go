@@ -150,6 +150,45 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				sliceSru = total.SRU / sliceCount
 				sliceHru = total.HRU / sliceCount
 			}
+
+			var slicesNeeded uint64
+			if filter.FreeMRU != nil || filter.FreeSRU != nil || filter.FreeHRU != nil {
+				mruVal := uint64(0)
+				sruVal := uint64(0)
+				hruVal := uint64(0)
+				if filter.FreeMRU != nil {
+					mruVal = *filter.FreeMRU
+				}
+				if filter.FreeSRU != nil {
+					sruVal = *filter.FreeSRU
+				}
+				if filter.FreeHRU != nil {
+					hruVal = *filter.FreeHRU
+				}
+
+				free := CalcFreeResources(total, g.data.NodeUsedResources[node.NodeID])
+				if satisfiesFreeCapacityFilter(mruVal, sruVal, hruVal, sliceMru, sliceSru, sliceHru, free) {
+					var slicesNeededMRU, slicesNeededSRU, slicesNeededHRU uint64
+					if sliceMru > 0 {
+						slicesNeededMRU = (mruVal + sliceMru - 1) / sliceMru
+					}
+					if sliceSru > 0 {
+						slicesNeededSRU = (sruVal + sliceSru - 1) / sliceSru
+					}
+					if sliceHru > 0 {
+						slicesNeededHRU = (hruVal + sliceHru - 1) / sliceHru
+					}
+
+					slicesNeeded = slicesNeededMRU
+					if slicesNeededSRU > slicesNeeded {
+						slicesNeeded = slicesNeededSRU
+					}
+					if slicesNeededHRU > slicesNeeded {
+						slicesNeeded = slicesNeededHRU
+					}
+				}
+			}
+
 			res = append(res, types.Node{
 				ID:              node.ID,
 				NodeID:          int(node.NodeID),
@@ -232,6 +271,7 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 					HRU: gridtypes.Unit(sliceHru),
 					MRU: gridtypes.Unit(sliceMru),
 				},
+				SlicesNeeded: slicesNeeded,
 			})
 		}
 	}
@@ -416,24 +456,21 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 		return false
 	}
 
-	if f.FreeMRU != nil {
-		// Require enough whole slices of MRU
-		if sliceMru == 0 {
-			return false
+	if f.FreeMRU != nil || f.FreeSRU != nil || f.FreeHRU != nil {
+		mruVal := uint64(0)
+		sruVal := uint64(0)
+		hruVal := uint64(0)
+		if f.FreeMRU != nil {
+			mruVal = *f.FreeMRU
 		}
-		requiredSlices := (*f.FreeMRU + sliceMru - 1) / sliceMru
-		if free.MRU < sliceMru*requiredSlices {
-			return false
+		if f.FreeSRU != nil {
+			sruVal = *f.FreeSRU
 		}
-	}
+		if f.FreeHRU != nil {
+			hruVal = *f.FreeHRU
+		}
 
-	if f.FreeHRU != nil {
-		// Require enough whole slices of HRU
-		if sliceHru == 0 {
-			return false
-		}
-		requiredSlices := (*f.FreeHRU + sliceHru - 1) / sliceHru
-		if free.HRU < sliceHru*requiredSlices {
+		if !satisfiesFreeCapacityFilter(mruVal, sruVal, hruVal, sliceMru, sliceSru, sliceHru, free) {
 			return false
 		}
 	}
@@ -448,17 +485,6 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 
 	if len(f.Features) != 0 && !sliceContains(data.NodeFeatures[uint32(n.TwinID)], f.Features) {
 		return false
-	}
-
-	if f.FreeSRU != nil {
-		// Require enough whole slices of SRU
-		if sliceSru == 0 {
-			return false
-		}
-		requiredSlices := (*f.FreeSRU + sliceSru - 1) / sliceSru
-		if free.SRU < sliceSru*requiredSlices {
-			return false
-		}
 	}
 
 	if f.TotalCRU != nil && *f.TotalCRU > total.CRU {

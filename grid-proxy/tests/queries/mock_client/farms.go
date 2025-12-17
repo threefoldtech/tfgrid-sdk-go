@@ -141,33 +141,21 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 			sliceHru = total.HRU / sliceCount
 		}
 
-		// Apply slice-aligned node free filters
-		if filter.NodeFreeMRU != nil {
-			if sliceMru == 0 {
-				continue
+		if filter.NodeFreeMRU != nil || filter.NodeFreeSRU != nil || filter.NodeFreeHRU != nil {
+			mruVal := uint64(0)
+			sruVal := uint64(0)
+			hruVal := uint64(0)
+			if filter.NodeFreeMRU != nil {
+				mruVal = *filter.NodeFreeMRU
 			}
-			requiredSlices := (*filter.NodeFreeMRU + sliceMru - 1) / sliceMru
-			if free.MRU < sliceMru*requiredSlices {
-				continue
+			if filter.NodeFreeSRU != nil {
+				sruVal = *filter.NodeFreeSRU
 			}
-		}
+			if filter.NodeFreeHRU != nil {
+				hruVal = *filter.NodeFreeHRU
+			}
 
-		if filter.NodeFreeSRU != nil {
-			if sliceSru == 0 {
-				continue
-			}
-			requiredSlices := (*filter.NodeFreeSRU + sliceSru - 1) / sliceSru
-			if free.SRU < sliceSru*requiredSlices {
-				continue
-			}
-		}
-
-		if filter.NodeFreeHRU != nil {
-			if sliceHru == 0 {
-				continue
-			}
-			requiredSlices := (*filter.NodeFreeHRU + sliceHru - 1) / sliceHru
-			if free.HRU < sliceHru*requiredSlices {
+			if !satisfiesFreeCapacityFilter(mruVal, sruVal, hruVal, sliceMru, sliceSru, sliceHru, free) {
 				continue
 			}
 		}

@@ -63,6 +63,7 @@ type Node struct {
 	FarmFreeIps       uint         `json:"farm_free_ips"`
 	Features          []string     `json:"features"`
 	Slice             Capacity     `json:"slice"`
+	SlicesNeeded      uint64       `json:"slices_needed,omitempty"`
 	_                 string       `sort:"free_cru"`
 }
 
