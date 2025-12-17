@@ -522,7 +522,7 @@ func TestNode(t *testing.T) {
 		newSlice := before.Slice
 
 		// adjust MRU within total bounds, ensure >= 1 GiB and changed if possible
-		const oneGiB = 1_073_741_824
+		const oneGiB = types.SliceMRUSizeBytes
 		total := before.Capacity.Total
 
 		if uint64(newSlice.MRU)+oneGiB <= uint64(total.MRU) {

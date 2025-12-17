@@ -6,6 +6,9 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
+// SliceMRUSizeBytes is the base MRU size (in bytes) used for slice calculations (1 GiB).
+const SliceMRUSizeBytes uint64 = 1_073_741_824
+
 // Location represent the geographic info about the node
 type Location struct {
 	Country   string   `json:"country"`
@@ -192,8 +195,8 @@ type UpdateNodeSliceRequest struct {
 
 // Validate validates the UpdateNodeSliceRequest basic constraints
 func (r UpdateNodeSliceRequest) Validate() error {
-	if r.Slice.MRU < 1073741824 {
-		return fmt.Errorf("slice.mru must be at least 1GB (1073741824 bytes), got %d", r.Slice.MRU)
+	if uint64(r.Slice.MRU) < SliceMRUSizeBytes {
+		return fmt.Errorf("slice.mru must be at least 1GB (%d bytes), got %d", SliceMRUSizeBytes, r.Slice.MRU)
 	}
 	if r.Slice.CRU == 0 {
 		return fmt.Errorf("slice.cru must be at least 1")

@@ -131,14 +131,13 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 
 			total := g.data.NodeTotalResources[node.NodeID]
 
-			const sliceMruSize uint64 = 1073741824 // 1GB in bytes
 			sliceCru := uint64(0)
 			sliceMru := uint64(0)
 			sliceSru := uint64(0)
 			sliceHru := uint64(0)
 			if total.MRU > 0 {
-				sliceMru = sliceMruSize
-				sliceCount := total.MRU / sliceMruSize
+				sliceMru = types.SliceMRUSizeBytes
+				sliceCount := total.MRU / types.SliceMRUSizeBytes
 				if sliceCount == 0 {
 					sliceCount = 1
 				}
@@ -267,7 +266,7 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 	status := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
 
 	total := g.data.NodeTotalResources[node.NodeID]
-	const sliceMruSize uint64 = 1073741824 // 1GB in bytes
+	const sliceMruSize = types.SliceMRUSizeBytes // 1GB in bytes
 	sliceCru := uint64(0)
 	sliceMru := uint64(0)
 	sliceSru := uint64(0)
@@ -400,7 +399,7 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	used := data.NodeUsedResources[n.NodeID]
 	free := CalcFreeResources(total, used)
 
-	const sliceMruSize uint64 = 1073741824 // 1GB
+	const sliceMruSize = types.SliceMRUSizeBytes // 1GB
 	var sliceMru, sliceSru, sliceHru uint64
 	if total.MRU > 0 {
 		sliceMru = sliceMruSize

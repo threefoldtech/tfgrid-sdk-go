@@ -130,11 +130,10 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 		free := CalcFreeResources(total, used)
 
 		// Derive default slice sizes (must match server resources_cache slice_* logic)
-		const sliceMruSize uint64 = 1073741824 // 1GB
 		var sliceMru, sliceSru, sliceHru uint64
 		if total.MRU > 0 {
-			sliceMru = sliceMruSize
-			sliceCount := total.MRU / sliceMruSize
+			sliceMru = types.SliceMRUSizeBytes
+			sliceCount := total.MRU / types.SliceMRUSizeBytes
 			if sliceCount == 0 {
 				sliceCount = 1
 			}
