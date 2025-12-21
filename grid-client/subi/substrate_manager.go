@@ -38,6 +38,8 @@ type SubstrateExt interface {
 	NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error)
 	AcceptTermsAndConditions(identity substrate.Identity, docLink string, docHash string) error
 	CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error)
+	BondTwinAccount(stashIdentity substrate.Identity, twinID uint32) error
+	GetTwinBondedAccount(twinID uint32) (*substrate.AccountID, error)
 	CreateRentContract(identity substrate.Identity, nodeID uint32, solutionProviderID *uint64) (uint64, error)
 	Transfer(amount uint64, source substrate.Identity, destinationPk []byte) error
 
@@ -105,6 +107,20 @@ func (s *SubstrateImpl) CreateTwin(identity substrate.Identity, relay string, pk
 	defer s.m.Unlock()
 	twin, err := s.Substrate.CreateTwin(identity, relay, pk)
 	return twin, normalizeNotFoundErrors(err)
+}
+
+// BondTwinAccount bonds a twin account
+func (s *SubstrateImpl) BondTwinAccount(stashIdentity substrate.Identity, twinID uint32) error {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return normalizeNotFoundErrors(s.Substrate.BondTwinAccount(stashIdentity, twinID))
+}
+
+// GetTwinBondedAccount returns the twin's bonded account
+func (s *SubstrateImpl) GetTwinBondedAccount(twinID uint32) (*substrate.AccountID, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return s.Substrate.GetTwinBondedAccount(twinID)
 }
 
 // CreateRentContract creates a rent contract

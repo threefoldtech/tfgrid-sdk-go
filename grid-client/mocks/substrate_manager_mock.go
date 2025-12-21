@@ -165,6 +165,20 @@ func (mr *MockSubstrateExtMockRecorder) BatchCreateContract(identity, contractsD
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchCreateContract", reflect.TypeOf((*MockSubstrateExt)(nil).BatchCreateContract), identity, contractsData)
 }
 
+// BondTwinAccount mocks base method.
+func (m *MockSubstrateExt) BondTwinAccount(stashIdentity substrate.Identity, twinID uint32) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BondTwinAccount", stashIdentity, twinID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BondTwinAccount indicates an expected call of BondTwinAccount.
+func (mr *MockSubstrateExtMockRecorder) BondTwinAccount(stashIdentity, twinID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BondTwinAccount", reflect.TypeOf((*MockSubstrateExt)(nil).BondTwinAccount), stashIdentity, twinID)
+}
+
 // CancelContract mocks base method.
 func (m *MockSubstrateExt) CancelContract(identity substrate.Identity, contractID uint64) error {
 	m.ctrl.T.Helper()
@@ -517,6 +531,21 @@ func (m *MockSubstrateExt) GetTFTPrice() (types.U32, error) {
 func (mr *MockSubstrateExtMockRecorder) GetTFTPrice() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTFTPrice", reflect.TypeOf((*MockSubstrateExt)(nil).GetTFTPrice))
+}
+
+// GetTwinBondedAccount mocks base method.
+func (m *MockSubstrateExt) GetTwinBondedAccount(twinID uint32) (*substrate.AccountID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTwinBondedAccount", twinID)
+	ret0, _ := ret[0].(*substrate.AccountID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTwinBondedAccount indicates an expected call of GetTwinBondedAccount.
+func (mr *MockSubstrateExtMockRecorder) GetTwinBondedAccount(twinID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwinBondedAccount", reflect.TypeOf((*MockSubstrateExt)(nil).GetTwinBondedAccount), twinID)
 }
 
 // GetTwinByPubKey mocks base method.
