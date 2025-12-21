@@ -398,6 +398,21 @@ func (mr *MockSubstrateExtMockRecorder) GetContractWithHash(identity, node, hash
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractWithHash", reflect.TypeOf((*MockSubstrateExt)(nil).GetContractWithHash), identity, node, hash)
 }
 
+// GetCurrentHeight mocks base method.
+func (m *MockSubstrateExt) GetCurrentHeight() (uint32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCurrentHeight")
+	ret0, _ := ret[0].(uint32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCurrentHeight indicates an expected call of GetCurrentHeight.
+func (mr *MockSubstrateExtMockRecorder) GetCurrentHeight() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentHeight", reflect.TypeOf((*MockSubstrateExt)(nil).GetCurrentHeight))
+}
+
 // GetDedicatedNodePrice mocks base method.
 func (m *MockSubstrateExt) GetDedicatedNodePrice(nodeID uint32) (uint64, error) {
 	m.ctrl.T.Helper()
@@ -516,6 +531,21 @@ func (m *MockSubstrateExt) GetTFTBillingRate() (types.U32, error) {
 func (mr *MockSubstrateExtMockRecorder) GetTFTBillingRate() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTFTBillingRate", reflect.TypeOf((*MockSubstrateExt)(nil).GetTFTBillingRate))
+}
+
+// GetTFTBillingRateAt mocks base method.
+func (m *MockSubstrateExt) GetTFTBillingRateAt(block uint64) (float64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTFTBillingRateAt", block)
+	ret0, _ := ret[0].(float64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTFTBillingRateAt indicates an expected call of GetTFTBillingRateAt.
+func (mr *MockSubstrateExtMockRecorder) GetTFTBillingRateAt(block interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTFTBillingRateAt", reflect.TypeOf((*MockSubstrateExt)(nil).GetTFTBillingRateAt), block)
 }
 
 // GetTFTPrice mocks base method.
