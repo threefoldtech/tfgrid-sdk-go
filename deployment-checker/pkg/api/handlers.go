@@ -1,5 +1,5 @@
-// Package api provides HTTP handlers for the provision-probe API
-// @title Provision Probe API
+// Package api provides HTTP handlers for the deployment-checker API
+// @title Deployment Checker API
 // @version 1.0
 // @description API for querying node provision scores and health status
 // @termsOfService http://swagger.io/terms/
@@ -19,8 +19,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/provision-probe/pkg/config"
-	"github.com/threefoldtech/provision-probe/pkg/db"
+	"github.com/threefoldtech/deployment-checker/pkg/config"
+	"github.com/threefoldtech/deployment-checker/pkg/db"
+	"github.com/threefoldtech/deployment-checker/pkg/models"
+	"github.com/threefoldtech/deployment-checker/pkg/scoring"
 )
 
 type Handlers struct {
@@ -47,18 +49,18 @@ type HealthResponse struct {
 // TopScoresResponse represents the response for GET /api/v1/scores
 // @Description Top node scores response
 type TopScoresResponse struct {
-	Window      string      `json:"window" example:"90d"`     // Time window used for scoring
-	Limit       int         `json:"limit" example:"10"`       // Maximum number of results returned
-	MinAttempts int         `json:"min_attempts" example:"1"` // Minimum attempts required
-	Scores      []NodeScore `json:"scores"`                   // List of node scores
+	Window      string           `json:"window" example:"90d"`     // Time window used for scoring
+	Limit       int              `json:"limit" example:"10"`       // Maximum number of results returned
+	MinAttempts int              `json:"min_attempts" example:"1"` // Minimum attempts required
+	Scores      []models.NodeScore `json:"scores"`                   // List of node scores
 }
 
 // NodeScoreResponse represents the response for GET /api/v1/scores/node/:node_id
 // @Description Single node score response
 type NodeScoreResponse struct {
-	Window      string    `json:"window" example:"90d"`     // Time window used for scoring
-	MinAttempts int       `json:"min_attempts" example:"1"` // Minimum attempts required
-	Score       NodeScore `json:"score"`                    // Node score details
+	Window      string          `json:"window" example:"90d"`     // Time window used for scoring
+	MinAttempts int             `json:"min_attempts" example:"1"` // Minimum attempts required
+	Score       models.NodeScore `json:"score"`                    // Node score details
 }
 
 // ErrorResponse represents an error response
@@ -131,9 +133,9 @@ func (h *Handlers) GetTopScores(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scores := make([]NodeScore, 0, len(scoreData))
+	scores := make([]models.NodeScore, 0, len(scoreData))
 	for _, data := range scoreData {
-		score := CalculateScore(&data)
+		score := scoring.CalculateScore(&data)
 		scores = append(scores, *score)
 	}
 
@@ -208,7 +210,7 @@ func (h *Handlers) GetNodeScore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	score := CalculateScore(scoreData)
+	score := scoring.CalculateScore(scoreData)
 
 	respondJSON(w, http.StatusOK, NodeScoreResponse{
 		Window:      window.String(),

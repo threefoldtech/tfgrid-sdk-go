@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/provision-probe/pkg/api"
-	"github.com/threefoldtech/provision-probe/pkg/config"
-	"github.com/threefoldtech/provision-probe/pkg/db"
-	"github.com/threefoldtech/provision-probe/pkg/grid"
+	"github.com/threefoldtech/deployment-checker/pkg/api"
+	"github.com/threefoldtech/deployment-checker/pkg/config"
+	"github.com/threefoldtech/deployment-checker/pkg/db"
+	"github.com/threefoldtech/deployment-checker/pkg/grid"
+	"github.com/threefoldtech/deployment-checker/pkg/models"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"golang.org/x/sync/semaphore"
 )
@@ -55,7 +56,7 @@ func (a *App) Run(ctx context.Context) error {
 	log.Info().
 		Str("interval", a.cfg.Interval().String()).
 		Str("network", a.cfg.Grid.Network).
-		Msg("Starting provision probe service")
+		Msg("Starting deployment checker service")
 
 	apiErrChan := make(chan error, 1)
 	go func() {
@@ -184,7 +185,7 @@ func (a *App) runCycle(ctx context.Context) error {
 			result, err := a.gridClient.DeployVM(timeoutCtx, uint32(int(n.NodeID)), cpu, memoryMB, diskMB)
 			cancel()
 
-			attempt := db.Attempt{
+			attempt := models.Attempt{
 				Time:   time.Now().Unix(),
 				NodeID: int64(int(n.NodeID)),
 				FarmID: int64(int(n.FarmID)),

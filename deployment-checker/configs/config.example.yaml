@@ -3,7 +3,7 @@ api:
   port: 8080 # port for the API server
 
 timescaledb:
-  url: "postgresql://postgres:postgres@localhost:5432/provision_probe" # url for the timescaledb database
+  url: "postgresql://postgres:postgres@localhost:5432/deployment_checker" # url for the timescaledb database
 
 
 probe: 

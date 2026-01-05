@@ -1,4 +1,4 @@
-module github.com/threefoldtech/provision-probe
+module github.com/threefoldtech/deployment-checker
 
 go 1.24.0
 

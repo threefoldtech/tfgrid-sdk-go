@@ -10,9 +10,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
-	"github.com/threefoldtech/provision-probe/docs/swagger"
-	"github.com/threefoldtech/provision-probe/pkg/config"
-	"github.com/threefoldtech/provision-probe/pkg/db"
+	"github.com/threefoldtech/deployment-checker/docs/swagger"
+	"github.com/threefoldtech/deployment-checker/pkg/config"
+	"github.com/threefoldtech/deployment-checker/pkg/db"
 )
 
 type Server struct {

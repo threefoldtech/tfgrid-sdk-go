@@ -9,9 +9,9 @@ import (
 	"syscall"
 
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/provision-probe/pkg/app"
-	"github.com/threefoldtech/provision-probe/pkg/config"
-	"github.com/threefoldtech/provision-probe/pkg/logger"
+	"github.com/threefoldtech/deployment-checker/pkg/app"
+	"github.com/threefoldtech/deployment-checker/pkg/config"
+	"github.com/threefoldtech/deployment-checker/pkg/logger"
 )
 
 func main() {

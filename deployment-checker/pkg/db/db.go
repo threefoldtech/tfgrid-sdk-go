@@ -6,24 +6,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/threefoldtech/deployment-checker/pkg/models"
 )
-
-type Attempt struct {
-	Time            int64
-	NodeID          int64
-	FarmID          int64
-	Status          string
-	TotalDurationMs *int
-	ErrorCode       *string
-}
-
-type NodeScoreData struct {
-	NodeID        int64
-	FarmID        int64
-	TotalAttempts int64
-	SuccessCount  int64
-	AvgDurationMs *float64
-}
 
 type DB struct {
 	pool *pgxpool.Pool
@@ -57,7 +41,7 @@ func (d *DB) Ping(ctx context.Context) error {
 
 func (d *DB) initSchema(ctx context.Context) error {
 	queries := []string{
-		`CREATE TABLE IF NOT EXISTS provision_attempts (
+		`CREATE TABLE IF NOT EXISTS deployment_attempts (
 			time BIGINT NOT NULL,
 			node_id BIGINT NOT NULL,
 			farm_id BIGINT NOT NULL,
@@ -65,9 +49,9 @@ func (d *DB) initSchema(ctx context.Context) error {
 			total_duration_ms INTEGER,
 			error_code VARCHAR(100)
 		)`,
-		`SELECT create_hypertable('provision_attempts', 'time', if_not_exists => TRUE)`,
-		`CREATE INDEX IF NOT EXISTS idx_node_time ON provision_attempts(node_id, time DESC)`,
-		`CREATE INDEX IF NOT EXISTS idx_farm_time ON provision_attempts(farm_id, time DESC)`,
+		`SELECT create_hypertable('deployment_attempts', 'time', if_not_exists => TRUE)`,
+		`CREATE INDEX IF NOT EXISTS idx_node_time ON deployment_attempts(node_id, time DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_farm_time ON deployment_attempts(farm_id, time DESC)`,
 	}
 
 	for _, query := range queries {
@@ -79,8 +63,8 @@ func (d *DB) initSchema(ctx context.Context) error {
 	return nil
 }
 
-func (d *DB) RecordAttempt(ctx context.Context, attempt Attempt) error {
-	query := `INSERT INTO provision_attempts 
+func (d *DB) RecordAttempt(ctx context.Context, attempt models.Attempt) error {
+	query := `INSERT INTO deployment_attempts 
 		(time, node_id, farm_id, status, total_duration_ms, error_code)
 		VALUES ($1, $2, $3, $4, $5, $6)`
 
@@ -96,7 +80,7 @@ func (d *DB) RecordAttempt(ctx context.Context, attempt Attempt) error {
 	return err
 }
 
-func (d *DB) GetNodeScoreData(ctx context.Context, nodeID int64, window time.Duration) (*NodeScoreData, error) {
+func (d *DB) GetNodeScoreData(ctx context.Context, nodeID int64, window time.Duration) (*models.NodeScoreData, error) {
 	windowStart := time.Now().Add(-window).Unix()
 
 	query := `
@@ -106,12 +90,12 @@ func (d *DB) GetNodeScoreData(ctx context.Context, nodeID int64, window time.Dur
 			COUNT(*) as total_attempts,
 			COUNT(*) FILTER (WHERE status = 'success') as success_count,
 			AVG(total_duration_ms) FILTER (WHERE total_duration_ms IS NOT NULL) as avg_duration_ms
-		FROM provision_attempts
+		FROM deployment_attempts
 		WHERE node_id = $1 AND time >= $2
 		GROUP BY node_id, farm_id
 	`
 
-	var data NodeScoreData
+	var data models.NodeScoreData
 	err := d.pool.QueryRow(ctx, query, nodeID, windowStart).Scan(
 		&data.NodeID,
 		&data.FarmID,
@@ -127,7 +111,7 @@ func (d *DB) GetNodeScoreData(ctx context.Context, nodeID int64, window time.Dur
 	return &data, nil
 }
 
-func (d *DB) GetTopNodeScores(ctx context.Context, window time.Duration, limit int, minAttempts int) ([]NodeScoreData, error) {
+func (d *DB) GetTopNodeScores(ctx context.Context, window time.Duration, limit int, minAttempts int) ([]models.NodeScoreData, error) {
 	windowStart := time.Now().Add(-window).Unix()
 
 	query := `
@@ -137,7 +121,7 @@ func (d *DB) GetTopNodeScores(ctx context.Context, window time.Duration, limit i
 			COUNT(*) as total_attempts,
 			COUNT(*) FILTER (WHERE status = 'success') as success_count,
 			AVG(total_duration_ms) FILTER (WHERE total_duration_ms IS NOT NULL) as avg_duration_ms
-		FROM provision_attempts
+		FROM deployment_attempts
 		WHERE time >= $1
 		GROUP BY node_id, farm_id
 		HAVING COUNT(*) >= $3
@@ -152,9 +136,9 @@ func (d *DB) GetTopNodeScores(ctx context.Context, window time.Duration, limit i
 	}
 	defer rows.Close()
 
-	var results []NodeScoreData
+	var results []models.NodeScoreData
 	for rows.Next() {
-		var data NodeScoreData
+		var data models.NodeScoreData
 		err := rows.Scan(
 			&data.NodeID,
 			&data.FarmID,

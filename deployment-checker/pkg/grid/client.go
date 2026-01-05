@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/provision-probe/pkg/config"
-	"github.com/threefoldtech/provision-probe/pkg/retry"
+	"github.com/threefoldtech/deployment-checker/pkg/config"
+	"github.com/threefoldtech/deployment-checker/pkg/retry"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"

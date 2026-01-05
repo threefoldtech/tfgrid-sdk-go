@@ -1,11 +1,11 @@
 services:
   timescaledb:
     image: timescale/timescaledb:latest-pg16
-    container_name: provision-probe-db
+    container_name: deployment-checker-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: provision_probe
+      POSTGRES_DB: deployment_checker
     ports:
       - "${PG_PORT:-5432}:5432"
     volumes:
@@ -18,11 +18,11 @@ services:
     
   pgweb:
     image: sosedoff/pgweb:latest
-    container_name: provision-probe-pgweb
+    container_name: deployment-checker-pgweb
     ports:
       - "${VIEW_PORT:-8081}:8081"
     environment:
-      - PGWEB_DATABASE_URL=postgres://postgres:postgres@timescaledb:5432/provision_probe?sslmode=disable
+      - PGWEB_DATABASE_URL=postgres://postgres:postgres@timescaledb:5432/deployment_checker?sslmode=disable
     depends_on:
       - timescaledb
 
