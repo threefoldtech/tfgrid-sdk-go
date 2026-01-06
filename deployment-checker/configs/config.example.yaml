@@ -24,6 +24,16 @@ probe:
 scoring: 
   window: "90d" # default window for the scoring (overwritten by the window query parameter)
   min_attempts: 1 # default minimum attempts for the scoring (overwritten by the min_attempts query parameter)
+  scorers: # scorer configuration
+    deployment:
+      enabled: true # enable deployment success rate scorer
+      weight: 1.0 # weight for composite scoring
+    duration:
+      enabled: false # enable duration-based scorer (future)
+      weight: 0.0 # weight for composite scoring
+    uptime:
+      enabled: false # enable uptime scorer (future)
+      weight: 0.0 # weight for composite scoring
 
 grid:
   network: "dev" # dev, qa, test, main

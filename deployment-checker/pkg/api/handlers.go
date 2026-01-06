@@ -24,9 +24,10 @@ import (
 )
 
 type Handlers struct {
-	database      *db.DB
-	cfg           *config.Config
-	defaultWindow time.Duration
+	database       *db.DB
+	cfg            *config.Config
+	defaultWindow  time.Duration
+	scorerRegistry *scoring.Registry
 }
 
 // Response types
@@ -68,10 +69,50 @@ type ErrorResponse struct {
 }
 
 func NewHandlers(database *db.DB, cfg *config.Config) *Handlers {
+	// Initialize scoring registry with configured scorers
+	scoringCfg := cfg.ScoringConfig()
+	minAttempts := int64(scoringCfg.MinAttempts)
+	if minAttempts == 0 {
+		minAttempts = 1
+	}
+
+	registry := scoring.NewRegistry()
+
+	// Register deployment scorer
+	if scoringCfg.Scorers.Deployment.Enabled {
+		deploymentScorer := scoring.NewDeploymentScorer(
+			database,
+			scoringCfg.Scorers.Deployment.Weight,
+			minAttempts,
+		)
+		registry.Register(deploymentScorer)
+	}
+
+	// Register duration scorer (if enabled)
+	if scoringCfg.Scorers.Duration.Enabled {
+		durationScorer := scoring.NewDurationScorer(
+			database,
+			scoringCfg.Scorers.Duration.Weight,
+			minAttempts,
+		)
+		registry.Register(durationScorer)
+	}
+
+	// Register uptime scorer (if enabled)
+	if scoringCfg.Scorers.Uptime.Enabled {
+		uptimeScorer := scoring.NewUptimeScorer(
+			database,
+			scoringCfg.Scorers.Uptime.Weight,
+			minAttempts,
+		)
+		registry.Register(uptimeScorer)
+	}
+
 	return &Handlers{
-		database:      database,
-		cfg:           cfg,
-		defaultWindow: cfg.ScoreWindow(),
+		database:       database,
+		cfg:            cfg,
+		defaultWindow:  cfg.ScoreWindow(),
+		scorerRegistry: registry,
 	}
 }
 
@@ -215,12 +256,54 @@ func (h *Handlers) GetNodeScore(c *gin.Context) {
 		return
 	}
 
-	score := scoring.CalculateScore(scoreData)
+	// Use composite scoring from registry
+	compositeResult, err := h.scorerRegistry.CalculateComposite(c.Request.Context(), req.NodeID, window)
+	if err != nil {
+		log.Error().Err(err).Int64("node_id", req.NodeID).Msg("Failed to calculate composite score")
+		// Fallback to old scoring method for backward compatibility
+		score := scoring.CalculateScore(scoreData)
+		c.JSON(http.StatusOK, NodeScoreResponse{
+			Window:      window.String(),
+			MinAttempts: minAttempts,
+			Score:       *score,
+		})
+		return
+	}
+
+	// Convert composite result to NodeScore format
+	// Extract deployment scorer result for success rate
+	var successRate float64
+	var totalAttempts int64 = scoreData.TotalAttempts
+	for _, result := range compositeResult.ScorerResults {
+		if result.Metric == "deployment_success" {
+			successRate = result.Score
+			if valueMap, ok := result.Value.(map[string]interface{}); ok {
+				if ta, ok := valueMap["total_attempts"].(int64); ok {
+					totalAttempts = ta
+				}
+			}
+			break
+		}
+	}
+
+	var avgDurationMs float64
+	if scoreData.AvgDurationMs != nil {
+		avgDurationMs = *scoreData.AvgDurationMs
+	}
+
+	nodeScore := models.NodeScore{
+		NodeID:        scoreData.NodeID,
+		FarmID:        scoreData.FarmID,
+		SuccessRate:   successRate,
+		TotalAttempts: totalAttempts,
+		AvgDurationMs: avgDurationMs,
+		Score:         compositeResult.CompositeScore, // Use composite score
+	}
 
 	c.JSON(http.StatusOK, NodeScoreResponse{
 		Window:      window.String(),
 		MinAttempts: minAttempts,
-		Score:       *score,
+		Score:       nodeScore,
 	})
 }
 

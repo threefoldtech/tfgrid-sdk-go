@@ -55,7 +55,20 @@ type ProbeConfig struct {
 }
 
 type ScoringConfig struct {
-	WindowStr string `mapstructure:"window"`
+	WindowStr   string        `mapstructure:"window"`
+	Scorers     ScorersConfig `mapstructure:"scorers"`
+	MinAttempts int           `mapstructure:"min_attempts"`
+}
+
+type ScorersConfig struct {
+	Deployment ScorerConfig `mapstructure:"deployment"`
+	Duration   ScorerConfig `mapstructure:"duration"`
+	Uptime     ScorerConfig `mapstructure:"uptime"`
+}
+
+type ScorerConfig struct {
+	Enabled bool    `mapstructure:"enabled"`
+	Weight  float64 `mapstructure:"weight"`
 }
 
 type GridConfig struct {
@@ -175,6 +188,20 @@ func Load(configPath string) (*Config, error) {
 		cfg.Probe.BatchSize = 100
 	}
 
+	// Set default scoring configuration
+	if cfg.Scoring.MinAttempts == 0 {
+		cfg.Scoring.MinAttempts = 1
+	}
+
+	// Set default scorer configurations
+	if cfg.Scoring.Scorers.Deployment.Weight == 0 {
+		cfg.Scoring.Scorers.Deployment.Weight = 1.0
+	}
+	if !cfg.Scoring.Scorers.Deployment.Enabled {
+		cfg.Scoring.Scorers.Deployment.Enabled = true
+	}
+	// Duration and uptime default to disabled (weight 0.0)
+
 	if cfg.initialBackoff == 0 {
 		cfg.initialBackoff = 1 * time.Second
 	}
@@ -274,6 +301,10 @@ func (c *Config) JitterMaxSeconds() int {
 
 func (c *Config) CleanupOnStartup() bool {
 	return c.Probe.CleanupOnStartup
+}
+
+func (c *Config) ScoringConfig() ScoringConfig {
+	return c.Scoring
 }
 
 func (c *Config) validate() error {
