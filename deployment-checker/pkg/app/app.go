@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -57,6 +59,14 @@ func (a *App) Run(ctx context.Context) error {
 		Str("interval", a.cfg.Interval().String()).
 		Str("network", a.cfg.Grid.Network).
 		Msg("Starting deployment checker service")
+
+	// Cleanup orphaned contracts on startup if enabled
+	if a.cfg.CleanupOnStartup() {
+		log.Info().Msg("Running startup cleanup of orphaned contracts")
+		if err := a.gridClient.CleanupOrphanedContracts(ctx); err != nil {
+			log.Warn().Err(err).Msg("Failed to cleanup orphaned contracts on startup")
+		}
+	}
 
 	apiErrChan := make(chan error, 1)
 	go func() {
@@ -172,6 +182,27 @@ func (a *App) runCycle(ctx context.Context) error {
 					Int("node_id", n.NodeID).
 					Msg("Shutdown requested, skipping deployment")
 				return // do not start new job if shutting down
+			}
+
+			// Apply jitter before deployment (6-10 seconds)
+			jitterMin := a.cfg.JitterMinSeconds()
+			jitterMax := a.cfg.JitterMaxSeconds()
+			jitterRange := jitterMax - jitterMin
+			if jitterRange > 0 {
+				jitterSeconds, err := rand.Int(rand.Reader, big.NewInt(int64(jitterRange+1)))
+				if err != nil {
+					log.Warn().
+						Err(err).
+						Int("node_id", n.NodeID).
+						Msg("Failed to generate jitter, using minimum")
+					jitterSeconds = big.NewInt(0)
+				}
+				jitterDuration := time.Duration(jitterMin+int(jitterSeconds.Int64())) * time.Second
+				log.Debug().
+					Int("node_id", n.NodeID).
+					Dur("jitter", jitterDuration).
+					Msg("Applying jitter before deployment")
+				time.Sleep(jitterDuration)
 			}
 
 			// Check if node is zoslight based on features

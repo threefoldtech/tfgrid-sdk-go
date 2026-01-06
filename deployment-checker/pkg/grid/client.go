@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -54,6 +56,115 @@ func (c *Client) Close() {
 
 func (c *Client) GetProxyClient() proxy.Client {
 	return c.tfPlugin.GridProxyClient
+}
+
+// CleanupOrphanedContracts cancels all contracts matching the probe project name pattern
+func (c *Client) CleanupOrphanedContracts(ctx context.Context) error {
+	log.Info().Msg("Starting cleanup of orphaned probe contracts")
+
+	// Get all contracts for this twin
+	contracts, err := c.tfPlugin.ContractsGetter.ListContractsByTwinID([]string{"Created", "GracePeriod"})
+	if err != nil {
+		return fmt.Errorf("failed to list contracts: %w", err)
+	}
+
+	// Pattern: probe_*_project (e.g., probe_1234567890_project)
+	probeProjectPattern := regexp.MustCompile(`^probe_\d+_project$`)
+
+	var contractIDs []uint64
+
+	// Filter node contracts by project name pattern
+	for _, contract := range contracts.NodeContracts {
+		deploymentData, err := workloads.ParseDeploymentData(contract.DeploymentData)
+		if err != nil {
+			log.Warn().
+				Err(err).
+				Str("contract_id", contract.ContractID).
+				Msg("Skipping contract with invalid deployment data")
+			continue
+		}
+
+		if probeProjectPattern.MatchString(deploymentData.ProjectName) {
+			contractID, err := strconv.ParseUint(contract.ContractID, 0, 64)
+			if err != nil {
+				log.Warn().
+					Err(err).
+					Str("contract_id", contract.ContractID).
+					Msg("Failed to parse contract ID")
+				continue
+			}
+			contractIDs = append(contractIDs, contractID)
+		}
+	}
+
+	// For name contracts, we can use ListContractsOfProjectName for each matching project
+	// But since we're cleaning up all probe contracts, we can iterate through all node contracts
+	// and use the project name to get associated name contracts
+	probeProjectNames := make(map[string]bool)
+	for _, contract := range contracts.NodeContracts {
+		deploymentData, err := workloads.ParseDeploymentData(contract.DeploymentData)
+		if err != nil {
+			continue
+		}
+		if probeProjectPattern.MatchString(deploymentData.ProjectName) {
+			probeProjectNames[deploymentData.ProjectName] = true
+		}
+	}
+
+	// Get name contracts for each probe project
+	for projectName := range probeProjectNames {
+		projectContracts, err := c.tfPlugin.ContractsGetter.ListContractsOfProjectName(projectName, false)
+		if err != nil {
+			log.Warn().
+				Err(err).
+				Str("project_name", projectName).
+				Msg("Failed to get contracts for project")
+			continue
+		}
+
+		// Add name contract IDs
+		for _, contract := range projectContracts.NameContracts {
+			contractID, err := strconv.ParseUint(contract.ContractID, 0, 64)
+			if err != nil {
+				log.Warn().
+					Err(err).
+					Str("contract_id", contract.ContractID).
+					Msg("Failed to parse name contract ID")
+				continue
+			}
+			// Avoid duplicates
+			found := false
+			for _, id := range contractIDs {
+				if id == contractID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				contractIDs = append(contractIDs, contractID)
+			}
+		}
+	}
+
+	if len(contractIDs) == 0 {
+		log.Info().Msg("No orphaned probe contracts found")
+		return nil
+	}
+
+	log.Info().
+		Int("count", len(contractIDs)).
+		Msg("Found orphaned probe contracts, canceling")
+
+	// Cancel all contracts in a single call
+	if err := c.tfPlugin.BatchCancelContract(contractIDs); err != nil {
+		return fmt.Errorf("failed to cancel contracts: %w", err)
+	}
+
+	log.Info().
+		Int("count", len(contractIDs)).
+		Msg("Successfully canceled orphaned probe contracts")
+
+	return nil
 }
 
 type DeploymentResult struct {

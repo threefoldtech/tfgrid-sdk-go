@@ -49,6 +49,9 @@ type ProbeConfig struct {
 	Retry              RetryConfig `mapstructure:"retry"`
 	ShutdownTimeoutStr string      `mapstructure:"shutdown_timeout"`
 	BatchSize          int         `mapstructure:"batch_size"`
+	JitterMinSeconds   int         `mapstructure:"jitter_min_seconds"`
+	JitterMaxSeconds   int         `mapstructure:"jitter_max_seconds"`
+	CleanupOnStartup   bool        `mapstructure:"cleanup_on_startup"`
 }
 
 type ScoringConfig struct {
@@ -184,6 +187,21 @@ func Load(configPath string) (*Config, error) {
 		cfg.shutdownTimeout = 30 * time.Second
 	}
 
+	// Set default jitter values
+	if cfg.Probe.JitterMinSeconds == 0 {
+		cfg.Probe.JitterMinSeconds = 6
+	}
+	if cfg.Probe.JitterMaxSeconds == 0 {
+		cfg.Probe.JitterMaxSeconds = 10
+	}
+
+	// Set default cleanup on startup
+	// Note: viper will set this to false if not present, so we check if it was explicitly set
+	// For now, default to true if not specified
+	if !viper.IsSet("probe.cleanup_on_startup") {
+		cfg.Probe.CleanupOnStartup = true
+	}
+
 	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
@@ -246,6 +264,18 @@ func (c *Config) BatchSize() int {
 	return c.Probe.BatchSize
 }
 
+func (c *Config) JitterMinSeconds() int {
+	return c.Probe.JitterMinSeconds
+}
+
+func (c *Config) JitterMaxSeconds() int {
+	return c.Probe.JitterMaxSeconds
+}
+
+func (c *Config) CleanupOnStartup() bool {
+	return c.Probe.CleanupOnStartup
+}
+
 func (c *Config) validate() error {
 	if c.interval <= 0 {
 		return fmt.Errorf("probe.interval must be positive")
@@ -277,5 +307,17 @@ func (c *Config) validate() error {
 	if _, ok := validStatuses[c.Nodes.Status]; !ok {
 		return fmt.Errorf("nodes.status must be up or healthy")
 	}
+
+	// Validate jitter configuration
+	if c.Probe.JitterMinSeconds < 0 {
+		return fmt.Errorf("probe.jitter_min_seconds must be non-negative")
+	}
+	if c.Probe.JitterMaxSeconds < 0 {
+		return fmt.Errorf("probe.jitter_max_seconds must be non-negative")
+	}
+	if c.Probe.JitterMinSeconds > c.Probe.JitterMaxSeconds {
+		return fmt.Errorf("probe.jitter_min_seconds (%d) must be less than or equal to probe.jitter_max_seconds (%d)", c.Probe.JitterMinSeconds, c.Probe.JitterMaxSeconds)
+	}
+
 	return nil
 }
