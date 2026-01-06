@@ -48,6 +48,7 @@ type ProbeConfig struct {
 	WorkloadSize       string      `mapstructure:"workload_size"`
 	Retry              RetryConfig `mapstructure:"retry"`
 	ShutdownTimeoutStr string      `mapstructure:"shutdown_timeout"`
+	BatchSize          int         `mapstructure:"batch_size"`
 }
 
 type ScoringConfig struct {
@@ -167,6 +168,10 @@ func Load(configPath string) (*Config, error) {
 		cfg.Probe.Retry.Multiplier = 2.0
 	}
 
+	if cfg.Probe.BatchSize == 0 {
+		cfg.Probe.BatchSize = 100
+	}
+
 	if cfg.initialBackoff == 0 {
 		cfg.initialBackoff = 1 * time.Second
 	}
@@ -235,6 +240,10 @@ func (c *Config) InitialBackoff() time.Duration {
 
 func (c *Config) MaxBackoff() time.Duration {
 	return c.maxBackoff
+}
+
+func (c *Config) BatchSize() int {
+	return c.Probe.BatchSize
 }
 
 func (c *Config) validate() error {

@@ -149,6 +149,7 @@ func (a *App) runCycle(ctx context.Context) error {
 	sem := semaphore.NewWeighted(int64(a.cfg.Probe.ConcurrencyLimit))
 	var mu sync.Mutex
 	var cycleErrors []error
+	var attempts []models.Attempt
 
 	cpu, memoryMB, diskMB := a.cfg.GetWorkload()
 
@@ -212,22 +213,36 @@ func (a *App) runCycle(ctx context.Context) error {
 					Msg("Deployment succeeded")
 			}
 
-			if err := a.database.RecordAttempt(ctx, attempt); err != nil {
-				mu.Lock()
-				cycleErrors = append(cycleErrors, fmt.Errorf("failed to record attempt for node %d: %w", n.NodeID, err))
-				mu.Unlock()
-				log.Error().
-					Err(err).
-					Int("node_id", n.NodeID).
-					Msg("Failed to record attempt")
-			}
+			// Collect attempts for batch insert
+			mu.Lock()
+			attempts = append(attempts, attempt)
+			mu.Unlock()
 		}(i, node)
 	}
 
 	a.cycleWg.Wait()
 
+	// Batch insert all attempts
+	if len(attempts) > 0 {
+		batchSize := a.cfg.BatchSize()
+		if err := a.database.RecordAttemptsBatch(ctx, attempts, batchSize); err != nil {
+			log.Error().
+				Err(err).
+				Int("attempts", len(attempts)).
+				Int("batch_size", batchSize).
+				Msg("Failed to record attempts batch")
+			cycleErrors = append(cycleErrors, fmt.Errorf("failed to record attempts batch: %w", err))
+		} else {
+			log.Debug().
+				Int("attempts", len(attempts)).
+				Int("batch_size", batchSize).
+				Msg("Successfully recorded attempts batch")
+		}
+	}
+
 	log.Info().
 		Int("total_nodes", len(nodes)).
+		Int("attempts_recorded", len(attempts)).
 		Int("errors", len(cycleErrors)).
 		Msg("Deployment cycle completed")
 	return nil
