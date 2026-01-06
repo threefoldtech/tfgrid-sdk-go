@@ -20,6 +20,10 @@ const (
 )
 
 func GetNodes(ctx context.Context, proxyClient client.Client, filters config.NodesConfig) ([]types.Node, error) {
+	// Add timeout context (5 minutes should be sufficient for pagination)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
 	limit := types.Limit{
 		Size: 100,
 		Page: 1,
@@ -41,7 +45,8 @@ func GetNodes(ctx context.Context, proxyClient client.Client, filters config.Nod
 		operation := func() error {
 			var pageTotal int
 			var err error
-			nodes, pageTotal, err = proxyClient.Nodes(ctx, filter, limit)
+			// Use timeoutCtx instead of ctx
+			nodes, pageTotal, err = proxyClient.Nodes(timeoutCtx, filter, limit)
 			if err != nil {
 				return fmt.Errorf("failed to query nodes page %d: %w", limit.Page, err)
 			}
@@ -51,8 +56,8 @@ func GetNodes(ctx context.Context, proxyClient client.Client, filters config.Nod
 			return nil
 		}
 
-		if err := retry.DoWithBackoff(ctx, retryCfg, operation); err != nil {
-			return nil, err
+		if err := retry.DoWithBackoff(timeoutCtx, retryCfg, operation); err != nil {
+			return nil, fmt.Errorf("failed to get nodes after retries: %w", err)
 		}
 
 		allNodes = append(allNodes, nodes...)

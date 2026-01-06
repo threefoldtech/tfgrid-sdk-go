@@ -4,10 +4,6 @@ import (
 	"github.com/threefoldtech/deployment-checker/pkg/models"
 )
 
-const (
-	minAttemptsThreshold = 1
-)
-
 // CalculateScore calculates a node's performance score based on deployment attempt data
 // Currently, the score is the same as the success rate, but this can be enhanced
 // to include duration-based metrics (see TODO in original code)

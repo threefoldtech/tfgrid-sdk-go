@@ -27,6 +27,13 @@ func New(ctx context.Context, url string) (*DB, error) {
 		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
 
+	// Configure connection pool
+	// MaxOpenConns: based on concurrency_limit (10) + API requests (estimate 15) = 25
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetConnMaxLifetime(5 * time.Minute)
+	sqlDB.SetConnMaxIdleTime(1 * time.Minute)
+
 	// Test connection
 	if err := sqlDB.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
@@ -77,6 +84,7 @@ func (d *DB) initSchema(ctx context.Context) error {
 
 	// Ensure indexes exist (GORM should create them from tags, but we'll verify)
 	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_time ON deployment_attempts(time DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_node_time ON deployment_attempts(node_id, time DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_farm_time ON deployment_attempts(farm_id, time DESC)`,
 	}

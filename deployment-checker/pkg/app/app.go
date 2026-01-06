@@ -2,9 +2,7 @@ package app
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"math/big"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -15,9 +13,7 @@ import (
 	"github.com/threefoldtech/deployment-checker/pkg/config"
 	"github.com/threefoldtech/deployment-checker/pkg/db"
 	"github.com/threefoldtech/deployment-checker/pkg/grid"
-	"github.com/threefoldtech/deployment-checker/pkg/models"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"golang.org/x/sync/semaphore"
+	"github.com/threefoldtech/deployment-checker/pkg/probe"
 )
 
 type App struct {
@@ -185,147 +181,16 @@ func (a *App) runCycle(ctx context.Context) error {
 		return fmt.Errorf("failed to get nodes: %w", err)
 	}
 
-	if len(nodes) == 0 {
-		log.Warn().Msg("No eligible nodes found")
-		return nil
+	// Create probe executor and cycle
+	executor := probe.NewExecutor(a.gridClient, a.cfg)
+	cycle := probe.NewCycle(executor, a.database, a.cfg)
+
+	// Run the cycle
+	if err := cycle.Run(ctx, proxyClient, nodes, func() bool {
+		return a.shuttingDown.Load()
+	}); err != nil {
+		return fmt.Errorf("cycle execution failed: %w", err)
 	}
 
-	log.Info().
-		Int("nodes", len(nodes)).
-		Int("max_concurrent", a.cfg.Probe.ConcurrencyLimit).
-		Str("workload", a.cfg.Probe.WorkloadSize).
-		Msg("Deployment cycle started")
-
-	sem := semaphore.NewWeighted(int64(a.cfg.Probe.ConcurrencyLimit))
-	var mu sync.Mutex
-	var cycleErrors []error
-	var attempts []models.Attempt
-
-	cpu, memoryMB, diskMB := a.cfg.GetWorkload()
-
-	for i, node := range nodes {
-
-		a.cycleWg.Add(1)
-		go func(idx int, n types.Node) {
-			defer a.cycleWg.Done()
-
-			if err := sem.Acquire(ctx, 1); err != nil { // blocks if at capacity
-				mu.Lock()
-				cycleErrors = append(cycleErrors, fmt.Errorf("failed to acquire semaphore for node %d: %w", n.NodeID, err))
-				mu.Unlock()
-				return
-			}
-			defer sem.Release(1)
-
-			if a.shuttingDown.Load() {
-				log.Debug().
-					Int("node_id", n.NodeID).
-					Msg("Shutdown requested, skipping deployment")
-				return // do not start new job if shutting down
-			}
-
-			// Apply jitter before deployment (6-10 seconds)
-			jitterMin := a.cfg.JitterMinSeconds()
-			jitterMax := a.cfg.JitterMaxSeconds()
-			jitterRange := jitterMax - jitterMin
-			if jitterRange > 0 {
-				jitterSeconds, err := rand.Int(rand.Reader, big.NewInt(int64(jitterRange+1)))
-				if err != nil {
-					log.Warn().
-						Err(err).
-						Int("node_id", n.NodeID).
-						Msg("Failed to generate jitter, using minimum")
-					jitterSeconds = big.NewInt(0)
-				}
-				jitterDuration := time.Duration(jitterMin+int(jitterSeconds.Int64())) * time.Second
-				log.Debug().
-					Int("node_id", n.NodeID).
-					Dur("jitter", jitterDuration).
-					Msg("Applying jitter before deployment")
-				time.Sleep(jitterDuration)
-			}
-
-			// Check if node is zoslight based on features
-			isZoslight := grid.IsZoslightNode(n)
-
-			log.Debug().
-				Int("node_index", idx+1).
-				Int("total_nodes", len(nodes)).
-				Int("node_id", n.NodeID).
-				Int("farm_id", n.FarmID).
-				Str("workload", a.cfg.Probe.WorkloadSize).
-				Bool("zoslight", isZoslight).
-				Msg("Deploying VM to node")
-
-			timeoutCtx, cancel := context.WithTimeout(ctx, a.cfg.Timeout())
-			var result *grid.DeploymentResult
-			var err error
-
-			if isZoslight {
-				result, err = a.gridClient.DeployVMLight(timeoutCtx, uint32(int(n.NodeID)), cpu, memoryMB, diskMB)
-			} else {
-				result, err = a.gridClient.DeployVM(timeoutCtx, uint32(int(n.NodeID)), cpu, memoryMB, diskMB)
-			}
-			cancel()
-
-			attempt := models.Attempt{
-				Time:   time.Now().Unix(),
-				NodeID: int64(int(n.NodeID)),
-				FarmID: int64(int(n.FarmID)),
-				Status: "failed",
-			}
-
-			if err != nil {
-				errorCode := "unknown_error"
-				if result != nil && result.ErrorCode != "" {
-					errorCode = result.ErrorCode
-					attempt.TotalDurationMs = &result.TotalDurationMs
-				}
-				attempt.ErrorCode = &errorCode
-				log.Debug().
-					Err(err).
-					Int("node_id", n.NodeID).
-					Str("error_code", errorCode).
-					Msg("Deployment failed")
-			} else if result != nil {
-				attempt.Status = "success"
-				attempt.TotalDurationMs = &result.TotalDurationMs
-				log.Debug().
-					Int("node_id", n.NodeID).
-					Msg("Deployment succeeded")
-			}
-
-			// Collect attempts for batch insert
-			mu.Lock()
-			attempts = append(attempts, attempt)
-			mu.Unlock()
-		}(i, node)
-	}
-
-	a.cycleWg.Wait()
-
-	// Batch insert all attempts
-	if len(attempts) > 0 {
-		batchSize := a.cfg.BatchSize()
-		if err := a.database.RecordAttemptsBatch(ctx, attempts, batchSize); err != nil {
-			log.Error().
-				Err(err).
-				Int("attempts", len(attempts)).
-				Int("batch_size", batchSize).
-				Msg("Failed to record attempts batch")
-			cycleErrors = append(cycleErrors, fmt.Errorf("failed to record attempts batch: %w", err))
-		} else {
-			log.Debug().
-				Int("attempts", len(attempts)).
-				Int("batch_size", batchSize).
-				Msg("Successfully recorded attempts batch")
-		}
-	}
-
-	log.Info().
-		Int("total_nodes", len(nodes)).
-		Int("attempts_recorded", len(attempts)).
-		Int("errors", len(cycleErrors)).
-		Msg("Deployment cycle completed")
 	return nil
 }

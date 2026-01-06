@@ -13,7 +13,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -21,13 +20,13 @@ import (
 	"github.com/threefoldtech/deployment-checker/pkg/db"
 	"github.com/threefoldtech/deployment-checker/pkg/models"
 	"github.com/threefoldtech/deployment-checker/pkg/scoring"
+	"github.com/threefoldtech/deployment-checker/pkg/services"
 )
 
 type Handlers struct {
-	database       *db.DB
+	scoringService *services.ScoringService
 	cfg            *config.Config
-	defaultWindow  time.Duration
-	scorerRegistry *scoring.Registry
+	database       *db.DB
 }
 
 // Response types
@@ -108,11 +107,12 @@ func NewHandlers(database *db.DB, cfg *config.Config) *Handlers {
 		registry.Register(uptimeScorer)
 	}
 
+	scoringService := services.NewScoringService(database, registry, cfg.ScoreWindow())
+
 	return &Handlers{
-		database:       database,
+		scoringService: scoringService,
 		cfg:            cfg,
-		defaultWindow:  cfg.ScoreWindow(),
-		scorerRegistry: registry,
+		database:       database,
 	}
 }
 
@@ -139,7 +139,7 @@ func (h *Handlers) GetTopScores(c *gin.Context) {
 	}
 
 	// Set defaults
-	window := h.defaultWindow
+	window := h.scoringService.DefaultWindow
 	if req.Window != "" {
 		parsedWindow, err := config.ParseDuration(req.Window)
 		if err != nil {
@@ -161,19 +161,13 @@ func (h *Handlers) GetTopScores(c *gin.Context) {
 		minAttempts = 1
 	}
 
-	scoreData, err := h.database.GetTopNodeScores(c.Request.Context(), window, limit, minAttempts)
+	scores, err := h.scoringService.GetTopScores(c.Request.Context(), window, limit, minAttempts)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get top node scores")
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error: "failed to retrieve scores",
 		})
 		return
-	}
-
-	scores := make([]models.NodeScore, 0, len(scoreData))
-	for _, data := range scoreData {
-		score := scoring.CalculateScore(&data)
-		scores = append(scores, *score)
 	}
 
 	c.JSON(http.StatusOK, TopScoresResponse{
@@ -215,7 +209,7 @@ func (h *Handlers) GetNodeScore(c *gin.Context) {
 	}
 
 	// Set defaults
-	window := h.defaultWindow
+	window := h.scoringService.DefaultWindow
 	if req.Window != "" {
 		parsedWindow, err := config.ParseDuration(req.Window)
 		if err != nil {
@@ -232,13 +226,20 @@ func (h *Handlers) GetNodeScore(c *gin.Context) {
 		minAttempts = 1
 	}
 
-	scoreData, err := h.database.GetNodeScoreData(c.Request.Context(), req.NodeID, window)
+	nodeScore, err := h.scoringService.GetNodeScore(c.Request.Context(), req.NodeID, window, minAttempts)
 	if err != nil {
 		errMsg := err.Error()
 		if errMsg == "failed to get node score data: no rows in result set" ||
-			errMsg == "no rows in result set" {
+			errMsg == "no rows in result set" ||
+			errMsg == "node not found or no data available" {
 			c.JSON(http.StatusNotFound, ErrorResponse{
 				Error: "node not found or no data available",
+			})
+			return
+		}
+		if errMsg == "node does not meet minimum attempts requirement" {
+			c.JSON(http.StatusNotFound, ErrorResponse{
+				Error: errMsg,
 			})
 			return
 		}
@@ -249,61 +250,10 @@ func (h *Handlers) GetNodeScore(c *gin.Context) {
 		return
 	}
 
-	if scoreData.TotalAttempts < int64(minAttempts) {
-		c.JSON(http.StatusNotFound, ErrorResponse{
-			Error: fmt.Sprintf("node does not meet minimum attempts requirement: %d attempts (required: %d)", scoreData.TotalAttempts, minAttempts),
-		})
-		return
-	}
-
-	// Use composite scoring from registry
-	compositeResult, err := h.scorerRegistry.CalculateComposite(c.Request.Context(), req.NodeID, window)
-	if err != nil {
-		log.Error().Err(err).Int64("node_id", req.NodeID).Msg("Failed to calculate composite score")
-		// Fallback to old scoring method for backward compatibility
-		score := scoring.CalculateScore(scoreData)
-		c.JSON(http.StatusOK, NodeScoreResponse{
-			Window:      window.String(),
-			MinAttempts: minAttempts,
-			Score:       *score,
-		})
-		return
-	}
-
-	// Convert composite result to NodeScore format
-	// Extract deployment scorer result for success rate
-	var successRate float64
-	var totalAttempts int64 = scoreData.TotalAttempts
-	for _, result := range compositeResult.ScorerResults {
-		if result.Metric == "deployment_success" {
-			successRate = result.Score
-			if valueMap, ok := result.Value.(map[string]interface{}); ok {
-				if ta, ok := valueMap["total_attempts"].(int64); ok {
-					totalAttempts = ta
-				}
-			}
-			break
-		}
-	}
-
-	var avgDurationMs float64
-	if scoreData.AvgDurationMs != nil {
-		avgDurationMs = *scoreData.AvgDurationMs
-	}
-
-	nodeScore := models.NodeScore{
-		NodeID:        scoreData.NodeID,
-		FarmID:        scoreData.FarmID,
-		SuccessRate:   successRate,
-		TotalAttempts: totalAttempts,
-		AvgDurationMs: avgDurationMs,
-		Score:         compositeResult.CompositeScore, // Use composite score
-	}
-
 	c.JSON(http.StatusOK, NodeScoreResponse{
 		Window:      window.String(),
 		MinAttempts: minAttempts,
-		Score:       nodeScore,
+		Score:       *nodeScore,
 	})
 }
 

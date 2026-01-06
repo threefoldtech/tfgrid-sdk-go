@@ -3,7 +3,10 @@ package scoring
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Registry manages multiple scorers and provides composite scoring
@@ -54,8 +57,19 @@ func (r *Registry) CalculateComposite(ctx context.Context, nodeID int64, window 
 
 		result, err := scorer.Calculate(ctx, nodeID, window)
 		if err != nil {
-			// Log error but continue with other scorers
-			// Return error only if all scorers fail
+			// Log error with context
+			log.Error().
+				Err(err).
+				Str("scorer", scorer.Name()).
+				Int64("node_id", nodeID).
+				Msg("Scorer calculation failed")
+			
+			// Fail fast if critical scorer (weight > 0.5) fails
+			if scorer.Weight() > 0.5 {
+				return nil, fmt.Errorf("critical scorer %s failed: %w", scorer.Name(), err)
+			}
+			
+			// For non-critical scorers, continue but track failures
 			continue
 		}
 
@@ -74,6 +88,11 @@ func (r *Registry) CalculateComposite(ctx context.Context, nodeID int64, window 
 	}
 
 	compositeScore := weightedSum / totalWeight
+	
+	// Validate result is not NaN or Inf
+	if math.IsNaN(compositeScore) || math.IsInf(compositeScore, 0) {
+		return nil, fmt.Errorf("invalid composite score calculated: %f", compositeScore)
+	}
 
 	return &CompositeResult{
 		CompositeScore: compositeScore,
