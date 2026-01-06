@@ -35,6 +35,46 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	// Setup data retention
+	ctx := context.Background()
+	retentionDays := cfg.RetentionDays()
+	if retentionDays > 0 {
+		if cfg.UseTimescaleDBRetention() {
+			// Use TimescaleDB retention policies (preferred)
+			if err := database.SetupRetentionPolicy(ctx, retentionDays); err != nil {
+				log.Warn().
+					Err(err).
+					Int("retention_days", retentionDays).
+					Msg("Failed to setup TimescaleDB retention policy, will use manual cleanup")
+				// Fallback to manual cleanup
+				if err := database.CleanupOldData(ctx, retentionDays); err != nil {
+					log.Warn().
+						Err(err).
+						Msg("Failed to perform initial manual cleanup")
+				} else {
+					log.Info().
+						Int("retention_days", retentionDays).
+						Msg("Performed initial manual cleanup of old data")
+				}
+			} else {
+				log.Info().
+					Int("retention_days", retentionDays).
+					Msg("TimescaleDB retention policy configured successfully")
+			}
+		} else {
+			// Use manual cleanup
+			if err := database.CleanupOldData(ctx, retentionDays); err != nil {
+				log.Warn().
+					Err(err).
+					Msg("Failed to perform initial manual cleanup")
+			} else {
+				log.Info().
+					Int("retention_days", retentionDays).
+					Msg("Performed initial manual cleanup of old data")
+			}
+		}
+	}
+
 	gridClient, err := grid.NewClient(cfg)
 	if err != nil {
 		database.Close()

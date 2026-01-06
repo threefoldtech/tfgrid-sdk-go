@@ -45,4 +45,8 @@ nodes:
   nodes: [] # node IDs to include (empty means all nodes)
   exclude: [] # node IDs to exclude
 
+database:
+  retention_days: 90 # data retention period in days (default: 90)
+  use_timescaledb_retention: true # use TimescaleDB automatic retention policies (preferred) or manual cleanup
+
 log_level: "info"

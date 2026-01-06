@@ -184,3 +184,75 @@ func (d *DB) GetTopNodeScores(ctx context.Context, window time.Duration, limit i
 
 	return results, nil
 }
+
+// SetupRetentionPolicy sets up TimescaleDB retention policy for the deployment_attempts table
+// This is the preferred method as it's automatic and efficient
+func (d *DB) SetupRetentionPolicy(ctx context.Context, retentionDays int) error {
+	// Check if retention policy already exists
+	var exists bool
+	checkQuery := `
+		SELECT EXISTS (
+			SELECT 1 
+			FROM timescaledb_information.jobs j
+			JOIN timescaledb_information.job_stats js ON j.job_id = js.job_id
+			WHERE j.proc_name = 'policy_retention'
+			AND j.hypertable_name = 'deployment_attempts'
+		)
+	`
+	if err := d.db.WithContext(ctx).Raw(checkQuery).Scan(&exists).Error; err != nil {
+		// If the query fails, it might be because TimescaleDB is not available
+		// or the timescaledb_information schema doesn't exist
+		// We'll try to add the policy anyway
+		exists = false
+	}
+
+	if exists {
+		// Policy already exists, try to update it
+		// First, drop the existing policy and recreate it
+		dropQuery := `SELECT remove_retention_policy('deployment_attempts', if_exists => TRUE)`
+		if err := d.db.WithContext(ctx).Exec(dropQuery).Error; err != nil {
+			// Log but don't fail - the policy might not exist or might be in a different format
+		}
+	}
+
+	// Add retention policy
+	// TimescaleDB retention policies use INTERVAL format
+	interval := fmt.Sprintf("%d days", retentionDays)
+	addQuery := fmt.Sprintf(
+		`SELECT add_retention_policy('deployment_attempts', INTERVAL '%s', if_not_exists => TRUE)`,
+		interval,
+	)
+
+	result := d.db.WithContext(ctx).Exec(addQuery)
+	if result.Error != nil {
+		// Check if error is because policy already exists or table is not a hypertable
+		errMsg := strings.ToLower(result.Error.Error())
+		if strings.Contains(errMsg, "already") || strings.Contains(errMsg, "exists") {
+			// Policy already exists, which is fine
+			return nil
+		}
+		if strings.Contains(errMsg, "not a hypertable") {
+			// Table is not a hypertable, retention policies won't work
+			return fmt.Errorf("table is not a hypertable, cannot use TimescaleDB retention policy: %w", result.Error)
+		}
+		return fmt.Errorf("failed to add retention policy: %w", result.Error)
+	}
+
+	return nil
+}
+
+// CleanupOldData manually deletes old data from the deployment_attempts table
+// This is a fallback method for non-TimescaleDB setups or when retention policies are disabled
+func (d *DB) CleanupOldData(ctx context.Context, retentionDays int) error {
+	cutoffTime := time.Now().AddDate(0, 0, -retentionDays).Unix()
+
+	result := d.db.WithContext(ctx).
+		Where("time < ?", cutoffTime).
+		Delete(&models.DeploymentAttempt{})
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to cleanup old data: %w", result.Error)
+	}
+
+	return nil
+}

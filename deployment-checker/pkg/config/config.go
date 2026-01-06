@@ -24,13 +24,14 @@ const (
 )
 
 type Config struct {
-	LogLevel    string        `mapstructure:"log_level"`
-	Probe       ProbeConfig   `mapstructure:"probe"`
-	Scoring     ScoringConfig `mapstructure:"scoring"`
-	Grid        GridConfig    `mapstructure:"grid"`
-	Nodes       NodesConfig   `mapstructure:"nodes"`
-	TimescaleDB TimescaleDB   `mapstructure:"timescaledb"`
-	API         APIConfig     `mapstructure:"api"`
+	LogLevel    string         `mapstructure:"log_level"`
+	Probe       ProbeConfig    `mapstructure:"probe"`
+	Scoring     ScoringConfig  `mapstructure:"scoring"`
+	Grid        GridConfig     `mapstructure:"grid"`
+	Nodes       NodesConfig    `mapstructure:"nodes"`
+	TimescaleDB TimescaleDB    `mapstructure:"timescaledb"`
+	Database    DatabaseConfig `mapstructure:"database"`
+	API         APIConfig      `mapstructure:"api"`
 
 	// viper does not parse duration directly
 	interval        time.Duration
@@ -85,6 +86,11 @@ type NodesConfig struct {
 
 type TimescaleDB struct {
 	URL string `mapstructure:"url"`
+}
+
+type DatabaseConfig struct {
+	RetentionDays           int  `mapstructure:"retention_days"`
+	UseTimescaleDBRetention bool `mapstructure:"use_timescaledb_retention"`
 }
 
 type APIConfig struct {
@@ -229,6 +235,15 @@ func Load(configPath string) (*Config, error) {
 		cfg.Probe.CleanupOnStartup = true
 	}
 
+	// Set default retention configuration
+	if cfg.Database.RetentionDays == 0 {
+		cfg.Database.RetentionDays = 90
+	}
+	// Default to using TimescaleDB retention policies if not specified
+	if !viper.IsSet("database.use_timescaledb_retention") {
+		cfg.Database.UseTimescaleDBRetention = true
+	}
+
 	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
@@ -305,6 +320,14 @@ func (c *Config) CleanupOnStartup() bool {
 
 func (c *Config) ScoringConfig() ScoringConfig {
 	return c.Scoring
+}
+
+func (c *Config) RetentionDays() int {
+	return c.Database.RetentionDays
+}
+
+func (c *Config) UseTimescaleDBRetention() bool {
+	return c.Database.UseTimescaleDBRetention
 }
 
 func (c *Config) validate() error {
