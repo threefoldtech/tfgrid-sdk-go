@@ -83,5 +83,13 @@ func buildFilters(filters config.NodesConfig) types.NodeFilter {
 		filter.Healthy = &[]bool{true}[0]
 	}
 
+	// Always skip rented nodes (mandatory)
+	rented := false
+	filter.Rented = &rented
+
+	// Always skip dedicated farm nodes (mandatory)
+	inDedicatedFarm := false
+	filter.InDedicatedFarm = &inDedicatedFarm
+
 	return filter
 }

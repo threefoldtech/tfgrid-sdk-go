@@ -174,16 +174,27 @@ func (a *App) runCycle(ctx context.Context) error {
 				return // do not start new job if shutting down
 			}
 
+			// Check if node is zoslight based on features
+			isZoslight := grid.IsZoslightNode(n)
+
 			log.Debug().
 				Int("node_index", idx+1).
 				Int("total_nodes", len(nodes)).
 				Int("node_id", n.NodeID).
 				Int("farm_id", n.FarmID).
 				Str("workload", a.cfg.Probe.WorkloadSize).
+				Bool("zoslight", isZoslight).
 				Msg("Deploying VM to node")
 
 			timeoutCtx, cancel := context.WithTimeout(ctx, a.cfg.Timeout())
-			result, err := a.gridClient.DeployVM(timeoutCtx, uint32(int(n.NodeID)), cpu, memoryMB, diskMB)
+			var result *grid.DeploymentResult
+			var err error
+
+			if isZoslight {
+				result, err = a.gridClient.DeployVMLight(timeoutCtx, uint32(int(n.NodeID)), cpu, memoryMB, diskMB)
+			} else {
+				result, err = a.gridClient.DeployVM(timeoutCtx, uint32(int(n.NodeID)), cpu, memoryMB, diskMB)
+			}
 			cancel()
 
 			attempt := models.Attempt{
