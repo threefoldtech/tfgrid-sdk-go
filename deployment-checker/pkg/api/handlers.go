@@ -11,13 +11,11 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/deployment-checker/pkg/config"
 	"github.com/threefoldtech/deployment-checker/pkg/db"
@@ -49,17 +47,17 @@ type HealthResponse struct {
 // TopScoresResponse represents the response for GET /api/v1/scores
 // @Description Top node scores response
 type TopScoresResponse struct {
-	Window      string           `json:"window" example:"90d"`     // Time window used for scoring
-	Limit       int              `json:"limit" example:"10"`       // Maximum number of results returned
-	MinAttempts int              `json:"min_attempts" example:"1"` // Minimum attempts required
+	Window      string             `json:"window" example:"90d"`     // Time window used for scoring
+	Limit       int                `json:"limit" example:"10"`       // Maximum number of results returned
+	MinAttempts int                `json:"min_attempts" example:"1"` // Minimum attempts required
 	Scores      []models.NodeScore `json:"scores"`                   // List of node scores
 }
 
 // NodeScoreResponse represents the response for GET /api/v1/scores/node/:node_id
 // @Description Single node score response
 type NodeScoreResponse struct {
-	Window      string          `json:"window" example:"90d"`     // Time window used for scoring
-	MinAttempts int             `json:"min_attempts" example:"1"` // Minimum attempts required
+	Window      string           `json:"window" example:"90d"`     // Time window used for scoring
+	MinAttempts int              `json:"min_attempts" example:"1"` // Minimum attempts required
 	Score       models.NodeScore `json:"score"`                    // Node score details
 }
 
@@ -90,46 +88,44 @@ func NewHandlers(database *db.DB, cfg *config.Config) *Handlers {
 // @Failure 400 {object} ErrorResponse "Invalid request parameters"
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /api/v1/scores [get]
-func (h *Handlers) GetTopScores(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+func (h *Handlers) GetTopScores(c *gin.Context) {
+	var req GetTopScoresRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: fmt.Sprintf("invalid request parameters: %v", err),
+		})
+		return
+	}
 
-	windowStr := r.URL.Query().Get("window")
+	// Set defaults
 	window := h.defaultWindow
-	if windowStr != "" {
-		parsedWindow, err := config.ParseDuration(windowStr)
+	if req.Window != "" {
+		parsedWindow, err := config.ParseDuration(req.Window)
 		if err != nil {
-			respondError(w, http.StatusBadRequest, "invalid window parameter: "+err.Error())
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error: fmt.Sprintf("invalid window parameter: %v", err),
+			})
 			return
 		}
 		window = parsedWindow
 	}
 
-	limitStr := r.URL.Query().Get("limit")
-	limit := 10
-	if limitStr != "" {
-		parsedLimit, err := strconv.Atoi(limitStr)
-		if err != nil || parsedLimit <= 0 {
-			respondError(w, http.StatusBadRequest, "invalid limit parameter: must be a positive integer")
-			return
-		}
-		limit = parsedLimit
+	limit := req.Limit
+	if limit == 0 {
+		limit = 10
 	}
 
-	minAttemptsStr := r.URL.Query().Get("min_attempts")
-	minAttempts := 1
-	if minAttemptsStr != "" {
-		parsedMinAttempts, err := strconv.Atoi(minAttemptsStr)
-		if err != nil || parsedMinAttempts < 1 {
-			respondError(w, http.StatusBadRequest, "invalid min_attempts parameter: must be a positive integer")
-			return
-		}
-		minAttempts = parsedMinAttempts
+	minAttempts := req.MinAttempts
+	if minAttempts == 0 {
+		minAttempts = 1
 	}
 
-	scoreData, err := h.database.GetTopNodeScores(ctx, window, limit, minAttempts)
+	scoreData, err := h.database.GetTopNodeScores(c.Request.Context(), window, limit, minAttempts)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get top node scores")
-		respondError(w, http.StatusInternalServerError, "failed to retrieve scores")
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "failed to retrieve scores",
+		})
 		return
 	}
 
@@ -139,7 +135,7 @@ func (h *Handlers) GetTopScores(w http.ResponseWriter, r *http.Request) {
 		scores = append(scores, *score)
 	}
 
-	respondJSON(w, http.StatusOK, TopScoresResponse{
+	c.JSON(http.StatusOK, TopScoresResponse{
 		Window:      window.String(),
 		Limit:       limit,
 		MinAttempts: minAttempts,
@@ -161,58 +157,67 @@ func (h *Handlers) GetTopScores(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} ErrorResponse "Node not found or insufficient attempts"
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /api/v1/scores/node/{node_id} [get]
-func (h *Handlers) GetNodeScore(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	nodeIDStr := chi.URLParam(r, "node_id")
-	nodeID, err := strconv.ParseInt(nodeIDStr, 10, 64)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid node_id parameter")
+func (h *Handlers) GetNodeScore(c *gin.Context) {
+	var req GetNodeScoreRequest
+	if err := c.ShouldBindUri(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: fmt.Sprintf("invalid node_id parameter: %v", err),
+		})
 		return
 	}
 
-	windowStr := r.URL.Query().Get("window")
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: fmt.Sprintf("invalid query parameters: %v", err),
+		})
+		return
+	}
+
+	// Set defaults
 	window := h.defaultWindow
-	if windowStr != "" {
-		parsedWindow, err := config.ParseDuration(windowStr)
+	if req.Window != "" {
+		parsedWindow, err := config.ParseDuration(req.Window)
 		if err != nil {
-			respondError(w, http.StatusBadRequest, "invalid window parameter: "+err.Error())
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error: fmt.Sprintf("invalid window parameter: %v", err),
+			})
 			return
 		}
 		window = parsedWindow
 	}
 
-	minAttemptsStr := r.URL.Query().Get("min_attempts")
-	minAttempts := 1
-	if minAttemptsStr != "" {
-		parsedMinAttempts, err := strconv.Atoi(minAttemptsStr)
-		if err != nil || parsedMinAttempts < 1 {
-			respondError(w, http.StatusBadRequest, "invalid min_attempts parameter: must be a positive integer")
-			return
-		}
-		minAttempts = parsedMinAttempts
+	minAttempts := req.MinAttempts
+	if minAttempts == 0 {
+		minAttempts = 1
 	}
 
-	scoreData, err := h.database.GetNodeScoreData(ctx, nodeID, window)
+	scoreData, err := h.database.GetNodeScoreData(c.Request.Context(), req.NodeID, window)
 	if err != nil {
-		if err.Error() == "failed to get node score data: no rows in result set" ||
-			err.Error() == "no rows in result set" {
-			respondError(w, http.StatusNotFound, "node not found or no data available")
+		errMsg := err.Error()
+		if errMsg == "failed to get node score data: no rows in result set" ||
+			errMsg == "no rows in result set" {
+			c.JSON(http.StatusNotFound, ErrorResponse{
+				Error: "node not found or no data available",
+			})
 			return
 		}
-		log.Error().Err(err).Int64("node_id", nodeID).Msg("Failed to get node score")
-		respondError(w, http.StatusInternalServerError, "failed to retrieve node score")
+		log.Error().Err(err).Int64("node_id", req.NodeID).Msg("Failed to get node score")
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "failed to retrieve node score",
+		})
 		return
 	}
 
 	if scoreData.TotalAttempts < int64(minAttempts) {
-		respondError(w, http.StatusNotFound, fmt.Sprintf("node does not meet minimum attempts requirement: %d attempts (required: %d)", scoreData.TotalAttempts, minAttempts))
+		c.JSON(http.StatusNotFound, ErrorResponse{
+			Error: fmt.Sprintf("node does not meet minimum attempts requirement: %d attempts (required: %d)", scoreData.TotalAttempts, minAttempts),
+		})
 		return
 	}
 
 	score := scoring.CalculateScore(scoreData)
 
-	respondJSON(w, http.StatusOK, NodeScoreResponse{
+	c.JSON(http.StatusOK, NodeScoreResponse{
 		Window:      window.String(),
 		MinAttempts: minAttempts,
 		Score:       *score,
@@ -228,15 +233,13 @@ func (h *Handlers) GetNodeScore(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} HealthResponse "Service is healthy"
 // @Success 503 {object} HealthResponse "Service is unhealthy"
 // @Router /api/v1/health [get]
-func (h *Handlers) GetHealth(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+func (h *Handlers) GetHealth(c *gin.Context) {
 	health := HealthResponse{
 		Status: "healthy",
 		Checks: make(map[string]HealthCheck),
 	}
 
-	if err := h.database.Ping(ctx); err != nil {
+	if err := h.database.Ping(c.Request.Context()); err != nil {
 		health.Checks["database"] = HealthCheck{
 			Status:  "unhealthy",
 			Message: err.Error(),
@@ -253,21 +256,5 @@ func (h *Handlers) GetHealth(w http.ResponseWriter, r *http.Request) {
 		statusCode = http.StatusServiceUnavailable
 	}
 
-	respondJSON(w, statusCode, health)
-}
-
-// Helper functions
-
-func respondJSON(w http.ResponseWriter, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		log.Error().Err(err).Msg("Failed to encode JSON response")
-	}
-}
-
-func respondError(w http.ResponseWriter, status int, message string) {
-	respondJSON(w, status, ErrorResponse{
-		Error: message,
-	})
+	c.JSON(statusCode, health)
 }
