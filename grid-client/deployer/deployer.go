@@ -20,6 +20,10 @@ import (
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -50,6 +54,7 @@ type Deployer struct {
 	ncPool          client.NodeClientGetter
 	revertOnFailure bool
 	substrateConn   subi.SubstrateExt
+	tracer          trace.Tracer
 }
 
 // NewDeployer returns a new deployer
@@ -57,14 +62,21 @@ func NewDeployer(
 	tfPluginClient TFPluginClient,
 	revertOnFailure bool,
 ) Deployer {
-	return Deployer{
+	deployer := Deployer{
 		tfPluginClient.Identity,
 		tfPluginClient.TwinID,
 		tfPluginClient.GridProxyClient,
 		tfPluginClient.NcPool,
 		revertOnFailure,
 		tfPluginClient.SubstrateConn,
+		noop.NewTracerProvider().Tracer("no-op"),
 	}
+
+	if tfPluginClient.traceProvider != nil {
+		deployer.tracer = tfPluginClient.traceProvider.Tracer("grid-deployer")
+	}
+
+	return deployer
 }
 
 // Deploy deploys or updates a new deployment given the old deployments' IDs
@@ -73,32 +85,68 @@ func (d *Deployer) Deploy(ctx context.Context,
 	newDeployments map[uint32]zos.Deployment,
 	newDeploymentSolutionProvider map[uint32]*uint64,
 ) (map[uint32]uint64, error) {
+
+	ctx, span := d.tracer.Start(ctx, "deployer.Deploy",
+		trace.WithAttributes(
+			attribute.Int("old_deployments_count", len(oldDeploymentIDs)),
+			attribute.Int("new_deployments_count", len(newDeployments)),
+			attribute.Bool("revert_on_failure", d.revertOnFailure),
+		))
+	defer span.End()
+
+	span.AddEvent("fetching old deployments")
 	oldDeployments, oldErr := d.GetDeployments(ctx, oldDeploymentIDs)
 	if oldErr == nil {
+		span.AddEvent("validating deployments")
 		// check resources only when old deployments are readable
 		// being readable means it's a fresh deployment or an update with good nodes
 		// this is done to avoid preventing deletion of deployments on dead nodes
 		if err := d.Validate(ctx, oldDeployments, newDeployments); err != nil {
+			recordSpanError(span, "validation failed", err)
 			return oldDeploymentIDs, err
 		}
 	}
 
 	// ignore oldErr until we need oldDeployments
+	span.AddEvent("starting deployment process")
 	currentDeployments, err := d.deploy(ctx, oldDeploymentIDs, newDeployments, newDeploymentSolutionProvider, d.revertOnFailure)
 
 	if err != nil && d.revertOnFailure {
+		span.AddEvent("deployment failed, revert on failure triggered")
 		if oldErr != nil {
-			return currentDeployments, errors.Wrapf(err, "failed to fetch deployment objects to revert deployments: %s; try again", oldErr)
+			err = errors.Wrapf(err, "failed to fetch deployment objects to revert deployments: %s; try again", oldErr)
+			recordSpanError(span, "revert failed: old deployments unavailable", err)
+			return currentDeployments, err
 		}
 
 		currentDls, rerr := d.deploy(ctx, currentDeployments, oldDeployments, newDeploymentSolutionProvider, false)
 		if rerr != nil {
-			return currentDls, errors.Wrapf(err, "failed to revert deployments: %s; try again", rerr)
+			err = errors.Wrapf(err, "failed to revert deployments: %s; try again", rerr)
+			recordSpanError(span, "revert failed", err)
+			return currentDls, err
 		}
 		return currentDls, err
 	}
 
+	if err == nil {
+		span.AddEvent("deployment successful",
+			trace.WithAttributes(attribute.Int("deployments_count", len(currentDeployments))))
+	}
+
 	return currentDeployments, err
+}
+
+func recordSpanError(span trace.Span, description string, err error) {
+	if err == nil {
+		return
+	}
+	span.RecordError(err)
+	span.SetStatus(codes.Error, description)
+}
+
+func spanErrorAndEnd(span trace.Span, description string, err error) {
+	recordSpanError(span, description, err)
+	span.End()
 }
 
 func (d *Deployer) deploy(
@@ -108,15 +156,27 @@ func (d *Deployer) deploy(
 	newDeploymentSolutionProvider map[uint32]*uint64,
 	revertOnFailure bool,
 ) (currentDeployments map[uint32]uint64, err error) {
+
+	ctx, span := d.tracer.Start(ctx, "Deployer.deploy")
+	defer span.End()
+
 	currentDeployments = make(map[uint32]uint64)
 	for nodeID, contractID := range oldDeployments {
 		currentDeployments[nodeID] = contractID
 	}
 	// deletions
+	span.AddEvent("processing deletions")
 	for node, contractID := range oldDeployments {
 		if _, ok := newDeployments[node]; !ok {
+			span.AddEvent("canceling_contract",
+				trace.WithAttributes(
+					attribute.Int("node", int(node)),
+					attribute.Int("contract_id", int(contractID)),
+				))
+
 			err = d.substrateConn.EnsureContractCanceled(d.identity, contractID)
 			if err != nil && !strings.Contains(err.Error(), "ContractNotExists") {
+				recordSpanError(span, "failed to delete deployment", err)
 				return currentDeployments, errors.Wrap(err, "failed to delete deployment")
 			}
 			delete(currentDeployments, node)
@@ -124,18 +184,27 @@ func (d *Deployer) deploy(
 	}
 
 	// creations
+	span.AddEvent("processing creations")
 	for node, dl := range newDeployments {
 		if _, ok := oldDeployments[node]; !ok {
+
+			nodeCtx, nodeSpan := d.tracer.Start(ctx, "Deployer.create_deployment",
+				trace.WithAttributes(attribute.Int("node", int(node))))
+
 			nodeClient, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to get node client", err)
+				recordSpanError(span, "failed to get node client", err)
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
 
 			if err := dl.Sign(d.twinID, d.identity); err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to sign deployment", err)
 				return currentDeployments, errors.Wrap(err, "error signing deployment")
 			}
 
 			if err := dl.Valid(); err != nil {
+				spanErrorAndEnd(nodeSpan, "invalid deployment", err)
 				return currentDeployments, errors.Wrap(err, "deployment is invalid")
 			}
 
@@ -143,6 +212,7 @@ func (d *Deployer) deploy(
 			log.Debug().Bytes("HASH", hash)
 
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to create hash", err)
 				return currentDeployments, errors.Wrap(err, "failed to create hash")
 			}
 
@@ -150,46 +220,69 @@ func (d *Deployer) deploy(
 
 			publicIPCount, err := CountDeploymentPublicIPs(dl)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to count public IPs", err)
 				return currentDeployments, errors.Wrap(err, "failed to count deployment public IPs")
 			}
 			log.Debug().Uint32("Number of public ips", publicIPCount)
 
-			contractRused := false
+			nodeSpan.SetAttributes(
+				attribute.String("hash", hashHex),
+				attribute.Int("public_ip_count", int(publicIPCount)),
+			)
+
+			contractReused := false
 			contractID, err := d.substrateConn.CreateNodeContract(d.identity, node, dl.Metadata, hashHex, publicIPCount, newDeploymentSolutionProvider[node])
 			if err != nil {
 				if !strings.Contains(err.Error(), "ContractIsNotUnique") {
+					spanErrorAndEnd(nodeSpan, "failed to create contract", err)
 					return currentDeployments, errors.Wrapf(err, "failed to create contract on node %d", node)
 				}
+
 				contractID, err = d.substrateConn.GetContractWithHash(d.identity, node, []byte(hashHex))
 				if err != nil {
+					spanErrorAndEnd(nodeSpan, "failed to find existing contract with hash", err)
 					return currentDeployments, errors.Wrapf(err, "failed to find existing contract on node %d", node)
 				}
+
 				contract, err := d.substrateConn.GetContract(contractID)
 				if err != nil {
+					spanErrorAndEnd(nodeSpan, "failed to get existing contract by id", err)
 					return currentDeployments, errors.Wrapf(err, "failed to get existing contract on node %d", node)
 				}
+
 				if contract.State.IsDeleted {
-					return currentDeployments, errors.Errorf("contract %d is not active", contractID)
+					err = errors.Errorf("contract %d is not active", contractID)
+					spanErrorAndEnd(nodeSpan, "contract is deleted", err)
+					return currentDeployments, err
 				}
+
 				log.Info().
 					Uint32("node", node).
 					Uint64("contractID", contractID).
 					Msg("reusing existing contract")
-				contractRused = true
+				contractReused = true
 			}
+
 			log.Debug().Uint64("returned contract ID", contractID)
 			dl.ContractID = contractID
 
+			nodeSpan.SetAttributes(attribute.Int("contract_id", int(contractID)))
+
 			// Update deployment with contract ID and send to node
-			err = nodeClient.DeploymentDeploy(ctx, dl)
+			nodeSpan.AddEvent("sending deployment to node")
+			err = nodeClient.DeploymentDeploy(nodeCtx, dl)
 			if err != nil {
 				// If deployment exists, continue as already deployed
-				if !contractRused || !strings.Contains(err.Error(), "exists") {
+				if !contractReused || !strings.Contains(err.Error(), "exists") {
+					nodeSpan.AddEvent("deployment failed, canceling contract")
 					// Other deployment error: cancel contract
 					rerr := d.substrateConn.EnsureContractCanceled(d.identity, dl.ContractID)
 					if rerr != nil {
+						spanErrorAndEnd(nodeSpan, "failed to cancel contract after deployment error", rerr)
 						return currentDeployments, errors.Wrapf(err, "error cancelling contract: %s; you must cancel it manually (id: %d)", rerr, dl.ContractID)
 					}
+
+					spanErrorAndEnd(nodeSpan, "failed to send deployment to node", err)
 					return currentDeployments, errors.Wrapf(err, "error sending deployment to node %d", node)
 				}
 
@@ -205,22 +298,37 @@ func (d *Deployer) deploy(
 			for _, w := range dl.Workloads {
 				newWorkloadVersions[w.Name] = 0
 			}
-			if err = d.Wait(ctx, nodeClient, dl.ContractID, newWorkloadVersions); err != nil {
+
+			nodeSpan.AddEvent("waiting for deployment")
+			if err = d.Wait(nodeCtx, nodeClient, dl.ContractID, newWorkloadVersions); err != nil {
+				spanErrorAndEnd(nodeSpan, "waiting for deployment failed", err)
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
+			nodeSpan.End()
+
 		}
 	}
 
 	// updates
+	span.AddEvent("processing updates")
 	for node, dl := range newDeployments {
 		if oldDeploymentID, ok := oldDeployments[node]; ok {
+
+			nodeCtx, nodeSpan := d.tracer.Start(ctx, "Deployer.update_deployment",
+				trace.WithAttributes(attribute.Int("node", int(node)),
+					attribute.Int("old_contract_id", int(oldDeploymentID)),
+				))
+
 			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to get node client", err)
 				return currentDeployments, errors.Wrap(err, "failed to get node client")
 			}
 
-			oldDl, err := client.DeploymentGet(ctx, oldDeploymentID)
+			nodeSpan.AddEvent("fetching old deployment")
+			oldDl, err := client.DeploymentGet(nodeCtx, oldDeploymentID)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to get old deployment", err)
 				return currentDeployments, errors.Wrap(err, "failed to get old deployment to update it")
 			}
 
@@ -228,36 +336,50 @@ func (d *Deployer) deploy(
 
 			oldDeploymentHash, err := HashDeployment(oldDl)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to get deployment hash", err)
 				return currentDeployments, errors.Wrap(err, "could not get deployment hash")
 			}
 
 			newDeploymentHash, err := HashDeployment(dl)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to get new deployment hash", err)
 				return currentDeployments, errors.Wrap(err, "could not get deployment hash")
 			}
 
+			nodeSpan.SetAttributes(
+				attribute.String("old_hash", oldDeploymentHash),
+				attribute.String("new_hash", newDeploymentHash),
+			)
+
 			if oldDeploymentHash == newDeploymentHash && SameWorkloadsNames(dl, oldDl) {
+				nodeSpan.End()
+
 				continue
 			}
 
+			nodeSpan.AddEvent("assigning versions")
 			newWorkloadsVersions, err := assignVersions(&oldDl, &dl)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to assign versions", err)
 				return currentDeployments, errors.Wrapf(err, "failed to assign new versions to deployment with contract %d", oldDeploymentID)
 			}
 
 			dl.ContractID = oldDl.ContractID
 
 			if err := dl.Sign(d.twinID, d.identity); err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to sign deployments", err)
 				return currentDeployments, errors.Wrap(err, "error signing deployment")
 			}
 
 			if err := dl.Valid(); err != nil {
+				spanErrorAndEnd(nodeSpan, "invalid deployment", err)
 				return currentDeployments, errors.Wrap(err, "deployment is invalid")
 			}
 
 			log.Debug().Interface("deployment", dl)
 			hash, err := dl.ChallengeHash()
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to create hash", err)
 				return currentDeployments, errors.Wrap(err, "failed to create hash")
 			}
 			hashHex := hex.EncodeToString(hash)
@@ -265,24 +387,41 @@ func (d *Deployer) deploy(
 
 			// TODO: Destroy and create if publicIPCount is changed
 			// publicIPCount, err := countDeploymentPublicIPs(dl)
+			nodeSpan.AddEvent("updating contract on chain")
 			contractID, err := d.substrateConn.UpdateNodeContract(d.identity, dl.ContractID, dl.Metadata, hashHex)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to update contract", err)
 				return currentDeployments, errors.Wrap(err, "failed to update deployment")
 			}
+
 			dl.ContractID = contractID
-			err = client.DeploymentUpdate(ctx, dl)
+
+			nodeSpan.SetAttributes(attribute.Int("new_contract_id", int(contractID)))
+
+			nodeSpan.AddEvent("sending update to node")
+			err = client.DeploymentUpdate(nodeCtx, dl)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to send update to node", err)
 				// cancel previous contract
 				return currentDeployments, errors.Wrapf(err, "failed to send deployment update request to node %d", node)
 			}
+
 			currentDeployments[node] = dl.ContractID
 
-			err = d.Wait(ctx, client, dl.ContractID, newWorkloadsVersions)
+			nodeSpan.AddEvent("waiting_for_update_completion")
+			err = d.Wait(nodeCtx, client, dl.ContractID, newWorkloadsVersions)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "waiting for update failed", err)
 				return currentDeployments, errors.Wrap(err, "error waiting deployment")
 			}
+
+			nodeSpan.End()
 		}
 	}
+
+	span.SetAttributes(
+		attribute.Int("final_deployments_count", len(currentDeployments)),
+	)
 
 	return currentDeployments, nil
 }
@@ -291,8 +430,17 @@ func (d *Deployer) deploy(
 func (d *Deployer) Cancel(ctx context.Context,
 	contractID uint64,
 ) error {
+
+	_, span := d.tracer.Start(ctx, "Deployer.Cancel",
+		trace.WithAttributes(
+			attribute.Int("contract_id", int(contractID)),
+		))
+	defer span.End()
+
+	span.AddEvent("canceling_contract")
 	err := d.substrateConn.EnsureContractCanceled(d.identity, contractID)
 	if err != nil {
+		recordSpanError(span, "failed to cancel contract", err)
 		return errors.Wrapf(err, "failed to delete deployment: %d", contractID)
 	}
 
@@ -301,21 +449,39 @@ func (d *Deployer) Cancel(ctx context.Context,
 
 // GetDeployments returns deployments from a map of nodes IDs and deployments IDs
 func (d *Deployer) GetDeployments(ctx context.Context, dls map[uint32]uint64) (map[uint32]zos.Deployment, error) {
+
+	ctx, span := d.tracer.Start(ctx, "Deployer.GetDeployments",
+		trace.WithAttributes(
+			attribute.Int("deployments_count", len(dls)),
+		))
+	defer span.End()
+
 	res := make(map[uint32]zos.Deployment)
+	span.AddEvent("starting fetch deployments")
 
 	for nodeID, dlID := range dls {
+		span.AddEvent("fetching a single deployment", trace.WithAttributes(
+			attribute.Int("node_ID", int(nodeID)),
+			attribute.Int("deployment_ID", int(dlID)),
+		))
+
 		nc, err := d.ncPool.GetNodeClient(d.substrateConn, nodeID)
 		if err != nil {
+			recordSpanError(span, "failed to get node client", err)
 			return nil, errors.Wrapf(err, "failed to get a client for node %d", nodeID)
 		}
 
 		dl, err := nc.DeploymentGet(ctx, dlID)
 		if err != nil {
+			recordSpanError(span, "failed to get deployment", err)
 			return nil, errors.Wrapf(err, "failed to get deployment %d of node %d", dlID, nodeID)
 		}
 
 		res[nodeID] = dl
+
 	}
+
+	span.SetAttributes(attribute.Int("fetched_count", len(res)))
 
 	return res, nil
 }
@@ -342,14 +508,26 @@ func (d *Deployer) Wait(
 	deploymentID uint64,
 	workloadVersions map[string]uint32,
 ) error {
+
+	ctx, span := d.tracer.Start(ctx, "Deployer.Wait",
+		trace.WithAttributes(
+			attribute.Int("deployment_id", int(deploymentID)),
+			attribute.Int("workload_count", len(workloadVersions)),
+		))
+	defer span.End()
+
 	lastProgress := Progress{time.Now(), 0}
 	numberOfWorkloads := len(workloadVersions)
+
+	span.AddEvent("starting wait with backoff")
 
 	deploymentError := backoff.Retry(func() error {
 		stateOk := 0
 
+		span.AddEvent("checking deployment changes")
 		deploymentChanges, err := nodeClient.DeploymentChanges(ctx, deploymentID)
 		if err != nil {
+			recordSpanError(span, "failed to fetch deployment changes", err)
 			return backoff.Permanent(err)
 		}
 
@@ -369,12 +547,21 @@ func (d *Deployer) Wait(
 					errString = fmt.Sprintf("workload %s within deployment %d was not updated: %s", wl.Name, deploymentID, wl.Result.Error)
 				}
 				if errString != "" {
-					return backoff.Permanent(errors.New(errString))
+					span.AddEvent("workload failed",
+						trace.WithAttributes(
+							attribute.String("workload_name", wl.Name),
+							attribute.String("error", errString),
+						))
+					err = errors.New(errString)
+
+					recordSpanError(span, "workload failed", err)
+					return backoff.Permanent(err)
 				}
 			}
 		}
 
 		if stateOk == numberOfWorkloads {
+			span.AddEvent("all_workloads_completed")
 			return nil
 		}
 
@@ -383,12 +570,21 @@ func (d *Deployer) Wait(
 			lastProgress = currentProgress
 		} else if currentProgress.time.Sub(lastProgress.time) > 4*time.Minute {
 			timeoutError := errors.Errorf("waiting for deployment %d timed out", deploymentID)
+			span.AddEvent("wait_timeout",
+				trace.WithAttributes(
+					attribute.String("timeout_duration", "4 minutes"),
+					attribute.Int("current_progress", stateOk),
+				))
 			return backoff.Permanent(timeoutError)
 		}
 
 		return errors.New("deployment in progress")
 	},
 		backoff.WithContext(getExponentialBackoff(3*time.Second, 1.25, 40*time.Second, 50*time.Minute), ctx))
+
+	if deploymentError != nil {
+		recordSpanError(span, "waiting for deployment failed", deploymentError)
+	}
 
 	return deploymentError
 }
@@ -399,6 +595,13 @@ func (d *Deployer) BatchDeploy(
 	deployments map[uint32][]zos.Deployment,
 	deploymentsSolutionProvider map[uint32][]*uint64,
 ) (map[uint32][]zos.Deployment, error) {
+
+	ctx, span := d.tracer.Start(ctx, "Deployer.BatchDeploy",
+		trace.WithAttributes(
+			attribute.Int("node_count", len(deployments)),
+		))
+	defer span.End()
+
 	deploymentsSlice := make([]zos.Deployment, 0)
 	contractsData := make([]substrate.BatchCreateContractData, 0)
 
@@ -409,8 +612,10 @@ func (d *Deployer) BatchDeploy(
 		// loading node clients first before creating any contract and caching the clients
 		_, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 		if err != nil {
+			recordSpanError(span, "failed to get node client", err)
 			return map[uint32][]zos.Deployment{}, errors.Wrap(err, "failed to get node client")
 		}
+
 		for i, dl := range dls {
 			i := i
 			dl := dl
@@ -423,18 +628,26 @@ func (d *Deployer) BatchDeploy(
 				default:
 				}
 
+				_, workloadSpan := d.tracer.Start(ctx, "Deployer.prepare_deployment",
+					trace.WithAttributes(
+						attribute.Int("node", int(node)),
+						attribute.Int("twin_id", int(dl.TwinID)),
+					))
+
 				if err := dl.Sign(d.twinID, d.identity); err != nil {
+					spanErrorAndEnd(workloadSpan, "failed to sign deployment", err)
 					return errors.Wrap(err, "error signing deployment")
 				}
 
 				if err := dl.Valid(); err != nil {
+					spanErrorAndEnd(workloadSpan, "invalid deployment", err)
 					return errors.Wrap(err, "deployment is invalid")
 				}
 
 				hash, err := dl.ChallengeHash()
 				log.Debug().Bytes("HASH", hash)
-
 				if err != nil {
+					spanErrorAndEnd(workloadSpan, "failed to create hash", err)
 					return errors.Wrap(err, "failed to create hash")
 				}
 
@@ -442,6 +655,7 @@ func (d *Deployer) BatchDeploy(
 
 				publicIPCount, err := CountDeploymentPublicIPs(dl)
 				if err != nil {
+					spanErrorAndEnd(workloadSpan, "failed to count public IPs", err)
 					return errors.Wrap(err, "failed to count deployment public IPs")
 				}
 				log.Debug().Uint32("Number of public ips", publicIPCount)
@@ -450,6 +664,13 @@ func (d *Deployer) BatchDeploy(
 				if deploymentsSolutionProvider[node] != nil && len(deploymentsSolutionProvider[node]) > i {
 					solutionProviderID = deploymentsSolutionProvider[node][i]
 				}
+
+				workloadSpan.SetAttributes(
+					attribute.String("hash", hashHex),
+					attribute.Int("public_ip_count", int(publicIPCount)),
+				)
+				workloadSpan.End()
+
 				mu.Lock()
 				contractsData = append(contractsData, substrate.BatchCreateContractData{
 					Node:               node,
@@ -465,65 +686,103 @@ func (d *Deployer) BatchDeploy(
 		}
 	}
 
+	span.AddEvent("waiting for preparation")
 	if err := group.Wait(); err != nil {
+		recordSpanError(span, "preparation failed", err)
 		return map[uint32][]zos.Deployment{}, err
 	}
 
+	span.AddEvent("creating batch contracts")
 	contracts, index, err := d.substrateConn.BatchCreateContract(d.identity, contractsData)
 	if err != nil && index == nil {
+		recordSpanError(span, "batch contract creation failed", err)
 		return map[uint32][]zos.Deployment{}, errors.Wrap(err, "failed to create contracts")
 	}
 
 	var multiErr error
 	if err != nil {
 		multiErr = multierror.Append(multiErr, err)
+		recordSpanError(span, "batch contract creation failed", multiErr)
 	}
 
 	failedContracts := make([]uint64, 0)
 	var wg sync.WaitGroup
+
+	span.AddEvent("deploying to nodes")
 	for i, dl := range deploymentsSlice {
 		if index != nil && *index == i {
+			span.AddEvent("stopping at failed index",
+				trace.WithAttributes(attribute.Int("contract_id", int(dl.ContractID))),
+				trace.WithAttributes(attribute.Int("twin_id", int(dl.TwinID))),
+			)
 			break
 		}
 		node := contractsData[i].Node
 		dl := dl
 		i := i
+
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+
+			deployCtx, deploySpan := d.tracer.Start(ctx, "Deployer.deploy_single_from_batch",
+				trace.WithAttributes(
+					attribute.Int("node", int(node)),
+				))
+
 			client, err := d.ncPool.GetNodeClient(d.substrateConn, node)
 			if err != nil {
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to get node %d client", node))
 				failedContracts = append(failedContracts, dl.ContractID)
 				mu.Unlock()
+
+				spanErrorAndEnd(deploySpan, "failed to get node client", err)
 				return
 			}
+
 			dl.ContractID = contracts[i]
 
-			err = client.DeploymentDeploy(ctx, dl)
+			deploySpan.SetAttributes(attribute.Int("assigned_contract_id", int(dl.ContractID)))
+
+			deploySpan.AddEvent("sending_deployment_to_node")
+			err = client.DeploymentDeploy(deployCtx, dl)
 			if err != nil {
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error sending deployment with contract id %d to node %d", dl.ContractID, node))
 				failedContracts = append(failedContracts, dl.ContractID)
 				mu.Unlock()
+
+				spanErrorAndEnd(deploySpan, "failed to deploy to node", err)
 				return
 			}
+
 			newWorkloadVersions := make(map[string]uint32)
 			for _, w := range dl.Workloads {
 				newWorkloadVersions[w.Name] = 0
 			}
-			err = d.Wait(ctx, client, dl.ContractID, newWorkloadVersions)
+
+			deploySpan.AddEvent("waiting_for_deployment")
+			err = d.Wait(deployCtx, client, dl.ContractID, newWorkloadVersions)
+
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
 				multiErr = multierror.Append(multiErr, errors.Wrapf(err, "error waiting deployment on node %d", node))
 				failedContracts = append(failedContracts, dl.ContractID)
+
+				spanErrorAndEnd(deploySpan, "waiting for deployment failed", err)
 				return
 			}
+
 			deploymentsSlice[i].ContractID = contracts[i]
+
+			deploySpan.End()
+
 		}()
 	}
+
+	span.AddEvent("waiting for all deployments")
 	wg.Wait()
 
 	resDeployments := make(map[uint32][]zos.Deployment, len(deployments))
@@ -532,10 +791,27 @@ func (d *Deployer) BatchDeploy(
 	}
 
 	if len(failedContracts) != 0 {
+		span.AddEvent("canceling failed contracts",
+			trace.WithAttributes(
+				attribute.Int("failed_contracts_count", len(failedContracts)),
+			))
 		err := d.substrateConn.BatchCancelContract(d.identity, failedContracts)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, errors.Wrapf(err, "failed to cancel failed contracts %v", failedContracts))
+			recordSpanError(span, "failed to cancel failed contracts", err)
 		}
+	}
+
+	if multiErr != nil {
+		span.SetStatus(codes.Error, "batch deploy completed with errors")
+		span.SetAttributes(
+			attribute.Int("failed_contracts", len(failedContracts)),
+			attribute.Int("successful_deployments", len(deploymentsSlice)-len(failedContracts)),
+		)
+	} else {
+		span.SetAttributes(
+			attribute.Int("total_deployments", len(deploymentsSlice)),
+		)
 	}
 
 	return resDeployments, multiErr
@@ -593,12 +869,22 @@ func assignVersions(oldDl *zos.Deployment, newDl *zos.Deployment) (map[string]ui
 // errors that may arise because of dead nodes are ignored.
 // if a real error dodges the validation, it'll be fail anyway in the deploying phase
 func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.Deployment, newDeployments map[uint32]zos.Deployment) error {
+
+	ctx, span := d.tracer.Start(ctx, "Deployer.Validate",
+		trace.WithAttributes(
+			attribute.Int("old_deployments_count", len(oldDeployments)),
+			attribute.Int("new_deployments_count", len(newDeployments)),
+		))
+	defer span.End()
+
 	farmIPs := make(map[int]int)
 	nodeMap := make(map[uint32]proxyTypes.NodeWithNestedCapacity)
 
+	span.AddEvent("fetching node information")
 	for node := range oldDeployments {
 		nodeInfo, err := d.gridProxyClient.Node(ctx, node)
 		if err != nil {
+			recordSpanError(span, "failed to get node data from grid proxy", err)
 			return errors.Wrapf(err, "could not get node %d data from the grid proxy", node)
 		}
 		nodeMap[node] = nodeInfo
@@ -611,12 +897,14 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 		}
 		nodeInfo, err := d.gridProxyClient.Node(ctx, node)
 		if err != nil {
+			recordSpanError(span, "failed to get node data from proxy", err)
 			return errors.Wrapf(err, "could not get node %d data from the grid proxy", node)
 		}
 		nodeMap[node] = nodeInfo
 		farmIPs[nodeInfo.FarmID] = 0
 	}
 
+	span.AddEvent("fetching farm information")
 	for farm := range farmIPs {
 		farmUint64 := uint64(farm)
 		farmInfo, _, err := d.gridProxyClient.Farms(ctx, proxyTypes.FarmFilter{
@@ -626,10 +914,13 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 			Size: 1,
 		})
 		if err != nil {
+			recordSpanError(span, "failed to get farm data from proxy", err)
 			return errors.Wrapf(err, "could not get farm %d data from the grid proxy", farm)
 		}
 		if len(farmInfo) == 0 {
-			return errors.Errorf("farm %d not returned from the proxy", farm)
+			err := errors.Errorf("farm %d not returned from the proxy", farm)
+			recordSpanError(span, "farm not found in proxy", err)
+			return err
 		}
 		for _, ip := range farmInfo[0].PublicIps {
 			if ip.ContractID == 0 {
@@ -638,22 +929,35 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 		}
 	}
 
+	span.AddEvent("validating old deployments")
 	for node, dl := range oldDeployments {
 		nodeData, ok := nodeMap[node]
 		if !ok {
-			return errors.Errorf("node %d not returned from the grid proxy", node)
+			err := errors.Errorf("node %d not returned from the grid proxy", node)
+			recordSpanError(span, "node not found in proxy", err)
+			return err
 		}
 
 		publicIPCount, err := CountDeploymentPublicIPs(dl)
 		if err != nil {
+			recordSpanError(span, "failed to count public IPs", err)
 			return errors.Wrap(err, "failed to count deployment public IPs")
 		}
 
 		farmIPs[nodeData.FarmID] += int(publicIPCount)
 	}
 
+	span.AddEvent("validating new deployments")
 	for node, dl := range newDeployments {
+
+		_, nodeSpan := d.tracer.Start(ctx, "Deployer.validate_node_deployment",
+			trace.WithAttributes(
+				attribute.Int("node", int(node)),
+			))
+
 		if err := dl.Valid(); err != nil {
+			spanErrorAndEnd(nodeSpan, "invalid deployment", err)
+			recordSpanError(span, "invalid deployment", err)
 			return errors.Wrap(err, "invalid deployment")
 		}
 
@@ -661,49 +965,89 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 
 		needed, err := Capacity(dl)
 		if err != nil {
+			spanErrorAndEnd(nodeSpan, "failed to calculate capacity", err)
+			recordSpanError(span, "failed to calculate capacity", err)
 			return err
 		}
 
 		publicIPCount, err := CountDeploymentPublicIPs(dl)
 		if err != nil {
+			spanErrorAndEnd(nodeSpan, "failed to count public IPs", err)
+			recordSpanError(span, "failed to count public IPs", err)
 			return errors.Wrap(err, "failed to count deployment public IPs")
 		}
 		requiredIPs := int(publicIPCount)
 		nodeInfo := nodeMap[node]
+
+		nodeSpan.SetAttributes(
+			attribute.Int("required_public_ips", requiredIPs),
+			attribute.Int("farm_id", nodeInfo.FarmID),
+		)
+
 		if alreadyExists {
 			oldCap, err := Capacity(oldDl)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to calculate old capacity", err)
+				recordSpanError(span, "failed to calculate old capacity", err)
 				return errors.Wrapf(err, "could not read old deployment %d of node %d capacity", oldDl.ContractID, node)
 			}
+
 			addCapacity(&nodeInfo.Capacity.Total, &oldCap)
 			contract, err := d.substrateConn.GetContract(oldDl.ContractID)
 			if err != nil {
+				spanErrorAndEnd(nodeSpan, "failed to get contract", err)
+				recordSpanError(span, "failed to get contract", err)
 				return errors.Wrapf(err, "could not get node contract %d", oldDl.ContractID)
 			}
 			current := int(contract.PublicIPCount())
 			if requiredIPs > current {
-				return errors.Errorf(
+				err := errors.Errorf(
 					"currently, it's not possible to increase the number of reserved public ips in a deployment, node: %d, current: %d, requested: %d",
 					node,
 					current,
 					requiredIPs,
 				)
+				spanErrorAndEnd(nodeSpan, "cannot increase public IPs", err)
+				recordSpanError(span, "cannot increase public IPs", err)
+				return err
 			}
 		}
 
 		farmIPs[nodeInfo.FarmID] -= requiredIPs
 		if farmIPs[nodeInfo.FarmID] < 0 {
-			return errors.Errorf("farm %d does not have enough public ips", nodeInfo.FarmID)
+			err := errors.Errorf("farm %d does not have enough public ips", nodeInfo.FarmID)
+			spanErrorAndEnd(nodeSpan, "insufficient public IPs in farm", err)
+			recordSpanError(span, "insufficient public IPs in farm", err)
+			return err
 		}
+
 		if HasWorkload(&dl, zos.GatewayFQDNProxyType) && nodeInfo.PublicConfig.Ipv4 == "" {
-			return errors.Errorf("node %d cannot deploy a fqdn workload as it does not have a public ipv4 configured", node)
+			err := errors.Errorf("node %d cannot deploy a fqdn workload as it does not have a public ipv4 configured", node)
+			spanErrorAndEnd(nodeSpan, "IPv4 is missing from fqdn workload", err)
+			recordSpanError(span, "IPv4 is missing from fqdn workload", err)
+			return err
 		}
+
 		if HasWorkload(&dl, zos.GatewayNameProxyType) && nodeInfo.PublicConfig.Domain == "" {
-			return errors.Errorf("node %d cannot deploy a gateway name workload as it does not have a domain configured", node)
+			err := errors.Errorf("node %d cannot deploy a gateway name workload as it does not have a domain configured", node)
+			spanErrorAndEnd(nodeSpan, "domain is missing for gateway name workload", err)
+			recordSpanError(span, "domain is missing for gateway name workload", err)
+			return err
 		}
+
 		mru := nodeInfo.Capacity.Total.MRU - nodeInfo.Capacity.Used.MRU
 		hru := nodeInfo.Capacity.Total.HRU - nodeInfo.Capacity.Used.HRU
 		sru := 2*nodeInfo.Capacity.Total.SRU - nodeInfo.Capacity.Used.SRU
+
+		nodeSpan.SetAttributes(
+			attribute.Int64("available_mru", int64(mru)),
+			attribute.Int64("available_sru", int64(sru)),
+			attribute.Int64("available_hru", int64(hru)),
+			attribute.Int64("needed_mru", int64(needed.MRU)),
+			attribute.Int64("needed_sru", int64(needed.SRU)),
+			attribute.Int64("needed_hru", int64(needed.HRU)),
+		)
+
 		if uint64(mru) < needed.MRU ||
 			uint64(sru) < needed.SRU ||
 			uint64(hru) < needed.HRU {
@@ -712,9 +1056,14 @@ func (d *Deployer) Validate(ctx context.Context, oldDeployments map[uint32]zos.D
 				MRU: uint64(mru),
 				SRU: uint64(sru),
 			}
-			return errors.Errorf("node %d does not have enough resources. needed: %v, free: %v", node, capacityPrettyPrint(needed), capacityPrettyPrint(free))
+			err := errors.Errorf("node %d does not have enough resources. needed: %v, free: %v", node, capacityPrettyPrint(needed), capacityPrettyPrint(free))
+			spanErrorAndEnd(nodeSpan, "insufficient resources", err)
+			recordSpanError(span, "insufficient resources", err)
+			return err
 		}
+		nodeSpan.End()
 	}
+
 	return nil
 }
 
