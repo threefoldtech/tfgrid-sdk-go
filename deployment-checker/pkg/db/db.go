@@ -21,20 +21,16 @@ func New(ctx context.Context, url string) (*DB, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Get underlying sql.DB to set connection pool settings
 	sqlDB, err := gormDB.DB()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
 
-	// Configure connection pool
-	// MaxOpenConns: based on concurrency_limit (10) + API requests (estimate 15) = 25
 	sqlDB.SetMaxOpenConns(25)
 	sqlDB.SetMaxIdleConns(5)
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 	sqlDB.SetConnMaxIdleTime(1 * time.Minute)
 
-	// Test connection
 	if err := sqlDB.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
@@ -64,25 +60,18 @@ func (d *DB) Ping(ctx context.Context) error {
 }
 
 func (d *DB) initSchema(ctx context.Context) error {
-	// Use GORM AutoMigrate to create the table
 	if err := d.db.WithContext(ctx).AutoMigrate(&models.DeploymentAttempt{}); err != nil {
 		return fmt.Errorf("failed to auto migrate: %w", err)
 	}
 
-	// Create hypertable if it doesn't exist
-	// TimescaleDB's create_hypertable function is idempotent with if_not_exists
 	result := d.db.WithContext(ctx).Exec(`SELECT create_hypertable('deployment_attempts', 'time', if_not_exists => TRUE)`)
 	if result.Error != nil {
-		// Check if error is because hypertable already exists
-		// Common error messages: "relation ... is already a hypertable" or "hypertable already exists"
 		errMsg := strings.ToLower(result.Error.Error())
 		if !strings.Contains(errMsg, "already") && !strings.Contains(errMsg, "hypertable") {
 			return fmt.Errorf("failed to create hypertable: %w", result.Error)
 		}
-		// If it's an "already exists" error, we can safely ignore it
 	}
 
-	// Ensure indexes exist (GORM should create them from tags, but we'll verify)
 	indexes := []string{
 		`CREATE INDEX IF NOT EXISTS idx_time ON deployment_attempts(time DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_node_time ON deployment_attempts(node_id, time DESC)`,
@@ -112,13 +101,11 @@ func (d *DB) RecordAttempt(ctx context.Context, attempt models.Attempt) error {
 	return result.Error
 }
 
-// RecordAttemptsBatch inserts multiple attempts in batches
 func (d *DB) RecordAttemptsBatch(ctx context.Context, attempts []models.Attempt, batchSize int) error {
 	if len(attempts) == 0 {
 		return nil
 	}
 
-	// Convert models.Attempt to models.DeploymentAttempt
 	gormAttempts := make([]models.DeploymentAttempt, len(attempts))
 	for i, attempt := range attempts {
 		gormAttempts[i] = models.DeploymentAttempt{
@@ -157,7 +144,6 @@ func (d *DB) GetNodeScoreData(ctx context.Context, nodeID int64, window time.Dur
 		return nil, fmt.Errorf("failed to get node score data: %w", result.Error)
 	}
 
-	// Check if any rows were returned
 	if result.RowsAffected == 0 {
 		return nil, fmt.Errorf("failed to get node score data: no rows in result set")
 	}
@@ -196,61 +182,32 @@ func (d *DB) GetTopNodeScores(ctx context.Context, window time.Duration, limit i
 // SetupRetentionPolicy sets up TimescaleDB retention policy for the deployment_attempts table
 // This is the preferred method as it's automatic and efficient
 func (d *DB) SetupRetentionPolicy(ctx context.Context, retentionDays int) error {
-	// Check if retention policy already exists
-	var exists bool
-	checkQuery := `
-		SELECT EXISTS (
-			SELECT 1 
-			FROM timescaledb_information.jobs j
-			JOIN timescaledb_information.job_stats js ON j.job_id = js.job_id
-			WHERE j.proc_name = 'policy_retention'
-			AND j.hypertable_name = 'deployment_attempts'
-		)
-	`
-	if err := d.db.WithContext(ctx).Raw(checkQuery).Scan(&exists).Error; err != nil {
-		// If the query fails, it might be because TimescaleDB is not available
-		// or the timescaledb_information schema doesn't exist
-		// We'll try to add the policy anyway
-		exists = false
+	// This function is required by TimescaleDB to understand "now" for integer time columns
+	nowFuncQuery := `CREATE OR REPLACE FUNCTION deployment_attempts_now() RETURNS BIGINT AS $$ 
+		SELECT EXTRACT(EPOCH FROM now())::BIGINT 
+	$$ LANGUAGE SQL IMMUTABLE`
+	if err := d.db.WithContext(ctx).Exec(nowFuncQuery).Error; err != nil {
+		return fmt.Errorf("failed to create integer_now function: %w", err)
 	}
 
-	if exists {
-		// Policy already exists, try to update it
-		// First, drop the existing policy and recreate it
-		dropQuery := `SELECT remove_retention_policy('deployment_attempts', if_exists => TRUE)`
-		if err := d.db.WithContext(ctx).Exec(dropQuery).Error; err != nil {
-			// Log but don't fail - the policy might not exist or might be in a different format
-		}
+	setNowFuncQuery := `SELECT set_integer_now_func('deployment_attempts', 'deployment_attempts_now', replace_if_exists => TRUE)`
+	if err := d.db.WithContext(ctx).Exec(setNowFuncQuery).Error; err != nil {
+		return fmt.Errorf("failed to set integer_now_func: %w", err)
 	}
 
-	// Add retention policy
-	// TimescaleDB retention policies use INTERVAL format
-	interval := fmt.Sprintf("%d days", retentionDays)
-	addQuery := fmt.Sprintf(
-		`SELECT add_retention_policy('deployment_attempts', INTERVAL '%s', if_not_exists => TRUE)`,
-		interval,
+	addPolicyQuery := fmt.Sprintf(
+		`SELECT add_retention_policy('deployment_attempts', drop_after => INTERVAL '%d days', if_not_exists => TRUE)`,
+		retentionDays,
 	)
-
-	result := d.db.WithContext(ctx).Exec(addQuery)
-	if result.Error != nil {
-		// Check if error is because policy already exists or table is not a hypertable
-		errMsg := strings.ToLower(result.Error.Error())
-		if strings.Contains(errMsg, "already") || strings.Contains(errMsg, "exists") {
-			// Policy already exists, which is fine
-			return nil
-		}
-		if strings.Contains(errMsg, "not a hypertable") {
-			// Table is not a hypertable, retention policies won't work
-			return fmt.Errorf("table is not a hypertable, cannot use TimescaleDB retention policy: %w", result.Error)
-		}
-		return fmt.Errorf("failed to add retention policy: %w", result.Error)
+	if err := d.db.WithContext(ctx).Exec(addPolicyQuery).Error; err != nil {
+		return fmt.Errorf("failed to add retention policy: %w", err)
 	}
 
 	return nil
 }
 
-// CleanupOldData manually deletes old data from the deployment_attempts table
-// This is a fallback method for non-TimescaleDB setups or when retention policies are disabled
+// CleanupOldData cleans up old data from the database
+// This is the fallback method if TimescaleDB retention policy is not used
 func (d *DB) CleanupOldData(ctx context.Context, retentionDays int) error {
 	cutoffTime := time.Now().AddDate(0, 0, -retentionDays).Unix()
 

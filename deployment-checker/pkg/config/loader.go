@@ -20,15 +20,12 @@ func Load(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Parse durations
 	if err := parseDurations(&cfg); err != nil {
 		return nil, err
 	}
 
-	// Set default values
 	setDefaults(&cfg)
 
-	// Validate configuration
 	if err := validate(&cfg); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
@@ -92,7 +89,7 @@ func parseDurations(cfg *Config) error {
 // setDefaults sets default values for configuration fields
 func setDefaults(cfg *Config) {
 	if cfg.Probe.WorkloadSize == "" {
-		cfg.Probe.WorkloadSize = "light"
+		cfg.Probe.WorkloadSize = DefaultWorkloadSize
 	}
 
 	if cfg.API.Host == "" {
@@ -115,19 +112,16 @@ func setDefaults(cfg *Config) {
 		cfg.Probe.BatchSize = DefaultBatchSize
 	}
 
-	// Set default scoring configuration
 	if cfg.Scoring.MinAttempts == 0 {
 		cfg.Scoring.MinAttempts = 1
 	}
 
-	// Set default scorer configurations
 	if cfg.Scoring.Scorers.Deployment.Weight == 0 {
 		cfg.Scoring.Scorers.Deployment.Weight = 1.0
 	}
 	if !cfg.Scoring.Scorers.Deployment.Enabled {
 		cfg.Scoring.Scorers.Deployment.Enabled = true
 	}
-	// Duration and uptime default to disabled (weight 0.0)
 
 	if cfg.initialBackoff == 0 {
 		cfg.initialBackoff = DefaultInitialBackoff
@@ -141,7 +135,6 @@ func setDefaults(cfg *Config) {
 		cfg.shutdownTimeout = DefaultShutdownTimeout
 	}
 
-	// Set default jitter values
 	if cfg.Probe.JitterMinSeconds == 0 {
 		cfg.Probe.JitterMinSeconds = 6
 	}
@@ -149,18 +142,13 @@ func setDefaults(cfg *Config) {
 		cfg.Probe.JitterMaxSeconds = 10
 	}
 
-	// Set default cleanup on startup
-	// Note: viper will set this to false if not present, so we check if it was explicitly set
-	// For now, default to true if not specified
 	if !viper.IsSet("probe.cleanup_on_startup") {
 		cfg.Probe.CleanupOnStartup = true
 	}
 
-	// Set default retention configuration
 	if cfg.Database.RetentionDays == 0 {
 		cfg.Database.RetentionDays = 90
 	}
-	// Default to using TimescaleDB retention policies if not specified
 	if !viper.IsSet("database.use_timescaledb_retention") {
 		cfg.Database.UseTimescaleDBRetention = true
 	}

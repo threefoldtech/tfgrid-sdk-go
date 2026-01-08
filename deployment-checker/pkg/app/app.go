@@ -14,6 +14,8 @@ import (
 	"github.com/threefoldtech/deployment-checker/pkg/db"
 	"github.com/threefoldtech/deployment-checker/pkg/grid"
 	"github.com/threefoldtech/deployment-checker/pkg/probe"
+	"github.com/threefoldtech/deployment-checker/pkg/scoring"
+	"github.com/threefoldtech/deployment-checker/pkg/services"
 )
 
 type App struct {
@@ -26,23 +28,20 @@ type App struct {
 }
 
 func New(cfg *config.Config) (*App, error) {
-	database, err := db.New(context.Background(), cfg.TimescaleDB.URL)
+	database, err := db.New(context.Background(), cfg.Database.URL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Setup data retention
 	ctx := context.Background()
 	retentionDays := cfg.RetentionDays()
 	if retentionDays > 0 {
 		if cfg.UseTimescaleDBRetention() {
-			// Use TimescaleDB retention policies (preferred)
 			if err := database.SetupRetentionPolicy(ctx, retentionDays); err != nil {
 				log.Warn().
 					Err(err).
 					Int("retention_days", retentionDays).
 					Msg("Failed to setup TimescaleDB retention policy, will use manual cleanup")
-				// Fallback to manual cleanup
 				if err := database.CleanupOldData(ctx, retentionDays); err != nil {
 					log.Warn().
 						Err(err).
@@ -58,7 +57,6 @@ func New(cfg *config.Config) (*App, error) {
 					Msg("TimescaleDB retention policy configured successfully")
 			}
 		} else {
-			// Use manual cleanup
 			if err := database.CleanupOldData(ctx, retentionDays); err != nil {
 				log.Warn().
 					Err(err).
@@ -77,7 +75,33 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to create grid client: %w", err)
 	}
 
-	apiServer := api.NewServer(database, cfg)
+	scoringCfg := cfg.ScoringConfig()
+	minAttempts := int64(scoringCfg.MinAttempts)
+	if minAttempts == 0 {
+		minAttempts = 1
+	}
+
+	registry := scoring.NewRegistry()
+
+	deploymentScorer := scoring.NewDeploymentScorer(
+		database,
+		scoringCfg.Scorers.Deployment.Weight,
+		minAttempts,
+	)
+	registry.Register(deploymentScorer)
+
+	if scoringCfg.Scorers.Duration.Enabled && scoringCfg.Scorers.Duration.Weight > 0 {
+		durationScorer := scoring.NewDurationScorer(
+			database,
+			scoringCfg.Scorers.Duration.Weight,
+			minAttempts,
+		)
+		registry.Register(durationScorer)
+	}
+
+	scoringService := services.NewScoringService(database, registry, cfg.ScoreWindow())
+
+	apiServer := api.NewServer(database, cfg, scoringService)
 
 	return &App{
 		cfg:        cfg,
@@ -96,7 +120,6 @@ func (a *App) Run(ctx context.Context) error {
 		Str("network", a.cfg.Grid.Network).
 		Msg("Starting deployment checker service")
 
-	// Cleanup orphaned contracts on startup if enabled
 	if a.cfg.CleanupOnStartup() {
 		log.Info().Msg("Running startup cleanup of orphaned contracts")
 		if err := a.gridClient.CleanupOrphanedContracts(ctx); err != nil {
@@ -123,7 +146,7 @@ func (a *App) Run(ctx context.Context) error {
 			return fmt.Errorf("API server error: %w", err)
 		case <-ticker.C:
 			if a.shuttingDown.Load() {
-				continue // do not start new cycle if shutting down
+				continue
 			}
 
 			if err := a.runCycle(ctx); err != nil {
@@ -136,7 +159,7 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) shutdown() error {
 	log.Info().Msg("Initiating graceful shutdown")
 
-	a.shuttingDown.Store(true) // do not start new cycle/routine if shutting down
+	a.shuttingDown.Store(true)
 
 	log.Info().Msg("Waiting for current deployments to finish...")
 	done := make(chan struct{})
@@ -147,12 +170,11 @@ func (a *App) shutdown() error {
 
 	select {
 	case <-done:
-		log.Info().Msg("All deployments completed") // shutdown went well
+		log.Info().Msg("All deployments completed")
 	case <-time.After(a.cfg.ShutdownTimeout()):
 		log.Warn().
 			Dur("timeout", a.cfg.ShutdownTimeout()).
 			Msg("Shutdown timeout reached, some deployments may not have completed")
-		// continue shutdown anyway
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -169,7 +191,6 @@ func (a *App) shutdown() error {
 
 func (a *App) Close() {
 	a.database.Close()
-	// a.gridClient.Close()
 }
 
 func (a *App) runCycle(ctx context.Context) error {
@@ -181,11 +202,7 @@ func (a *App) runCycle(ctx context.Context) error {
 		return fmt.Errorf("failed to get nodes: %w", err)
 	}
 
-	// Create probe executor and cycle
-	executor := probe.NewExecutor(a.gridClient, a.cfg)
-	cycle := probe.NewCycle(executor, a.database, a.cfg)
-
-	// Run the cycle
+	cycle := probe.NewCycle(a.gridClient, a.database, a.cfg)
 	if err := cycle.Run(ctx, proxyClient, nodes, func() bool {
 		return a.shuttingDown.Load()
 	}); err != nil {

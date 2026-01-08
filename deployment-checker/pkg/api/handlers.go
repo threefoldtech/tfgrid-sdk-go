@@ -19,7 +19,6 @@ import (
 	"github.com/threefoldtech/deployment-checker/pkg/config"
 	"github.com/threefoldtech/deployment-checker/pkg/db"
 	"github.com/threefoldtech/deployment-checker/pkg/models"
-	"github.com/threefoldtech/deployment-checker/pkg/scoring"
 	"github.com/threefoldtech/deployment-checker/pkg/services"
 )
 
@@ -67,48 +66,7 @@ type ErrorResponse struct {
 	Error string `json:"error" example:"invalid node_id parameter"`
 }
 
-func NewHandlers(database *db.DB, cfg *config.Config) *Handlers {
-	// Initialize scoring registry with configured scorers
-	scoringCfg := cfg.ScoringConfig()
-	minAttempts := int64(scoringCfg.MinAttempts)
-	if minAttempts == 0 {
-		minAttempts = 1
-	}
-
-	registry := scoring.NewRegistry()
-
-	// Register deployment scorer
-	if scoringCfg.Scorers.Deployment.Enabled {
-		deploymentScorer := scoring.NewDeploymentScorer(
-			database,
-			scoringCfg.Scorers.Deployment.Weight,
-			minAttempts,
-		)
-		registry.Register(deploymentScorer)
-	}
-
-	// Register duration scorer (if enabled)
-	if scoringCfg.Scorers.Duration.Enabled {
-		durationScorer := scoring.NewDurationScorer(
-			database,
-			scoringCfg.Scorers.Duration.Weight,
-			minAttempts,
-		)
-		registry.Register(durationScorer)
-	}
-
-	// Register uptime scorer (if enabled)
-	if scoringCfg.Scorers.Uptime.Enabled {
-		uptimeScorer := scoring.NewUptimeScorer(
-			database,
-			scoringCfg.Scorers.Uptime.Weight,
-			minAttempts,
-		)
-		registry.Register(uptimeScorer)
-	}
-
-	scoringService := services.NewScoringService(database, registry, cfg.ScoreWindow())
-
+func NewHandlers(database *db.DB, cfg *config.Config, scoringService *services.ScoringService) *Handlers {
 	return &Handlers{
 		scoringService: scoringService,
 		cfg:            cfg,
@@ -208,7 +166,6 @@ func (h *Handlers) GetNodeScore(c *gin.Context) {
 		return
 	}
 
-	// Set defaults
 	window := h.scoringService.DefaultWindow
 	if req.Window != "" {
 		parsedWindow, err := config.ParseDuration(req.Window)

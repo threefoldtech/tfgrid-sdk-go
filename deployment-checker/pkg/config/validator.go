@@ -22,8 +22,8 @@ func validate(c *Config) error {
 	if c.Grid.Mnemonic == "" {
 		return fmt.Errorf("grid.mnemonic is required")
 	}
-	if c.TimescaleDB.URL == "" {
-		return fmt.Errorf("timescaledb.url is required")
+	if c.Database.URL == "" {
+		return fmt.Errorf("database.url is required")
 	}
 
 	validWorkloads := map[string]struct{}{"light": {}, "medium": {}, "heavy": {}}
@@ -35,7 +35,6 @@ func validate(c *Config) error {
 		return fmt.Errorf("nodes.status must be up or healthy")
 	}
 
-	// Validate jitter configuration
 	if c.Probe.JitterMinSeconds < 0 {
 		return fmt.Errorf("probe.jitter_min_seconds must be non-negative")
 	}
@@ -46,7 +45,6 @@ func validate(c *Config) error {
 		return fmt.Errorf("probe.jitter_min_seconds (%d) must be less than or equal to probe.jitter_max_seconds (%d)", c.Probe.JitterMinSeconds, c.Probe.JitterMaxSeconds)
 	}
 
-	// Validate batch size
 	if c.Probe.BatchSize <= 0 {
 		return fmt.Errorf("probe.batch_size must be positive, got %d", c.Probe.BatchSize)
 	}
@@ -54,7 +52,6 @@ func validate(c *Config) error {
 		return fmt.Errorf("probe.batch_size exceeds maximum of %d, got %d", MaxBatchSize, c.Probe.BatchSize)
 	}
 
-	// Validate scorer weights
 	if err := validateScorerWeights(c); err != nil {
 		return err
 	}

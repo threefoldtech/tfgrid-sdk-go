@@ -20,7 +20,6 @@ const (
 )
 
 func GetNodes(ctx context.Context, proxyClient client.Client, filters config.NodesConfig) ([]types.Node, error) {
-	// Add timeout context (5 minutes should be sufficient for pagination)
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
@@ -45,7 +44,6 @@ func GetNodes(ctx context.Context, proxyClient client.Client, filters config.Nod
 		operation := func() error {
 			var pageTotal int
 			var err error
-			// Use timeoutCtx instead of ctx
 			nodes, pageTotal, err = proxyClient.Nodes(timeoutCtx, filter, limit)
 			if err != nil {
 				return fmt.Errorf("failed to query nodes page %d: %w", limit.Page, err)
@@ -88,11 +86,9 @@ func buildFilters(filters config.NodesConfig) types.NodeFilter {
 		filter.Healthy = &[]bool{true}[0]
 	}
 
-	// Always skip rented nodes (mandatory)
 	rented := false
 	filter.Rented = &rented
 
-	// Always skip dedicated farm nodes (mandatory)
 	inDedicatedFarm := false
 	filter.InDedicatedFarm = &inDedicatedFarm
 

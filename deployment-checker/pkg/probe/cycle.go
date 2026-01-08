@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/deployment-checker/pkg/config"
 	"github.com/threefoldtech/deployment-checker/pkg/db"
+	"github.com/threefoldtech/deployment-checker/pkg/grid"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"golang.org/x/sync/semaphore"
@@ -15,23 +17,21 @@ import (
 
 // Cycle manages a deployment cycle
 type Cycle struct {
-	executor  *Executor
-	database  *db.DB
-	cfg       *config.Config
-	collector *Collector
-	errors    []error
-	errorsMu  sync.Mutex
-	wg        sync.WaitGroup
+	gridClient *grid.Client
+	database   *db.DB
+	cfg        *config.Config
+	errors     []error
+	errorsMu   sync.Mutex
+	wg         sync.WaitGroup
 }
 
 // NewCycle creates a new deployment cycle
-func NewCycle(executor *Executor, database *db.DB, cfg *config.Config) *Cycle {
+func NewCycle(gridClient *grid.Client, database *db.DB, cfg *config.Config) *Cycle {
 	return &Cycle{
-		executor:  executor,
-		database:  database,
-		cfg:       cfg,
-		collector: NewCollector(),
-		errors:    make([]error, 0),
+		gridClient: gridClient,
+		database:   database,
+		cfg:        cfg,
+		errors:     make([]error, 0),
 	}
 }
 
@@ -53,9 +53,9 @@ func (c *Cycle) Run(ctx context.Context, proxyClient client.Client, nodes []type
 	jitterMin := c.cfg.JitterMinSeconds()
 	jitterMax := c.cfg.JitterMaxSeconds()
 
-	for i, node := range nodes {
+	for _, node := range nodes {
 		c.wg.Add(1)
-		go func(idx int, n types.Node) {
+		go func(n types.Node) {
 			defer c.wg.Done()
 
 			if err := sem.Acquire(ctx, 1); err != nil {
@@ -71,40 +71,37 @@ func (c *Cycle) Run(ctx context.Context, proxyClient client.Client, nodes []type
 				return
 			}
 
-			attempt, err := c.executor.ExecuteDeployment(ctx, n, jitterMin, jitterMax)
-			if err != nil {
-				c.addError(fmt.Errorf("deployment execution failed for node %d: %w", n.NodeID, err))
-				return
+			if jitter := calculateJitter(jitterMin, jitterMax, n.NodeID); jitter > 0 {
+				time.Sleep(jitter)
 			}
 
-			c.collector.Add(*attempt)
-		}(i, node)
+			log.Info().
+				Int("node_id", n.NodeID).
+				Int("farm_id", n.FarmID).
+				Str("workload", c.cfg.Probe.WorkloadSize).
+				Msg("Deploying VM to node")
+
+			cpu, memoryMB, diskMB := c.cfg.GetWorkload()
+			timeoutCtx, cancel := context.WithTimeout(ctx, c.cfg.Timeout())
+			result, err := c.gridClient.MakeDeployment(timeoutCtx, n, cpu, memoryMB, diskMB)
+			cancel()
+
+			attempt := mapResultToAttempt(result, n, err)
+
+			if err := c.database.RecordAttempt(ctx, *attempt); err != nil {
+				log.Error().
+					Err(err).
+					Int("node_id", n.NodeID).
+					Msg("Failed to record attempt")
+				c.addError(fmt.Errorf("failed to record attempt for node %d: %w", n.NodeID, err))
+			}
+		}(node)
 	}
 
 	c.wg.Wait()
 
-	// Batch insert all attempts
-	attempts := c.collector.GetAll()
-	if len(attempts) > 0 {
-		batchSize := c.cfg.BatchSize()
-		if err := c.database.RecordAttemptsBatch(ctx, attempts, batchSize); err != nil {
-			log.Error().
-				Err(err).
-				Int("attempts", len(attempts)).
-				Int("batch_size", batchSize).
-				Msg("Failed to record attempts batch")
-			c.addError(fmt.Errorf("failed to record attempts batch: %w", err))
-		} else {
-			log.Debug().
-				Int("attempts", len(attempts)).
-				Int("batch_size", batchSize).
-				Msg("Successfully recorded attempts batch")
-		}
-	}
-
 	log.Info().
 		Int("total_nodes", len(nodes)).
-		Int("attempts_recorded", len(attempts)).
 		Int("errors", len(c.errors)).
 		Msg("Deployment cycle completed")
 

@@ -3,21 +3,18 @@ package scoring
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/threefoldtech/deployment-checker/pkg/db"
 )
 
-// DurationScorer calculates scores based on deployment duration
-// This is a placeholder for future implementation
 type DurationScorer struct {
 	database    *db.DB
 	weight      float64
 	minAttempts int64
-	// Future: can add thresholds like maxDurationMs, idealDurationMs
 }
 
-// NewDurationScorer creates a new duration scorer
 func NewDurationScorer(database *db.DB, weight float64, minAttempts int64) *DurationScorer {
 	return &DurationScorer{
 		database:    database,
@@ -26,26 +23,20 @@ func NewDurationScorer(database *db.DB, weight float64, minAttempts int64) *Dura
 	}
 }
 
-// Name returns the name of this scorer
 func (d *DurationScorer) Name() string {
 	return "duration"
 }
 
-// Weight returns the weight of this scorer
 func (d *DurationScorer) Weight() float64 {
 	return d.weight
 }
 
-// Calculate computes the duration-based score for a node
-// Currently returns a placeholder score
-// Future implementation: normalize duration (shorter = better, score 0-1)
 func (d *DurationScorer) Calculate(ctx context.Context, nodeID int64, window time.Duration) (*ScoreResult, error) {
 	scoreData, err := d.database.GetNodeScoreData(ctx, nodeID, window)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node score data: %w", err)
 	}
 
-	// Check minimum attempts threshold
 	if scoreData.TotalAttempts < d.minAttempts {
 		return &ScoreResult{
 			Score:  0.0,
@@ -57,16 +48,31 @@ func (d *DurationScorer) Calculate(ctx context.Context, nodeID int64, window tim
 		}, nil
 	}
 
-	// Placeholder: return neutral score until implemented
-	// Future: normalize average duration to 0-1 scale
-	// Shorter durations should score higher
 	var avgDuration float64
-	if scoreData.AvgDurationMs != nil {
-		avgDuration = *scoreData.AvgDurationMs
+	if scoreData.AvgDurationMs == nil || *scoreData.AvgDurationMs <= 0 {
+		return &ScoreResult{
+			Score:  0.5,
+			Metric: "duration",
+			Value: map[string]interface{}{
+				"avg_duration_ms": 0,
+				"total_attempts":  scoreData.TotalAttempts,
+			},
+		}, nil
 	}
 
-	// Placeholder score (always returns 0.5 until properly implemented)
-	score := 0.5
+	avgDuration = *scoreData.AvgDurationMs
+
+	// Normalize duration to 0-1 scale where shorter durations score higher
+	// Using exponential decay: score = e^(-avgDuration / threshold)
+	// Threshold of 20000ms (20s) gives a smooth curve where:
+	// - Very fast deployments (< 5s) score close to 1.0
+	// - Medium deployments (~20s) score around 0.37
+	// - Slow deployments (> 60s) score close to 0.0
+	const thresholdMs = 20000.0 // 20 seconds threshold for exponential decay
+	score := math.Exp(-avgDuration / thresholdMs)
+
+	// Clamp to [0, 1] range
+	score = math.Max(0.0, math.Min(1.0, score))
 
 	return &ScoreResult{
 		Score:  score,

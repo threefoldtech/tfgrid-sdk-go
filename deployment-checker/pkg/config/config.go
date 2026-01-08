@@ -8,14 +8,13 @@ import (
 )
 
 type Config struct {
-	LogLevel    string         `mapstructure:"log_level"`
-	Probe       ProbeConfig    `mapstructure:"probe"`
-	Scoring     ScoringConfig  `mapstructure:"scoring"`
-	Grid        GridConfig     `mapstructure:"grid"`
-	Nodes       NodesConfig    `mapstructure:"nodes"`
-	TimescaleDB TimescaleDB    `mapstructure:"timescaledb"`
-	Database    DatabaseConfig `mapstructure:"database"`
-	API         APIConfig      `mapstructure:"api"`
+	LogLevel string         `mapstructure:"log_level"`
+	API      APIConfig      `mapstructure:"api"`
+	Database DatabaseConfig `mapstructure:"database"`
+	Grid     GridConfig     `mapstructure:"grid"`
+	Nodes    NodesConfig    `mapstructure:"nodes"`
+	Probe    ProbeConfig    `mapstructure:"probe"`
+	Scoring  ScoringConfig  `mapstructure:"scoring"`
 
 	// viper does not parse duration directly
 	interval        time.Duration
@@ -68,13 +67,10 @@ type NodesConfig struct {
 	Exclude []uint64 `mapstructure:"exclude"`
 }
 
-type TimescaleDB struct {
-	URL string `mapstructure:"url"`
-}
-
 type DatabaseConfig struct {
-	RetentionDays           int  `mapstructure:"retention_days"`
-	UseTimescaleDBRetention bool `mapstructure:"use_timescaledb_retention"`
+	URL                     string `mapstructure:"url"`
+	RetentionDays           int    `mapstructure:"retention_days"`
+	UseTimescaleDBRetention bool   `mapstructure:"use_timescaledb_retention"`
 }
 
 type APIConfig struct {
