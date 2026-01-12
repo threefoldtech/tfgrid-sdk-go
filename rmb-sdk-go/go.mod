@@ -1,6 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go
 
-go 1.23.0
+go 1.24.0
 
 toolchain go1.24.2
 
@@ -19,7 +19,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30
 	go.uber.org/goleak v1.3.0
-	gonum.org/v1/gonum v0.16.0
+	gonum.org/v1/gonum v0.17.0
 	google.golang.org/protobuf v1.36.6
 )
 
