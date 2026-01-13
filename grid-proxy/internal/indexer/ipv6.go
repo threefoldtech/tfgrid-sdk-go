@@ -29,6 +29,10 @@ func (w *Ipv6Work) Finders() map[string]time.Duration {
 	return w.finders
 }
 
+func (w *Ipv6Work) IndexedTable() string {
+	return "node_ipv6"
+}
+
 func (w *Ipv6Work) Get(ctx context.Context, rmb *peer.RpcClient, id uint32) ([]types.HasIpv6, error) {
 	var has_ipv6 bool
 	if err := callNode(ctx, rmb, cmd, nil, id, &has_ipv6); err != nil {

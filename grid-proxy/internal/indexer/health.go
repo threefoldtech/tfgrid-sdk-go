@@ -31,6 +31,10 @@ func (w *HealthWork) Finders() map[string]time.Duration {
 	return w.findersInterval
 }
 
+func (w *HealthWork) IndexedTable() string {
+	return "health_report"
+}
+
 func (w *HealthWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.HealthReport, error) {
 	var diagnostics diagnostics.Diagnostics
 	_ = callNode(ctx, rmb, healthCallCmd, nil, twinId, &diagnostics)

@@ -30,6 +30,10 @@ func (w *FeatureWork) Finders() map[string]time.Duration {
 	return w.findersInterval
 }
 
+func (w *FeatureWork) IndexedTable() string {
+	return "node_features"
+}
+
 func (w *FeatureWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.NodeFeatures, error) {
 	var features []string
 	err := callNode(ctx, rmb, featuresCallCmd, nil, twinId, &features)

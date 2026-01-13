@@ -35,6 +35,10 @@ func (w *DMIWork) Finders() map[string]time.Duration {
 	return w.findersInterval
 }
 
+func (w *DMIWork) IndexedTable() string {
+	return "dmi"
+}
+
 func (w *DMIWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.Dmi, error) {
 	var dmi zosDmiTypes.DMI
 	err := callNode(ctx, rmb, DmiCallCmd, nil, twinId, &dmi)
