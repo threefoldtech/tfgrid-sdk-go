@@ -38,6 +38,8 @@ type SubstrateExt interface {
 	NewIdentityFromSr25519Phrase(mnemonic string) (substrate.Identity, error)
 	AcceptTermsAndConditions(identity substrate.Identity, docLink string, docHash string) error
 	CreateTwin(identity substrate.Identity, relay string, pk []byte) (uint32, error)
+	BondTwinAccount(stashIdentity substrate.Identity, twinID uint32) error
+	GetTwinBondedAccount(twinID uint32) (*substrate.AccountID, error)
 	CreateRentContract(identity substrate.Identity, nodeID uint32, solutionProviderID *uint64) (uint64, error)
 	Transfer(amount uint64, source substrate.Identity, destinationPk []byte) error
 
@@ -64,6 +66,8 @@ type SubstrateExt interface {
 	GetBalance(identity substrate.Identity) (balance substrate.Balance, err error)
 	GetTFTPrice() (balance types.U32, err error)
 	GetTFTBillingRate() (rate types.U32, err error)
+	GetTFTBillingRateAt(block uint64) (float64, error)
+	GetCurrentHeight() (uint32, error)
 	GetPricingPolicy(policyID uint32) (pricingPolicy substrate.PricingPolicy, err error)
 	GetTwinPK(twinID uint32) ([]byte, error)
 	GetContractIDByNameRegistration(name string) (uint64, error)
@@ -105,6 +109,20 @@ func (s *SubstrateImpl) CreateTwin(identity substrate.Identity, relay string, pk
 	defer s.m.Unlock()
 	twin, err := s.Substrate.CreateTwin(identity, relay, pk)
 	return twin, normalizeNotFoundErrors(err)
+}
+
+// BondTwinAccount bonds a twin account
+func (s *SubstrateImpl) BondTwinAccount(stashIdentity substrate.Identity, twinID uint32) error {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return normalizeNotFoundErrors(s.Substrate.BondTwinAccount(stashIdentity, twinID))
+}
+
+// GetTwinBondedAccount returns the twin's bonded account
+func (s *SubstrateImpl) GetTwinBondedAccount(twinID uint32) (*substrate.AccountID, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return s.Substrate.GetTwinBondedAccount(twinID)
 }
 
 // CreateRentContract creates a rent contract
@@ -150,6 +168,15 @@ func (s *SubstrateImpl) GetTFTPrice() (balance types.U32, err error) {
 func (s *SubstrateImpl) GetTFTBillingRate() (rate types.U32, err error) {
 	billingRate, err := s.Substrate.GetTFTBillingRate()
 	return billingRate, normalizeNotFoundErrors(err)
+}
+
+func (s *SubstrateImpl) GetTFTBillingRateAt(block uint64) (float64, error) {
+	rate, err := s.Substrate.GetTFTBillingRateAt(block)
+	return float64(rate), normalizeNotFoundErrors(err)
+}
+
+func (s *SubstrateImpl) GetCurrentHeight() (uint32, error) {
+	return s.Substrate.GetCurrentHeight()
 }
 
 // GetPricingPolicy returns a pricing policy

@@ -165,6 +165,20 @@ func (mr *MockSubstrateExtMockRecorder) BatchCreateContract(identity, contractsD
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchCreateContract", reflect.TypeOf((*MockSubstrateExt)(nil).BatchCreateContract), identity, contractsData)
 }
 
+// BondTwinAccount mocks base method.
+func (m *MockSubstrateExt) BondTwinAccount(stashIdentity substrate.Identity, twinID uint32) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BondTwinAccount", stashIdentity, twinID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BondTwinAccount indicates an expected call of BondTwinAccount.
+func (mr *MockSubstrateExtMockRecorder) BondTwinAccount(stashIdentity, twinID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BondTwinAccount", reflect.TypeOf((*MockSubstrateExt)(nil).BondTwinAccount), stashIdentity, twinID)
+}
+
 // CancelContract mocks base method.
 func (m *MockSubstrateExt) CancelContract(identity substrate.Identity, contractID uint64) error {
 	m.ctrl.T.Helper()
@@ -384,6 +398,21 @@ func (mr *MockSubstrateExtMockRecorder) GetContractWithHash(identity, node, hash
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContractWithHash", reflect.TypeOf((*MockSubstrateExt)(nil).GetContractWithHash), identity, node, hash)
 }
 
+// GetCurrentHeight mocks base method.
+func (m *MockSubstrateExt) GetCurrentHeight() (uint32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCurrentHeight")
+	ret0, _ := ret[0].(uint32)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCurrentHeight indicates an expected call of GetCurrentHeight.
+func (mr *MockSubstrateExtMockRecorder) GetCurrentHeight() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentHeight", reflect.TypeOf((*MockSubstrateExt)(nil).GetCurrentHeight))
+}
+
 // GetDedicatedNodePrice mocks base method.
 func (m *MockSubstrateExt) GetDedicatedNodePrice(nodeID uint32) (uint64, error) {
 	m.ctrl.T.Helper()
@@ -504,6 +533,21 @@ func (mr *MockSubstrateExtMockRecorder) GetTFTBillingRate() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTFTBillingRate", reflect.TypeOf((*MockSubstrateExt)(nil).GetTFTBillingRate))
 }
 
+// GetTFTBillingRateAt mocks base method.
+func (m *MockSubstrateExt) GetTFTBillingRateAt(block uint64) (float64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTFTBillingRateAt", block)
+	ret0, _ := ret[0].(float64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTFTBillingRateAt indicates an expected call of GetTFTBillingRateAt.
+func (mr *MockSubstrateExtMockRecorder) GetTFTBillingRateAt(block interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTFTBillingRateAt", reflect.TypeOf((*MockSubstrateExt)(nil).GetTFTBillingRateAt), block)
+}
+
 // GetTFTPrice mocks base method.
 func (m *MockSubstrateExt) GetTFTPrice() (types.U32, error) {
 	m.ctrl.T.Helper()
@@ -517,6 +561,21 @@ func (m *MockSubstrateExt) GetTFTPrice() (types.U32, error) {
 func (mr *MockSubstrateExtMockRecorder) GetTFTPrice() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTFTPrice", reflect.TypeOf((*MockSubstrateExt)(nil).GetTFTPrice))
+}
+
+// GetTwinBondedAccount mocks base method.
+func (m *MockSubstrateExt) GetTwinBondedAccount(twinID uint32) (*substrate.AccountID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTwinBondedAccount", twinID)
+	ret0, _ := ret[0].(*substrate.AccountID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTwinBondedAccount indicates an expected call of GetTwinBondedAccount.
+func (mr *MockSubstrateExtMockRecorder) GetTwinBondedAccount(twinID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTwinBondedAccount", reflect.TypeOf((*MockSubstrateExt)(nil).GetTwinBondedAccount), twinID)
 }
 
 // GetTwinByPubKey mocks base method.

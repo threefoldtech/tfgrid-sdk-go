@@ -143,8 +143,8 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30 h1:sH/hiHxCEpeIm2gJsmu4GxKskfQVPZMz9PAgDwk1BfY=
-github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30/go.mod h1:cOL5YgHUmDG5SAXrsZxFjUECRQQuAqOoqvXhZG5sEUw=
+github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20251221150744-62c2f0fbdc2e h1:0U8ys+JAlxZyr2A69K8EdB37oQB2sFtCUbUeZBKLgio=
+github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20251221150744-62c2f0fbdc2e/go.mod h1:cOL5YgHUmDG5SAXrsZxFjUECRQQuAqOoqvXhZG5sEUw=
 github.com/threefoldtech/zosbase v1.0.4 h1:A4kFukh4IO5r5e9F51aqKgXOyTG5cWknxqEVGtQ647w=
 github.com/threefoldtech/zosbase v1.0.4/go.mod h1:ZZ1M8SZVr7k4tH2URr5DMEbcwZoQDpBZWgboHdiNE+k=
 github.com/tklauser/go-sysconf v0.3.12 h1:0QaGUFOdQaIVdPgfITYzaTegZvdCjmYO52cSFAEVmqU=

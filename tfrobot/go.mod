@@ -13,7 +13,7 @@ require (
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.11.1
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20251221150744-62c2f0fbdc2e
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.18
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.0
 	github.com/vedhavyas/go-subkey v1.0.3
