@@ -1,8 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/gridify
 
-go 1.23.0
-
-toolchain go1.24.2
+go 1.25.0
 
 require (
 	github.com/cosmos/go-bip39 v1.0.0
@@ -23,7 +21,6 @@ require (
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
-	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
@@ -34,7 +31,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/ethereum/go-ethereum v1.11.6 // indirect
-	github.com/getsentry/sentry-go v0.29.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
@@ -65,17 +61,15 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.5 // indirect
+	github.com/threefoldtech/zos v0.5.6-0.20240902110349-172a0a29a6ee // indirect
 	github.com/threefoldtech/zosbase v1.0.4 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	go.opentelemetry.io/otel v1.38.0 // indirect
-	go.opentelemetry.io/otel/trace v1.38.0 // indirect
-	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/crypto v0.44.0 // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
-	golang.org/x/net v0.39.0 // indirect
-	golang.org/x/sync v0.13.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
@@ -83,9 +77,3 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/threefoldtech/tfgrid-sdk-go/grid-client => ../grid-client
-
-replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy => ../grid-proxy
-
-replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go => ../rmb-sdk-go

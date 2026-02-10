@@ -1,8 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/grid-cli
 
-go 1.23.0
-
-toolchain go1.24.2
+go 1.25.0
 
 require (
 	github.com/cosmos/go-bip39 v1.0.0
@@ -10,7 +8,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.11.1
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.18
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.5
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.0
 	github.com/threefoldtech/zosbase v1.0.4
 	github.com/vedhavyas/go-subkey v1.0.3
@@ -29,6 +27,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/ethereum/go-ethereum v1.11.6 // indirect
 	github.com/getsentry/sentry-go v0.29.1 // indirect
+	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
@@ -51,22 +50,14 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.5 // indirect
-	go.opentelemetry.io/otel v1.38.0 // indirect
-	go.opentelemetry.io/otel/trace v1.38.0 // indirect
-	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/crypto v0.44.0 // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
-	golang.org/x/sync v0.13.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/threefoldtech/tfgrid-sdk-go/grid-client => ../grid-client
-
-replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy => ../grid-proxy
-
-replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go => ../rmb-sdk-go
