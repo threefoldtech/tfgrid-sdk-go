@@ -128,6 +128,67 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				Target: node.Power.Target,
 			}
 			status := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
+
+			total := g.data.NodeTotalResources[node.NodeID]
+
+			sliceCru := uint64(0)
+			sliceMru := uint64(0)
+			sliceSru := uint64(0)
+			sliceHru := uint64(0)
+			if total.MRU > 0 {
+				sliceMru = types.SliceMRUSizeBytes
+				sliceCount := total.MRU / types.SliceMRUSizeBytes
+				if sliceCount == 0 {
+					sliceCount = 1
+				}
+				if total.CRU > 0 {
+					sliceCru = (total.CRU * 2) / sliceCount
+					if sliceCru == 0 {
+						sliceCru = 1
+					}
+				}
+				sliceSru = total.SRU / sliceCount
+				sliceHru = total.HRU / sliceCount
+			}
+
+			var slicesNeeded uint64
+			if filter.FreeMRU != nil || filter.FreeSRU != nil || filter.FreeHRU != nil {
+				mruVal := uint64(0)
+				sruVal := uint64(0)
+				hruVal := uint64(0)
+				if filter.FreeMRU != nil {
+					mruVal = *filter.FreeMRU
+				}
+				if filter.FreeSRU != nil {
+					sruVal = *filter.FreeSRU
+				}
+				if filter.FreeHRU != nil {
+					hruVal = *filter.FreeHRU
+				}
+
+				free := CalcFreeResources(total, g.data.NodeUsedResources[node.NodeID])
+				if satisfiesFreeCapacityFilter(mruVal, sruVal, hruVal, sliceMru, sliceSru, sliceHru, free) {
+					var slicesNeededMRU, slicesNeededSRU, slicesNeededHRU uint64
+					if sliceMru > 0 {
+						slicesNeededMRU = (mruVal + sliceMru - 1) / sliceMru
+					}
+					if sliceSru > 0 {
+						slicesNeededSRU = (sruVal + sliceSru - 1) / sliceSru
+					}
+					if sliceHru > 0 {
+						slicesNeededHRU = (hruVal + sliceHru - 1) / sliceHru
+					}
+
+					slicesNeeded = slicesNeededMRU
+					if slicesNeededSRU > slicesNeeded {
+						slicesNeeded = slicesNeededSRU
+					}
+					if slicesNeededHRU > slicesNeeded {
+						slicesNeeded = slicesNeededHRU
+					}
+				}
+			}
+
 			res = append(res, types.Node{
 				ID:              node.ID,
 				NodeID:          int(node.NodeID),
@@ -204,6 +265,13 @@ func (g *GridProxyMockClient) Nodes(ctx context.Context, filter types.NodeFilter
 				PriceUsd:    calcDiscount(calcNodePrice(g.data, node), limit.Balance),
 				FarmFreeIps: uint(g.data.FreeIPs[node.FarmID]),
 				Features:    g.data.NodeFeatures[uint32(node.TwinID)],
+				Slice: types.Capacity{
+					CRU: sliceCru,
+					SRU: gridtypes.Unit(sliceSru),
+					HRU: gridtypes.Unit(sliceHru),
+					MRU: gridtypes.Unit(sliceMru),
+				},
+				SlicesNeeded: slicesNeeded,
 			})
 		}
 	}
@@ -236,6 +304,29 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		Target: node.Power.Target,
 	}
 	status := nodestatus.DecideNodeStatus(nodePower, int64(node.UpdatedAt))
+
+	total := g.data.NodeTotalResources[node.NodeID]
+	const sliceMruSize = types.SliceMRUSizeBytes // 1GB in bytes
+	sliceCru := uint64(0)
+	sliceMru := uint64(0)
+	sliceSru := uint64(0)
+	sliceHru := uint64(0)
+	if total.MRU > 0 {
+		sliceMru = sliceMruSize
+		sliceCount := total.MRU / sliceMruSize
+		if sliceCount == 0 {
+			sliceCount = 1
+		}
+		if total.CRU > 0 {
+			sliceCru = (total.CRU * 2) / sliceCount
+			if sliceCru == 0 {
+				sliceCru = 1
+			}
+		}
+		sliceSru = total.SRU / sliceCount
+		sliceHru = total.HRU / sliceCount
+	}
+
 	res = types.NodeWithNestedCapacity{
 		ID:              node.ID,
 		NodeID:          int(node.NodeID),
@@ -314,6 +405,12 @@ func (g *GridProxyMockClient) Node(ctx context.Context, nodeID uint32) (res type
 		PriceUsd:    calcNodePrice(g.data, node),
 		FarmFreeIps: uint(g.data.FreeIPs[node.FarmID]),
 		Features:    g.data.NodeFeatures[uint32(node.TwinID)],
+		Slice: types.Capacity{
+			CRU: sliceCru,
+			SRU: gridtypes.Unit(sliceSru),
+			HRU: gridtypes.Unit(sliceHru),
+			MRU: gridtypes.Unit(sliceMru),
+		},
 	}
 	return
 }
@@ -342,17 +439,40 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	used := data.NodeUsedResources[n.NodeID]
 	free := CalcFreeResources(total, used)
 
+	const sliceMruSize = types.SliceMRUSizeBytes // 1GB
+	var sliceMru, sliceSru, sliceHru uint64
+	if total.MRU > 0 {
+		sliceMru = sliceMruSize
+		sliceCount := total.MRU / sliceMruSize
+		if sliceCount == 0 {
+			sliceCount = 1
+		}
+		sliceSru = total.SRU / sliceCount
+		sliceHru = total.HRU / sliceCount
+	}
+
 	nodeStatus := nodestatus.DecideNodeStatus(nodePower, int64(n.UpdatedAt))
 	if len(f.Status) != 0 && !slices.Contains(f.Status, nodeStatus) {
 		return false
 	}
 
-	if f.FreeMRU != nil && int64(*f.FreeMRU) > int64(free.MRU) {
-		return false
-	}
+	if f.FreeMRU != nil || f.FreeSRU != nil || f.FreeHRU != nil {
+		mruVal := uint64(0)
+		sruVal := uint64(0)
+		hruVal := uint64(0)
+		if f.FreeMRU != nil {
+			mruVal = *f.FreeMRU
+		}
+		if f.FreeSRU != nil {
+			sruVal = *f.FreeSRU
+		}
+		if f.FreeHRU != nil {
+			hruVal = *f.FreeHRU
+		}
 
-	if f.FreeHRU != nil && int64(*f.FreeHRU) > int64(free.HRU) {
-		return false
+		if !satisfiesFreeCapacityFilter(mruVal, sruVal, hruVal, sliceMru, sliceSru, sliceHru, free) {
+			return false
+		}
 	}
 
 	if f.Healthy != nil && *f.Healthy != data.HealthReports[uint32(n.TwinID)] {
@@ -364,10 +484,6 @@ func (n *Node) satisfies(f types.NodeFilter, data *DBData) bool {
 	}
 
 	if len(f.Features) != 0 && !sliceContains(data.NodeFeatures[uint32(n.TwinID)], f.Features) {
-		return false
-	}
-
-	if f.FreeSRU != nil && int64(*f.FreeSRU) > int64(free.SRU) {
 		return false
 	}
 
@@ -555,4 +671,8 @@ func gpuSatisfied(gpu types.NodeGPU, f types.NodeFilter) bool {
 
 func contains(s string, sub string) bool {
 	return strings.Contains(strings.ToLower(s), sub)
+}
+
+func (g *GridProxyMockClient) UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceReq types.UpdateNodeSliceRequest, twinID uint32, mnemonic string) error {
+	return nil
 }

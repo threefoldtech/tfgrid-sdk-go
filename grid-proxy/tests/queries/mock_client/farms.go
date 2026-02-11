@@ -128,16 +128,36 @@ func (f *Farm) satisfyFarmNodesFilter(data *DBData, filter types.FarmFilter) boo
 		total := data.NodeTotalResources[node.NodeID]
 		used := data.NodeUsedResources[node.NodeID]
 		free := CalcFreeResources(total, used)
-		if filter.NodeFreeHRU != nil && int64(free.HRU) < int64(*filter.NodeFreeHRU) {
-			continue
+
+		// Derive default slice sizes (must match server resources_cache slice_* logic)
+		var sliceMru, sliceSru, sliceHru uint64
+		if total.MRU > 0 {
+			sliceMru = types.SliceMRUSizeBytes
+			sliceCount := total.MRU / types.SliceMRUSizeBytes
+			if sliceCount == 0 {
+				sliceCount = 1
+			}
+			sliceSru = total.SRU / sliceCount
+			sliceHru = total.HRU / sliceCount
 		}
 
-		if filter.NodeFreeMRU != nil && int64(free.MRU) < int64(*filter.NodeFreeMRU) {
-			continue
-		}
+		if filter.NodeFreeMRU != nil || filter.NodeFreeSRU != nil || filter.NodeFreeHRU != nil {
+			mruVal := uint64(0)
+			sruVal := uint64(0)
+			hruVal := uint64(0)
+			if filter.NodeFreeMRU != nil {
+				mruVal = *filter.NodeFreeMRU
+			}
+			if filter.NodeFreeSRU != nil {
+				sruVal = *filter.NodeFreeSRU
+			}
+			if filter.NodeFreeHRU != nil {
+				hruVal = *filter.NodeFreeHRU
+			}
 
-		if filter.NodeFreeSRU != nil && int64(free.SRU) < int64(*filter.NodeFreeSRU) {
-			continue
+			if !satisfiesFreeCapacityFilter(mruVal, sruVal, hruVal, sliceMru, sliceSru, sliceHru, free) {
+				continue
+			}
 		}
 
 		if filter.NodeTotalCRU != nil && total.CRU < *filter.NodeTotalCRU {

@@ -28,6 +28,9 @@ type Database interface {
 	GetContractsTotalBilledAmount(ctx context.Context, contractIds []uint32) (uint64, error)
 	GetPublicIps(ctx context.Context, filter types.PublicIpFilter, limit types.Limit) ([]types.PublicIP, uint, error)
 
+	// node slice management
+	UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceMru, sliceSru, sliceHru, sliceCru uint64) error
+
 	// indexer utils
 	DeleteOldGpus(ctx context.Context, nodeTwinIds []uint32, expiration int64) error
 	GetLastNodeTwinID(ctx context.Context) (uint32, error)
@@ -126,6 +129,11 @@ type Node struct {
 	PriceUsd           float64
 	FarmFreeIps        uint
 	Features           []string `gorm:"type:jsonb;serializer:json"`
+	SliceMru           int64    `gorm:"slice_mru"`
+	SliceSru           int64    `gorm:"slice_sru"`
+	SliceHru           int64    `gorm:"slice_hru"`
+	SliceCru           int64    `gorm:"slice_cru"`
+	SlicesNeeded       int64    `gorm:"slices_needed"`
 }
 
 // NodePower struct is the farmerbot report for node status

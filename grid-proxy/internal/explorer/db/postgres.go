@@ -395,6 +395,10 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"resources_cache.threads_cpu as threads",
 			"resources_cache.workloads_cpu as workloads",
 			"public_ips_cache.free_ips as farm_free_ips",
+			"resources_cache.slice_mru",
+			"resources_cache.slice_sru",
+			"resources_cache.slice_hru",
+			"resources_cache.slice_cru",
 			calculatedDiscountColumn,
 		).
 		Joins(`
@@ -466,14 +470,49 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		`).
 		Group(`resources_cache.farm_id, renter, resources_cache.extra_fee`)
 
-	if filter.NodeFreeMRU != nil {
-		nodeQuery = nodeQuery.Where("resources_cache.free_mru >= ?", *filter.NodeFreeMRU)
-	}
-	if filter.NodeFreeHRU != nil {
-		nodeQuery = nodeQuery.Where("resources_cache.free_hru >= ?", *filter.NodeFreeHRU)
-	}
-	if filter.NodeFreeSRU != nil {
-		nodeQuery = nodeQuery.Where("resources_cache.free_sru >= ?", *filter.NodeFreeSRU)
+	// Validate resource requests align with slice boundaries for farm node filtering
+	if filter.NodeFreeMRU != nil || filter.NodeFreeSRU != nil || filter.NodeFreeHRU != nil {
+		mruVal := uint64(0)
+		sruVal := uint64(0)
+		hruVal := uint64(0)
+		if filter.NodeFreeMRU != nil {
+			mruVal = *filter.NodeFreeMRU
+		}
+		if filter.NodeFreeSRU != nil {
+			sruVal = *filter.NodeFreeSRU
+		}
+		if filter.NodeFreeHRU != nil {
+			hruVal = *filter.NodeFreeHRU
+		}
+
+		nodeQuery = nodeQuery.Joins(`
+			LEFT JOIN (
+				SELECT
+					rc.node_id,
+					CEIL(
+						GREATEST(
+							COALESCE(?::bigint::numeric / NULLIF(rc.slice_mru, 0), 0),
+							COALESCE(?::bigint::numeric / NULLIF(rc.slice_sru, 0), 0),
+							COALESCE(?::bigint::numeric / NULLIF(rc.slice_hru, 0), 0)
+						)
+					)::bigint AS slices_needed,
+					LEAST(
+						COALESCE(rc.free_mru / NULLIF(rc.slice_mru, 0), 1e18),
+						COALESCE(rc.free_sru / NULLIF(rc.slice_sru, 0), 1e18),
+						COALESCE(rc.free_hru / NULLIF(rc.slice_hru, 0), 1e18)
+					) AS slices_available
+				FROM resources_cache rc
+				WHERE
+					NOT (
+						(?::bigint > 0 AND rc.slice_mru = 0) OR
+						(?::bigint > 0 AND rc.slice_sru = 0) OR
+						(?::bigint > 0 AND rc.slice_hru = 0)
+					)
+			) AS node_slices ON node_slices.node_id = resources_cache.node_id
+		`, mruVal, sruVal, hruVal, mruVal, sruVal, hruVal).Where(`
+			node_slices.slices_needed > 0
+			AND node_slices.slices_needed <= node_slices.slices_available
+		`)
 	}
 	if filter.NodeTotalCRU != nil {
 		nodeQuery = nodeQuery.Where("resources_cache.total_cru >= ?", *filter.NodeTotalCRU)
@@ -662,14 +701,53 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	if filter.HasIpv6 != nil {
 		q = q.Where("COALESCE(node_ipv6.has_ipv6, false) = ? ", *filter.HasIpv6)
 	}
-	if filter.FreeMRU != nil {
-		q = q.Where("resources_cache.free_mru >= ?", *filter.FreeMRU)
-	}
-	if filter.FreeHRU != nil {
-		q = q.Where("resources_cache.free_hru >= ?", *filter.FreeHRU)
-	}
-	if filter.FreeSRU != nil {
-		q = q.Where("resources_cache.free_sru >= ?", *filter.FreeSRU)
+	if filter.FreeMRU != nil || filter.FreeSRU != nil || filter.FreeHRU != nil {
+		mruVal := uint64(0)
+		sruVal := uint64(0)
+		hruVal := uint64(0)
+		if filter.FreeMRU != nil {
+			mruVal = *filter.FreeMRU
+		}
+		if filter.FreeSRU != nil {
+			sruVal = *filter.FreeSRU
+		}
+		if filter.FreeHRU != nil {
+			hruVal = *filter.FreeHRU
+		}
+
+		q = q.Joins(`
+			LEFT JOIN (
+				SELECT
+					rc.node_id,
+					CEIL(
+						GREATEST(
+							COALESCE(?::bigint::numeric / NULLIF(rc.slice_mru, 0), 0),
+							COALESCE(?::bigint::numeric / NULLIF(rc.slice_sru, 0), 0),
+							COALESCE(?::bigint::numeric / NULLIF(rc.slice_hru, 0), 0)
+						)
+					)::bigint AS slices_needed,
+					LEAST(
+						COALESCE(rc.free_mru / NULLIF(rc.slice_mru, 0), 1e18),
+						COALESCE(rc.free_sru / NULLIF(rc.slice_sru, 0), 1e18),
+						COALESCE(rc.free_hru / NULLIF(rc.slice_hru, 0), 1e18)
+					) AS slices_available
+				FROM resources_cache rc
+				WHERE
+					NOT (
+						(?::bigint > 0 AND rc.slice_mru = 0) OR
+						(?::bigint > 0 AND rc.slice_sru = 0) OR
+						(?::bigint > 0 AND rc.slice_hru = 0)
+					)
+			) AS node_slices ON node_slices.node_id = resources_cache.node_id
+		`, mruVal, sruVal, hruVal, mruVal, sruVal, hruVal).
+			Where(`
+				node_slices.slices_needed > 0
+				AND node_slices.slices_needed <= node_slices.slices_available
+			`)
+
+		if stmt := q.Statement; stmt != nil && len(stmt.Selects) > 0 {
+			stmt.Selects = append(stmt.Selects, "node_slices.slices_needed AS slices_needed")
+		}
 	}
 	if filter.TotalCRU != nil {
 		q = q.Where("resources_cache.total_cru >= ?", *filter.TotalCRU)
@@ -1127,4 +1205,27 @@ func (d *PostgresDatabase) GetPublicIps(ctx context.Context, filter types.Public
 		return ips, uint(count), errors.Wrap(res.Error, "failed to scan returned ips from database")
 	}
 	return ips, uint(count), nil
+}
+
+// UpdateNodeSlice updates the slice configuration for a specific node
+func (d *PostgresDatabase) UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceMru, sliceSru, sliceHru, sliceCru uint64) error {
+	result := d.gormDB.WithContext(ctx).
+		Table("resources_cache").
+		Where("node_id = ?", nodeID).
+		Updates(map[string]interface{}{
+			"slice_mru": sliceMru,
+			"slice_sru": sliceSru,
+			"slice_hru": sliceHru,
+			"slice_cru": sliceCru,
+		})
+
+	if result.Error != nil {
+		return errors.Wrap(result.Error, "failed to update node slice")
+	}
+
+	if result.RowsAffected == 0 {
+		return ErrNodeNotFound
+	}
+
+	return nil
 }

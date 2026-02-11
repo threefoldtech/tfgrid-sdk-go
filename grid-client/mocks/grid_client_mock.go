@@ -383,3 +383,17 @@ func (mr *MockClientMockRecorder) Twins(ctx, filter, pagination interface{}) *go
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Twins", reflect.TypeOf((*MockClient)(nil).Twins), ctx, filter, pagination)
 }
+
+// UpdateNodeSlice mocks base method.
+func (m *MockClient) UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceReq types.UpdateNodeSliceRequest, twinID uint32, mnemonic string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateNodeSlice", ctx, nodeID, sliceReq, twinID, mnemonic)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateNodeSlice indicates an expected call of UpdateNodeSlice.
+func (mr *MockClientMockRecorder) UpdateNodeSlice(ctx, nodeID, sliceReq, twinID, mnemonic interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNodeSlice", reflect.TypeOf((*MockClient)(nil).UpdateNodeSlice), ctx, nodeID, sliceReq, twinID, mnemonic)
+}

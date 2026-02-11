@@ -89,6 +89,13 @@ func nodeFromDBNode(info db.Node) types.Node {
 		PriceUsd:    math.Round(info.PriceUsd*1000) / 1000,
 		FarmFreeIps: info.FarmFreeIps,
 		Features:    info.Features,
+		Slice: types.Capacity{
+			CRU: uint64(info.SliceCru),
+			SRU: gridtypes.Unit(info.SliceSru),
+			HRU: gridtypes.Unit(info.SliceHru),
+			MRU: gridtypes.Unit(info.SliceMru),
+		},
+		SlicesNeeded: uint64(info.SlicesNeeded),
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0 || info.ExtraFee > 0
@@ -195,6 +202,12 @@ func nodeWithNestedCapacityFromDBNode(info db.Node) types.NodeWithNestedCapacity
 		PriceUsd:    math.Round(info.PriceUsd*1000) / 1000,
 		FarmFreeIps: info.FarmFreeIps,
 		Features:    info.Features,
+		Slice: types.Capacity{
+			CRU: uint64(info.SliceCru),
+			SRU: gridtypes.Unit(info.SliceSru),
+			HRU: gridtypes.Unit(info.SliceHru),
+			MRU: gridtypes.Unit(info.SliceMru),
+		},
 	}
 	node.Status = nodestatus.DecideNodeStatus(node.Power, node.UpdatedAt)
 	node.Dedicated = info.FarmDedicated || info.NodeContractsCount == 0 || info.Renter != 0 || info.ExtraFee > 0

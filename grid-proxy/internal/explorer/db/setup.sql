@@ -42,6 +42,44 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
+-- Calculate default slice resources based on 1GB memory slices
+
+CREATE OR REPLACE FUNCTION calc_slice_resources(
+    total_mru NUMERIC,
+    total_sru NUMERIC,
+    total_hru NUMERIC,
+    total_cru NUMERIC,
+    OUT slice_mru NUMERIC,
+    OUT slice_sru NUMERIC,
+    OUT slice_hru NUMERIC,
+    OUT slice_cru NUMERIC
+) AS $$
+DECLARE
+    slice_mru_size NUMERIC := 1073741824; -- 1GB in bytes
+    slice_count NUMERIC;
+BEGIN
+    -- Calculate how many 1GB slices fit in total MRU
+    slice_count := FLOOR(total_mru / slice_mru_size);
+    
+    -- If node has less than 1GB, set slice_count to 1
+    IF slice_count = 0 THEN
+        slice_count := 1;
+    END IF;
+    
+    -- MRU is always 1GB per slice
+    slice_mru := slice_mru_size;
+    
+    -- Divide other resources proportionally by slice_count
+    IF total_cru > 0 THEN
+        slice_cru := GREATEST(1, FLOOR((total_cru * 2) / slice_count));
+    ELSE
+        slice_cru := 0;
+    END IF;
+    slice_sru := FLOOR(total_sru / slice_count);
+    slice_hru := FLOOR(total_hru / slice_count);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION calc_price(
     cru NUMERIC,
     sru NUMERIC,
@@ -139,7 +177,11 @@ SELECT
     CASE WHEN farm.pricing_policy_id = 0 THEN 1 ELSE farm.pricing_policy_id END as policy_id,
     COALESCE(node.extra_fee, 0) as extra_fee,
     COALESCE(node_gpu_agg.gpus, '[]'),
-    COALESCE(node_gpu_agg.gpu_count, 0) as node_gpu_count
+    COALESCE(node_gpu_agg.gpu_count, 0) as node_gpu_count,
+    slice_calc.slice_mru,
+    slice_calc.slice_sru,
+    slice_calc.slice_hru,
+    slice_calc.slice_cru
 FROM node
     LEFT JOIN node_contract ON node.node_id = node_contract.node_id AND node_contract.state IN ('Created', 'GracePeriod')
     LEFT JOIN contract_resources ON node_contract.resources_used_id = contract_resources.id 
@@ -160,6 +202,15 @@ FROM node
         GROUP BY
             g1.node_twin_id
     ) node_gpu_agg on node_gpu_agg.node_twin_id = node.twin_id
+    -- calculate slice resources once
+    LEFT JOIN LATERAL (
+        SELECT * FROM calc_slice_resources(
+            COALESCE(node_resources_total.mru, 0),
+            COALESCE(node_resources_total.sru, 0),
+            COALESCE(node_resources_total.hru, 0),
+            COALESCE(node_resources_total.cru, 0)
+        )
+    ) slice_calc ON true
 GROUP BY
     node.node_id,
     node_resources_total.mru,
@@ -190,7 +241,11 @@ GROUP BY
     COALESCE(cpu_benchmark.workloads, 0),
     node.certification,
     node.extra_fee,
-    farm.pricing_policy_id;
+    farm.pricing_policy_id,
+    slice_calc.slice_mru,
+    slice_calc.slice_sru,
+    slice_calc.slice_hru,
+    slice_calc.slice_cru;
 
 DROP TABLE IF EXISTS resources_cache;
 CREATE TABLE IF NOT EXISTS resources_cache(
@@ -232,6 +287,10 @@ CREATE TABLE IF NOT EXISTS resources_cache(
     extra_fee NUMERIC,
     gpus jsonb,
     node_gpu_count INTEGER NOT NULL,
+    slice_mru NUMERIC NOT NULL DEFAULT 0,
+    slice_sru NUMERIC NOT NULL DEFAULT 0,
+    slice_hru NUMERIC NOT NULL DEFAULT 0,
+    slice_cru NUMERIC NOT NULL DEFAULT 0,
     price_usd NUMERIC GENERATED ALWAYS AS (
         calc_price(
             total_cru,
@@ -348,7 +407,12 @@ CREATE OR REPLACE TRIGGER tg_node
  */
 CREATE OR REPLACE FUNCTION reflect_total_resources_changes() RETURNS TRIGGER AS 
 $$ 
+DECLARE
+    slice_res RECORD;
 BEGIN
+    -- Calculate slice resources once
+    SELECT * INTO slice_res FROM calc_slice_resources(NEW.mru, NEW.sru, NEW.hru, NEW.cru);
+    
     BEGIN
         UPDATE resources_cache
         SET
@@ -361,7 +425,11 @@ BEGIN
             free_hru = free_hru + (NEW.hru-COALESCE(OLD.hru, 0)),
             free_sru = free_sru + (NEW.sru-COALESCE(OLD.sru, 0)),
             used_mru = used_mru - GREATEST(CAST((OLD.mru / 10) AS bigint), 2147483648) +
-                                    GREATEST(CAST((NEW.mru / 10) AS bigint), 2147483648)
+                                    GREATEST(CAST((NEW.mru / 10) AS bigint), 2147483648),
+            slice_mru = slice_res.slice_mru,
+            slice_sru = slice_res.slice_sru,
+            slice_hru = slice_res.slice_hru,
+            slice_cru = slice_res.slice_cru
         WHERE
             resources_cache.node_id = (
                 SELECT node.node_id FROM node WHERE node.id = New.node_id

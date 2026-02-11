@@ -1,12 +1,14 @@
 package explorer
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	httpSwagger "github.com/swaggo/http-swagger"
 
@@ -490,6 +492,79 @@ func (a *App) version(r *http.Request) (interface{}, mw.Response) {
 	}, response
 }
 
+// updateNodeSlice godoc
+// @Summary Update node slice configuration
+// @Description Update the slice capacity configuration for a specific node (farm owner only)
+// @Tags NodeSlice
+// @Param X-Auth header string true "Authentication format: Base64(<unix_timestamp>:<twin_id>):Base64(signature)"
+// @Param node_id path int true "Node ID"
+// @Param request body types.UpdateNodeSliceRequest true "Slice configuration and farm ID"
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} types.UpdateNodeSliceRequest
+// @Failure 400 {object} string
+// @Failure 401 {object} string
+// @Failure 403 {object} string
+// @Failure 404 {object} string
+// @Failure 500 {object} string
+// @Router /nodes/{node_id}/slice [patch]
+func (a *App) updateNodeSlice(r *http.Request) (interface{}, mw.Response) {
+	nodeIDStr := mux.Vars(r)["node_id"]
+	nodeID, err := strconv.ParseUint(nodeIDStr, 10, 32)
+	if err != nil {
+		return nil, mw.BadRequest(err)
+	}
+
+	// Parse request body
+	var req types.UpdateNodeSliceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, mw.BadRequest(errors.Wrap(err, "invalid request body"))
+	}
+
+	// Validate request
+	if err := req.Validate(); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+
+	// Get node to verify it exists and belongs to the specified farm
+	node, err := a.cl.GetNode(r.Context(), uint32(nodeID))
+	if err != nil {
+		if err == ErrNodeNotFound {
+			return nil, errorReply(ErrNodeNotFound)
+		}
+		return nil, mw.Error(err)
+	}
+
+	// Validate slice resources don't exceed node's total capacity
+	if err := req.ValidateAgainstNodeCapacity(
+		node.TotalMru,
+		node.TotalSru,
+		node.TotalHru,
+		uint64(node.TotalCru),
+	); err != nil {
+		return nil, mw.BadRequest(err)
+	}
+
+	// Get farm to verify ownership
+	farm, err := a.cl.GetFarm(r.Context(), uint32(node.FarmID))
+	if err != nil {
+		return nil, errorReply(err)
+	}
+
+	// Verify that the authenticated user owns the farm
+	if resp := mw.EnsureOwner(r, uint64(farm.TwinID)); resp != nil {
+		return nil, resp
+	}
+
+	// Update the slice configuration
+	err = a.cl.UpdateNodeSlice(r.Context(), uint32(nodeID), uint64(req.Slice.MRU), uint64(req.Slice.SRU), uint64(req.Slice.HRU), req.Slice.CRU)
+	if err != nil {
+		return nil, mw.Error(err)
+	}
+
+	return nil, mw.Ok()
+}
+
 func (a *App) health(r *http.Request) (interface{}, mw.Response) {
 	response := mw.Ok()
 	return createReport(
@@ -649,6 +724,9 @@ func Setup(router *mux.Router, gitCommit string, cl DBClient, relayClient rmb.Cl
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/status", mw.AsHandlerFunc(a.getNodeStatus))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/statistics", mw.AsHandlerFunc(a.getNodeStatistics))
 	router.HandleFunc("/nodes/{node_id:[0-9]+}/gpu", mw.AsHandlerFunc(a.getNodeGpus))
+	// Protected endpoint: requires authentication
+	authMiddleware := mw.AuthMiddleware(&a.cl)
+	router.HandleFunc("/nodes/{node_id:[0-9]+}/slice", mw.AsHandlerFunc(authMiddleware(a.updateNodeSlice))).Methods("PATCH")
 
 	router.HandleFunc("/gateways", mw.AsHandlerFunc(a.getGateways))
 	router.HandleFunc("/gateways/{node_id:[0-9]+}", mw.AsHandlerFunc(a.getGateway))

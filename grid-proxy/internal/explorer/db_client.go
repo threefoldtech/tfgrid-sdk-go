@@ -131,6 +131,18 @@ func (c *DBClient) Stats(ctx context.Context, filter types.StatsFilter) (types.S
 	return c.DB.GetStats(ctx, filter)
 }
 
+func (c *DBClient) GetNode(ctx context.Context, nodeID uint32) (db.Node, error) {
+	return c.DB.GetNode(ctx, nodeID)
+}
+
+func (c *DBClient) GetFarm(ctx context.Context, farmID uint32) (db.Farm, error) {
+	return c.DB.GetFarm(ctx, farmID)
+}
+
+func (c *DBClient) UpdateNodeSlice(ctx context.Context, nodeID uint32, sliceMru, sliceSru, sliceHru, sliceCru uint64) error {
+	return c.DB.UpdateNodeSlice(ctx, nodeID, sliceMru, sliceSru, sliceHru, sliceCru)
+}
+
 func (c *DBClient) GetTwinConsumption(ctx context.Context, twinId uint64) (types.TwinConsumption, error) {
 	// get all twin contracts
 	maxContractSize := uint64(999999999)
