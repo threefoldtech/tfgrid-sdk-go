@@ -1,0 +1,49 @@
+api:
+  host: "0.0.0.0"                                    # host for the API server
+  port: 8080                                         # port for the API server
+
+database:
+  url: "postgresql://postgres:postgres@localhost:5432/deployment_checker"  # TimescaleDB connection URL
+  retention_days: 90                                 # data retention period in days (default: 90)
+  use_timescaledb_retention: true                    # use TimescaleDB automatic retention policies (preferred) or manual cleanup
+
+grid:
+  network: "dev"                                     # dev, qa, test, main
+  mnemonic: ""                                       # mnemonic for the grid
+
+nodes:
+  status: "up"                                       # up, healthy
+  farms: []                                          # farm IDs to include (empty means all farms)
+  nodes: []                                          # node IDs to include (empty means all nodes)
+  exclude: []                                        # node IDs to exclude
+
+probe:
+  interval: "6h"                                     # interval for the deployment cycle
+  concurrency_limit: 10                              # concurrency limit for the deployment cycle
+  timeout: "10m"                                     # timeout for the deployment cycle
+  workload_size: "light"                             # light, medium, heavy
+  shutdown_timeout: "30s"                            # timeout for graceful shutdown
+  jitter_min_seconds: 6                              # minimum jitter before deployment (seconds)
+  jitter_max_seconds: 10                             # maximum jitter before deployment (seconds)
+  cleanup_on_startup: true                           # cleanup orphaned probe contracts on startup
+  retry:
+    max_retries: 3                                   # maximum number of retries for transient failures
+    initial_backoff: "1s"                            # initial backoff duration between retries
+    max_backoff: "30s"                               # maximum backoff duration
+    multiplier: 2.0                                  # exponential backoff multiplier
+
+scoring:
+  window: "90d"                                      # default window for the scoring (overwritten by the window query parameter)
+  min_attempts: 1                                    # default minimum attempts for the scoring (overwritten by the min_attempts query parameter)
+  scorers:                                           # scorer configuration
+    deployment:
+      enabled: true                                  # enable deployment success rate scorer
+      weight: 1.0                                    # weight for composite scoring
+    duration:
+      enabled: false                                 # enable duration-based scorer (future)
+      weight: 0.0                                    # weight for composite scoring
+    uptime:
+      enabled: false                                 # enable uptime scorer (future)
+      weight: 0.0                                    # weight for composite scoring
+
+log_level: "info"

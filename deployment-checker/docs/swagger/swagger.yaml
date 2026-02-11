@@ -1,0 +1,206 @@
+definitions:
+  api.ErrorResponse:
+    description: Error response
+    properties:
+      error:
+        example: invalid node_id parameter
+        type: string
+    type: object
+  api.HealthCheck:
+    properties:
+      message:
+        example: connection failed
+        type: string
+      status:
+        description: healthy or unhealthy
+        example: healthy
+        type: string
+    type: object
+  api.HealthResponse:
+    description: Health check response
+    properties:
+      checks:
+        additionalProperties:
+          $ref: '#/definitions/api.HealthCheck'
+        description: Individual health checks
+        type: object
+      status:
+        description: 'Overall health status: healthy or unhealthy'
+        example: healthy
+        type: string
+    type: object
+  api.NodeScore:
+    description: Node performance score and metrics
+    properties:
+      avg_duration_ms:
+        description: Average deployment duration in milliseconds
+        example: 2500
+        type: number
+      farm_id:
+        description: Farm ID
+        example: 1
+        type: integer
+      node_id:
+        description: Node ID
+        example: 123
+        type: integer
+      score:
+        description: Calculated score (currently same as success rate)
+        example: 0.95
+        type: number
+      success_rate:
+        description: Success rate (0.0 to 1.0)
+        example: 0.95
+        type: number
+      total_attempts:
+        description: Total number of deployment attempts
+        example: 100
+        type: integer
+    type: object
+  api.NodeScoreResponse:
+    description: Single node score response
+    properties:
+      min_attempts:
+        description: Minimum attempts required
+        example: 1
+        type: integer
+      score:
+        allOf:
+        - $ref: '#/definitions/api.NodeScore'
+        description: Node score details
+      window:
+        description: Time window used for scoring
+        example: 90d
+        type: string
+    type: object
+  api.TopScoresResponse:
+    description: Top node scores response
+    properties:
+      limit:
+        description: Maximum number of results returned
+        example: 10
+        type: integer
+      min_attempts:
+        description: Minimum attempts required
+        example: 1
+        type: integer
+      scores:
+        description: List of node scores
+        items:
+          $ref: '#/definitions/api.NodeScore'
+        type: array
+      window:
+        description: Time window used for scoring
+        example: 90d
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/health:
+    get:
+      consumes:
+      - application/json
+      description: Returns the health status of the service and its dependencies
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is healthy
+          schema:
+            $ref: '#/definitions/api.HealthResponse'
+        "503":
+          description: Service is unhealthy
+          schema:
+            $ref: '#/definitions/api.HealthResponse'
+      summary: Health check endpoint
+      tags:
+      - health
+  /api/v1/scores:
+    get:
+      consumes:
+      - application/json
+      description: Returns the top performing nodes based on success rate within a
+        time window
+      parameters:
+      - description: Time window for scoring (e.g., '90d', '30d', '7d')
+        in: query
+        name: window
+        type: string
+      - default: 10
+        description: Maximum number of results to return
+        in: query
+        minimum: 1
+        name: limit
+        type: integer
+      - default: 1
+        description: Minimum number of attempts required
+        in: query
+        minimum: 1
+        name: min_attempts
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved top scores
+          schema:
+            $ref: '#/definitions/api.TopScoresResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get top node scores
+      tags:
+      - scores
+  /api/v1/scores/node/{node_id}:
+    get:
+      consumes:
+      - application/json
+      description: Returns the score and performance metrics for a specific node within
+        a time window
+      parameters:
+      - description: Node ID
+        example: 123
+        in: path
+        name: node_id
+        required: true
+        type: integer
+      - default: '"90d"'
+        description: Time window for scoring (e.g., '90d', '30d', '7d')
+        in: query
+        name: window
+        type: string
+      - default: 1
+        description: Minimum number of attempts required
+        in: query
+        minimum: 1
+        name: min_attempts
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved node score
+          schema:
+            $ref: '#/definitions/api.NodeScoreResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Node not found or insufficient attempts
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get score for a specific node
+      tags:
+      - scores
+swagger: "2.0"

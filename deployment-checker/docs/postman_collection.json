@@ -1,0 +1,740 @@
+{
+	"info": {
+		"_postman_id": "deployment-checker-api-collection",
+		"name": "Deployment Checker API",
+		"description": "Comprehensive API collection for the Deployment Checker service. This collection includes all endpoints with full request/response examples, query parameters, and error handling.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "deployment-checker"
+	},
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"health"
+							]
+						},
+						"description": "Returns the health status of the service and its dependencies. The service checks the database connection and returns an overall health status."
+					},
+					"response": [
+						{
+							"name": "Healthy Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/health",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"health"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"healthy\",\n    \"checks\": {\n        \"database\": {\n            \"status\": \"healthy\"\n        }\n    }\n}"
+						},
+						{
+							"name": "Unhealthy Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/health",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"health"
+									]
+								}
+							},
+							"status": "Service Unavailable",
+							"code": 503,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"unhealthy\",\n    \"checks\": {\n        \"database\": {\n            \"status\": \"unhealthy\",\n            \"message\": \"connection failed\"\n        }\n    }\n}"
+						}
+					]
+				}
+			],
+			"description": "Health check endpoints for monitoring service status"
+		},
+		{
+			"name": "Scores",
+			"item": [
+				{
+					"name": "Get Top Scores",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/scores?window=90d&limit=10&min_attempts=1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"scores"
+							],
+							"query": [
+								{
+									"key": "window",
+									"value": "90d",
+									"description": "Time window for scoring (e.g., '90d', '30d', '7d', '1d', '12h', '6h'). Defaults to config value (typically 90d).",
+									"disabled": false
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Maximum number of results to return. Must be >= 1. Default: 10",
+									"disabled": false
+								},
+								{
+									"key": "min_attempts",
+									"value": "1",
+									"description": "Minimum number of attempts required for a node to be included. Must be >= 1. Default: 1",
+									"disabled": false
+								}
+							]
+						},
+						"description": "Returns the top performing nodes based on success rate within a specified time window. Results are sorted by score (success rate) in descending order."
+					},
+					"response": [
+						{
+							"name": "Success - Top 10 Nodes (90 days)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores?window=90d&limit=10&min_attempts=1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "90d"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "min_attempts",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"window\": \"2160h0m0s\",\n    \"limit\": 10,\n    \"min_attempts\": 1,\n    \"scores\": [\n        {\n            \"node_id\": 123,\n            \"farm_id\": 1,\n            \"success_rate\": 0.95,\n            \"total_attempts\": 100,\n            \"avg_duration_ms\": 2500,\n            \"score\": 0.95\n        },\n        {\n            \"node_id\": 456,\n            \"farm_id\": 2,\n            \"success_rate\": 0.92,\n            \"total_attempts\": 85,\n            \"avg_duration_ms\": 2800,\n            \"score\": 0.92\n        },\n        {\n            \"node_id\": 789,\n            \"farm_id\": 1,\n            \"success_rate\": 0.88,\n            \"total_attempts\": 150,\n            \"avg_duration_ms\": 2200,\n            \"score\": 0.88\n        }\n    ]\n}"
+						},
+						{
+							"name": "Success - Top 5 Nodes (30 days)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores?window=30d&limit=5&min_attempts=5",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "30d"
+										},
+										{
+											"key": "limit",
+											"value": "5"
+										},
+										{
+											"key": "min_attempts",
+											"value": "5"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"window\": \"720h0m0s\",\n    \"limit\": 5,\n    \"min_attempts\": 5,\n    \"scores\": [\n        {\n            \"node_id\": 123,\n            \"farm_id\": 1,\n            \"success_rate\": 0.96,\n            \"total_attempts\": 25,\n            \"avg_duration_ms\": 2400,\n            \"score\": 0.96\n        },\n        {\n            \"node_id\": 456,\n            \"farm_id\": 2,\n            \"success_rate\": 0.94,\n            \"total_attempts\": 18,\n            \"avg_duration_ms\": 2600,\n            \"score\": 0.94\n        }\n    ]\n}"
+						},
+						{
+							"name": "Success - Empty Results",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores?window=7d&limit=10&min_attempts=100",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "7d"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "min_attempts",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"window\": \"168h0m0s\",\n    \"limit\": 10,\n    \"min_attempts\": 100,\n    \"scores\": []\n}"
+						},
+						{
+							"name": "Error - Invalid Window Format",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores?window=invalid&limit=10&min_attempts=1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "invalid"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "min_attempts",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"error\": \"invalid window parameter: invalid duration format\"\n}"
+						},
+						{
+							"name": "Error - Invalid Limit (Zero)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores?window=90d&limit=0&min_attempts=1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "90d"
+										},
+										{
+											"key": "limit",
+											"value": "0"
+										},
+										{
+											"key": "min_attempts",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"error\": \"invalid request parameters: Key: 'GetTopScoresRequest.Limit' Error:Field validation for 'Limit' failed on the 'min' tag\"\n}"
+						},
+						{
+							"name": "Error - Internal Server Error",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores?window=90d&limit=10&min_attempts=1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "90d"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "min_attempts",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"error\": \"failed to retrieve scores\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Node Score",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/scores/node/123?window=90d&min_attempts=1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"scores",
+								"node",
+								":node_id"
+							],
+							"variable": [
+								{
+									"key": "node_id",
+									"value": "123",
+									"description": "Node ID (must be >= 1)"
+								}
+							],
+							"query": [
+								{
+									"key": "window",
+									"value": "90d",
+									"description": "Time window for scoring (e.g., '90d', '30d', '7d', '1d', '12h', '6h'). Defaults to config value (typically 90d).",
+									"disabled": false
+								},
+								{
+									"key": "min_attempts",
+									"value": "1",
+									"description": "Minimum number of attempts required. Must be >= 1. Default: 1",
+									"disabled": false
+								}
+							]
+						},
+						"description": "Returns the score and performance metrics for a specific node within a specified time window. The node must have at least the minimum number of attempts to be included."
+					},
+					"response": [
+						{
+							"name": "Success - Node Score (90 days)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores/node/123?window=90d&min_attempts=1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores",
+										"node",
+										"123"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "90d"
+										},
+										{
+											"key": "min_attempts",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"window\": \"2160h0m0s\",\n    \"min_attempts\": 1,\n    \"score\": {\n        \"node_id\": 123,\n        \"farm_id\": 1,\n        \"success_rate\": 0.95,\n        \"total_attempts\": 100,\n        \"avg_duration_ms\": 2500,\n        \"score\": 0.95\n    }\n}"
+						},
+						{
+							"name": "Success - Node Score (30 days, min 5 attempts)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores/node/456?window=30d&min_attempts=5",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores",
+										"node",
+										"456"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "30d"
+										},
+										{
+											"key": "min_attempts",
+											"value": "5"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"window\": \"720h0m0s\",\n    \"min_attempts\": 5,\n    \"score\": {\n        \"node_id\": 456,\n        \"farm_id\": 2,\n        \"success_rate\": 0.92,\n        \"total_attempts\": 25,\n        \"avg_duration_ms\": 2800,\n        \"score\": 0.92\n    }\n}"
+						},
+						{
+							"name": "Error - Node Not Found",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores/node/99999?window=90d&min_attempts=1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores",
+										"node",
+										"99999"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "90d"
+										},
+										{
+											"key": "min_attempts",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"error\": \"node not found or no data available\"\n}"
+						},
+						{
+							"name": "Error - Insufficient Attempts",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores/node/123?window=90d&min_attempts=1000",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores",
+										"node",
+										"123"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "90d"
+										},
+										{
+											"key": "min_attempts",
+											"value": "1000"
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"error\": \"node does not meet minimum attempts requirement\"\n}"
+						},
+						{
+							"name": "Error - Invalid Node ID (Zero)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores/node/0?window=90d&min_attempts=1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores",
+										"node",
+										"0"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "90d"
+										},
+										{
+											"key": "min_attempts",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"error\": \"invalid node_id parameter: Key: 'GetNodeScoreRequest.NodeID' Error:Field validation for 'NodeID' failed on the 'min' tag\"\n}"
+						},
+						{
+							"name": "Error - Invalid Window Format",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores/node/123?window=invalid&min_attempts=1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores",
+										"node",
+										"123"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "invalid"
+										},
+										{
+											"key": "min_attempts",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"error\": \"invalid window parameter: invalid duration format\"\n}"
+						},
+						{
+							"name": "Error - Internal Server Error",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/scores/node/123?window=90d&min_attempts=1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"scores",
+										"node",
+										"123"
+									],
+									"query": [
+										{
+											"key": "window",
+											"value": "90d"
+										},
+										{
+											"key": "min_attempts",
+											"value": "1"
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"error\": \"failed to retrieve node score\"\n}"
+						}
+					]
+				}
+			],
+			"description": "Endpoints for querying node performance scores and metrics"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string",
+			"description": "Base URL for the Deployment Checker API. Default: http://localhost:8080"
+		}
+	]
+}
