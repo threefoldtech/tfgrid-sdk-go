@@ -26,25 +26,25 @@ INSERT INTO cpu_benchmark (
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT single_threaded_cpu FROM resources_cache WHERE node_id = 1001),
+    (SELECT single_threaded_cpu FROM nodex WHERE node_id = 1001),
     1000.5,
     'INSERT cpu_benchmark should set single_threaded_cpu'
 );
 
 SELECT is(
-    (SELECT multi_threaded_cpu FROM resources_cache WHERE node_id = 1001),
+    (SELECT multi_threaded_cpu FROM nodex WHERE node_id = 1001),
     8000.5,
     'INSERT cpu_benchmark should set multi_threaded_cpu'
 );
 
 SELECT is(
-    (SELECT threads_cpu FROM resources_cache WHERE node_id = 1001),
+    (SELECT threads_cpu FROM nodex WHERE node_id = 1001),
     16,
     'INSERT cpu_benchmark should set threads_cpu'
 );
 
 SELECT is(
-    (SELECT workloads_cpu FROM resources_cache WHERE node_id = 1001),
+    (SELECT workloads_cpu FROM nodex WHERE node_id = 1001),
     8,
     'INSERT cpu_benchmark should set workloads_cpu'
 );
@@ -60,13 +60,13 @@ WHERE node_twin_id = 2001;
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT single_threaded_cpu FROM resources_cache WHERE node_id = 1001),
+    (SELECT single_threaded_cpu FROM nodex WHERE node_id = 1001),
     2000.5,
     'UPDATE cpu_benchmark should update single_threaded_cpu'
 );
 
 SELECT is(
-    (SELECT multi_threaded_cpu FROM resources_cache WHERE node_id = 1001),
+    (SELECT multi_threaded_cpu FROM nodex WHERE node_id = 1001),
     16000.5,
     'UPDATE cpu_benchmark should update multi_threaded_cpu'
 );

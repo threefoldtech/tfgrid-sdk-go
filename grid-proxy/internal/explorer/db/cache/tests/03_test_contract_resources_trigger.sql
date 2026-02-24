@@ -18,13 +18,13 @@ SELECT pg_sleep(0.1);
 
 -- Get initial cache values
 SELECT 
-    (SELECT free_hru FROM resources_cache WHERE node_id = 1001) as initial_free_hru,
-    (SELECT free_mru FROM resources_cache WHERE node_id = 1001) as initial_free_mru,
-    (SELECT free_sru FROM resources_cache WHERE node_id = 1001) as initial_free_sru,
-    (SELECT used_hru FROM resources_cache WHERE node_id = 1001) as initial_used_hru,
-    (SELECT used_mru FROM resources_cache WHERE node_id = 1001) as initial_used_mru,
-    (SELECT used_sru FROM resources_cache WHERE node_id = 1001) as initial_used_sru,
-    (SELECT used_cru FROM resources_cache WHERE node_id = 1001) as initial_used_cru
+    (SELECT free_hru FROM nodex WHERE node_id = 1001) as initial_free_hru,
+    (SELECT free_mru FROM nodex WHERE node_id = 1001) as initial_free_mru,
+    (SELECT free_sru FROM nodex WHERE node_id = 1001) as initial_free_sru,
+    (SELECT used_hru FROM nodex WHERE node_id = 1001) as initial_used_hru,
+    (SELECT used_mru FROM nodex WHERE node_id = 1001) as initial_used_mru,
+    (SELECT used_sru FROM nodex WHERE node_id = 1001) as initial_used_sru,
+    (SELECT used_cru FROM nodex WHERE node_id = 1001) as initial_used_cru
 INTO TEMP initial_cache;
 
 -- Create node_contract and contract_resources
@@ -35,25 +35,25 @@ SELECT pg_sleep(0.1);
 
 -- Test 1: INSERT contract_resources should increment used and decrement free
 SELECT is(
-    (SELECT used_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT used_hru FROM nodex WHERE node_id = 1001),
     (SELECT initial_used_hru FROM initial_cache) + 1000000000,
     'INSERT contract_resources should increment used_hru'
 );
 
 SELECT is(
-    (SELECT used_mru FROM resources_cache WHERE node_id = 1001),
+    (SELECT used_mru FROM nodex WHERE node_id = 1001),
     (SELECT initial_used_mru FROM initial_cache) + 2000000000,
     'INSERT contract_resources should increment used_mru'
 );
 
 SELECT is(
-    (SELECT free_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT free_hru FROM nodex WHERE node_id = 1001),
     (SELECT initial_free_hru FROM initial_cache) - 1000000000,
     'INSERT contract_resources should decrement free_hru'
 );
 
 SELECT is(
-    (SELECT free_mru FROM resources_cache WHERE node_id = 1001),
+    (SELECT free_mru FROM nodex WHERE node_id = 1001),
     (SELECT initial_free_mru FROM initial_cache) - 2000000000,
     'INSERT contract_resources should decrement free_mru'
 );
@@ -66,19 +66,19 @@ WHERE id = 'cr-1001';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT used_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT used_hru FROM nodex WHERE node_id = 1001),
     (SELECT initial_used_hru FROM initial_cache) + 2000000000,
     'UPDATE contract_resources should update used_hru to new value'
 );
 
 SELECT is(
-    (SELECT used_mru FROM resources_cache WHERE node_id = 1001),
+    (SELECT used_mru FROM nodex WHERE node_id = 1001),
     (SELECT initial_used_mru FROM initial_cache) + 4000000000,
     'UPDATE contract_resources should update used_mru to new value'
 );
 
 SELECT is(
-    (SELECT free_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT free_hru FROM nodex WHERE node_id = 1001),
     (SELECT initial_free_hru FROM initial_cache) - 2000000000,
     'UPDATE contract_resources should adjust free_hru'
 );
@@ -89,19 +89,19 @@ DELETE FROM contract_resources WHERE id = 'cr-1001';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT used_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT used_hru FROM nodex WHERE node_id = 1001),
     (SELECT initial_used_hru FROM initial_cache),
     'DELETE contract_resources should decrement used_hru back to initial'
 );
 
 SELECT is(
-    (SELECT used_mru FROM resources_cache WHERE node_id = 1001),
+    (SELECT used_mru FROM nodex WHERE node_id = 1001),
     (SELECT initial_used_mru FROM initial_cache),
     'DELETE contract_resources should decrement used_mru back to initial'
 );
 
 SELECT is(
-    (SELECT free_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT free_hru FROM nodex WHERE node_id = 1001),
     (SELECT initial_free_hru FROM initial_cache),
     'DELETE contract_resources should increment free_hru back to initial'
 );
@@ -113,7 +113,7 @@ SELECT create_test_contract_resources('1002', 500000000, 500000000, 500000000, 1
 SELECT pg_sleep(0.1);
 
 SELECT ok(
-    (SELECT used_hru FROM resources_cache WHERE node_id = 1001) > (SELECT initial_used_hru FROM initial_cache),
+    (SELECT used_hru FROM nodex WHERE node_id = 1001) > (SELECT initial_used_hru FROM initial_cache),
     'Contract in GracePeriod state should be counted in used resources'
 );
 
@@ -127,7 +127,7 @@ SELECT pg_sleep(0.1);
 
 -- Should not affect cache because state is 'Deleted'
 SELECT is(
-    (SELECT used_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT used_hru FROM nodex WHERE node_id = 1001),
     (SELECT initial_used_hru FROM initial_cache),
     'Contract in Deleted state should NOT affect cache'
 );
@@ -141,7 +141,7 @@ SELECT create_test_contract_resources('1005', 1000000000, 1000000000, 1000000000
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT used_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT used_hru FROM nodex WHERE node_id = 1001),
     (SELECT initial_used_hru FROM initial_cache) + 2000000000,
     'Multiple contracts should sum up used resources'
 );

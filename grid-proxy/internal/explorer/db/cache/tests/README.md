@@ -76,30 +76,30 @@ Each test file follows this pattern:
 
 ## Test Coverage
 
-### Resources Cache Triggers
+### nodex Triggers
 
 - ✅ Node INSERT/DELETE
 - ✅ Node resources total INSERT/UPDATE
 - ✅ Contract resources INSERT/UPDATE/DELETE
 - ✅ Node contract INSERT/UPDATE to Deleted
-- ✅ Node GPU INSERT/DELETE/UPDATE
+- ✅ Node GPU INSERT/DELETE/UPDATE (including free_gpu_count)
 - ✅ Rent contract INSERT/UPDATE to Deleted
 - ✅ DMI INSERT/UPDATE
 - ✅ Speed INSERT/UPDATE
 - ✅ CPU benchmark INSERT/UPDATE
 
-### Public IPs Cache Triggers
+### farmx Triggers
 
 - ✅ Public IP INSERT/DELETE/UPDATE contract_id
 - ✅ Farm INSERT/DELETE
 
 ### Cache Refreshers
 
-- ✅ refresh_resources_cache_node
-- ✅ refresh_resources_cache
-- ✅ refresh_public_ips_cache_farm
-- ✅ refresh_public_ips_cache
-- ✅ refresh_all_caches
+- ✅ refresh_nodex_node
+- ✅ refresh_nodex
+- ✅ refresh_farmx_farm
+- ✅ refresh_farmx
+- ✅ refresh_all
 
 ## Notes
 
@@ -113,7 +113,6 @@ Each test file follows this pattern:
 If tests fail:
 
 1. Ensure pgTAP extension is installed: `CREATE EXTENSION pgtap;`
-2. Ensure all setup SQL files have been run (00_constants.sql through 06_cache_management.sql)
+2. Ensure all setup SQL files have been run
 3. Check that base tables exist (node, farm, contract_resources, etc.)
 4. Verify triggers are created: `SELECT * FROM pg_trigger WHERE tgname LIKE 'tg_%';`
-

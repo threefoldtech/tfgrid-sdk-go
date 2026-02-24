@@ -18,14 +18,14 @@ SELECT pg_sleep(0.1);
 
 -- Get initial cache values
 SELECT 
-    (SELECT total_hru FROM resources_cache WHERE node_id = 1001) as initial_hru,
-    (SELECT total_mru FROM resources_cache WHERE node_id = 1001) as initial_mru,
-    (SELECT total_sru FROM resources_cache WHERE node_id = 1001) as initial_sru,
-    (SELECT total_cru FROM resources_cache WHERE node_id = 1001) as initial_cru,
-    (SELECT free_hru FROM resources_cache WHERE node_id = 1001) as initial_free_hru,
-    (SELECT free_mru FROM resources_cache WHERE node_id = 1001) as initial_free_mru,
-    (SELECT free_sru FROM resources_cache WHERE node_id = 1001) as initial_free_sru,
-    (SELECT used_mru FROM resources_cache WHERE node_id = 1001) as initial_used_mru
+    (SELECT total_hru FROM nodex WHERE node_id = 1001) as initial_hru,
+    (SELECT total_mru FROM nodex WHERE node_id = 1001) as initial_mru,
+    (SELECT total_sru FROM nodex WHERE node_id = 1001) as initial_sru,
+    (SELECT total_cru FROM nodex WHERE node_id = 1001) as initial_cru,
+    (SELECT free_hru FROM nodex WHERE node_id = 1001) as initial_free_hru,
+    (SELECT free_mru FROM nodex WHERE node_id = 1001) as initial_free_mru,
+    (SELECT free_sru FROM nodex WHERE node_id = 1001) as initial_free_sru,
+    (SELECT used_mru FROM nodex WHERE node_id = 1001) as initial_used_mru
 INTO TEMP initial_cache;
 
 -- Test 1: UPDATE total_hru should update cache
@@ -36,14 +36,14 @@ WHERE node_id = 'node-1001';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT total_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT total_hru FROM nodex WHERE node_id = 1001),
     2000000000000,
-    'UPDATE total_hru should update resources_cache total_hru'
+    'UPDATE total_hru should update nodex total_hru'
 );
 
 -- Calculate expected free_hru change: NEW.hru - OLD.hru
 SELECT is(
-    (SELECT free_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT free_hru FROM nodex WHERE node_id = 1001),
     (SELECT initial_free_hru FROM initial_cache) + 1000000000000,
     'UPDATE total_hru should increment free_hru by the difference'
 );
@@ -56,9 +56,9 @@ WHERE node_id = 'node-1001';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT total_mru FROM resources_cache WHERE node_id = 1001),
+    (SELECT total_mru FROM nodex WHERE node_id = 1001),
     200000000000,
-    'UPDATE total_mru should update resources_cache total_mru'
+    'UPDATE total_mru should update nodex total_mru'
 );
 
 -- MRU reserved calculation: GREATEST(MRU/10, 2147483648)
@@ -77,9 +77,9 @@ WHERE node_id = 'node-1001';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT total_sru FROM resources_cache WHERE node_id = 1001),
+    (SELECT total_sru FROM nodex WHERE node_id = 1001),
     200000000000,
-    'UPDATE total_sru should update resources_cache total_sru'
+    'UPDATE total_sru should update nodex total_sru'
 );
 
 -- Test 4: UPDATE total_cru should update cache
@@ -90,9 +90,9 @@ WHERE node_id = 'node-1001';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT total_cru FROM resources_cache WHERE node_id = 1001),
+    (SELECT total_cru FROM nodex WHERE node_id = 1001),
     32,
-    'UPDATE total_cru should update resources_cache total_cru'
+    'UPDATE total_cru should update nodex total_cru'
 );
 
 -- Test 5: INSERT new node_resources_total should update cache
@@ -103,14 +103,14 @@ SELECT pg_sleep(0.1);
 
 SELECT ok(
     EXISTS (
-        SELECT 1 FROM resources_cache 
+        SELECT 1 FROM nodex 
         WHERE node_id = 1002 
         AND total_hru = 500000000000
         AND total_mru = 50000000000
         AND total_sru = 50000000000
         AND total_cru = 8
     ),
-    'INSERT node_resources_total should update resources_cache'
+    'INSERT node_resources_total should update nodex'
 );
 
 -- Test 6: UPDATE MRU below reserved minimum threshold
@@ -125,7 +125,7 @@ SELECT pg_sleep(0.1);
 
 -- Verify used_mru includes reserved amount (at least 2GB)
 SELECT ok(
-    (SELECT used_mru FROM resources_cache WHERE node_id = 1001) >= 2147483648,
+    (SELECT used_mru FROM nodex WHERE node_id = 1001) >= 2147483648,
     'used_mru should include at least minimum reserved amount (2GB)'
 );
 
@@ -137,13 +137,13 @@ WHERE node_id = 'node-1001';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT total_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT total_hru FROM nodex WHERE node_id = 1001),
     3000000000000,
     'Multiple UPDATE should update all total fields'
 );
 
 SELECT is(
-    (SELECT total_cru FROM resources_cache WHERE node_id = 1001),
+    (SELECT total_cru FROM nodex WHERE node_id = 1001),
     64,
     'Multiple UPDATE should update total_cru'
 );

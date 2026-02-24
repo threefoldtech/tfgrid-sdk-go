@@ -34,49 +34,49 @@ INSERT INTO speed (
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT upload_speed FROM resources_cache WHERE node_id = 1001),
+    (SELECT upload_speed FROM nodex WHERE node_id = 1001),
     100.5,
     'INSERT speed should set upload_speed'
 );
 
 SELECT is(
-    (SELECT download_speed FROM resources_cache WHERE node_id = 1001),
+    (SELECT download_speed FROM nodex WHERE node_id = 1001),
     200.5,
     'INSERT speed should set download_speed'
 );
 
 SELECT is(
-    (SELECT udp_download_ipv4 FROM resources_cache WHERE node_id = 1001),
+    (SELECT udp_download_ipv4 FROM nodex WHERE node_id = 1001),
     150.5,
     'INSERT speed should set udp_download_ipv4'
 );
 
 SELECT is(
-    (SELECT udp_upload_ipv4 FROM resources_cache WHERE node_id = 1001),
+    (SELECT udp_upload_ipv4 FROM nodex WHERE node_id = 1001),
     160.5,
     'INSERT speed should set udp_upload_ipv4'
 );
 
 SELECT is(
-    (SELECT tcp_download_ipv6 FROM resources_cache WHERE node_id = 1001),
+    (SELECT tcp_download_ipv6 FROM nodex WHERE node_id = 1001),
     170.5,
     'INSERT speed should set tcp_download_ipv6'
 );
 
 SELECT is(
-    (SELECT tcp_upload_ipv6 FROM resources_cache WHERE node_id = 1001),
+    (SELECT tcp_upload_ipv6 FROM nodex WHERE node_id = 1001),
     180.5,
     'INSERT speed should set tcp_upload_ipv6'
 );
 
 SELECT is(
-    (SELECT udp_download_ipv6 FROM resources_cache WHERE node_id = 1001),
+    (SELECT udp_download_ipv6 FROM nodex WHERE node_id = 1001),
     190.5,
     'INSERT speed should set udp_download_ipv6'
 );
 
 SELECT is(
-    (SELECT udp_upload_ipv6 FROM resources_cache WHERE node_id = 1001),
+    (SELECT udp_upload_ipv6 FROM nodex WHERE node_id = 1001),
     200.5,
     'INSERT speed should set udp_upload_ipv6'
 );
@@ -91,13 +91,13 @@ WHERE node_twin_id = 2001;
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT upload_speed FROM resources_cache WHERE node_id = 1001),
+    (SELECT upload_speed FROM nodex WHERE node_id = 1001),
     300.5,
     'UPDATE speed should update upload_speed'
 );
 
 SELECT is(
-    (SELECT download_speed FROM resources_cache WHERE node_id = 1001),
+    (SELECT download_speed FROM nodex WHERE node_id = 1001),
     400.5,
     'UPDATE speed should update download_speed'
 );

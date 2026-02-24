@@ -27,13 +27,13 @@ INSERT INTO rent_contract (
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT renter FROM resources_cache WHERE node_id = 1001),
+    (SELECT renter FROM nodex WHERE node_id = 1001),
     3001,
     'INSERT rent_contract should set renter field'
 );
 
 SELECT is(
-    (SELECT rent_contract_id FROM resources_cache WHERE node_id = 1001),
+    (SELECT rent_contract_id FROM nodex WHERE node_id = 1001),
     1001,
     'INSERT rent_contract should set rent_contract_id field'
 );
@@ -44,13 +44,13 @@ UPDATE rent_contract SET state = 'Deleted' WHERE id = 'rc-1001';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT renter FROM resources_cache WHERE node_id = 1001),
+    (SELECT renter FROM nodex WHERE node_id = 1001),
     NULL,
     'UPDATE rent_contract to Deleted should clear renter field'
 );
 
 SELECT is(
-    (SELECT rent_contract_id FROM resources_cache WHERE node_id = 1001),
+    (SELECT rent_contract_id FROM nodex WHERE node_id = 1001),
     NULL,
     'UPDATE rent_contract to Deleted should clear rent_contract_id field'
 );
@@ -67,20 +67,20 @@ SELECT create_test_twin(3002);
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT renter FROM resources_cache WHERE node_id = 1001),
+    (SELECT renter FROM nodex WHERE node_id = 1001),
     3002,
     'INSERT new rent_contract should update renter field'
 );
 
 SELECT is(
-    (SELECT rent_contract_id FROM resources_cache WHERE node_id = 1001),
+    (SELECT rent_contract_id FROM nodex WHERE node_id = 1001),
     1002,
     'INSERT new rent_contract should update rent_contract_id field'
 );
 
 -- Test 4: UPDATE to non-Deleted state should not trigger
 SELECT 
-    (SELECT renter FROM resources_cache WHERE node_id = 1001) as renter_before
+    (SELECT renter FROM nodex WHERE node_id = 1001) as renter_before
 INTO TEMP renter_before;
 
 UPDATE rent_contract SET solution_provider_id = 1 WHERE id = 'rc-1002';
@@ -88,7 +88,7 @@ UPDATE rent_contract SET solution_provider_id = 1 WHERE id = 'rc-1002';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT renter FROM resources_cache WHERE node_id = 1001),
+    (SELECT renter FROM nodex WHERE node_id = 1001),
     (SELECT renter_before FROM renter_before),
     'UPDATE non-state column should not trigger renter change'
 );

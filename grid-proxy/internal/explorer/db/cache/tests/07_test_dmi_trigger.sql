@@ -30,34 +30,34 @@ VALUES (
 SELECT pg_sleep(0.1);
 
 SELECT ok(
-    (SELECT bios FROM resources_cache WHERE node_id = 1001) IS NOT NULL,
+    (SELECT bios FROM nodex WHERE node_id = 1001) IS NOT NULL,
     'INSERT dmi should populate bios field'
 );
 
 SELECT ok(
-    (SELECT baseboard FROM resources_cache WHERE node_id = 1001) IS NOT NULL,
+    (SELECT baseboard FROM nodex WHERE node_id = 1001) IS NOT NULL,
     'INSERT dmi should populate baseboard field'
 );
 
 SELECT ok(
-    (SELECT processor FROM resources_cache WHERE node_id = 1001) IS NOT NULL,
+    (SELECT processor FROM nodex WHERE node_id = 1001) IS NOT NULL,
     'INSERT dmi should populate processor field'
 );
 
 SELECT ok(
-    (SELECT memory FROM resources_cache WHERE node_id = 1001) IS NOT NULL,
+    (SELECT memory FROM nodex WHERE node_id = 1001) IS NOT NULL,
     'INSERT dmi should populate memory field'
 );
 
 -- Test 2: Verify JSON structure
 SELECT is(
-    (SELECT bios->>'vendor' FROM resources_cache WHERE node_id = 1001),
+    (SELECT bios->>'vendor' FROM nodex WHERE node_id = 1001),
     'Test',
     'bios JSON should contain correct vendor'
 );
 
 SELECT is(
-    (SELECT baseboard->>'manufacturer' FROM resources_cache WHERE node_id = 1001),
+    (SELECT baseboard->>'manufacturer' FROM nodex WHERE node_id = 1001),
     'TestMB',
     'baseboard JSON should contain correct manufacturer'
 );
@@ -71,13 +71,13 @@ WHERE node_twin_id = 2001;
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT bios->>'vendor' FROM resources_cache WHERE node_id = 1001),
+    (SELECT bios->>'vendor' FROM nodex WHERE node_id = 1001),
     'Updated',
     'UPDATE dmi should update bios field'
 );
 
 SELECT is(
-    (SELECT baseboard->>'manufacturer' FROM resources_cache WHERE node_id = 1001),
+    (SELECT baseboard->>'manufacturer' FROM nodex WHERE node_id = 1001),
     'UpdatedMB',
     'UPDATE dmi should update baseboard field'
 );

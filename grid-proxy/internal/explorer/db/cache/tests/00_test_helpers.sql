@@ -185,8 +185,8 @@ BEGIN
     DELETE FROM node WHERE id LIKE 'node-%';
     DELETE FROM farm WHERE id LIKE 'farm-%';
     DELETE FROM twin WHERE id LIKE 'twin-%';
-    DELETE FROM resources_cache WHERE node_id IN (SELECT node_id FROM node WHERE id LIKE 'node-%');
-    DELETE FROM public_ips_cache WHERE farm_id IN (SELECT farm_id FROM farm WHERE id LIKE 'farm-%');
+    DELETE FROM nodex WHERE node_id IN (SELECT node_id FROM node WHERE id LIKE 'node-%');
+    DELETE FROM farmx WHERE farm_id IN (SELECT farm_id FROM farm WHERE id LIKE 'farm-%');
 END;
 $$ LANGUAGE plpgsql;
 

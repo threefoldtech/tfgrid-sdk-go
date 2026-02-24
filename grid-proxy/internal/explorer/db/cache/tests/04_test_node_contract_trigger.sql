@@ -23,7 +23,7 @@ SELECT create_test_contract_resources('1001', 1000000000, 2000000000, 3000000000
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT node_contracts_count FROM resources_cache WHERE node_id = 1001),
+    (SELECT node_contracts_count FROM nodex WHERE node_id = 1001),
     1,
     'INSERT node_contract with Created state should set node_contracts_count to 1'
 );
@@ -35,7 +35,7 @@ SELECT create_test_contract_resources('1002', 500000000, 500000000, 500000000, 1
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT node_contracts_count FROM resources_cache WHERE node_id = 1001),
+    (SELECT node_contracts_count FROM nodex WHERE node_id = 1001),
     2,
     'INSERT multiple contracts should increment node_contracts_count'
 );
@@ -47,7 +47,7 @@ SELECT create_test_contract_resources('1003', 1000000000, 1000000000, 1000000000
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT node_contracts_count FROM resources_cache WHERE node_id = 1001),
+    (SELECT node_contracts_count FROM nodex WHERE node_id = 1001),
     3,
     'INSERT contract with GracePeriod state should be counted'
 );
@@ -55,9 +55,9 @@ SELECT is(
 -- Test 4: UPDATE contract state to 'Deleted' should decrement count and release resources
 -- Get initial values before deletion
 SELECT 
-    (SELECT used_hru FROM resources_cache WHERE node_id = 1001) as before_used_hru,
-    (SELECT free_hru FROM resources_cache WHERE node_id = 1001) as before_free_hru,
-    (SELECT node_contracts_count FROM resources_cache WHERE node_id = 1001) as before_count
+    (SELECT used_hru FROM nodex WHERE node_id = 1001) as before_used_hru,
+    (SELECT free_hru FROM nodex WHERE node_id = 1001) as before_free_hru,
+    (SELECT node_contracts_count FROM nodex WHERE node_id = 1001) as before_count
 INTO TEMP before_delete;
 
 UPDATE node_contract SET state = 'Deleted' WHERE id = 'nc-1001';
@@ -65,20 +65,20 @@ UPDATE node_contract SET state = 'Deleted' WHERE id = 'nc-1001';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT node_contracts_count FROM resources_cache WHERE node_id = 1001),
+    (SELECT node_contracts_count FROM nodex WHERE node_id = 1001),
     (SELECT before_count FROM before_delete) - 1,
     'UPDATE contract to Deleted state should decrement node_contracts_count'
 );
 
 -- Test 5: UPDATE to 'Deleted' should release contract resources
 SELECT is(
-    (SELECT used_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT used_hru FROM nodex WHERE node_id = 1001),
     (SELECT before_used_hru FROM before_delete) - 1000000000,
     'UPDATE to Deleted should release contract resources (decrement used_hru)'
 );
 
 SELECT is(
-    (SELECT free_hru FROM resources_cache WHERE node_id = 1001),
+    (SELECT free_hru FROM nodex WHERE node_id = 1001),
     (SELECT before_free_hru FROM before_delete) + 1000000000,
     'UPDATE to Deleted should release contract resources (increment free_hru)'
 );
@@ -89,7 +89,7 @@ UPDATE node_contract SET state = 'Deleted' WHERE id = 'nc-1002';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT node_contracts_count FROM resources_cache WHERE node_id = 1001),
+    (SELECT node_contracts_count FROM nodex WHERE node_id = 1001),
     1,
     'Multiple contract deletions should update count correctly'
 );
@@ -101,7 +101,7 @@ SELECT create_test_contract_resources('1004', 1000000000, 1000000000, 1000000000
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT node_contracts_count FROM resources_cache WHERE node_id = 1001),
+    (SELECT node_contracts_count FROM nodex WHERE node_id = 1001),
     1,
     'INSERT contract with Deleted state should NOT increment count'
 );
@@ -113,7 +113,7 @@ SELECT create_test_contract_resources('1005', 1000000000, 1000000000, 1000000000
 SELECT pg_sleep(0.1);
 
 SELECT 
-    (SELECT node_contracts_count FROM resources_cache WHERE node_id = 1001) as count_before
+    (SELECT node_contracts_count FROM nodex WHERE node_id = 1001) as count_before
 INTO TEMP count_before_update;
 
 UPDATE node_contract SET deployment_data = '{}' WHERE id = 'nc-1005';
@@ -121,7 +121,7 @@ UPDATE node_contract SET deployment_data = '{}' WHERE id = 'nc-1005';
 SELECT pg_sleep(0.1);
 
 SELECT is(
-    (SELECT node_contracts_count FROM resources_cache WHERE node_id = 1001),
+    (SELECT node_contracts_count FROM nodex WHERE node_id = 1001),
     (SELECT count_before FROM count_before_update),
     'UPDATE non-state column should not trigger count change'
 );
