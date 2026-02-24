@@ -59,12 +59,13 @@ BEGIN
             total_sru = NEW.sru,
             total_hru = NEW.hru,
             free_mru = free_mru + GREATEST(CAST((OLD.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) -
-                                    GREATEST(CAST((NEW.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) + 
+                                    GREATEST(CAST((NEW.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) +
                                     (NEW.mru - COALESCE(OLD.mru, 0)),
             free_hru = free_hru + (NEW.hru - COALESCE(OLD.hru, 0)),
             free_sru = free_sru + (NEW.sru - COALESCE(OLD.sru, 0)),
             used_mru = used_mru - GREATEST(CAST((OLD.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()) +
-                                    GREATEST(CAST((NEW.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes())
+                                    GREATEST(CAST((NEW.mru / get_mru_reserved_fraction()) AS bigint), get_mru_reserved_min_bytes()),
+            updated_at = NOW()
             WHERE
             nodex.node_id = (
                 SELECT node.node_id FROM node WHERE node.id = NEW.node_id
@@ -110,7 +111,8 @@ BEGIN
                 used_hru = used_hru - OLD.hru,
                 free_mru = free_mru + OLD.mru,
                 free_hru = free_hru + OLD.hru,
-                free_sru = free_sru + OLD.sru
+                free_sru = free_sru + OLD.sru,
+                updated_at = NOW()
             WHERE
             nodex.node_id = (
                     SELECT node_id FROM node_contract 
@@ -138,7 +140,8 @@ BEGIN
                 used_hru = used_hru + (NEW.hru - COALESCE(OLD.hru, 0)),
                 free_mru = free_mru - (NEW.mru - COALESCE(OLD.mru, 0)),
                 free_hru = free_hru - (NEW.hru - COALESCE(OLD.hru, 0)),
-                free_sru = free_sru - (NEW.sru - COALESCE(OLD.sru, 0))
+                free_sru = free_sru - (NEW.sru - COALESCE(OLD.sru, 0)),
+                updated_at = NOW()
             WHERE
             nodex.node_id = (
                     SELECT node_id FROM node_contract 
@@ -177,7 +180,7 @@ BEGIN
             FOR UPDATE;
 
             UPDATE nodex
-            SET 
+            SET
                 used_cru = nodex.used_cru - contract_resources.cru,
                 used_mru = nodex.used_mru - contract_resources.mru,
                 used_sru = nodex.used_sru - contract_resources.sru,
@@ -185,7 +188,8 @@ BEGIN
                 free_mru = nodex.free_mru + contract_resources.mru,
                 free_sru = nodex.free_sru + contract_resources.sru,
                 free_hru = nodex.free_hru + contract_resources.hru,
-                node_contracts_count = COALESCE(ncc.count, 0)
+                node_contracts_count = COALESCE(ncc.count, 0),
+                updated_at = NOW()
             FROM contract_resources
             LEFT JOIN
                 (SELECT node_id, COUNT(contract_id) as count
@@ -211,13 +215,14 @@ BEGIN
 
     ELSIF (TG_OP = 'INSERT') THEN
         BEGIN
-            UPDATE nodex 
+            UPDATE nodex
             SET node_contracts_count = (
                 SELECT COALESCE(COUNT(contract_id), 0)
                 FROM node_contract
                 WHERE node_id = NEW.node_id
                     AND state IN ('Created', 'GracePeriod')
-            )
+            ),
+            updated_at = NOW()
             WHERE nodex.node_id = NEW.node_id;
         EXCEPTION
             WHEN OTHERS THEN
@@ -245,9 +250,13 @@ $$
 BEGIN
     BEGIN
         UPDATE nodex
-            SET node_gpu_count = gpu.count, gpus = gpu.gpus
+            SET node_gpu_count = gpu.count,
+                free_gpu_count = gpu.free_count,
+                gpus = COALESCE(gpu.gpus, '[]'),
+                updated_at = NOW()
             FROM (
               SELECT COUNT(*) AS count,
+                COUNT(*) FILTER (WHERE contract IS NULL OR contract = 0) AS free_count,
                 jsonb_agg(
                   jsonb_build_object(
                       'id', id,
@@ -257,7 +266,7 @@ BEGIN
                       'contract', contract
                 )
               ) AS gpus
-              FROM node_gpu 
+              FROM node_gpu
               WHERE node_twin_id = COALESCE(NEW.node_twin_id, OLD.node_twin_id)
             ) AS gpu
         WHERE nodex.node_id = (
@@ -290,7 +299,8 @@ BEGIN
         BEGIN
             UPDATE nodex
             SET renter = NULL,
-                rent_contract_id = NULL
+                rent_contract_id = NULL,
+                updated_at = NOW()
             WHERE
                 nodex.node_id = NEW.node_id;
         EXCEPTION
@@ -307,9 +317,10 @@ BEGIN
         END; 
     ELSIF (TG_OP = 'INSERT') THEN
         BEGIN
-            UPDATE nodex 
+            UPDATE nodex
             SET renter = NEW.twin_id,
-                rent_contract_id = NEW.contract_id
+                rent_contract_id = NEW.contract_id,
+                updated_at = NOW()
             WHERE
                 nodex.node_id = NEW.node_id;
         EXCEPTION
@@ -341,7 +352,8 @@ BEGIN
         SET bios = NEW.bios,
             baseboard = NEW.baseboard,
             processor = NEW.processor,
-            memory = NEW.memory
+            memory = NEW.memory,
+            updated_at = NOW()
         WHERE nodex.node_id = (
             SELECT node_id from node where node.twin_id = NEW.node_twin_id
         );
@@ -378,7 +390,8 @@ BEGIN
             tcp_download_ipv6 = NEW.tcp_download_ipv6,
             tcp_upload_ipv6 = NEW.tcp_upload_ipv6,
             udp_download_ipv6 = NEW.udp_download_ipv6,
-            udp_upload_ipv6 = NEW.udp_upload_ipv6
+            udp_upload_ipv6 = NEW.udp_upload_ipv6,
+            updated_at = NOW()
         WHERE nodex.node_id = (
             SELECT node_id from node where node.twin_id = NEW.node_twin_id
         );
@@ -410,7 +423,8 @@ BEGIN
         SET single_threaded_cpu = NEW.single_threaded,
             multi_threaded_cpu = NEW.multi_threaded,
             threads_cpu = NEW.threads,
-            workloads_cpu = NEW.workloads
+            workloads_cpu = NEW.workloads,
+            updated_at = NOW()
         WHERE nodex.node_id = (
             SELECT node_id from node where node.twin_id = NEW.node_twin_id
         );
@@ -441,10 +455,10 @@ BEGIN
     BEGIN 
         UPDATE farmx
         SET free_ips = free_ips + (
-                CASE 
-                WHEN (TG_OP = 'INSERT' AND NEW.contract_id = 0) OR 
+                CASE
+                WHEN (TG_OP = 'INSERT' AND NEW.contract_id = 0) OR
                      (TG_OP = 'UPDATE' AND NEW.contract_id = 0 AND OLD.contract_id != 0)
-                    THEN 1 
+                    THEN 1
                 WHEN (TG_OP = 'DELETE' AND OLD.contract_id = 0) OR
                      (TG_OP = 'UPDATE' AND OLD.contract_id = 0 AND NEW.contract_id != 0)
                     THEN -1
@@ -452,8 +466,8 @@ BEGIN
                 END
             ),
             total_ips = total_ips + (
-                CASE 
-                WHEN TG_OP = 'INSERT' THEN 1 
+                CASE
+                WHEN TG_OP = 'INSERT' THEN 1
                 WHEN TG_OP = 'DELETE' THEN -1
                 ELSE 0
                 END
@@ -468,7 +482,8 @@ BEGIN
                     )
                 )
                 FROM public_ip WHERE farm_id = COALESCE(NEW.farm_id, OLD.farm_id)
-            )
+            ),
+            updated_at = NOW()
         WHERE
             farmx.farm_id = (
                 SELECT farm_id FROM farm WHERE farm.id = COALESCE(NEW.farm_id, OLD.farm_id)
@@ -504,7 +519,7 @@ $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         BEGIN
-            INSERT INTO farmx VALUES(
+            INSERT INTO farmx(farm_id, free_ips, total_ips, ips) VALUES(
                 NEW.farm_id,
                 0,
                 0,

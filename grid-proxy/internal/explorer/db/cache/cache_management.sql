@@ -1,10 +1,10 @@
 -- Cache management functions for manual refresh and validation
 
-CREATE OR REPLACE FUNCTION refresh_resources_cache_node(p_node_id INTEGER) RETURNS VOID AS
+CREATE OR REPLACE FUNCTION refresh_nodex_node(p_node_id INTEGER) RETURNS VOID AS
 $$
 BEGIN
     DELETE FROM nodex WHERE node_id = p_node_id;
-    
+
     INSERT INTO nodex
     SELECT *
     FROM nodex_view
@@ -12,7 +12,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION refresh_resources_cache() RETURNS VOID AS
+CREATE OR REPLACE FUNCTION refresh_nodex() RETURNS VOID AS
 $$
 BEGIN
     TRUNCATE nodex;
@@ -22,12 +22,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION refresh_public_ips_cache_farm(p_farm_id INTEGER) RETURNS VOID AS
+CREATE OR REPLACE FUNCTION refresh_farmx_farm(p_farm_id INTEGER) RETURNS VOID AS
 $$
 BEGIN
     DELETE FROM farmx WHERE farm_id = p_farm_id;
-    
-    INSERT INTO farmx
+
+    INSERT INTO farmx(farm_id, free_ips, total_ips, ips)
     SELECT
         farm.farm_id,
         COALESCE(public_ip_agg.free_ips, 0),
@@ -48,12 +48,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION refresh_public_ips_cache() RETURNS VOID AS
+CREATE OR REPLACE FUNCTION refresh_farmx() RETURNS VOID AS
 $$
 BEGIN
     TRUNCATE farmx;
-    
-    INSERT INTO farmx
+
+    INSERT INTO farmx(farm_id, free_ips, total_ips, ips)
     SELECT
         farm.farm_id,
         COALESCE(public_ip_agg.free_ips, 0),
@@ -73,7 +73,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION validate_resources_cache() RETURNS INTEGER AS
+CREATE OR REPLACE FUNCTION validate_nodex() RETURNS INTEGER AS
 $$
 DECLARE
     mismatch_count INTEGER;
@@ -94,17 +94,18 @@ BEGIN
        OR rc.used_mru != rcv.used_mru
        OR rc.used_sru != rcv.used_sru
        OR rc.used_cru != rcv.used_cru
-       OR rc.node_contracts_count != rcv.node_contracts_count;
-    
+       OR rc.node_contracts_count != rcv.node_contracts_count
+       OR rc.free_gpu_count != rcv.free_gpu_count;
+
     RETURN mismatch_count;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION refresh_all_caches() RETURNS VOID AS
+CREATE OR REPLACE FUNCTION refresh_all() RETURNS VOID AS
 $$
 BEGIN
-    PERFORM refresh_resources_cache();
-    PERFORM refresh_public_ips_cache();
+    PERFORM refresh_nodex();
+    PERFORM refresh_farmx();
 END;
 $$ LANGUAGE plpgsql;
 
@@ -117,21 +118,20 @@ BEGIN
     SELECT jobid INTO job_id
     FROM cron.job
     WHERE jobname = 'refresh-cache-nightly';
-    
+
     IF job_id IS NOT NULL THEN
         PERFORM cron.unschedule(job_id);
         RAISE NOTICE 'Removed existing cache refresh schedule';
     END IF;
-    
+
     PERFORM cron.schedule(
         'refresh-cache-nightly',
         '0 0 * * *',
-        $$SELECT refresh_all_caches()$$
+        $$SELECT refresh_all()$$
     );
-    
+
     RAISE NOTICE 'Scheduled cache refresh: Daily at midnight (00:00:00)';
 EXCEPTION
     WHEN OTHERS THEN
         RAISE WARNING 'Failed to schedule cache refresh: %. pg_cron extension may not be available or may require superuser privileges.', SQLERRM;
 END $$;
-

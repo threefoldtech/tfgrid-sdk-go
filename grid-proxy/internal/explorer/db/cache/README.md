@@ -14,7 +14,7 @@ The setup consists of:
 
 ## Cached Tables
 
-### `resources_cache`
+### `nodex`
 
 Pre-computed node resource information for fast queries.
 
@@ -23,7 +23,9 @@ Pre-computed node resource information for fast queries.
 - Includes hardware information (DMI, GPUs, CPU benchmarks, network speeds)
 - Contains rental information (renter, rent_contract_id)
 - Tracks active contract counts
+- Tracks GPU availability via `node_gpu_count` (total) and `free_gpu_count` (unassigned)
 - Automatically calculates `price_usd` using a generated column
+- Records last cache update time via `updated_at`
 
 **Resource Reservations:**
 - **MRU**: Reserved amount = `max(MRU/10, 2GB)` - automatically reserved and not available for contracts
@@ -32,7 +34,7 @@ Pre-computed node resource information for fast queries.
 **Primary Key:** `node_id`
 **Indexed on:** `farm_id` for fast farm-based queries
 
-### `public_ips_cache`
+### `farmx`
 
 Aggregated public IP information per farm.
 
@@ -40,6 +42,7 @@ Aggregated public IP information per farm.
 - Tracks total IPs assigned to each farm
 - Counts free IPs (where `contract_id = 0`)
 - Stores complete IP details as JSONB array (id, ip, contract_id, gateway)
+- Records last cache update time via `updated_at`
 
 **Primary Key:** `farm_id`
 
@@ -60,7 +63,7 @@ Triggers automatically maintain cache tables when source data changes. Each trig
 
 | Trigger | Source Table | What It Does |
 |---------|--------------|--------------|
-| `tg_node_gpu_count` | `node_gpu` | Recalculates GPU count and JSON array when GPUs are added/removed/updated. |
+| `tg_node_gpu_count` | `node_gpu` | Recalculates GPU count, free GPU count, and JSON array when GPUs are added/removed/updated. |
 | `tg_rent_contract` | `rent_contract` | On INSERT: Sets renter and rent_contract_id. On UPDATE to 'Deleted': Clears rental info. |
 | `tg_dmi` | `dmi` | Updates hardware information (bios, baseboard, processor, memory) in cache. |
 | `tg_speed` | `speed` | Updates network speed test results (upload, download, IPv4/IPv6, TCP/UDP). |
@@ -83,11 +86,11 @@ All triggers include error handling that:
 ## Cache Management
 
 Manual cache refresh functions are available:
-- `refresh_resources_cache()` - Refreshes entire resources cache
-- `refresh_resources_cache_node(node_id)` - Refreshes a single node
-- `refresh_public_ips_cache()` - Refreshes entire IP cache
-- `refresh_public_ips_cache_farm(farm_id)` - Refreshes a single farm
-- `validate_resources_cache()` - Validates cache consistency
+- `refresh_nodex()` - Refreshes entire nodex cache
+- `refresh_nodex_node(node_id)` - Refreshes a single node
+- `refresh_farmx()` - Refreshes entire farmx IP cache
+- `refresh_farmx_farm(farm_id)` - Refreshes a single farm
+- `validate_nodex()` - Validates nodex cache consistency (returns mismatch count)
+- `refresh_all()` - Refreshes both nodex and farmx
 
 The cache is also automatically refreshed nightly at midnight using `pg_cron`.
-

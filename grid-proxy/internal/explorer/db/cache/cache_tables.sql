@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS nodex(
     extra_fee NUMERIC,
     gpus jsonb,
     node_gpu_count INTEGER NOT NULL,
+    free_gpu_count INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     price_usd NUMERIC GENERATED ALWAYS AS (
         calc_price(
             total_cru,
@@ -62,10 +64,11 @@ CREATE TABLE farmx(
     farm_id INTEGER PRIMARY KEY,
     free_ips INTEGER NOT NULL,
     total_ips INTEGER NOT NULL,
-    ips jsonb
+    ips jsonb,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO farmx
+INSERT INTO farmx(farm_id, free_ips, total_ips, ips)
     SELECT
         farm.farm_id,
         COALESCE(public_ip_agg.free_ips, 0),
