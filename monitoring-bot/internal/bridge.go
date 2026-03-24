@@ -35,29 +35,29 @@ func (m *Monitor) monitorBridges() error {
 
 		report, err := m.monitorBridge(net)
 		if err != nil {
-			message.WriteString(fmt.Sprintf("- %s\n%s\n\n", failureMessage, err.Error()))
+			fmt.Fprintf(&message, "- %s\n%s\n\n", failureMessage, err.Error())
 			continue
 		}
 
-		message.WriteString(fmt.Sprintf("- %s\n", successMessage))
+		fmt.Fprintf(&message, "- %s\n", successMessage)
 		message.WriteString("\tBridge Operation Results:\n")
 		message.WriteString("\t1. Initial State:\n")
-		message.WriteString(fmt.Sprintf("\t   - TFChain Balance: %f TFT\n", report.original))
-		message.WriteString(fmt.Sprintf("\t   - Stellar Balance: %f TFT\n", report.originalStellar))
+		fmt.Fprintf(&message, "\t   - TFChain Balance: %f TFT\n", report.original)
+		fmt.Fprintf(&message, "\t   - Stellar Balance: %f TFT\n", report.originalStellar)
 		message.WriteString("\t2. Deposit (Stellar → TFChain):\n")
-		message.WriteString(fmt.Sprintf("\t   - TFChain Balance: %f TFT (+%f TFT)\n",
+		fmt.Fprintf(&message, "\t   - TFChain Balance: %f TFT (+%f TFT)\n",
 			report.afterSendingToChain,
-			report.afterSendingToChain-report.original))
-		message.WriteString(fmt.Sprintf("\t   - Stellar Balance: %f TFT (-%f TFT)\n",
+			report.afterSendingToChain-report.original)
+		fmt.Fprintf(&message, "\t   - Stellar Balance: %f TFT (-%f TFT)\n",
 			report.stellarAfterDeposit,
-			report.originalStellar-report.stellarAfterDeposit))
+			report.originalStellar-report.stellarAfterDeposit)
 		message.WriteString("\t3. Withdraw (TFChain → Stellar):\n")
-		message.WriteString(fmt.Sprintf("\t   - TFChain Balance: %f TFT (-%f TFT)\n",
+		fmt.Fprintf(&message, "\t   - TFChain Balance: %f TFT (-%f TFT)\n",
 			report.afterSendingToStellar,
-			report.afterSendingToChain-report.afterSendingToStellar))
-		message.WriteString(fmt.Sprintf("\t   - Stellar Balance: %f TFT (+%f TFT)\n",
+			report.afterSendingToChain-report.afterSendingToStellar)
+		fmt.Fprintf(&message, "\t   - Stellar Balance: %f TFT (+%f TFT)\n",
 			report.stellarAfterWithdraw,
-			report.stellarAfterWithdraw-report.stellarAfterDeposit))
+			report.stellarAfterWithdraw-report.stellarAfterDeposit)
 		message.WriteString("\n")
 	}
 
