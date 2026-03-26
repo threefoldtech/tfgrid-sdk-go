@@ -20,8 +20,8 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.6
 	github.com/threefoldtech/zosbase v1.0.9
 	github.com/vedhavyas/go-subkey v1.0.3
-	go.opentelemetry.io/otel v1.39.0
-	go.opentelemetry.io/otel/trace v1.39.0
+	go.opentelemetry.io/otel v1.42.0
+	go.opentelemetry.io/otel/trace v1.42.0
 	golang.org/x/crypto v0.49.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	golang.org/x/sync v0.20.0
