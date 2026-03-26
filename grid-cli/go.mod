@@ -11,7 +11,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.18
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.0
 	github.com/threefoldtech/zosbase v1.0.9
-	github.com/vedhavyas/go-subkey v1.0.3
+	github.com/vedhavyas/go-subkey v1.0.4
 )
 
 require (
