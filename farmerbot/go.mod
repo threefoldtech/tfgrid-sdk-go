@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.5
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.5
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.6
 	github.com/vedhavyas/go-subkey v1.0.3
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -52,7 +52,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-	github.com/threefoldtech/zosbase v1.0.4 // indirect
+	github.com/threefoldtech/zosbase v1.0.9 // indirect
 	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
 	go.opentelemetry.io/otel v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect

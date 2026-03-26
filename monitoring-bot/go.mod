@@ -62,6 +62,7 @@ require (
 	github.com/valyala/fasthttp v1.52.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
+	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0 // indirect
 	github.com/yudai/gojsondiff v1.0.0 // indirect
