@@ -1,8 +1,6 @@
 module github.com/threefoldtech/tfgrid-sdk-go/activation-service
 
-go 1.23.0
-
-toolchain go1.24.2
+go 1.25.0
 
 require (
 	github.com/cosmos/go-bip39 v1.0.0
