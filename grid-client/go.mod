@@ -7,7 +7,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1
 	github.com/cosmos/go-bip39 v1.0.0
-	github.com/getsentry/sentry-go v0.29.1
+	github.com/getsentry/sentry-go v0.44.1
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/schema v1.4.1
