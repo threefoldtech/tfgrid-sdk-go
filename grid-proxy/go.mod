@@ -19,8 +19,8 @@ require (
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.6
 	github.com/threefoldtech/zosbase v1.0.9
-	go.opentelemetry.io/otel v1.39.0
-	go.opentelemetry.io/otel/trace v1.39.0
+	go.opentelemetry.io/otel v1.42.0
+	go.opentelemetry.io/otel/trace v1.42.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.10
