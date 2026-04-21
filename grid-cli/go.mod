@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.34.0
+	github.com/rs/zerolog v1.35.1
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.18
