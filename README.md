@@ -24,7 +24,7 @@ This repository contains the official Go SDK for interacting with the ThreeFold 
 
 ## Role in the stack
 
-The SDK connects user-facing and backend Go applications to the ThreeFold Grid. It uses TFChain for on-chain contracts and billing, the grid proxy for node discovery and statistics, and RMB for direct communication with nodes. The packages in this repository are used by the Terraform provider, CLI tools, monitoring systems, and other backend services within the broader infrastructure stack.
+The SDK connects user-facing and backend Go applications to the ThreeFold Grid. It uses Ledger Chain for on-chain contracts and billing, the grid proxy for node discovery and statistics, and RMB for direct communication with nodes. The packages in this repository are used by the Terraform provider, CLI tools, monitoring systems, and other backend services within the broader infrastructure stack.
 
 ## Relation to ThreeFold
 
