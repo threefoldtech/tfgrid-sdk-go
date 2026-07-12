@@ -65,7 +65,7 @@ func parseQueryParams(r *http.Request, types_ ...interface{}) error {
 // returns a slice of all the possible params for this type
 func getSchemaTags(type_ interface{}) []string {
 	t := reflect.TypeOf(type_)
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 
