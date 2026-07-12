@@ -12,8 +12,8 @@ import (
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/zosbase/pkg/gridtypes"
-	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 
 // K8sDeployer for deploying k8s

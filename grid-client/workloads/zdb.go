@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 
 const (

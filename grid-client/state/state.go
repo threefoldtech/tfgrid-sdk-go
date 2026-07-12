@@ -14,8 +14,8 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/zosbase/pkg/gridtypes"
-	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 	"golang.org/x/exp/maps"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

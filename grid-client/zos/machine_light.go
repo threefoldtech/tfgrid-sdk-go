@@ -2,7 +2,7 @@ package zos
 
 import (
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 
 type ZMachineLight struct {

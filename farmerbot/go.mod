@@ -52,7 +52,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-	github.com/threefoldtech/zosbase v1.0.9 // indirect
+	github.com/threefoldtech/zos_base v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
 	go.opentelemetry.io/otel v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect

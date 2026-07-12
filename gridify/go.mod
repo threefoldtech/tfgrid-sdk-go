@@ -64,7 +64,7 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.6 // indirect
-	github.com/threefoldtech/zosbase v1.0.9 // indirect
+	github.com/threefoldtech/zos_base v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
