@@ -17,7 +17,7 @@ require (
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00
-	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.17.6
+	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.18.0
 	github.com/threefoldtech/zos_base v1.1.0
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0

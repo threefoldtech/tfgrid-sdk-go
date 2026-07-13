@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/hashicorp/go-envparse v0.1.0
-	github.com/threefoldtech/zos_sdk_go/grid-client v0.11.2
+	github.com/threefoldtech/zos_sdk_go/grid-client v0.18.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 )
 
@@ -43,8 +43,8 @@ require (
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00 // indirect
-	github.com/threefoldtech/zos_sdk_go/grid-proxy v0.17.7 // indirect
-	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.17.6 // indirect
+	github.com/threefoldtech/zos_sdk_go/grid-proxy v0.18.0 // indirect
+	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.18.0 // indirect
 	github.com/threefoldtech/zos_base v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
