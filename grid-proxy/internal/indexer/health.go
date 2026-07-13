@@ -7,7 +7,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-	"github.com/threefoldtech/zosbase/pkg/diagnostics"
+	"github.com/threefoldtech/zos_base/pkg/diagnostics"
 )
 
 const (

@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 
 // Bytes value that is represented as hex when serialized to json

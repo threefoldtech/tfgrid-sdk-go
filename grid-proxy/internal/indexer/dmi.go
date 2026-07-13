@@ -7,7 +7,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-	zosDmiTypes "github.com/threefoldtech/zosbase/pkg/capacity/dmi"
+	zosDmiTypes "github.com/threefoldtech/zos_base/pkg/capacity/dmi"
 )
 
 const (
