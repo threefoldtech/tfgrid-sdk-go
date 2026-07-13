@@ -13,14 +13,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zos_sdk_go/grid-client/mocks"
 	client "github.com/threefoldtech/zos_sdk_go/grid-client/node"
 	"github.com/threefoldtech/zos_sdk_go/grid-client/state"
 	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
 	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 	proxyTypes "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/zos_base/pkg/gridtypes"
-	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 
 func constructTestFQDNDeployer(t *testing.T, mock bool) (

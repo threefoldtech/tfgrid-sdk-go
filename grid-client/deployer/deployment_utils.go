@@ -4,8 +4,8 @@ import (
 	"crypto/md5"
 
 	"github.com/pkg/errors"
-	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
+	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 )
 
 // CountDeploymentPublicIPs counts the public IPs of a deployment

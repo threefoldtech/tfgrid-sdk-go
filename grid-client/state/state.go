@@ -10,12 +10,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 	client "github.com/threefoldtech/zos_sdk_go/grid-client/node"
 	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
 	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
 	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
-	"github.com/threefoldtech/zos_base/pkg/gridtypes"
-	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 	"golang.org/x/exp/maps"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

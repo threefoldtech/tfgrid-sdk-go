@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
+	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 )
 
 // VM is a virtual machine struct

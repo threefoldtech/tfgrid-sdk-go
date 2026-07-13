@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
 	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
-	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 
 const (

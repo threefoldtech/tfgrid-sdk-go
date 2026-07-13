@@ -10,9 +10,9 @@ import (
 
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
 )
 
 // old: https://hub.grid.tf/tf-official-apps/threefoldtech-k3s-latest.flist

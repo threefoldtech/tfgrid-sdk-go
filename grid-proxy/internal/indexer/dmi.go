@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	zosDmiTypes "github.com/threefoldtech/zos_base/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos_sdk_go/grid-proxy/internal/explorer/db"
 	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
-	zosDmiTypes "github.com/threefoldtech/zos_base/pkg/capacity/dmi"
 )
 
 const (

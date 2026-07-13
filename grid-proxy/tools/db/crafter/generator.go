@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 const deleted = "Deleted"

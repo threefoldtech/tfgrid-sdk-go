@@ -13,10 +13,10 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	client "github.com/threefoldtech/zos_sdk_go/grid-client/node"
-	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
+	client "github.com/threefoldtech/zos_sdk_go/grid-client/node"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 const requestedPagesPerIteration = 5

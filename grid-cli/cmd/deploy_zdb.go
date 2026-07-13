@@ -7,12 +7,12 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 	command "github.com/threefoldtech/zos_sdk_go/grid-cli/internal/cmd"
 	"github.com/threefoldtech/zos_sdk_go/grid-cli/internal/config"
 	"github.com/threefoldtech/zos_sdk_go/grid-cli/internal/filters"
 	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
 	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
-	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 
 // deployZDBCmd represents the deploy zdb command

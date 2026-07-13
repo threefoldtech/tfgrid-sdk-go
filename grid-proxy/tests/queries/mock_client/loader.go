@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"math"
 
-	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 	"gorm.io/gorm"
 )
 
