@@ -11,7 +11,7 @@ require (
 	github.com/stellar/go v0.0.0-20231121172327-69266de4154f
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00
-	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.16.1-0.20241229121208-76ac3fea5e67
+	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.18.0
 )
 
 require (

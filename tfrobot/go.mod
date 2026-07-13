@@ -12,8 +12,8 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00
-	github.com/threefoldtech/zos_sdk_go/grid-client v0.15.18
-	github.com/threefoldtech/zos_sdk_go/grid-proxy v0.17.7
+	github.com/threefoldtech/zos_sdk_go/grid-client v0.18.0
+	github.com/threefoldtech/zos_sdk_go/grid-proxy v0.18.0
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.49.0
 	golang.org/x/sync v0.20.0
@@ -58,7 +58,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.17.6 // indirect
+	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.18.0 // indirect
 	github.com/threefoldtech/zos_base v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
 	go.opentelemetry.io/otel v1.39.0 // indirect

@@ -13,8 +13,8 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00
-	github.com/threefoldtech/zos_sdk_go/grid-proxy v0.17.5
-	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.17.6
+	github.com/threefoldtech/zos_sdk_go/grid-proxy v0.18.0
+	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.18.0
 	github.com/vedhavyas/go-subkey v1.0.3
 	gopkg.in/yaml.v3 v3.0.1
 )
