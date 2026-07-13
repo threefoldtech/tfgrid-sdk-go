@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/tfgrid-sdk-go/activation-service/app"
+	"github.com/threefoldtech/zos_sdk_go/activation-service/app"
 )
 
 // rootCmd represents the base command when called without any subcommands

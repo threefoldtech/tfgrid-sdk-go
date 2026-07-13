@@ -11,14 +11,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
 
 	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 
 func TestGatewayFQDNDeployment(t *testing.T) {
-	t.Skip("related issue: https://github.com/threefoldtech/tfgrid-sdk-go/issues/931")
+	t.Skip("related issue: https://github.com/threefoldtech/zos_sdk_go/issues/931")
 
 	tfPluginClient, err := setup()
 	if err != nil {

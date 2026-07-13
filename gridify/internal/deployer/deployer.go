@@ -11,8 +11,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/tfplugin"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/gridify/internal/tfplugin"
 )
 
 // Deployer struct manages project deployment

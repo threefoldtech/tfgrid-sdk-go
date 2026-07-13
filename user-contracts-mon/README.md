@@ -25,7 +25,7 @@ Ensure that you have installed:
 1.  Clone this repository to your local machine:
 
    ```bash
-   git clone https://github.com/threefoldtech/tfgrid-sdk-go.git
+   git clone https://github.com/threefoldtech/zos_sdk_go.git
    cd tfgrid-sdk-go/user-contracts-mon
    ```
 

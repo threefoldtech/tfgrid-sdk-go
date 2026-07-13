@@ -10,8 +10,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	tfrobot "github.com/threefoldtech/zos_sdk_go/tfrobot/pkg/deployer"
 	"github.com/vedhavyas/go-subkey"
 	"gopkg.in/yaml.v3"
 )

@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd"
+import "github.com/threefoldtech/zos_sdk_go/monitoring-bot/cmd"
 
 func main() {
 	cmd.Execute()

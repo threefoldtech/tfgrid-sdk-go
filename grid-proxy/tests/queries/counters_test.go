@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
-	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	proxytypes "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 var statuses = []string{"up", "standby", "down"}

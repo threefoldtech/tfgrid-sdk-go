@@ -49,7 +49,7 @@ Global Flags:
 
 ## Download
 
-- Download the binaries from [releases](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
+- Download the binaries from [releases](https://github.com/threefoldtech/zos_sdk_go/releases)
 - Extract the downloaded files
 - Move the binary to any of `$PATH` directories, for example:
 

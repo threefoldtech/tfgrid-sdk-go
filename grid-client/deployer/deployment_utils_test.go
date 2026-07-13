@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 )
 
 func TestDeploymentUtils(t *testing.T) {

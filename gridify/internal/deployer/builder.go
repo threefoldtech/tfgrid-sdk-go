@@ -6,8 +6,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 // VMSpec struct to hold vm specs

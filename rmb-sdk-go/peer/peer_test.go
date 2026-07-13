@@ -6,7 +6,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer/types"
 )
 
 func TestPeer_HandleIncoming_ExpiredEnvelope(t *testing.T) {

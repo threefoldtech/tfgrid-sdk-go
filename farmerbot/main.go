@@ -1,6 +1,6 @@
 package main
 
-import "github.com/threefoldtech/tfgrid-sdk-go/farmerbot/cmd"
+import "github.com/threefoldtech/zos_sdk_go/farmerbot/cmd"
 
 func main() {
 	cmd.Execute()

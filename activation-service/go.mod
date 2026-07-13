@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid-sdk-go/activation-service
+module github.com/threefoldtech/zos_sdk_go/activation-service
 
 go 1.25.0
 

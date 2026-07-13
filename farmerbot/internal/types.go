@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/pkg"
 )
 
 // Config is the inputs for configuration for farmerbot

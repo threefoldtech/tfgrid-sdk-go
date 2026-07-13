@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/internal"
 )
 
 func TestFileReader(t *testing.T) {

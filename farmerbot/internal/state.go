@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/pkg"
 )
 
 // state is the state data for farmerbot
@@ -309,7 +309,7 @@ func (s *state) validate() error {
 			return fmt.Errorf("node %d: total MRU is required", n.ID)
 		}
 
-		// visit: https://github.com/threefoldtech/tfgrid-sdk-go/issues/586
+		// visit: https://github.com/threefoldtech/zos_sdk_go/issues/586
 		// if n.resources.total.hru == 0 {
 		// 	return fmt.Errorf("node %d: total HRU is required", n.ID)
 		// }

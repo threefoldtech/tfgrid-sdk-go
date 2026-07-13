@@ -9,8 +9,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	tfrobot "github.com/threefoldtech/zos_sdk_go/tfrobot/pkg/deployer"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v3"
 )

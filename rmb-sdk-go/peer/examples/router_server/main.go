@@ -8,8 +8,8 @@ import (
 	"os"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
 )
 
 func app() error {

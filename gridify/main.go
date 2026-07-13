@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/threefoldtech/tfgrid-sdk-go/gridify/cmd"
+	"github.com/threefoldtech/zos_sdk_go/gridify/cmd"
 )
 
 func main() {

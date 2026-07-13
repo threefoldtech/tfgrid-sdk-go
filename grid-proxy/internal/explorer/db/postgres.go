@@ -8,9 +8,9 @@ import (
 
 	// to use for database/sql
 	_ "github.com/lib/pq"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/nodestatus"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

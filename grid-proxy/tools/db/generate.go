@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tools/db/crafter"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/tools/db/crafter"
 	"gorm.io/gorm"
 )
 

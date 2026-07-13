@@ -6,12 +6,12 @@ import (
 	"math"
 
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/internal/explorer/db"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
-// DBClient is an implementation for the db client interface [github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client.DBClient]
+// DBClient is an implementation for the db client interface [github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/client.DBClient]
 //
 // It fetches the desired data from the database, does the appropriate type conversions, and returns the result.
 type DBClient struct {

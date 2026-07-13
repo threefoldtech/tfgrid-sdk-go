@@ -1,6 +1,6 @@
 package crafter
 
-import "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+import "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 
 var (
 	countries = []string{"Belgium", "United States", "Egypt", "United Kingdom"}

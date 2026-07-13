@@ -7,7 +7,7 @@ import (
 
 	sr25519 "github.com/ChainSafe/go-schnorrkel"
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer/types"
 
 	"github.com/gtank/merlin"
 	"github.com/rs/zerolog/log"

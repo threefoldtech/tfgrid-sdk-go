@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
 )
 
 // GetIdentityWithKeyType returns chain identity given a key type. key type can be "ed25519" or "sr25519"

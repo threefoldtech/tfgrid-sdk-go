@@ -24,8 +24,8 @@ lint:
 build:
 	@echo "Running $@"
 	@go build -ldflags=\
-	"-X 'github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.commit=$(shell git rev-parse HEAD)'\
-	 -X 'github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
+	"-X 'github.com/threefoldtech/zos_sdk_go/monitoring-bot/cmd.commit=$(shell git rev-parse HEAD)'\
+	 -X 'github.com/threefoldtech/zos_sdk_go/monitoring-bot/cmd.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
 	 -o bin/monitoring-bot main.go
 
 coverage: clean 

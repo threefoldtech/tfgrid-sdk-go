@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/internal/explorer/db"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/internal/explorer/db"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
 )
 
 const (

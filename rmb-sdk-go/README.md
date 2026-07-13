@@ -1,4 +1,4 @@
-[![Go Documentation](https://godocs.io/github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go?status.svg)](https://godocs.io/github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go)
+[![Go Documentation](https://godocs.io/github.com/threefoldtech/zos_sdk_go/rmb-sdk-go?status.svg)](https://godocs.io/github.com/threefoldtech/zos_sdk_go/rmb-sdk-go)
 
 # Introduction
 

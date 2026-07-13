@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go"
 )
 
 const (

@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/internal"
 )
 
 // wrapper for validateInput

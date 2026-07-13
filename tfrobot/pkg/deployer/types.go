@@ -1,6 +1,6 @@
 package deployer
 
-import "github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+import "github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
 
 // type config contains configuration used to deploy multiple groups of vms in batches
 // **note: please make sure to run validator (validator.Validate(conf))**

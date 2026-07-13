@@ -4,8 +4,8 @@ import (
 	"context"
 	"slices"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/nodestatus"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/nodestatus"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 func (g *GridProxyMockClient) Stats(ctx context.Context, filter types.StatsFilter) (res types.Stats, err error) {

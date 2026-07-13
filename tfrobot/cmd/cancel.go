@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
+	"github.com/threefoldtech/zos_sdk_go/tfrobot/pkg/deployer"
 )
 
 var cancelCmd = &cobra.Command{

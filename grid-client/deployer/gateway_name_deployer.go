@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
+	client "github.com/threefoldtech/zos_sdk_go/grid-client/node"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 )
 
 // GatewayNameDeployer for deploying a GatewayName

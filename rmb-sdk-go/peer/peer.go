@@ -21,9 +21,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/encoder"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer/encoder"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer/types"
 	"google.golang.org/protobuf/proto"
 )
 

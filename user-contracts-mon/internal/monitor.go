@@ -9,8 +9,8 @@ import (
 	"time"
 
 	tgapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/graphql"
 	"golang.org/x/exp/slices"
 )
 

@@ -2,7 +2,7 @@
 package workloads
 
 import (
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 )
 
 // ConstructPublicIPWorkload constructs a public IP workload

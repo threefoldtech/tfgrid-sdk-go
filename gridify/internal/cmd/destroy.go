@@ -6,10 +6,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/repository"
-	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/tfplugin"
+	"github.com/threefoldtech/zos_sdk_go/gridify/internal/config"
+	"github.com/threefoldtech/zos_sdk_go/gridify/internal/deployer"
+	"github.com/threefoldtech/zos_sdk_go/gridify/internal/repository"
+	"github.com/threefoldtech/zos_sdk_go/gridify/internal/tfplugin"
 )
 
 // Destroy handles destroy command logic

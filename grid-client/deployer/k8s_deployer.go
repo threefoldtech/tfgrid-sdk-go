@@ -9,11 +9,11 @@ import (
 
 	"github.com/pkg/errors"
 	zerolog "github.com/rs/zerolog/log"
-	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
+	client "github.com/threefoldtech/zos_sdk_go/grid-client/node"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 )
 
 // K8sDeployer for deploying k8s

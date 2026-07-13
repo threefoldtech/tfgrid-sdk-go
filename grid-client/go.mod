@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid-sdk-go/grid-client
+module github.com/threefoldtech/zos_sdk_go/grid-client
 
 go 1.25.0
 
@@ -16,8 +16,8 @@ require (
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.7
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.6
+	github.com/threefoldtech/zos_sdk_go/grid-proxy v0.17.7
+	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.17.6
 	github.com/threefoldtech/zos_base v1.1.0
 	github.com/vedhavyas/go-subkey v1.0.3
 	go.opentelemetry.io/otel v1.39.0
@@ -67,6 +67,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/threefoldtech/tfgrid-sdk-go/grid-proxy => ../grid-proxy
+replace github.com/threefoldtech/zos_sdk_go/grid-proxy => ../grid-proxy
 
-replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go => ../rmb-sdk-go
+replace github.com/threefoldtech/zos_sdk_go/rmb-sdk-go => ../rmb-sdk-go

@@ -13,7 +13,7 @@ tfrobot is tool designed to automate mass deployment of groups of VMs on ThreeFo
 
 ## Download
 
-1.  Download the binaries from [releases](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
+1.  Download the binaries from [releases](https://github.com/threefoldtech/zos_sdk_go/releases)
 2.  Extract the downloaded files
 3.  Move the binary to any of `$PATH` directories, for example:
 

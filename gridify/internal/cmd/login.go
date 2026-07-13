@@ -10,7 +10,7 @@ import (
 	bip39 "github.com/cosmos/go-bip39"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/config"
+	"github.com/threefoldtech/zos_sdk_go/gridify/internal/config"
 )
 
 // Login handles login command logic

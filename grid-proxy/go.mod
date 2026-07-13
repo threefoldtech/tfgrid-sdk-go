@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid-sdk-go/grid-proxy
+module github.com/threefoldtech/zos_sdk_go/grid-proxy
 
 go 1.25.0
 
@@ -17,7 +17,7 @@ require (
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.4
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.6
+	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.17.6
 	github.com/threefoldtech/zos_base v1.1.0
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0
@@ -102,4 +102,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go => ../rmb-sdk-go
+replace github.com/threefoldtech/zos_sdk_go/rmb-sdk-go => ../rmb-sdk-go

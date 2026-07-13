@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	backoff "github.com/cenkalti/backoff/v3"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 // RetryingClient wraps the given client and does the actions with retrying

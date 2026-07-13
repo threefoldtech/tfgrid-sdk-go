@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
+	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 )
 
 // MockDeployer is a mock of MockDeployer interface.

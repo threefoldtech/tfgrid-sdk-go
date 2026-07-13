@@ -11,7 +11,7 @@ builds:
     id: farmerbot
 
     ldflags:
-      - -X github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version.Version={{.Tag}}
+      - -X github.com/threefoldtech/zos_sdk_go/farmerbot/version.Version={{.Tag}}
 
   - dir: ./grid-cli
     env:
@@ -22,8 +22,8 @@ builds:
     id: tfcmd
 
     ldflags:
-      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version={{.Tag}}
-      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit={{.Commit}}
+      - -X github.com/threefoldtech/zos_sdk_go/grid-cli/cmd.version={{.Tag}}
+      - -X github.com/threefoldtech/zos_sdk_go/grid-cli/cmd.commit={{.Commit}}
 
   - dir: ./grid-cli
     env:
@@ -34,8 +34,8 @@ builds:
     id: tf-grid-cli
 
     ldflags:
-      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.version={{.Tag}}
-      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-cli/cmd.commit={{.Commit}}
+      - -X github.com/threefoldtech/zos_sdk_go/grid-cli/cmd.version={{.Tag}}
+      - -X github.com/threefoldtech/zos_sdk_go/grid-cli/cmd.commit={{.Commit}}
 
   - dir: ./tfrobot
     env:
@@ -46,8 +46,8 @@ builds:
     id: tfrobot
 
     ldflags:
-      - -X github.com/threefoldtech/tfgrid-sdk-go/tfrobot/cmd.version={{.Tag}}
-      - -X github.com/threefoldtech/tfgrid-sdk-go/tfrobot/cmd.commit={{.Commit}}
+      - -X github.com/threefoldtech/zos_sdk_go/tfrobot/cmd.version={{.Tag}}
+      - -X github.com/threefoldtech/zos_sdk_go/tfrobot/cmd.commit={{.Commit}}
 
   - dir: ./grid-proxy/cmds/proxy_server
     env:
@@ -58,8 +58,8 @@ builds:
     id: tfgridproxy
 
     ldflags:
-      - -w -s -X github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/cmd.version={{.Tag}} -extldflags '-static'
-      - -X github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/cmd.commit={{.Commit}}
+      - -w -s -X github.com/threefoldtech/zos_sdk_go/grid-proxy/cmd.version={{.Tag}} -extldflags '-static'
+      - -X github.com/threefoldtech/zos_sdk_go/grid-proxy/cmd.commit={{.Commit}}
 
   - dir: ./gridify
     env:
@@ -70,8 +70,8 @@ builds:
     id: gridify
 
     ldflags:
-      - -X github.com/threefoldtech/tfgrid-sdk-go/gridify/cmd.version={{.Tag}}
-      - -X github.com/threefoldtech/tfgrid-sdk-go/gridify/cmd.commit={{.Commit}}
+      - -X github.com/threefoldtech/zos_sdk_go/gridify/cmd.version={{.Tag}}
+      - -X github.com/threefoldtech/zos_sdk_go/gridify/cmd.commit={{.Commit}}
 
   - dir: ./monitoring-bot
     env:
@@ -82,8 +82,8 @@ builds:
     id: monitoring-bot
 
     ldflags:
-      - -X github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.version={{.Tag}}
-      - -X github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot/cmd.commit={{.Commit}}
+      - -X github.com/threefoldtech/zos_sdk_go/monitoring-bot/cmd.version={{.Tag}}
+      - -X github.com/threefoldtech/zos_sdk_go/monitoring-bot/cmd.commit={{.Commit}}
 
   # - dir: ./tools/relay-cache-warmer
   #   goos:

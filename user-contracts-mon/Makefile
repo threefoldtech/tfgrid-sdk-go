@@ -30,6 +30,6 @@ lint:
 build:
 	@echo "Running $@"
 	@go build -ldflags=\
-	"-X 'github.com/threefoldtech/tfgrid-sdk-go/user-contracts-mon/app.commit=$(shell git rev-parse HEAD)'\
-	 -X 'github.com/threefoldtech/tfgrid-sdk-go/user-contracts-mon/app.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
+	"-X 'github.com/threefoldtech/zos_sdk_go/user-contracts-mon/app.commit=$(shell git rev-parse HEAD)'\
+	 -X 'github.com/threefoldtech/zos_sdk_go/user-contracts-mon/app.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
 	 -o bin/user-contracts-mon main.go

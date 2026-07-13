@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
 )
 
 const (
@@ -29,7 +29,7 @@ func TestQSFSDeployment(t *testing.T) {
 	}
 
 	if tfPluginClient.Network == "test" {
-		t.Skipf("https://github.com/threefoldtech/tfgrid-sdk-go/issues/1111")
+		t.Skipf("https://github.com/threefoldtech/zos_sdk_go/issues/1111")
 	}
 
 	publicKey, privateKey, err := GenerateSSHKeyPair()

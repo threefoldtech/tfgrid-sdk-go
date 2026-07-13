@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	app "github.com/threefoldtech/tfgrid-sdk-go/user-contracts-mon/app"
+	app "github.com/threefoldtech/zos_sdk_go/user-contracts-mon/app"
 )
 
 func main() {

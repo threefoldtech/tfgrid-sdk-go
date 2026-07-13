@@ -4,7 +4,7 @@ package cmd
 import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	command "github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/cmd"
+	command "github.com/threefoldtech/zos_sdk_go/gridify/internal/cmd"
 )
 
 // loginCmd represents the login command

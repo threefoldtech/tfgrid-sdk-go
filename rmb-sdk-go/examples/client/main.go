@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go"
 )
 
 func app() error {

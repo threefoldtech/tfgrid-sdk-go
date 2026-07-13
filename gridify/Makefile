@@ -31,6 +31,6 @@ lint:
 build:
 	@echo "Running $@"
 	@go build -ldflags=\
-	"-X 'github.com/threefoldtech/tfgrid-sdk-go/gridify/cmd.commit=$(shell git rev-parse HEAD)'\
-	 -X 'github.com/threefoldtech/tfgrid-sdk-go/gridify/cmd.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
+	"-X 'github.com/threefoldtech/zos_sdk_go/gridify/cmd.commit=$(shell git rev-parse HEAD)'\
+	 -X 'github.com/threefoldtech/zos_sdk_go/gridify/cmd.version=$(shell git tag --sort=-version:refname | head -n 1)'"\
 	 -o bin/gridify main.go

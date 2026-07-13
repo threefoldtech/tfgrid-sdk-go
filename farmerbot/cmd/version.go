@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/version"
 )
 
 // versionCmd represents the version command

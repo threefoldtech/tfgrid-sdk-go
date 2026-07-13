@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer/types"
 )
 
 var resultsChan = make(chan bool)

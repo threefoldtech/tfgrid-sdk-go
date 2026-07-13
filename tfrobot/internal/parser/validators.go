@@ -8,9 +8,9 @@ import (
 
 	"github.com/cosmos/go-bip39"
 	"github.com/go-playground/validator/v10"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	tfrobot "github.com/threefoldtech/tfgrid-sdk-go/tfrobot/pkg/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	tfrobot "github.com/threefoldtech/zos_sdk_go/tfrobot/pkg/deployer"
 	"github.com/vedhavyas/go-subkey"
 	"golang.org/x/sync/errgroup"
 )

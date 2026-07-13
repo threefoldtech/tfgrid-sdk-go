@@ -1,6 +1,6 @@
 # Introduction
 
-This is a `Go` example for the `RMB` [default local client](https://github.com/threefoldtech/tfgrid-sdk-go/blob/development/rmb-sdk-go/client.go) that is used send `RMB` messages.
+This is a `Go` example for the `RMB` [default local client](https://github.com/threefoldtech/zos_sdk_go/blob/development/rmb-sdk-go/client.go) that is used send `RMB` messages.
 
 ## How it works
 

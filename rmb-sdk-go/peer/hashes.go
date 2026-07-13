@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer/types"
 )
 
 func Challenge(env *types.Envelope) ([]byte, error) {

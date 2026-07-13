@@ -12,8 +12,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	proxytypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
+	proxytypes "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
+	mock "github.com/threefoldtech/zos_sdk_go/grid-proxy/tests/queries/mock_client"
 )
 
 type ContractsAggregate struct {

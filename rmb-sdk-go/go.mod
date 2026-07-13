@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go
+module github.com/threefoldtech/zos_sdk_go/rmb-sdk-go
 
 go 1.25.0
 
