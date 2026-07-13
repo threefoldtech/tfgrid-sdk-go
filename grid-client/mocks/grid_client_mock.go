@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	types "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	types "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 // MockDBClient is a mock of DBClient interface.

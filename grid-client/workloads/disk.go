@@ -3,7 +3,7 @@ package workloads
 
 import (
 	"github.com/pkg/errors"
-	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
+	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 

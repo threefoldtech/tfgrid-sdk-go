@@ -1,6 +1,6 @@
 # Introduction
 
-This is a `Go` example for the `RMB` [peer router using direct client](https://github.com/threefoldtech/tfgrid-sdk-go/blob/development/rmb-sdk-go/peer/README.md#direct-client) that starts a server as peer using the peer router that. The peer can send `RMB` messages through connecting to the relay directly.
+This is a `Go` example for the `RMB` [peer router using direct client](https://github.com/threefoldtech/zos_sdk_go/blob/development/rmb-sdk-go/peer/README.md#direct-client) that starts a server as peer using the peer router that. The peer can send `RMB` messages through connecting to the relay directly.
 
 ## How it works
 

@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	mock "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/tests/queries/mock_client"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
+	mock "github.com/threefoldtech/zos_sdk_go/grid-proxy/tests/queries/mock_client"
 )
 
 func TestPublicIP(t *testing.T) {

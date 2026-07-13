@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/pkg"
 )
 
 // FindNode finds an available node in the farm

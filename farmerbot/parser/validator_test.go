@@ -5,8 +5,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/internal"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/mocks"
 )
 
 var testCases = []struct {

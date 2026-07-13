@@ -13,8 +13,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/activation-service/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/activation-service/middlewares"
+	"github.com/threefoldtech/zos_sdk_go/activation-service/config"
+	"github.com/threefoldtech/zos_sdk_go/activation-service/middlewares"
 )
 
 // App for all dependencies of backend server

@@ -12,9 +12,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
-	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/version"
+	proxy "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
 )
 
 // FarmerBot for managing farms

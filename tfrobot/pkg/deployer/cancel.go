@@ -3,7 +3,7 @@ package deployer
 import (
 	"fmt"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
 )
 
 func RunCanceler(cfg Config, tfPluginClient deployer.TFPluginClient, debug bool) error {

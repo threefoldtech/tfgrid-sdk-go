@@ -1,7 +1,7 @@
 package mock
 
 import (
-	proxyclient "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	proxyclient "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/client"
 )
 
 // GridProxyMockClient client that returns data directly from the db

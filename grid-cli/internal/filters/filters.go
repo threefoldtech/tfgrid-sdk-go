@@ -2,9 +2,9 @@
 package filters
 
 import (
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/zos"
+	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 // BuildK8sNodeFilter build a filter for a k8s node

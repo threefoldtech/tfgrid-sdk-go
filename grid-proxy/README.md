@@ -54,7 +54,7 @@ By default, the instance runs against devnet. to configure that you will need to
 <!-- Prerequisites -->
 ## Used Technologies & Prerequisites
 
-1. **GoLang**: Mainly the two parts of the project written in `Go 1.17`, otherwise you can just download the compiled binaries from github [releases](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
+1. **GoLang**: Mainly the two parts of the project written in `Go 1.17`, otherwise you can just download the compiled binaries from github [releases](https://github.com/threefoldtech/zos_sdk_go/releases)
 2. **Postgresql**: Used to load the TFGrid DB
 3. **Docker**: Containerize the running services such as Postgres and Redis.
 4. **Mnemonics**: Secret seeds for adummy identity to use for the relay client.
@@ -70,7 +70,7 @@ To start the services for development or testing make sure first you have all th
 - Clone this repo
   
   ```bash
-   git clone https://github.com/threefoldtech/tfgrid-sdk-go.git
+   git clone https://github.com/threefoldtech/zos_sdk_go.git
    cd tfgrid-sdk-go/grid-proxy
   ```
 
@@ -124,10 +124,10 @@ For more illustrations about the commands needed to work on the project. see [co
   ```
 
 - Or download a release:
-  Check the [releases](https://github.com/threefoldtech/tfgrid-sdk-go/releases) page and edit the next command with the chosen version.
+  Check the [releases](https://github.com/threefoldtech/zos_sdk_go/releases) page and edit the next command with the chosen version.
 
   ```bash
-   wget https://github.com/threefoldtech/tfgrid-sdk-go/releases/download/v1.6.7-rc2/tfgridclient_proxy_1.6.7-rc2_linux_amd64.tar.gz \
+   wget https://github.com/threefoldtech/zos_sdk_go/releases/download/v1.6.7-rc2/tfgridclient_proxy_1.6.7-rc2_linux_amd64.tar.gz \
     && tar -xzf tfgridclient_proxy_1.6.7-rc2_linux_amd64.tar.gz \
     && chmod +x server \
     && mv server /usr/local/bin/gridproxy-server

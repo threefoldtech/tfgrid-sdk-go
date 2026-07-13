@@ -12,10 +12,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/parser"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/internal"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/parser"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/version"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
 	"github.com/vedhavyas/go-subkey"
 )
 

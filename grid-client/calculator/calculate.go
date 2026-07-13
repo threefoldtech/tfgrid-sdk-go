@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
 )
 
 const defaultPricingPolicyID = uint32(1)

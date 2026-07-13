@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid-sdk-go/monitoring-bot
+module github.com/threefoldtech/zos_sdk_go/monitoring-bot
 
 go 1.25.0
 
@@ -11,7 +11,7 @@ require (
 	github.com/stellar/go v0.0.0-20231121172327-69266de4154f
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.16.1-0.20241229121208-76ac3fea5e67
+	github.com/threefoldtech/zos_sdk_go/rmb-sdk-go v0.16.1-0.20241229121208-76ac3fea5e67
 )
 
 require (
@@ -76,4 +76,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go => ../rmb-sdk-go
+replace github.com/threefoldtech/zos_sdk_go/rmb-sdk-go => ../rmb-sdk-go

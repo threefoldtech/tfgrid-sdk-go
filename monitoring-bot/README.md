@@ -77,7 +77,7 @@ This is a bot to monitor some TFGrid functionalities here is a list:
     ```
 
   - From the release binary:
-    > Download the latest from the [releases page](https://github.com/threefoldtech/tfgrid-sdk-go/releases)
+    > Download the latest from the [releases page](https://github.com/threefoldtech/zos_sdk_go/releases)
 
     ```bash
     sudo cp monitoring-bot /usr/local/bin

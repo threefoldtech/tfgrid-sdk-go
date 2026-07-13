@@ -4,7 +4,7 @@ package state
 import (
 	"sync"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 )
 
 // NetworkState is a struct of networks names and their networks and mutex to protect the state

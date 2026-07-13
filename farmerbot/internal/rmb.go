@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/pkg"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go"
 )
 
 // RMB is an rmb abstract client interface.

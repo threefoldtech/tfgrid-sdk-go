@@ -9,9 +9,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/mocks"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/pkg"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
 )
 
 func reset(t *testing.T, farmerbot FarmerBot, oldNode1, oldNode2 node, oldFarm substrate.Farm) {

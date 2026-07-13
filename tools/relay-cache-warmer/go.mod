@@ -1,4 +1,4 @@
-module github.com/threefoldtech/tfgrid-sdk-go/relay-cache-warmer
+module github.com/threefoldtech/zos_sdk_go/relay-cache-warmer
 
 go 1.25
 

@@ -9,7 +9,7 @@ test:
 build:
 	@echo "Running $@"
 	@go build -ldflags=\
-	"-X 'github.com/threefoldtech/tfgrid-sdk-go/farmerbot/version.Version=$(shell git tag --sort=-version:refname | head -n 1)'"\
+	"-X 'github.com/threefoldtech/zos_sdk_go/farmerbot/version.Version=$(shell git tag --sort=-version:refname | head -n 1)'"\
 	 -o bin/farmerbot main.go
 
 

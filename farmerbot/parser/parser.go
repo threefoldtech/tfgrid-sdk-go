@@ -8,8 +8,8 @@ import (
 
 	"github.com/cosmos/go-bip39"
 	env "github.com/hashicorp/go-envparse"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/internal"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/internal"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
 	"github.com/vedhavyas/go-subkey"
 	"gopkg.in/yaml.v3"
 )

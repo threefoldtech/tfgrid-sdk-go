@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer/types";
+option go_package = "github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer/types";
 
 // A Request annotate this message as a request message
 // with proper command

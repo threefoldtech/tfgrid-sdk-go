@@ -11,10 +11,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/mocks"
-	"github.com/threefoldtech/tfgrid-sdk-go/farmerbot/pkg"
-	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/mocks"
+	"github.com/threefoldtech/zos_sdk_go/farmerbot/pkg"
+	proxyTypes "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
 )
 
 const (

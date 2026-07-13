@@ -10,14 +10,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	command "github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/cmd"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/config"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-cli/internal/filters"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
+	command "github.com/threefoldtech/zos_sdk_go/grid-cli/internal/cmd"
+	"github.com/threefoldtech/zos_sdk_go/grid-cli/internal/config"
+	"github.com/threefoldtech/zos_sdk_go/grid-cli/internal/filters"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	client "github.com/threefoldtech/zos_sdk_go/grid-client/node"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/zos"
 )
 
 var (

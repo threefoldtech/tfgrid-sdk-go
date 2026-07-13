@@ -10,7 +10,7 @@ Trigger the `gridproxy-release.yml` workflow by pushing the desired tag to the r
 ## Debugging
 In the event that the workflow does not run automatically after pushing the tag and making the release, you can manually execute it using the GitHub Actions interface. Follow these steps:
 
-Go to the [GitHub Actions page](https://github.com/threefoldtech/tfgrid-sdk-go/actions/workflows/gridproxy-release.yml) for the Grid-Proxy repository.
+Go to the [GitHub Actions page](https://github.com/threefoldtech/zos_sdk_go/actions/workflows/gridproxy-release.yml) for the Grid-Proxy repository.
 
 Locate the workflow named gridproxy-release.yml.
 

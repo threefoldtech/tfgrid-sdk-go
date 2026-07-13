@@ -80,9 +80,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
-	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
+	zosTypes "github.com/threefoldtech/zos_sdk_go/grid-client/zos"
+	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go"
 	"github.com/threefoldtech/zos_base/pkg/capacity/dmi"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"

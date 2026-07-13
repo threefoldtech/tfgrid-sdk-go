@@ -9,9 +9,9 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	graphql "github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
-	workloads "github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	types "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	graphql "github.com/threefoldtech/zos_sdk_go/grid-client/graphql"
+	workloads "github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	types "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 )
 
 // MockTFPluginClientInterface is a mock of TFPluginClientInterface interface.

@@ -10,8 +10,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/mocks"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/mocks"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
 )
 
 func TestCalculator(t *testing.T) {

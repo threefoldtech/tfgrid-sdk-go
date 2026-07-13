@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-redis/redis"
 	"github.com/stretchr/testify/require"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/deployer"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
 	"github.com/threefoldtech/zos_base/pkg/gridtypes/zos"
 )
 
@@ -20,7 +20,7 @@ func TestZDBDeployment(t *testing.T) {
 	}
 
 	if tfPluginClient.Network == "test" {
-		t.Skipf("https://github.com/threefoldtech/tfgrid-sdk-go/issues/1111")
+		t.Skipf("https://github.com/threefoldtech/zos_sdk_go/issues/1111")
 	}
 
 	zdbSize := uint64(10)

@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/subi"
-	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/subi"
+	proxy "github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/client"
 )
 
 // validateAccount checks the mnemonics is associated with an account with key type ed25519

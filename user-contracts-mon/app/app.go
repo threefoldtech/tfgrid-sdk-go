@@ -7,7 +7,7 @@ import (
 	"os"
 
 	tgapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	monitor "github.com/threefoldtech/tfgrid-sdk-go/user-contracts-mon/internal"
+	monitor "github.com/threefoldtech/zos_sdk_go/user-contracts-mon/internal"
 )
 
 // set at build time

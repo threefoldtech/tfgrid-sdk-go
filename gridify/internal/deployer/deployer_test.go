@@ -9,13 +9,13 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"github.com/threefoldtech/tfgrid-sdk-go/gridify/internal/mocks"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/graphql"
+	"github.com/threefoldtech/zos_sdk_go/grid-client/workloads"
+	"github.com/threefoldtech/zos_sdk_go/gridify/internal/mocks"
 )
 
 const deploymentName = "test"
-const repoURL = "https://github.com/threefoldtech/tfgrid-sdk-go/gridify.git"
+const repoURL = "https://github.com/threefoldtech/zos_sdk_go/gridify.git"
 const projectName = "gridify"
 
 func TestDeploy(t *testing.T) {
