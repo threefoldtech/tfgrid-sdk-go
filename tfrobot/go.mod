@@ -13,7 +13,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20260302124210-526158ffbc00
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.18
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.0
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.7
 	github.com/vedhavyas/go-subkey v1.0.3
 	golang.org/x/crypto v0.49.0
 	golang.org/x/sync v0.20.0

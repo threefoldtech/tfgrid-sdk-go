@@ -11,7 +11,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.15.18
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.0
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.7
 )
 
 require (
