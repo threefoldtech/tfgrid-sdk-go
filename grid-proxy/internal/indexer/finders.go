@@ -12,7 +12,6 @@ var (
 	finders = map[string]Finder{
 		"up":      upNodesFinder,
 		"healthy": healthyNodesFinder,
-		"new":     newNodesFinder,
 	}
 )
 
@@ -46,29 +45,35 @@ func healthyNodesFinder(ctx context.Context, interval time.Duration, db db.Datab
 	}
 }
 
-func newNodesFinder(ctx context.Context, interval time.Duration, db db.Database, idsChan chan uint32) {
+// newUnindexedNodesFinder finds nodes that exist in node table but not in the indexed table
+func newUnindexedNodesFinder(ctx context.Context, interval time.Duration, db db.Database, idsChan chan uint32, indexedTable string) {
 	ticker := time.NewTicker(interval)
-	latestCheckedID, err := db.GetLastNodeTwinID(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to get last node twin id")
+	defer ticker.Stop()
+
+	queryUnindexedNodes := func() {
+		unindexedIDs, err := db.GetUnindexedNodeTwinIDs(ctx, indexedTable)
+		if err != nil {
+			log.Error().Err(err).Str("table", indexedTable).Msg("failed to get unindexed nodes")
+			return
+		}
+
+		if len(unindexedIDs) == 0 {
+			return
+		}
+
+		log.Info().Int("count", len(unindexedIDs)).Str("table", indexedTable).Msg("found unindexed nodes")
+
+		for _, id := range unindexedIDs {
+			idsChan <- id
+		}
 	}
+
+	queryUnindexedNodes()
 
 	for {
 		select {
 		case <-ticker.C:
-			newIDs, err := db.GetNodeTwinIDsAfter(ctx, latestCheckedID)
-			if err != nil {
-				log.Error().Err(err).Msgf("failed to get node twin ids after %d", latestCheckedID)
-				continue
-			}
-			if len(newIDs) == 0 {
-				continue
-			}
-
-			latestCheckedID = newIDs[0]
-			for _, id := range newIDs {
-				idsChan <- id
-			}
+			queryUnindexedNodes()
 		case <-ctx.Done():
 			return
 		}

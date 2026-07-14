@@ -33,6 +33,7 @@ type Database interface {
 	GetLastNodeTwinID(ctx context.Context) (uint32, error)
 	GetNodeTwinIDsAfter(ctx context.Context, twinID uint32) ([]uint32, error)
 	GetHealthyNodeTwinIds(ctx context.Context) ([]uint32, error)
+	GetUnindexedNodeTwinIDs(ctx context.Context, indexedTable string) ([]uint32, error)
 
 	// indexer upserters
 	UpsertNodesGPU(ctx context.Context, gpus []types.NodeGPU) error

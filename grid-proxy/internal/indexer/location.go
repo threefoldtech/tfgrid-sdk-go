@@ -30,6 +30,10 @@ func (w *LocationWork) Finders() map[string]time.Duration {
 	return w.finders
 }
 
+func (w *LocationWork) IndexedTable() string {
+	return "node_location"
+}
+
 func (w *LocationWork) Get(ctx context.Context, rmb *peer.RpcClient, id uint32) ([]types.NodeLocation, error) {
 	var loc geoip.Location
 	if err := callNode(ctx, rmb, locationCmd, nil, id, &loc); err != nil {

@@ -29,6 +29,10 @@ func (w *WorkloadWork) Finders() map[string]time.Duration {
 	return w.findersInterval
 }
 
+func (w *WorkloadWork) IndexedTable() string {
+	return "node_workloads"
+}
+
 func (w *WorkloadWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.NodesWorkloads, error) {
 	var response struct {
 		Users struct {

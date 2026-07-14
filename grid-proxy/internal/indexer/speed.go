@@ -59,6 +59,10 @@ func (w *SpeedWork) Finders() map[string]time.Duration {
 	return w.findersInterval
 }
 
+func (w *SpeedWork) IndexedTable() string {
+	return "speed"
+}
+
 func (w *SpeedWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.Speed, error) {
 	payload := struct {
 		Name string

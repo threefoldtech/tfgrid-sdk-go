@@ -33,6 +33,10 @@ func (w *CpuBenchmarkWork) Finders() map[string]time.Duration {
 	return w.findersInterval
 }
 
+func (w *CpuBenchmarkWork) IndexedTable() string {
+	return "cpu_benchmark"
+}
+
 func (w *CpuBenchmarkWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.CpuBenchmark, error) {
 	payload := struct {
 		Name string

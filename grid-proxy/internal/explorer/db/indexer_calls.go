@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/threefoldtech/zos_sdk_go/grid-proxy/pkg/types"
 	"gorm.io/gorm/clause"
@@ -26,6 +27,23 @@ func (p *PostgresDatabase) GetNodeTwinIDsAfter(ctx context.Context, twinID uint3
 func (p *PostgresDatabase) GetHealthyNodeTwinIds(ctx context.Context) ([]uint32, error) {
 	nodeTwinIDs := make([]uint32, 0)
 	err := p.gormDB.WithContext(ctx).Table("health_report").Select("node_twin_id").Where("healthy = true").Scan(&nodeTwinIDs).Error
+	return nodeTwinIDs, err
+}
+
+func (p *PostgresDatabase) GetUnindexedNodeTwinIDs(ctx context.Context, indexedTable string) ([]uint32, error) {
+	nodeTwinIDs := make([]uint32, 0)
+
+	query := fmt.Sprintf(`
+		SELECT twin_id 
+		FROM node 
+		WHERE twin_id NOT IN (
+			SELECT DISTINCT node_twin_id 
+			FROM %s
+		)
+		ORDER BY twin_id ASC
+	`, indexedTable)
+
+	err := p.gormDB.WithContext(ctx).Raw(query).Scan(&nodeTwinIDs).Error
 	return nodeTwinIDs, err
 }
 

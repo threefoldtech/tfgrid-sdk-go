@@ -33,6 +33,10 @@ func (w *GPUWork) Finders() map[string]time.Duration {
 	return w.findersInterval
 }
 
+func (w *GPUWork) IndexedTable() string {
+	return "node_gpu"
+}
+
 func (w *GPUWork) Get(ctx context.Context, rmb *peer.RpcClient, twinId uint32) ([]types.NodeGPU, error) {
 	// in case an error returned? return directly we can leave the previously indexed cards
 	// in case null returned? we need to clean all previously added cards till now

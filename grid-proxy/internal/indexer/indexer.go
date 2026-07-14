@@ -21,6 +21,7 @@ type Work[T any] interface {
 	Finders() map[string]time.Duration
 	Get(ctx context.Context, rmb *peer.RpcClient, id uint32) ([]T, error)
 	Upsert(ctx context.Context, db db.Database, batch []T) error
+	IndexedTable() string
 }
 
 type Indexer[T any] struct {
@@ -55,7 +56,11 @@ func NewIndexer[T any](
 
 func (i *Indexer[T]) Start(ctx context.Context) {
 	for name, interval := range i.work.Finders() {
-		go finders[name](ctx, interval, i.dbClient, i.idChan)
+		if name == "new" {
+			go newUnindexedNodesFinder(ctx, interval, i.dbClient, i.idChan, i.work.IndexedTable())
+		} else {
+			go finders[name](ctx, interval, i.dbClient, i.idChan)
+		}
 	}
 
 	for j := uint(0); j < i.workerNum; j++ {
