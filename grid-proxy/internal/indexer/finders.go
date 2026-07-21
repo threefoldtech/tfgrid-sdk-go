@@ -16,9 +16,9 @@ var (
 	}
 )
 
-type Finder func(context.Context, time.Duration, db.Database, chan uint32)
+type Finder func(context.Context, time.Duration, db.Database, chan task)
 
-func upNodesFinder(ctx context.Context, interval time.Duration, db db.Database, idsChan chan uint32) {
+func upNodesFinder(ctx context.Context, interval time.Duration, db db.Database, idsChan chan task) {
 	ticker := time.NewTicker(interval)
 
 	queryUpNodes(ctx, db, idsChan)
@@ -32,7 +32,7 @@ func upNodesFinder(ctx context.Context, interval time.Duration, db db.Database, 
 	}
 }
 
-func healthyNodesFinder(ctx context.Context, interval time.Duration, db db.Database, idsChan chan uint32) {
+func healthyNodesFinder(ctx context.Context, interval time.Duration, db db.Database, idsChan chan task) {
 	ticker := time.NewTicker(interval)
 
 	queryHealthyNodes(ctx, db, idsChan)
@@ -46,7 +46,7 @@ func healthyNodesFinder(ctx context.Context, interval time.Duration, db db.Datab
 	}
 }
 
-func newNodesFinder(ctx context.Context, interval time.Duration, db db.Database, idsChan chan uint32) {
+func newNodesFinder(ctx context.Context, interval time.Duration, db db.Database, idsChan chan task) {
 	ticker := time.NewTicker(interval)
 	latestCheckedID, err := db.GetLastNodeTwinID(ctx)
 	if err != nil {
@@ -67,7 +67,7 @@ func newNodesFinder(ctx context.Context, interval time.Duration, db db.Database,
 
 			latestCheckedID = newIDs[0]
 			for _, id := range newIDs {
-				idsChan <- id
+				idsChan <- task{id: id, retryable: true}
 			}
 		case <-ctx.Done():
 			return
