@@ -86,56 +86,45 @@ func (i *Indexer[T]) get(ctx context.Context) {
 	for {
 		select {
 		case t := <-i.idChan:
-			// retryable tasks sleep between attempts, so they run off the worker pool.
-			// some indexers run with a single worker and would otherwise stall completely.
-			if t.retryable {
-				go i.handle(ctx, t)
+			res, err := i.work.Get(ctx, i.rmbClient, t.id)
+			if err == nil {
+				i.emit(ctx, t, res)
 				continue
 			}
 
-			i.handle(ctx, t)
+			// only the backoff sleeps leave the worker pool. some indexers run with a
+			// single worker and would otherwise stall for the whole retry window.
+			if t.retryable {
+				go i.retry(ctx, t)
+				continue
+			}
+
+			log.Debug().Err(err).Str("indexer", i.name).Uint32("twinId", t.id).Msg("failed to call")
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (i *Indexer[T]) handle(ctx context.Context, t task) {
-	res, err := i.call(ctx, t)
-	if err != nil {
-		log.Debug().Err(err).Str("indexer", i.name).Uint32("twinId", t.id).Msg("failed to call")
-		return
-	}
-
-	for _, item := range res {
-		log.Debug().Str("indexer", i.name).Uint32("twinId", t.id).Msgf("response: %+v", item)
-		i.resultChan <- item
-	}
-}
-
-// call queries the node, retrying with exponential backoff for up to retryTimeout. Only new
-// nodes are retried: they are commonly not answerable over rmb right after registration, and
-// would otherwise wait for the next full sweep, which is a whole day for some indexers.
-func (i *Indexer[T]) call(ctx context.Context, t task) ([]T, error) {
-	res, err := i.work.Get(ctx, i.rmbClient, t.id)
-	if err == nil || !t.retryable {
-		return res, err
-	}
-
+// retry re-queries the node with exponential backoff for up to retryTimeout. Only new nodes
+// are retried: they are commonly not answerable over rmb right after registration, and would
+// otherwise wait for the next full sweep, which is a whole day for some indexers.
+func (i *Indexer[T]) retry(ctx context.Context, t task) {
 	deadline := time.Now().Add(retryTimeout)
 	backoff := retryInitialBackoff
 	for time.Now().Add(backoff).Before(deadline) {
-		log.Debug().Err(err).Str("indexer", i.name).Uint32("twinId", t.id).Dur("backoff", backoff).Msg("retrying new node")
+		log.Debug().Str("indexer", i.name).Uint32("twinId", t.id).Dur("backoff", backoff).Msg("retrying new node")
 
 		select {
 		case <-time.After(backoff):
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return
 		}
 
-		res, err = i.work.Get(ctx, i.rmbClient, t.id)
+		res, err := i.work.Get(ctx, i.rmbClient, t.id)
 		if err == nil {
-			return res, nil
+			i.emit(ctx, t, res)
+			return
 		}
 
 		if backoff *= 2; backoff > retryMaxBackoff {
@@ -143,8 +132,18 @@ func (i *Indexer[T]) call(ctx context.Context, t task) ([]T, error) {
 		}
 	}
 
-	log.Warn().Err(err).Str("indexer", i.name).Uint32("twinId", t.id).Msg("giving up on new node")
-	return nil, err
+	log.Warn().Str("indexer", i.name).Uint32("twinId", t.id).Msg("giving up on new node")
+}
+
+func (i *Indexer[T]) emit(ctx context.Context, t task, res []T) {
+	for _, item := range res {
+		log.Debug().Str("indexer", i.name).Uint32("twinId", t.id).Msgf("response: %+v", item)
+		select {
+		case i.resultChan <- item:
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func (i *Indexer[T]) batch(ctx context.Context) {
