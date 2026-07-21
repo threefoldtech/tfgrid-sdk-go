@@ -9,7 +9,7 @@ import (
 	"github.com/threefoldtech/zos_sdk_go/rmb-sdk-go/peer"
 )
 
-func queryUpNodes(ctx context.Context, database db.Database, nodeTwinIdChan chan uint32) {
+func queryUpNodes(ctx context.Context, database db.Database, nodeTwinIdChan chan task) {
 	filter := types.NodeFilter{
 		Status: []string{"up"},
 	}
@@ -26,21 +26,21 @@ func queryUpNodes(ctx context.Context, database db.Database, nodeTwinIdChan chan
 		}
 
 		for _, node := range nodes {
-			nodeTwinIdChan <- uint32(node.TwinID)
+			nodeTwinIdChan <- task{id: uint32(node.TwinID)}
 		}
 
 		limit.Page++
 	}
 }
 
-func queryHealthyNodes(ctx context.Context, database db.Database, nodeTwinIdChan chan uint32) {
+func queryHealthyNodes(ctx context.Context, database db.Database, nodeTwinIdChan chan task) {
 	ids, err := database.GetHealthyNodeTwinIds(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to query healthy nodes")
 	}
 
 	for _, id := range ids {
-		nodeTwinIdChan <- id
+		nodeTwinIdChan <- task{id: id}
 	}
 }
 

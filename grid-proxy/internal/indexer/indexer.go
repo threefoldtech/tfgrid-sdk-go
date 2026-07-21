@@ -15,7 +15,20 @@ const (
 	flushingBufferInterval = 60 * time.Second // upsert buffer in db if it didn't reach the batch size
 	newNodesCheckInterval  = 5 * time.Minute
 	batchSize              = 20
+
+	retryInitialBackoff = 30 * time.Second
+	retryMaxBackoff     = 5 * time.Minute
+	retryTimeout        = 20 * time.Minute // how long a new node keeps being retried
 )
+
+// task is a twin id to call. Only tasks from the "new" finder are retryable: a freshly
+// registered node is usually not answerable over rmb yet and has no other chance to be
+// indexed before the next full sweep, while nodes found by the "up"/"healthy" finders are
+// already re-queried every time those finders tick.
+type task struct {
+	id        uint32
+	retryable bool
+}
 
 type Work[T any] interface {
 	Finders() map[string]time.Duration
@@ -28,7 +41,7 @@ type Indexer[T any] struct {
 	work       Work[T]
 	dbClient   db.Database
 	rmbClient  *peer.RpcClient
-	idChan     chan uint32
+	idChan     chan task
 	resultChan chan T
 	batchChan  chan []T
 	workerNum  uint
@@ -47,7 +60,7 @@ func NewIndexer[T any](
 		dbClient:   db,
 		rmbClient:  rmb,
 		workerNum:  worker,
-		idChan:     make(chan uint32),
+		idChan:     make(chan task),
 		resultChan: make(chan T),
 		batchChan:  make(chan []T),
 	}
@@ -72,17 +85,61 @@ func (i *Indexer[T]) Start(ctx context.Context) {
 func (i *Indexer[T]) get(ctx context.Context) {
 	for {
 		select {
-		case id := <-i.idChan:
-			res, err := i.work.Get(ctx, i.rmbClient, id)
-			if err != nil {
-				log.Debug().Err(err).Str("indexer", i.name).Uint32("twinId", id).Msg("failed to call")
+		case t := <-i.idChan:
+			res, err := i.work.Get(ctx, i.rmbClient, t.id)
+			if err == nil {
+				i.emit(ctx, t, res)
 				continue
 			}
 
-			for _, item := range res {
-				log.Debug().Str("indexer", i.name).Uint32("twinId", id).Msgf("response: %+v", item)
-				i.resultChan <- item
+			// only the backoff sleeps leave the worker pool. some indexers run with a
+			// single worker and would otherwise stall for the whole retry window.
+			if t.retryable {
+				go i.retry(ctx, t)
+				continue
 			}
+
+			log.Debug().Err(err).Str("indexer", i.name).Uint32("twinId", t.id).Msg("failed to call")
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// retry re-queries the node with exponential backoff for up to retryTimeout. Only new nodes
+// are retried: they are commonly not answerable over rmb right after registration, and would
+// otherwise wait for the next full sweep, which is a whole day for some indexers.
+func (i *Indexer[T]) retry(ctx context.Context, t task) {
+	deadline := time.Now().Add(retryTimeout)
+	backoff := retryInitialBackoff
+	for time.Now().Add(backoff).Before(deadline) {
+		log.Debug().Str("indexer", i.name).Uint32("twinId", t.id).Dur("backoff", backoff).Msg("retrying new node")
+
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return
+		}
+
+		res, err := i.work.Get(ctx, i.rmbClient, t.id)
+		if err == nil {
+			i.emit(ctx, t, res)
+			return
+		}
+
+		if backoff *= 2; backoff > retryMaxBackoff {
+			backoff = retryMaxBackoff
+		}
+	}
+
+	log.Warn().Str("indexer", i.name).Uint32("twinId", t.id).Msg("giving up on new node")
+}
+
+func (i *Indexer[T]) emit(ctx context.Context, t task, res []T) {
+	for _, item := range res {
+		log.Debug().Str("indexer", i.name).Uint32("twinId", t.id).Msgf("response: %+v", item)
+		select {
+		case i.resultChan <- item:
 		case <-ctx.Done():
 			return
 		}
