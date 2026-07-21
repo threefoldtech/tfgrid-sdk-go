@@ -16,9 +16,8 @@ const (
 	newNodesCheckInterval  = 5 * time.Minute
 	batchSize              = 20
 
-	retryInitialBackoff = 30 * time.Second
-	retryMaxBackoff     = 5 * time.Minute
-	retryTimeout        = 20 * time.Minute // how long a new node keeps being retried
+	retryInterval = 5 * time.Minute
+	retryTimeout  = 6 * time.Hour // how long a new node keeps being retried
 )
 
 // task is a twin id to call. Only tasks from the "new" finder are retryable: a freshly
@@ -106,17 +105,16 @@ func (i *Indexer[T]) get(ctx context.Context) {
 	}
 }
 
-// retry re-queries the node with exponential backoff for up to retryTimeout. Only new nodes
-// are retried: they are commonly not answerable over rmb right after registration, and would
+// retry re-queries the node every retryInterval for up to retryTimeout. Only new nodes are
+// retried: they are commonly not answerable over rmb right after registration, and would
 // otherwise wait for the next full sweep, which is a whole day for some indexers.
 func (i *Indexer[T]) retry(ctx context.Context, t task) {
 	deadline := time.Now().Add(retryTimeout)
-	backoff := retryInitialBackoff
-	for time.Now().Add(backoff).Before(deadline) {
-		log.Debug().Str("indexer", i.name).Uint32("twinId", t.id).Dur("backoff", backoff).Msg("retrying new node")
+	for time.Now().Before(deadline) {
+		log.Debug().Str("indexer", i.name).Uint32("twinId", t.id).Msg("retrying new node")
 
 		select {
-		case <-time.After(backoff):
+		case <-time.After(retryInterval):
 		case <-ctx.Done():
 			return
 		}
@@ -125,10 +123,6 @@ func (i *Indexer[T]) retry(ctx context.Context, t task) {
 		if err == nil {
 			i.emit(ctx, t, res)
 			return
-		}
-
-		if backoff *= 2; backoff > retryMaxBackoff {
-			backoff = retryMaxBackoff
 		}
 	}
 
