@@ -178,3 +178,55 @@ func (f NodeFilter) IsGpuFilterRequested() bool {
 		f.GpuVendorName != nil || f.GpuVendorID != nil ||
 		f.GpuDeviceID != nil || f.GpuAvailable != nil
 }
+
+// NodeSelect represents fields that can be selected in nodes API response
+type NodeSelect struct {
+	ID                bool `schema:"id"`
+	NodeID            bool `schema:"node_id"`
+	FarmID            bool `schema:"farm_id"`
+	FarmName          bool `schema:"farm_name"`
+	TwinID            bool `schema:"twin_id"`
+	Country           bool `schema:"country"`
+	GridVersion       bool `schema:"grid_version"`
+	City              bool `schema:"city"`
+	Uptime            bool `schema:"uptime"`
+	Created           bool `schema:"created"`
+	FarmingPolicyID   bool `schema:"farming_policy_id"`
+	UpdatedAt         bool `schema:"updated_at"`
+	TotalResources    bool `schema:"total_resources"`
+	UsedResources     bool `schema:"used_resources"`
+	Location          bool `schema:"location"`
+	PublicConfig      bool `schema:"public_config"`
+	Status            bool `schema:"status"`
+	CertificationType bool `schema:"certification_type"`
+	Dedicated         bool `schema:"dedicated"`
+	InDedicatedFarm   bool `schema:"in_dedicated_farm"`
+	RentContractID    bool `schema:"rent_contract_id"`
+	Rented            bool `schema:"rented"`
+	Rentable          bool `schema:"rentable"`
+	RentedByTwinID    bool `schema:"rented_by_twin_id"`
+	SerialNumber      bool `schema:"serial_number"`
+	Power             bool `schema:"power"`
+	NumGPU            bool `schema:"num_gpu"`
+	ExtraFee          bool `schema:"extra_fee"`
+	Healthy           bool `schema:"healthy"`
+	Dmi               bool `schema:"dmi"`
+	Speed             bool `schema:"speed"`
+	CpuBenchmark      bool `schema:"cpu_benchmark"`
+	GPUs              bool `schema:"gpus"`
+	PriceUsd          bool `schema:"price_usd"`
+	FarmFreeIps       bool `schema:"farm_free_ips"`
+	Features          bool `schema:"features"`
+}
+
+// HasSelection returns true if any field is selected
+func (ns NodeSelect) HasSelection() bool {
+	return ns.ID || ns.NodeID || ns.FarmID || ns.FarmName || ns.TwinID ||
+		ns.Country || ns.GridVersion || ns.City || ns.Uptime || ns.Created ||
+		ns.FarmingPolicyID || ns.UpdatedAt || ns.TotalResources || ns.UsedResources ||
+		ns.Location || ns.PublicConfig || ns.Status || ns.CertificationType ||
+		ns.Dedicated || ns.InDedicatedFarm || ns.RentContractID || ns.Rented ||
+		ns.Rentable || ns.RentedByTwinID || ns.SerialNumber || ns.Power ||
+		ns.NumGPU || ns.ExtraFee || ns.Healthy || ns.Dmi || ns.Speed ||
+		ns.CpuBenchmark || ns.GPUs || ns.PriceUsd || ns.FarmFreeIps || ns.Features
+}

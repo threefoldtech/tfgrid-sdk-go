@@ -71,3 +71,18 @@ type ContractFilter struct {
 	FarmName          *string  `schema:"farm_name,omitempty"`
 	FarmId            *uint64  `schema:"farm_id,omitempty"`
 }
+
+// ContractSelect represents fields that can be selected in contracts API response
+type ContractSelect struct {
+	ContractID bool `schema:"contract_id"`
+	TwinID     bool `schema:"twin_id"`
+	State      bool `schema:"state"`
+	CreatedAt  bool `schema:"created_at"`
+	Type       bool `schema:"type"`
+	Details    bool `schema:"details"`
+}
+
+// HasSelection returns true if any field is selected
+func (cs ContractSelect) HasSelection() bool {
+	return cs.ContractID || cs.TwinID || cs.State || cs.CreatedAt || cs.Type || cs.Details
+}

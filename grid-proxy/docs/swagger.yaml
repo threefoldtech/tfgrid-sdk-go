@@ -571,6 +571,11 @@ paths:
         in: query
         name: number_of_public_ips
         type: integer
+      - description: Select specific fields to return. Comma-separated values. E.g.,
+          'contractId,twinId,state'. Supports snake_case and camelCase field names.
+        in: query
+        name: select
+        type: string
       produces:
       - application/json
       responses:
@@ -1047,6 +1052,11 @@ paths:
         in: query
         name: randomize
         type: boolean
+      - description: Select specific fields to return. Comma-separated values. E.g.,
+          'id,farmId,country'. Supports snake_case and camelCase field names.
+        in: query
+        name: select
+        type: string
       - description: Sort by specific node field
         enum:
         - status
@@ -1425,6 +1435,11 @@ paths:
         in: query
         name: free
         type: boolean
+      - description: Select specific fields to return. Comma-separated values. E.g.,
+          'id,ip,farmId'. Supports snake_case and camelCase field names.
+        in: query
+        name: select
+        type: string
       produces:
       - application/json
       responses:
@@ -1529,6 +1544,11 @@ paths:
       - description: Twin public key
         in: query
         name: public_key
+        type: string
+      - description: Select specific fields to return. Comma-separated values. E.g.,
+          'twinId,accountId,relay'. Supports snake_case and camelCase field names.
+        in: query
+        name: select
         type: string
       produces:
       - application/json

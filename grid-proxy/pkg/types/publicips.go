@@ -15,3 +15,17 @@ type PublicIpFilter struct {
 	Ip      *string  `schema:"ip,omitempty"`
 	Gateway *string  `schema:"gateway,omitempty"`
 }
+
+// PublicIPSelect represents fields that can be selected in public IPs API response
+type PublicIPSelect struct {
+	ID         bool `schema:"id"`
+	IP         bool `schema:"ip"`
+	Gateway    bool `schema:"gateway"`
+	ContractID bool `schema:"contract_id"`
+	FarmID     bool `schema:"farm_id"`
+}
+
+// HasSelection returns true if any field is selected
+func (ps PublicIPSelect) HasSelection() bool {
+	return ps.ID || ps.IP || ps.Gateway || ps.ContractID || ps.FarmID
+}
