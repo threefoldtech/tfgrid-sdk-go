@@ -904,9 +904,10 @@ func (c *Crafter) GenerateHealthReports() error {
 		}
 
 		healthReport := types.HealthReport{
-			NodeTwinId: uint32(nodeTwinsStart + i),
-			Healthy:    health,
-			UpdatedAt:  time.Now().Unix(),
+			NodeTwinId:  uint32(nodeTwinsStart + i),
+			Healthy:     health,
+			UptimeScore: rand.Float64(), // Random uptime score between 0.0 and 1.0
+			UpdatedAt:   time.Now().Unix(),
 		}
 		healthReports = append(healthReports, healthReport)
 	}

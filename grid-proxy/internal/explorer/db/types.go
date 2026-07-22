@@ -106,6 +106,7 @@ type Node struct {
 	ExtraFee           uint64
 	NodeContractsCount uint64 `gorm:"node_contracts_count"`
 	Healthy            bool
+	UptimeScore        float64           `gorm:"uptime_score"`
 	Bios               types.BIOS        `gorm:"type:jsonb;serializer:json"`
 	Baseboard          types.Baseboard   `gorm:"type:jsonb;serializer:json"`
 	Memory             []types.Memory    `gorm:"type:jsonb;serializer:json"`

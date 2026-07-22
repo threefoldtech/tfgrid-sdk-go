@@ -1028,6 +1028,9 @@ CREATE TABLE IF NOT EXISTS public.health_report (
 );
 
 ALTER TABLE public.health_report 
+    ADD COLUMN IF NOT EXISTS uptime_score double precision DEFAULT 0;
+
+ALTER TABLE public.health_report 
     OWNER TO postgres;
 
 
