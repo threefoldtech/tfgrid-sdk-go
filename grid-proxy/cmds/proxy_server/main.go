@@ -55,6 +55,7 @@ type flags struct {
 	relayURL               string
 	mnemonics              string
 	maxPoolOpenConnections int
+	rateLimitRPS           int // Rate limit requests per second per IP
 
 	noIndexer                       bool // true to stop the indexer, useful on running for testing
 	indexerUpserterBatchSize        uint
@@ -98,6 +99,7 @@ func main() {
 	flag.StringVar(&f.relayURL, "relay-url", DefaultRelayURL, "RMB relay url")
 	flag.StringVar(&f.mnemonics, "mnemonics", "", "Dummy user mnemonics for relay calls")
 	flag.IntVar(&f.maxPoolOpenConnections, "max-open-conns", 80, "max number of db connection pool open connections")
+	flag.IntVar(&f.rateLimitRPS, "rate-limit-rps", 20, "rate limit requests per second per IP address (0 to disable)")
 
 	flag.BoolVar(&f.noIndexer, "no-indexer", false, "do not start the indexer")
 	flag.UintVar(&f.indexerUpserterBatchSize, "indexer-upserter-batch-size", 20, "results batch size which collected before upserting")
@@ -180,6 +182,13 @@ func main() {
 	s, err := createServer(f, dbClient, GitCommit, rpcRmbClient, indexerIntervals)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create mux server")
+	}
+
+	// Log rate limiting configuration
+	if f.rateLimitRPS > 0 {
+		log.Info().Int("rate_limit_rps", f.rateLimitRPS).Msg("HTTP rate limiting enabled")
+	} else {
+		log.Info().Msg("HTTP rate limiting disabled")
 	}
 
 	if err := app(s, f); err != nil {
@@ -331,7 +340,7 @@ func createServer(f flags, dbClient explorer.DBClient, gitCommit string, relayCl
 	router := mux.NewRouter().StrictSlash(true)
 
 	// setup explorer
-	if err := explorer.Setup(router, gitCommit, dbClient, relayClient, idxIntervals); err != nil {
+	if err := explorer.Setup(router, gitCommit, dbClient, relayClient, idxIntervals, f.rateLimitRPS); err != nil {
 		return nil, err
 	}
 
