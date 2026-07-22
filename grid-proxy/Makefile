@@ -93,7 +93,8 @@ test-query: ## Run specific test query 			(Args: `t=TestName`).
 		-run $(t)
 
 test-unit: ## Run only unit tests
-	@go test -v ./pkg/client
+	@go test -v ./pkg/client &&\
+	go test ./internal/explorer/db/ -timeout 0
 
 test-all: test-unit test-queries ## Run all unit/queries tests
 
