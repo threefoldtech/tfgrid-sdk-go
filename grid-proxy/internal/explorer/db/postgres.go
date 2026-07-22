@@ -27,13 +27,52 @@ var (
 	// ErrFarmNotFound farm not found
 	ErrFarmNotFound = errors.New("farm not found")
 	// ErrViewNotFound
-	ErrResourcesCacheTableNotFound = errors.New("ERROR: relation \"resources_cache\" does not exist (SQLSTATE 42P01)")
+	ErrResourcesCacheTableNotFound = errors.New("ERROR: relation \"nodex\" does not exist (SQLSTATE 42P01)")
 	// ErrContractNotFound contract not found
 	ErrContractNotFound = errors.New("contract not found")
 )
 
-//go:embed setup.sql
-var setupFile string
+//go:embed cache/constants.sql
+var cacheConstants string
+
+//go:embed cache/error_logging.sql
+var cacheErrorLogging string
+
+//go:embed cache/functions.sql
+var cacheFunctions string
+
+//go:embed cache/views.sql
+var cacheViews string
+
+//go:embed cache/cache_tables.sql
+var cacheCacheTables string
+
+//go:embed cache/indexes.sql
+var cacheIndexes string
+
+//go:embed cache/triggers.sql
+var cacheTriggers string
+
+//go:embed cache/cache_management.sql
+var cacheCacheManagement string
+
+//go:embed cache/helpers.sql
+var cacheHelpers string
+
+// cacheFile combines all cache modules in order
+var cacheFile = func() string {
+	return "BEGIN;\n\n" +
+		cacheConstants + "\n\n" +
+		cacheErrorLogging + "\n\n" +
+		cacheFunctions + "\n\n" +
+		cacheViews + "\n\n" +
+		cacheCacheTables + "\n\n" +
+		cacheIndexes + "\n\n" +
+		cacheTriggers + "\n\n" +
+		cacheCacheManagement + "\n\n" +
+		cacheHelpers + "\n\n" +
+		"COMMIT;"
+}()
 
 // PostgresDatabase postgres db client
 type PostgresDatabase struct {
@@ -96,7 +135,7 @@ func (d *PostgresDatabase) Initialized() error {
 		return fmt.Errorf("failed to get db connection")
 	}
 
-	initTables := []string{"node_gpu", "resources_cache"}
+	initTables := []string{"node_gpu", "nodex"}
 	for _, tableName := range initTables {
 		query := "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = $1);"
 		var exists bool
@@ -160,8 +199,8 @@ func (d *PostgresDatabase) Initialize() error {
 		return errors.Wrap(err, "failed to migrate indexer tables")
 	}
 
-	if err := d.gormDB.Exec(setupFile).Error; err != nil {
-		return errors.Wrap(err, "failed to setup cache tables")
+	if err := d.gormDB.Exec(cacheFile).Error; err != nil {
+		return errors.Wrap(err, "failed to setup cache")
 	}
 
 	if err := d.gormDB.Exec(`ALTER TABLE node_gpu DROP CONSTRAINT IF EXISTS node_gpu_pkey;`).Error; err != nil {
@@ -242,7 +281,7 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 	stats.NodesDistribution = nodesDistribution
 
 	if res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
-		Joins("LEFT JOIN resources_cache ON resources_cache.node_id = node.node_id").
+		Joins("LEFT JOIN nodex ON nodex.node_id = node.node_id").
 		Where("node_gpu_count != 0").
 		Count(&stats.GPUs); res.Error != nil {
 		return stats, errors.Wrap(res.Error, "couldn't get node with GPU count")
@@ -250,11 +289,11 @@ func (d *PostgresDatabase) GetStats(ctx context.Context, filter types.StatsFilte
 
 	res := d.gormDB.WithContext(ctx).Table("node").Where(condition).
 		Joins(`
-			LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id
+			LEFT JOIN nodex ON node.node_id = nodex.node_id
 			LEFT JOIN farm ON node.farm_id = farm.farm_id
 		`).
 		Where(
-			"farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0 OR resources_cache.renter is not null",
+			"farm.dedicated_farm = true OR nodex.node_contracts_count = 0 OR nodex.renter is not null",
 		).
 		Count(&stats.DedicatedNodes)
 	if res.Error != nil {
@@ -331,7 +370,7 @@ func printQuery(query string, args ...interface{}) {
 }
 
 func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.NodeFilter, nodeGpuSubquery *gorm.DB, balance float64) *gorm.DB {
-	calculatedDiscountColumn := fmt.Sprintf("calc_discount(resources_cache.price_usd, %f) AS price_usd", balance)
+	calculatedDiscountColumn := fmt.Sprintf("calc_discount(nodex.price_usd, %f) AS price_usd", balance)
 	q := d.gormDB.WithContext(ctx).
 		Table("node").
 		Select(
@@ -348,14 +387,14 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"node.created",
 			"node.farming_policy_id",
 			"node.updated_at",
-			"resources_cache.total_cru",
-			"resources_cache.total_sru",
-			"resources_cache.total_hru",
-			"resources_cache.total_mru",
-			"resources_cache.used_cru",
-			"resources_cache.used_sru",
-			"resources_cache.used_hru",
-			"resources_cache.used_mru",
+			"nodex.total_cru",
+			"nodex.total_sru",
+			"nodex.total_hru",
+			"nodex.total_mru",
+			"nodex.used_cru",
+			"nodex.used_sru",
+			"nodex.used_hru",
+			"nodex.used_mru",
 			"public_config.domain",
 			"public_config.gw4",
 			"public_config.gw6",
@@ -363,43 +402,43 @@ func (d *PostgresDatabase) nodeTableQuery(ctx context.Context, filter types.Node
 			"public_config.ipv6",
 			"node.certification",
 			"farm.dedicated_farm as farm_dedicated",
-			"resources_cache.rent_contract_id as rent_contract_id",
-			"(farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0) AND resources_cache.renter is null as rentable",
-			"resources_cache.renter is not null as rented",
-			"resources_cache.renter",
+			"nodex.rent_contract_id as rent_contract_id",
+			"(farm.dedicated_farm = true OR nodex.node_contracts_count = 0) AND nodex.renter is null as rentable",
+			"nodex.renter is not null as rented",
+			"nodex.renter",
 			"node.serial_number",
 			"convert_to_decimal(location.longitude) as longitude",
 			"convert_to_decimal(location.latitude) as latitude",
 			"node.power",
 			"node.extra_fee",
-			"resources_cache.node_contracts_count",
-			"resources_cache.node_gpu_count AS num_gpu",
-			"resources_cache.gpus",
+			"nodex.node_contracts_count",
+			"nodex.node_gpu_count AS num_gpu",
+			"nodex.gpus",
 			"health_report.healthy",
 			"node_ipv6.has_ipv6",
 			"node_features.features as features",
-			"resources_cache.bios",
-			"resources_cache.baseboard",
-			"resources_cache.memory",
-			"resources_cache.processor",
-			"resources_cache.upload_speed",
-			"resources_cache.download_speed",
-			"resources_cache.udp_download_ipv4",
-			"resources_cache.udp_upload_ipv4",
-			"resources_cache.tcp_download_ipv6",
-			"resources_cache.tcp_upload_ipv6",
-			"resources_cache.udp_download_ipv6",
-			"resources_cache.udp_upload_ipv6",
-			"resources_cache.single_threaded_cpu as single_threaded",
-			"resources_cache.multi_threaded_cpu as multi_threaded",
-			"resources_cache.threads_cpu as threads",
-			"resources_cache.workloads_cpu as workloads",
-			"public_ips_cache.free_ips as farm_free_ips",
+			"nodex.bios",
+			"nodex.baseboard",
+			"nodex.memory",
+			"nodex.processor",
+			"nodex.upload_speed",
+			"nodex.download_speed",
+			"nodex.udp_download_ipv4",
+			"nodex.udp_upload_ipv4",
+			"nodex.tcp_download_ipv6",
+			"nodex.tcp_upload_ipv6",
+			"nodex.udp_download_ipv6",
+			"nodex.udp_upload_ipv6",
+			"nodex.single_threaded_cpu as single_threaded",
+			"nodex.multi_threaded_cpu as multi_threaded",
+			"nodex.threads_cpu as threads",
+			"nodex.workloads_cpu as workloads",
+			"farmx.free_ips as farm_free_ips",
 			calculatedDiscountColumn,
 		).
 		Joins(`
-			LEFT JOIN resources_cache ON node.node_id = resources_cache.node_id
-			LEFT JOIN public_ips_cache ON public_ips_cache.farm_id = node.farm_id
+			LEFT JOIN nodex ON node.node_id = nodex.node_id
+			LEFT JOIN farmx ON farmx.farm_id = node.farm_id
 			LEFT JOIN public_config ON node.id = public_config.node_id
 			LEFT JOIN farm ON node.farm_id = farm.farm_id
 			LEFT JOIN location ON node.location_id = location.id
@@ -430,16 +469,16 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 			"farm.certification",
 			"farm.stellar_address",
 			"farm.dedicated_farm as dedicated",
-			"COALESCE(public_ips_cache.ips, '[]') as public_ips",
+			"COALESCE(farmx.ips, '[]') as public_ips",
 		).
 		Joins(
-			"LEFT JOIN public_ips_cache ON public_ips_cache.farm_id = farm.farm_id",
+			"LEFT JOIN farmx ON farmx.farm_id = farm.farm_id",
 		)
 
 	if filter.IsNodeFilterRequested() {
 		// TODO: would it be a good option to delegate here to the GetNodes?
 		// how this will affect the performance benchmark?
-		q.Joins(`RIGHT JOIN (?) AS resources_cache on resources_cache.farm_id = farm.farm_id`, nodeQuery).
+		q.Joins(`RIGHT JOIN (?) AS nodex on nodex.farm_id = farm.farm_id`, nodeQuery).
 			Group(`
 				farm.id,
 				farm.farm_id,
@@ -449,7 +488,7 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 				farm.certification,
 				farm.stellar_address,
 				farm.dedicated_farm,
-				COALESCE(public_ips_cache.ips, '[]')
+				COALESCE(farmx.ips, '[]')
 			`)
 	}
 
@@ -458,37 +497,37 @@ func (d *PostgresDatabase) farmTableQuery(ctx context.Context, filter types.Farm
 
 // GetFarms return farms filtered and paginated
 func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter, limit types.Limit) ([]Farm, uint, error) {
-	nodeQuery := d.gormDB.Table("resources_cache").
-		Select("resources_cache.farm_id", "renter", "resources_cache.extra_fee").
+	nodeQuery := d.gormDB.Table("nodex").
+		Select("nodex.farm_id", "renter", "nodex.extra_fee").
 		Joins(`
-			LEFT JOIN node ON node.node_id = resources_cache.node_id
-			LEFT JOIN node_location ON node_location.country = resources_cache.country
+			LEFT JOIN node ON node.node_id = nodex.node_id
+			LEFT JOIN node_location ON node_location.country = nodex.country
 		`).
-		Group(`resources_cache.farm_id, renter, resources_cache.extra_fee`)
+		Group(`nodex.farm_id, renter, nodex.extra_fee`)
 
 	if filter.NodeFreeMRU != nil {
-		nodeQuery = nodeQuery.Where("resources_cache.free_mru >= ?", *filter.NodeFreeMRU)
+		nodeQuery = nodeQuery.Where("nodex.free_mru >= ?", *filter.NodeFreeMRU)
 	}
 	if filter.NodeFreeHRU != nil {
-		nodeQuery = nodeQuery.Where("resources_cache.free_hru >= ?", *filter.NodeFreeHRU)
+		nodeQuery = nodeQuery.Where("nodex.free_hru >= ?", *filter.NodeFreeHRU)
 	}
 	if filter.NodeFreeSRU != nil {
-		nodeQuery = nodeQuery.Where("resources_cache.free_sru >= ?", *filter.NodeFreeSRU)
+		nodeQuery = nodeQuery.Where("nodex.free_sru >= ?", *filter.NodeFreeSRU)
 	}
 	if filter.NodeTotalCRU != nil {
-		nodeQuery = nodeQuery.Where("resources_cache.total_cru >= ?", *filter.NodeTotalCRU)
+		nodeQuery = nodeQuery.Where("nodex.total_cru >= ?", *filter.NodeTotalCRU)
 	}
 
 	if filter.NodeHasGPU != nil {
-		nodeQuery = nodeQuery.Where("(resources_cache.node_gpu_count > 0) = ?", *filter.NodeHasGPU)
+		nodeQuery = nodeQuery.Where("(nodex.node_gpu_count > 0) = ?", *filter.NodeHasGPU)
 	}
 
 	if filter.NodeRentedBy != nil {
-		nodeQuery = nodeQuery.Where("COALESCE(resources_cache.renter, 0) = ?", *filter.NodeRentedBy)
+		nodeQuery = nodeQuery.Where("COALESCE(nodex.renter, 0) = ?", *filter.NodeRentedBy)
 	}
 
 	if filter.Country != nil {
-		nodeQuery = nodeQuery.Where("LOWER(resources_cache.country) = LOWER(?)", *filter.Country)
+		nodeQuery = nodeQuery.Where("LOWER(nodex.country) = LOWER(?)", *filter.Country)
 	}
 
 	if filter.Region != nil {
@@ -524,15 +563,15 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 	q := d.farmTableQuery(ctx, filter, nodeQuery)
 
 	if filter.NodeAvailableFor != nil {
-		q = q.Where(`COALESCE(resources_cache.renter, 0) = ? OR 
-			(resources_cache.renter IS NULL AND farm.dedicated_farm = false AND resources_cache.extra_fee = 0)`, *filter.NodeAvailableFor)
+		q = q.Where(`COALESCE(nodex.renter, 0) = ? OR 
+			(nodex.renter IS NULL AND farm.dedicated_farm = false AND nodex.extra_fee = 0)`, *filter.NodeAvailableFor)
 	}
 
 	if filter.FreeIPs != nil {
-		q = q.Where("COALESCE(public_ips_cache.free_ips, 0) >= ?", *filter.FreeIPs)
+		q = q.Where("COALESCE(farmx.free_ips, 0) >= ?", *filter.FreeIPs)
 	}
 	if filter.TotalIPs != nil {
-		q = q.Where("COALESCE(public_ips_cache.total_ips, 0) >= ?", *filter.TotalIPs)
+		q = q.Where("COALESCE(farmx.total_ips, 0) >= ?", *filter.TotalIPs)
 	}
 	if filter.StellarAddress != nil {
 		q = q.Where("COALESCE(farm.stellar_address, '') = ?", *filter.StellarAddress)
@@ -569,7 +608,7 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 		q = q.Order("random()")
 	} else {
 		if filter.NodeAvailableFor != nil {
-			q = q.Order("(bool_or(resources_cache.renter IS NOT NULL)) DESC")
+			q = q.Order("(bool_or(nodex.renter IS NOT NULL)) DESC")
 		}
 		if limit.SortBy != "" {
 			order := types.SortOrderAsc
@@ -579,11 +618,11 @@ func (d *PostgresDatabase) GetFarms(ctx context.Context, filter types.FarmFilter
 
 			switch limit.SortBy {
 			case "free_ips":
-				q = q.Order(fmt.Sprintf("public_ips_cache.free_ips %s", order))
+				q = q.Order(fmt.Sprintf("farmx.free_ips %s", order))
 			case "total_ips":
-				q = q.Order(fmt.Sprintf("public_ips_cache.total_ips %s", order))
+				q = q.Order(fmt.Sprintf("farmx.total_ips %s", order))
 			case "used_ips":
-				q = q.Order(fmt.Sprintf("public_ips_cache.total_ips-public_ips_cache.free_ips %s", order))
+				q = q.Order(fmt.Sprintf("farmx.total_ips-farmx.free_ips %s", order))
 			default:
 				q = q.Order(fmt.Sprintf("%s %s", limit.SortBy, order))
 			}
@@ -654,7 +693,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	q = q.Where(condition)
 
 	if filter.NumGPU != nil {
-		q = q.Where("COALESCE(resources_cache.node_gpu_count, 0) >= ?", *filter.NumGPU)
+		q = q.Where("COALESCE(nodex.node_gpu_count, 0) >= ?", *filter.NumGPU)
 	}
 	if filter.Healthy != nil {
 		q = q.Where("health_report.healthy = ? ", *filter.Healthy)
@@ -663,25 +702,25 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where("COALESCE(node_ipv6.has_ipv6, false) = ? ", *filter.HasIpv6)
 	}
 	if filter.FreeMRU != nil {
-		q = q.Where("resources_cache.free_mru >= ?", *filter.FreeMRU)
+		q = q.Where("nodex.free_mru >= ?", *filter.FreeMRU)
 	}
 	if filter.FreeHRU != nil {
-		q = q.Where("resources_cache.free_hru >= ?", *filter.FreeHRU)
+		q = q.Where("nodex.free_hru >= ?", *filter.FreeHRU)
 	}
 	if filter.FreeSRU != nil {
-		q = q.Where("resources_cache.free_sru >= ?", *filter.FreeSRU)
+		q = q.Where("nodex.free_sru >= ?", *filter.FreeSRU)
 	}
 	if filter.TotalCRU != nil {
-		q = q.Where("resources_cache.total_cru >= ?", *filter.TotalCRU)
+		q = q.Where("nodex.total_cru >= ?", *filter.TotalCRU)
 	}
 	if filter.TotalHRU != nil {
-		q = q.Where("resources_cache.total_hru >= ?", *filter.TotalHRU)
+		q = q.Where("nodex.total_hru >= ?", *filter.TotalHRU)
 	}
 	if filter.TotalMRU != nil {
-		q = q.Where("resources_cache.total_mru >= ?", *filter.TotalMRU)
+		q = q.Where("nodex.total_mru >= ?", *filter.TotalMRU)
 	}
 	if filter.TotalSRU != nil {
-		q = q.Where("resources_cache.total_sru >= ?", *filter.TotalSRU)
+		q = q.Where("nodex.total_sru >= ?", *filter.TotalSRU)
 	}
 	if filter.Country != nil {
 		q = q.Where("LOWER(node.country) = LOWER(?)", *filter.Country)
@@ -717,7 +756,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where("farm.name ILIKE '%' || ? || '%'", *filter.FarmNameContains)
 	}
 	if filter.FreeIPs != nil {
-		q = q.Where("COALESCE(public_ips_cache.free_ips, 0) >= ?", *filter.FreeIPs)
+		q = q.Where("COALESCE(farmx.free_ips, 0) >= ?", *filter.FreeIPs)
 	}
 	if filter.IPv4 != nil {
 		q = q.Where("(COALESCE(public_config.ipv4, '') != '') = ?", *filter.IPv4)
@@ -740,36 +779,36 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 		q = q.Where(`farm.dedicated_farm = ?`, *filter.InDedicatedFarm)
 	}
 	if filter.Dedicated != nil {
-		q = q.Where(`? = (farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0 OR resources_cache.renter is not null)`, *filter.Dedicated)
+		q = q.Where(`? = (farm.dedicated_farm = true OR nodex.node_contracts_count = 0 OR nodex.renter is not null)`, *filter.Dedicated)
 	}
 	if filter.Rentable != nil {
-		q = q.Where(`? = ((farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0) AND resources_cache.renter is null)`, *filter.Rentable)
+		q = q.Where(`? = ((farm.dedicated_farm = true OR nodex.node_contracts_count = 0) AND nodex.renter is null)`, *filter.Rentable)
 	}
 	if filter.AvailableFor != nil {
 		q = q.Where(`
-			COALESCE(resources_cache.renter, 0) = ? OR 
-			(resources_cache.renter is null AND farm.dedicated_farm = false AND resources_cache.extra_fee = 0)`, *filter.AvailableFor)
+			COALESCE(nodex.renter, 0) = ? OR 
+			(nodex.renter is null AND farm.dedicated_farm = false AND nodex.extra_fee = 0)`, *filter.AvailableFor)
 	}
 	if filter.RentedBy != nil {
-		q = q.Where(`COALESCE(resources_cache.renter, 0) = ?`, *filter.RentedBy)
+		q = q.Where(`COALESCE(nodex.renter, 0) = ?`, *filter.RentedBy)
 	}
 	if filter.RentableOrRentedBy != nil {
-		q = q.Where(`((farm.dedicated_farm = true OR resources_cache.node_contracts_count = 0) 
-			AND resources_cache.renter is null)
-			OR COALESCE(resources_cache.renter, 0) = ?
+		q = q.Where(`((farm.dedicated_farm = true OR nodex.node_contracts_count = 0) 
+			AND nodex.renter is null)
+			OR COALESCE(nodex.renter, 0) = ?
 		`, *filter.RentableOrRentedBy)
 	}
 	if filter.Rented != nil {
-		q = q.Where(`? = (resources_cache.renter is not null)`, *filter.Rented)
+		q = q.Where(`? = (nodex.renter is not null)`, *filter.Rented)
 	}
 	if filter.OwnedBy != nil {
 		q = q.Where(`COALESCE(farm.twin_id, 0) = ?`, *filter.OwnedBy)
 	}
 	if filter.PriceMin != nil {
-		q = q.Where(`calc_discount(resources_cache.price_usd, ?) >= ?`, limit.Balance, *filter.PriceMin)
+		q = q.Where(`calc_discount(nodex.price_usd, ?) >= ?`, limit.Balance, *filter.PriceMin)
 	}
 	if filter.PriceMax != nil {
-		q = q.Where(`calc_discount(resources_cache.price_usd, ?) <= ?`, limit.Balance, *filter.PriceMax)
+		q = q.Where(`calc_discount(nodex.price_usd, ?) <= ?`, limit.Balance, *filter.PriceMax)
 	}
 	if len(filter.Features) != 0 {
 		// The @> operator checks if all the right elements exist on the left,
@@ -789,7 +828,7 @@ func (d *PostgresDatabase) GetNodes(ctx context.Context, filter types.NodeFilter
 	} else {
 		// prioritize the rented (by the twin) nodes
 		if filter.AvailableFor != nil || filter.RentableOrRentedBy != nil {
-			q = q.Order("(case when resources_cache.renter is not null then 1 else 2 end)")
+			q = q.Order("(case when nodex.renter is not null then 1 else 2 end)")
 		}
 
 		if limit.SortBy != "" {
