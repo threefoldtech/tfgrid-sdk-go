@@ -23,7 +23,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.39.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	gorm.io/driver/postgres v1.5.7
-	gorm.io/gorm v1.25.10
+	gorm.io/gorm v1.31.1
 )
 
 require (
