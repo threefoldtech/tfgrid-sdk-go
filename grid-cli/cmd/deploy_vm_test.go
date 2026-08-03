@@ -74,6 +74,65 @@ func TestParseMyceliumIdentity(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	// The key may arrive named rather than written. The seed is deliberately not
+	// given the same treatment: it selects an address within the network the key
+	// defines, so knowing it grants nothing.
+	t.Run("a named environment variable is read", func(t *testing.T) {
+		t.Setenv("TEST_MYCELIUM_KEY", validKeyHex())
+		resolved, err := resolveMyceliumKeyHex("", "TEST_MYCELIUM_KEY")
+		require.NoError(t, err)
+		assert.Equal(t, validKeyHex(), resolved)
+	})
+
+	t.Run("naming no variable passes the value through", func(t *testing.T) {
+		resolved, err := resolveMyceliumKeyHex(validKeyHex(), "")
+		require.NoError(t, err)
+		assert.Equal(t, validKeyHex(), resolved)
+	})
+
+	t.Run("naming neither still means generate", func(t *testing.T) {
+		resolved, err := resolveMyceliumKeyHex("", "")
+		require.NoError(t, err)
+		assert.Empty(t, resolved)
+	})
+
+	t.Run("both a value and a variable is refused", func(t *testing.T) {
+		_, err := resolveMyceliumKeyHex(validKeyHex(), "TEST_MYCELIUM_KEY")
+		require.Error(t, err)
+	})
+
+	// An unset variable is a caller mistake worth naming precisely, because the
+	// alternative — falling back to generating one — hands back a machine on an
+	// address the caller did not choose and believes it did.
+	t.Run("an unset variable is refused and named", func(t *testing.T) {
+		_, err := resolveMyceliumKeyHex("", "TEST_MYCELIUM_KEY_UNSET")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "TEST_MYCELIUM_KEY_UNSET")
+	})
+
+	t.Run("an empty variable is refused and named", func(t *testing.T) {
+		t.Setenv("TEST_MYCELIUM_KEY_EMPTY", "")
+		_, err := resolveMyceliumKeyHex("", "TEST_MYCELIUM_KEY_EMPTY")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "TEST_MYCELIUM_KEY_EMPTY")
+	})
+
+	// The reason the flag exists at all: what went wrong is reported, what it held
+	// is not.
+	t.Run("a rejected variable never echoes what it held", func(t *testing.T) {
+		t.Setenv("TEST_MYCELIUM_KEY_SECRET", "")
+		_, err := resolveMyceliumKeyHex("", "TEST_MYCELIUM_KEY_SECRET")
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), validKeyHex())
+
+		t.Setenv("TEST_MYCELIUM_KEY_BAD", validKeyHex())
+		resolved, err := resolveMyceliumKeyHex("", "TEST_MYCELIUM_KEY_BAD")
+		require.NoError(t, err)
+		_, _, err = parseMyceliumIdentity(resolved, "aabb", true)
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), validKeyHex())
+	})
+
 	// The whole point: the same hex in yields the same bytes out, so a caller that
 	// stores the pair can rebuild a machine on the address it had before.
 	t.Run("decoding is stable across calls", func(t *testing.T) {
