@@ -15,10 +15,10 @@ import (
 )
 
 // DeployVM deploys a vm with mounts
-func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, diskMount workloads.Disk, volumeMount workloads.Volume) (workloads.VM, error) {
+func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, diskMount workloads.Disk, volumeMount workloads.Volume, myceliumKey []byte) (workloads.VM, error) {
 	networkName := fmt.Sprintf("%snetwork", vm.Name)
 	projectName := fmt.Sprintf("vm/%s", vm.Name)
-	network, err := buildNetwork(networkName, projectName, []uint32{vm.NodeID}, len(vm.MyceliumIPSeed) != 0)
+	network, err := buildNetwork(networkName, projectName, []uint32{vm.NodeID}, len(vm.MyceliumIPSeed) != 0, myceliumKey)
 	if err != nil {
 		return workloads.VM{}, err
 	}
@@ -58,10 +58,10 @@ func DeployVM(ctx context.Context, t deployer.TFPluginClient, vm workloads.VM, d
 }
 
 // DeployVMLight deploys a vm-light with mounts
-func DeployVMLight(ctx context.Context, t deployer.TFPluginClient, vm workloads.VMLight, diskMount workloads.Disk, volumeMount workloads.Volume) (workloads.VMLight, error) {
+func DeployVMLight(ctx context.Context, t deployer.TFPluginClient, vm workloads.VMLight, diskMount workloads.Disk, volumeMount workloads.Volume, myceliumKey []byte) (workloads.VMLight, error) {
 	networkName := fmt.Sprintf("%snetwork", vm.Name)
 	projectName := fmt.Sprintf("vm/%s", vm.Name)
-	network, err := buildNetworkLight(networkName, projectName, []uint32{vm.NodeID})
+	network, err := buildNetworkLight(networkName, projectName, []uint32{vm.NodeID}, myceliumKey)
 	if err != nil {
 		return workloads.VMLight{}, err
 	}
@@ -115,7 +115,9 @@ func DeployKubernetesCluster(ctx context.Context, t deployer.TFPluginClient, mas
 		}
 	}
 
-	network, err := buildNetwork(networkName, projectName, networkNodes, len(master.MyceliumIPSeed) != 0)
+	// nil: the kubernetes command exposes no way to supply a mycelium key, so keys
+	// are generated per node exactly as before.
+	network, err := buildNetwork(networkName, projectName, networkNodes, len(master.MyceliumIPSeed) != 0, nil)
 	if err != nil {
 		return workloads.K8sCluster{}, err
 	}
@@ -205,13 +207,20 @@ func DeployZDBs(ctx context.Context, t deployer.TFPluginClient, projectName stri
 	return resZDBs, nil
 }
 
-func buildNetwork(name, projectName string, nodes []uint32, addMycelium bool) (workloads.ZNet, error) {
+// buildNetwork builds a network for the given nodes. When myceliumKey is empty a
+// fresh key is generated per node; when it is supplied that key is used for every
+// node, so a deployment rebuilt later with the same key keeps its mycelium address.
+func buildNetwork(name, projectName string, nodes []uint32, addMycelium bool, myceliumKey []byte) (workloads.ZNet, error) {
 	keys := make(map[uint32][]byte)
 	if addMycelium {
 		for _, node := range nodes {
-			key, err := workloads.RandomMyceliumKey()
-			if err != nil {
-				return workloads.ZNet{}, err
+			key := myceliumKey
+			if len(key) == 0 {
+				var err error
+				key, err = workloads.RandomMyceliumKey()
+				if err != nil {
+					return workloads.ZNet{}, err
+				}
 			}
 			keys[node] = key
 		}
@@ -228,12 +237,20 @@ func buildNetwork(name, projectName string, nodes []uint32, addMycelium bool) (w
 	}, nil
 }
 
-func buildNetworkLight(name, projectName string, nodes []uint32) (workloads.ZNetLight, error) {
+// buildNetworkLight builds a light network for the given nodes. When myceliumKey is
+// empty a fresh key is generated per node; when it is supplied that key is used for
+// every node, so a deployment rebuilt later with the same key keeps its mycelium
+// address.
+func buildNetworkLight(name, projectName string, nodes []uint32, myceliumKey []byte) (workloads.ZNetLight, error) {
 	keys := make(map[uint32][]byte)
 	for _, node := range nodes {
-		key, err := workloads.RandomMyceliumKey()
-		if err != nil {
-			return workloads.ZNetLight{}, err
+		key := myceliumKey
+		if len(key) == 0 {
+			var err error
+			key, err = workloads.RandomMyceliumKey()
+			if err != nil {
+				return workloads.ZNetLight{}, err
+			}
 		}
 		keys[node] = key
 	}

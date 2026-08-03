@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"slices"
@@ -123,8 +124,25 @@ var deployVMCmd = &cobra.Command{
 			return err
 		}
 
-		var seed []byte
-		if mycelium {
+		myceliumKeyHex, err := cmd.Flags().GetString("mycelium-key")
+		if err != nil {
+			return err
+		}
+		myceliumSeedHex, err := cmd.Flags().GetString("mycelium-seed")
+		if err != nil {
+			return err
+		}
+
+		// The key and the seed together determine the mycelium address, so supplying
+		// one without the other still yields a different address on redeployment.
+		// Refuse that rather than silently returning a machine the caller cannot
+		// reach where it expects.
+		myceliumKey, seed, err := parseMyceliumIdentity(myceliumKeyHex, myceliumSeedHex, mycelium)
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+
+		if mycelium && len(seed) == 0 {
 			seed, err = workloads.RandomMyceliumIPSeed()
 			if err != nil {
 				log.Fatal().Err(err).Send()
@@ -174,7 +192,7 @@ var deployVMCmd = &cobra.Command{
 				Entrypoint:     entrypoint,
 				MyceliumIPSeed: seed,
 			}
-			err = executeVMLight(cmd.Context(), t, vm, node, farm, disk, volume)
+			err = executeVMLight(cmd.Context(), t, vm, node, farm, disk, volume, myceliumKey)
 			if err == nil {
 				return nil
 			}
@@ -198,7 +216,7 @@ var deployVMCmd = &cobra.Command{
 			MyceliumIPSeed: seed,
 			Planetary:      ygg,
 		}
-		err = executeVM(cmd.Context(), t, vm, node, farm, disk, volume)
+		err = executeVM(cmd.Context(), t, vm, node, farm, disk, volume, myceliumKey)
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
@@ -242,7 +260,55 @@ func init() {
 	deployVMCmd.Flags().Bool("ipv6", false, "assign public ipv6 for vm")
 	deployVMCmd.Flags().Bool("ygg", false, "assign yggdrasil ip for vm")
 	deployVMCmd.Flags().Bool("mycelium", true, "assign mycelium ip for vm")
+
+	// A mycelium address is determined by the network's key and the machine's ip
+	// seed. Both are generated when not supplied, which is what every existing
+	// caller gets. Supplying them lets a deployment that is destroyed and rebuilt
+	// later — on this node or another one — come back on the same address.
+	deployVMCmd.Flags().String("mycelium-key", "", "hex encoded 32 byte mycelium key for the vm's network, generated when omitted")
+	deployVMCmd.Flags().String("mycelium-seed", "", "hex encoded 6 byte mycelium ip seed for the vm, generated when omitted")
+	deployVMCmd.MarkFlagsRequiredTogether("mycelium-key", "mycelium-seed")
+
 	deployVMCmd.Flags().StringToStringP("env", "e", make(map[string]string), "environment variables for the vm")
+}
+
+// parseMyceliumIdentity decodes and validates a caller-supplied mycelium key and ip
+// seed. Empty values mean "generate", which is the behaviour every caller had before
+// these flags existed. It returns the decoded key and seed, either of which may be
+// nil when not supplied.
+func parseMyceliumIdentity(keyHex, seedHex string, mycelium bool) (key, seed []byte, err error) {
+	if keyHex == "" && seedHex == "" {
+		return nil, nil, nil
+	}
+
+	if !mycelium {
+		return nil, nil, errors.New("a mycelium key and ip seed were supplied but mycelium is disabled; drop them or pass --mycelium")
+	}
+
+	// Cobra's MarkFlagsRequiredTogether already rejects one without the other, but
+	// this function is also the single place the rule is stated, so it does not
+	// depend on where it is called from.
+	if keyHex == "" || seedHex == "" {
+		return nil, nil, errors.New("a mycelium key and ip seed must be supplied together; either alone still changes the address")
+	}
+
+	key, err = hex.DecodeString(keyHex)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to decode mycelium key as hex")
+	}
+	if len(key) != zos.MyceliumKeyLen {
+		return nil, nil, fmt.Errorf("invalid mycelium key length %d, must be %d bytes", len(key), zos.MyceliumKeyLen)
+	}
+
+	seed, err = hex.DecodeString(seedHex)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to decode mycelium ip seed as hex")
+	}
+	if len(seed) != zos.MyceliumIPSeedLen {
+		return nil, nil, fmt.Errorf("invalid mycelium ip seed length %d, must be %d bytes", len(seed), zos.MyceliumIPSeedLen)
+	}
+
+	return key, seed, nil
 }
 
 func executeVM(
@@ -250,6 +316,7 @@ func executeVM(
 	vm workloads.VM,
 	node uint32,
 	farm, disk, volume uint64,
+	myceliumKey []byte,
 ) error {
 	var diskMount workloads.Disk
 	if disk != 0 {
@@ -283,7 +350,7 @@ func executeVM(
 	}
 
 	vm.NodeID = node
-	resVM, err := command.DeployVM(ctx, t, vm, diskMount, volumeMount)
+	resVM, err := command.DeployVM(ctx, t, vm, diskMount, volumeMount, myceliumKey)
 	if err != nil {
 		return err
 	}
@@ -309,6 +376,7 @@ func executeVMLight(
 	vm workloads.VMLight,
 	node uint32,
 	farm, disk, volume uint64,
+	myceliumKey []byte,
 ) error {
 	var diskMount workloads.Disk
 	if disk != 0 {
@@ -342,7 +410,7 @@ func executeVMLight(
 	}
 
 	vm.NodeID = node
-	resVM, err := command.DeployVMLight(ctx, t, vm, diskMount, volumeMount)
+	resVM, err := command.DeployVMLight(ctx, t, vm, diskMount, volumeMount, myceliumKey)
 	if err != nil {
 		return err
 	}
