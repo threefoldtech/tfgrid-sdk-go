@@ -28,8 +28,39 @@ tfcmd deploy vm [flags]
 - rootfs: root filesystem size in GB (default 2).
 - ygg: assign yggdrasil ip for VM (default true).
 - mycelium: assign mycelium ip for VM (default true).
+- mycelium-key: hex encoded 32 byte mycelium key for the VM's network. generated when omitted. note: must be set together with mycelium-seed.
+- mycelium-seed: hex encoded 6 byte mycelium ip seed for the VM. generated when omitted. note: must be set together with mycelium-key.
 - gpus: assign a list of gpus' ids to the VM. note: setting this without the node option will fail.
 - env: environment variables for the VM.
+
+### Keeping a mycelium address across deployments
+
+A VM's mycelium address is determined by two values: the mycelium key on its network
+and the ip seed on the machine. Both are generated on every deployment unless you
+supply them, so a VM that is canceled and deployed again normally comes back on a
+different address.
+
+Pass `--mycelium-key` and `--mycelium-seed` to keep the address instead. The same pair
+yields the same address, including when the VM is deployed to a different node, which
+is useful when something outside the deployment refers to the VM by address.
+
+Both flags must be given together — either one alone still changes the address. Store
+the pair somewhere safe if you intend to redeploy: they are what the address depends
+on, and the key is private material.
+
+```console
+$ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub \
+    --mycelium-key 0f3a...  --mycelium-seed b60f2b7ec39c
+10:07AM INF starting peer session=tf-366500 twin=192
+10:07AM INF deploying network
+10:07AM INF deploying vm
+10:07AM INF vm mycelium ip: 5c5:681f:d60b:505:ff0f:9f4f:753f:5521
+
+$ tfcmd cancel examplevm
+$ tfcmd deploy vm --name examplevm --ssh ~/.ssh/id_rsa.pub \
+    --mycelium-key 0f3a...  --mycelium-seed b60f2b7ec39c
+10:10AM INF vm mycelium ip: 5c5:681f:d60b:505:ff0f:9f4f:753f:5521
+```
 
 Example:
 
